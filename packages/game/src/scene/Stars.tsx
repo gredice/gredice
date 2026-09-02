@@ -8,7 +8,11 @@ import {
 } from 'three';
 import { defaultGameCameraZoom } from '../gameCamera';
 import { useGameState } from '../useGameState';
-import { useSceneTimeUniform } from './SceneTime';
+import {
+    useSceneFixedTimeSeconds,
+    useSceneTimeInvalidation,
+    useSceneTimeUniform,
+} from './SceneTime';
 
 const STAR_VISIBILITY = {
     min: 0,
@@ -73,6 +77,7 @@ export function Stars({ visibility = 1 }: StarsProps) {
     const pixelRatio = useThree((state) => state.viewport.dpr);
     const gameCamera = useGameState((state) => state.gameCamera);
     const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
+    const fixedTimeSeconds = useSceneFixedTimeSeconds();
     const timeUniform = useSceneTimeUniform();
     const cameraForwardRef = useRef(new Vector3());
     const clampedVisibility = Math.min(
@@ -222,6 +227,10 @@ export function Stars({ visibility = 1 }: StarsProps) {
             Math.round(STAR_FIELD.count * clampedVisibility),
         );
     }, [clampedVisibility]);
+    useSceneTimeInvalidation(
+        'star-twinkle',
+        visibleCount > 0 && fixedTimeSeconds === undefined,
+    );
 
     const visiblePositions = useMemo(() => {
         const positions =

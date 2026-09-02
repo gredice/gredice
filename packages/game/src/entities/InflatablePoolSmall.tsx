@@ -7,6 +7,10 @@ import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import {
+    resolveTimeDrivenMaterialSpeed,
+    useTimeDrivenMaterialAnimation,
+} from './helpers/timeDrivenMaterialAnimation';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 type InflatablePoolSmallNodeName = Extract<
@@ -60,6 +64,7 @@ export function InflatablePoolSmall({
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
     const position = stack.position.clone().setY(currentStackHeight + 0.015);
+    const materialAnimationActive = useTimeDrivenMaterialAnimation();
 
     return (
         <animated.group
@@ -87,7 +92,10 @@ export function InflatablePoolSmall({
                     opacity={0.72}
                     roughness={0.2}
                     side={DoubleSide}
-                    speed={1.2}
+                    speed={resolveTimeDrivenMaterialSpeed(
+                        1.2,
+                        materialAnimationActive,
+                    )}
                     transparent
                 />
             </mesh>

@@ -220,6 +220,34 @@ describe('WeatherSurfaceUniformRegistry', () => {
         assert.equal(registry.rainPuddleStrengthUniform.value, 0);
     });
 
+    it('reports weather targets as settling before the first animated step', () => {
+        const registry = new WeatherSurfaceUniformRegistry();
+        const rain = registry.getRainEntry({
+            drySpeed: 1.8,
+            intensityMultiplier: 1,
+            wetSpeed: 5,
+        });
+        const snow = registry.getSnowEntry({
+            coverageMultiplier: 1,
+            overrideSnow: undefined,
+        });
+        registry.retain(rain);
+        registry.retain(snow);
+
+        registry.advance({ rainAmount: 0.8, snowCoverage: 0.6 }, 0);
+
+        assert.equal(rain.uniform.value, 0);
+        assert.equal(snow.uniform.value, 0);
+        assert.deepEqual(registry.getActivitySnapshot(), {
+            rainActive: false,
+            rainDrying: false,
+            rainSettling: true,
+            snowActive: false,
+            snowMelting: false,
+            snowSettling: true,
+        });
+    });
+
     it('skips inactive entries and resets them for a later mount', () => {
         const registry = new WeatherSurfaceUniformRegistry();
         const entry = registry.getSnowEntry({

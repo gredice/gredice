@@ -2,6 +2,8 @@
 
 Date: 2026-06-01
 
+Delivery status refreshed: 2026-09-02
+
 This document tracks the next rendering and camera architecture optimization
 work for the garden game. The goal is to preserve visual quality and reduce
 unnecessary CPU, React, and WebGL work. These tasks should not use lower quality
@@ -34,6 +36,49 @@ Status values:
 - `[ ]` Not started
 - `[~]` In progress
 - `[x]` Done
+
+Current GitHub delivery stack:
+
+- Epic [#4715](https://github.com/gredice/gredice/issues/4715) remains open.
+- [#4716](https://github.com/gredice/gredice/issues/4716) is complete through
+  merged PR [#4754](https://github.com/gredice/gredice/pull/4754).
+- Semantic scheduler issue
+  [#4717](https://github.com/gredice/gredice/issues/4717) remains open and is
+  blocked by root demand isolation
+  [#4766](https://github.com/gredice/gredice/issues/4766) and outline reuse
+  [#4773](https://github.com/gredice/gredice/issues/4773).
+- Kernel specialization proposal
+  [#4772](https://github.com/gredice/gredice/issues/4772) was rejected and
+  closed as not planned.
+- [#4773](https://github.com/gredice/gredice/issues/4773) remains open under the
+  epic and blocks #4717. Its outline-frame cache is awaiting complete regression
+  evidence.
+- Cadence- and lifetime-aware regression gate issue
+  [#4775](https://github.com/gredice/gredice/issues/4775) remains open under the
+  epic and blocks #4773. Its contract-v5 clean symmetric 2x2 capture was
+  structurally valid; 312 of 314 comparisons and all 42 invariants passed, along
+  with all meaningful work, GPU, and memory gates. Host/double-RAF cold Canvas
+  timing and a dynamic-butterfly geometry endpoint mismatch remained
+  profiler/fixture artifacts, so that capture is not release evidence.
+- Fixture-aware regression evidence issue
+  [#4776](https://github.com/gredice/gredice/issues/4776) remains open under the
+  epic and blocks #4775. The initial v6 matrix was rejected for one unexpected
+  scheduler wakeup during garden switching; a consumed-receipt-probe guard
+  fixes a deterministic reproduction without changing the zero-wakeup gate.
+- Evidence-retention issue [#4778](https://github.com/gredice/gredice/issues/4778)
+  blocks #4776. Playwright cleared the untracked scratch reports, so the
+  profiler/comparator now use `.game-profile-results` outside resettable test
+  output. Both replacement candidate captures pass 39/39 producer runs with the
+  same frozen v6 harness and corrected runtime; all 140 candidate files survived
+  the 43-case WebGL suite byte-for-byte. Baseline capture and the strict symmetric
+  2x2 comparison remain pending. Two full acceptance attempts remain rejected
+  (19/21 and 17/21); a separate display-awake owner control passes 15/15 but is not
+  complete release acceptance. The blocking chain is
+  #4778 → #4776 → #4775 → #4773 → #4717.
+- Draft integration [PR #4777](https://github.com/gredice/gredice/pull/4777)
+  groups these dependent changes with #4766. Neither producer budget passes
+  nor lower-stack revisions establish release clearance; the complete
+  integrated tree must pass the strict comparator and CI before merge.
 
 ## Milestone 1: Camera ownership
 
@@ -815,8 +860,11 @@ Progress:
   `88144` triangles/frame, `28 MB`; snow dense `126.6` draw calls/frame,
   `141251` triangles/frame, `37.8 MB`; plant-heavy `60.8` draw calls/frame,
   `84707` triangles/frame, `61 MB`.
-- Hover outline rendering moved off `useFrame`; it now subscribes to the
-  after-render pass only while outline targets are active.
+- Hover outline rendering moved off `useFrame`; it now subscribes to its
+  `SceneTimeProvider` post-render dispatcher only while outline targets are
+  active. The owning root marks one frame token, the dispatcher runs the
+  outline before recording that root's scheduler receipt, and tokenized
+  subscriptions keep StrictMode cleanup isolated.
 - Remaining callbacks are camera rig/render invalidation, active weather/cloud
   transitions, particle/animal simulations, and plant LOD/culling. Those are
   still tied to visible simulation, input, or render invalidation work rather
@@ -884,6 +932,267 @@ Progress:
 - Smoke-tested `game-dense-25x25-desktop` against a local dev server with a
   shortened sample; the report recorded `profile=dense`, `mode=details`,
   `controls=0`, medium quality, and dense decoration counts.
+
+## Milestone 9: Semantic runtime scheduling
+
+### [x] 12. Replace the ambient heartbeat with explicit runtime work
+
+Priority: High
+
+Problem:
+
+Demand rendering previously retained a permanent 20/30 FPS compatibility
+cadence. Time-dependent visuals, simulations, spawning, retries, and direct
+invalidations did not share one ownership model, so a static scene could not
+prove that it was genuinely idle and hidden work could not be audited from one
+runtime boundary.
+
+Scope:
+
+- Use one renderer-independent `GameRuntimeScheduler` for named render leases,
+  fixed-step work, semantic invalidation, absolute deadlines, and combined
+  document/Canvas/context visibility.
+- Preserve existing ambient and interactive cadence through explicit owners; do
+  not reduce visual density, effects, or quality-tier fidelity.
+- Expose stable owner/rate summaries, R3F frame-callback receipts, bounded resume
+  deltas, lease balance, separate pending reasons and total/unique hidden
+  counters for explicit render requests versus coalesced root updates, actual
+  invalidation failures, quarantined fixed-step failures, missed frame receipts,
+  calibrated display interval and calibration counts, and
+  nonessential-hidden-work counters.
+- Default the base cadence to zero once visual work has semantic owners. Retain
+  a nonzero base only as an explicit compatibility override, and use the same
+  effective-visibility boundary for game-adjacent clocks, workers, audio, and
+  polling.
+
+Acceptance criteria:
+
+- A clear deterministic static scene running normal continuous-lease and root
+  broker policy reaches zero R3F frame callbacks and zero WebGL submissions
+  after stabilization.
+- Hidden, offscreen, and context-lost scenes execute zero nonessential work.
+- Camera, weather, plant, and fauna animation retains its intended cadence in
+  every quality profile.
+- Resume coalesces deferred work, preserves absolute time, and never replays a
+  hidden catch-up burst.
+- Cross-tier, fauna, lifecycle, and static profile evidence passes without a
+  quality reduction.
+
+Progress:
+
+- Added the pure scheduler core with injected time/effects and deterministic
+  coverage for 20/30/60 FPS cadence, one-pending-callback ownership, named lease
+  rates, deadlines, fixed-step clamping, visibility interlocks, StrictMode-style
+  lease lifecycles, hidden request coalescing, and disposal.
+- Render leases are shared and reference-counted by normalized owner and rate.
+  Repeated plant, sprite, water, decoration, or fauna instances therefore keep
+  one scheduler owner alive until the final consumer releases it instead of
+  multiplying identical lease records.
+- The scheduler owns at most one callback. Visible render work performs a
+  bounded display-interval calibration, then joins fixed steps and deadlines on
+  one earliest-due timeout queue. When a semantic frame is due, the timeout
+  invalidates once and R3F aligns the draw to the browser's next animation
+  frame. Earlier fixed-step and deadline targets preempt render work. Hidden,
+  offscreen, context-lost, and idle scenes retain no scheduler callback.
+- Each `SceneTimeProvider` owns one post-render dispatcher. Ordinary roots bridge
+  the module-global R3F `addAfterEffect` only after their own `useFrame` marked a
+  frame; root-local after-render work runs before the scheduler receipt. The
+  ordinary `useFrame` path therefore retains only shader-time updates and the
+  root token; scheduler reconciliation cannot shift renderer submission timing.
+- Demand roots with continuous leases capture the immutable raw R3F invalidator
+  and replace the root-state function with a StrictMode-safe, root-isolated
+  broker. Reconciler host updates persist as coalesced dirty requests: they ride
+  an active semantic cadence, become a one-off 60 FPS request when no lease can
+  deliver them, and remain pending if the last lease disappears before receipt.
+  Scheduler-owned draws call the raw invalidator directly. A default or
+  one-frame invalidation issued during `useFrame` reserves two coalesced
+  receipts, preserving the native current-frame-plus-follow-up behavior without
+  adding debt to explicit multi-frame requests.
+- R3F module-level invalidators remain outside the root-state broker. Ordinary
+  visibility-managed demand roots now close that gap with a per-store shield:
+  suspension clears `internal.frames`, changes only that root to
+  `frameloop="never"`, keeps its frame count at zero, and pauses descendant
+  React Spring work. Frameloop requests made while hidden update the exact
+  restore target. Resume restores that mode without resetting the Three.js
+  clock, while ownership-checked cleanup restores the captured raw setter and
+  remains safe across StrictMode replay.
+- Broker dirty state has its own pending-reason list, total hidden-call counter,
+  and unique hidden-deferred transition counter. Repeated inactive updates stay
+  visible through the total counter even after the reason is pending, but cannot
+  inflate explicit deferred-work or nonessential-hidden-work telemetry.
+  Lifecycle profiles permit only the root-update broker reason, bound the
+  transition drain to one dirty reason and the three persistent fauna owners,
+  and require exact-zero broker calls during residual suspension.
+- Bounded calibration RAF timestamps are observational telemetry only and never
+  steer scheduling. The first non-owned receipt after a scheduler-owned receipt
+  within one active semantic interval consumes the pending cadence slot;
+  subsequent external receipts defer the next owned target without banking
+  cadence debt. Late work skips elapsed targets without catch-up.
+- `SceneTimeProvider` now consumes the Three.js clock's pending delta on
+  scheduler activation only to refresh the clock's internal timestamp, then
+  restores the previous `elapsedTime`. Initial activation and a long suspended
+  gap are covered by deterministic unit tests, so hidden or offscreen wall time
+  is not added to elapsed animation time. The unfixed-time lifecycle closure
+  runs also gate exact-zero suspension and bounded browser resume.
+- Normal scenes now pass a zero base cadence. `baseFramesPerSecond` remains an
+  explicit compatibility override for isolated consumers, while leases without
+  an explicit rate still resolve through the active quality tier's ambient
+  policy.
+- Migrated camera and interaction invalidations, environment and cache state,
+  particles, plant and prop animation, weather transitions, and fauna activity
+  to named leases or semantic render requests. Finite lightning, meteor, slug,
+  and squirrel waits use scheduler deadlines; frog and slug reconciliation uses
+  fixed-step work instead of independent intervals.
+- Shader-only animation has explicit shared owners for plant sway, star
+  twinkle, water surfaces, ground-decoration wobble, and sprite wobble. Owners
+  whose visual time is frozen do not acquire a lease in fixed-time scenes;
+  reduced-motion and inactive-state gates remain part of their ownership.
+- Each scene publishes its effective document/Canvas/context visibility to an
+  aggregate activity registry. Multiple mounted scenes are handled together:
+  game-adjacent work remains active while any scene is active, pauses when every
+  registered scene is inactive, and remains enabled when no scene is mounted so
+  standalone UI consumers keep working.
+- Replaced per-consumer live-time intervals with one subscriber-aware minute
+  clock. It aligns its single timeout to minute boundaries, stops while the
+  document is hidden or every registered scene is inactive, and publishes the
+  current time before rescheduling on resume.
+- Replaced the app theme manager's independent 60-second interval with the same
+  minute-boundary clock primitive. Theme scheduling stops on document hide or
+  page hide and resynchronizes before arming one aligned timeout on visibility
+  or page-show resume.
+- The open controls tooltip now owns its 50 ms phase interval only while the
+  document is visible and aggregate scene activity is active; reduced-motion
+  behavior remains interval-free. The sunflower HUD target locator no longer
+  polls every 500 ms: it uses a mutation observer, disconnects while hidden or
+  inactive and after locating the target, and refreshes when activity resumes.
+- Generated-plant batches defer new queue work until their own scene is active.
+  Suspension removes unsubscribed queued tasks and propagates cancellation into
+  the single in-flight executor; worker cancellation terminates the active
+  worker and rejects its pending request. Shader prewarm also waits for scene
+  visibility before starting, and focused batch retry uses a scheduler deadline
+  instead of a browser timeout.
+- Ambient loops are controlled by each scene's own runtime visibility, so an
+  offscreen scene stops its loops and resumes the correct time/weather mix when
+  it becomes active. Outlet offers, detailed inspection reports, and raised-bed
+  notifications gate query enablement and refetch intervals on aggregate scene
+  activity; an all-inactive transition also cancels each exact query key, whose
+  request consumes the query abort signal.
+- Public capture scenes explicitly disable continuous-render lease acquisition,
+  opt out of the ordinary visibility shield, and mount with
+  `frameloop="never"`. This is separate from `fixedTimeSeconds`: fixed time
+  provides deterministic visual time, descendant springs resolve immediately,
+  and the probe deduplicates bounded RAF work before calling only its root's
+  `advance(elapsedSeconds, false)`. After that call returns, the probe flushes
+  only the capture root's post-render dispatcher with the original RAF
+  millisecond timestamp. Manual roots install no global after-effect bridge, so
+  an active spring in another Canvas cannot enter the capture sequence or
+  receipt its work while the asynchronous WebGL2 readback remains unchanged.
+- Browser component witnesses exercise the two-root contract directly.
+  `r3f-root-isolation.spec.tsx` keeps one demand/spring root active while a
+  second offscreen root proves zero frames, submissions, spring changes, and
+  hidden work before exact demand-mode resume.
+  `garden-preview-capture.spec.tsx` starts with only the manual capture Canvas;
+  its first accepted root-local receipt mounts the demand/spring sibling, which
+  must submit repeatedly while later capture advances coexist. The witness then
+  requires one nonblank bounded capture and proves the capture receipt and
+  after-render counts stay frozen while only the sibling root continues.
+- Extended production profiling with deep-cloned start/end scheduler state and
+  a pull-based telemetry view. A synchronous property-read or structured-clone
+  burst shares one exact snapshot until its queued reset; runtime frames and
+  wakeups do not push or clone telemetry. Additive counter deltas preserve the
+  existing lifecycle/comparator contract for clean before/after reports.
+- Hardened the closure gates around semantic work rather than baseline
+  oversubmission. Canonical cross-tier RAFs must observe an exact 30 FPS target,
+  stable visible leases, reconciled R3F receipts, and 28–32 rendered FPS in
+  every raw run; held camera input retains its separate 60 FPS owner gate.
+  Comparison contract v2 introduced the garden-switch GPU p95, semantic target
+  delivery, scheduler callback conservation, exact causal wakeup
+  classification, zero unexpected no-work wakeups, zero post-calibration
+  scheduler RAF polling, per-render submissions, and fixed-control total
+  submissions. Productive delivery, intentionally retained earlier timeouts
+  whose targets moved later, one next-cadence reconciliation per still-pending
+  owned-invalidation receipt generation, and unexpected no-work exhaustively
+  partition every handled wakeup without an empirical phase allowance. The
+  receipt-reconciliation count is bounded by invalidations issued in the window
+  plus a boolean start-boundary receipt, while stable completed calibration,
+  positive calibrated display intervals, and finite pending-timeout endpoints
+  make the zero post-calibration RAF claim fail closed. Complete elapsed GPU
+  occupancy remains visible per arrival and across
+  the wall-time-weighted seven-arrival workflow, but is diagnostic because
+  headless ANGLE timer-query batching and GPU power state can change it without
+  changing useful work.
+- Comparison contract v4 introduced the profiler-owned 30 Hz
+  application/runtime RAF for comparable cross-tier GPU evidence. Contract v5
+  retains that controlled cadence and adds issue #4775's cadence- and
+  lifetime-aware rules. For a `legacy-heartbeat-v1` baseline against a
+  canonical candidate, every raw candidate lifecycle active and
+  context-restored sample must declare the effectively visible 30 FPS target,
+  hold p95 frame duration at or below 33.3 ms, and render at 28–32 FPS;
+  baseline-relative p95 and FPS stay diagnostic. Canonical-to-canonical
+  lifecycle comparisons retain their relative gates.
+- Contract v5 also separates garden-switch compilation from retained resource
+  growth. Arrivals 1–3 are first-use compile-progress diagnostics; arrivals 4–7
+  are mature hard phases with exact F2→F3 and H3→H4 within-run no-growth
+  checks. A hard workflow lifetime witness uses the maximum arrival snapshot
+  for geometry and page-lifetime WebGL successful-create high-water marks for
+  programs and textures. This keeps shader reorder below the same proven peak
+  diagnostic while retaining hard coverage for mature growth and leaks.
+- Contract v6 makes cross-tier cold and resource evidence fixture-aware. Its
+  document-start tracker compares DPR-correct Canvas attachment and sizing,
+  `DOMContentLoaded`, first submitted frame, and fixture-ready milestones; the
+  old host/double-RAF duration is diagnostic only. Each cross-tier run also
+  requires a stable endpoint actor census, cumulative grounding-shadow
+  population exposure, and a fresh renderer-resource snapshot. Geometry is
+  re-paired only within matching exposure strata and keeps the one-count
+  allowance; shaders and textures retain every fresh snapshot. Low may prove an
+  explicit empty exposure, while a shadowed run without exposure or a matrix
+  with no shared geometry stratum is invalid.
+- Added a dedicated `static-idle` harness scenario for a visible, fixed-midday,
+  clear High-quality mock scene. It keeps normal continuous-render leases and
+  the root invalidation broker enabled, reports that policy as acceptance
+  provenance, and passes `authenticatedGardenQueriesEnabled={false}`, isolating
+  the mock fixture from signed-in garden queries instead of relying on
+  incidental mock-query behavior.
+  After fixture, plant-pipeline, and scheduler stabilization, the scenario gates
+  zero scheduler/R3F counter deltas and zero rendered frames, WebGL draws, and
+  submitted triangles across three fresh runs.
+- The final release profile retains one 21-run clean-build bundle: three
+  static-idle windows, three unfixed-time lifecycle runs, and three owner/rate
+  runs for each Low, Medium, High, Automatic-standard, and
+  Automatic-constrained policy. Static windows gate exact zero work; lifecycle
+  runs gate zero suspension and bounded resume; owner runs integrate actual
+  rendered delivery against 60 FPS camera and persistent 30 FPS weather, plant,
+  and fauna target durations in every quality policy.
+- An already-started Three.js/WebGL `compileAsync` call cannot be preempted by an
+  `AbortSignal`; suspension cancels that scene's subscription and prevents a new
+  hidden prewarm from starting, but the browser/GPU may finish and retain the
+  submitted shared compilation. The closure matrix pairs two clean
+  `origin/main` captures with two clean candidate captures across 39 canonical
+  cross-tier, fauna, garden-switch, and lifecycle runs under comparison
+  contract v6. The local headless evidence, including timer-query occupancy,
+  does not replace a physical-device thermal, power, touch, memory-pressure,
+  real background-tab, deployed, or production-traffic check.
+  The contract-v5 clean 2x2 matrix was structurally valid; 312 of 314
+  comparisons and all 42 invariants passed, along with all meaningful work, GPU,
+  and memory gates. Its host/double-RAF cold timing and dynamic-butterfly
+  geometry endpoint mismatches were profiler/fixture artifacts, so it remains
+  diagnostic.
+  Because contract v6 replaces those witnesses with semantic cold milestones
+  and exposure-matched fresh resources, its symmetric 2x2 matrix must be
+  freshly captured at `.game-profile-results/4778-release-v6`; contract-v5 and earlier
+  reports are not release evidence for this stack.
+  `legacy-heartbeat-v1` baseline omissions remain valid only on the explicitly
+  selected legacy baseline side. The initial v6 candidate was rejected for one
+  unexpected garden-switch wakeup. The corrected runtime prevents repeated
+  cadence probes for one outstanding receipt generation without weakening the
+  bounded retry or exact-zero gate. Both retained replacement candidate captures
+  pass 39/39 producer runs; the baseline pair, strict comparison, and complete
+  static/live-lifecycle/owner acceptance are still pending. Original scratch
+  reports were cleared by Playwright and are not retained release evidence.
+  Issue #4778 separates profiler artifacts from that cleanup. The retained
+  19/21 and 17/21 acceptance failures and the separate 15/15 display-awake owner
+  control are documented in `docs/game-scene-performance.md`; a passing control
+  does not erase the failed bundles or establish physical-device clearance.
 
 ## Suggested implementation order
 

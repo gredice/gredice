@@ -15,6 +15,7 @@ import {
     resolveGameProfileGardenBuildingFixture,
     resolveGameProfileGardenBuildingFixtureGate,
     resolveGameProfileOperationVisuals,
+    resolveGameProfileStaticIdle,
     resolveGameProfileStaticSceneCache,
     resolveGameProfileStaticSceneCacheOcclusionFixture,
     resolveGameProfileWeatherSurface,
@@ -309,6 +310,10 @@ export default async function GameProfilePage({
     const cameraProfile = firstValue(params.cameraProfile) === '1';
     const gardenSwitchProfile = firstValue(params.gardenSwitch) === '1';
     const lifecycleProfile = firstValue(params.lifecycle) === '1';
+    const staticIdleProfile = resolveGameProfileStaticIdle(
+        firstValue(params.staticIdle),
+    );
+    const continuousRenderLeasesEnabled = true;
     const mockGardenProfile = resolveMockGardenProfile(
         firstValue(params.profile),
     );
@@ -406,6 +411,10 @@ export default async function GameProfilePage({
             data-game-profile-placement={placementProfile ? '1' : '0'}
             data-game-profile-operation-visuals={operationVisuals ? '1' : '0'}
             data-game-profile-static-scene-cache={staticSceneCacheMode}
+            data-game-profile-static-idle={staticIdleProfile ? '1' : '0'}
+            data-game-profile-continuous-render-leases={
+                continuousRenderLeasesEnabled ? '1' : '0'
+            }
             data-game-profile-static-scene-cache-occlusion-fixture={
                 staticSceneCacheOcclusionFixture ? '1' : '0'
             }
@@ -434,6 +443,7 @@ export default async function GameProfilePage({
         >
             <ProfileGameScene
                 adaptiveHighQuality={adaptiveHigh}
+                authenticatedGardenQueriesEnabled={!staticIdleProfile}
                 key={mode}
                 className="h-full w-full"
                 dayNightCycleDisabled={false}
@@ -449,6 +459,7 @@ export default async function GameProfilePage({
                     cameraProfile ||
                     gardenSwitchProfile ||
                     lifecycleProfile ||
+                    staticIdleProfile ||
                     mockGardenProfile === 'fauna-heavy' ||
                     gardenBuilding ||
                     closeupRaisedBedId !== null ||
@@ -459,6 +470,7 @@ export default async function GameProfilePage({
                 enableStaticOpaqueSceneCacheOcclusionFixture={
                     staticSceneCacheOcclusionFixture
                 }
+                continuousRenderLeasesEnabled={continuousRenderLeasesEnabled}
                 gardenStructureDebugFixture={
                     gardenBuilding &&
                     gardenStructureProfileFixture === undefined

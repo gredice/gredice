@@ -71,6 +71,10 @@ export function resolveGameProfileStaticSceneCacheOcclusionFixture(
     return value === '1';
 }
 
+export function resolveGameProfileStaticIdle(value: string | undefined) {
+    return value === '1';
+}
+
 export function resolveGameProfileWeatherSurface(
     value: string | undefined,
 ): GameProfileWeatherSurfaceMode {

@@ -9,6 +9,7 @@ import {
     resolveGameProfileGardenBuildingFixture,
     resolveGameProfileGardenBuildingFixtureGate,
     resolveGameProfileOperationVisuals,
+    resolveGameProfileStaticIdle,
     resolveGameProfileStaticSceneCache,
     resolveGameProfileStaticSceneCacheOcclusionFixture,
     resolveGameProfileWeatherSurface,
@@ -192,6 +193,15 @@ describe('resolveGameProfileStaticSceneCacheOcclusionFixture', () => {
             resolveGameProfileStaticSceneCacheOcclusionFixture('1'),
             true,
         );
+    });
+});
+
+describe('resolveGameProfileStaticIdle', () => {
+    it('keeps the zero-work fixture behind an exact profiler opt-in', () => {
+        assert.equal(resolveGameProfileStaticIdle(undefined), false);
+        assert.equal(resolveGameProfileStaticIdle('0'), false);
+        assert.equal(resolveGameProfileStaticIdle('unexpected'), false);
+        assert.equal(resolveGameProfileStaticIdle('1'), true);
     });
 });
 

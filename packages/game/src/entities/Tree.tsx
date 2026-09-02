@@ -5,12 +5,17 @@ import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import {
+    resolveTimeDrivenMaterialSpeed,
+    useTimeDrivenMaterialAnimation,
+} from './helpers/timeDrivenMaterialAnimation';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function Tree({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials } = useGameGLTF('Tree');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const materialAnimationActive = useTimeDrivenMaterialAnimation();
 
     return (
         <animated.group
@@ -28,7 +33,10 @@ export function Tree({ stack, block, rotation }: EntityInstanceProps) {
                 <MeshDistortMaterial
                     {...materials['Material.Leaves']}
                     distort={0.1}
-                    speed={2}
+                    speed={resolveTimeDrivenMaterialSpeed(
+                        2,
+                        materialAnimationActive,
+                    )}
                 />
             </mesh>
             <SnowOverlay
@@ -40,7 +48,10 @@ export function Tree({ stack, block, rotation }: EntityInstanceProps) {
                 <MeshWobbleMaterial
                     {...materials['Material.GrassPart']}
                     factor={0.02}
-                    speed={2}
+                    speed={resolveTimeDrivenMaterialSpeed(
+                        2,
+                        materialAnimationActive,
+                    )}
                 />
             </mesh>
         </animated.group>

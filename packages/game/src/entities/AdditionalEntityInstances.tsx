@@ -1313,7 +1313,11 @@ function RaisedBedHoverOutlines({
         const [shape1, shape2] = raisedBedShapeParts[instance.shape];
 
         return (
-            <HoverOutline key={`Raised_Bed-hover-${instance.id}`} hovered>
+            <HoverOutline
+                key={`Raised_Bed-hover-${instance.id}`}
+                hovered
+                maskContentKey={instance.id}
+            >
                 <group
                     position={instance.position}
                     rotation={[0, instance.rotation * (Math.PI / 2), 0]}

@@ -7,6 +7,10 @@ import { MathUtils, type Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
+import {
+    sceneFrameRates,
+    useSceneTimeInvalidation,
+} from '../../scene/SceneTime';
 import type { Block } from '../../types/Block';
 import type { Stack } from '../../types/Stack';
 import {
@@ -1886,6 +1890,11 @@ export function Cats({
     const habitats = useMemo(
         () => createCatHabitats(stacks, blockData),
         [blockData, stacks],
+    );
+    useSceneTimeInvalidation(
+        'fauna:cats',
+        habitats.length > 0,
+        sceneFrameRates.ambient,
     );
 
     if (habitats.length <= 0) {

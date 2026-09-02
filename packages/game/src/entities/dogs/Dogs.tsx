@@ -7,6 +7,10 @@ import { MathUtils, type Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
+import {
+    sceneFrameRates,
+    useSceneTimeInvalidation,
+} from '../../scene/SceneTime';
 import type { Block } from '../../types/Block';
 import type { Stack } from '../../types/Stack';
 import {
@@ -2082,6 +2086,11 @@ export function Dogs({
     const habitats = useMemo(
         () => createDogHabitats(stacks, blockData),
         [blockData, stacks],
+    );
+    useSceneTimeInvalidation(
+        'fauna:dogs',
+        habitats.length > 0,
+        sceneFrameRates.ambient,
     );
 
     if (habitats.length <= 0) {

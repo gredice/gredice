@@ -12,6 +12,10 @@ import {
     useAnimateFlyToSunflowersHud,
 } from '../indicators/AnimateFlyTo';
 import { ParticleType, useParticles } from '../particles/ParticleSystem';
+import {
+    useSceneFixedTimeSeconds,
+    useSceneTimeInvalidation,
+} from '../scene/SceneTime';
 import type { Stack } from '../types/Stack';
 import { useStackHeight } from '../utils/getStackHeight';
 import { HoverOutline } from './helpers/HoverOutline';
@@ -105,6 +109,7 @@ function SunflowerDropAtPlacement({
     const rewardRef = useRef<Group>(null);
     const [hovered, setHovered] = useState(false);
     const [hasLanded, setHasLanded] = useState(reduceMotion);
+    const fixedTimeSeconds = useSceneFixedTimeSeconds();
     const stackHeight = useStackHeight(placement.stack, placement.block);
     const drop = useMemo(() => {
         return getSunflowerDropPosition({
@@ -121,6 +126,10 @@ function SunflowerDropAtPlacement({
         },
         dropOffsetY: reduceMotion ? 0 : sunflowerDropLandingHeight,
     }));
+    useSceneTimeInvalidation(
+        'sunflower-drop-bounce',
+        hasLanded && !reduceMotion && fixedTimeSeconds === undefined,
+    );
 
     useEffect(() => {
         let active = true;
@@ -161,10 +170,9 @@ function SunflowerDropAtPlacement({
             return;
         }
 
+        const elapsedTime = fixedTimeSeconds ?? clock.elapsedTime;
         const bounce =
-            ((Math.sin(
-                clock.elapsedTime * sunflowerDropBounceSpeed + drop.phase,
-            ) +
+            ((Math.sin(elapsedTime * sunflowerDropBounceSpeed + drop.phase) +
                 1) /
                 2) *
             sunflowerDropBounceLift;

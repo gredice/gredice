@@ -4,6 +4,10 @@ import { type ReactNode, useMemo, useRef } from 'react';
 import { DoubleSide, type Group, type MeshStandardMaterial } from 'three';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
+import {
+    useSceneFixedTimeSeconds,
+    useSceneTimeInvalidation,
+} from '../scene/SceneTime';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
@@ -78,11 +82,16 @@ export function FireflyJar({ stack, block, rotation }: EntityInstanceProps) {
     const fireflyGroupRef = useRef<Group>(null);
     const glowMaterialRef = useRef<MeshStandardMaterial>(null);
     const emissiveMaterialRefs = useMemo(() => [glowMaterialRef], []);
+    const fixedTimeSeconds = useSceneFixedTimeSeconds();
     const phaseKey = `${block.name}:${stack.position.x}:${stack.position.z}`;
     const phase = useMemo(() => getNightGardenLightPhase(phaseKey), [phaseKey]);
+    useSceneTimeInvalidation(
+        'firefly-jar-animation',
+        fixedTimeSeconds === undefined,
+    );
 
     useFrame(({ clock }) => {
-        const elapsed = clock.elapsedTime + phase;
+        const elapsed = (fixedTimeSeconds ?? clock.elapsedTime) + phase;
         const fireflyGroup = fireflyGroupRef.current;
         if (fireflyGroup) {
             const verticalOffset =

@@ -1,14 +1,18 @@
 import { animated } from '@react-spring/three';
 import { type ThreeEvent, useFrame } from '@react-three/fiber';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Group } from 'three';
 import { areBlockInteractionsSuppressed } from '../controls/blockInteractionSuppression';
 import { useBlockData } from '../hooks/useBlockData';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
+import {
+    useSceneRenderRequest,
+    useSceneTimeInvalidation,
+} from '../scene/SceneTime';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
-import { useGameState, useGameStateStore } from '../useGameState';
+import { useGameState } from '../useGameState';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useActorGroundingShadow } from './animals/ActorGroundingShadows';
@@ -158,14 +162,25 @@ export function BeachBall({
     const clickCountRef = useRef(0);
     const lastAvatarKickSequenceRef = useRef(0);
     const lastPresenceUpdateRef = useRef(Number.NEGATIVE_INFINITY);
+    const motionActiveRef = useRef(false);
     const [hovered, setHovered] = useState(false);
-    const gameStateStore = useGameStateStore();
+    const [motionActive, setMotionActive] = useState(false);
+    const avatarKickRequest = useGameState(
+        (state) => state.gardenAvatarBeachBallKickRequest,
+    );
     const setAnimalPresenceEntry = useGameState(
         (state) => state.setAnimalPresenceEntry,
     );
     const removeAnimalPresenceEntry = useGameState(
         (state) => state.removeAnimalPresenceEntry,
     );
+    const requestRender = useSceneRenderRequest();
+    useSceneTimeInvalidation('beach-ball-motion', motionActive);
+    const activateMotion = useCallback(() => {
+        motionActiveRef.current = true;
+        setMotionActive(true);
+        requestRender('beach-ball-motion-started', 2);
+    }, [requestRender]);
     const updateGroundingShadow = useActorGroundingShadow({
         id: `beach-ball:${block.id}`,
         primaryCasterCount: 0,
@@ -185,6 +200,8 @@ export function BeachBall({
     useEffect(() => {
         bounceStateRef.current = createBeachBallBounceState();
         visualBounceRef.current = createBeachBallVisualBounce();
+        motionActiveRef.current = false;
+        setMotionActive(false);
 
         const motionGroup = motionGroupRef.current;
         const rollingGroup = rollingGroupRef.current;
@@ -195,6 +212,24 @@ export function BeachBall({
         motionGroup.position.set(0, 0, 0);
         rollingGroup.rotation.set(0, 0, 0);
     }, [block.id, stack.position.x, stack.position.z]);
+
+    useEffect(() => {
+        if (
+            !avatarKickRequest ||
+            avatarKickRequest.targetId !== block.id ||
+            avatarKickRequest.sequence === lastAvatarKickSequenceRef.current
+        ) {
+            return;
+        }
+
+        lastAvatarKickSequenceRef.current = avatarKickRequest.sequence;
+        bounceStateRef.current = startBeachBallBounce({
+            direction: avatarKickRequest.direction,
+            speed: beachBallKickSpeed,
+            state: bounceStateRef.current,
+        });
+        activateMotion();
+    }, [activateMotion, avatarKickRequest, block.id]);
 
     useEffect(
         () => () => removeAnimalPresenceEntry(`beach-ball:${block.id}`),
@@ -210,20 +245,6 @@ export function BeachBall({
 
         const currentState = bounceStateRef.current;
         const visualBounce = visualBounceRef.current;
-        const avatarKickRequest =
-            gameStateStore.getState().gardenAvatarBeachBallKickRequest;
-        if (
-            avatarKickRequest &&
-            avatarKickRequest.targetId === block.id &&
-            avatarKickRequest.sequence !== lastAvatarKickSequenceRef.current
-        ) {
-            lastAvatarKickSequenceRef.current = avatarKickRequest.sequence;
-            bounceStateRef.current = startBeachBallBounce({
-                direction: avatarKickRequest.direction,
-                speed: beachBallKickSpeed,
-                state: bounceStateRef.current,
-            });
-        }
 
         if (clock.elapsedTime - lastPresenceUpdateRef.current >= 0.2) {
             lastPresenceUpdateRef.current = clock.elapsedTime;
@@ -263,10 +284,18 @@ export function BeachBall({
         };
 
         if (!currentState.active) {
-            setMotionPosition(
-                currentState,
-                advanceBeachBallVisualBounce(visualBounce, deltaSeconds),
+            const bounceY = advanceBeachBallVisualBounce(
+                visualBounce,
+                deltaSeconds,
             );
+            setMotionPosition(currentState, bounceY);
+            if (
+                motionActiveRef.current &&
+                !isBeachBallVisualBounceActive(visualBounce)
+            ) {
+                motionActiveRef.current = false;
+                setMotionActive(false);
+            }
             return;
         }
 
@@ -297,6 +326,14 @@ export function BeachBall({
         setMotionPosition(nextState, bounceY);
         rollingGroup.rotation.x += movementZ / beachBallCollisionRadius;
         rollingGroup.rotation.z -= movementX / beachBallCollisionRadius;
+        if (
+            motionActiveRef.current &&
+            !nextState.active &&
+            !isBeachBallVisualBounceActive(visualBounceRef.current)
+        ) {
+            motionActiveRef.current = false;
+            setMotionActive(false);
+        }
     });
 
     function handlePointerUp(event: ThreeEvent<PointerEvent>) {
@@ -352,6 +389,7 @@ export function BeachBall({
             speed,
             state: currentState,
         });
+        activateMotion();
     }
 
     function handlePointerEnter(event: ThreeEvent<PointerEvent>) {

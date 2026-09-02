@@ -3,6 +3,7 @@ import test from 'node:test';
 import type { Block } from '../types/Block';
 import {
     readGameProfileAnimalCommand,
+    readGameProfileCameraRestoreCommand,
     readGameProfileCloseupCommand,
     readGameProfileOperationVisualHighlightRequest,
     readGameProfileOutlineCommand,
@@ -71,6 +72,26 @@ test('profile animal command accepts only the deterministic Cow trot request', (
         }),
         null,
     );
+});
+
+test('profile camera restore command accepts only a finite positive snapshot', () => {
+    const snapshot = {
+        position: [-10, 10, -10],
+        target: [0, 0, 0],
+        zoom: 100,
+    };
+    assert.deepEqual(readGameProfileCameraRestoreCommand(snapshot), snapshot);
+
+    for (const invalid of [
+        null,
+        { ...snapshot, position: [0, 0] },
+        { ...snapshot, position: [0, 0, Number.NaN] },
+        { ...snapshot, target: [0, Number.POSITIVE_INFINITY, 0] },
+        { ...snapshot, zoom: 0 },
+        { ...snapshot, zoom: Number.NaN },
+    ]) {
+        assert.equal(readGameProfileCameraRestoreCommand(invalid), null);
+    }
 });
 
 test('profile target resolution uses the raised bed primary block', () => {

@@ -4,6 +4,8 @@ Date: 2026-04-29
 
 Static inventory refreshed: 2026-08-30
 
+Profiling comparison contract refreshed: 2026-09-02
+
 ## Summary
 
 The 2026-04-29 analysis did not find the scene asset-bound. Game models are now
@@ -164,6 +166,21 @@ cd apps/garden
 pnpm run profile:game
 ```
 
+Profiler artifacts live in `apps/garden/.game-profile-results/`, outside
+Playwright's resettable output directories. The comparator defaults to its
+`comparisons/` subdirectory. Both CLIs reject output paths inside an app's
+`test-results`, `playwright-report`, `blob-report`, or `playwright/.cache` tree,
+including normalized traversal and symlink aliases. Safe custom output paths
+remain supported, and historical reports may still be read as comparison inputs.
+These artifacts are ignored by Git, so archive release evidence separately when
+removing a worktree. Never use Playwright scratch output as durable evidence.
+
+On 2026-09-02, a component-test run cleared the old
+`test-results/game-profile` tree, including the initial v6 matrix. The earlier
+readouts below are historical observations, not retained raw release evidence.
+Issue #4778 moves the output boundary and requires a replacement capture under
+`.game-profile-results/4778-release-v6` before release clearance.
+
 Run the dense production report when measuring larger scenes or validating one
 of the rendering architecture tasks:
 
@@ -204,6 +221,18 @@ plus a nonblank Canvas screenshot. Screenshot dimensions follow the browser
 DPR, independently of the quality-capped WebGL backing-store dimensions. The
 auto device classes are deterministic profiler inputs rather than measurements
 from representative hardware.
+
+These bounded camera actions are discrete inputs, so their semantic cadence is
+the persistent 30 FPS ambient owner set plus explicit one-frame requests, not a
+sustained 60 FPS interaction lease. Every cross-tier RAF now observes the
+scheduler target: start, minimum, maximum, and end must remain exactly 30 FPS, visible
+endpoint snapshots and stable positive lease counts are mandatory, and rendered
+frames must reconcile with R3F frame receipts. Each raw run must deliver 28–32
+rendered FPS. Both underdelivery and oversubmission fail; the old revision's
+rendered-FPS ratio remains visible only as a diagnostic. Held camera input still
+has its separate runtime-owner scenario, which requires a real 60 FPS ownership
+window and bounded delivered cadence.
+
 Reported results therefore establish a reproducible local production-build
 regression baseline; they do not replace physical-device, sustained thermal,
 or deployed runtime validation. Do not record performance conclusions here
@@ -247,7 +276,11 @@ pnpm run profile:game:runtime-baselines
 Each of the three garden-switch runs owns one browser context and one WebGL
 Canvas, then records seven arrivals in the exact sequence `high-target →
 fauna-heavy → high-target → fauna-heavy → high-target → fauna-heavy →
-high-target`. The gate verifies the
+high-target`. After the global warm-up, arrival 1 is a full `sampleMs` initial
+control (5,000 ms in the canonical capture). Its acceptance fails closed when
+the observed window is shorter than `sampleMs - 100 ms`. Arrivals 2–7 preserve
+the transition, fixture-readiness, 500 ms visual-settle, interaction, and 550 ms
+post-interaction window. The gate verifies the
 actually displayed garden ID on the Scene root and in profiler telemetry, exact
 fixture cardinalities, High-target generated-plant counts, an exact raised-bed
 outline interaction on each High arrival, and an exact two-Cow `trot`
@@ -269,13 +302,80 @@ settle contract with deliberately conservative scheduling headroom: the garden
 must swap no earlier than 200 ms and within 1,000 ms, become visible within
 1,200 ms, and finish the observed settle window within 1,800 ms. No frame may
 stall for more than 500 ms. These are structural transition safeguards, not
-machine-specific FPS targets. Renderer geometry, program, and texture counts
-are recorded on every arrival. For fauna, the warmed plateau compares F2→F3.
-High needs two warm returns, so H2→H3 remains explicit warm-up evidence and the
-plateau compares H3→H4. The later arrival may release resources but must not
-increase live geometry, program, or texture counts. Reports keep all three
+machine-specific FPS targets.
+
+Comparison contract v5 separates first-use compilation progress from mature and
+page-lifetime resource evidence. Renderer geometry plus instrumented WebGL
+program and texture counts are recorded on every arrival. Arrivals 1–3 (`H1`,
+`F1`, and `H2`) remain visible as diagnostics because they can land at different
+points on the same compile curve. Arrivals 4–7 (`F2`, `H3`, `F3`, and `H4`) are
+hard resource phases. Within every raw run, exact named warm-plateau checks
+compare F2→F3 and H3→H4; the later arrival may release resources but must not
+increase live geometry, program, or texture counts.
+
+Each run also records a `lifetimeResources` witness using
+`page-lifetime-webgl-program-texture-and-arrival-snapshot-geometry-v1`.
+Geometry must equal the maximum post-settle arrival snapshot, while program and
+texture counts are successful-create high-water marks tracked for the lifetime
+of the page's WebGL context. All three values must be positive integers, and the
+WebGL high-water marks must cover every corresponding instrumented arrival
+sample. The mature arrivals and this workflow lifetime peak are hard comparison
+phases; early compile-progress deltas remain diagnostic. Reports keep all three
 independent runs and all 21 arrivals visible so a passing median cannot hide one
 broken switch.
+
+Garden-switch GPU release comparison screens each per-arrival GPU p95 median
+at 15%; a release regression must reproduce that screening breach across all
+four baseline/candidate pairings. The 3 ms practical floor remains visible in
+each single-pair comparison record but does not relax the four-pair reproduction
+rule. The 40%/6 ms raw-rank threshold stays diagnostic, so one isolated rank
+remains visible without standing in for a reproduced regression. The
+comparison also gates draw calls
+and submitted triangles per rendered frame on every arrival, plus total
+submissions in the fixed-length arrival 1 control. The initial control must
+deliver 28–32 FPS around its observed 30 FPS semantic target; transition
+arrivals retain the 28 FPS floor because their bounded one-shot invalidations
+may exceed the steady target. Scheduler callback conservation and wakeup
+accounting are fail-closed candidate invariants. Every handled wakeup must be
+classified exactly once as productive delivery of a deadline, fixed step, or
+owned invalidation; as a no-op timeout causally retained after its semantic
+target moved later; as the single next-cadence reconciliation allowed while an
+owned invalidation generation still awaits its R3F receipt; or as an unexpected
+no-work wakeup. Classification must sum exactly to handled wakeups, unexpected
+no-work wakeups must remain zero, and no scheduler frame wakeup may occur after
+display calibration. Pending-receipt reconciliations may not exceed owned
+invalidations issued in the window plus one when `awaitingFrameReceipt` was true
+at its start. Both boundary values must be booleans. Canonical endpoints must
+also retain one stable completed display calibration, a positive calibrated
+display interval, and a pending timeout with a finite due time, so the
+post-calibration zero-RAF claim cannot pass across a reset or an idle boundary.
+This admits causally necessary retained and outstanding-receipt
+reconciliation without a phase-specific allowance, while a perpetual RAF
+keepalive cannot improve a GPU signal by adding browser wakeups. These scheduler
+invariants and controlled-display-cadence requirements entered comparison
+contract v4. Contract v5 retains them and adds the cadence- and lifetime-aware
+rules described in this section. Its clean symmetric 2x2 capture was
+structurally valid; 312 of 314 comparisons and all 42 invariants passed, along
+with all meaningful work, GPU, and memory gates. It did not become release
+evidence because two remaining failures measured profiler/fixture behavior: a
+host/double-RAF cold Canvas timing bimodality and a dynamic-butterfly geometry
+endpoint mismatch. Contract v6 therefore retains the v5 cadence and lifetime
+rules while making cross-tier cold and resource evidence fixture-aware. Earlier
+canonical reports are invalid; omitted scheduler fields remain compatible only
+on the explicitly selected `legacy-heartbeat-v1` baseline side.
+Controlled-display-cadence fields are required for both subjects.
+
+Elapsed timer-query work divided by sampled wall time remains visible for every
+arrival and as a wall-time-weighted seven-arrival aggregate. It is diagnostic,
+not a release gate: on headless Chromium with ANGLE Metal, timer-query flushes,
+command-buffer batching, and GPU power-state behavior can make lower-wakeup
+semantic scheduling report higher occupancy or a higher per-query GPU p95 when
+actual render cadence differs. Cross-tier camera-motion comparison therefore
+uses the cadence-safe control described below. No query is discarded and no
+threshold is widened. Complete,
+non-disjoint, internally ordered GPU timing for all seven arrivals remains
+mandatory in confirmed release evidence; unsupported, incomplete, mismatched,
+or invalid timing makes the comparison invalid rather than a passing skip.
 
 The lifecycle scenario is one deterministic High target repeated in three
 fresh browser contexts at `1280x720`, reported DPR 2, fixed midday time, and the
@@ -288,23 +388,103 @@ raised-bed outline interaction remain separate later milestones. Cold and
 restored screenshots must be nonblank `2560x1440` Canvas captures.
 
 The active phase records the normal render sample and all runtime frame-loop
-telemetry: active lease count, Canvas/document/effective visibility, loop state,
-target FPS, scheduled callbacks, wakeups, owned invalidations, cancellations,
-and suspend/resume counts. The offscreen phase inserts a real viewport spacer
-and requires both the runtime's IntersectionObserver state and an independent
-observer witness to report a zero-area, nonintersecting Canvas. The document
-hidden phase is explicitly synthetic: the profiler overrides
+telemetry: active named render/fixed-step leases, pending deadline owners,
+Canvas/document/context/effective visibility, target FPS, pending callback,
+scheduled callbacks, wakeups, owned invalidations, R3F frame callbacks, hidden
+deferred explicit render requests, total hidden coalesced root updates, unique
+hidden coalesced dirty transitions, actual invalidation failures, fixed-step
+failures, missed frame receipts,
+calibrated display interval and calibration count, bounded work deltas, and
+suspend/resume counts. Explicit semantic requests and root-update dirty state
+have separate pending-reason lists and counters so a harmless reconciler update
+cannot masquerade as application-owned deferred work. Generic samples
+deep-clone the complete scheduler state at both endpoints and report deltas for
+the legacy lifecycle counters plus R3F frame callbacks, all hidden request
+classes, invalidation failures, fixed-step failures, missed frame receipts,
+display calibration counts, and nonessential hidden work. The offscreen
+phase inserts a real viewport spacer and requires both the runtime's
+IntersectionObserver state and an independent observer witness to report a
+zero-area, nonintersecting Canvas. The document hidden phase is explicitly
+synthetic: the profiler overrides
 `document.hidden`/`visibilityState`, dispatches `visibilitychange`, and records
 those getters in the report. It must not be presented as browser lifecycle or
 background-tab proof.
 
-Both suspended phases require the owned SceneTime scheduler to add zero
-callbacks, wakeups, and invalidations. Browser RAF instrumentation itself is
-active, so submitted WebGL frames/draws/triangles and CDP script time are kept
-as honest residual observations rather than release failures in this baseline.
+Both suspended phases require the owned runtime scheduler to add zero callbacks,
+wakeups, and owned invalidations. Reports expose this as
+`ownedSchedulingZeroObserved` while retaining the legacy
+`runtimeSchedulerZeroObserved` property for comparator compatibility. A separate
+`zeroWorkObserved` diagnostic also requires zero R3F frame callbacks, hidden
+explicit or coalesced render requests, invalidation failures, fixed-step
+failures, missed frame receipts, nonessential hidden work, and submitted WebGL
+frames/draws/triangles. The runtime now defaults the base cadence to zero; any
+nonzero base used by a profile must be an explicit, reported compatibility
+override. The full zero-work witness and CDP script time remain separate from
+the lifecycle scenario's owned-scheduling gate. The `lifecycle-live` closure
+bundle adds exhaustive zero-work and bounded live-resume gates without
+weakening the canonical lifecycle comparison contract.
+
+Live-lifecycle suspension also records a causal boundary using
+`microtask-fresh-visibility-callback-acknowledgement-v1`. It preserves the original
+action-start sample and separates work before browser signal delivery, the
+visibility callback, and the acknowledged inactive interval. The callback is
+invoked normally; acknowledgement is read in the first following microtask so
+the pull-based telemetry cache has reset. No timer or animation-frame task can
+run between that callback and its microtask acknowledgement. The signal window
+requires exact cancellation of a known pending callback, one suspension/defer,
+and zero productive scheduling or rendering. Existing bounded coalesced dirty
+state allowances apply only during that transition. Every runtime counter,
+renderer counter, and SceneTime delta after acknowledgement must remain exactly
+zero. Missing, malformed, or stale boundary evidence fails acceptance. This
+live-only witness does not alter the frozen canonical comparison harness.
+
+A separate `static-idle` scenario now hard-gates a full visible zero-work window.
+It loads a clear, fixed-midday High-quality default mock garden with details,
+controls, HUD, and debug HUD disabled, but keeps normal continuous-render lease
+and root-broker policy enabled; the static opaque cache remains on its legacy
+disabled path. The route reports and acceptance-gates that normal policy so the
+witness cannot silently switch to manual capture mode. The explicit
+`staticIdle=1` route also passes `authenticatedGardenQueriesEnabled={false}`
+into the game runtime, so the fixture does not enable authenticated garden
+queries. After the fixture, generated-plant pipeline, and scheduler all settle,
+each run requires zero scheduler and R3F counter deltas, zero rendered frames,
+zero WebGL draws, zero submitted triangles, no API, console, or page errors, and
+a valid nonblank screenshot.
+
+Run that isolated witness directly with:
+
+```bash
+cd apps/garden
+GAME_PROFILE_SCENARIO_SET=static-idle \
+  GAME_PROFILE_FAIL_ON_BUDGET=1 \
+  GAME_PROFILE_SCREENSHOTS=1 \
+  pnpm run profile:game
+```
+
+The required final local closure bundle must be captured under
+`.game-profile-results/4778-release-v6/acceptance-awake`. It combines three repeated
+static-idle windows, three fresh-context `lifecycle-live` runs, and three runs
+for each Low, Medium, High, Automatic-standard, and Automatic-constrained owner
+policy. All 21 runs must pass from one clean production build before the issue
+can close. The final capture also includes the two matched building controls
+after these cases, retaining all 23 raw runs in one warmed browser execution.
+The implementation also gates the shared live-time minute clock,
+generated-plant work, per-scene ambient audio, and aggregate refetch intervals
+on runtime activity; the lifecycle-live runs cover their shared inactive and
+resume boundary without making claims about a real background tab.
+
 Each resume must return to the same healthy Canvas and WebGL context, re-prove
 the exact fixture, accept a fresh outline command from an exact zero-target
 state, submit new draw work, and produce a nonblank screenshot.
+
+On every scheduler activation, `SceneTimeProvider` consumes the Three.js clock's
+pending delta to refresh its internal frame timestamp and then restores the
+previous elapsed time. Unit coverage proves that both initial activation and a
+long suspended gap leave elapsed animation time unchanged before normal active
+progression resumes. The separate `lifecycle-live` runs keep time unfixed and
+gate the suspend drain, exact-zero steady window, bounded resume transition,
+steady resumed cadence, nonblank Canvas, and absence of request or runtime
+failures.
 
 Finally, the profiler forces `WEBGL_lose_context` without preventing the loss
 event itself. It records that the renderer handled the event, requires one
@@ -316,26 +496,200 @@ forced loss cannot invalidate profiler-owned query handles. These are local
 headless production-build lifecycle witnesses; they do not replace a real
 background-tab, device thermal, or deployed-runtime check.
 
+Every lifecycle resource snapshot is phase-labelled and
+measurement-contract-validated. The canonical runtime publishes `gl.info` from
+a root-owned microtask after the R3F render and increments a monotonic
+renderer-stats receipt. Before reading the cold, resumed, or context-restored
+resource fixture, the harness records a barrier and requires a later root R3F
+callback, submitted rendered-frame/draw/triangle deltas, and a later
+renderer-stats receipt. It takes that resource snapshot while the outline is
+hidden, then activates the outline and independently preserves the existing
+post-command draw and screenshot witnesses. This prevents the final two-triangle
+outline composite, a pre-render `gl.info` sample, or the zeroed renderer info
+created during WebGL context restoration from standing in for the scene resource
+inventory.
+
+Cold and immediate context-restored counts are progress witnesses: Three.js
+creates geometry and shader resources while successive draws populate or rebuild
+the renderer. Their raw baseline-versus-candidate deltas stay visible as
+diagnostics, but are not treated as allocation growth merely because one receipt
+lands later on that compile curve. The offscreen-resumed and hidden-resumed
+controls are the mature resource witnesses. All three resource counts must match
+exactly between those two controls within every raw run or the report is invalid.
+The comparator hard-gates both mature controls and a per-run lifetime peak for
+each resource across cold, both resumed controls, and context restoration. The
+existing one-count allowance is unchanged. Consequently, steady growth, a
+restoration leak, or a reproduced median lifetime-peak increase beyond one count
+still fails; only a different position below the same proven mature peak is
+diagnostic.
+
+Contract v5 also distinguishes a scheduler-cadence correction from a lifecycle
+regression. Only when a `legacy-heartbeat-v1` baseline is compared with a
+canonical candidate, every raw candidate `active` and `context-restored` sample
+must declare an effectively visible 30 FPS target at both boundaries, keep p95
+frame duration at or below 33.3 ms, and render between 28 and 32 FPS. The
+baseline-relative p95 and rendered-FPS results remain in JSON and Markdown as
+diagnostics, so removing legacy oversubmission cannot fail the release by
+itself. Canonical-to-canonical lifecycle comparisons keep the existing relative
+gates; they do not switch to this target-aware legacy-migration rule.
+
+An old external subject without renderer-stats receipt telemetry may use only
+the explicit `legacy-pre-render-settled-v1` fallback for lifecycle and
+cross-tier resource snapshots. The harness accepts it only when both served
+subject and profiler harness are clean, their full commits differ, the served
+comparison contract matches, and the subject is externally hosted. That
+fallback waits beyond the legacy 500 ms reporter interval and still requires
+submitted work both during and after settling. Canonical subjects must use
+`post-render-receipt-v1`; the comparator binds the permitted renderer-stats mode
+to the baseline scheduler contract and never permits the legacy mode for a
+candidate.
+
 Capture the complete regression bundle before and after a runtime change with
-the same machine, browser, options, and deterministic fixtures. Use distinct
-output directories so the candidate run cannot overwrite the baseline:
+the same machine, browser, measurement options, deterministic fixtures, and one
+exact clean profiler harness. The baseline-only `GAME_PROFILE_FAIL_ON_BUDGET=0`
+below changes process exit policy, not any measured option; the comparator owns
+the exact legacy failure allowlist. The harness is the checkout that runs
+`profile-game-scene.mjs`; select its commit after the profiling contract is
+final, then keep that checkout at the same clean `HEAD` for all four reports.
+Do not run the baseline reports with the profiler script from the baseline
+checkout and the candidate reports with the script from the candidate checkout.
+
+Each report records two separate provenance identities:
+
+- The **subject commit** is the clean commit baked into the served Garden build
+  through `NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT`. It is the runtime being
+  measured and is authoritative for baseline-versus-candidate identity.
+- The **harness commit** is the clean commit of the checkout executing the
+  profiler. It defines how all four subjects are observed and must be identical
+  across both baseline reports and both candidate reports.
+
+The baseline subject and the harness are therefore allowed to be different
+commits. That difference is intentional: only the subject changes across the
+comparison, while the harness remains fixed. This split is valid only for an
+externally supplied server. A managed profiler build still requires its subject
+and harness commits to match and treats a difference as stale-build provenance.
+When the selected `origin/main` subject predates semantic lease topology and R3F
+receipt telemetry, capture it as a `legacy-heartbeat-v1` scheduler baseline. That
+contract is baseline-only: the comparator requires the old zero-lease/null-
+topology signature and allowlists only the resulting scheduler checks, while the
+candidate and its confirmation remain on `canonical-v1`.
+Build and start the baseline and candidate subjects as external servers from
+separate clean worktrees. Confirm cleanliness before marking the embedded dirty
+state `false`; the current comparison contract is `6`. The current harness also
+requires `legacyOutlinePipeline=true` only for the untouched legacy scheduler
+baseline; every canonical candidate and confirmation must record `false`. Run
+only one subject server and capture at a time so the other server cannot perturb
+the sample:
+
+```bash
+# Baseline subject worktree, terminal 1
+profile_subject_commit=$(git rev-parse HEAD) &&
+test -z "$(git status --porcelain --untracked-files=normal)" &&
+NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT="$profile_subject_commit" \
+NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY=false \
+NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=6 \
+  pnpm --filter garden build &&
+GREDICE_GARDEN_START_PORT=3101 pnpm --filter garden start
+
+# After both baseline captures finish, stop terminal 1. Then start the candidate
+# subject worktree in terminal 2.
+profile_subject_commit=$(git rev-parse HEAD) &&
+test -z "$(git status --porcelain --untracked-files=normal)" &&
+NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT="$profile_subject_commit" \
+NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY=false \
+NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=6 \
+  pnpm --filter garden build &&
+GREDICE_GARDEN_START_PORT=3102 pnpm --filter garden start
+```
+
+Run all four captures from the unchanged clean harness worktree. Use distinct
+output directories so no report can overwrite another:
 
 ```bash
 cd apps/garden
-GAME_PROFILE_OUT_DIR=test-results/game-profile/baseline \
-  pnpm run profile:game:regression-baselines
+test -z "$(git status --porcelain --untracked-files=normal)" || exit 1
 
-# Capture an independent repeat of the exact same clean baseline commit:
-GAME_PROFILE_OUT_DIR=test-results/game-profile/baseline-confirmation \
-  pnpm run profile:game:regression-baselines
+# The legacy scheduler is expected to fail only its superseded scheduler checks;
+# the symmetric comparator validates that exact failure set.
+GAME_PROFILE_OUT_DIR=.game-profile-results/4778-release-v6/baseline-1 \
+GAME_PROFILE_BASE_URL=http://localhost:3101 \
+GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
+GAME_PROFILE_BUILD=0 \
+GAME_PROFILE_CLOSEUP_REPEAT= \
+GAME_PROFILE_CLOSEUP_TIMEOUT_MS=30000 \
+GAME_PROFILE_START_SERVER=0 \
+GAME_PROFILE_SCENARIOS= \
+GAME_PROFILE_SCENARIO_SET=cross-tier,fauna,garden-switch,lifecycle \
+GAME_PROFILE_WARMUP_MS=5000 \
+GAME_PROFILE_SAMPLE_MS=5000 \
+GAME_PROFILE_SOAK_MS=0 \
+GAME_PROFILE_GRAPHICS_BACKEND=auto \
+GAME_PROFILE_LEGACY_OUTLINE_PIPELINE=1 \
+GAME_PROFILE_LIFECYCLE_RENDERER_STATS_MODE=legacy-pre-render-settled-v1 \
+GAME_PROFILE_FAIL_ON_BUDGET=0 \
+GAME_PROFILE_SCREENSHOTS=1 \
+  pnpm run profile:game:existing
 
-# After checking out and building the candidate commit:
-GAME_PROFILE_OUT_DIR=test-results/game-profile/candidate \
-  pnpm run profile:game:regression-baselines
+# Independent second capture of the same clean baseline subject with the same
+# exact clean harness; this must be a new profiler run, not a copied report.
+GAME_PROFILE_OUT_DIR=.game-profile-results/4778-release-v6/baseline-2 \
+GAME_PROFILE_BASE_URL=http://localhost:3101 \
+GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
+GAME_PROFILE_BUILD=0 \
+GAME_PROFILE_CLOSEUP_REPEAT= \
+GAME_PROFILE_CLOSEUP_TIMEOUT_MS=30000 \
+GAME_PROFILE_START_SERVER=0 \
+GAME_PROFILE_SCENARIOS= \
+GAME_PROFILE_SCENARIO_SET=cross-tier,fauna,garden-switch,lifecycle \
+GAME_PROFILE_WARMUP_MS=5000 \
+GAME_PROFILE_SAMPLE_MS=5000 \
+GAME_PROFILE_SOAK_MS=0 \
+GAME_PROFILE_GRAPHICS_BACKEND=auto \
+GAME_PROFILE_LEGACY_OUTLINE_PIPELINE=1 \
+GAME_PROFILE_LIFECYCLE_RENDERER_STATS_MODE=legacy-pre-render-settled-v1 \
+GAME_PROFILE_FAIL_ON_BUDGET=0 \
+GAME_PROFILE_SCREENSHOTS=1 \
+  pnpm run profile:game:existing
 
-# Capture an independent repeat of the exact same clean candidate commit:
-GAME_PROFILE_OUT_DIR=test-results/game-profile/candidate-confirmation \
-  pnpm run profile:game:regression-baselines
+GAME_PROFILE_OUT_DIR=.game-profile-results/4778-release-v6/candidate-1 \
+GAME_PROFILE_BASE_URL=http://localhost:3102 \
+GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
+GAME_PROFILE_BUILD=0 \
+GAME_PROFILE_CLOSEUP_REPEAT= \
+GAME_PROFILE_CLOSEUP_TIMEOUT_MS=30000 \
+GAME_PROFILE_START_SERVER=0 \
+GAME_PROFILE_SCENARIOS= \
+GAME_PROFILE_SCENARIO_SET=cross-tier,fauna,garden-switch,lifecycle \
+GAME_PROFILE_WARMUP_MS=5000 \
+GAME_PROFILE_SAMPLE_MS=5000 \
+GAME_PROFILE_SOAK_MS=0 \
+GAME_PROFILE_GRAPHICS_BACKEND=auto \
+GAME_PROFILE_LEGACY_OUTLINE_PIPELINE=0 \
+GAME_PROFILE_LIFECYCLE_RENDERER_STATS_MODE=post-render-receipt-v1 \
+GAME_PROFILE_FAIL_ON_BUDGET=1 \
+GAME_PROFILE_SCREENSHOTS=1 \
+  pnpm run profile:game:existing
+
+# Independent second capture of the same clean candidate subject with the same
+# exact clean harness.
+GAME_PROFILE_OUT_DIR=.game-profile-results/4778-release-v6/candidate-2 \
+GAME_PROFILE_BASE_URL=http://localhost:3102 \
+GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
+GAME_PROFILE_BUILD=0 \
+GAME_PROFILE_CLOSEUP_REPEAT= \
+GAME_PROFILE_CLOSEUP_TIMEOUT_MS=30000 \
+GAME_PROFILE_START_SERVER=0 \
+GAME_PROFILE_SCENARIOS= \
+GAME_PROFILE_SCENARIO_SET=cross-tier,fauna,garden-switch,lifecycle \
+GAME_PROFILE_WARMUP_MS=5000 \
+GAME_PROFILE_SAMPLE_MS=5000 \
+GAME_PROFILE_SOAK_MS=0 \
+GAME_PROFILE_GRAPHICS_BACKEND=auto \
+GAME_PROFILE_LEGACY_OUTLINE_PIPELINE=0 \
+GAME_PROFILE_LIFECYCLE_RENDERER_STATS_MODE=post-render-receipt-v1 \
+GAME_PROFILE_FAIL_ON_BUDGET=1 \
+GAME_PROFILE_SCREENSHOTS=1 \
+  pnpm run profile:game:existing
 ```
 
 Compare the four raw repeated-run reports with the checked-in relative policy:
@@ -343,11 +697,12 @@ Compare the four raw repeated-run reports with the checked-in relative policy:
 ```bash
 cd apps/garden
 pnpm run profile:game:compare \
-  --baseline test-results/game-profile/baseline/latest.json \
-  --baseline-confirmation test-results/game-profile/baseline-confirmation/latest.json \
-  --candidate test-results/game-profile/candidate/latest.json \
-  --confirmation test-results/game-profile/candidate-confirmation/latest.json \
-  --out-dir test-results/game-profile/comparisons/baseline-to-candidate
+  --baseline .game-profile-results/4778-release-v6/baseline-1/latest.json \
+  --baseline-confirmation .game-profile-results/4778-release-v6/baseline-2/latest.json \
+  --baseline-scheduler-contract legacy-heartbeat-v1 \
+  --candidate .game-profile-results/4778-release-v6/candidate-1/latest.json \
+  --confirmation .game-profile-results/4778-release-v6/candidate-2/latest.json \
+  --out-dir .game-profile-results/4778-release-v6/comparison
 ```
 
 The comparator validates and pairs raw scenarios by stable base name and repeat
@@ -373,27 +728,140 @@ also marks its output diagnostic and returns `needs-rerun` for an otherwise
 passing canonical pair; only the complete confirmed API can emit a
 non-diagnostic pass.
 
-Each repeat must preserve its source commit, fixtures, options, runtime, and
-environment while using a different report path and valid capture timestamp.
-A timestamp-only copy of an existing JSON report is rejected because it is not
-independent evidence. If a screened metric is unavailable in any required
-pairing, the confirmed result returns `needs-rerun` rather than passing open.
+`legacy-heartbeat-v1` is not a partial or same-source escape hatch. It requires
+the full symmetric 2x2 matrix, two independently captured clean baseline
+reports, a baseline subject different from the clean harness, positive semantic
+RAF observation coverage, an observed 30 FPS target, stable zero legacy lease
+counts, absent lease topology, and an unavailable R3F receipt. The only accepted
+raw cross-tier failures are the five checks directly implied by that old
+telemetry shape plus `crossTierRenderedFps` when the old heartbeat oversubmits
+outside 28–32 FPS. Any visual, fixture, quality, retained-heap, CPU/GPU, request,
+console, lifecycle, or other budget failure still invalidates the baseline.
+The complete cross-tier acceptance, performance, and composite check-name
+inventories are fixed by the comparator, so deleting a passing witness from one
+or every report is also invalid.
+Candidate reports cannot select this contract through either the CLI or public
+comparison API.
+
+Cross-tier GPU p95 is decisive only under comparable render cadence. Comparison
+contract v4 introduced `profiler-owned-raf-v1` before application code for every
+cross-tier steady and camera-motion run. Contracts v5 and v6 retain that
+control. It batches application/runtime RAF callbacks onto a requested 30 Hz
+clock while
+the profiler's frame sampler and GPU-query drain retain the captured native
+browser RAF. Callbacks receive the
+scheduled 30 Hz phase timestamp rather than host-rAF jitter; a late host frame
+skips missed phases without catch-up. The global phase remains anchored across
+intervals with no pending application callback, so skipped-phase telemetry can
+also include inactive intervals. An out-of-band request arriving before the
+following target boundary may consume the single due phase on its next native
+frame; this prevents timer jitter in a semantic 30 Hz scheduler from cascading
+with the profiler into a second full-interval delay. Once a complete target
+interval passes without a request, the controller advances to the first
+anchored phase at or after the request and never replays the inactive backlog.
+A request made synchronously by a delivered callback joins the next
+callback-list snapshot from that delivered phase; its wall-clock work does not
+independently skip that next phase because host-frame lateness already accounts
+for missed phases. Observed delivery rate remains derived from wall time. The
+report records the exact requested control, its start/end counter snapshots,
+delivered frame and callback deltas, native-frame delta, skipped phases,
+cancellations, and the observed delivery rate. Both subjects must report the
+same control, and every raw window must observe 28–32 controlled frames per
+second; a missing, malformed, inactive, or out-of-range control makes the matrix
+invalid. This document-start override is limited to the deterministic profiler
+page and does not change production runtime cadence.
+
+Contract v6 measures cross-tier cold startup with the separate
+`document-start-dpr-aware-canvas-and-fixture-v1` witness. A tracker installed at
+document start records `DOMContentLoaded`, Canvas attachment, the first backing
+store whose dimensions match the requested viewport and capped device-pixel
+ratio, the first submitted WebGL frame, and fixture readiness. Every report must
+preserve that milestone order and exact CSS/backing-store dimensions. The old
+host-side double-RAF Canvas-ready duration is retained as
+`hostCanvasReadyDiagnosticMs` only; it is not a cold-start comparison input and
+cannot turn host scheduling bimodality into an application regression.
+
+Contract v6 also gives every cross-tier scenario a
+`population-exposure-post-render-resource-snapshot-v1` witness. The profiler
+requires the endpoint actor grounding-shadow census and its cumulative
+per-species population exposure to stay stable around a fresh renderer-resource
+read, and the cumulative exposure must cover the endpoint population. Canonical
+subjects prove freshness with the post-render receipt; the explicitly selected
+legacy baseline may use only its validated settled fallback. Geometry is
+re-paired across independent repeats only within an identical canonical
+population-exposure stratum, retaining the existing one-count allowance.
+Shaders and textures continue to use every validated fresh snapshot rather than
+being filtered by population stratum. Low quality may prove an explicitly empty
+exposure; a shadowed policy with missing exposure, or a comparison with no
+shared geometry stratum, is invalid instead of passing open.
+
+With that explicit control, both steady and camera-motion GPU rows use the
+existing direct 15% relative boundary, 3 ms practical floor, 40% raw-rank
+boundary, and 6 ms raw-rank floor. Bundle-median delivered cadence must still
+differ by no more than 2 FPS. Historical contract-v3 artifacts may contain the
+legacy cadence-confound classification; contract v4 removed it and contract v5
+retained that decision. Contract v6 keeps it, so it cannot downgrade a control
+failure or turn a controlled GPU row into a non-decisional result. The first
+contract-v3 four-report attempt remains
+diagnostic and invalid because several legacy steady runs exceeded 32 FPS. It
+must not be reused as release evidence.
+
+Strict GPU timing means `gpu.sampleCount` exactly equals
+`sample.renderedFrames`; the sample window and both counts are positive; timing
+is supported, valid, complete, and non-disjoint; `reason` is null; and positive
+elapsed values are ordered as p95 <= maximum <= total. This shape applies to
+every available GPU measurement, not only the cadence control.
+
+Each repeat must preserve its subject commit, harness commit, fixtures, options,
+runtime, and environment while using a different report path and valid capture
+timestamp. Both baseline captures must name the same clean baseline subject;
+both candidate captures must name the same clean candidate subject; the
+baseline and candidate subjects must differ; and all four reports must name the
+same clean harness commit. A dirty or unknown identity, a harness mismatch in
+any pairing, a changed subject within either confirmation pair, or a served
+comparison-contract mismatch makes the release matrix invalid and incomparable.
+The comparator fails closed instead of treating any of those provenance errors
+as performance noise. A timestamp-only copy of an existing JSON report is
+rejected because it is not independent evidence. If a screened metric is
+unavailable in any required pairing, the confirmed result returns
+`needs-rerun` rather than passing open.
+
+Timed samples retain Chromium's natural garbage-collection behavior, including
+any resulting script time or long task. For scenario-level memory evidence,
+only after the complete scenario has finished—including every garden-switch
+arrival, lifecycle phase, or close-up pass—does the profiler read the current
+heap, force one JavaScript heap collection, and read retained heap. It records
+those values once in
+`memory.jsHeapBeforeCollectionMb` and `memory.retainedJsHeapMb` with the
+`post-scenario-forced-gc-v1` mode. No profiler-owned collection runs between
+sequential phases. The comparator requires and gates this scenario-level
+retained-heap witness; per-window `sample.jsHeapMb` and `cdp.jsHeapMb` remain
+natural endpoint allocation diagnostics and never decide budget status. The
+existing per-scenario `jsHeapMb` budget limit is applied to
+`memory.retainedJsHeapMb`. If Chromium does not expose either
+required scenario-level reading, profiling fails closed. Canonical cross-tier
+profiles also collect once at the boundary between their semantic witness and
+performance control, as described below; neither collection occurs inside a
+timed window or between production lifecycle/switch phases.
 
 The floors cover observed same-commit variation in browser startup clocks, GPU
-queries, uncollected heap snapshots, script counters, and isolated long tasks;
-deterministic fixture, quality, interaction, provenance, and lifecycle zero-work
-witnesses remain hard checks in every raw run. Long-task counts compare batch
-medians, and duration medians use bounded millisecond floors, so one isolated
-browser task is visible in the raw ranks without being mislabeled as an
-application regression. Renderer resource medians have a one-count tolerance;
-larger growth must reproduce across the symmetric confirmation matrix.
+queries, retained heap measurements, script counters, and isolated long tasks;
+deterministic fixture, quality, interaction, provenance, and lifecycle
+owned-scheduling witnesses remain hard checks in every raw run. Long-task counts
+compare batch medians, and duration medians use bounded millisecond floors, so
+one isolated browser task is visible in the raw ranks without being mislabeled
+as an application regression. Renderer resource medians have a one-count
+tolerance; larger growth must reproduce across the symmetric confirmation
+matrix. Lifecycle resources additionally require exact agreement between the
+two mature within-run witnesses and apply that same one-count limit to both
+mature phases and the four-witness lifetime peak.
 
 | Median metric | Relative allowance | Practical floor |
 | --- | ---: | ---: |
 | p95 frame duration | 15% | 2 ms |
 | Rendered FPS | 10% | 5 FPS |
 | Draws / triangles per rendered frame | 5% | none |
-| JavaScript heap snapshot | 15% | 8 MiB |
+| Retained JavaScript heap | 15% | 8 MiB |
 | Script duration | 15% | 0.5 s |
 | GPU p95 duration | 15% | 3 ms |
 | DOM content loaded | 25% | 25 ms |
@@ -402,12 +870,31 @@ larger growth must reproduce across the symmetric confirmation matrix.
 | Switch settled | 15% | 100 ms |
 | Long-task maximum / total duration | 20% | 10 / 20 ms |
 
+Rendered FPS uses the generic relative gate except where a scenario declares a
+semantic scheduler target. Both cross-tier subjects and the fixed garden-switch
+arrival 1 control must keep every raw run within 28–32 FPS around an observed
+30 FPS target; later garden-switch transition arrivals must deliver at least
+28 FPS. For a contract-v6 legacy-heartbeat-to-canonical lifecycle comparison,
+every raw candidate active and context-restored phase must also stay within
+28–32 rendered FPS and at or below 33.3 ms p95 frame duration around its declared
+30 FPS target. Baseline-relative FPS and p95 ratios stay in the report as
+diagnostics for these target-aware cases, so eliminating oversubmission is not
+misclassified as lost performance. Canonical-to-canonical lifecycle rows retain
+the generic relative policy. Cross-tier GPU p95 additionally requires the
+explicit profiler-owned cadence contract above; every steady and camera-motion
+row became decisional under contract v4 and remains decisional under contract
+v6. Garden-switch GPU p95, mature and lifetime resource phases, per-render
+submissions, fixed-control total submissions, and causal scheduler wakeup
+accounting are hard gates. Elapsed GPU occupancy remains a complete raw
+diagnostic rather than a proxy for power or thermal behavior.
+
 “Practical floor” is not an extra allowance added to the percentage. A signal
 is meaningful when its worsening reaches the floor while also crossing the
-relative boundary. These are profiler noise floors, not product budgets; each
-raw run must still pass the scenario's checked absolute performance budget
-before either report is comparable. The comparator validates both the aggregate
-budget outcome and every recorded absolute-budget check in every raw run.
+relative boundary. These are profiler noise floors, not product budgets. Every
+canonical candidate run and every non-legacy baseline check must pass its
+checked absolute performance budget before the reports are comparable. The
+comparator validates both aggregate and individual raw checks; the explicit
+`legacy-heartbeat-v1` exception is limited to the scheduler failure set above.
 For cross-tier scenarios it also derives the required requested quality,
 Automatic device inputs, DPR cap, decoration density, resolved tier, shadow-map
 size, and shadow state from the canonical scenario name; two reports cannot
@@ -416,15 +903,19 @@ become comparable merely by agreeing on the same incorrect tier policy.
 Exit `0` means compatible evidence and all confirmed relative gates passed.
 Exit `1` means either `needs-rerun` or a regression, and exit `2` means the
 reports are invalid or incomparable. The generated comparison report uses
-schema version 2 and distinguishes screening signals from reproduced
-regressions. The gate fails closed for dirty, unknown,
-same-commit, stale-build, or mismatched served-build provenance, changed
-fixtures/options/runtime, missing runs, and one-sided required measurements. The
-default gate requires the complete `cross-tier,fauna,garden-switch,lifecycle`
-manifest with three raw repeats per scenario, and it rejects an output directory
-that contains either input report. `--allow-partial` and `--allow-same-source`
-exist only for local harness diagnostics, are marked as diagnostic in the
-generated report, and must not be used as release evidence.
+schema version 3 and distinguishes decisive gates, cadence-confounded
+non-comparisons, screening signals, and reproduced regressions. The gate fails
+closed for dirty or unknown subjects, dirty or unknown harnesses, different
+harness commits anywhere in the four-report
+matrix, same-subject baseline/candidate pairs, stale or mismatched served-build
+markers, changed fixtures/options/runtime, missing runs, and one-sided required
+measurements. The default gate requires the complete
+`cross-tier,fauna,garden-switch,lifecycle` manifest with three raw repeats per
+scenario, and it rejects an output directory that contains either input report.
+`--allow-partial` and `--allow-same-source` exist only for local harness
+diagnostics, are marked as diagnostic in the generated report, and must not be
+used as release evidence. Neither can be combined with the legacy scheduler
+baseline contract.
 
 Run every profiler scenario together:
 
@@ -465,14 +956,17 @@ pnpm run profile:game:start
 ```
 
 Reports are written to ignored files under
-`apps/garden/test-results/game-profile/`. The latest report is always available
+`apps/garden/.game-profile-results/`. The latest report is always available
 as both `latest.json` and `latest.md`; timestamped copies are kept beside them.
 The JSON is intended for CI/trend comparison, while the Markdown summary is meant
 for quick review in a PR. Reports also include whether the profiler ran a build
 and whether the server was managed with `pnpm start` or supplied externally.
-Schema-v5 reports distinguish the profiler harness commit from the commit baked
-into the served Garden build. Only the served-build marker is authoritative for
-the comparison subject; a runner environment SHA is not deployment proof.
+Schema-v6 reports distinguish the profiler harness commit from the commit baked
+into the served Garden build. A valid release matrix intentionally permits the
+baseline subject to differ from its harness, but requires the one exact clean
+harness commit across all four reports. Only the served-build marker is
+authoritative for the comparison subject; a harness or runner-environment SHA
+is not deployment proof.
 
 The default `core` scenario set currently samples these scenarios:
 
@@ -825,8 +1319,8 @@ unavailable, so a missing GPU number is not mistaken for zero work.
 
 Normal, cold pending-near (when the transition remains pending long enough to
 capture), and detailed screenshots are written below
-`apps/garden/test-results/game-profile/screenshots/<scenario>/`. The JSON and
-Markdown reports remain under `apps/garden/test-results/game-profile/`; use the
+`apps/garden/.game-profile-results/screenshots/<scenario>/`. The JSON and
+Markdown reports remain under `apps/garden/.game-profile-results/`; use the
 raw JSON when comparing optimization implementations because it preserves all
 per-run cold/warm metadata.
 
@@ -1063,24 +1557,342 @@ Recommended work:
 
 Expected impact: high on high-DPR devices.
 
-### 3. Continuous frame work remains spread across the scene
+### 3. Runtime rendering uses explicit semantic ownership
 
-The old time manager optimization removed one recurring React update, but the
-scene still has about a dozen `useFrame` systems: controls, camera animation,
-clouds, sun/moon, stars, rain, snow, action particles, sprite billboards, plant
-sway, plant LOD, and snow overlay material damping.
+The Canvas uses demand rendering and now defaults its base cadence to zero.
+`GameRuntimeScheduler` owns named render and fixed-step leases, semantic
+multi-frame requests, deadlines, visibility/context gates, bounded resume
+deltas, and profile-only ownership telemetry. An explicit nonzero
+`baseFramesPerSecond` remains available only as a compatibility override.
+Leases without their own rate still resolve through the active quality tier's
+ambient policy.
 
-Recommended work:
+Render leases are shared and reference-counted by normalized owner and rate, so
+many instances of one effect retain one scheduler lease until the final consumer
+releases it. The scheduler itself retains at most one callback. Visible render
+work performs one bounded display-interval calibration, then sleeps on the same
+earliest-due timeout queue as fixed steps and deadlines. When an absolute render
+target is due, the scheduler invalidates once and R3F aligns the actual draw to
+the browser's next animation frame. An earlier fixed step or deadline preempts
+the render timeout. Hidden, offscreen, context-lost, and idle scenes retain no
+scheduler callback. Each `SceneTimeProvider` owns one post-render dispatcher.
+Ordinary roots bridge the module-global R3F `addAfterEffect` only when their own
+`useFrame` marked a frame; root-local after-render work runs before the scheduler
+receipt. This keeps scheduler bookkeeping out of the pre-render `useFrame` path.
 
-- Classify frame systems as always-needed, interaction-only, weather-only, or
-  close-up-only.
-- Avoid registering `useFrame` callbacks when the feature is disabled or static.
-- Move shared animation time into grouped uniforms rather than many small React
-  component callbacks.
-- Evaluate `frameloop="demand"` only after optional continuous effects are gated;
-  otherwise weather/cloud systems will keep invalidating every frame anyway.
+For demand roots with continuous leases enabled, `SceneTimeProvider` captures
+the immutable raw R3F invalidator and installs one root-scoped invalidation
+broker. Reconciler host updates become persistent coalesced render requests:
+they ride an existing 20/30/60 FPS lease without raising its cadence, remain
+dirty until an actual frame receipt, and become a one-off 60 FPS request if no
+lease exists or the last lease disappears before that receipt. Repeated reasons
+retain their maximum bounded frame count instead of adding debt. Hidden updates
+collapse to one frame, and scheduler-owned draws call the captured raw
+invalidator directly so the broker cannot recurse.
+An invalidation issued during an active R3F frame preserves R3F's native
+follow-up contract: a default or one-frame request reserves two coalesced
+receipts, so the current frame consumes one and exactly one remains pending.
+Explicit multi-frame requests and native fallback inputs retain their original
+semantics.
 
-Expected impact: medium to high, especially for idle gardens.
+The scheduler exposes broker-dirty reasons separately from explicit semantic
+render requests. While inactive, one cumulative counter records every broker
+call, while a second hidden-deferred counter advances only when a normalized
+reason first becomes pending. Repeats do not increment explicit deferred-work
+or nonessential-hidden-work counters. Lifecycle acceptance permits only the
+single root broker reason, bounds the transition drain to one newly pending
+reason and one queued host commit per persistent fauna owner, and requires zero
+additional broker calls throughout every suspended tail.
+
+The broker covers R3F reconciler and direct root-state invalidations. R3F
+module-level invalidators, including the shared React Spring animation driver,
+bypass the root function. Ordinary visibility-managed demand roots close that
+cross-root gap with a per-store shield: becoming inactive clears the root's
+pending frame count, switches only that root to `frameloop="never"`, clears the
+count again, and pauses descendant React Spring animations. Calls to the root's
+`setFrameloop` update the exact mode to restore, including a visible transition
+to manual `never`; hidden requests do not wake the root. Resume restores that
+requested mode without resetting the Three.js clock; final and StrictMode
+cleanup also restore the captured raw setter only when the lifecycle still owns
+it.
+
+Manual roots opt out of the ordinary visibility shield. Public preview capture
+mounts its Canvas with `frameloop="never"`, makes descendant springs immediate,
+and schedules a bounded, deduplicated `requestAnimationFrame` train whose
+callbacks call that root's `advance(elapsedSeconds, false)`. Skipping global
+before/after effects keeps another Canvas's animation work out of the capture
+root. After `advance` returns, the probe flushes only that root's post-render
+dispatcher using the original RAF millisecond timestamp, then preserves the
+asynchronous WebGL2 readback sequence. Manual roots install no global
+after-effect bridge, so a sibling frame cannot receipt capture work.
+
+R3F `addAfterEffect` callbacks are module-global, so ordinary roots use exactly
+one global-to-local bridge. The hover-outline pass subscribes to the owning
+`SceneTimeProvider` dispatcher instead of registering another global callback.
+The dispatcher consumes one owning-root frame token exactly once and uses
+tokenized registrations so stale StrictMode cleanup cannot release a replacement
+listener.
+
+The hover-outline pipeline also reuses its mask and horizontal-distance targets
+when one style group contains explicitly keyed, rigid proxy geometry. Callers
+opt in with `maskContentKey`; unkeyed targets, mixed style groups, detached or
+hidden objects, array cameras, material arrays, lines, points, sprites, LOD,
+skinned, morphed, instanced, batched, callback-driven, or otherwise unsupported
+geometry keep the uncached path. A hit still composites the outline every frame,
+so color, opacity, and the current framebuffer remain correct while the two
+silhouette-dependent passes are skipped.
+
+The root-local cache invalidates when the camera or projection changes, the
+drawing buffer or render-target allocation changes, target registration,
+identity, parentage, visibility, transform, topology, draw range, geometry,
+position/index attribute identity or version changes, the content key changes,
+the scene resumes, WebGL context is lost or restored, the target becomes
+inactive or detached, or the effect unmounts. Profiling exposes cumulative
+eligible-target, hit, miss, bypass, mask, horizontal, and composite counters.
+Cross-tier and High outline samples additionally record start/end deltas: bypass
+must remain zero for the keyed fixture, steady work must contain a hit, camera
+motion must contain a miss, and every accepted window must conserve
+`mask = miss + bypass`, `horizontal = mask`, and
+`composite = hit + miss + bypass`. Untouched scheduler baselines select
+`legacyOutlinePipeline=true`; canonical subjects must prove the cached contract.
+These deterministic browser checks measure pass reuse and submitted work, not
+physical-device frame rate, memory pressure, power, or thermal behavior.
+
+Browser component witnesses exercise both two-root boundaries. The
+`r3f-root-isolation` witness keeps one looping spring root active while an
+offscreen ordinary root proves zero frame receipts, WebGL submissions, spring
+changes, and hidden work before restoring its exact demand mode. The garden
+preview capture witness begins with only the manual Canvas. Its first accepted
+root-local receipt mounts the demand/spring sibling, which must submit repeatedly
+while later capture advances coexist. After one nonblank bounded capture, the
+witness proves capture-root receipt and after-render counts remain unchanged
+while sibling frames continue.
+
+The bounded calibration RAF timestamps are observational telemetry only and
+never control target FPS, cadence phase, invalidation lead, or follow-up
+classification. The first non-owned receipt after a scheduler-owned receipt
+within one active semantic interval consumes the pending cadence slot;
+subsequent external receipts only defer the next owned target by at least one
+interval, preventing duplicate renders without banking post-interaction cadence
+debt. Late work skips elapsed targets without catch-up. Existing camera,
+avatar, weather, cloud, precipitation, sky, and meteor owners retain their
+intended 20/30/60 FPS policy.
+
+`SceneTimeProvider` also discards the Three.js clock's activation gap without
+advancing `elapsedTime`. This keeps hidden or offscreen wall time out of shader
+and scene animation time while preserving normal progression after activation;
+deterministic clock tests and the unfixed-time lifecycle closure runs cover both
+the clock boundary and the browser runtime boundary.
+
+Camera and interaction invalidations, environment and cache state, particles,
+plant and prop animation, weather transitions, and fauna activity now use named
+leases or semantic render requests. Finite lightning, meteor, slug, and squirrel
+waits use scheduler deadlines; frog and slug reconciliation uses fixed-step
+work. Shader-only animation has shared owners for plant sway, star twinkle,
+water surfaces, ground-decoration wobble, and sprite wobble. These owners are
+suppressed when fixed-time rendering freezes their visual time, and applicable
+inactive-state or reduced-motion gates remain in effect.
+
+Every mounted `SceneTimeProvider` registers its own effective
+document/Canvas/context visibility with an aggregate activity store. Global
+game-adjacent work remains active if any registered scene is active and pauses
+only when all registered scenes are inactive. With no registered scene it stays
+active, preserving standalone HUD and data consumers.
+
+`useLiveTime` now subscribes to one shared, minute-boundary-aligned clock instead
+of creating one interval per consumer. The clock owns no timeout without
+subscribers, while the document is hidden, or while all mounted scenes are
+inactive; resume publishes the current wall time before scheduling the next
+minute boundary. Outlet offers, detailed raised-bed inspection reports, and
+raised-bed notifications use the same aggregate activity gate for both query
+enablement and refetch intervals. When every scene becomes inactive they also
+cancel their exact query keys, and the underlying requests consume the query
+abort signal instead of finishing unnecessary offscreen fetches.
+
+The app theme manager no longer owns an independent 60-second interval. It uses
+the minute-boundary clock primitive, stops its timeout on document or page hide,
+and synchronizes immediately before scheduling one aligned timeout on resume.
+The controls tooltip's 50 ms phase interval is separately gated by document
+visibility and aggregate scene activity. The sunflower HUD target lookup replaces
+500 ms polling with a mutation observer that disconnects while hidden or
+inactive, disconnects once the target is found, and refreshes when activity
+returns.
+
+Generated-plant batches do not enqueue missing render-data work until their own
+scene is active. When suspension removes the last subscriber, queued tasks are
+removed and the single in-flight execution receives an abort signal; worker
+execution responds by terminating the active worker and rejecting the pending
+request. Shader prewarm is start-gated by the same per-scene visibility, and
+focused generated-plant retry now uses a scheduler deadline. A prewarm
+`AbortSignal` cannot preempt a Three.js/WebGL `compileAsync` call that has
+already reached the browser/GPU; it cancels that scene's subscription and
+prevents new hidden starts, but that shared compile may still finish and remain
+available in the renderer cache.
+
+Ambient sound is also per-scene: each inactive scene stops its own time/weather
+loops, then reselects the correct mix when it resumes. This avoids using the
+aggregate gate for audio, which would otherwise let one visible Canvas keep an
+offscreen Canvas's loops alive.
+
+Public preview capture disables continuous lease acquisition explicitly through
+`continuousRenderLeasesEnabled={false}`. It does not overload
+`fixedTimeSeconds` as a capture signal: fixed time remains the deterministic
+visual clock, while the separate manual `frameloop="never"` policy leaves the
+capture probe in control of its root-local advance/readback sequence.
+
+Semantic render work sleeps on the same due-time timeout queue as deadlines and
+fixed steps. When its target is due, the scheduler invalidates once and R3F
+aligns the actual draw to the browser's next animation frame. `loopActive`
+therefore reports active visible render ownership independently of callback
+kind. A bounded startup calibration may report `pendingCallbackKind=frame` for
+seven valid display samples, with a hard limit of 12 attempts or 750 ms. After
+that calibration, steady render ownership reports `pendingCallbackKind=timeout`
+with the earliest absolute due timestamp; `none` has neither. Scheduled-callback
+and wakeup counters cover both bounded calibration frames and scheduler
+timeouts, while R3F frame callbacks remain a separate receipt count.
+Display-interval telemetry remains observational and never steers scheduling.
+Handled wakeups are additionally partitioned into productive, causally retained
+timeout-reconciliation, one bounded pending-frame-receipt reconciliation per
+still-outstanding owned-invalidation generation, and unexpected no-work
+counters. Their exact sum must equal `wakeupCount`. The boundary
+`awaitingFrameReceipt` state proves whether the first such reconciliation in a
+window belongs to an invalidation issued before that window.
+Once a generation's cadence probe has been consumed, changing the cadence or
+render-owner set cannot re-arm it. The original bounded missing-receipt retry
+remains scheduled, and a timely receipt resumes ordinary rendering. Regression
+coverage includes 60-to-30 FPS transitions and fourteen-to-seven owner changes
+with coalesced root requests; no unexpected-wakeup allowance is introduced.
+`postCalibrationFrameWakeupCount` separately exposes any scheduler RAF polling
+after the bounded calibration has completed.
+
+Cross-tier owner profiles integrate how long the scheduler actually advertises
+30 FPS ambient and 60 FPS interaction targets. The canonical cross-tier scalar
+observation path reads only `targetFramesPerSecond` and `activeLeaseCount` from
+a compact frequent snapshot. It does not sort owners, build lease summaries, or
+copy the complete telemetry object on every browser frame. That semantic window
+hard-gates target extrema, lease stability, and observation coverage. The
+profiler then repeats the same steady or closed camera-motion workload in a
+separate window that reads full scheduler state only at its endpoints. The
+semantic and control endpoints must preserve the same exact render-lease owners,
+rates, and counts. Rendered-frame delivery and R3F receipts are gated together
+from the control window, so they describe the same observer-free work as the
+CPU, GPU, frame, render-work, and long-task regression metrics. Those metrics
+come from this `separate-observer-free-window-v1` control, while the paired
+semantic evidence is marked `separate-semantic-raf-window-v1`. Both markers and
+the observed RAF count are mandatory comparison inputs. A forced collection
+after the semantic window and before the control removes observer-only
+allocation residue; the control's endpoint heap and CPU still reflect its own
+natural collection behavior. Runtime-owner acceptance intentionally takes full
+RAF snapshots because it must inspect lease summaries; that richer diagnostic
+path remains outside the scalar optimization. Each target-rate window must
+deliver within its bounded frame budget, so declared lease rates alone cannot
+satisfy the cadence gate.
+
+The canonical cross-tier regression matrix has a different input contract: its
+wheel and rotation-key actions are discrete requests over a persistent 30 FPS
+ambient owner set. It observes the scalar target on every RAF and hard-gates
+28–32 rendered FPS; sustained held-input 60 FPS remains the responsibility of
+the runtime-owner profiles above.
+
+Full profiler telemetry remains pull-based and coherent. A consumer that reads
+the full object, including a `structuredClone` burst, receives one exact full
+scheduler snapshot for that synchronous read window; owner arrays, counters,
+pending-callback state, and lease summaries are never reconstructed from
+separately sampled hot scalars. The full snapshot supersedes the compact view
+for the remainder of that read burst, and both caches reset together afterward.
+Normal frames and scheduler wakeups therefore do not push or deep-copy full
+telemetry merely because the profiling fixture is enabled, while exact endpoint
+and lifecycle assertions still observe a coherent state.
+
+Required release evidence before merge:
+
+- `4778-release-v6/acceptance-awake` is the pending 21-run static, live-lifecycle,
+  and cross-policy semantic-owner gate. The earlier retained `acceptance` and
+  `acceptance-confirmation` bundles passed 19/21 and 17/21 respectively on
+  2026-09-02; neither is release evidence. Camera-owner failures coincided with
+  approximately 46–54 native browser callbacks per second during 60 FPS ownership.
+  Two live-lifecycle failures also counted a productive frame before asynchronous
+  offscreen observer delivery; all post-suspension residual work was exactly zero.
+  Those failures remain retained, not overwritten by passing reruns.
+- The separate `owner-display-awake-control` passed all 15 original owner runs
+  with the same clean runtime, frozen harness, browser flags, and unchanged 0.85
+  minimum delivery ratio. A command-scoped `caffeinate -du` assertion held the
+  macOS display awake; the prior diagnostic reported `Display Asleep: Yes`.
+  Delivered 60 FPS ratios were 0.9448–0.9939. The raw report and
+  `environment-control.json` retain that condition. This supports explicitly
+  recording display state for native-cadence checks, but does not establish
+  display sleep as the sole cause or substitute for the complete acceptance
+  bundle. No browser frame-rate flags, quality policy, or threshold changed.
+- `4778-release-v6/building-ambient` retains the initial focused two-run control:
+  both scenes preserve one stable 30 FPS owner set, but the empty-shell relative
+  native-rAF p95 gate failed (17.3 ms baseline versus 26.3 ms shell). Rendered
+  delivery was 30.0/30.1 FPS, draws 100/100, triangles 5,016/5,016 per frame,
+  and GPU p95 2.49/2.50 ms. This is not a passing control. The final acceptance
+  capture must also pass the matched building pair under the same warmed
+  browser process; all timing thresholds remain unchanged.
+- The earlier `4775-controlled-v5-final` readout remains diagnostic history;
+  its raw scratch artifacts were removed by the test runner. That clean matrix was structurally
+  valid; 312 of 314 comparisons and all 42 invariants passed, along with its
+  meaningful work, GPU, and memory gates. Its host/double-RAF cold Canvas timing
+  and dynamic-butterfly endpoint geometry mismatches are profiler/fixture
+  artifacts, so the matrix is not release evidence.
+- `.game-profile-results/4778-release-v6/baseline-1`, `baseline-2`, `candidate-1`, and
+  `candidate-2` must be independent captures collected by the same exact clean
+  contract-v6 profiler harness. The origin/main pair uses the exact
+  `legacy-heartbeat-v1` baseline contract; its superseded scheduler checks may
+  fail only as described above. The candidate pair captures the same clean
+  candidate subject and the same 39 canonical runs under `canonical-v1`.
+  `comparison` is the required fail-closed symmetric 2x2 result; “independent”
+  means separate profiler executions and reports, not different harness commits.
+  The first v6 candidate pair was rejected for one unexpected garden-switch
+  wakeup and its raw scratch artifacts were subsequently removed. The
+  replacement matrix uses frozen harness `f653a380ecb605654920ed24d86892225fdd10f2`,
+  clean baseline `8b10710a0958e14d15dcebf9a18969ba969039d9`, and corrected runtime
+  `aa48e2075ca65d083fd5a2fd083e3841e08732f9`. Both replacement candidate captures
+  pass all 39 producer runs and canonical input validation; every garden-switch
+  arrival has zero unexpected no-work wakeups. All 140 retained candidate files
+  remained byte-identical across the 43-case WebGL suite and repeated focused
+  tests. Baseline capture, strict comparison, and complete acceptance remain
+  pending; producer or self-comparison passes cannot substitute for them.
+- A producer report's budget/comparability status is not release clearance.
+  Garden-switch producer acceptance covers the shared scenario contract; the
+  release comparator additionally checks canonical scheduler invariants while
+  allowing only explicitly selected legacy-baseline omissions.
+- Garden-switch comparison uses a full-length initial control and hard-gates
+  GPU p95, semantic target delivery, scheduler callback conservation and exact
+  causal wakeup classification, zero unexpected no-work wakeups, zero
+  post-calibration scheduler RAF polling, per-render submissions, and
+  fixed-control total submissions. Arrivals 1–3 retain first-use resource
+  diagnostics; arrivals 4–7 and the page-lifetime resource peak are hard gates.
+  Every per-arrival occupancy window and the wall-time-weighted aggregate stay
+  visible as diagnostics; no sample is discarded and no threshold is widened.
+- For the legacy-heartbeat-to-canonical lifecycle migration, every raw
+  candidate active and context-restored sample must prove the 30 FPS boundary,
+  p95 ≤ 33.3 ms, and 28–32 rendered FPS. Baseline-relative p95/FPS remains
+  diagnostic; canonical-to-canonical lifecycle comparison remains relative.
+- Cross-tier steady and camera-motion GPU p95 are compared directly only under
+  the profiler-owned 30 Hz application/runtime RAF introduced by contract v4
+  and retained by contract v6. Every raw sample must prove that control
+  independently while profiler timing remains on native browser RAF.
+  Contract-v3 cadence-confounded artifacts are historical diagnostics and
+  cannot satisfy this release gate.
+- Cross-tier cold milestones must use the document-start, DPR-aware witness;
+  host/double-RAF timing remains diagnostic only. Every fresh resource snapshot
+  must prove a stable endpoint census and cumulative grounding-shadow exposure.
+  Geometry may pair only within shared exposure strata with the unchanged
+  one-count allowance; shaders and textures retain all fresh snapshots. Low may
+  declare an explicit empty exposure, while no shared stratum is invalid.
+- These local ARM64 macOS headless-Chromium/ANGLE-Metal artifacts cover the
+  deterministic harness only. Synthetic `document.hidden` is not a real
+  background tab. Timer-query occupancy is not a physical power or thermal
+  measurement, and the bundle does not prove physical-device thermal, touch,
+  memory-pressure, deployed, or production-traffic behavior. Thermal or power
+  clearance requires the separate real-device soak evidence described below.
+- Narrowing an always-on avatar owner further is a follow-up optimization only
+  where state-specific ownership can preserve the same interaction cadence.
+
+Expected impact: high across every quality tier, especially for static,
+backgrounded, and partially visible gardens, without reducing visual fidelity.
 
 ### 4. Snow overlays are still mounted and animated per instance
 
