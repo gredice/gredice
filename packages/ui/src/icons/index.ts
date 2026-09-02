@@ -1,6 +1,7 @@
 export {
     ALargeSmall as Auto,
     AlertTriangle as Warning,
+    Apple,
     ArrowDown,
     ArrowDownLeft,
     ArrowDownRight,
