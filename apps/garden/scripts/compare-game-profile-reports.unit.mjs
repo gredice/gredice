@@ -35,6 +35,7 @@ function crossTierLeaseTopology() {
 
 function sample(overrides = {}) {
     return {
+        drawCalls: 6_000,
         drawCallsPerRenderedFrame: 200,
         gpu: {
             complete: false,
@@ -49,6 +50,7 @@ function sample(overrides = {}) {
         longTaskTotalMs: 0,
         p95FrameMs: 16,
         renderedFps: 30,
+        submittedTriangles: 900_000,
         trianglesPerRenderedFrame: 30_000,
         ...overrides,
     };
@@ -71,6 +73,14 @@ function setAvailableGpuSample(
         supported: true,
         valid: true,
     };
+    if (target.runtimeFrameLoopCounterDeltas) {
+        const deltas = target.runtimeFrameLoopCounterDeltas;
+        deltas.ownedInvalidationCount = renderedFrames;
+        deltas.r3fFrameCallbackCount = renderedFrames;
+        deltas.wakeupCount = renderedFrames;
+        deltas.scheduledCallbackCount =
+            renderedFrames + deltas.cancelledCallbackCount;
+    }
 }
 
 function runtime(overrides = {}) {
@@ -302,12 +312,24 @@ function gardenSwitchScenario(profileRun) {
     const arrival = (arrivalIndex, profile, timing) => {
         const arrivalSample = sample({
             runtimeFrameLoopAtEnd: {
+                callbackPending: true,
                 effectiveVisible: true,
                 targetFramesPerSecond: 30,
             },
             runtimeFrameLoopAtStart: {
+                callbackPending: true,
                 effectiveVisible: true,
                 targetFramesPerSecond: 30,
+            },
+            runtimeFrameLoopCounterDeltas: {
+                cancelledCallbackCount: 1,
+                fixedStepFailureCount: 0,
+                invalidationFailureCount: 0,
+                missedFrameReceiptCount: 0,
+                ownedInvalidationCount: 30,
+                r3fFrameCallbackCount: 30,
+                scheduledCallbackCount: 31,
+                wakeupCount: 30,
             },
         });
         setAvailableGpuSample(arrivalSample, {
@@ -388,7 +410,7 @@ function report({
     overrides = {},
 }) {
     return {
-        comparisonContractVersion: 1,
+        comparisonContractVersion: 2,
         generatedAt: '2026-08-30T00:00:00.000Z',
         options: {
             allowLegacyOperationVisuals: false,
@@ -425,7 +447,7 @@ function report({
             ...scenario,
             servedBuildProvenance: {
                 commit,
-                comparisonContractVersion: 1,
+                comparisonContractVersion: 2,
                 dirty: false,
             },
         })),
@@ -2822,8 +2844,11 @@ test('garden-switch rendered FPS uses exact semantic target evidence instead of 
         }
     }
     for (const scenario of candidate.scenarios) {
-        for (const arrival of scenario.gardenSwitch.arrivals) {
-            arrival.sample.renderedFps = 35;
+        for (const [
+            index,
+            arrival,
+        ] of scenario.gardenSwitch.arrivals.entries()) {
+            arrival.sample.renderedFps = index === 0 ? 30 : 35;
         }
     }
 
@@ -2834,11 +2859,12 @@ test('garden-switch rendered FPS uses exact semantic target evidence instead of 
 
     assert.equal(comparison.status, 'pass');
     assert.equal(renderedFps.length, 7);
-    for (const result of renderedFps) {
+    for (const [index, result] of renderedFps.entries()) {
         assert.equal(result.targetAwareRenderedFps, true);
         assert.equal(result.targetFramesPerSecond, 30);
         assert.equal(result.minimumRenderedFps, 28);
-        assert.equal(result.medianRatio, 0.7778);
+        assert.equal(result.maximumRenderedFps, index === 0 ? 32 : null);
+        assert.equal(result.medianRatio, index === 0 ? 0.6667 : 0.7778);
         assert.equal(result.baselineRelativeDiagnosticOnly, true);
         assert.equal(result.baselineRelativeScreeningBreach, true);
         assert.equal(result.screeningBreach, false);
@@ -2849,11 +2875,16 @@ test('garden-switch rendered FPS uses exact semantic target evidence instead of 
                 (run) =>
                     run.pass === true &&
                     run.candidateFloorPass === true &&
+                    run.candidateCeilingPass === true &&
                     run.baselineRelativePass === false,
             ),
             true,
         );
     }
+    assert.match(
+        buildMarkdown(comparison),
+        /candidate 28-32 fps around declared 30 fps target; every raw run; baseline-relative ratio diagnostic only/,
+    );
     assert.match(
         buildMarkdown(comparison),
         /candidate >= 28 fps \(target 30 fps, 2 fps tolerance\); baseline-relative ratio diagnostic only/,
@@ -2927,7 +2958,33 @@ test('garden-switch semantic rendered-FPS gate rejects a true under-target caden
     );
 });
 
-test('garden-switch GPU p95 is diagnostic while elapsed-window occupancy gates total GPU work', () => {
+test('garden-switch full-length control rejects over-target cadence', () => {
+    const { baseline, candidate } = reportPair(gardenSwitchScenario);
+    for (const scenario of candidate.scenarios) {
+        scenario.gardenSwitch.arrivals[0].sample.renderedFps = 32.1;
+    }
+
+    const comparison = comparePartialReports(baseline, candidate);
+    const renderedFps = comparison.comparisons.find(
+        (result) =>
+            result.id === 'frame.rendered_fps' &&
+            result.phase === 'arrival-1-high-target',
+    );
+
+    assert.equal(comparison.status, 'regression');
+    assert.equal(comparison.exitCode, 1);
+    assert.equal(renderedFps.maximumRenderedFps, 32);
+    assert.equal(renderedFps.pass, false);
+    assert.equal(renderedFps.regressionBreach, true);
+    assert.equal(
+        renderedFps.individual.every(
+            (run) => run.candidateCeilingPass === false && run.pass === false,
+        ),
+        true,
+    );
+});
+
+test('garden-switch GPU p95 gates latency while elapsed occupancy stays diagnostic', () => {
     const { baseline, candidate } = reportPair(gardenSwitchScenario);
     for (const scenario of baseline.scenarios) {
         for (const arrival of scenario.gardenSwitch.arrivals) {
@@ -2961,36 +3018,35 @@ test('garden-switch GPU p95 is diagnostic while elapsed-window occupancy gates t
         (result) => result.id === 'gpu.elapsed_workflow_occupancy_percent',
     );
 
-    assert.equal(comparison.status, 'pass');
+    assert.equal(comparison.status, 'regression');
     assert.equal(gpuP95.length, 7);
     assert.equal(gpuOccupancy.length, 7);
     for (const result of gpuP95) {
         assert.equal(result.medianRatio, 1.5333);
-        assert.equal(result.baselineRelativeDiagnosticOnly, true);
-        assert.equal(result.baselineRelativeRegressionBreach, true);
-        assert.equal(result.diagnosticOnly, true);
-        assert.equal(result.screeningBreach, false);
-        assert.equal(result.regressionBreach, false);
-        assert.equal(result.pass, true);
+        assert.notEqual(result.diagnosticOnly, true);
+        assert.equal(result.screeningBreach, true);
+        assert.equal(result.regressionBreach, true);
+        assert.equal(result.pass, false);
     }
     for (const result of gpuOccupancy) {
         assert.equal(result.baselineMedian, 45);
         assert.equal(result.candidateMedian, 33);
         assert.equal(result.medianRatio, 0.7333);
+        assert.equal(result.diagnosticOnly, true);
         assert.equal(result.regressionBreach, false);
         assert.equal(result.pass, true);
     }
-    assert.notEqual(gpuOccupancy[0].diagnosticOnly, true);
     assert.equal(workflowOccupancy.baselineMedian, 45);
     assert.equal(workflowOccupancy.candidateMedian, 33);
+    assert.equal(workflowOccupancy.diagnosticOnly, true);
     assert.equal(workflowOccupancy.pass, true);
     assert.match(
         buildMarkdown(comparison),
-        /diagnostic only; gated by gpu\.elapsed_window_occupancy_percent/,
+        /diagnostic only; gated by GPU p95, semantic delivery, scheduler wakeup efficiency, and submitted render work/,
     );
 });
 
-test('garden-switch elapsed-workflow GPU occupancy rejects a true total GPU regression', () => {
+test('garden-switch elapsed occupancy remains diagnostic when timer-query duty cycle rises', () => {
     const { baseline, candidate } = reportPair(gardenSwitchScenario);
     for (const scenario of baseline.scenarios) {
         for (const arrival of scenario.gardenSwitch.arrivals) {
@@ -3018,16 +3074,18 @@ test('garden-switch elapsed-workflow GPU occupancy rejects a true total GPU regr
         (result) => result.id === 'gpu.elapsed_workflow_occupancy_percent',
     );
 
-    assert.equal(comparison.status, 'regression');
-    assert.equal(comparison.exitCode, 1);
+    assert.equal(comparison.status, 'pass');
+    assert.equal(comparison.exitCode, 0);
     assert.equal(gpuOccupancy.baselineMedian, 40);
     assert.equal(gpuOccupancy.candidateMedian, 60);
     assert.equal(gpuOccupancy.medianRatio, 1.5);
-    assert.equal(gpuOccupancy.regressionBreach, true);
-    assert.equal(gpuOccupancy.pass, false);
+    assert.equal(gpuOccupancy.baselineRelativeRegressionBreach, true);
+    assert.equal(gpuOccupancy.diagnosticOnly, true);
+    assert.equal(gpuOccupancy.regressionBreach, false);
+    assert.equal(gpuOccupancy.pass, true);
 });
 
-test('garden-switch full-length initial GPU occupancy is a hard gate', () => {
+test('garden-switch full-length initial occupancy remains a complete diagnostic', () => {
     const { baseline, candidate } = reportPair(gardenSwitchScenario);
     for (const scenario of baseline.scenarios) {
         for (const arrival of scenario.gardenSwitch.arrivals) {
@@ -3046,7 +3104,7 @@ test('garden-switch full-length initial GPU occupancy is a hard gate', () => {
         ] of scenario.gardenSwitch.arrivals.entries()) {
             setAvailableGpuSample(arrival.sample, {
                 elapsedMs: 1_000,
-                elapsedP95Ms: index === 0 ? 30 : 15,
+                elapsedP95Ms: 15,
                 elapsedTotalMs: index === 0 ? 600 : 400,
                 renderedFrames: 40,
             });
@@ -3063,18 +3121,19 @@ test('garden-switch full-length initial GPU occupancy is a hard gate', () => {
         (result) => result.id === 'gpu.elapsed_workflow_occupancy_percent',
     );
 
-    assert.equal(comparison.status, 'regression');
-    assert.equal(comparison.exitCode, 1);
+    assert.equal(comparison.status, 'pass');
+    assert.equal(comparison.exitCode, 0);
     assert.equal(initialOccupancy.medianRatio, 1.5);
-    assert.notEqual(initialOccupancy.diagnosticOnly, true);
-    assert.equal(initialOccupancy.regressionBreach, true);
-    assert.equal(initialOccupancy.pass, false);
+    assert.equal(initialOccupancy.baselineRelativeRegressionBreach, true);
+    assert.equal(initialOccupancy.diagnosticOnly, true);
+    assert.equal(initialOccupancy.regressionBreach, false);
+    assert.equal(initialOccupancy.pass, true);
     assert.equal(workflowOccupancy.baselineMedian, 40);
     assert.equal(workflowOccupancy.candidateMedian, 42.8571);
     assert.equal(workflowOccupancy.pass, true);
 });
 
-test('garden-switch workflow gate aggregates a full-length initial GPU regression', () => {
+test('garden-switch workflow occupancy preserves the wall-time-weighted diagnostic', () => {
     const { baseline, candidate } = reportPair(gardenSwitchScenario);
     for (const scenario of baseline.scenarios) {
         for (const [
@@ -3113,30 +3172,107 @@ test('garden-switch workflow gate aggregates a full-length initial GPU regressio
         (result) => result.id === 'gpu.elapsed_workflow_occupancy_percent',
     );
 
-    assert.equal(comparison.status, 'regression');
-    assert.notEqual(initialOccupancy.diagnosticOnly, true);
-    assert.equal(initialOccupancy.pass, false);
-    assert.equal(initialOccupancy.regressionBreach, true);
+    assert.equal(comparison.status, 'pass');
+    assert.equal(initialOccupancy.diagnosticOnly, true);
+    assert.equal(initialOccupancy.pass, true);
+    assert.equal(initialOccupancy.baselineRelativeRegressionBreach, true);
     assert.equal(workflowOccupancy.baselineMedian, 35.7143);
     assert.equal(workflowOccupancy.candidateMedian, 47.1429);
     assert.equal(workflowOccupancy.medianRatio, 1.32);
-    assert.equal(workflowOccupancy.regressionBreach, true);
-    assert.equal(workflowOccupancy.pass, false);
-    assert.deepEqual(
-        comparison.comparisons
-            .filter((result) => result.regressionBreach)
-            .map((result) => result.id),
-        [
-            'gpu.elapsed_window_occupancy_percent',
-            'gpu.elapsed_workflow_occupancy_percent',
-        ],
-    );
+    assert.equal(workflowOccupancy.diagnosticOnly, true);
+    assert.equal(workflowOccupancy.baselineRelativeRegressionBreach, true);
+    assert.equal(workflowOccupancy.regressionBreach, false);
+    assert.equal(workflowOccupancy.pass, true);
 });
 
-test('garden-switch elapsed-window GPU occupancy fails closed for incomplete totals', async (t) => {
+test('garden-switch full-length control gates total submitted work', () => {
+    const { baseline, candidate } = reportPair(gardenSwitchScenario);
+    for (const scenario of candidate.scenarios) {
+        const sampleValue = scenario.gardenSwitch.arrivals[0].sample;
+        sampleValue.drawCalls *= 1.06;
+        sampleValue.submittedTriangles *= 1.06;
+    }
+
+    const comparison = comparePartialReports(baseline, candidate);
+    const totalDraws = comparison.comparisons.find(
+        (result) => result.id === 'render.draw_calls_total',
+    );
+    const totalTriangles = comparison.comparisons.find(
+        (result) => result.id === 'render.triangles_total',
+    );
+
+    assert.equal(comparison.status, 'regression');
+    assert.equal(comparison.exitCode, 1);
+    for (const result of [totalDraws, totalTriangles]) {
+        assert.equal(result.phase, 'arrival-1-high-target');
+        assert.equal(result.medianLimit, 1.05);
+        assert.equal(result.runLimit, 1.1);
+        assert.equal(result.medianRatio, 1.06);
+        assert.equal(result.regressionBreach, true);
+        assert.equal(result.pass, false);
+    }
+});
+
+test('garden-switch scheduler efficiency rejects non-semantic wakeups', async (t) => {
+    const cases = {
+        'callback conservation mismatch': {
+            expected: /callback conservation must equal/,
+            mutate: (sampleValue) => {
+                sampleValue.runtimeFrameLoopCounterDeltas.scheduledCallbackCount += 1;
+            },
+        },
+        'missed frame receipt': {
+            expected: /missedFrameReceiptCount must be 0/,
+            mutate: (sampleValue) => {
+                sampleValue.runtimeFrameLoopCounterDeltas.missedFrameReceiptCount = 1;
+            },
+        },
+        'perpetual RAF wakeups': {
+            expected: /wakeupCount must not exceed useful rendered/,
+            mutate: (sampleValue) => {
+                const deltas = sampleValue.runtimeFrameLoopCounterDeltas;
+                deltas.wakeupCount = 390;
+                deltas.scheduledCallbackCount =
+                    deltas.wakeupCount + deltas.cancelledCallbackCount;
+            },
+        },
+        'render receipt mismatch': {
+            expected: /renderedFrames must equal the positive/,
+            mutate: (sampleValue) => {
+                sampleValue.runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount -= 1;
+            },
+        },
+    };
+
+    for (const [name, { expected, mutate }] of Object.entries(cases)) {
+        await t.test(name, () => {
+            const { baseline, candidate } = reportPair(gardenSwitchScenario);
+            mutate(candidate.scenarios[0].gardenSwitch.arrivals[0].sample);
+
+            const comparison = comparePartialReports(baseline, candidate);
+            assert.equal(comparison.status, 'invalid');
+            assert.equal(comparison.exitCode, 2);
+            assert.match(comparison.validationErrors.join('\n'), expected);
+        });
+    }
+});
+
+test('garden-switch elapsed-window GPU evidence fails closed for incomplete or unordered timing', async (t) => {
     const cases = {
         'mismatched GPU sample count': (sample) => {
             sample.gpu.sampleCount -= 1;
+        },
+        'non-null valid timing reason': (sample) => {
+            sample.gpu.reason = 'unexpected timer state';
+        },
+        'p95 exceeds maximum': (sample) => {
+            sample.gpu.elapsedMaxMs = sample.gpu.elapsedP95Ms - 1;
+        },
+        'maximum exceeds total': (sample) => {
+            sample.gpu.elapsedMaxMs = sample.gpu.elapsedTotalMs + 1;
+        },
+        'missing GPU maximum': (sample) => {
+            delete sample.gpu.elapsedMaxMs;
         },
         'missing GPU total': (sample) => {
             delete sample.gpu.elapsedTotalMs;
@@ -3165,7 +3301,7 @@ test('garden-switch elapsed-window GPU occupancy fails closed for incomplete tot
             assert.equal(comparison.exitCode, 2);
             assert.match(
                 comparison.validationErrors.join('\n'),
-                /GPU elapsed-window occupancy requires/,
+                /GPU elapsed-window evidence requires/,
             );
         });
     }
@@ -3296,7 +3432,7 @@ test('provenance rejects malformed, dirty, mismatched, and same-source reports',
             candidate.scenarios[0].servedBuildProvenance.dirty = true;
         },
         'mismatched scenario contract': ({ candidate }) => {
-            candidate.scenarios[0].servedBuildProvenance.comparisonContractVersion = 2;
+            candidate.scenarios[0].servedBuildProvenance.comparisonContractVersion = 3;
         },
         'producer marked incomparable': ({ candidate }) => {
             candidate.provenance.comparable = false;

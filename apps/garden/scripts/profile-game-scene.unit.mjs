@@ -167,7 +167,7 @@ const provenanceCommitA = 'a'.repeat(40);
 const provenanceCommitB = 'b'.repeat(40);
 const cleanServedBuildMarker = {
     commit: provenanceCommitA,
-    comparisonContractVersion: 1,
+    comparisonContractVersion: 2,
     dirty: false,
 };
 
@@ -323,7 +323,7 @@ test('report provenance rejects served-build, managed harness, and contract mism
             {
                 servedBuildProvenance: {
                     ...cleanServedBuildMarker,
-                    comparisonContractVersion: 2,
+                    comparisonContractVersion: 3,
                 },
             },
         ],
@@ -382,7 +382,7 @@ test('external report provenance still rejects served-build and contract mismatc
             {
                 servedBuildProvenance: {
                     ...cleanServedBuildMarker,
-                    comparisonContractVersion: 2,
+                    comparisonContractVersion: 3,
                 },
             },
         ],
@@ -2638,7 +2638,7 @@ test('legacy lifecycle renderer stats mode is limited to an explicit clean exter
     };
     const cleanSubject = {
         commit: 'b'.repeat(40),
-        comparisonContractVersion: 1,
+        comparisonContractVersion: 2,
         dirty: false,
     };
     assert.equal(
@@ -2658,7 +2658,7 @@ test('legacy lifecycle renderer stats mode is limited to an explicit clean exter
         {
             servedBuild: {
                 ...cleanSubject,
-                comparisonContractVersion: 2,
+                comparisonContractVersion: 3,
             },
         },
     ]) {

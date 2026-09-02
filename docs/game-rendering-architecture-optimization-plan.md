@@ -1035,9 +1035,12 @@ Progress:
   oversubmission. Canonical cross-tier RAFs must observe an exact 30 FPS target,
   stable visible leases, reconciled R3F receipts, and 28–32 rendered FPS in
   every raw run; held camera input retains its separate 60 FPS owner gate.
-  Garden-switch GPU work hard-gates elapsed occupancy across the complete
-  seven-arrival workflow while retaining the first short new-context window as
-  an explicit diagnostic and preserving later per-arrival gates.
+  Comparison contract v2 hard-gates garden-switch GPU p95, semantic target
+  delivery, scheduler callback conservation and wakeup efficiency, per-render
+  submissions, and fixed-control total submissions. Complete elapsed GPU
+  occupancy remains visible per arrival and across the wall-time-weighted
+  seven-arrival workflow, but is diagnostic because headless ANGLE timer-query
+  batching and GPU power state can change it without changing useful work.
 - Added a dedicated `static-idle` harness scenario for a visible, fixed-midday,
   clear High-quality mock scene. It keeps normal continuous-render leases and
   the root invalidation broker enabled, reports that policy as acceptance
@@ -1059,8 +1062,9 @@ Progress:
   hidden prewarm from starting, but the browser/GPU may finish and retain the
   submitted shared compilation. The closure matrix pairs two clean
   `origin/main` captures with two clean candidate captures across 39 canonical
-  cross-tier, fauna, garden-switch, and lifecycle runs. The local headless
-  evidence does not replace a physical-device thermal, touch, memory-pressure,
+  cross-tier, fauna, garden-switch, and lifecycle runs under comparison
+  contract v2. The local headless evidence, including timer-query occupancy,
+  does not replace a physical-device thermal, power, touch, memory-pressure,
   real background-tab, deployed, or production-traffic check.
 
 ## Suggested implementation order

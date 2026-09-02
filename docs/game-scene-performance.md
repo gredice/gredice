@@ -293,16 +293,29 @@ increase live geometry, program, or texture counts. Reports keep all three
 independent runs and all 21 arrivals visible so a passing median cannot hide one
 broken switch.
 
-Garden-switch GPU release comparison uses total elapsed timer-query work divided
-by total sampled wall time across the complete seven-arrival workflow. The
-aggregate is intentionally wall-time-weighted, so the full-length arrival 1
-control contributes its complete observed duration while the later transition
-windows contribute theirs. That whole-workflow occupancy and every per-arrival
-occupancy window remain hard symmetric 2x2 gates. Per-arrival GPU p95 remains an
-explicit diagnostic gated by the corresponding occupancy window; this does not
-discard a query, widen the regression thresholds, or hide raw values. Complete
-GPU timing for all seven arrivals is mandatory in confirmed release evidence;
-an unsupported or incomplete workflow is invalid rather than a passing skip.
+Garden-switch GPU release comparison hard-gates replicated per-arrival GPU p95
+medians with the same 15%/3 ms threshold used elsewhere. The 40%/6 ms raw-rank
+threshold stays diagnostic, so one isolated rank remains visible without
+standing in for a reproduced regression. The comparison also gates draw calls
+and submitted triangles per rendered frame on every arrival, plus total
+submissions in the fixed-length arrival 1 control. The initial control must
+deliver 28–32 FPS around its observed 30 FPS semantic target; transition
+arrivals retain the 28 FPS floor because their bounded one-shot invalidations
+may exceed the steady target. Scheduler callback conservation and wakeup
+efficiency are fail-closed candidate invariants, so a perpetual RAF keepalive
+cannot improve a GPU signal by adding browser wakeups without useful render or
+owned-invalidation work. The full control permits at most five surplus wakeups;
+transition windows permit ten for their bounded one-shot scheduling work.
+
+Elapsed timer-query work divided by sampled wall time remains visible for every
+arrival and as a wall-time-weighted seven-arrival aggregate. It is diagnostic,
+not a release gate: on headless Chromium with ANGLE Metal, timer-query flushes,
+command-buffer batching, and GPU power-state behavior can make lower-wakeup
+semantic scheduling report higher occupancy without changing submitted work or
+GPU p95. No query is discarded and no threshold is widened. Complete,
+non-disjoint, internally ordered GPU timing for all seven arrivals remains
+mandatory in confirmed release evidence; unsupported, incomplete, mismatched,
+or invalid timing makes the comparison invalid rather than a passing skip.
 
 The lifecycle scenario is one deterministic High target repeated in three
 fresh browser contexts at `1280x720`, reported DPR 2, fixed midday time, and the
@@ -475,7 +488,7 @@ topology signature and allowlists only the resulting scheduler checks, while the
 candidate and its confirmation remain on `canonical-v1`.
 Build and start the baseline and candidate subjects as external servers from
 separate clean worktrees. Confirm cleanliness before marking the embedded dirty
-state `false`; the current comparison contract is `1`. Run only one subject
+state `false`; the current comparison contract is `2`. Run only one subject
 server and capture at a time so the other server cannot perturb the sample:
 
 ```bash
@@ -484,7 +497,7 @@ profile_subject_commit=$(git rev-parse HEAD) &&
 test -z "$(git status --porcelain --untracked-files=normal)" &&
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT="$profile_subject_commit" \
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY=false \
-NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=1 \
+NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=2 \
   pnpm --filter garden build &&
 GREDICE_GARDEN_START_PORT=3101 pnpm --filter garden start
 
@@ -494,7 +507,7 @@ profile_subject_commit=$(git rev-parse HEAD) &&
 test -z "$(git status --porcelain --untracked-files=normal)" &&
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT="$profile_subject_commit" \
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY=false \
-NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=1 \
+NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=2 \
   pnpm --filter garden build &&
 GREDICE_GARDEN_START_PORT=3102 pnpm --filter garden start
 ```
@@ -695,13 +708,15 @@ mature phases and the four-witness lifetime peak.
 | Long-task maximum / total duration | 20% | 10 / 20 ms |
 
 Rendered FPS uses the generic relative gate except where a scenario declares a
-semantic scheduler target. Cross-tier candidates must keep every raw run within
-28–32 FPS around an observed 30 FPS target; garden-switch arrivals must deliver
-at least 28 FPS around their 30 FPS target. Baseline-relative FPS ratios stay in
-the report as diagnostics for those cases, so eliminating oversubmission is not
-misclassified as lost performance. Garden-switch GPU p95 is also diagnostic;
-the hard work gate is elapsed GPU occupancy, including the aggregate
-seven-arrival workflow described above.
+semantic scheduler target. Cross-tier candidates and the fixed garden-switch
+arrival 1 control must keep every raw run within 28–32 FPS around an observed
+30 FPS target; later garden-switch transition arrivals must deliver at least
+28 FPS. Baseline-relative FPS ratios stay in the report as diagnostics for
+those cases, so eliminating oversubmission is not misclassified as lost
+performance. Garden-switch GPU p95, per-render submissions, fixed-control total
+submissions, and scheduler wakeup efficiency are hard gates. Elapsed GPU
+occupancy remains a complete raw diagnostic rather than a proxy for power or
+thermal behavior.
 
 “Practical floor” is not an extra allowance added to the percentage. A signal
 is meaningful when its worsening reaches the floor while also crossing the
@@ -1561,15 +1576,17 @@ Required release evidence before merge:
   the same 39 canonical runs under `canonical-v1`. `comparison-final` is the
   fail-closed symmetric 2x2 result; “independent” means separate profiler
   executions and reports, not different harness commits.
-- Garden-switch comparison uses a full-length initial control and hard-gates its
-  elapsed GPU occupancy, every later per-arrival occupancy window, and the
-  wall-time-weighted aggregate across all seven arrivals. Per-arrival GPU p95
-  stays visible as a diagnostic; no sample is discarded and no threshold is
-  widened.
+- Garden-switch comparison uses a full-length initial control and hard-gates
+  GPU p95, semantic target delivery, scheduler callback conservation and wakeup
+  efficiency, per-render submissions, and fixed-control total submissions.
+  Every per-arrival occupancy window and the wall-time-weighted aggregate stay
+  visible as diagnostics; no sample is discarded and no threshold is widened.
 - These local ARM64 macOS headless-Chromium/ANGLE-Metal artifacts cover the
   deterministic harness only. Synthetic `document.hidden` is not a real
-  background tab, and the bundle does not prove physical-device thermal,
-  touch, memory-pressure, deployed, or production-traffic behavior.
+  background tab. Timer-query occupancy is not a physical power or thermal
+  measurement, and the bundle does not prove physical-device thermal, touch,
+  memory-pressure, deployed, or production-traffic behavior. Thermal or power
+  clearance requires the separate real-device soak evidence described below.
 - Narrowing an always-on avatar owner further is a follow-up optimization only
   where state-specific ownership can preserve the same interaction cadence.
 

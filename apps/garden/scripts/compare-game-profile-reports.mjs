@@ -10,7 +10,7 @@ import {
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const comparisonContractVersion = 1;
+const comparisonContractVersion = 2;
 const profileSchemaVersion = 6;
 const defaultOutDir = resolve(
     dirname(fileURLToPath(import.meta.url)),
@@ -64,6 +64,12 @@ const gardenSwitchTargetFramesPerSecond = 30;
 const gardenSwitchRenderedFpsTolerance = 2;
 const gardenSwitchMinimumRenderedFps =
     gardenSwitchTargetFramesPerSecond - gardenSwitchRenderedFpsTolerance;
+const gardenSwitchMaximumRenderedFps =
+    gardenSwitchTargetFramesPerSecond + gardenSwitchRenderedFpsTolerance;
+const gardenSwitchInitialWakeupSurplus = 5;
+const gardenSwitchTransitionWakeupSurplus = 10;
+const gardenSwitchGpuOccupancyDiagnosticGate =
+    'GPU p95, semantic delivery, scheduler wakeup efficiency, and submitted render work';
 const crossTierTargetFramesPerSecond = 30;
 const crossTierRenderedFpsTolerance = 2;
 const crossTierMinimumRenderedFps =
@@ -293,6 +299,27 @@ const ratioMetricRegistry = [
         runLimit: 1.3,
         read: ({ cdp }) => cdp?.scriptDuration,
         unit: 's',
+    },
+];
+
+const gardenSwitchInitialTotalWorkMetricRegistry = [
+    {
+        id: 'render.draw_calls_total',
+        label: 'total draw calls',
+        direction: 'maximum',
+        medianLimit: 1.05,
+        runLimit: 1.1,
+        read: ({ sample }) => sample?.drawCalls,
+        unit: 'draws',
+    },
+    {
+        id: 'render.triangles_total',
+        label: 'total submitted triangles',
+        direction: 'maximum',
+        medianLimit: 1.05,
+        runLimit: 1.1,
+        read: ({ sample }) => sample?.submittedTriangles,
+        unit: 'triangles',
     },
 ];
 
@@ -2146,14 +2173,25 @@ function gpuState(sample) {
 
 function gpuElapsedWindowOccupancyState(sample) {
     const elapsedMs = sample?.elapsedMs;
-    const elapsedTotalMs = sample?.gpu?.elapsedTotalMs;
+    const gpu = sample?.gpu;
+    const elapsedMaxMs = gpu?.elapsedMaxMs;
+    const elapsedP95Ms = gpu?.elapsedP95Ms;
+    const elapsedTotalMs = gpu?.elapsedTotalMs;
     const renderedFrames = sample?.renderedFrames;
-    const sampleCount = sample?.gpu?.sampleCount;
+    const sampleCount = gpu?.sampleCount;
     const valid =
+        gpuState(sample).available === true &&
         isFiniteNumber(elapsedMs) &&
         elapsedMs > 0 &&
+        isFiniteNumber(elapsedP95Ms) &&
+        elapsedP95Ms > 0 &&
+        isFiniteNumber(elapsedMaxMs) &&
+        elapsedMaxMs > 0 &&
+        elapsedP95Ms <= elapsedMaxMs &&
         isFiniteNumber(elapsedTotalMs) &&
         elapsedTotalMs > 0 &&
+        elapsedMaxMs <= elapsedTotalMs &&
+        gpu.reason === null &&
         Number.isInteger(renderedFrames) &&
         renderedFrames > 0 &&
         sampleCount === renderedFrames;
@@ -2585,9 +2623,12 @@ function buildTargetAwareRenderedFpsComparison({
     };
 }
 
-function buildGardenSwitchRenderedFpsComparison({ rows, ...metric }) {
+function buildGardenSwitchRenderedFpsComparison({ phase, rows, ...metric }) {
     return buildTargetAwareRenderedFpsComparison({
         ...metric,
+        maximumRenderedFps: phase.startsWith('arrival-1-')
+            ? gardenSwitchMaximumRenderedFps
+            : null,
         minimumRenderedFps: gardenSwitchMinimumRenderedFps,
         rows,
         targetFramesPerSecond: gardenSwitchTargetFramesPerSecond,
@@ -2606,7 +2647,7 @@ function buildCrossTierRenderedFpsComparison({ rows, ...metric }) {
     });
 }
 
-function buildGardenSwitchGpuP95Diagnostic({ rows, ...metric }) {
+function buildRatioDiagnosticComparison({ gatedBy, rows, ...metric }) {
     const baselineRelative = buildRatioComparison({ ...metric, rows });
     return {
         ...baselineRelative,
@@ -2614,7 +2655,7 @@ function buildGardenSwitchGpuP95Diagnostic({ rows, ...metric }) {
         baselineRelativeRegressionBreach: baselineRelative.regressionBreach,
         baselineRelativeScreeningBreach: baselineRelative.screeningBreach,
         diagnosticOnly: true,
-        gatedBy: 'gpu.elapsed_window_occupancy_percent',
+        gatedBy,
         individual: baselineRelative.individual.map((run) => ({
             ...run,
             baselineRelativePass: run.pass,
@@ -2630,11 +2671,12 @@ function buildGardenSwitchGpuP95Diagnostic({ rows, ...metric }) {
 }
 
 function validateGardenSwitchCandidateFrameContract(row, errors) {
+    const sample = row.candidate?.sample;
     for (const boundary of [
         'runtimeFrameLoopAtStart',
         'runtimeFrameLoopAtEnd',
     ]) {
-        const snapshot = row.candidate?.sample?.[boundary];
+        const snapshot = sample?.[boundary];
         const path = `${row.scenario} run ${row.profileRun} ${row.phase} candidate.sample.${boundary}`;
         if (!isRecord(snapshot)) {
             errors.push(`${path} is missing`);
@@ -2649,6 +2691,93 @@ function validateGardenSwitchCandidateFrameContract(row, errors) {
         }
         if (snapshot.effectiveVisible !== true) {
             errors.push(`${path}.effectiveVisible must be true`);
+        }
+        if (typeof snapshot.callbackPending !== 'boolean') {
+            errors.push(`${path}.callbackPending must be a boolean`);
+        }
+    }
+
+    const path = `${row.scenario} run ${row.profileRun} ${row.phase} candidate.sample`;
+    const renderedFrames = sample?.renderedFrames;
+    const counterDeltas = sample?.runtimeFrameLoopCounterDeltas;
+    if (!isRecord(counterDeltas)) {
+        errors.push(`${path}.runtimeFrameLoopCounterDeltas is missing`);
+        return;
+    }
+    const counterFields = [
+        'scheduledCallbackCount',
+        'wakeupCount',
+        'ownedInvalidationCount',
+        'cancelledCallbackCount',
+        'r3fFrameCallbackCount',
+        'fixedStepFailureCount',
+        'invalidationFailureCount',
+        'missedFrameReceiptCount',
+    ];
+    for (const field of counterFields) {
+        const value = counterDeltas[field];
+        if (!Number.isInteger(value) || value < 0) {
+            errors.push(
+                `${path}.runtimeFrameLoopCounterDeltas.${field} must be a non-negative integer`,
+            );
+        }
+    }
+    if (
+        !Number.isInteger(renderedFrames) ||
+        renderedFrames <= 0 ||
+        renderedFrames !== counterDeltas.r3fFrameCallbackCount
+    ) {
+        errors.push(
+            `${path}.renderedFrames must equal the positive runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount`,
+        );
+    }
+
+    const startPending = sample?.runtimeFrameLoopAtStart?.callbackPending;
+    const endPending = sample?.runtimeFrameLoopAtEnd?.callbackPending;
+    if (
+        counterFields.every((field) =>
+            Number.isInteger(counterDeltas[field]),
+        ) &&
+        typeof startPending === 'boolean' &&
+        typeof endPending === 'boolean'
+    ) {
+        const pendingCallbackDelta = Number(endPending) - Number(startPending);
+        const observedCallbackDelta =
+            counterDeltas.scheduledCallbackCount -
+            counterDeltas.wakeupCount -
+            counterDeltas.cancelledCallbackCount;
+        if (observedCallbackDelta !== pendingCallbackDelta) {
+            errors.push(
+                `${path}.runtimeFrameLoopCounterDeltas callback conservation must equal the pending callback delta; received ${observedCallbackDelta}, expected ${pendingCallbackDelta}`,
+            );
+        }
+
+        const usefulWorkCount = Math.max(
+            renderedFrames,
+            counterDeltas.ownedInvalidationCount,
+        );
+        const maximumWakeupSurplus = row.phase.startsWith('arrival-1-')
+            ? gardenSwitchInitialWakeupSurplus
+            : gardenSwitchTransitionWakeupSurplus;
+        if (
+            counterDeltas.wakeupCount >
+            usefulWorkCount + maximumWakeupSurplus
+        ) {
+            errors.push(
+                `${path}.runtimeFrameLoopCounterDeltas.wakeupCount must not exceed useful rendered or owned-invalidation work by more than ${maximumWakeupSurplus}; received ${counterDeltas.wakeupCount} wakeups for ${usefulWorkCount} useful events`,
+            );
+        }
+    }
+
+    for (const field of [
+        'fixedStepFailureCount',
+        'invalidationFailureCount',
+        'missedFrameReceiptCount',
+    ]) {
+        if (counterDeltas[field] !== 0) {
+            errors.push(
+                `${path}.runtimeFrameLoopCounterDeltas.${field} must be 0; received ${canonicalJson(counterDeltas[field])}`,
+            );
         }
     }
 }
@@ -3147,6 +3276,7 @@ function comparePairedScenarios(
                     group.scenario === gardenSwitchScenarioBaseName
                         ? buildGardenSwitchRenderedFpsComparison({
                               ...metric,
+                              phase: group.phase,
                               rows,
                           })
                         : requireCandidateFrameContract &&
@@ -3158,6 +3288,36 @@ function comparePairedScenarios(
                             })
                           : buildRatioComparison({ ...metric, rows })),
                 });
+            }
+        }
+
+        if (
+            requireCandidateFrameContract &&
+            group.scenario === gardenSwitchScenarioBaseName &&
+            group.phase.startsWith('arrival-1-')
+        ) {
+            for (const metric of gardenSwitchInitialTotalWorkMetricRegistry) {
+                const rows = [];
+                for (const row of group.rows) {
+                    addMetricRows({
+                        baselineValue: metric.read(row.baseline),
+                        candidateValue: metric.read(row.candidate),
+                        errors,
+                        metricId: metric.id,
+                        positiveRequired: true,
+                        required: true,
+                        row,
+                        rows,
+                        skipped,
+                    });
+                }
+                if (rows.length > 0) {
+                    comparisons.push({
+                        phase: group.phase,
+                        scenario: group.scenario,
+                        ...buildRatioComparison({ ...metric, rows }),
+                    });
+                }
             }
         }
 
@@ -3214,7 +3374,7 @@ function comparePairedScenarios(
                     );
                     if (!baselineOccupancy.valid || !candidateOccupancy.valid) {
                         errors.push(
-                            `${row.scenario} run ${row.profileRun} ${row.phase} GPU elapsed-window occupancy requires positive sample.elapsedMs, positive gpu.elapsedTotalMs, positive integer sample.renderedFrames, and gpu.sampleCount equal to sample.renderedFrames in both reports`,
+                            `${row.scenario} run ${row.profileRun} ${row.phase} GPU elapsed-window evidence requires complete, valid, non-disjoint timing; positive ordered gpu.elapsedP95Ms, gpu.elapsedMaxMs, and gpu.elapsedTotalMs; a null gpu.reason; positive sample.elapsedMs and sample.renderedFrames; and gpu.sampleCount equal to sample.renderedFrames in both reports`,
                         );
                     } else {
                         gpuOccupancyRows.push({
@@ -3232,38 +3392,26 @@ function comparePairedScenarios(
             comparisons.push({
                 phase: group.phase,
                 scenario: group.scenario,
-                ...(requireCandidateFrameContract &&
-                group.scenario === gardenSwitchScenarioBaseName
-                    ? buildGardenSwitchGpuP95Diagnostic({
-                          direction: 'maximum',
-                          id: 'gpu.p95_ms',
-                          label: 'GPU p95 duration',
-                          medianAbsoluteTolerance: 3,
-                          medianLimit: 1.15,
-                          rows: gpuRows,
-                          runAbsoluteTolerance: 6,
-                          runLimit: 1.4,
-                          unit: 'ms',
-                      })
-                    : buildRatioComparison({
-                          direction: 'maximum',
-                          id: 'gpu.p95_ms',
-                          label: 'GPU p95 duration',
-                          medianAbsoluteTolerance: 3,
-                          medianLimit: 1.15,
-                          rows: gpuRows,
-                          runAbsoluteTolerance: 6,
-                          runLimit: 1.4,
-                          unit: 'ms',
-                      })),
+                ...buildRatioComparison({
+                    direction: 'maximum',
+                    id: 'gpu.p95_ms',
+                    label: 'GPU p95 duration',
+                    medianAbsoluteTolerance: 3,
+                    medianLimit: 1.15,
+                    rows: gpuRows,
+                    runAbsoluteTolerance: 6,
+                    runLimit: 1.4,
+                    unit: 'ms',
+                }),
             });
         }
         if (gpuOccupancyRows.length > 0) {
             comparisons.push({
                 phase: group.phase,
                 scenario: group.scenario,
-                ...buildRatioComparison({
+                ...buildRatioDiagnosticComparison({
                     direction: 'maximum',
+                    gatedBy: gardenSwitchGpuOccupancyDiagnosticGate,
                     id: 'gpu.elapsed_window_occupancy_percent',
                     label: 'GPU elapsed-window occupancy',
                     medianAbsoluteTolerance: 5,
@@ -3336,8 +3484,9 @@ function comparePairedScenarios(
         comparisons.push({
             phase: 'workflow',
             scenario: gardenSwitchScenarioBaseName,
-            ...buildRatioComparison({
+            ...buildRatioDiagnosticComparison({
                 direction: 'maximum',
+                gatedBy: gardenSwitchGpuOccupancyDiagnosticGate,
                 id: 'gpu.elapsed_workflow_occupancy_percent',
                 label: 'GPU elapsed-workflow occupancy',
                 medianAbsoluteTolerance: 5,
