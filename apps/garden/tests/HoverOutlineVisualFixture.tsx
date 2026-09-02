@@ -26,7 +26,11 @@ function MarkFixtureReady({
     return null;
 }
 
-export function HoverOutlineCacheFixture() {
+export function HoverOutlineCacheFixture({
+    cacheEnabled = true,
+}: {
+    cacheEnabled?: boolean;
+}) {
     const [offset, setOffset] = useState(0);
     const [ready, setReady] = useState(false);
     const markReady = useCallback(() => setReady(true), []);
@@ -104,7 +108,11 @@ export function HoverOutlineCacheFixture() {
                             >
                                 <HoverOutline
                                     hovered
-                                    maskContentKey="static-box-v1"
+                                    maskContentKey={
+                                        cacheEnabled
+                                            ? 'static-box-v1'
+                                            : undefined
+                                    }
                                     thickness={5}
                                 >
                                     <mesh position={[offset, 0, 0]}>
