@@ -1908,9 +1908,9 @@ describe('GameRuntimeScheduler semantic work', () => {
         assertWakeupClassificationConserved(snapshot);
     });
 
-    it('rejects a second cadence probe for the same outstanding receipt generation', () => {
+    it('does not re-arm a consumed receipt probe after a cadence drop', () => {
         const queue = new FakeRuntimeQueue(60);
-        const { scheduler } = createScheduler({
+        const { invalidations, scheduler } = createScheduler({
             options: { baseFramesPerSecond: 60 },
             queue,
             simulateFrameCallbacks: true,
@@ -1920,66 +1920,192 @@ describe('GameRuntimeScheduler semantic work', () => {
             queue.runNext();
         }
         const start = scheduler.getSnapshot();
-        holdNextOwnedFrameReceipt(queue, scheduler);
+        const heldReceipt = holdNextOwnedFrameReceipt(queue, scheduler);
+        const invalidatedAt = invalidations.at(-1);
+        assert.ok(invalidatedAt !== undefined);
 
         queue.runNext();
+        const afterProbe = scheduler.getSnapshot();
+        const retry = queue.peekNextTask();
+        assert.ok(retry);
+        assertNear(retry.dueAt, invalidatedAt + 100);
+
         scheduler.setBaseFramesPerSecond(30);
-        queue.runNext();
+        assert.equal(queue.peekNextTask(), retry);
+        queue.runUntil(invalidatedAt + 1000 / 30 + 1);
 
-        const snapshot = scheduler.getSnapshot();
-        assert.equal(snapshot.awaitingFrameReceipt, true);
-        assert.equal(
-            snapshot.pendingFrameReceiptReconciliationWakeupCount -
-                start.pendingFrameReceiptReconciliationWakeupCount,
-            1,
-        );
-        assert.equal(
-            snapshot.unexpectedNoWorkWakeupCount -
-                start.unexpectedNoWorkWakeupCount,
-            1,
-        );
-        assertWakeupClassificationConserved(snapshot);
-    });
-
-    it('allows one new cadence probe after a receipt retry creates a new generation', () => {
-        const queue = new FakeRuntimeQueue(60);
-        const { scheduler } = createScheduler({
-            options: { baseFramesPerSecond: 60 },
-            queue,
-            simulateFrameCallbacks: true,
-        });
-        queue.runUntil(500);
-        while (scheduler.getSnapshot().awaitingFrameReceipt) {
-            queue.runNext();
-        }
-        const start = scheduler.getSnapshot();
-        holdNextOwnedFrameReceipt(queue, scheduler);
-
-        queue.runNext();
-        queue.runNext();
         let snapshot = scheduler.getSnapshot();
-        assert.equal(snapshot.missedFrameReceiptCount, 1);
-        assert.equal(snapshot.invalidationCount, start.invalidationCount + 2);
+        assert.equal(snapshot.awaitingFrameReceipt, true);
+        assert.equal(snapshot.wakeupCount, afterProbe.wakeupCount);
+        assert.equal(
+            snapshot.scheduledCallbackCount,
+            afterProbe.scheduledCallbackCount,
+        );
+        assert.equal(
+            snapshot.cancelledCallbackCount,
+            afterProbe.cancelledCallbackCount,
+        );
         assert.equal(
             snapshot.pendingFrameReceiptReconciliationWakeupCount -
                 start.pendingFrameReceiptReconciliationWakeupCount,
             1,
-        );
-
-        queue.runNext();
-        snapshot = scheduler.getSnapshot();
-        assert.equal(
-            snapshot.pendingFrameReceiptReconciliationWakeupCount -
-                start.pendingFrameReceiptReconciliationWakeupCount,
-            2,
         );
         assert.equal(
             snapshot.unexpectedNoWorkWakeupCount -
                 start.unexpectedNoWorkWakeupCount,
             0,
         );
+        assert.equal(snapshot.missedFrameReceiptCount, 0);
+        assertWakeupClassificationConserved(snapshot);
+
+        queue.runTask(heldReceipt);
+        assert.equal(scheduler.getSnapshot().awaitingFrameReceipt, false);
+        queue.runNext();
+        snapshot = scheduler.getSnapshot();
+        assert.equal(snapshot.targetFramesPerSecond, 30);
+        assert.equal(snapshot.invalidationCount, start.invalidationCount + 2);
+        assert.equal(snapshot.missedFrameReceiptCount, 0);
+        assert.equal(snapshot.unexpectedNoWorkWakeupCount, 0);
         assertWakeupClassificationConserved(snapshot);
     });
+
+    for (const transientFramesPerSecond of [30, 60]) {
+        it(`preserves the consumed receipt retry through 14-to-7 owner churn with a ${transientFramesPerSecond} Hz transient lease`, () => {
+            const queue = new FakeRuntimeQueue(60);
+            const { invalidations, scheduler } = createScheduler({
+                queue,
+                simulateFrameCallbacks: true,
+            });
+            const releases = Array.from({ length: 14 }, (_, index) =>
+                scheduler.acquireRenderLease(`garden-owner-${index}`, 30),
+            );
+            queue.runUntil(500);
+            while (scheduler.getSnapshot().awaitingFrameReceipt) {
+                queue.runNext();
+            }
+            const start = scheduler.getSnapshot();
+            assert.equal(start.activeLeaseCount, 14);
+            assert.equal(start.targetFramesPerSecond, 30);
+            const releaseTransient = scheduler.acquireRenderLease(
+                'garden-transition',
+                transientFramesPerSecond,
+            );
+            const heldReceipt = holdNextOwnedFrameReceipt(queue, scheduler);
+            const invalidatedAt = invalidations.at(-1);
+            assert.ok(invalidatedAt !== undefined);
+            queue.runNext();
+            const afterProbe = scheduler.getSnapshot();
+            const retry = queue.peekNextTask();
+            assert.ok(retry);
+            assertNear(retry.dueAt, invalidatedAt + 100);
+
+            scheduler.requestCoalescedRender('r3f-root-update');
+            releaseTransient();
+            for (const release of releases.slice(0, 7)) {
+                release();
+            }
+            scheduler.requestCoalescedRender('r3f-root-update');
+            assert.equal(queue.peekNextTask(), retry);
+            queue.runUntil(retry.dueAt - 1);
+
+            let snapshot = scheduler.getSnapshot();
+            assert.equal(snapshot.activeLeaseCount, 7);
+            assert.equal(snapshot.targetFramesPerSecond, 30);
+            assert.equal(
+                snapshot.leaseAcquiredCount - start.leaseAcquiredCount,
+                1,
+            );
+            assert.equal(
+                snapshot.leaseReleasedCount - start.leaseReleasedCount,
+                8,
+            );
+            assert.equal(snapshot.wakeupCount, afterProbe.wakeupCount);
+            assert.equal(
+                snapshot.scheduledCallbackCount,
+                afterProbe.scheduledCallbackCount,
+            );
+            assert.equal(
+                snapshot.cancelledCallbackCount,
+                afterProbe.cancelledCallbackCount,
+            );
+            assert.equal(
+                snapshot.pendingFrameReceiptReconciliationWakeupCount -
+                    start.pendingFrameReceiptReconciliationWakeupCount,
+                1,
+            );
+            assert.equal(
+                snapshot.unexpectedNoWorkWakeupCount -
+                    start.unexpectedNoWorkWakeupCount,
+                0,
+            );
+            assert.equal(snapshot.missedFrameReceiptCount, 0);
+            assertWakeupClassificationConserved(snapshot);
+
+            queue.runTask(heldReceipt);
+            snapshot = scheduler.getSnapshot();
+            assert.equal(snapshot.awaitingFrameReceipt, false);
+            assert.deepEqual(snapshot.coalescedRenderRequestReasons, []);
+            queue.runNext();
+            snapshot = scheduler.getSnapshot();
+            assert.equal(
+                snapshot.invalidationCount,
+                start.invalidationCount + 2,
+            );
+            assert.equal(snapshot.missedFrameReceiptCount, 0);
+            assert.equal(
+                snapshot.unexpectedNoWorkWakeupCount -
+                    start.unexpectedNoWorkWakeupCount,
+                0,
+            );
+            assertWakeupClassificationConserved(snapshot);
+        });
+    }
+
+    for (const framesPerSecond of [60, 30]) {
+        it(`allows one new cadence probe after a receipt retry at ${framesPerSecond} Hz`, () => {
+            const queue = new FakeRuntimeQueue(60);
+            const { scheduler } = createScheduler({
+                options: { baseFramesPerSecond: 60 },
+                queue,
+                simulateFrameCallbacks: true,
+            });
+            queue.runUntil(500);
+            while (scheduler.getSnapshot().awaitingFrameReceipt) {
+                queue.runNext();
+            }
+            const start = scheduler.getSnapshot();
+            holdNextOwnedFrameReceipt(queue, scheduler);
+
+            queue.runNext();
+            scheduler.setBaseFramesPerSecond(framesPerSecond);
+            queue.runNext();
+            let snapshot = scheduler.getSnapshot();
+            assert.equal(snapshot.missedFrameReceiptCount, 1);
+            assert.equal(
+                snapshot.invalidationCount,
+                start.invalidationCount + 2,
+            );
+            assert.equal(
+                snapshot.pendingFrameReceiptReconciliationWakeupCount -
+                    start.pendingFrameReceiptReconciliationWakeupCount,
+                1,
+            );
+
+            queue.runNext();
+            snapshot = scheduler.getSnapshot();
+            assert.equal(
+                snapshot.pendingFrameReceiptReconciliationWakeupCount -
+                    start.pendingFrameReceiptReconciliationWakeupCount,
+                2,
+            );
+            assert.equal(
+                snapshot.unexpectedNoWorkWakeupCount -
+                    start.unexpectedNoWorkWakeupCount,
+                0,
+            );
+            assertWakeupClassificationConserved(snapshot);
+        });
+    }
 
     it('rounds a fractional timeout upward before browser long conversion', () => {
         const queue = new FakeRuntimeQueue();

@@ -1189,6 +1189,8 @@ export class GameRuntimeScheduler {
             const retryAt =
                 (lastInvalidatedAt ?? now) + Math.max(intervalMs * 2, 100);
             if (
+                this.frameReceiptReconciliationGeneration !==
+                    this.lastReconciledFrameReceiptGeneration &&
                 this.nextRenderFrameTargetAt !== null &&
                 this.nextRenderFrameTargetAt > now + schedulerToleranceMs &&
                 this.nextRenderFrameTargetAt <= retryAt
@@ -1196,7 +1198,8 @@ export class GameRuntimeScheduler {
                 // Pre-arm the ordinary cadence so a timely R3F receipt can
                 // reuse this timer without a cancel/rearm pair. If the receipt
                 // is late, its generation permits exactly one causal no-work
-                // reconciliation before the bounded retry takes over.
+                // reconciliation before the bounded retry takes over. A later
+                // cadence change must not re-arm that consumed generation.
                 return {
                     dueAt: this.nextRenderFrameTargetAt,
                     frameReceiptReconciliationGeneration:
