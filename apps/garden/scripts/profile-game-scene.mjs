@@ -9,7 +9,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const appRoot = resolve(__dirname, '..');
 const defaultBaseUrl = 'http://localhost:3001';
 const defaultOutDir = resolve(appRoot, 'test-results/game-profile');
-const gameProfileComparisonContractVersion = 4;
+const gameProfileComparisonContractVersion = 5;
 const scenarioMemoryMeasurementMode = 'post-scenario-forced-gc-v1';
 const crossTierPerformanceMeasurementMode = 'separate-observer-free-window-v1';
 const crossTierRuntimeObservationMode = 'separate-semantic-raf-window-v1';
@@ -105,6 +105,8 @@ const gardenSwitchMaximumDisplayedMs = 1_000;
 const gardenSwitchMaximumVisibleMs = 1_200;
 const gardenSwitchMaximumSettledMs = 1_800;
 const gardenSwitchMaximumFrameStallMs = 500;
+const gardenSwitchLifetimeResourceMeasurementMode =
+    'page-lifetime-webgl-program-texture-and-arrival-snapshot-geometry-v1';
 const lifecycleExpectedGardenId = 99_996;
 const lifecycleExpectedGardenStackCount = 270;
 const lifecycleExpectedGardenBlockCount = 297;
@@ -2955,7 +2957,9 @@ function installBrowserMetrics({
         lastRenderedRafTick: -1,
         renderedFrames: 0,
         rendererShaders: 0,
+        rendererShadersPeak: 0,
         rendererTextures: 0,
+        rendererTexturesPeak: 0,
         submittedTriangles: 0,
     };
     globalThis.__gameProfileLongTasks = [];
@@ -3266,10 +3270,20 @@ function installBrowserMetrics({
     const livePrograms = new Set();
     const liveTextures = new Set();
     const updateRendererShaderCount = () => {
-        globalThis.__gameProfileMetrics.rendererShaders = livePrograms.size;
+        const metrics = globalThis.__gameProfileMetrics;
+        metrics.rendererShaders = livePrograms.size;
+        metrics.rendererShadersPeak = Math.max(
+            metrics.rendererShadersPeak,
+            livePrograms.size,
+        );
     };
     const updateRendererTextureCount = () => {
-        globalThis.__gameProfileMetrics.rendererTextures = liveTextures.size;
+        const metrics = globalThis.__gameProfileMetrics;
+        metrics.rendererTextures = liveTextures.size;
+        metrics.rendererTexturesPeak = Math.max(
+            metrics.rendererTexturesPeak,
+            liveTextures.size,
+        );
     };
     const patchProgramLifecycle = (Context) => {
         const prototype = Context?.prototype;
@@ -5330,6 +5344,35 @@ async function readGardenSwitchArrival(
     );
 }
 
+function buildGardenSwitchLifetimeResources(
+    arrivals,
+    instrumentedLifetimeResources,
+) {
+    const finiteMaximum = (values) => {
+        const finite = values.filter(
+            (value) => typeof value === 'number' && Number.isFinite(value),
+        );
+        return finite.length > 0 ? Math.max(...finite) : null;
+    };
+    const instrumentedValue = (field) => {
+        const value = instrumentedLifetimeResources?.[field];
+        return typeof value === 'number' && Number.isFinite(value)
+            ? value
+            : null;
+    };
+
+    return {
+        measurementMode: gardenSwitchLifetimeResourceMeasurementMode,
+        rendererGeometries: finiteMaximum(
+            arrivals.map(
+                (arrival) => arrival.resources?.rendererGeometries ?? null,
+            ),
+        ),
+        rendererShaders: instrumentedValue('rendererShadersPeak'),
+        rendererTextures: instrumentedValue('rendererTexturesPeak'),
+    };
+}
+
 async function finishGardenSwitchSample({ cdp, page }) {
     const sampleAtEndpoint = await page.evaluate(
         finishInteractiveProfileSample,
@@ -5515,6 +5558,16 @@ async function measureGardenSwitchScenario(
                 timing,
             });
         }
+        const instrumentedLifetimeResources = await page.evaluate(() => ({
+            rendererShadersPeak:
+                globalThis.__gameProfileMetrics?.rendererShadersPeak ?? null,
+            rendererTexturesPeak:
+                globalThis.__gameProfileMetrics?.rendererTexturesPeak ?? null,
+        }));
+        const lifetimeResources = buildGardenSwitchLifetimeResources(
+            arrivals,
+            instrumentedLifetimeResources,
+        );
         const memory = await collectScenarioMemoryEvidence(cdp);
 
         const acceptance = evaluateGardenSwitchAcceptance({
@@ -5522,6 +5575,7 @@ async function measureGardenSwitchScenario(
             apiRequests,
             arrivals,
             consoleMessages,
+            lifetimeResources,
             pageErrors,
             requested,
         });
@@ -5541,7 +5595,7 @@ async function measureGardenSwitchScenario(
             cdp: null,
             domContentLoadedMs,
             environment,
-            gardenSwitch: { arrivals },
+            gardenSwitch: { arrivals, lifetimeResources },
             memory,
             name: scenario.name,
             pageErrors: pageErrors.slice(0, 8),
@@ -13300,6 +13354,7 @@ function evaluateGardenSwitchAcceptance({
     apiRequests = [],
     arrivals = [],
     consoleMessages = [],
+    lifetimeResources = null,
     pageErrors = [],
     requested,
 }) {
@@ -13334,6 +13389,13 @@ function evaluateGardenSwitchAcceptance({
             typeof actual === 'number' &&
             Number.isFinite(actual) &&
             actual >= limit,
+    });
+    const positiveInteger = (name, actual) => ({
+        actual,
+        comparison: 'positive-integer',
+        limit: 1,
+        name,
+        pass: Number.isInteger(actual) && actual >= 1,
     });
     const exactStringSet = (name, actual, expected) => {
         const normalize = (value) =>
@@ -13388,6 +13450,23 @@ function evaluateGardenSwitchAcceptance({
             0,
         ),
         exact('gardenSwitchPageErrors', pageErrors.length, 0),
+        exact(
+            'gardenSwitchLifetimeResourceMeasurementMode',
+            lifetimeResources?.measurementMode,
+            gardenSwitchLifetimeResourceMeasurementMode,
+        ),
+        positiveInteger(
+            'gardenSwitchLifetimeRendererGeometries',
+            lifetimeResources?.rendererGeometries,
+        ),
+        positiveInteger(
+            'gardenSwitchLifetimeRendererShaders',
+            lifetimeResources?.rendererShaders,
+        ),
+        positiveInteger(
+            'gardenSwitchLifetimeRendererTextures',
+            lifetimeResources?.rendererTextures,
+        ),
     ];
 
     let faunaVisit = 0;
@@ -13486,6 +13565,14 @@ function evaluateGardenSwitchAcceptance({
                 `${prefix}RendererTextures`,
                 arrival.resources?.rendererTextures,
                 1,
+            ),
+            positiveInteger(
+                `${prefix}InstrumentedRendererShaders`,
+                arrival.sample?.rendererShaders,
+            ),
+            positiveInteger(
+                `${prefix}InstrumentedRendererTextures`,
+                arrival.sample?.rendererTextures,
             ),
             exact(
                 `${prefix}StaticOpaqueSceneCacheEnabled`,
@@ -13705,6 +13792,33 @@ function evaluateGardenSwitchAcceptance({
                     repeatedValue <= baselineValue,
             });
         }
+    }
+
+    const geometryArrivalPeak = Math.max(
+        ...arrivals.map(
+            (arrival) => arrival.resources?.rendererGeometries ?? Number.NaN,
+        ),
+    );
+    checks.push(
+        exact(
+            'gardenSwitchLifetimeMatchesArrivalPeak:rendererGeometries',
+            lifetimeResources?.rendererGeometries,
+            geometryArrivalPeak,
+        ),
+    );
+    for (const resourceName of ['rendererShaders', 'rendererTextures']) {
+        const instrumentedArrivalPeak = Math.max(
+            ...arrivals.map(
+                (arrival) => arrival.sample?.[resourceName] ?? Number.NaN,
+            ),
+        );
+        checks.push(
+            minimum(
+                `gardenSwitchLifetimeCoversInstrumentedArrivalPeak:${resourceName}`,
+                lifetimeResources?.[resourceName],
+                instrumentedArrivalPeak,
+            ),
+        );
     }
 
     return {
@@ -19818,6 +19932,19 @@ function buildMarkdown(report) {
                 );
             }
         }
+        lines.push(
+            '',
+            'Workflow lifetime resource evidence:',
+            '',
+            '| Scenario | Arrival-snapshot geometry peak | Page-lifetime WebGL program peak | Page-lifetime WebGL texture peak | Measurement mode |',
+            '| --- | ---: | ---: | ---: | --- |',
+        );
+        for (const scenario of gardenSwitchProfiles) {
+            const lifetime = scenario.gardenSwitch?.lifetimeResources;
+            lines.push(
+                `| ${scenario.name} | ${lifetime?.rendererGeometries ?? 'n/a'} | ${lifetime?.rendererShaders ?? 'n/a'} | ${lifetime?.rendererTextures ?? 'n/a'} | ${lifetime?.measurementMode ?? 'n/a'} |`,
+            );
+        }
     }
 
     const faunaProfiles = report.scenarios.filter(
@@ -20569,6 +20696,7 @@ export {
     buildCrossTierMedians,
     buildGardenBuildingMatchedBaselineComparison,
     buildGardenSwitchBudgets,
+    buildGardenSwitchLifetimeResources,
     buildGardenSwitchSummary,
     buildHighTargetMedians,
     buildLifecycleResumeTransitionEvidence,

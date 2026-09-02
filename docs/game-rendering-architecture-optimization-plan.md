@@ -2,6 +2,8 @@
 
 Date: 2026-06-01
 
+Delivery status refreshed: 2026-09-02
+
 This document tracks the next rendering and camera architecture optimization
 work for the garden game. The goal is to preserve visual quality and reduce
 unnecessary CPU, React, and WebGL work. These tasks should not use lower quality
@@ -34,6 +36,28 @@ Status values:
 - `[ ]` Not started
 - `[~]` In progress
 - `[x]` Done
+
+Current GitHub delivery stack:
+
+- Epic [#4715](https://github.com/gredice/gredice/issues/4715) remains open.
+- [#4716](https://github.com/gredice/gredice/issues/4716) is complete through
+  merged PR [#4754](https://github.com/gredice/gredice/pull/4754).
+- Semantic scheduler issue
+  [#4717](https://github.com/gredice/gredice/issues/4717) remains open and is
+  blocked by root demand isolation
+  [#4766](https://github.com/gredice/gredice/issues/4766) and outline reuse
+  [#4773](https://github.com/gredice/gredice/issues/4773).
+- Kernel specialization proposal
+  [#4772](https://github.com/gredice/gredice/issues/4772) was rejected and
+  closed as not planned.
+- [#4773](https://github.com/gredice/gredice/issues/4773) remains open under the
+  epic and blocks #4717. Its outline-frame cache is awaiting complete regression
+  evidence.
+- Cadence- and lifetime-aware regression gate issue
+  [#4775](https://github.com/gredice/gredice/issues/4775) remains open under the
+  epic and blocks #4773. Contract v5 is implemented in the current stack, but
+  its fresh symmetric 2x2 capture has not yet been completed, so this is not a
+  merge or release claim.
 
 ## Milestone 1: Camera ownership
 
@@ -1060,7 +1084,7 @@ Progress:
   oversubmission. Canonical cross-tier RAFs must observe an exact 30 FPS target,
   stable visible leases, reconciled R3F receipts, and 28–32 rendered FPS in
   every raw run; held camera input retains its separate 60 FPS owner gate.
-  Comparison contract v2 hard-gates garden-switch GPU p95, semantic target
+  Comparison contract v2 introduced the garden-switch GPU p95, semantic target
   delivery, scheduler callback conservation, exact causal wakeup
   classification, zero unexpected no-work wakeups, zero post-calibration
   scheduler RAF polling, per-render submissions, and fixed-control total
@@ -1076,6 +1100,22 @@ Progress:
   the wall-time-weighted seven-arrival workflow, but is diagnostic because
   headless ANGLE timer-query batching and GPU power state can change it without
   changing useful work.
+- Comparison contract v4 introduced the profiler-owned 30 Hz
+  application/runtime RAF for comparable cross-tier GPU evidence. Contract v5
+  retains that controlled cadence and adds issue #4775's cadence- and
+  lifetime-aware rules. For a `legacy-heartbeat-v1` baseline against a
+  canonical candidate, every raw candidate lifecycle active and
+  context-restored sample must declare the effectively visible 30 FPS target,
+  hold p95 frame duration at or below 33.3 ms, and render at 28–32 FPS;
+  baseline-relative p95 and FPS stay diagnostic. Canonical-to-canonical
+  lifecycle comparisons retain their relative gates.
+- Contract v5 also separates garden-switch compilation from retained resource
+  growth. Arrivals 1–3 are first-use compile-progress diagnostics; arrivals 4–7
+  are mature hard phases with exact F2→F3 and H3→H4 within-run no-growth
+  checks. A hard workflow lifetime witness uses the maximum arrival snapshot
+  for geometry and page-lifetime WebGL successful-create high-water marks for
+  programs and textures. This keeps shader reorder below the same proven peak
+  diagnostic while retaining hard coverage for mature growth and leaks.
 - Added a dedicated `static-idle` harness scenario for a visible, fixed-midday,
   clear High-quality mock scene. It keeps normal continuous-render leases and
   the root invalidation broker enabled, reports that policy as acceptance
@@ -1098,13 +1138,14 @@ Progress:
   submitted shared compilation. The closure matrix pairs two clean
   `origin/main` captures with two clean candidate captures across 39 canonical
   cross-tier, fauna, garden-switch, and lifecycle runs under comparison
-  contract v2. The local headless evidence, including timer-query occupancy,
+  contract v5. The local headless evidence, including timer-query occupancy,
   does not replace a physical-device thermal, power, touch, memory-pressure,
   real background-tab, deployed, or production-traffic check.
-  Because the causal counters are new candidate evidence, the final contract-v2
-  matrix must be freshly captured; pre-counter candidate reports are not release
-  evidence. `legacy-heartbeat-v1` baseline omissions remain valid only on the
-  explicitly selected legacy baseline side.
+  Because contract v5 adds lifecycle cadence boundaries and switch lifetime
+  resource witnesses, its symmetric 2x2 matrix must be freshly captured;
+  contract-v4 and earlier reports are not release evidence for this stack.
+  `legacy-heartbeat-v1` baseline omissions remain valid only on the explicitly
+  selected legacy baseline side. The fresh contract-v5 matrix is still pending.
 
 ## Suggested implementation order
 

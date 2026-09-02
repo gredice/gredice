@@ -281,6 +281,18 @@ function lifecycleScenario(profileRun) {
         gardenId: scenario.runtime.profileGardenId,
         resources: structuredClone(phaseResources),
     });
+    const lifecycleSample = (overrides = {}) =>
+        sample({
+            runtimeFrameLoopAtEnd: {
+                effectiveVisible: true,
+                targetFramesPerSecond: 30,
+            },
+            runtimeFrameLoopAtStart: {
+                effectiveVisible: true,
+                targetFramesPerSecond: 30,
+            },
+            ...overrides,
+        });
     scenario.baseName = 'game-high-target-runtime-lifecycle-desktop';
     scenario.name = `${scenario.baseName}-run-${profileRun}`;
     scenario.requested = {
@@ -307,7 +319,7 @@ function lifecycleScenario(profileRun) {
                 targetFramesPerSecond: 30,
                 wakeupCount: 19,
             },
-            sample: sample(),
+            sample: lifecycleSample(),
         },
         cold: {
             canvasAttachedMs: 300,
@@ -324,7 +336,7 @@ function lifecycleScenario(profileRun) {
             },
             restoredWindow: {
                 cdp: { jsHeapMb: 64, scriptDuration: 0.9 },
-                sample: sample({ renderedFps: 29 }),
+                sample: lifecycleSample({ renderedFps: 29 }),
             },
         },
         hidden: {
@@ -393,11 +405,15 @@ function setLifecycleResourceCounts(scenario, { cold, mature, restored }) {
 }
 
 function setReportLifecycleResourceCounts(reportValue, counts) {
-    for (const scenario of reportValue.scenarios.filter(
-        ({ requested }) => requested.lifecycleProfile === true,
-    )) {
+    for (const scenario of reportLifecycleScenarios(reportValue)) {
         setLifecycleResourceCounts(scenario, counts);
     }
+}
+
+function reportLifecycleScenarios(reportValue) {
+    return reportValue.scenarios.filter(
+        ({ requested }) => requested.lifecycleProfile === true,
+    );
 }
 
 function gardenSwitchScenario(profileRun) {
@@ -412,6 +428,8 @@ function gardenSwitchScenario(profileRun) {
     };
     const arrival = (arrivalIndex, profile, timing) => {
         const arrivalSample = sample({
+            rendererShaders: 24,
+            rendererTextures: 11,
             runtimeFrameLoopAtEnd: {
                 awaitingFrameReceipt: false,
                 callbackPending: true,
@@ -505,16 +523,24 @@ function gardenSwitchScenario(profileRun) {
         settleTargetMs: 500,
         visibleMs: 380,
     };
+    const arrivals = [
+        arrival(1, 'high-target', { initial: true }),
+        arrival(2, 'fauna-heavy', { ...switchTiming }),
+        arrival(3, 'high-target', { ...switchTiming }),
+        arrival(4, 'fauna-heavy', { ...switchTiming }),
+        arrival(5, 'high-target', { ...switchTiming }),
+        arrival(6, 'fauna-heavy', { ...switchTiming }),
+        arrival(7, 'high-target', { ...switchTiming }),
+    ];
     scenario.gardenSwitch = {
-        arrivals: [
-            arrival(1, 'high-target', { initial: true }),
-            arrival(2, 'fauna-heavy', { ...switchTiming }),
-            arrival(3, 'high-target', { ...switchTiming }),
-            arrival(4, 'fauna-heavy', { ...switchTiming }),
-            arrival(5, 'high-target', { ...switchTiming }),
-            arrival(6, 'fauna-heavy', { ...switchTiming }),
-            arrival(7, 'high-target', { ...switchTiming }),
-        ],
+        arrivals,
+        lifetimeResources: {
+            measurementMode:
+                'page-lifetime-webgl-program-texture-and-arrival-snapshot-geometry-v1',
+            rendererGeometries: 200,
+            rendererShaders: 24,
+            rendererTextures: 11,
+        },
     };
     return scenario;
 }
@@ -526,7 +552,7 @@ function report({
     overrides = {},
 }) {
     return {
-        comparisonContractVersion: 4,
+        comparisonContractVersion: 5,
         generatedAt: '2026-08-30T00:00:00.000Z',
         options: {
             allowLegacyOperationVisuals: false,
@@ -564,7 +590,7 @@ function report({
             ...scenario,
             servedBuildProvenance: {
                 commit,
-                comparisonContractVersion: 4,
+                comparisonContractVersion: 5,
                 dirty: false,
             },
         })),
@@ -1068,7 +1094,7 @@ test('cross-tier acceptance inventories distinguish cached and legacy outline ev
     );
 });
 
-test('v4 cross-tier display cadence evidence fails closed on raw control drift', async (t) => {
+test('v5 cross-tier display cadence evidence fails closed on raw control drift', async (t) => {
     const firstCrossTierScenario = (reportValue) =>
         reportValue.scenarios.find((scenario) =>
             scenario.baseName.startsWith('game-cross-tier-'),
@@ -1290,7 +1316,7 @@ test('v4 cross-tier display cadence evidence fails closed on raw control drift',
     }
 });
 
-test('v4 cross-tier cadence inventory is exact and controlled-rate bounds are inclusive', () => {
+test('v5 cross-tier cadence inventory is exact and controlled-rate bounds are inclusive', () => {
     const missingInventoryPair = regressionReportPair();
     const scenario = missingInventoryPair.candidate.scenarios.find((value) =>
         value.baseName.startsWith('game-cross-tier-'),
@@ -1516,7 +1542,7 @@ test('legacy continuous-render lease compatibility is limited to cross-tier and 
     }
 });
 
-test('v4 legacy heartbeat baseline compares controlled cross-tier GPU evidence directly', () => {
+test('v5 legacy heartbeat baseline compares controlled cross-tier GPU evidence directly', () => {
     const { baseline, candidate } = regressionReportPair();
     applyLegacyHeartbeatSchedulerEvidence(baseline);
     const baselineConfirmation = independentBaselineRepeat(baseline);
@@ -1535,7 +1561,7 @@ test('v4 legacy heartbeat baseline compares controlled cross-tier GPU evidence d
     assert.equal(comparison.status, 'pass');
     assert.equal(comparison.exitCode, 0);
     assert.equal(comparison.diagnostic, false);
-    assert.equal(comparison.comparisonContractVersion, 4);
+    assert.equal(comparison.comparisonContractVersion, 5);
     assert.equal(comparison.schemaVersion, 3);
     assert.equal(comparison.summary.cadenceConfoundedComparisons, 0);
     assert.equal(
@@ -1571,7 +1597,7 @@ test('v4 legacy heartbeat baseline compares controlled cross-tier GPU evidence d
     );
 });
 
-test('v4 rejects raw legacy motion outside the controlled cadence range', () => {
+test('v5 rejects raw legacy motion outside the controlled cadence range', () => {
     const { baseline, candidate } = regressionReportPair();
     applyLegacyHeartbeatSchedulerEvidence(baseline);
     setLegacyCrossTierRenderedFps(
@@ -1617,7 +1643,7 @@ test('v4 rejects raw legacy motion outside the controlled cadence range', () => 
     );
 });
 
-test('v4 direct cross-tier GPU evidence retains strict timing validation', () => {
+test('v5 direct cross-tier GPU evidence retains strict timing validation', () => {
     const { baseline, candidate } = regressionReportPair();
     applyLegacyHeartbeatSchedulerEvidence(baseline);
     baseline.scenarios.find(
@@ -1646,7 +1672,7 @@ test('v4 direct cross-tier GPU evidence retains strict timing validation', () =>
     );
 });
 
-test('v4 controlled cadence must hold across all four bundle pairings', () => {
+test('v5 controlled cadence must hold across all four bundle pairings', () => {
     const { baseline, candidate } = regressionReportPair();
     applyLegacyHeartbeatSchedulerEvidence(baseline);
     const baselineConfirmation = independentBaselineRepeat(baseline);
@@ -2378,7 +2404,10 @@ test('an individual outlier remains diagnostic when the batch median passes', ()
         [3],
     );
     assert.match(buildMarkdown(comparison), /## Raw-rank diagnostics/);
-    assert.match(buildMarkdown(comparison), /candidate: 3/);
+    assert.match(
+        buildMarkdown(comparison),
+        /candidate: rank 3 .*candidate run 3 = 20\.96 ms; raw rank is diagnostic/,
+    );
 });
 
 test('median gate uses the ratio of independent batch medians', () => {
@@ -3338,6 +3367,213 @@ test('lifecycle phases compare restored work and gate SceneTime-owned zero work'
     );
 });
 
+test('legacy-to-canonical lifecycle gates semantic 30 FPS cadence instead of baseline frequency', () => {
+    const { baseline, candidate } = regressionReportPair();
+    applyLegacyHeartbeatSchedulerEvidence(baseline);
+    for (const scenario of reportLifecycleScenarios(baseline)) {
+        scenario.lifecycle.active.sample.p95FrameMs = 18;
+        scenario.lifecycle.active.sample.renderedFps = 34;
+        scenario.lifecycle.context.restoredWindow.sample.p95FrameMs = 18;
+        scenario.lifecycle.context.restoredWindow.sample.renderedFps = 34;
+    }
+    for (const scenario of reportLifecycleScenarios(candidate)) {
+        scenario.lifecycle.active.sample.p95FrameMs = 27;
+        scenario.lifecycle.active.sample.renderedFps = 30;
+        scenario.lifecycle.context.restoredWindow.sample.p95FrameMs = 27;
+        scenario.lifecycle.context.restoredWindow.sample.renderedFps = 30;
+    }
+
+    const comparison = compareConfirmedReports(
+        baseline,
+        candidate,
+        independentRepeat(candidate),
+        {
+            baselineConfirmation: independentBaselineRepeat(baseline),
+            baselineSchedulerContract: 'legacy-heartbeat-v1',
+        },
+    );
+    const p95Results = comparison.comparisons.filter(
+        (result) =>
+            result.id === 'frame.p95_ms' &&
+            result.scenario === 'game-high-target-runtime-lifecycle-desktop',
+    );
+    const renderedFpsResults = comparison.comparisons.filter(
+        (result) =>
+            result.id === 'frame.rendered_fps' &&
+            result.scenario === 'game-high-target-runtime-lifecycle-desktop',
+    );
+
+    assert.equal(comparison.status, 'pass');
+    assert.equal(p95Results.length, 2);
+    assert.equal(renderedFpsResults.length, 2);
+    for (const result of p95Results) {
+        assert.equal(result.targetAwareMaximum, true);
+        assert.equal(result.maximumCandidateValue, 33.3);
+        assert.equal(result.targetFramesPerSecond, 30);
+        assert.equal(result.everyRawRunGate, true);
+        assert.equal(result.rawRanksDiagnosticOnly, false);
+        assert.equal(result.baselineRelativeDiagnosticOnly, true);
+        assert.equal(result.baselineRelativeRegressionBreach, true);
+        assert.equal(result.regressionBreach, false);
+        assert.equal(result.pass, true);
+    }
+    for (const result of renderedFpsResults) {
+        assert.equal(result.targetAwareRenderedFps, true);
+        assert.equal(result.minimumRenderedFps, 28);
+        assert.equal(result.maximumRenderedFps, 32);
+        assert.equal(result.everyRawRunGate, true);
+        assert.equal(result.rawRanksDiagnosticOnly, false);
+        assert.equal(result.pass, true);
+    }
+    assert.match(
+        buildMarkdown(comparison),
+        /candidate <= 33\.3 ms under declared 30 fps target; every raw run; baseline-relative ratio diagnostic only/,
+    );
+});
+
+test('legacy-to-canonical lifecycle semantic cadence bounds are inclusive and fail on one raw breach', () => {
+    const buildPair = () => {
+        const pair = regressionReportPair();
+        applyLegacyHeartbeatSchedulerEvidence(pair.baseline);
+        for (const scenario of reportLifecycleScenarios(pair.baseline)) {
+            for (const phase of [
+                scenario.lifecycle.active.sample,
+                scenario.lifecycle.context.restoredWindow.sample,
+            ]) {
+                phase.p95FrameMs = 18;
+                phase.renderedFps = 34;
+            }
+        }
+        return pair;
+    };
+    const comparePair = (pair) =>
+        compareConfirmedReports(
+            pair.baseline,
+            pair.candidate,
+            independentRepeat(pair.candidate),
+            {
+                baselineConfirmation: independentBaselineRepeat(pair.baseline),
+                baselineSchedulerContract: 'legacy-heartbeat-v1',
+            },
+        );
+    let pair = buildPair();
+    for (const scenario of reportLifecycleScenarios(pair.candidate)) {
+        scenario.lifecycle.active.sample.p95FrameMs = 33.3;
+        scenario.lifecycle.active.sample.renderedFps = 28;
+        scenario.lifecycle.context.restoredWindow.sample.p95FrameMs = 33.3;
+        scenario.lifecycle.context.restoredWindow.sample.renderedFps = 32;
+    }
+    let comparison = comparePair(pair);
+    assert.equal(comparison.status, 'pass');
+
+    const cleanConfirmation = independentRepeat(pair.candidate);
+    reportLifecycleScenarios(
+        pair.candidate,
+    )[0].lifecycle.context.restoredWindow.sample.p95FrameMs = 33.3001;
+    comparison = compareConfirmedReports(
+        pair.baseline,
+        pair.candidate,
+        cleanConfirmation,
+        {
+            baselineConfirmation: independentBaselineRepeat(pair.baseline),
+            baselineSchedulerContract: 'legacy-heartbeat-v1',
+        },
+    );
+    const restoredP95 = comparison.comparisons.find(
+        (result) =>
+            result.id === 'frame.p95_ms' && result.phase === 'context-restored',
+    );
+    assert.equal(comparison.status, 'regression');
+    assert.equal(restoredP95.candidateMedian, 33.3);
+    assert.equal(restoredP95.regressionBreach, true);
+    assert.equal(restoredP95.individual.filter((run) => !run.pass).length, 1);
+    assert.match(
+        buildMarkdown(comparison),
+        /candidate run 1 = 33\.3001 ms; candidate <= 33\.3 ms/,
+    );
+
+    pair = buildPair();
+    for (const scenario of reportLifecycleScenarios(pair.candidate)) {
+        scenario.lifecycle.active.sample.p95FrameMs = 27;
+        scenario.lifecycle.active.sample.renderedFps = 30;
+        scenario.lifecycle.context.restoredWindow.sample.p95FrameMs = 27;
+        scenario.lifecycle.context.restoredWindow.sample.renderedFps = 30;
+    }
+    reportLifecycleScenarios(
+        pair.candidate,
+    )[0].lifecycle.active.sample.renderedFps = 27.9;
+    reportLifecycleScenarios(
+        pair.candidate,
+    )[1].lifecycle.context.restoredWindow.sample.renderedFps = 32.1;
+    comparison = comparePair(pair);
+    assert.equal(comparison.status, 'regression');
+    assert.equal(
+        comparison.comparisons
+            .find(
+                (result) =>
+                    result.id === 'frame.rendered_fps' &&
+                    result.phase === 'active',
+            )
+            .individual.some((run) => run.candidateFloorPass === false),
+        true,
+    );
+    assert.equal(
+        comparison.comparisons
+            .find(
+                (result) =>
+                    result.id === 'frame.rendered_fps' &&
+                    result.phase === 'context-restored',
+            )
+            .individual.some((run) => run.candidateCeilingPass === false),
+        true,
+    );
+});
+
+test('canonical lifecycle comparisons retain relative p95 regression gates', () => {
+    const { baseline, candidate } = reportPair(lifecycleScenario);
+    for (const scenario of baseline.scenarios) {
+        scenario.lifecycle.active.sample.p95FrameMs = 10;
+        scenario.lifecycle.active.sample.renderedFps = 34;
+        scenario.lifecycle.context.restoredWindow.sample.p95FrameMs = 10;
+        scenario.lifecycle.context.restoredWindow.sample.renderedFps = 34;
+    }
+    for (const scenario of candidate.scenarios) {
+        scenario.lifecycle.active.sample.p95FrameMs = 20;
+        scenario.lifecycle.active.sample.renderedFps = 34;
+        scenario.lifecycle.context.restoredWindow.sample.p95FrameMs = 20;
+        scenario.lifecycle.context.restoredWindow.sample.renderedFps = 34;
+    }
+
+    const comparison = comparePartialReports(baseline, candidate);
+    const p95 = comparison.comparisons.find(
+        (result) => result.id === 'frame.p95_ms',
+    );
+    const renderedFps = comparison.comparisons.find(
+        (result) => result.id === 'frame.rendered_fps',
+    );
+    assert.equal(comparison.status, 'regression');
+    assert.equal(p95.targetAwareMaximum, undefined);
+    assert.equal(p95.regressionBreach, true);
+    assert.equal(renderedFps.targetAwareRenderedFps, undefined);
+    assert.equal(renderedFps.pass, true);
+});
+
+test('legacy-to-canonical lifecycle semantic gate requires visible target snapshots', () => {
+    const { baseline, candidate } = regressionReportPair();
+    applyLegacyHeartbeatSchedulerEvidence(baseline);
+    delete reportLifecycleScenarios(candidate)[0].lifecycle.context
+        .restoredWindow.sample.runtimeFrameLoopAtStart;
+
+    const comparison = compareReports(baseline, candidate, {
+        baselineSchedulerContract: 'legacy-heartbeat-v1',
+    });
+    assert.equal(comparison.status, 'invalid');
+    assert.match(
+        comparison.validationErrors.join('\n'),
+        /context-restored candidate\.sample\.runtimeFrameLoopAtStart is missing/,
+    );
+});
+
 test('lifecycle progress resources are diagnostic while mature and peak resources are gated', () => {
     const { baseline, candidate } = regressionReportPair();
     applyLegacyHeartbeatSchedulerEvidence(baseline);
@@ -3584,6 +3820,117 @@ test('garden-switch arrivals pair by phase and compare transition timings', () =
         false,
     );
     assert.equal(comparison.exitCode, 1);
+});
+
+test('garden-switch resource gates ignore compile progress but retain mature and lifetime growth', () => {
+    const applyShaderEvidence = (reportValue, sequence, lifetimePeak) => {
+        for (const scenario of reportValue.scenarios) {
+            for (const [
+                index,
+                arrival,
+            ] of scenario.gardenSwitch.arrivals.entries()) {
+                arrival.resources.rendererShaders = sequence[index];
+                arrival.sample.rendererShaders = sequence[index];
+            }
+            scenario.gardenSwitch.lifetimeResources.rendererShaders =
+                lifetimePeak;
+        }
+    };
+    const baselineSequence = [24, 26, 32, 30, 32, 30, 32];
+    const candidateSequence = [24, 28, 32, 30, 32, 30, 32];
+    let pair = reportPair(gardenSwitchScenario);
+    applyShaderEvidence(pair.baseline, baselineSequence, 32);
+    applyShaderEvidence(pair.candidate, candidateSequence, 32);
+
+    let comparison = comparePartialReports(pair.baseline, pair.candidate);
+    const earlyFauna = comparison.comparisons.find(
+        (result) =>
+            result.id === 'resources.shaders' &&
+            result.phase === 'arrival-2-fauna-heavy',
+    );
+    const matureFauna = comparison.comparisons.find(
+        (result) =>
+            result.id === 'resources.shaders' &&
+            result.phase === 'arrival-4-fauna-heavy',
+    );
+    const lifetimePeak = comparison.comparisons.find(
+        (result) =>
+            result.id === 'resources.shaders' &&
+            result.phase === 'switch-lifetime-peak',
+    );
+
+    assert.equal(comparison.status, 'pass');
+    assert.equal(earlyFauna.diagnosticOnly, true);
+    assert.equal(earlyFauna.baselineRelativeRegressionBreach, true);
+    assert.equal(earlyFauna.regressionBreach, false);
+    assert.equal(matureFauna.diagnosticOnly, undefined);
+    assert.equal(matureFauna.pass, true);
+    assert.equal(lifetimePeak.pass, true);
+    assert.match(
+        buildMarkdown(comparison),
+        /arrival-2-fauna-heavy \| renderer shaders .* diagnostic only; gated by garden-switch mature repeated arrivals and workflow lifetime peak resource gates \| pass/,
+    );
+
+    pair = reportPair(gardenSwitchScenario);
+    applyShaderEvidence(pair.baseline, baselineSequence, 32);
+    applyShaderEvidence(pair.candidate, [24, 28, 32, 32, 32, 32, 32], 32);
+    comparison = comparePartialReports(pair.baseline, pair.candidate);
+    assert.equal(comparison.status, 'regression');
+    assert.equal(
+        comparison.comparisons.find(
+            (result) =>
+                result.id === 'resources.shaders' &&
+                result.phase === 'arrival-4-fauna-heavy',
+        ).regressionBreach,
+        true,
+    );
+
+    pair = reportPair(gardenSwitchScenario);
+    applyShaderEvidence(pair.baseline, baselineSequence, 32);
+    applyShaderEvidence(pair.candidate, candidateSequence, 34);
+    comparison = comparePartialReports(pair.baseline, pair.candidate);
+    assert.equal(comparison.status, 'regression');
+    assert.equal(
+        comparison.comparisons.find(
+            (result) =>
+                result.id === 'resources.shaders' &&
+                result.phase === 'switch-lifetime-peak',
+        ).regressionBreach,
+        true,
+    );
+});
+
+test('garden-switch lifetime resource evidence fails closed when missing or malformed', () => {
+    let pair = regressionReportPair();
+    const firstCandidateGardenSwitch = () =>
+        pair.candidate.scenarios.find(
+            (scenario) => scenario.requested.gardenSwitchProfile === true,
+        );
+    delete firstCandidateGardenSwitch().gardenSwitch.lifetimeResources;
+    let comparison = compareReports(pair.baseline, pair.candidate);
+    assert.equal(comparison.status, 'invalid');
+    assert.match(
+        comparison.validationErrors.join('\n'),
+        /gardenSwitch\.lifetimeResources is missing/,
+    );
+
+    pair = regressionReportPair();
+    firstCandidateGardenSwitch().gardenSwitch.lifetimeResources.rendererShaders = 23;
+    comparison = compareReports(pair.baseline, pair.candidate);
+    assert.equal(comparison.status, 'invalid');
+    assert.match(
+        comparison.validationErrors.join('\n'),
+        /rendererShaders must cover every instrumented arrival sample/,
+    );
+
+    pair = regressionReportPair();
+    firstCandidateGardenSwitch().gardenSwitch.lifetimeResources.rendererGeometries = 201;
+    comparison = compareReports(pair.baseline, pair.candidate);
+    assert.equal(comparison.status, 'invalid');
+    assert.match(
+        comparison.validationErrors.join('\n'),
+        /rendererGeometries must equal the maximum arrival snapshot/,
+    );
 });
 
 test('garden-switch rendered FPS uses exact semantic target evidence instead of baseline oversubmission', () => {

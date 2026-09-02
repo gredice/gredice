@@ -8,6 +8,7 @@ import {
     buildCrossTierMedians,
     buildGardenBuildingMatchedBaselineComparison,
     buildGardenSwitchBudgets,
+    buildGardenSwitchLifetimeResources,
     buildGardenSwitchSummary,
     buildHighTargetMedians,
     buildLifecycleResumeTransitionEvidence,
@@ -167,7 +168,7 @@ const provenanceCommitA = 'a'.repeat(40);
 const provenanceCommitB = 'b'.repeat(40);
 const cleanServedBuildMarker = {
     commit: provenanceCommitA,
-    comparisonContractVersion: 4,
+    comparisonContractVersion: 5,
     dirty: false,
 };
 
@@ -323,7 +324,7 @@ test('report provenance rejects served-build, managed harness, and contract mism
             {
                 servedBuildProvenance: {
                     ...cleanServedBuildMarker,
-                    comparisonContractVersion: 5,
+                    comparisonContractVersion: 6,
                 },
             },
         ],
@@ -382,7 +383,7 @@ test('external report provenance still rejects served-build and contract mismatc
             {
                 servedBuildProvenance: {
                     ...cleanServedBuildMarker,
-                    comparisonContractVersion: 5,
+                    comparisonContractVersion: 6,
                 },
             },
         ],
@@ -2644,7 +2645,7 @@ test('legacy lifecycle renderer stats mode is limited to an explicit clean exter
     };
     const cleanSubject = {
         commit: 'b'.repeat(40),
-        comparisonContractVersion: 4,
+        comparisonContractVersion: 5,
         dirty: false,
     };
     assert.equal(
@@ -2664,7 +2665,7 @@ test('legacy lifecycle renderer stats mode is limited to an explicit clean exter
         {
             servedBuild: {
                 ...cleanSubject,
-                comparisonContractVersion: 5,
+                comparisonContractVersion: 6,
             },
         },
     ]) {
@@ -3338,7 +3339,113 @@ test('runtime GPU-source scenario disables only the external profiler timer', ()
     assert.match(source, /patchedCreateTexture/);
     assert.match(source, /patchedDeleteTexture/);
     assert.match(source, /rendererShaders: 0/);
+    assert.match(source, /rendererShadersPeak: 0/);
     assert.match(source, /rendererTextures: 0/);
+    assert.match(source, /rendererTexturesPeak: 0/);
+    assert.match(source, /rendererShadersPeak = Math\.max/);
+    assert.match(source, /rendererTexturesPeak = Math\.max/);
+});
+
+test('browser metrics retain live and lifetime WebGL resource counts', () => {
+    const keys = [
+        'cancelAnimationFrame',
+        'requestAnimationFrame',
+        'WebGLRenderingContext',
+        'WebGL2RenderingContext',
+        '__gameProfileCancelNativeAnimationFrame',
+        '__gameProfileDisplayCadenceControl',
+        '__gameProfileLongTasks',
+        '__gameProfileMetrics',
+        '__gameProfileReadLongTasks',
+        '__gameProfileRequestNativeAnimationFrame',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    const setGlobal = (key, value) => {
+        Object.defineProperty(globalThis, key, {
+            configurable: true,
+            value,
+            writable: true,
+        });
+    };
+    const createContextClass = () =>
+        class {
+            failNextProgram = false;
+
+            createProgram() {
+                if (this.failNextProgram) {
+                    this.failNextProgram = false;
+                    return null;
+                }
+                return {};
+            }
+
+            createTexture() {
+                return {};
+            }
+
+            deleteProgram() {
+                return undefined;
+            }
+
+            deleteTexture() {
+                return undefined;
+            }
+        };
+    const ProfileWebGLContext = createContextClass();
+    const ProfileWebGL2Context = createContextClass();
+
+    try {
+        setGlobal('requestAnimationFrame', () => 1);
+        setGlobal('cancelAnimationFrame', () => {});
+        setGlobal('WebGLRenderingContext', ProfileWebGLContext);
+        setGlobal('WebGL2RenderingContext', ProfileWebGL2Context);
+        for (const key of keys.filter((key) =>
+            key.startsWith('__gameProfile'),
+        )) {
+            Reflect.deleteProperty(globalThis, key);
+        }
+
+        installBrowserMetrics({ externalGpuTimer: false });
+        const gl = new ProfileWebGLContext();
+        const gl2 = new ProfileWebGL2Context();
+        const firstProgram = gl.createProgram();
+        const secondProgram = gl2.createProgram();
+        gl2.failNextProgram = true;
+        assert.equal(gl2.createProgram(), null);
+        gl.deleteProgram(firstProgram);
+        gl.deleteProgram(firstProgram);
+        gl.deleteProgram({});
+        gl.deleteProgram(null);
+        const firstTexture = gl.createTexture();
+        const secondTexture = gl2.createTexture();
+        gl.deleteTexture(firstTexture);
+        gl.deleteTexture(firstTexture);
+        gl.deleteTexture({});
+        gl.deleteTexture(null);
+        gl2.deleteTexture(secondTexture);
+
+        assert.equal(globalThis.__gameProfileMetrics.rendererShaders, 1);
+        assert.equal(globalThis.__gameProfileMetrics.rendererShadersPeak, 2);
+        assert.equal(globalThis.__gameProfileMetrics.rendererTextures, 0);
+        assert.equal(globalThis.__gameProfileMetrics.rendererTexturesPeak, 2);
+        gl2.deleteProgram(secondProgram);
+        assert.equal(globalThis.__gameProfileMetrics.rendererShaders, 0);
+        assert.equal(globalThis.__gameProfileMetrics.rendererShadersPeak, 2);
+    } finally {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    }
 });
 
 test('render budgets gate calls and triangles per rendered frame', () => {
@@ -5952,6 +6059,8 @@ test('garden-switch acceptance fails closed across fixtures, interaction, visual
             sample: {
                 elapsedMs: index === 0 ? 5_000 : 550,
                 maxFrameMs: 100,
+                rendererShaders: resources[1],
+                rendererTextures: [11, 13, 13, 13, 13, 13, 13][index],
             },
             screenshotPath: `/tmp/garden-switch-${index + 1}.png`,
             screenshotWitness,
@@ -5968,11 +6077,23 @@ test('garden-switch acceptance fails closed across fixtures, interaction, visual
                       },
         };
     });
+    const lifetimeResources = buildGardenSwitchLifetimeResources(arrivals, {
+        rendererShadersPeak: 32,
+        rendererTexturesPeak: 13,
+    });
+    assert.deepEqual(lifetimeResources, {
+        measurementMode:
+            'page-lifetime-webgl-program-texture-and-arrival-snapshot-geometry-v1',
+        rendererGeometries: 525,
+        rendererShaders: 32,
+        rendererTextures: 13,
+    });
     const input = {
         apiErrors: [],
         apiRequests: [],
         arrivals,
         consoleMessages: [],
+        lifetimeResources,
         pageErrors: [],
         requested: {
             dpr: 2,
@@ -6135,6 +6256,46 @@ test('garden-switch acceptance fails closed across fixtures, interaction, visual
         }).pass,
         false,
     );
+    assert.equal(
+        evaluateGardenSwitchAcceptance({
+            ...input,
+            lifetimeResources: {
+                ...lifetimeResources,
+                rendererShaders: 31,
+            },
+        }).pass,
+        false,
+    );
+    assert.equal(
+        evaluateGardenSwitchAcceptance({
+            ...input,
+            lifetimeResources: {
+                ...lifetimeResources,
+                rendererGeometries: 524,
+            },
+        }).pass,
+        false,
+    );
+    assert.equal(
+        evaluateGardenSwitchAcceptance({
+            ...input,
+            lifetimeResources: {
+                ...lifetimeResources,
+                rendererTextures: 13.5,
+            },
+        }).pass,
+        false,
+    );
+    assert.equal(
+        evaluateGardenSwitchAcceptance({
+            ...input,
+            lifetimeResources: {
+                ...lifetimeResources,
+                measurementMode: 'arrival-snapshots-only-v0',
+            },
+        }).pass,
+        false,
+    );
 
     const scenario = {
         acceptance: result,
@@ -6143,7 +6304,7 @@ test('garden-switch acceptance fails closed across fixtures, interaction, visual
         budget: { checks: result.checks, pass: true },
         consoleMessages: [],
         environment: null,
-        gardenSwitch: { arrivals },
+        gardenSwitch: { arrivals, lifetimeResources },
         name: 'game-garden-switch-high-fauna-single-context-desktop',
         pageErrors: [],
         requested: {
@@ -6301,6 +6462,12 @@ test('garden-switch acceptance fails closed across fixtures, interaction, visual
     assert.match(
         markdown,
         /warm resource plateau \(fauna F2→F3, High H3→H4\): pass/,
+    );
+    assert.match(markdown, /Workflow lifetime resource evidence:/);
+    assert.match(markdown, /\| 525 \| 32 \| 13 \|/);
+    assert.match(
+        markdown,
+        /page-lifetime-webgl-program-texture-and-arrival-snapshot-geometry-v1/,
     );
     assert.match(markdown, /cache off/);
     assert.match(markdown, /fauna-heavy \/ 99995/);

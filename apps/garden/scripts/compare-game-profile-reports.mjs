@@ -11,8 +11,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const displayCadenceControlComparisonContractVersion = 4;
-const comparisonContractVersion =
-    displayCadenceControlComparisonContractVersion;
+const cadenceAndLifetimeComparisonContractVersion = 5;
+const comparisonContractVersion = cadenceAndLifetimeComparisonContractVersion;
 const comparisonReportSchemaVersion = 3;
 const profileSchemaVersion = 6;
 const defaultOutDir = resolve(
@@ -87,6 +87,20 @@ const gardenSwitchMaximumRenderedFps =
     gardenSwitchTargetFramesPerSecond + gardenSwitchRenderedFpsTolerance;
 const gardenSwitchGpuOccupancyDiagnosticGate =
     'GPU p95, semantic delivery, causal scheduler wakeup accounting, and submitted render work';
+const gardenSwitchResourceDiagnosticGate =
+    'garden-switch mature repeated arrivals and workflow lifetime peak resource gates';
+const gardenSwitchLifetimeResourceMeasurementMode =
+    'page-lifetime-webgl-program-texture-and-arrival-snapshot-geometry-v1';
+const lifecycleScenarioBaseName = 'game-high-target-runtime-lifecycle-desktop';
+const lifecycleTargetFramesPerSecond = 30;
+const lifecycleRenderedFpsTolerance = 2;
+const lifecycleMinimumRenderedFps =
+    lifecycleTargetFramesPerSecond - lifecycleRenderedFpsTolerance;
+const lifecycleMaximumRenderedFps =
+    lifecycleTargetFramesPerSecond + lifecycleRenderedFpsTolerance;
+const lifecycleMaximumP95FrameMs = 33.3;
+const lifecycleResourceDiagnosticGate =
+    'lifecycle mature and peak resource gates';
 const crossTierTargetFramesPerSecond = 30;
 const crossTierDisplayCadenceControlMode = 'profiler-owned-raf-v1';
 const crossTierDisplayCadenceCallbackTimestampMode = 'scheduled-phase-v1';
@@ -630,6 +644,12 @@ function validateNonNegativeNumber(errors, value, path) {
 function validatePositiveNumber(errors, value, path) {
     if (!isFiniteNumber(value) || value <= 0) {
         errors.push(`${path} must be a positive finite number`);
+    }
+}
+
+function validatePositiveInteger(errors, value, path) {
+    if (!Number.isInteger(value) || value <= 0) {
+        errors.push(`${path} must be a positive integer`);
     }
 }
 
@@ -2031,6 +2051,17 @@ function validateCanonicalScenarioEvidence(
                 );
                 if (!isRecord(arrival.sample)) {
                     errors.push(`${arrivalPath}.sample is missing`);
+                } else {
+                    for (const field of [
+                        'rendererShaders',
+                        'rendererTextures',
+                    ]) {
+                        validatePositiveInteger(
+                            errors,
+                            arrival.sample[field],
+                            `${arrivalPath}.sample.${field}`,
+                        );
+                    }
                 }
                 if (index === 0) {
                     if (arrival.timing?.initial !== true) {
@@ -2058,6 +2089,55 @@ function validateCanonicalScenarioEvidence(
                             `${arrivalPath}.timing.${field}`,
                         );
                     }
+                }
+            }
+        }
+        const lifetimeResources = scenario.gardenSwitch?.lifetimeResources;
+        const lifetimePath = `${path} gardenSwitch.lifetimeResources`;
+        if (!isRecord(lifetimeResources)) {
+            errors.push(`${lifetimePath} is missing`);
+        } else {
+            validateExactValue(
+                errors,
+                lifetimeResources.measurementMode,
+                gardenSwitchLifetimeResourceMeasurementMode,
+                `${lifetimePath}.measurementMode`,
+            );
+            for (const field of rendererResourceFields) {
+                validatePositiveInteger(
+                    errors,
+                    lifetimeResources[field],
+                    `${lifetimePath}.${field}`,
+                );
+            }
+            const geometryArrivalValues = Array.isArray(arrivals)
+                ? arrivals.map(
+                      (arrival) => arrival?.resources?.rendererGeometries,
+                  )
+                : [];
+            if (
+                geometryArrivalValues.every(Number.isInteger) &&
+                geometryArrivalValues.length > 0 &&
+                lifetimeResources.rendererGeometries !==
+                    Math.max(...geometryArrivalValues)
+            ) {
+                errors.push(
+                    `${lifetimePath}.rendererGeometries must equal the maximum arrival snapshot`,
+                );
+            }
+            for (const field of ['rendererShaders', 'rendererTextures']) {
+                const arrivalValues = Array.isArray(arrivals)
+                    ? arrivals.map((arrival) => arrival?.sample?.[field])
+                    : [];
+                if (
+                    arrivalValues.every(Number.isInteger) &&
+                    arrivalValues.length > 0 &&
+                    Number.isInteger(lifetimeResources[field]) &&
+                    lifetimeResources[field] < Math.max(...arrivalValues)
+                ) {
+                    errors.push(
+                        `${lifetimePath}.${field} must cover every instrumented arrival sample`,
+                    );
                 }
             }
         }
@@ -2914,6 +2994,7 @@ function lifecycleResourcePhases(scenario) {
     const witnesses = [
         {
             diagnosticOnly: true,
+            gatedBy: lifecycleResourceDiagnosticGate,
             name: 'cold',
             resources: scenario.lifecycle?.cold?.fixture?.resources,
         },
@@ -2932,6 +3013,7 @@ function lifecycleResourcePhases(scenario) {
         },
         {
             diagnosticOnly: true,
+            gatedBy: lifecycleResourceDiagnosticGate,
             name: 'context-restored',
             resources:
                 scenario.lifecycle?.context?.restoredControl?.fixture
@@ -2961,12 +3043,34 @@ function lifecycleResourcePhases(scenario) {
     ];
 }
 
+function gardenSwitchResourcePhases(scenario) {
+    const arrivals = scenario.gardenSwitch?.arrivals ?? [];
+    return [
+        ...arrivals.map((arrival, index) => ({
+            diagnosticOnly: index < 3,
+            gatedBy: index < 3 ? gardenSwitchResourceDiagnosticGate : null,
+            name: `arrival-${arrival.arrivalIndex}-${arrival.profile}`,
+            resources: arrival.resources,
+        })),
+        {
+            diagnosticOnly: false,
+            gatedBy: null,
+            name: 'switch-lifetime-peak',
+            resources: scenario.gardenSwitch?.lifetimeResources,
+        },
+    ];
+}
+
 function resourcePhases(scenario) {
     if (scenario.requested?.lifecycleProfile === true) {
         return lifecycleResourcePhases(scenario);
     }
+    if (scenario.requested?.gardenSwitchProfile === true) {
+        return gardenSwitchResourcePhases(scenario);
+    }
     return samplePhases(scenario).map((phase) => ({
         diagnosticOnly: false,
+        gatedBy: null,
         name: phase.name,
         resources: phase.resources,
     }));
@@ -3266,11 +3370,51 @@ function buildTargetAwareRenderedFpsComparison({
         maximumRenderedFps,
         minimumRenderedFps,
         pass,
+        rawRanksDiagnosticOnly: false,
         regressionBreach: !pass,
         screeningBreach: !pass,
         targetFramesPerSecond,
         targetToleranceFramesPerSecond,
         targetAwareRenderedFps: true,
+    };
+}
+
+function buildTargetAwareMaximumComparison({
+    maximumCandidateValue,
+    rows,
+    targetFramesPerSecond,
+    ...metric
+}) {
+    const baselineRelative = buildRatioComparison({ ...metric, rows });
+    const individual = baselineRelative.individual.map((run) => {
+        const candidateMaximumPass = run.candidate <= maximumCandidateValue;
+        return {
+            ...run,
+            baselineRelativePass: run.pass,
+            baselineRelativeRatio: run.ratio,
+            baselineRelativeWorsening: run.worsening,
+            candidateMaximumPass,
+            maximumCandidateValue,
+            pass: candidateMaximumPass,
+            targetFramesPerSecond,
+        };
+    });
+    const pass = individual.every((run) => run.pass);
+    return {
+        ...baselineRelative,
+        baselineRelativeDiagnosticOnly: true,
+        baselineRelativeRegressionBreach: baselineRelative.regressionBreach,
+        baselineRelativeScreeningBreach: baselineRelative.screeningBreach,
+        everyRawRunGate: true,
+        individual,
+        maximumCandidateValue,
+        medianPass: pass,
+        pass,
+        rawRanksDiagnosticOnly: false,
+        regressionBreach: !pass,
+        screeningBreach: !pass,
+        targetFramesPerSecond,
+        targetAwareMaximum: true,
     };
 }
 
@@ -3295,6 +3439,26 @@ function buildCrossTierRenderedFpsComparison({ rows, ...metric }) {
         rows,
         targetFramesPerSecond: crossTierTargetFramesPerSecond,
         targetToleranceFramesPerSecond: crossTierRenderedFpsTolerance,
+    });
+}
+
+function buildLifecycleRenderedFpsComparison({ rows, ...metric }) {
+    return buildTargetAwareRenderedFpsComparison({
+        ...metric,
+        maximumRenderedFps: lifecycleMaximumRenderedFps,
+        minimumRenderedFps: lifecycleMinimumRenderedFps,
+        rows,
+        targetFramesPerSecond: lifecycleTargetFramesPerSecond,
+        targetToleranceFramesPerSecond: lifecycleRenderedFpsTolerance,
+    });
+}
+
+function buildLifecycleP95FrameComparison({ rows, ...metric }) {
+    return buildTargetAwareMaximumComparison({
+        ...metric,
+        maximumCandidateValue: lifecycleMaximumP95FrameMs,
+        rows,
+        targetFramesPerSecond: lifecycleTargetFramesPerSecond,
     });
 }
 
@@ -3511,6 +3675,29 @@ function validateGardenSwitchFrameContract(row, reportKind, errors) {
             errors.push(
                 `${path}.runtimeFrameLoopCounterDeltas.${field} must be 0; received ${canonicalJson(counterDeltas[field])}`,
             );
+        }
+    }
+}
+
+function validateLifecycleCandidateFrameContract(row, errors) {
+    const sample = row.candidate?.sample;
+    for (const boundary of [
+        'runtimeFrameLoopAtStart',
+        'runtimeFrameLoopAtEnd',
+    ]) {
+        const snapshot = sample?.[boundary];
+        const path = `${row.scenario} run ${row.profileRun} ${row.phase} candidate.sample.${boundary}`;
+        if (!isRecord(snapshot)) {
+            errors.push(`${path} is missing`);
+            continue;
+        }
+        if (snapshot.targetFramesPerSecond !== lifecycleTargetFramesPerSecond) {
+            errors.push(
+                `${path}.targetFramesPerSecond must be ${lifecycleTargetFramesPerSecond}; received ${canonicalJson(snapshot.targetFramesPerSecond)}`,
+            );
+        }
+        if (snapshot.effectiveVisible !== true) {
+            errors.push(`${path}.effectiveVisible must be true`);
         }
     }
 }
@@ -3975,10 +4162,17 @@ function comparePairedScenarios(
                 );
                 continue;
             }
+            if (candidatePhase.gatedBy !== baselinePhase.gatedBy) {
+                errors.push(
+                    `${baseName} run ${profileRun} resource phase ${baselinePhase.name} diagnostic gate differs between reports`,
+                );
+                continue;
+            }
             resourceRows.push({
                 baseline: baselinePhase,
                 candidate: candidatePhase,
                 diagnosticOnly: baselinePhase.diagnosticOnly,
+                gatedBy: baselinePhase.gatedBy ?? null,
                 phase: baselinePhase.name,
                 profileRun,
                 scenario: baseName,
@@ -4049,6 +4243,11 @@ function comparePairedScenarios(
         sampleGroups.map((group) => [group.scenario, group]),
     );
     for (const group of sampleGroups) {
+        const targetAwareLifecycle =
+            requireCandidateFrameContract &&
+            baselineSchedulerContract ===
+                legacyHeartbeatSchedulerBaselineContract &&
+            group.scenario === lifecycleScenarioBaseName;
         for (const metric of [
             {
                 field: 'longTaskCount',
@@ -4143,6 +4342,8 @@ function comparePairedScenarios(
                         );
                     } else if (crossTierBaseNamePattern.test(group.scenario)) {
                         validateCrossTierCandidateFrameContract(row, errors);
+                    } else if (targetAwareLifecycle) {
+                        validateLifecycleCandidateFrameContract(row, errors);
                     }
                 }
                 addMetricRows({
@@ -4164,22 +4365,33 @@ function comparePairedScenarios(
                 comparisons.push({
                     phase: group.phase,
                     scenario: group.scenario,
-                    ...(requireCandidateFrameContract &&
-                    metric.id === 'frame.rendered_fps' &&
-                    group.scenario === gardenSwitchScenarioBaseName
-                        ? buildGardenSwitchRenderedFpsComparison({
+                    ...(targetAwareLifecycle && metric.id === 'frame.p95_ms'
+                        ? buildLifecycleP95FrameComparison({
                               ...metric,
-                              phase: group.phase,
                               rows,
                           })
-                        : requireCandidateFrameContract &&
-                            metric.id === 'frame.rendered_fps' &&
-                            crossTierBaseNamePattern.test(group.scenario)
-                          ? buildCrossTierRenderedFpsComparison({
+                        : targetAwareLifecycle &&
+                            metric.id === 'frame.rendered_fps'
+                          ? buildLifecycleRenderedFpsComparison({
                                 ...metric,
                                 rows,
                             })
-                          : buildRatioComparison({ ...metric, rows })),
+                          : requireCandidateFrameContract &&
+                              metric.id === 'frame.rendered_fps' &&
+                              group.scenario === gardenSwitchScenarioBaseName
+                            ? buildGardenSwitchRenderedFpsComparison({
+                                  ...metric,
+                                  phase: group.phase,
+                                  rows,
+                              })
+                            : requireCandidateFrameContract &&
+                                metric.id === 'frame.rendered_fps' &&
+                                crossTierBaseNamePattern.test(group.scenario)
+                              ? buildCrossTierRenderedFpsComparison({
+                                    ...metric,
+                                    rows,
+                                })
+                              : buildRatioComparison({ ...metric, rows })),
                 });
             }
         }
@@ -4418,8 +4630,7 @@ function comparePairedScenarios(
                     ...(diagnosticOnly
                         ? buildAbsoluteDiagnosticComparison({
                               ...metric,
-                              gatedBy:
-                                  'lifecycle mature and peak resource gates',
+                              gatedBy: group.rows[0].gatedBy,
                               rows,
                           })
                         : buildAbsoluteComparison({ ...metric, rows })),
@@ -5426,15 +5637,17 @@ function buildMarkdown(comparison) {
             const gate =
                 result.gateBasis === 'cadence-confounded'
                     ? `not comparable: cadence-confounded; raw ${result.medianLimit}x / ${result.medianAbsoluteTolerance} ${result.unit} observation retained; gated by ${result.gatedBy}`
-                    : result.targetAwareRenderedFps
-                      ? result.maximumRenderedFps === null
-                          ? `candidate >= ${result.minimumRenderedFps} ${result.unit} (target ${result.targetFramesPerSecond} ${result.unit}, ${result.targetToleranceFramesPerSecond} ${result.unit} tolerance); baseline-relative ratio diagnostic only`
-                          : `candidate ${result.minimumRenderedFps}-${result.maximumRenderedFps} ${result.unit} around declared ${result.targetFramesPerSecond} ${result.unit} target; every raw run; baseline-relative ratio diagnostic only`
-                      : result.diagnosticOnly
-                        ? `diagnostic only; gated by ${result.gatedBy}`
-                        : result.kind === 'ratio'
-                          ? `${result.direction === 'minimum' ? '>=' : '<='} ${result.medianLimit}x screen; ${result.medianAbsoluteTolerance} ${result.unit} practical floor; repeat required`
-                          : `median <= +${result.maximumIncrease} ${result.unit}; repeat required`;
+                    : result.targetAwareMaximum
+                      ? `candidate <= ${result.maximumCandidateValue} ${result.unit} under declared ${result.targetFramesPerSecond} fps target; every raw run; baseline-relative ratio diagnostic only`
+                      : result.targetAwareRenderedFps
+                        ? result.maximumRenderedFps === null
+                            ? `candidate >= ${result.minimumRenderedFps} ${result.unit} (target ${result.targetFramesPerSecond} ${result.unit}, ${result.targetToleranceFramesPerSecond} ${result.unit} tolerance); baseline-relative ratio diagnostic only`
+                            : `candidate ${result.minimumRenderedFps}-${result.maximumRenderedFps} ${result.unit} around declared ${result.targetFramesPerSecond} ${result.unit} target; every raw run; baseline-relative ratio diagnostic only`
+                        : result.diagnosticOnly
+                          ? `diagnostic only; gated by ${result.gatedBy}`
+                          : result.kind === 'ratio'
+                            ? `${result.direction === 'minimum' ? '>=' : '<='} ${result.medianLimit}x screen; ${result.medianAbsoluteTolerance} ${result.unit} practical floor; repeat required`
+                            : `median <= +${result.maximumIncrease} ${result.unit}; repeat required`;
             const resultLabel =
                 result.decisionStatus === 'not-comparable'
                     ? 'not comparable (cadence-confounded)'
@@ -5515,8 +5728,11 @@ function buildMarkdown(comparison) {
                 .filter((run) => !run.pass)
                 .map((run) => run.sampleRank)
                 .join(', ');
+            const failedRankLabel = failure.rawRanksDiagnosticOnly
+                ? 'diagnostic primary rank breaches'
+                : 'decisive primary raw-run breaches';
             lines.push(
-                `- ${failure.scenario} / ${failure.phase} / ${failure.id}: ${replicationSummary || `median ${failure.kind === 'ratio' ? `${display(failure.medianRatio)}x` : display(failure.medianDelta)}`}${failedRanks ? `; diagnostic primary rank breaches ${failedRanks}` : ''}`,
+                `- ${failure.scenario} / ${failure.phase} / ${failure.id}: ${replicationSummary || `median ${failure.kind === 'ratio' ? `${display(failure.medianRatio)}x` : display(failure.medianDelta)}`}${failedRanks ? `; ${failedRankLabel} ${failedRanks}` : ''}`,
             );
         }
         for (const failure of invariantFailures) {
@@ -5576,7 +5792,16 @@ function buildMarkdown(comparison) {
         );
     });
     if (rankDiagnostics.length > 0) {
-        lines.push('', '## Raw-rank diagnostics', '');
+        const hasDecisiveRawRunFailure = rankDiagnostics.some(
+            (result) => result.rawRanksDiagnosticOnly === false,
+        );
+        lines.push(
+            '',
+            hasDecisiveRawRunFailure
+                ? '## Raw-run gate evidence'
+                : '## Raw-rank diagnostics',
+            '',
+        );
         for (const result of rankDiagnostics) {
             const replications = result.replications ?? [
                 {
@@ -5599,9 +5824,19 @@ function buildMarkdown(comparison) {
                     if (!replication.available) {
                         return `${replication.label}: unavailable`;
                     }
+                    const gate = result.targetAwareMaximum
+                        ? `candidate <= ${result.maximumCandidateValue} ${result.unit}`
+                        : result.targetAwareRenderedFps
+                          ? result.maximumRenderedFps === null
+                              ? `candidate >= ${result.minimumRenderedFps} ${result.unit}`
+                              : `candidate ${result.minimumRenderedFps}-${result.maximumRenderedFps} ${result.unit}`
+                          : 'raw rank is diagnostic';
                     const ranks = replication.individual
                         .filter((run) => !run.pass)
-                        .map((run) => run.sampleRank)
+                        .map(
+                            (run) =>
+                                `rank ${run.sampleRank} (baseline run ${run.baselineProfileRun} = ${display(run.baseline)} ${result.unit}; candidate run ${run.candidateProfileRun} = ${display(run.candidate)} ${result.unit}; ${gate})`,
+                        )
                         .join(', ');
                     return `${replication.label}: ${ranks || 'none'}`;
                 })

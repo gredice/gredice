@@ -4,6 +4,8 @@ Date: 2026-04-29
 
 Static inventory refreshed: 2026-08-30
 
+Profiling comparison contract refreshed: 2026-09-02
+
 ## Summary
 
 The 2026-04-29 analysis did not find the scene asset-bound. Game models are now
@@ -285,11 +287,25 @@ settle contract with deliberately conservative scheduling headroom: the garden
 must swap no earlier than 200 ms and within 1,000 ms, become visible within
 1,200 ms, and finish the observed settle window within 1,800 ms. No frame may
 stall for more than 500 ms. These are structural transition safeguards, not
-machine-specific FPS targets. Renderer geometry, program, and texture counts
-are recorded on every arrival. For fauna, the warmed plateau compares F2→F3.
-High needs two warm returns, so H2→H3 remains explicit warm-up evidence and the
-plateau compares H3→H4. The later arrival may release resources but must not
-increase live geometry, program, or texture counts. Reports keep all three
+machine-specific FPS targets.
+
+Comparison contract v5 separates first-use compilation progress from mature and
+page-lifetime resource evidence. Renderer geometry plus instrumented WebGL
+program and texture counts are recorded on every arrival. Arrivals 1–3 (`H1`,
+`F1`, and `H2`) remain visible as diagnostics because they can land at different
+points on the same compile curve. Arrivals 4–7 (`F2`, `H3`, `F3`, and `H4`) are
+hard resource phases. Within every raw run, exact named warm-plateau checks
+compare F2→F3 and H3→H4; the later arrival may release resources but must not
+increase live geometry, program, or texture counts.
+
+Each run also records a `lifetimeResources` witness using
+`page-lifetime-webgl-program-texture-and-arrival-snapshot-geometry-v1`.
+Geometry must equal the maximum post-settle arrival snapshot, while program and
+texture counts are successful-create high-water marks tracked for the lifetime
+of the page's WebGL context. All three values must be positive integers, and the
+WebGL high-water marks must cover every corresponding instrumented arrival
+sample. The mature arrivals and this workflow lifetime peak are hard comparison
+phases; early compile-progress deltas remain diagnostic. Reports keep all three
 independent runs and all 21 arrivals visible so a passing median cannot hide one
 broken switch.
 
@@ -320,12 +336,14 @@ display interval, and a pending timeout with a finite due time, so the
 post-calibration zero-RAF claim cannot pass across a reset or an idle boundary.
 This admits causally necessary retained and outstanding-receipt
 reconciliation without a phase-specific allowance, while a perpetual RAF
-keepalive cannot improve a GPU signal by adding browser wakeups. This remains
-part of comparison contract v4, and the candidate counter, boundary state, and
-controlled-display-cadence evidence require a fresh final capture. Earlier
-canonical reports are invalid; omitted scheduler fields remain compatible only
-on the explicitly selected `legacy-heartbeat-v1` baseline side.
-Controlled-display-cadence fields are required for both subjects.
+keepalive cannot improve a GPU signal by adding browser wakeups. These scheduler
+invariants and controlled-display-cadence requirements entered comparison
+contract v4. Contract v5 retains them and adds the cadence- and lifetime-aware
+rules described in this section. The candidate counter, boundary state,
+controlled-display-cadence evidence, and v5 resource witnesses require a fresh
+final capture. Earlier canonical reports are invalid; omitted scheduler fields
+remain compatible only on the explicitly selected `legacy-heartbeat-v1`
+baseline side. Controlled-display-cadence fields are required for both subjects.
 
 Elapsed timer-query work divided by sampled wall time remains visible for every
 arrival and as a wall-time-weighted seven-arrival aggregate. It is diagnostic,
@@ -469,6 +487,16 @@ restoration leak, or a reproduced median lifetime-peak increase beyond one count
 still fails; only a different position below the same proven mature peak is
 diagnostic.
 
+Contract v5 also distinguishes a scheduler-cadence correction from a lifecycle
+regression. Only when a `legacy-heartbeat-v1` baseline is compared with a
+canonical candidate, every raw candidate `active` and `context-restored` sample
+must declare an effectively visible 30 FPS target at both boundaries, keep p95
+frame duration at or below 33.3 ms, and render between 28 and 32 FPS. The
+baseline-relative p95 and rendered-FPS results remain in JSON and Markdown as
+diagnostics, so removing legacy oversubmission cannot fail the release by
+itself. Canonical-to-canonical lifecycle comparisons keep the existing relative
+gates; they do not switch to this target-aware legacy-migration rule.
+
 An old external subject without renderer-stats receipt telemetry may use only
 the explicit `legacy-pre-render-settled-v1` fallback. The harness accepts it only
 when both served subject and profiler harness are clean, their full commits
@@ -510,7 +538,7 @@ topology signature and allowlists only the resulting scheduler checks, while the
 candidate and its confirmation remain on `canonical-v1`.
 Build and start the baseline and candidate subjects as external servers from
 separate clean worktrees. Confirm cleanliness before marking the embedded dirty
-state `false`; the current comparison contract is `4`. The current harness also
+state `false`; the current comparison contract is `5`. The current harness also
 requires `legacyOutlinePipeline=true` only for the untouched legacy scheduler
 baseline; every canonical candidate and confirmation must record `false`. Run
 only one subject server and capture at a time so the other server cannot perturb
@@ -522,7 +550,7 @@ profile_subject_commit=$(git rev-parse HEAD) &&
 test -z "$(git status --porcelain --untracked-files=normal)" &&
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT="$profile_subject_commit" \
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY=false \
-NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=4 \
+NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=5 \
   pnpm --filter garden build &&
 GREDICE_GARDEN_START_PORT=3101 pnpm --filter garden start
 
@@ -532,7 +560,7 @@ profile_subject_commit=$(git rev-parse HEAD) &&
 test -z "$(git status --porcelain --untracked-files=normal)" &&
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT="$profile_subject_commit" \
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY=false \
-NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=4 \
+NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=5 \
   pnpm --filter garden build &&
 GREDICE_GARDEN_START_PORT=3102 pnpm --filter garden start
 ```
@@ -679,10 +707,11 @@ Candidate reports cannot select this contract through either the CLI or public
 comparison API.
 
 Cross-tier GPU p95 is decisive only under comparable render cadence. Comparison
-contract v4 installs `profiler-owned-raf-v1` before application code for every
-cross-tier steady and camera-motion run. It batches application/runtime RAF
-callbacks onto a requested 30 Hz clock while the profiler's frame sampler and
-GPU-query drain retain the captured native browser RAF. Callbacks receive the
+contract v4 introduced `profiler-owned-raf-v1` before application code for every
+cross-tier steady and camera-motion run. Contract v5 retains that control. It
+batches application/runtime RAF callbacks onto a requested 30 Hz clock while
+the profiler's frame sampler and GPU-query drain retain the captured native
+browser RAF. Callbacks receive the
 scheduled 30 Hz phase timestamp rather than host-rAF jitter; a late host frame
 skips missed phases without catch-up. The global phase remains anchored across
 intervals with no pending application callback, so skipped-phase telemetry can
@@ -708,9 +737,10 @@ With that explicit control, both steady and camera-motion GPU rows use the
 existing direct 15% relative boundary, 3 ms practical floor, 40% raw-rank
 boundary, and 6 ms raw-rank floor. Bundle-median delivered cadence must still
 differ by no more than 2 FPS. Historical contract-v3 artifacts may contain the
-legacy cadence-confound classification; the contract-v4 comparator never
-applies it, so it cannot downgrade a control failure or turn a v4 GPU row into
-a non-decisional result. The first contract-v3 four-report attempt remains
+legacy cadence-confound classification; contract v4 removed it and contract v5
+retains that decision, so it cannot downgrade a control failure or turn a
+controlled GPU row into a non-decisional result. The first contract-v3
+four-report attempt remains
 diagnostic and invalid because several legacy steady runs exceeded 32 FPS. It
 must not be reused as release evidence.
 
@@ -782,14 +812,19 @@ Rendered FPS uses the generic relative gate except where a scenario declares a
 semantic scheduler target. Both cross-tier subjects and the fixed garden-switch
 arrival 1 control must keep every raw run within 28–32 FPS around an observed
 30 FPS target; later garden-switch transition arrivals must deliver at least
-28 FPS. Baseline-relative FPS ratios stay in the report as diagnostics for
-those cases, so eliminating oversubmission is not misclassified as lost
-performance. Cross-tier GPU p95 additionally requires the explicit
-profiler-owned cadence contract above; every steady and camera-motion row is
-decisional under contract v4. Garden-switch GPU p95, per-render submissions,
-fixed-control total submissions, and causal scheduler wakeup accounting are
-hard gates. Elapsed GPU occupancy remains a complete raw diagnostic rather than
-a proxy for power or thermal behavior.
+28 FPS. For a contract-v5 legacy-heartbeat-to-canonical lifecycle comparison,
+every raw candidate active and context-restored phase must also stay within
+28–32 rendered FPS and at or below 33.3 ms p95 frame duration around its declared
+30 FPS target. Baseline-relative FPS and p95 ratios stay in the report as
+diagnostics for these target-aware cases, so eliminating oversubmission is not
+misclassified as lost performance. Canonical-to-canonical lifecycle rows retain
+the generic relative policy. Cross-tier GPU p95 additionally requires the
+explicit profiler-owned cadence contract above; every steady and camera-motion
+row became decisional under contract v4 and remains decisional under contract
+v5. Garden-switch GPU p95, mature and lifetime resource phases, per-render
+submissions, fixed-control total submissions, and causal scheduler wakeup
+accounting are hard gates. Elapsed GPU occupancy remains a complete raw
+diagnostic rather than a proxy for power or thermal behavior.
 
 “Practical floor” is not an extra allowance added to the percentage. A signal
 is meaningful when its worsening reaches the floor while also crossing the
@@ -1708,27 +1743,34 @@ Required release evidence before merge:
   semantic-owner gate.
 - `4717-final/building-ambient` is the focused two-run control proving an
   ordinary ambient structure fixture holds one stable 30 FPS owner set.
-- `4717-origin-main-vs-candidate/baseline-1` and `baseline-2` are independent
-  captures of the same clean `origin/main` subject, collected by the same exact
-  clean profiler harness used for `candidate-final-1` and `candidate-final-2`.
-  The origin/main pair uses the exact `legacy-heartbeat-v1` baseline contract;
-  its superseded scheduler checks may fail only as described above. The
-  candidate pair independently captures the same clean candidate subject and
-  the same 39 canonical runs under `canonical-v1`. `comparison-final` is the
-  fail-closed symmetric 2x2 result; “independent” means separate profiler
-  executions and reports, not different harness commits.
+- `4775-controlled-v5-final/baseline-1`, `baseline-2`, `candidate-1`, and
+  `candidate-2` must be independent captures collected by the same exact clean
+  contract-v5 profiler harness. The origin/main pair uses the exact
+  `legacy-heartbeat-v1` baseline contract; its superseded scheduler checks may
+  fail only as described above. The candidate pair captures the same clean
+  candidate subject and the same 39 canonical runs under `canonical-v1`.
+  `comparison-final` is the required fail-closed symmetric 2x2 result;
+  “independent” means separate profiler executions and reports, not different
+  harness commits. This matrix is pending fresh capture; contract-v4 reports do
+  not satisfy the contract-v5 release gate.
 - Garden-switch comparison uses a full-length initial control and hard-gates
   GPU p95, semantic target delivery, scheduler callback conservation and exact
   causal wakeup classification, zero unexpected no-work wakeups, zero
   post-calibration scheduler RAF polling, per-render submissions, and
-  fixed-control total submissions.
+  fixed-control total submissions. Arrivals 1–3 retain first-use resource
+  diagnostics; arrivals 4–7 and the page-lifetime resource peak are hard gates.
   Every per-arrival occupancy window and the wall-time-weighted aggregate stay
   visible as diagnostics; no sample is discarded and no threshold is widened.
+- For the legacy-heartbeat-to-canonical lifecycle migration, every raw
+  candidate active and context-restored sample must prove the 30 FPS boundary,
+  p95 ≤ 33.3 ms, and 28–32 rendered FPS. Baseline-relative p95/FPS remains
+  diagnostic; canonical-to-canonical lifecycle comparison remains relative.
 - Cross-tier steady and camera-motion GPU p95 are compared directly only under
-  the contract-v4 profiler-owned 30 Hz application/runtime RAF. Every raw
-  sample must prove that control independently while profiler timing remains on
-  native browser RAF. Contract-v3 cadence-confounded artifacts are historical
-  diagnostics and cannot satisfy this release gate.
+  the profiler-owned 30 Hz application/runtime RAF introduced by contract v4
+  and retained by contract v5. Every raw sample must prove that control
+  independently while profiler timing remains on native browser RAF.
+  Contract-v3 cadence-confounded artifacts are historical diagnostics and
+  cannot satisfy this release gate.
 - These local ARM64 macOS headless-Chromium/ANGLE-Metal artifacts cover the
   deterministic harness only. Synthetic `document.hidden` is not a real
   background tab. Timer-query occupancy is not a physical power or thermal
