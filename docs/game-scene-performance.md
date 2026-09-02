@@ -293,10 +293,13 @@ increase live geometry, program, or texture counts. Reports keep all three
 independent runs and all 21 arrivals visible so a passing median cannot hide one
 broken switch.
 
-Garden-switch GPU release comparison hard-gates replicated per-arrival GPU p95
-medians with the same 15%/3 ms threshold used elsewhere. The 40%/6 ms raw-rank
-threshold stays diagnostic, so one isolated rank remains visible without
-standing in for a reproduced regression. The comparison also gates draw calls
+Garden-switch GPU release comparison screens each per-arrival GPU p95 median
+at 15%; a release regression must reproduce that screening breach across all
+four baseline/candidate pairings. The 3 ms practical floor remains visible in
+each single-pair comparison record but does not relax the four-pair reproduction
+rule. The 40%/6 ms raw-rank threshold stays diagnostic, so one isolated rank
+remains visible without standing in for a reproduced regression. The
+comparison also gates draw calls
 and submitted triangles per rendered frame on every arrival, plus total
 submissions in the fixed-length arrival 1 control. The initial control must
 deliver 28–32 FPS around its observed 30 FPS semantic target; transition
