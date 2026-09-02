@@ -1789,8 +1789,10 @@ test('cross-tier scenario set replays one High-target garden across every tier a
             assert.equal(scenario.budget, 'gameHighTarget');
             assert.equal(scenario.crossTierProfile, true);
             assert.deepEqual(scenario.displayCadenceControl, {
+                callbackTimestampMode: 'scheduled-phase-v1',
                 framesPerSecond: 30,
                 mode: 'profiler-owned-raf-v1',
+                observedRateClock: 'native-wall-time-v1',
             });
             assert.equal(scenario.dpr, 2);
             assert.equal(scenario.expectedDprCap, dprCap);
@@ -2834,6 +2836,7 @@ test('injected GPU timing yields to an existing elapsed-time query', () => {
 test('profiler display cadence control owns app RAF while preserving native profiler RAF and cancellation', () => {
     const keys = [
         'cancelAnimationFrame',
+        'performance',
         'requestAnimationFrame',
         '__gameProfileCancelNativeAnimationFrame',
         '__gameProfileDisplayCadenceControl',
@@ -2855,6 +2858,16 @@ test('profiler display cadence control owns app RAF while preserving native prof
     };
     const nativeCallbacks = new Map();
     const cancelledNativeHandles = [];
+    const adjacentNumber = (value, direction) => {
+        const view = new DataView(new ArrayBuffer(8));
+        view.setFloat64(0, value);
+        view.setBigUint64(
+            0,
+            view.getBigUint64(0) + (direction === 'up' ? 1n : -1n),
+        );
+        return view.getFloat64(0);
+    };
+    let currentWallTime = 0;
     let nextNativeHandle = 100;
     const nativeRequestAnimationFrame = (callback) => {
         nextNativeHandle += 1;
@@ -2870,18 +2883,24 @@ test('profiler display cadence control owns app RAF while preserving native prof
         assert.ok(entry, `expected a native RAF callback at ${timestamp}`);
         const [handle, callback] = entry;
         nativeCallbacks.delete(handle);
+        currentWallTime = timestamp;
         callback(timestamp);
     };
 
     try {
+        setGlobal('performance', {
+            now: () => currentWallTime,
+        });
         setGlobal('requestAnimationFrame', nativeRequestAnimationFrame);
         setGlobal('cancelAnimationFrame', nativeCancelAnimationFrame);
         setGlobal('__gameProfileMetrics', {});
 
         installBrowserMetrics({
             displayCadenceControl: {
+                callbackTimestampMode: 'scheduled-phase-v1',
                 framesPerSecond: 30,
                 mode: 'profiler-owned-raf-v1',
+                observedRateClock: 'native-wall-time-v1',
             },
             externalGpuTimer: false,
         });
@@ -2907,12 +2926,24 @@ test('profiler display cadence control owns app RAF while preserving native prof
         );
 
         const deliveries = [];
+        let finalHandle = null;
+        let lateHandle = null;
         let nestedHandle = null;
         const firstHandle = globalThis.requestAnimationFrame((timestamp) => {
             deliveries.push(['first', timestamp]);
             nestedHandle = globalThis.requestAnimationFrame(
                 (nestedTimestamp) => {
                     deliveries.push(['nested', nestedTimestamp]);
+                    lateHandle = globalThis.requestAnimationFrame(
+                        (lateTimestamp) => {
+                            deliveries.push(['late', lateTimestamp]);
+                            finalHandle = globalThis.requestAnimationFrame(
+                                (finalTimestamp) => {
+                                    deliveries.push(['final', finalTimestamp]);
+                                },
+                            );
+                        },
+                    );
                 },
             );
         });
@@ -2944,11 +2975,114 @@ test('profiler display cadence control owns app RAF while preserving native prof
         ]);
         assert.equal(nativeCallbacks.size, 1);
 
+        deliverNextNativeFrame(33.3);
+        assert.deepEqual(deliveries, [
+            ['first', 0],
+            ['batched', 0],
+        ]);
+        assert.equal(nativeCallbacks.size, 1);
+
         deliverNextNativeFrame(33.4);
         assert.deepEqual(deliveries, [
             ['first', 0],
             ['batched', 0],
-            ['nested', 33.4],
+            ['nested', 1_000 / 30],
+        ]);
+        assert.ok(deliveries[2][1] <= 33.4);
+        assert.equal(deliveries[2][1] - deliveries[0][1], 1_000 / 30);
+        assert.equal(typeof lateHandle, 'number');
+        assert.equal(nativeCallbacks.size, 1);
+        assert.ok(
+            Math.abs(
+                globalThis.__gameProfileDisplayCadenceControl.snapshot()
+                    .observedFramesPerSecond - 29.94,
+            ) < 0.01,
+        );
+        assert.equal(
+            globalThis.__gameProfileDisplayCadenceControl.snapshot()
+                .skippedPhaseCount,
+            0,
+        );
+
+        deliverNextNativeFrame(140);
+        assert.deepEqual(deliveries, [
+            ['first', 0],
+            ['batched', 0],
+            ['nested', 1_000 / 30],
+            ['late', (4 * 1_000) / 30],
+        ]);
+        assert.ok(deliveries[3][1] <= 140);
+        assert.equal(deliveries[3][1] - deliveries[2][1], (3 * 1_000) / 30);
+        assert.equal(typeof finalHandle, 'number');
+        assert.equal(nativeCallbacks.size, 1);
+        assert.equal(
+            globalThis.__gameProfileDisplayCadenceControl.snapshot()
+                .skippedPhaseCount,
+            2,
+        );
+
+        deliverNextNativeFrame(150);
+        assert.equal(deliveries.length, 4);
+        assert.equal(nativeCallbacks.size, 1);
+        assert.equal(
+            globalThis.__gameProfileDisplayCadenceControl.snapshot()
+                .skippedPhaseCount,
+            2,
+        );
+
+        deliverNextNativeFrame(166.8);
+        assert.deepEqual(deliveries, [
+            ['first', 0],
+            ['batched', 0],
+            ['nested', 1_000 / 30],
+            ['late', (4 * 1_000) / 30],
+            ['final', 5 * (1_000 / 30)],
+        ]);
+        assert.ok(deliveries[4][1] <= 166.8);
+        assert.ok(
+            Math.abs(deliveries[4][1] - deliveries[3][1] - 1_000 / 30) < 1e-9,
+        );
+        assert.equal(
+            globalThis.__gameProfileDisplayCadenceControl.snapshot()
+                .skippedPhaseCount,
+            2,
+        );
+        assert.equal(nativeCallbacks.size, 0);
+        const deliveredTimestamps = deliveries.map(([, timestamp]) =>
+            Number(timestamp),
+        );
+        for (let index = 1; index < deliveredTimestamps.length; index += 1) {
+            assert.ok(
+                deliveredTimestamps[index] >= deliveredTimestamps[index - 1],
+            );
+        }
+
+        let boundaryFollowupHandle = null;
+        let sameBatchSiblingHandle = null;
+        globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['exact-boundary', timestamp]);
+            globalThis.cancelAnimationFrame(sameBatchSiblingHandle);
+            currentWallTime = 240;
+            boundaryFollowupHandle = globalThis.requestAnimationFrame(
+                (followupTimestamp) => {
+                    deliveries.push(['boundary-followup', followupTimestamp]);
+                },
+            );
+        });
+        sameBatchSiblingHandle = globalThis.requestAnimationFrame(
+            (timestamp) => {
+                deliveries.push(['same-batch-cancelled', timestamp]);
+            },
+        );
+        deliverNextNativeFrame(200);
+        assert.deepEqual(deliveries.slice(-1), [['exact-boundary', 200]]);
+        assert.equal(typeof boundaryFollowupHandle, 'number');
+        assert.equal(nativeCallbacks.size, 1);
+
+        deliverNextNativeFrame(250);
+        assert.deepEqual(deliveries.slice(-2), [
+            ['exact-boundary', 200],
+            ['boundary-followup', (7 * 1_000) / 30],
         ]);
         assert.equal(nativeCallbacks.size, 0);
 
@@ -2961,21 +3095,131 @@ test('profiler display cadence control owns app RAF while preserving native prof
         assert.equal(nativeCallbacks.size, 0);
         assert.equal(cancelledNativeHandles.length, 1);
 
+        currentWallTime = 310;
+        globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['idle-resume', timestamp]);
+        });
+        deliverNextNativeFrame(316.7);
+        assert.notEqual(deliveries.at(-1)?.[0], 'idle-resume');
+        assert.equal(nativeCallbacks.size, 1);
+        const pendingPhaseSnapshot =
+            globalThis.__gameProfileDisplayCadenceControl.snapshot();
+        assert.equal(pendingPhaseSnapshot.skippedPhaseCount, 2);
+        assert.ok(
+            Math.abs(
+                pendingPhaseSnapshot.lastDeliveredPhaseAt -
+                    pendingPhaseSnapshot.firstDeliveredPhaseAt -
+                    (pendingPhaseSnapshot.deliveredFrameCount +
+                        pendingPhaseSnapshot.skippedPhaseCount -
+                        1) *
+                        pendingPhaseSnapshot.intervalMs,
+            ) < 1e-9,
+        );
+        deliverNextNativeFrame(333.4);
+        assert.deepEqual(deliveries.at(-1), ['idle-resume', 10 * (1_000 / 30)]);
+        assert.ok(deliveries.at(-1)[1] >= 310);
+        assert.equal(nativeCallbacks.size, 0);
+
+        const exactLaterBoundary = 12 * (1_000 / 30);
+        currentWallTime = exactLaterBoundary;
+        globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['idle-exact-boundary', timestamp]);
+        });
+        deliverNextNativeFrame(exactLaterBoundary);
+        assert.deepEqual(deliveries.at(-1), [
+            'idle-exact-boundary',
+            exactLaterBoundary,
+        ]);
+
+        const laterBoundary = 14 * (1_000 / 30);
+        currentWallTime = adjacentNumber(laterBoundary, 'down');
+        globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['idle-before-boundary', timestamp]);
+        });
+        deliverNextNativeFrame(laterBoundary);
+        assert.deepEqual(deliveries.at(-1), [
+            'idle-before-boundary',
+            laterBoundary,
+        ]);
+
+        const passedBoundary = 16 * (1_000 / 30);
+        const afterPassedBoundary = adjacentNumber(passedBoundary, 'up');
+        currentWallTime = afterPassedBoundary;
+        globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['idle-after-boundary', timestamp]);
+        });
+        deliverNextNativeFrame(afterPassedBoundary + 16.7);
+        assert.notEqual(deliveries.at(-1)?.[0], 'idle-after-boundary');
+        assert.equal(nativeCallbacks.size, 1);
+        deliverNextNativeFrame(17 * (1_000 / 30));
+        assert.deepEqual(deliveries.at(-1), [
+            'idle-after-boundary',
+            17 * (1_000 / 30),
+        ]);
+        assert.ok(deliveries.at(-1)[1] >= afterPassedBoundary);
+        assert.equal(nativeCallbacks.size, 0);
+
+        let speculativeHandle = null;
+        currentWallTime = 590;
+        globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['scheduler-frame', timestamp]);
+            speculativeHandle = globalThis.requestAnimationFrame(
+                (speculativeTimestamp) => {
+                    deliveries.push([
+                        'scheduler-speculative',
+                        speculativeTimestamp,
+                    ]);
+                },
+            );
+            globalThis.cancelAnimationFrame(speculativeHandle);
+        });
+        deliverNextNativeFrame(600);
+        assert.deepEqual(deliveries.at(-1), ['scheduler-frame', 600]);
+        assert.equal(typeof speculativeHandle, 'number');
+        assert.equal(nativeCallbacks.size, 0);
+
+        currentWallTime = 19 * (1_000 / 30) + 0.1;
+        globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['scheduler-rearm', timestamp]);
+        });
+        deliverNextNativeFrame(650);
+        assert.deepEqual(deliveries.at(-1), [
+            'scheduler-rearm',
+            19 * (1_000 / 30),
+        ]);
+        assert.equal(nativeCallbacks.size, 0);
+
+        currentWallTime = 690;
+        globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['scheduler-late-host-frame', timestamp]);
+        });
+        deliverNextNativeFrame(710);
+        assert.deepEqual(deliveries.at(-1), [
+            'scheduler-late-host-frame',
+            21 * (1_000 / 30),
+        ]);
+        assert.equal(nativeCallbacks.size, 0);
+
         const telemetry =
             globalThis.__gameProfileDisplayCadenceControl.snapshot();
         assert.equal(telemetry.installed, true);
+        assert.equal(telemetry.callbackTimestampMode, 'scheduled-phase-v1');
         assert.equal(telemetry.mode, 'profiler-owned-raf-v1');
+        assert.equal(telemetry.observedRateClock, 'native-wall-time-v1');
         assert.equal(telemetry.requestedFramesPerSecond, 30);
-        assert.equal(telemetry.requestCount, 5);
-        assert.equal(telemetry.cancelRequestCount, 3);
-        assert.equal(telemetry.cancelledBeforeDeliveryCount, 2);
-        assert.equal(telemetry.deliveredCallbackCount, 3);
-        assert.equal(telemetry.deliveredFrameCount, 2);
-        assert.equal(telemetry.nativeFrameCount, 3);
-        assert.equal(telemetry.nativeFrameCancellationCount, 1);
+        assert.equal(telemetry.requestCount, 18);
+        assert.equal(telemetry.cancelRequestCount, 5);
+        assert.equal(telemetry.cancelledBeforeDeliveryCount, 4);
+        assert.equal(telemetry.deliveredCallbackCount, 14);
+        assert.equal(telemetry.deliveredFrameCount, 13);
+        assert.equal(telemetry.firstDeliveredPhaseAt, 0);
+        assert.equal(telemetry.lastDeliveredPhaseAt, 21 * (1_000 / 30));
+        assert.equal(telemetry.nativeFrameCount, 18);
+        assert.equal(telemetry.nativeFrameCancellationCount, 2);
         assert.equal(telemetry.pendingCallbackCount, 0);
         assert.equal(telemetry.nativeFramePending, false);
-        assert.ok(Math.abs(telemetry.observedFramesPerSecond - 29.94) < 0.01);
+        assert.equal(telemetry.skippedPhaseCount, 9);
+        assert.ok(Math.abs(telemetry.observedFramesPerSecond - 16.9) < 0.01);
         assert.throws(
             () => globalThis.requestAnimationFrame(null),
             /callback must be a function/,
@@ -3721,6 +3965,8 @@ test('interactive sampling stays on native profiler RAF and reports controlled d
     };
     let controlledRequestCount = 0;
     let deliveredFrameCount = 100;
+    let lastDeliveredPhaseAt = 2_000;
+    let skippedPhaseCount = 4;
     const nativeCallbacks = [];
 
     try {
@@ -3735,14 +3981,19 @@ test('interactive sampling stays on native profiler RAF and reports controlled d
         });
         setGlobal('__gameProfileDisplayCadenceControl', {
             snapshot: () => ({
+                callbackTimestampMode: 'scheduled-phase-v1',
                 cancelRequestCount: 2,
                 cancelledBeforeDeliveryCount: 1,
                 deliveredCallbackCount: deliveredFrameCount * 2,
                 deliveredFrameCount,
                 installed: true,
+                intervalMs: 1_000 / 30,
+                lastDeliveredPhaseAt,
                 mode: 'profiler-owned-raf-v1',
                 nativeFrameCount: deliveredFrameCount * 3,
+                observedRateClock: 'native-wall-time-v1',
                 requestedFramesPerSecond: 30,
+                skippedPhaseCount,
             }),
         });
         setGlobal('__gameProfileMetrics', {
@@ -3759,14 +4010,25 @@ test('interactive sampling stays on native profiler RAF and reports controlled d
         globalThis.__gameProfileInteractiveSample.startedAt =
             performance.now() - 1_000;
         deliveredFrameCount = 130;
+        lastDeliveredPhaseAt = 3_100;
+        skippedPhaseCount = 7;
 
         const sample = await finishInteractiveProfileSample();
         assert.equal(controlledRequestCount, 0);
         assert.equal(sample.displayCadenceControl.installedAtStart, true);
         assert.equal(sample.displayCadenceControl.installedAtEnd, true);
         assert.equal(
+            sample.displayCadenceControl.callbackTimestampMode,
+            'scheduled-phase-v1',
+        );
+        assert.equal(sample.displayCadenceControl.intervalMs, 1_000 / 30);
+        assert.equal(
             sample.displayCadenceControl.mode,
             'profiler-owned-raf-v1',
+        );
+        assert.equal(
+            sample.displayCadenceControl.observedRateClock,
+            'native-wall-time-v1',
         );
         assert.equal(sample.displayCadenceControl.requestedFramesPerSecond, 30);
         assert.equal(sample.displayCadenceControl.deliveredFrameCountDelta, 30);
@@ -3775,6 +4037,7 @@ test('interactive sampling stays on native profiler RAF and reports controlled d
             60,
         );
         assert.equal(sample.displayCadenceControl.nativeFrameCountDelta, 90);
+        assert.equal(sample.displayCadenceControl.skippedPhaseCountDelta, 3);
         assert.ok(
             sample.displayCadenceControl.observedFramesPerSecond >= 29.5 &&
                 sample.displayCadenceControl.observedFramesPerSecond <= 30.5,
@@ -4501,8 +4764,10 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
         requested: {
             crossTierProfile: true,
             displayCadenceControl: {
+                callbackTimestampMode: 'scheduled-phase-v1',
                 framesPerSecond: 30,
                 mode: 'profiler-owned-raf-v1',
+                observedRateClock: 'native-wall-time-v1',
             },
             expectedDprCap: 1,
             expectedGroundDecorationDensity: 0,
@@ -4557,14 +4822,24 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
             },
             drawCalls: 100,
             displayCadenceControl: {
+                atEnd: {
+                    lastDeliveredPhaseAt: 6_000,
+                },
+                atStart: {
+                    lastDeliveredPhaseAt: 1_000,
+                },
+                callbackTimestampMode: 'scheduled-phase-v1',
                 deliveredCallbackCountDelta: 300,
                 deliveredFrameCountDelta: 150,
                 installedAtEnd: true,
                 installedAtStart: true,
+                intervalMs: 1_000 / 30,
                 mode: 'profiler-owned-raf-v1',
                 nativeFrameCountDelta: 300,
                 observedFramesPerSecond: 30,
+                observedRateClock: 'native-wall-time-v1',
                 requestedFramesPerSecond: 30,
+                skippedPhaseCountDelta: 0,
             },
             elapsedMs: 5_000,
             frames: 300,
@@ -4632,6 +4907,32 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
     assert.equal(
         result.checks.every((check) => check.pass),
         true,
+    );
+    assert.deepEqual(
+        result.checks
+            .filter((check) =>
+                check.name.startsWith('crossTierDisplayCadenceControl'),
+            )
+            .map((check) => check.name),
+        [
+            'crossTierDisplayCadenceControlMode',
+            'crossTierDisplayCadenceControlTargetFramesPerSecond',
+            'crossTierDisplayCadenceControlInstalledAtStart',
+            'crossTierDisplayCadenceControlInstalledAtEnd',
+            'crossTierDisplayCadenceControlObservedMode',
+            'crossTierDisplayCadenceControlObservedTargetFramesPerSecond',
+            'crossTierDisplayCadenceControlObservedFramesPerSecond',
+            'crossTierDisplayCadenceControlRequestedCallbackTimestampMode',
+            'crossTierDisplayCadenceControlRequestedObservedRateClock',
+            'crossTierDisplayCadenceControlObservedCallbackTimestampMode',
+            'crossTierDisplayCadenceControlObservedRateClock',
+            'crossTierDisplayCadenceControlIntervalMs',
+            'crossTierDisplayCadenceControlStartPhaseTimestamp',
+            'crossTierDisplayCadenceControlEndPhaseTimestamp',
+            'crossTierDisplayCadenceControlDeliveredFrameCount',
+            'crossTierDisplayCadenceControlSkippedPhaseCount',
+            'crossTierDisplayCadenceControlPhaseAdvanceConservation',
+        ],
     );
 
     const legacyOutlineInput = structuredClone(input);
@@ -4784,6 +5085,103 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
             'crossTierDisplayCadenceControlInstalledAtEnd',
             'crossTierDisplayCadenceControlObservedFramesPerSecond',
         ],
+    );
+    for (const [field, value, checkName] of [
+        [
+            'callbackTimestampMode',
+            'native-timestamp-v1',
+            'crossTierDisplayCadenceControlRequestedCallbackTimestampMode',
+        ],
+        [
+            'observedRateClock',
+            'scheduled-phase-v1',
+            'crossTierDisplayCadenceControlRequestedObservedRateClock',
+        ],
+    ]) {
+        expectFailedChecks(
+            (candidate) => {
+                candidate.requested.displayCadenceControl[field] = value;
+            },
+            [checkName],
+        );
+    }
+    for (const [field, value, checkName] of [
+        [
+            'callbackTimestampMode',
+            'native-timestamp-v1',
+            'crossTierDisplayCadenceControlObservedCallbackTimestampMode',
+        ],
+        [
+            'observedRateClock',
+            'scheduled-phase-v1',
+            'crossTierDisplayCadenceControlObservedRateClock',
+        ],
+    ]) {
+        expectFailedChecks(
+            (candidate) => {
+                candidate.sample.displayCadenceControl[field] = value;
+            },
+            [checkName],
+        );
+    }
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.displayCadenceControl.intervalMs = 33.33;
+        },
+        [
+            'crossTierDisplayCadenceControlIntervalMs',
+            'crossTierDisplayCadenceControlPhaseAdvanceConservation',
+        ],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.displayCadenceControl.atStart.lastDeliveredPhaseAt =
+                null;
+        },
+        [
+            'crossTierDisplayCadenceControlStartPhaseTimestamp',
+            'crossTierDisplayCadenceControlPhaseAdvanceConservation',
+        ],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.displayCadenceControl.atEnd.lastDeliveredPhaseAt =
+                -1;
+        },
+        [
+            'crossTierDisplayCadenceControlEndPhaseTimestamp',
+            'crossTierDisplayCadenceControlPhaseAdvanceConservation',
+        ],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.displayCadenceControl.deliveredFrameCountDelta = 0;
+        },
+        [
+            'crossTierDisplayCadenceControlDeliveredFrameCount',
+            'crossTierDisplayCadenceControlPhaseAdvanceConservation',
+        ],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.displayCadenceControl.skippedPhaseCountDelta = -1;
+        },
+        [
+            'crossTierDisplayCadenceControlSkippedPhaseCount',
+            'crossTierDisplayCadenceControlPhaseAdvanceConservation',
+        ],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.displayCadenceControl.atEnd.lastDeliveredPhaseAt += 0.001_1;
+        },
+        ['crossTierDisplayCadenceControlPhaseAdvanceConservation'],
+    );
+    const withinPhaseAdvanceTolerance = structuredClone(input);
+    withinPhaseAdvanceTolerance.sample.displayCadenceControl.atEnd.lastDeliveredPhaseAt += 0.000_9;
+    assert.equal(
+        evaluateCrossTierAcceptance(withinPhaseAdvanceTolerance).pass,
+        true,
     );
     for (const observedFramesPerSecond of [27.99, 32.01]) {
         expectFailedChecks(
@@ -4943,8 +5341,10 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
             },
             crossTierProfile: true,
             displayCadenceControl: {
+                callbackTimestampMode: 'scheduled-phase-v1',
                 framesPerSecond: 30,
                 mode: 'profiler-owned-raf-v1',
+                observedRateClock: 'native-wall-time-v1',
             },
             dpr: 2,
             expectedAutoQualityMetrics: {
@@ -5005,14 +5405,24 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
             },
             drawCalls: 100,
             displayCadenceControl: {
+                atEnd: {
+                    lastDeliveredPhaseAt: 6_000,
+                },
+                atStart: {
+                    lastDeliveredPhaseAt: 1_000,
+                },
+                callbackTimestampMode: 'scheduled-phase-v1',
                 deliveredCallbackCountDelta: 300,
                 deliveredFrameCountDelta: 150,
                 installedAtEnd: true,
                 installedAtStart: true,
+                intervalMs: 1_000 / 30,
                 mode: 'profiler-owned-raf-v1',
                 nativeFrameCountDelta: 300,
                 observedFramesPerSecond: 30,
+                observedRateClock: 'native-wall-time-v1',
                 requestedFramesPerSecond: 30,
+                skippedPhaseCountDelta: 0,
             },
             elapsedMs: 5_000,
             frames: 300,

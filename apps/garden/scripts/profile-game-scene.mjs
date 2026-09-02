@@ -154,8 +154,11 @@ const runtimeOwnerMinimumDeliveryExposureMs = 500;
 const runtimeOwnerMinimumDeliveryRatio = 0.85;
 const runtimeOwnerMaximumDeliveryRatio = 1.15;
 const crossTierAmbientTargetFramesPerSecond = 30;
+const crossTierDisplayCadenceCallbackTimestampMode = 'scheduled-phase-v1';
 const crossTierDisplayCadenceControlMode = 'profiler-owned-raf-v1';
 const crossTierDisplayCadenceControlFramesPerSecond = 30;
+const crossTierDisplayCadenceObservedRateClock = 'native-wall-time-v1';
+const crossTierDisplayCadencePhaseAdvanceToleranceMs = 0.001;
 const crossTierMinimumRenderedFramesPerSecond = 28;
 const crossTierMaximumRenderedFramesPerSecond = 32;
 
@@ -616,8 +619,10 @@ const crossTierScenarios = crossTierProfileMatrix.flatMap((profile) =>
         budget: 'gameHighTarget',
         crossTierProfile: true,
         displayCadenceControl: {
+            callbackTimestampMode: crossTierDisplayCadenceCallbackTimestampMode,
             framesPerSecond: crossTierDisplayCadenceControlFramesPerSecond,
             mode: crossTierDisplayCadenceControlMode,
+            observedRateClock: crossTierDisplayCadenceObservedRateClock,
         },
         expectedDprCap: profile.dprCap,
         expectedGroundDecorationDensity: profile.groundDecorationDensity,
@@ -2639,21 +2644,34 @@ function installBrowserMetrics({
         displayCadenceControl !== null &&
         globalThis.__gameProfileDisplayCadenceControl === undefined
     ) {
+        const callbackTimestampMode =
+            displayCadenceControl?.callbackTimestampMode;
+        const observedRateClock = displayCadenceControl?.observedRateClock;
         const requestedFramesPerSecond = displayCadenceControl?.framesPerSecond;
         const mode = displayCadenceControl?.mode;
         const validRequest =
             typeof requestedFramesPerSecond === 'number' &&
             Number.isFinite(requestedFramesPerSecond) &&
             requestedFramesPerSecond > 0 &&
-            mode === 'profiler-owned-raf-v1';
+            mode === 'profiler-owned-raf-v1' &&
+            callbackTimestampMode === 'scheduled-phase-v1' &&
+            observedRateClock === 'native-wall-time-v1';
 
         if (!validRequest) {
             globalThis.__gameProfileDisplayCadenceControl = {
                 snapshot: () => ({
+                    callbackTimestampMode:
+                        typeof callbackTimestampMode === 'string'
+                            ? callbackTimestampMode
+                            : null,
                     installed: false,
                     installationError:
                         'Invalid profiler display-cadence control request',
                     mode: typeof mode === 'string' ? mode : null,
+                    observedRateClock:
+                        typeof observedRateClock === 'string'
+                            ? observedRateClock
+                            : null,
                     requestedFramesPerSecond:
                         typeof requestedFramesPerSecond === 'number'
                             ? requestedFramesPerSecond
@@ -2662,21 +2680,74 @@ function installBrowserMetrics({
             };
         } else {
             const intervalMs = 1_000 / requestedFramesPerSecond;
-            const dueToleranceMs = Math.min(1, intervalMs * 0.05);
             const pendingCallbacks = new Map();
             let cancelRequestCount = 0;
             let cancelledBeforeDeliveryCount = 0;
+            let callbackDeliveryPhaseAt = null;
             let deliveredCallbackCount = 0;
             let deliveredFrameCount = 0;
             let firstDeliveredAt = null;
+            let firstDeliveredPhaseAt = null;
             let lastDeliveredAt = null;
+            let lastDeliveredPhaseAt = null;
             let nativeFrameCancellationCount = 0;
             let nativeFrameCount = 0;
             let nextDeliveryAt = null;
+            let phaseOriginAt = null;
+            let nextPhaseIndex = 0;
             let nextHandle = 0;
             let requestCount = 0;
             let scheduledNativeFrame = null;
+            let skippedPhaseCount = 0;
+            let skippedPhaseCountPendingDelivery = 0;
 
+            const floatingPointTolerance = (...values) =>
+                Number.EPSILON *
+                Math.max(1, ...values.map((value) => Math.abs(value))) *
+                16;
+            const advancePhaseToRequestTime = (requestedAt) => {
+                if (
+                    phaseOriginAt === null ||
+                    nextDeliveryAt === null ||
+                    nextDeliveryAt >= requestedAt
+                ) {
+                    return;
+                }
+                const followingPhaseAt = nextDeliveryAt + intervalMs;
+                if (
+                    requestedAt +
+                        floatingPointTolerance(requestedAt, followingPhaseAt) <
+                    followingPhaseAt
+                ) {
+                    return;
+                }
+                const requestedPhasePosition =
+                    (requestedAt - phaseOriginAt) / intervalMs;
+                let firstEligiblePhaseIndex = Math.max(
+                    nextPhaseIndex,
+                    Math.ceil(requestedPhasePosition),
+                );
+                let firstEligiblePhaseAt =
+                    phaseOriginAt + firstEligiblePhaseIndex * intervalMs;
+                if (firstEligiblePhaseAt < requestedAt) {
+                    firstEligiblePhaseIndex += 1;
+                    firstEligiblePhaseAt =
+                        phaseOriginAt + firstEligiblePhaseIndex * intervalMs;
+                }
+                if (firstEligiblePhaseIndex > nextPhaseIndex) {
+                    const previousPhaseAt =
+                        phaseOriginAt +
+                        (firstEligiblePhaseIndex - 1) * intervalMs;
+                    if (previousPhaseAt >= requestedAt) {
+                        firstEligiblePhaseIndex -= 1;
+                        firstEligiblePhaseAt = previousPhaseAt;
+                    }
+                }
+                skippedPhaseCountPendingDelivery +=
+                    firstEligiblePhaseIndex - nextPhaseIndex;
+                nextPhaseIndex = firstEligiblePhaseIndex;
+                nextDeliveryAt = firstEligiblePhaseAt;
+            };
             const reportCallbackError = (error) => {
                 if (typeof globalThis.reportError === 'function') {
                     globalThis.reportError(error);
@@ -2702,30 +2773,100 @@ function installBrowserMetrics({
                 if (pendingCallbacks.size === 0) {
                     return;
                 }
+                let latestRequestedAt = Number.NEGATIVE_INFINITY;
+                for (const pendingCallback of pendingCallbacks.values()) {
+                    latestRequestedAt = Math.max(
+                        latestRequestedAt,
+                        pendingCallback.requestedAt,
+                    );
+                }
+                advancePhaseToRequestTime(latestRequestedAt);
                 if (
                     nextDeliveryAt !== null &&
-                    timestamp + dueToleranceMs < nextDeliveryAt
+                    timestamp +
+                        floatingPointTolerance(timestamp, nextDeliveryAt) <
+                        nextDeliveryAt
                 ) {
                     scheduleNativeFrame();
                     return;
                 }
 
-                nextDeliveryAt ??= timestamp;
-                while (nextDeliveryAt <= timestamp + dueToleranceMs) {
-                    nextDeliveryAt += intervalMs;
-                }
-                const callbacks = [...pendingCallbacks.values()];
-                pendingCallbacks.clear();
-                deliveredFrameCount += 1;
-                deliveredCallbackCount += callbacks.length;
-                firstDeliveredAt ??= timestamp;
-                lastDeliveredAt = timestamp;
-                for (const callback of callbacks) {
-                    try {
-                        callback(timestamp);
-                    } catch (error) {
-                        reportCallbackError(error);
+                let deliveredPhaseAt;
+                if (nextDeliveryAt === null || phaseOriginAt === null) {
+                    phaseOriginAt = timestamp;
+                    deliveredPhaseAt = phaseOriginAt;
+                    nextPhaseIndex = 1;
+                } else {
+                    const phaseLateness =
+                        (timestamp - nextDeliveryAt) / intervalMs;
+                    const latePhaseCount = Math.max(
+                        0,
+                        Math.floor(
+                            phaseLateness +
+                                floatingPointTolerance(phaseLateness),
+                        ),
+                    );
+                    let deliveredPhaseIndex = nextPhaseIndex + latePhaseCount;
+                    let followingPhaseIndex = deliveredPhaseIndex + 1;
+                    let followingPhaseAt =
+                        phaseOriginAt + followingPhaseIndex * intervalMs;
+                    if (
+                        followingPhaseAt <=
+                        timestamp +
+                            floatingPointTolerance(timestamp, followingPhaseAt)
+                    ) {
+                        const additionalPhaseLateness =
+                            (timestamp - followingPhaseAt) / intervalMs;
+                        const additionalDuePhaseCount = Math.max(
+                            1,
+                            Math.floor(
+                                additionalPhaseLateness +
+                                    floatingPointTolerance(
+                                        additionalPhaseLateness,
+                                    ),
+                            ) + 1,
+                        );
+                        deliveredPhaseIndex += additionalDuePhaseCount;
+                        followingPhaseIndex = deliveredPhaseIndex + 1;
+                        followingPhaseAt =
+                            phaseOriginAt + followingPhaseIndex * intervalMs;
                     }
+                    const scheduledPhaseAt =
+                        phaseOriginAt + deliveredPhaseIndex * intervalMs;
+                    deliveredPhaseAt = Math.min(scheduledPhaseAt, timestamp);
+                    skippedPhaseCountPendingDelivery += Math.max(
+                        0,
+                        deliveredPhaseIndex - nextPhaseIndex,
+                    );
+                    nextPhaseIndex = followingPhaseIndex;
+                    nextDeliveryAt = followingPhaseAt;
+                }
+                nextDeliveryAt ??= phaseOriginAt + nextPhaseIndex * intervalMs;
+                skippedPhaseCount += skippedPhaseCountPendingDelivery;
+                skippedPhaseCountPendingDelivery = 0;
+                const callbackHandles = [...pendingCallbacks.keys()];
+                deliveredFrameCount += 1;
+                firstDeliveredAt ??= timestamp;
+                firstDeliveredPhaseAt ??= deliveredPhaseAt;
+                lastDeliveredAt = timestamp;
+                lastDeliveredPhaseAt = deliveredPhaseAt;
+                callbackDeliveryPhaseAt = deliveredPhaseAt;
+                try {
+                    for (const handle of callbackHandles) {
+                        const pendingCallback = pendingCallbacks.get(handle);
+                        if (pendingCallback === undefined) {
+                            continue;
+                        }
+                        pendingCallbacks.delete(handle);
+                        deliveredCallbackCount += 1;
+                        try {
+                            pendingCallback.callback(deliveredPhaseAt);
+                        } catch (error) {
+                            reportCallbackError(error);
+                        }
+                    }
+                } finally {
+                    callbackDeliveryPhaseAt = null;
                 }
                 scheduleNativeFrame();
             };
@@ -2739,7 +2880,12 @@ function installBrowserMetrics({
                     nextHandle = (nextHandle + 1) >>> 0;
                 } while (nextHandle === 0 || pendingCallbacks.has(nextHandle));
                 requestCount += 1;
-                pendingCallbacks.set(nextHandle, callback);
+                const requestedAt =
+                    callbackDeliveryPhaseAt ?? performance.now();
+                pendingCallbacks.set(nextHandle, {
+                    callback,
+                    requestedAt,
+                });
                 scheduleNativeFrame();
                 return nextHandle;
             };
@@ -2762,19 +2908,23 @@ function installBrowserMetrics({
 
             const controller = {
                 snapshot: () => ({
+                    callbackTimestampMode,
                     cancelRequestCount,
                     cancelledBeforeDeliveryCount,
                     deliveredCallbackCount,
                     deliveredFrameCount,
                     firstDeliveredAt,
+                    firstDeliveredPhaseAt,
                     installed: true,
                     installationError: null,
                     intervalMs,
                     lastDeliveredAt,
+                    lastDeliveredPhaseAt,
                     mode,
                     nativeFrameCancellationCount,
                     nativeFrameCount,
                     nativeFramePending: scheduledNativeFrame !== null,
+                    observedRateClock,
                     observedFramesPerSecond:
                         deliveredFrameCount > 1 &&
                         firstDeliveredAt !== null &&
@@ -2786,6 +2936,7 @@ function installBrowserMetrics({
                     pendingCallbackCount: pendingCallbacks.size,
                     requestCount,
                     requestedFramesPerSecond,
+                    skippedPhaseCount,
                 }),
             };
             globalThis.__gameProfileDisplayCadenceControl = controller;
@@ -3356,6 +3507,13 @@ async function finishInteractiveProfileSample() {
             ? endValue - startValue
             : null;
     };
+    const matchingDisplayCadenceValue = (field) => {
+        const startValue = displayCadenceControlAtStart?.[field];
+        const endValue = displayCadenceControlAtEnd?.[field];
+        return startValue !== undefined && startValue === endValue
+            ? startValue
+            : null;
+    };
     const deliveredDisplayFrameCount = displayCadenceCounterDelta(
         'deliveredFrameCount',
     );
@@ -3365,6 +3523,9 @@ async function finishInteractiveProfileSample() {
             ? {
                   atEnd: displayCadenceControlAtEnd,
                   atStart: displayCadenceControlAtStart,
+                  callbackTimestampMode: matchingDisplayCadenceValue(
+                      'callbackTimestampMode',
+                  ),
                   cancelRequestCountDelta:
                       displayCadenceCounterDelta('cancelRequestCount'),
                   cancelledBeforeDeliveryCountDelta: displayCadenceCounterDelta(
@@ -3379,12 +3540,15 @@ async function finishInteractiveProfileSample() {
                       displayCadenceControlAtEnd?.installed === true,
                   installedAtStart:
                       displayCadenceControlAtStart?.installed === true,
+                  intervalMs: matchingDisplayCadenceValue('intervalMs'),
                   mode:
                       displayCadenceControlAtEnd?.mode ??
                       displayCadenceControlAtStart?.mode ??
                       null,
                   nativeFrameCountDelta:
                       displayCadenceCounterDelta('nativeFrameCount'),
+                  observedRateClock:
+                      matchingDisplayCadenceValue('observedRateClock'),
                   observedFramesPerSecond:
                       typeof deliveredDisplayFrameCount === 'number'
                           ? deliveredDisplayFrameCount / safeElapsedSeconds
@@ -3393,6 +3557,8 @@ async function finishInteractiveProfileSample() {
                       displayCadenceControlAtEnd?.requestedFramesPerSecond ??
                       displayCadenceControlAtStart?.requestedFramesPerSecond ??
                       null,
+                  skippedPhaseCountDelta:
+                      displayCadenceCounterDelta('skippedPhaseCount'),
               }
             : null;
     const readProfileCounter = (field) => {
@@ -11911,9 +12077,6 @@ function roundSample(sample) {
                   atEnd: sample.displayCadenceControl.atEnd
                       ? {
                             ...sample.displayCadenceControl.atEnd,
-                            intervalMs: round(
-                                sample.displayCadenceControl.atEnd.intervalMs,
-                            ),
                             observedFramesPerSecond: round(
                                 sample.displayCadenceControl.atEnd
                                     .observedFramesPerSecond,
@@ -11924,9 +12087,6 @@ function roundSample(sample) {
                   atStart: sample.displayCadenceControl.atStart
                       ? {
                             ...sample.displayCadenceControl.atStart,
-                            intervalMs: round(
-                                sample.displayCadenceControl.atStart.intervalMs,
-                            ),
                             observedFramesPerSecond: round(
                                 sample.displayCadenceControl.atStart
                                     .observedFramesPerSecond,
@@ -14401,6 +14561,38 @@ function evaluateCrossTierAcceptance({
         semanticLeaseTopologyAtStart,
     );
     const legacyOutlinePipeline = requested.legacyOutlinePipeline === true;
+    const displayCadenceControl = sample?.displayCadenceControl;
+    const displayCadenceIntervalMs = displayCadenceControl?.intervalMs;
+    const displayCadenceStartPhaseTimestamp =
+        displayCadenceControl?.atStart?.lastDeliveredPhaseAt;
+    const displayCadenceEndPhaseTimestamp =
+        displayCadenceControl?.atEnd?.lastDeliveredPhaseAt;
+    const displayCadenceDeliveredFrameCount =
+        displayCadenceControl?.deliveredFrameCountDelta;
+    const displayCadenceSkippedPhaseCount =
+        displayCadenceControl?.skippedPhaseCountDelta;
+    const displayCadencePhaseAdvanceMs =
+        Number.isFinite(displayCadenceStartPhaseTimestamp) &&
+        Number.isFinite(displayCadenceEndPhaseTimestamp)
+            ? displayCadenceEndPhaseTimestamp -
+              displayCadenceStartPhaseTimestamp
+            : null;
+    const displayCadenceExpectedPhaseAdvanceMs =
+        Number.isFinite(displayCadenceDeliveredFrameCount) &&
+        Number.isFinite(displayCadenceSkippedPhaseCount) &&
+        Number.isFinite(displayCadenceIntervalMs)
+            ? (displayCadenceDeliveredFrameCount +
+                  displayCadenceSkippedPhaseCount) *
+              displayCadenceIntervalMs
+            : null;
+    const displayCadencePhaseAdvanceErrorMs =
+        Number.isFinite(displayCadencePhaseAdvanceMs) &&
+        Number.isFinite(displayCadenceExpectedPhaseAdvanceMs)
+            ? Math.abs(
+                  displayCadencePhaseAdvanceMs -
+                      displayCadenceExpectedPhaseAdvanceMs,
+              )
+            : null;
     const checks = [
         exact('crossTierGardenProfile', requested.gardenProfile, 'high-target'),
         exact(
@@ -14439,6 +14631,68 @@ function evaluateCrossTierAcceptance({
             crossTierMinimumRenderedFramesPerSecond,
             crossTierMaximumRenderedFramesPerSecond,
         ),
+        exact(
+            'crossTierDisplayCadenceControlRequestedCallbackTimestampMode',
+            requested.displayCadenceControl?.callbackTimestampMode,
+            crossTierDisplayCadenceCallbackTimestampMode,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlRequestedObservedRateClock',
+            requested.displayCadenceControl?.observedRateClock,
+            crossTierDisplayCadenceObservedRateClock,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlObservedCallbackTimestampMode',
+            displayCadenceControl?.callbackTimestampMode,
+            crossTierDisplayCadenceCallbackTimestampMode,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlObservedRateClock',
+            displayCadenceControl?.observedRateClock,
+            crossTierDisplayCadenceObservedRateClock,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlIntervalMs',
+            displayCadenceIntervalMs,
+            1_000 / crossTierDisplayCadenceControlFramesPerSecond,
+        ),
+        minimum(
+            'crossTierDisplayCadenceControlStartPhaseTimestamp',
+            displayCadenceStartPhaseTimestamp,
+            0,
+        ),
+        minimum(
+            'crossTierDisplayCadenceControlEndPhaseTimestamp',
+            displayCadenceEndPhaseTimestamp,
+            0,
+        ),
+        minimum(
+            'crossTierDisplayCadenceControlDeliveredFrameCount',
+            displayCadenceDeliveredFrameCount,
+            1,
+        ),
+        minimum(
+            'crossTierDisplayCadenceControlSkippedPhaseCount',
+            displayCadenceSkippedPhaseCount,
+            0,
+        ),
+        {
+            actual: {
+                absoluteErrorMs: displayCadencePhaseAdvanceErrorMs,
+                expectedPhaseAdvanceMs: displayCadenceExpectedPhaseAdvanceMs,
+                phaseAdvanceMs: displayCadencePhaseAdvanceMs,
+            },
+            comparison: 'phase-advance-conservation',
+            limit: {
+                maximumAbsoluteErrorMs:
+                    crossTierDisplayCadencePhaseAdvanceToleranceMs,
+            },
+            name: 'crossTierDisplayCadenceControlPhaseAdvanceConservation',
+            pass:
+                Number.isFinite(displayCadencePhaseAdvanceErrorMs) &&
+                displayCadencePhaseAdvanceErrorMs <=
+                    crossTierDisplayCadencePhaseAdvanceToleranceMs,
+        },
         exact(
             'crossTierQualityRequest',
             requested.quality,

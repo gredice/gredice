@@ -58,22 +58,48 @@ function sample(overrides = {}) {
 }
 
 function displayCadenceControlSnapshot(overrides = {}) {
+    const intervalMs = 1_000 / 30;
+    const deliveredFrameCount = overrides.deliveredFrameCount ?? 500;
+    const skippedPhaseCount = overrides.skippedPhaseCount ?? 4;
+    const firstDeliveredPhaseAt = overrides.firstDeliveredPhaseAt ?? 100;
+    const firstDeliveredAt =
+        overrides.firstDeliveredAt ?? firstDeliveredPhaseAt;
+    const lastDeliveredPhaseAt =
+        overrides.lastDeliveredPhaseAt ??
+        firstDeliveredPhaseAt +
+            (deliveredFrameCount + skippedPhaseCount - 1) * intervalMs;
+    const lastDeliveredAt =
+        overrides.lastDeliveredAt ?? lastDeliveredPhaseAt + 0.25;
+    const observedFramesPerSecond =
+        overrides.observedFramesPerSecond ??
+        Math.round(
+            (((deliveredFrameCount - 1) * 1_000) /
+                (lastDeliveredAt - firstDeliveredAt)) *
+                100,
+        ) / 100;
     return {
+        callbackTimestampMode: 'scheduled-phase-v1',
         cancelRequestCount: 100,
         cancelledBeforeDeliveryCount: 50,
         deliveredCallbackCount: 1_000,
-        deliveredFrameCount: 500,
+        deliveredFrameCount,
+        firstDeliveredAt,
+        firstDeliveredPhaseAt,
         installationError: null,
         installed: true,
-        intervalMs: 33.33,
+        intervalMs,
+        lastDeliveredAt,
+        lastDeliveredPhaseAt,
         mode: 'profiler-owned-raf-v1',
         nativeFrameCancellationCount: 10,
         nativeFrameCount: 1_000,
         nativeFramePending: true,
-        observedFramesPerSecond: 30,
+        observedRateClock: 'native-wall-time-v1',
+        observedFramesPerSecond,
         pendingCallbackCount: 2,
         requestCount: 1_052,
         requestedFramesPerSecond: 30,
+        skippedPhaseCount,
         ...overrides,
     };
 }
@@ -90,10 +116,12 @@ function displayCadenceControlSample(overrides = {}) {
         nativeFramePending: false,
         pendingCallbackCount: 1,
         requestCount: 1_356,
+        skippedPhaseCount: atStart.skippedPhaseCount,
     });
     return {
         atEnd,
         atStart,
+        callbackTimestampMode: 'scheduled-phase-v1',
         cancelRequestCountDelta: 10,
         cancelledBeforeDeliveryCountDelta: 5,
         deliveredCallbackCountDelta: 300,
@@ -101,10 +129,13 @@ function displayCadenceControlSample(overrides = {}) {
         elapsedMs: 5_000,
         installedAtEnd: true,
         installedAtStart: true,
+        intervalMs: 1_000 / 30,
         mode: 'profiler-owned-raf-v1',
         nativeFrameCountDelta: 300,
+        observedRateClock: 'native-wall-time-v1',
         observedFramesPerSecond: 30,
         requestedFramesPerSecond: 30,
+        skippedPhaseCountDelta: 0,
         ...overrides,
     };
 }
@@ -700,8 +731,10 @@ function regressionScenario(baseName, profileRun) {
         }
         scenario.requested.crossTierProfile = true;
         scenario.requested.displayCadenceControl = {
+            callbackTimestampMode: 'scheduled-phase-v1',
             framesPerSecond: 30,
             mode: 'profiler-owned-raf-v1',
+            observedRateClock: 'native-wall-time-v1',
         };
         scenario.requested.autoQualityDeviceClass =
             policy.autoQualityDeviceClass;
@@ -984,6 +1017,16 @@ test('cross-tier acceptance inventories distinguish cached and legacy outline ev
         'crossTierDisplayCadenceControlObservedMode',
         'crossTierDisplayCadenceControlObservedTargetFramesPerSecond',
         'crossTierDisplayCadenceControlObservedFramesPerSecond',
+        'crossTierDisplayCadenceControlRequestedCallbackTimestampMode',
+        'crossTierDisplayCadenceControlRequestedObservedRateClock',
+        'crossTierDisplayCadenceControlObservedCallbackTimestampMode',
+        'crossTierDisplayCadenceControlObservedRateClock',
+        'crossTierDisplayCadenceControlIntervalMs',
+        'crossTierDisplayCadenceControlStartPhaseTimestamp',
+        'crossTierDisplayCadenceControlEndPhaseTimestamp',
+        'crossTierDisplayCadenceControlDeliveredFrameCount',
+        'crossTierDisplayCadenceControlSkippedPhaseCount',
+        'crossTierDisplayCadenceControlPhaseAdvanceConservation',
         'crossTierQualityRequest',
         'crossTierQualityTier',
     ];
@@ -1048,6 +1091,18 @@ test('v4 cross-tier display cadence evidence fails closed on raw control drift',
                 candidate,
             ).requested.displayCadenceControl.mode = 'browser-native-raf';
         },
+        'requested callback timestamp mode drift': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).requested.displayCadenceControl.callbackTimestampMode =
+                'native-timestamp';
+        },
+        'requested observed-rate clock drift': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).requested.displayCadenceControl.observedRateClock =
+                'scheduled-phase';
+        },
         'requested target drift': ({ candidate }) => {
             firstCrossTierScenario(
                 candidate,
@@ -1063,6 +1118,18 @@ test('v4 cross-tier display cadence evidence fails closed on raw control drift',
                 candidate,
             ).sample.displayCadenceControl.mode = 'browser-native-raf';
         },
+        'summary callback timestamp mode drift': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.callbackTimestampMode =
+                'native-timestamp';
+        },
+        'summary observed-rate clock drift': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.observedRateClock =
+                'scheduled-phase';
+        },
         'summary target drift': ({ candidate }) => {
             firstCrossTierScenario(
                 candidate,
@@ -1076,6 +1143,18 @@ test('v4 cross-tier display cadence evidence fails closed on raw control drift',
             firstCrossTierScenario(
                 candidate,
             ).sample.displayCadenceControl.atStart.mode = 'browser-native-raf';
+        },
+        'raw callback timestamp mode drift': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.atStart.callbackTimestampMode =
+                'native-timestamp';
+        },
+        'raw observed-rate clock drift': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.atEnd.observedRateClock =
+                'scheduled-phase';
         },
         'raw target drift': ({ candidate }) => {
             firstCrossTierScenario(
@@ -1100,10 +1179,77 @@ test('v4 cross-tier display cadence evidence fails closed on raw control drift',
                 candidate,
             ).sample.displayCadenceControl.atEnd.deliveredFrameCount = 499;
         },
+        'raw skipped-phase counter rollback': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.atEnd.skippedPhaseCount = 3;
+        },
+        'raw first-delivery timestamp drift': ({ candidate }) => {
+            const snapshot =
+                firstCrossTierScenario(candidate).sample.displayCadenceControl
+                    .atEnd;
+            snapshot.firstDeliveredAt += 100;
+            snapshot.observedFramesPerSecond =
+                Math.round(
+                    (((snapshot.deliveredFrameCount - 1) * 1_000) /
+                        (snapshot.lastDeliveredAt -
+                            snapshot.firstDeliveredAt)) *
+                        100,
+                ) / 100;
+        },
+        'raw interval drift from sample summary': ({ candidate }) => {
+            const control =
+                firstCrossTierScenario(candidate).sample.displayCadenceControl;
+            control.atStart.intervalMs += 0.000_1;
+            control.atEnd.intervalMs += 0.000_1;
+        },
+        'raw lifetime skipped-phase inflation': ({ candidate }) => {
+            const control =
+                firstCrossTierScenario(candidate).sample.displayCadenceControl;
+            control.atStart.skippedPhaseCount += 100;
+            control.atEnd.skippedPhaseCount += 100;
+        },
+        'missing raw phase timestamp': ({ candidate }) => {
+            delete firstCrossTierScenario(candidate).sample
+                .displayCadenceControl.atStart.lastDeliveredPhaseAt;
+        },
+        'raw native timestamps out of order': ({ candidate }) => {
+            const snapshot =
+                firstCrossTierScenario(candidate).sample.displayCadenceControl
+                    .atEnd;
+            snapshot.lastDeliveredAt = snapshot.firstDeliveredAt - 1;
+        },
+        'raw phase timestamps out of order': ({ candidate }) => {
+            const snapshot =
+                firstCrossTierScenario(candidate).sample.displayCadenceControl
+                    .atEnd;
+            snapshot.lastDeliveredPhaseAt = snapshot.firstDeliveredPhaseAt - 1;
+        },
+        'callback phase after native delivery': ({ candidate }) => {
+            const snapshot =
+                firstCrossTierScenario(candidate).sample.displayCadenceControl
+                    .atEnd;
+            snapshot.lastDeliveredPhaseAt = snapshot.lastDeliveredAt + 1;
+        },
+        'raw observed-rate derivation mismatch': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.atEnd.observedFramesPerSecond = 1;
+        },
         'published delta mismatch': ({ candidate }) => {
             firstCrossTierScenario(
                 candidate,
             ).sample.displayCadenceControl.nativeFrameCountDelta = 299;
+        },
+        'published skipped-phase delta mismatch': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.skippedPhaseCountDelta = 1;
+        },
+        'phase advance mismatch': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.atEnd.lastDeliveredPhaseAt += 1;
         },
         'missing positive delivery delta': ({ candidate }) => {
             firstCrossTierScenario(
@@ -1151,7 +1297,9 @@ test('v4 cross-tier cadence inventory is exact and controlled-rate bounds are in
     );
     for (const result of [scenario.acceptance, scenario.budget]) {
         result.checks = result.checks.filter(
-            ({ name }) => name !== 'crossTierDisplayCadenceControlObservedMode',
+            ({ name }) =>
+                name !==
+                'crossTierDisplayCadenceControlPhaseAdvanceConservation',
         );
     }
     const missingInventory = compareReports(
@@ -1176,6 +1324,12 @@ test('v4 cross-tier cadence inventory is exact and controlled-rate bounds are in
         control.deliveredFrameCountDelta = deliveredFrameCountDelta;
         control.atEnd.deliveredFrameCount =
             control.atStart.deliveredFrameCount + deliveredFrameCountDelta;
+        control.atEnd.lastDeliveredPhaseAt =
+            control.atStart.lastDeliveredPhaseAt +
+            (deliveredFrameCountDelta + control.skippedPhaseCountDelta) *
+                control.intervalMs;
+        control.atEnd.lastDeliveredAt =
+            control.atEnd.lastDeliveredPhaseAt + 0.25;
 
         assert.notEqual(
             compareReports(pair.baseline, pair.candidate).status,

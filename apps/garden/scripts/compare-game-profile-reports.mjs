@@ -89,6 +89,10 @@ const gardenSwitchGpuOccupancyDiagnosticGate =
     'GPU p95, semantic delivery, causal scheduler wakeup accounting, and submitted render work';
 const crossTierTargetFramesPerSecond = 30;
 const crossTierDisplayCadenceControlMode = 'profiler-owned-raf-v1';
+const crossTierDisplayCadenceCallbackTimestampMode = 'scheduled-phase-v1';
+const crossTierDisplayCadenceObservedRateClock = 'native-wall-time-v1';
+const crossTierDisplayCadencePhaseAdvanceToleranceMs = 0.001;
+const crossTierDisplayCadenceObservedRateToleranceFps = 0.01;
 const crossTierDisplayCadenceCounterFields = [
     'cancelRequestCount',
     'cancelledBeforeDeliveryCount',
@@ -97,6 +101,7 @@ const crossTierDisplayCadenceCounterFields = [
     'nativeFrameCancellationCount',
     'nativeFrameCount',
     'requestCount',
+    'skippedPhaseCount',
 ];
 const crossTierDisplayCadenceDeltaFields = [
     ['cancelRequestCountDelta', 'cancelRequestCount'],
@@ -104,6 +109,7 @@ const crossTierDisplayCadenceDeltaFields = [
     ['deliveredCallbackCountDelta', 'deliveredCallbackCount'],
     ['deliveredFrameCountDelta', 'deliveredFrameCount'],
     ['nativeFrameCountDelta', 'nativeFrameCount'],
+    ['skippedPhaseCountDelta', 'skippedPhaseCount'],
 ];
 const crossTierRenderedFpsTolerance = 2;
 const crossTierMinimumRenderedFps =
@@ -129,6 +135,16 @@ const crossTierAcceptanceCheckPrefix = [
     'crossTierDisplayCadenceControlObservedMode',
     'crossTierDisplayCadenceControlObservedTargetFramesPerSecond',
     'crossTierDisplayCadenceControlObservedFramesPerSecond',
+    'crossTierDisplayCadenceControlRequestedCallbackTimestampMode',
+    'crossTierDisplayCadenceControlRequestedObservedRateClock',
+    'crossTierDisplayCadenceControlObservedCallbackTimestampMode',
+    'crossTierDisplayCadenceControlObservedRateClock',
+    'crossTierDisplayCadenceControlIntervalMs',
+    'crossTierDisplayCadenceControlStartPhaseTimestamp',
+    'crossTierDisplayCadenceControlEndPhaseTimestamp',
+    'crossTierDisplayCadenceControlDeliveredFrameCount',
+    'crossTierDisplayCadenceControlSkippedPhaseCount',
+    'crossTierDisplayCadenceControlPhaseAdvanceConservation',
     'crossTierQualityRequest',
     'crossTierQualityTier',
 ];
@@ -668,6 +684,18 @@ function validateCrossTierDisplayCadenceControlSnapshot(errors, value, path) {
     );
     validateExactValue(
         errors,
+        value.callbackTimestampMode,
+        crossTierDisplayCadenceCallbackTimestampMode,
+        `${path}.callbackTimestampMode`,
+    );
+    validateExactValue(
+        errors,
+        value.observedRateClock,
+        crossTierDisplayCadenceObservedRateClock,
+        `${path}.observedRateClock`,
+    );
+    validateExactValue(
+        errors,
         value.requestedFramesPerSecond,
         crossTierTargetFramesPerSecond,
         `${path}.requestedFramesPerSecond`,
@@ -739,6 +767,122 @@ function validateCrossTierDisplayCadenceControlSnapshot(errors, value, path) {
             `${path}.nativeFrameCount must not be less than deliveredFrameCount`,
         );
     }
+    if (
+        Number.isInteger(value.deliveredFrameCount) &&
+        value.deliveredFrameCount > 0
+    ) {
+        for (const field of [
+            'firstDeliveredAt',
+            'firstDeliveredPhaseAt',
+            'lastDeliveredAt',
+            'lastDeliveredPhaseAt',
+        ]) {
+            validateNonNegativeNumber(errors, value[field], `${path}.${field}`);
+        }
+        if (
+            isFiniteNumber(value.firstDeliveredAt) &&
+            isFiniteNumber(value.lastDeliveredAt) &&
+            value.firstDeliveredAt > value.lastDeliveredAt
+        ) {
+            errors.push(
+                `${path}.firstDeliveredAt must not be later than lastDeliveredAt`,
+            );
+        }
+        if (
+            isFiniteNumber(value.firstDeliveredPhaseAt) &&
+            isFiniteNumber(value.lastDeliveredPhaseAt) &&
+            value.firstDeliveredPhaseAt > value.lastDeliveredPhaseAt
+        ) {
+            errors.push(
+                `${path}.firstDeliveredPhaseAt must not be later than lastDeliveredPhaseAt`,
+            );
+        }
+        if (
+            isFiniteNumber(value.firstDeliveredPhaseAt) &&
+            isFiniteNumber(value.firstDeliveredAt) &&
+            value.firstDeliveredPhaseAt > value.firstDeliveredAt
+        ) {
+            errors.push(
+                `${path}.firstDeliveredPhaseAt must not be later than firstDeliveredAt`,
+            );
+        }
+        if (
+            isFiniteNumber(value.lastDeliveredPhaseAt) &&
+            isFiniteNumber(value.lastDeliveredAt) &&
+            value.lastDeliveredPhaseAt > value.lastDeliveredAt
+        ) {
+            errors.push(
+                `${path}.lastDeliveredPhaseAt must not be later than lastDeliveredAt`,
+            );
+        }
+        if (
+            Number.isInteger(value.skippedPhaseCount) &&
+            isFiniteNumber(value.intervalMs) &&
+            isFiniteNumber(value.firstDeliveredPhaseAt) &&
+            isFiniteNumber(value.lastDeliveredPhaseAt)
+        ) {
+            const actualLifetimePhaseAdvanceMs =
+                value.lastDeliveredPhaseAt - value.firstDeliveredPhaseAt;
+            const expectedLifetimePhaseAdvanceMs =
+                (value.deliveredFrameCount + value.skippedPhaseCount - 1) *
+                value.intervalMs;
+            if (
+                Math.abs(
+                    actualLifetimePhaseAdvanceMs -
+                        expectedLifetimePhaseAdvanceMs,
+                ) > crossTierDisplayCadencePhaseAdvanceToleranceMs
+            ) {
+                errors.push(
+                    `${path} lifetime phase advance must equal (deliveredFrameCount + skippedPhaseCount - 1) * intervalMs within ${crossTierDisplayCadencePhaseAdvanceToleranceMs} ms`,
+                );
+            }
+        }
+    }
+    if (Number.isInteger(value.deliveredFrameCount)) {
+        if (value.deliveredFrameCount < 2) {
+            validateExactValue(
+                errors,
+                value.observedFramesPerSecond,
+                null,
+                `${path}.observedFramesPerSecond`,
+            );
+        } else {
+            validatePositiveNumber(
+                errors,
+                value.observedFramesPerSecond,
+                `${path}.observedFramesPerSecond`,
+            );
+            if (
+                isFiniteNumber(value.firstDeliveredAt) &&
+                isFiniteNumber(value.lastDeliveredAt) &&
+                value.lastDeliveredAt <= value.firstDeliveredAt
+            ) {
+                errors.push(
+                    `${path}.lastDeliveredAt must be later than firstDeliveredAt after multiple deliveries`,
+                );
+            }
+            if (
+                isFiniteNumber(value.firstDeliveredAt) &&
+                isFiniteNumber(value.lastDeliveredAt) &&
+                value.lastDeliveredAt > value.firstDeliveredAt &&
+                isFiniteNumber(value.observedFramesPerSecond)
+            ) {
+                const derivedObservedFramesPerSecond =
+                    ((value.deliveredFrameCount - 1) * 1_000) /
+                    (value.lastDeliveredAt - value.firstDeliveredAt);
+                if (
+                    Math.abs(
+                        derivedObservedFramesPerSecond -
+                            value.observedFramesPerSecond,
+                    ) > crossTierDisplayCadenceObservedRateToleranceFps
+                ) {
+                    errors.push(
+                        `${path}.observedFramesPerSecond must match native delivery timestamps within report precision`,
+                    );
+                }
+            }
+        }
+    }
     return value;
 }
 
@@ -752,8 +896,10 @@ function validateCrossTierDisplayCadenceControlEvidence(
         errors,
         requestedControl,
         {
+            callbackTimestampMode: crossTierDisplayCadenceCallbackTimestampMode,
             framesPerSecond: crossTierTargetFramesPerSecond,
             mode: crossTierDisplayCadenceControlMode,
+            observedRateClock: crossTierDisplayCadenceObservedRateClock,
         },
         `${path}.requested.displayCadenceControl`,
     );
@@ -798,6 +944,24 @@ function validateCrossTierDisplayCadenceControlEvidence(
         crossTierTargetFramesPerSecond,
         `${controlPath}.requestedFramesPerSecond`,
     );
+    validateExactValue(
+        errors,
+        control.callbackTimestampMode,
+        crossTierDisplayCadenceCallbackTimestampMode,
+        `${controlPath}.callbackTimestampMode`,
+    );
+    validateExactValue(
+        errors,
+        control.observedRateClock,
+        crossTierDisplayCadenceObservedRateClock,
+        `${controlPath}.observedRateClock`,
+    );
+    validateExactValue(
+        errors,
+        control.intervalMs,
+        1_000 / crossTierTargetFramesPerSecond,
+        `${controlPath}.intervalMs`,
+    );
 
     const atStart = validateCrossTierDisplayCadenceControlSnapshot(
         errors,
@@ -810,10 +974,40 @@ function validateCrossTierDisplayCadenceControlEvidence(
         `${controlPath}.atEnd`,
     );
     if (atStart && atEnd) {
+        for (const field of ['firstDeliveredAt', 'firstDeliveredPhaseAt']) {
+            validateExactValue(
+                errors,
+                atEnd[field],
+                atStart[field],
+                `${controlPath}.${field} across atStart and atEnd`,
+            );
+        }
+        for (const [snapshotName, snapshot] of [
+            ['atStart', atStart],
+            ['atEnd', atEnd],
+        ]) {
+            validateExactValue(
+                errors,
+                snapshot.intervalMs,
+                control.intervalMs,
+                `${controlPath}.${snapshotName}.intervalMs`,
+            );
+        }
         for (const field of crossTierDisplayCadenceCounterFields) {
             if (
                 Number.isInteger(atStart[field]) &&
                 Number.isInteger(atEnd[field]) &&
+                atEnd[field] < atStart[field]
+            ) {
+                errors.push(
+                    `${controlPath}.${field} must not decrease from atStart to atEnd`,
+                );
+            }
+        }
+        for (const field of ['lastDeliveredAt', 'lastDeliveredPhaseAt']) {
+            if (
+                isFiniteNumber(atStart[field]) &&
+                isFiniteNumber(atEnd[field]) &&
                 atEnd[field] < atStart[field]
             ) {
                 errors.push(
@@ -871,6 +1065,30 @@ function validateCrossTierDisplayCadenceControlEvidence(
         errors.push(
             `${controlPath}.nativeFrameCountDelta must not be less than deliveredFrameCountDelta`,
         );
+    }
+    if (
+        atStart &&
+        atEnd &&
+        isFiniteNumber(atStart.lastDeliveredPhaseAt) &&
+        isFiniteNumber(atEnd.lastDeliveredPhaseAt) &&
+        Number.isInteger(control.deliveredFrameCountDelta) &&
+        Number.isInteger(control.skippedPhaseCountDelta) &&
+        isFiniteNumber(control.intervalMs)
+    ) {
+        const actualPhaseAdvanceMs =
+            atEnd.lastDeliveredPhaseAt - atStart.lastDeliveredPhaseAt;
+        const expectedPhaseAdvanceMs =
+            (control.deliveredFrameCountDelta +
+                control.skippedPhaseCountDelta) *
+            control.intervalMs;
+        if (
+            Math.abs(actualPhaseAdvanceMs - expectedPhaseAdvanceMs) >
+            crossTierDisplayCadencePhaseAdvanceToleranceMs
+        ) {
+            errors.push(
+                `${controlPath} phase advance must equal (deliveredFrameCountDelta + skippedPhaseCountDelta) * intervalMs within ${crossTierDisplayCadencePhaseAdvanceToleranceMs} ms`,
+            );
+        }
     }
 
     validatePositiveNumber(

@@ -682,14 +682,27 @@ Cross-tier GPU p95 is decisive only under comparable render cadence. Comparison
 contract v4 installs `profiler-owned-raf-v1` before application code for every
 cross-tier steady and camera-motion run. It batches application/runtime RAF
 callbacks onto a requested 30 Hz clock while the profiler's frame sampler and
-GPU-query drain retain the captured native browser RAF. The report records the
-exact requested control, its start/end counter snapshots, delivered frame and
-callback deltas, native-frame delta, cancellations, and the observed delivery
-rate. Both subjects must report the same control, and every raw window must
-observe 28–32 controlled frames per second; a missing, malformed, inactive, or
-out-of-range control makes the matrix invalid. This document-start override is
-limited to the deterministic profiler page and does not change production
-runtime cadence.
+GPU-query drain retain the captured native browser RAF. Callbacks receive the
+scheduled 30 Hz phase timestamp rather than host-rAF jitter; a late host frame
+skips missed phases without catch-up. The global phase remains anchored across
+intervals with no pending application callback, so skipped-phase telemetry can
+also include inactive intervals. An out-of-band request arriving before the
+following target boundary may consume the single due phase on its next native
+frame; this prevents timer jitter in a semantic 30 Hz scheduler from cascading
+with the profiler into a second full-interval delay. Once a complete target
+interval passes without a request, the controller advances to the first
+anchored phase at or after the request and never replays the inactive backlog.
+A request made synchronously by a delivered callback joins the next
+callback-list snapshot from that delivered phase; its wall-clock work does not
+independently skip that next phase because host-frame lateness already accounts
+for missed phases. Observed delivery rate remains derived from wall time. The
+report records the exact requested control, its start/end counter snapshots,
+delivered frame and callback deltas, native-frame delta, skipped phases,
+cancellations, and the observed delivery rate. Both subjects must report the
+same control, and every raw window must observe 28–32 controlled frames per
+second; a missing, malformed, inactive, or out-of-range control makes the matrix
+invalid. This document-start override is limited to the deterministic profiler
+page and does not change production runtime cadence.
 
 With that explicit control, both steady and camera-motion GPU rows use the
 existing direct 15% relative boundary, 3 ms practical floor, 40% raw-rank
