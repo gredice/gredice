@@ -12,6 +12,7 @@ import {
     runCli,
     writeComparisonReports,
 } from './compare-game-profile-reports.mjs';
+import { evaluateCrossTierAcceptance } from './profile-game-scene.mjs';
 
 const baselineCommit = '1'.repeat(40);
 const candidateCommit = '2'.repeat(40);
@@ -1186,6 +1187,35 @@ function setLegacyCrossTierRenderedFps(reportValue, baseName, renderedFps) {
     }
 }
 
+test('cross-tier acceptance inventories match the producer across every tier, phase, and outline pipeline', async (t) => {
+    for (const { slug } of crossTierFixturePolicies) {
+        for (const phase of ['steady', 'camera-motion']) {
+            for (const legacyOutlinePipeline of [false, true]) {
+                const baseName = `game-cross-tier-${slug}-${phase}-desktop`;
+                const pipeline = legacyOutlinePipeline ? 'legacy' : 'cached';
+                await t.test(`${baseName} ${pipeline}`, () => {
+                    const scenario = regressionScenario(baseName, 1);
+                    scenario.requested.legacyOutlinePipeline =
+                        legacyOutlinePipeline;
+                    scenario.requested.motion =
+                        phase === 'camera-motion'
+                            ? 'bounded-zoom-rotate'
+                            : 'none';
+                    const actual = evaluateCrossTierAcceptance(scenario);
+                    const expected = buildCrossTierCheckNameInventory(
+                        baseName,
+                        { legacyOutlinePipeline },
+                    );
+                    assert.deepEqual(
+                        actual.checks.map(({ name }) => name),
+                        expected.acceptance,
+                    );
+                });
+            }
+        }
+    }
+});
+
 test('cross-tier acceptance inventories distinguish cached and legacy outline evidence', () => {
     const baseName = 'game-cross-tier-high-steady-desktop';
     const cached = buildCrossTierCheckNameInventory(baseName);
@@ -1194,6 +1224,46 @@ test('cross-tier acceptance inventories distinguish cached and legacy outline ev
     });
     const expectedPrefix = [
         'crossTierGardenProfile',
+        'crossTierColdMeasurementMode',
+        'crossTierColdTrackerInstalled',
+        'crossTierColdMutationObserverStopped',
+        'crossTierColdExpectedDpr',
+        'crossTierColdCanvasAttachmentCount',
+        'crossTierColdFirstCanvasPersistent',
+        'crossTierColdTrackerInstalledMs',
+        'crossTierColdDomContentLoadedMs',
+        'crossTierColdCanvasAttachedMs',
+        'crossTierColdCanvasSizedMs',
+        'crossTierColdFirstSubmittedFrameMs',
+        'crossTierColdFixtureReadyMs',
+        'crossTierColdObservationStoppedMs',
+        'crossTierColdHostCanvasReadyDiagnosticMs',
+        'crossTierColdMilestoneOrder',
+        'crossTierColdInstalledBeforeDomContentLoaded',
+        'crossTierColdCanvasClientWidth',
+        'crossTierColdCanvasClientHeight',
+        'crossTierColdCanvasWidth',
+        'crossTierColdCanvasHeight',
+        'crossTierResourceSnapshotMeasurementMode',
+        'crossTierResourceSnapshotAttemptCount',
+        'crossTierResourceSnapshotCapturedAt',
+        'crossTierResourceSnapshotCapturedAfterReceipt',
+        'crossTierResourcePopulationStable',
+        'crossTierResourcePopulationExposureStable',
+        'crossTierResourcePopulationExposureMatchesSnapshot',
+        'crossTierResourcePopulationExposureCoversEndpoint',
+        'crossTierResourcePopulationExposureAvailable',
+        'crossTierResourcePopulationExposureEntryState',
+        'crossTierResourcePopulationExposureSignature',
+        'crossTierResourceRendererStatsMode',
+        'crossTierResourceRendererStatsMeasurementValid',
+        'crossTierResourceSnapshot:rendererGeometries',
+        'crossTierResourceSnapshot:rendererShaders',
+        'crossTierResourceSnapshot:rendererTextures',
+        'crossTierResourceSnapshotMatchesRuntime:rendererGeometries',
+        'crossTierResourceSnapshotMatchesRuntime:rendererShaders',
+        'crossTierResourceSnapshotMatchesRuntime:rendererTextures',
+        'crossTierResourceSnapshotPopulationMatchesRuntime',
         'crossTierDisplayCadenceControlMode',
         'crossTierDisplayCadenceControlTargetFramesPerSecond',
         'crossTierDisplayCadenceControlInstalledAtStart',
