@@ -131,6 +131,8 @@ const lifecycleResumeSteadyWindowMs = 2_000;
 // must collapse within one bounded transition quarter-second.
 const lifecycleResumeSemanticSurplusWindowMs = 250;
 const lifecycleSuspendTransitionWindowMs = 250;
+const lifecycleSuspensionBoundaryMeasurementMode =
+    'microtask-fresh-visibility-callback-acknowledgement-v1';
 const runtimeOwnerMotion = 'runtime-owner-bounded-zoom-rotate';
 const runtimeOwnerMotionWarmupMs = 900;
 const lifecycleLivePersistentLeaseRates = {
@@ -3479,6 +3481,130 @@ function installBrowserMetrics({
     patchContext(globalThis.WebGL2RenderingContext);
 }
 
+// Installed only for live-lifecycle acceptance. Geometry changes precede native
+// IntersectionObserver delivery; work before that delivery is not hidden work.
+function installLifecycleSuspensionBoundaryTracker({ measurementMode }) {
+    let state = null;
+    let sampleStartedAt = null;
+    const snapshot = () => ({
+        recordedAt: performance.now(),
+        runtimeFrameLoop: structuredClone(
+            globalThis.__grediceGameProfile?.runtimeFrameLoop ?? null,
+        ),
+        renderer: Object.fromEntries(
+            [
+                'drawCalls',
+                'instancedDrawCalls',
+                'renderedFrames',
+                'submittedTriangles',
+            ].map((field) => [
+                field,
+                typeof globalThis.__gameProfileMetrics?.[field] === 'number'
+                    ? Math.round(globalThis.__gameProfileMetrics[field])
+                    : null,
+            ]),
+        ),
+    });
+    const capture = (signal, callback, intersection = null) => {
+        if (state?.signal !== signal || state.afterAcknowledgement !== null) {
+            return callback();
+        }
+        const armedState = state;
+        const beforeSignal = snapshot();
+        try {
+            return callback();
+        } finally {
+            const callbackReturnedAt = performance.now();
+            // The public telemetry getter caches a synchronous read burst.
+            // Its reset, queued by the before-read, precedes this fresh read.
+            // No timer or animation frame can run between delivery and this
+            // acknowledgement; callback-queued microtask work stays in the
+            // signal window and is subject to its exact-zero work checks.
+            queueMicrotask(() => {
+                if (
+                    state !== armedState ||
+                    state.afterAcknowledgement !== null
+                ) {
+                    return;
+                }
+                const afterAcknowledgement = snapshot();
+                if (
+                    beforeSignal.runtimeFrameLoop?.effectiveVisible === true &&
+                    afterAcknowledgement.runtimeFrameLoop?.effectiveVisible ===
+                        false
+                ) {
+                    state.beforeSignal = beforeSignal;
+                    state.afterAcknowledgement = afterAcknowledgement;
+                    state.callbackReturnedAt = callbackReturnedAt;
+                    state.intersection = intersection;
+                }
+            });
+        }
+    };
+    globalThis.__gameProfileLifecycleSuspensionBoundary = {
+        beginSample(startedAt) {
+            state = null;
+            sampleStartedAt = startedAt;
+        },
+        arm(signal) {
+            if (sampleStartedAt === null || state !== null) {
+                throw new Error('Lifecycle suspension sample is not ready.');
+            }
+            state = {
+                afterAcknowledgement: null,
+                beforeSignal: null,
+                callbackReturnedAt: null,
+                intersection: null,
+                measurementMode,
+                requestedAt: performance.now(),
+                sampleStartedAt,
+                signal,
+            };
+        },
+        capture,
+        finishSample(sampleEndedAt) {
+            sampleStartedAt = null;
+            return state ? structuredClone({ ...state, sampleEndedAt }) : null;
+        },
+    };
+    const NativeIntersectionObserver = globalThis.IntersectionObserver;
+    globalThis.IntersectionObserver = new Proxy(NativeIntersectionObserver, {
+        construct(Target, args, newTarget) {
+            const [callback, ...options] = args;
+            if (typeof callback !== 'function') {
+                return Reflect.construct(Target, args, newTarget);
+            }
+            const wrappedCallback = function (entries, observer) {
+                const canvas = document.querySelector(
+                    '[data-scene-garden-id] canvas',
+                );
+                const entry = entries.find(
+                    (entry) =>
+                        entry.target === canvas &&
+                        (!entry.isIntersecting ||
+                            entry.intersectionRect.width <= 0 ||
+                            entry.intersectionRect.height <= 0),
+                );
+                const invoke = () =>
+                    Reflect.apply(callback, this, [entries, observer]);
+                return entry
+                    ? capture('intersection-observer', invoke, {
+                          height: entry.intersectionRect.height,
+                          isIntersecting: entry.isIntersecting,
+                          time: entry.time,
+                          width: entry.intersectionRect.width,
+                      })
+                    : invoke();
+            };
+            return Reflect.construct(
+                Target,
+                [wrappedCallback, ...options],
+                newTarget,
+            );
+        },
+    });
+}
+
 function beginInteractiveProfileSample() {
     const requestProfileAnimationFrame =
         globalThis.__gameProfileRequestNativeAnimationFrame ??
@@ -3495,6 +3621,7 @@ function beginInteractiveProfileSample() {
     globalThis.__gameProfileGpuTimer?.reset();
 
     const startedAt = performance.now();
+    globalThis.__gameProfileLifecycleSuspensionBoundary?.beginSample(startedAt);
     const runtimeFrameLoopTelemetry =
         globalThis.__grediceGameProfile?.runtimeFrameLoop ?? null;
     const readProfileCounter = (field) => {
@@ -3756,6 +3883,14 @@ async function finishInteractiveProfileSample() {
 
     return {
         ...nonGpuSample,
+        ...(globalThis.__gameProfileLifecycleSuspensionBoundary
+            ? {
+                  lifecycleSuspensionBoundary:
+                      globalThis.__gameProfileLifecycleSuspensionBoundary.finishSample(
+                          sampleEndedAt,
+                      ),
+              }
+            : {}),
         runtimeFrameLoopAtEnd,
         runtimeFrameLoopAtStart: sample.runtimeFrameLoopAtStart ?? null,
         sampleWindow: {
@@ -6015,6 +6150,7 @@ function buildLifecycleSuspendTransitionEvidence(window) {
         ...window,
         causalHiddenWorkBoundary,
         counterDeltas,
+        suspensionBoundary: buildLifecycleSuspensionBoundaryEvidence(sample),
         maximumExpectedR3fFrameCallbacks: browserFrameBoundary,
         maximumExpectedRenderedFrames: browserFrameBoundary,
         sceneTimeDeltaSeconds: runtimeFrameLoopNumberDelta(
@@ -6027,6 +6163,149 @@ function buildLifecycleSuspendTransitionEvidence(window) {
                 end.loopActive === false &&
                 end.callbackPending === false &&
                 end.pendingCallbackKind === 'none',
+        ),
+    };
+}
+
+function buildLifecycleSuspensionBoundaryEvidence(sample) {
+    const boundary = sample?.lifecycleSuspensionBoundary;
+    const start = sample?.runtimeFrameLoopAtStart;
+    const before = boundary?.beforeSignal?.runtimeFrameLoop;
+    const acknowledged = boundary?.afterAcknowledgement?.runtimeFrameLoop;
+    const end = sample?.runtimeFrameLoopAtEnd;
+    const rendererFields = [
+        'drawCalls',
+        'instancedDrawCalls',
+        'renderedFrames',
+        'submittedTriangles',
+    ];
+    const beforeRenderer = boundary?.beforeSignal?.renderer;
+    const acknowledgedRenderer = boundary?.afterAcknowledgement?.renderer;
+    const segment = (from, to, rendererFrom, rendererTo) => ({
+        counterDeltas: runtimeFrameLoopCounterDeltas(
+            from,
+            to,
+            fullRuntimeFrameLoopCounterFields,
+        ),
+        rendererDeltas: Object.fromEntries(
+            rendererFields.map((field) => [
+                field,
+                runtimeFrameLoopNumberDelta(rendererFrom, rendererTo, field),
+            ]),
+        ),
+        sceneTimeDeltaSeconds: runtimeFrameLoopNumberDelta(
+            from,
+            to,
+            'sceneTimeSeconds',
+        ),
+    });
+    const monotonic = (values, integer = false) =>
+        values.every(
+            (value, index) =>
+                typeof value === 'number' &&
+                Number.isFinite(value) &&
+                value >= 0 &&
+                (!integer || Number.isInteger(value)) &&
+                (index === 0 || value >= values[index - 1]),
+        );
+    const signal = boundary?.signal;
+    const valid = Boolean(
+        boundary?.measurementMode ===
+            lifecycleSuspensionBoundaryMeasurementMode &&
+            ['intersection-observer', 'synthetic-document-hidden'].includes(
+                signal,
+            ) &&
+            monotonic([
+                boundary.sampleStartedAt,
+                boundary.requestedAt,
+                boundary.beforeSignal?.recordedAt,
+                boundary.callbackReturnedAt,
+                boundary.afterAcknowledgement?.recordedAt,
+                boundary.sampleEndedAt,
+            ]) &&
+            Math.abs(
+                boundary.sampleEndedAt -
+                    boundary.sampleStartedAt -
+                    sample.elapsedMs,
+            ) <= 0.011 &&
+            start?.effectiveVisible === true &&
+            before?.effectiveVisible === true &&
+            before.loopActive === true &&
+            typeof before.callbackPending === 'boolean' &&
+            (before.callbackPending
+                ? ['frame', 'timeout'].includes(before.pendingCallbackKind)
+                : before.pendingCallbackKind === 'none') &&
+            acknowledged?.effectiveVisible === false &&
+            acknowledged.loopActive === false &&
+            acknowledged.callbackPending === false &&
+            acknowledged.pendingCallbackKind === 'none' &&
+            acknowledged.pendingCallbackDueAt === null &&
+            (signal === 'intersection-observer'
+                ? before.canvasVisible === true &&
+                  acknowledged.canvasVisible === false &&
+                  acknowledged.documentVisible === true &&
+                  boundary.intersection?.isIntersecting === false &&
+                  boundary.intersection.width === 0 &&
+                  boundary.intersection.height === 0 &&
+                  monotonic([
+                      boundary.requestedAt,
+                      boundary.intersection.time,
+                      boundary.beforeSignal.recordedAt,
+                  ])
+                : before.documentVisible === true &&
+                  acknowledged.documentVisible === false &&
+                  acknowledged.canvasVisible === true) &&
+            fullRuntimeFrameLoopCounterFields.every((field) =>
+                monotonic(
+                    [
+                        start?.[field],
+                        before[field],
+                        acknowledged[field],
+                        end?.[field],
+                    ],
+                    true,
+                ),
+            ) &&
+            monotonic(
+                [start, before, acknowledged, end].map(
+                    (snapshot) => snapshot?.sceneTimeSeconds,
+                ),
+            ) &&
+            rendererFields.every((field) =>
+                monotonic(
+                    [
+                        0,
+                        beforeRenderer?.[field],
+                        acknowledgedRenderer?.[field],
+                        sample?.[field],
+                    ],
+                    true,
+                ),
+            ),
+    );
+    return {
+        measurementMode: boundary?.measurementMode ?? null,
+        signal: signal ?? null,
+        valid,
+        expectedCancelledCallbackCount:
+            before?.callbackPending === true ? 1 : 0,
+        preSignal: segment(
+            start,
+            before,
+            Object.fromEntries(rendererFields.map((field) => [field, 0])),
+            beforeRenderer,
+        ),
+        signalWindow: segment(
+            before,
+            acknowledged,
+            beforeRenderer,
+            acknowledgedRenderer,
+        ),
+        postAcknowledgement: segment(
+            acknowledged,
+            end,
+            acknowledgedRenderer,
+            sample,
         ),
     };
 }
@@ -6179,6 +6458,9 @@ async function moveLifecycleCanvasOffscreen(page, offscreen) {
             '[data-game-profile-lifecycle-spacer]',
         );
         if (shouldMoveOffscreen) {
+            globalThis.__gameProfileLifecycleSuspensionBoundary?.arm(
+                'intersection-observer',
+            );
             if (!spacer) {
                 spacer = document.createElement('div');
                 spacer.setAttribute('data-game-profile-lifecycle-spacer', '1');
@@ -6265,7 +6547,19 @@ async function setSyntheticDocumentHidden(page, hidden) {
                 get: () => (state.hidden ? 'hidden' : 'visible'),
             },
         });
-        document.dispatchEvent(new Event('visibilitychange'));
+        const dispatch = () =>
+            document.dispatchEvent(new Event('visibilitychange'));
+        if (nextHidden && globalThis.__gameProfileLifecycleSuspensionBoundary) {
+            globalThis.__gameProfileLifecycleSuspensionBoundary.arm(
+                'synthetic-document-hidden',
+            );
+            globalThis.__gameProfileLifecycleSuspensionBoundary.capture(
+                'synthetic-document-hidden',
+                dispatch,
+            );
+        } else {
+            dispatch();
+        }
     }, hidden);
 }
 
@@ -7243,6 +7537,9 @@ function evaluateLifecycleAcceptance({
             : baselineResidualWindowChecks;
     const suspendTransitionChecks = (prefix, phase) => {
         const transition = phase?.suspendTransition;
+        const boundary = transition?.suspensionBoundary;
+        const signalCounters = boundary?.signalWindow?.counterDeltas;
+        const postAcknowledgement = boundary?.postAcknowledgement;
         const exactZeroCounterFields = fullRuntimeFrameLoopCounterFields.filter(
             (field) =>
                 field !== 'cancelledCallbackCount' &&
@@ -7258,6 +7555,13 @@ function evaluateLifecycleAcceptance({
                 field !== 'wakeupCount',
         );
         return [
+            exact(`${prefix}BoundaryValid`, boundary?.valid, true),
+            equivalent(
+                `${prefix}BoundaryMatchesRawEvidence`,
+                boundary,
+                buildLifecycleSuspensionBoundaryEvidence(transition?.sample),
+            ),
+            exact(`${prefix}BoundarySignal`, boundary?.signal, phase?.signal),
             minimum(`${prefix}ElapsedMs`, transition?.sample?.elapsedMs, 200),
             maximum(
                 `${prefix}ElapsedMsMaximum`,
@@ -7266,7 +7570,7 @@ function evaluateLifecycleAcceptance({
             ),
             maximum(
                 `${prefix}SceneTimeDeltaBounded`,
-                transition?.sceneTimeDeltaSeconds,
+                boundary?.signalWindow?.sceneTimeDeltaSeconds,
                 0.1,
             ),
             maximum(
@@ -7291,46 +7595,43 @@ function evaluateLifecycleAcceptance({
             ),
             minimum(
                 `${prefix}HiddenDeferredCoalescedRenderRequestCountDeltaMinimum`,
-                transition?.counterDeltas
-                    ?.hiddenDeferredCoalescedRenderRequestCount,
+                signalCounters?.hiddenDeferredCoalescedRenderRequestCount,
                 0,
             ),
             maximum(
                 `${prefix}HiddenDeferredCoalescedRenderRequestCountDelta`,
-                transition?.counterDeltas
-                    ?.hiddenDeferredCoalescedRenderRequestCount,
+                signalCounters?.hiddenDeferredCoalescedRenderRequestCount,
                 1,
             ),
             minimum(
                 `${prefix}HiddenCoalescedRenderRequestCountDeltaMinimum`,
-                transition?.counterDeltas?.hiddenCoalescedRenderRequestCount,
+                signalCounters?.hiddenCoalescedRenderRequestCount,
                 0,
             ),
             maximum(
                 `${prefix}HiddenCoalescedRenderRequestCountDelta`,
-                transition?.counterDeltas?.hiddenCoalescedRenderRequestCount,
+                signalCounters?.hiddenCoalescedRenderRequestCount,
                 lifecycleSuspendMaximumHiddenCoalescedRenderRequestCount,
             ),
             minimum(
                 `${prefix}HiddenCoalescedRenderRequestCountIncludesDeferredDelta`,
-                transition?.counterDeltas?.hiddenCoalescedRenderRequestCount,
-                transition?.counterDeltas
-                    ?.hiddenDeferredCoalescedRenderRequestCount,
+                signalCounters?.hiddenCoalescedRenderRequestCount,
+                signalCounters?.hiddenDeferredCoalescedRenderRequestCount,
             ),
             exact(
                 `${prefix}SuspendCountDelta`,
-                transition?.counterDeltas?.suspendCount,
+                signalCounters?.suspendCount,
                 1,
             ),
             exact(
                 `${prefix}DeferredWorkCountDelta`,
-                transition?.counterDeltas?.deferredWorkCount,
+                signalCounters?.deferredWorkCount,
                 1,
             ),
-            maximum(
+            exact(
                 `${prefix}CancelledCallbackCountDelta`,
-                transition?.counterDeltas?.cancelledCallbackCount,
-                1,
+                signalCounters?.cancelledCallbackCount,
+                boundary?.expectedCancelledCallbackCount,
             ),
             ...[
                 'scheduledCallbackCount',
@@ -7338,10 +7639,10 @@ function evaluateLifecycleAcceptance({
                 'invalidationCount',
                 'ownedInvalidationCount',
             ].map((field) =>
-                maximum(
+                exact(
                     `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
-                    transition?.counterDeltas?.[field],
-                    1,
+                    signalCounters?.[field],
+                    0,
                 ),
             ),
             exact(
@@ -7361,7 +7662,51 @@ function evaluateLifecycleAcceptance({
             ...exactZeroCounterFields.map((field) =>
                 exact(
                     `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
-                    transition?.counterDeltas?.[field],
+                    signalCounters?.[field],
+                    0,
+                ),
+            ),
+            ...['r3fFrameCallbackCount', 'nonessentialHiddenWorkCount'].map(
+                (field) =>
+                    exact(
+                        `${prefix}Signal${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                        signalCounters?.[field],
+                        0,
+                    ),
+            ),
+            ...[
+                'drawCalls',
+                'instancedDrawCalls',
+                'renderedFrames',
+                'submittedTriangles',
+            ].map((field) =>
+                exact(
+                    `${prefix}Signal${field[0].toUpperCase()}${field.slice(1)}`,
+                    boundary?.signalWindow?.rendererDeltas?.[field],
+                    0,
+                ),
+            ),
+            exact(
+                `${prefix}PostAcknowledgementSceneTimeDelta`,
+                postAcknowledgement?.sceneTimeDeltaSeconds,
+                0,
+            ),
+            ...[
+                'drawCalls',
+                'instancedDrawCalls',
+                'renderedFrames',
+                'submittedTriangles',
+            ].map((field) =>
+                exact(
+                    `${prefix}PostAcknowledgement${field[0].toUpperCase()}${field.slice(1)}`,
+                    postAcknowledgement?.rendererDeltas?.[field],
+                    0,
+                ),
+            ),
+            ...fullRuntimeFrameLoopCounterFields.map((field) =>
+                exact(
+                    `${prefix}PostAcknowledgement${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                    postAcknowledgement?.counterDeltas?.[field],
                     0,
                 ),
             ),
@@ -8257,6 +8602,11 @@ function evaluateLifecycleAcceptance({
         );
         checks.push(
             exact('lifecycleLiveProfile', requested.lifecycleLiveProfile, true),
+            exact(
+                'lifecycleLiveSuspensionBoundaryMeasurementMode',
+                requested.lifecycleSuspensionBoundaryMeasurementMode,
+                lifecycleSuspensionBoundaryMeasurementMode,
+            ),
             finite(
                 'lifecycleLiveActiveSceneTimeSeconds',
                 active?.runtimeFrameLoop?.sceneTimeSeconds,
@@ -8415,6 +8765,11 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
     await cdp.send('Performance.enable');
     await page.addInitScript(installLifecycleMilestoneTracker);
     await page.addInitScript(installProfileContextTracker);
+    if (scenario.lifecycleLiveProfile === true) {
+        await page.addInitScript(installLifecycleSuspensionBoundaryTracker, {
+            measurementMode: lifecycleSuspensionBoundaryMeasurementMode,
+        });
+    }
     await page.addInitScript(installBrowserMetrics, {
         externalGpuTimer: false,
     });
@@ -8976,6 +9331,9 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             isMobile: scenario.isMobile,
             lifecycle: profileMetadata?.lifecycle ?? null,
             lifecycleLiveProfile: scenario.lifecycleLiveProfile === true,
+            ...(scenario.lifecycleLiveProfile === true
+                ? { lifecycleSuspensionBoundaryMeasurementMode }
+                : {}),
             lifecycleProfile: true,
             lifecycleRequest: request.lifecycle ?? '0',
             mode: profileMetadata?.mode ?? request.mode,
@@ -20430,7 +20788,7 @@ function buildMarkdown(report) {
                 : []),
             ...(liveLifecycleProfileCount > 0
                 ? [
-                      `Candidate-only live runs (${liveLifecycleProfileCount}) measure from before each visibility mutation: suspension bounds scheduler issuance and the action-plus-R3F drain by observed browser frames, requires a fully settled endpoint, then gates an exact-zero residual tail; resume permits only a quarter-second semantic R3F surplus within a browser-frame bound; a second steady window gates exact owner cadence, bounded SceneTime, drained requests, and zero scheduler failures. Finite CDP durations remain diagnostics.`,
+                      `Candidate-only live runs (${liveLifecycleProfileCount}) retain the action-start window and pre-signal work as diagnostics. Suspension gates cancellation and required suspend/defer at native visibility delivery with a microtask-fresh acknowledgement, requires zero productive/renderer work during delivery and exact-zero work after acknowledgement, then gates an exact-zero residual tail. The raw action-plus-R3F drain remains bounded by observed browser frames; resume permits only a quarter-second semantic R3F surplus within a browser-frame bound; a second steady window gates exact owner cadence, bounded SceneTime, drained requests, and zero scheduler failures. Finite CDP durations remain diagnostics.`,
                       '',
                   ]
                 : []),
@@ -20468,17 +20826,18 @@ function buildMarkdown(report) {
                 '',
                 'Candidate-live visibility transition evidence:',
                 '',
-                '| Scenario / run | Phase | Suspend action+drain ms; rendered/R3F/hidden; suspend/defer/cancel; SceneTime; settled | Exact-zero tail rendered/R3F/SceneTime | Resume transition ms; rendered/R3F/owned/surplus; SceneTime; pending end | Steady ms; rendered/R3F/owned; SceneTime; pending start/end | Result |',
-                '| --- | --- | --- | --- | --- | --- | --- |',
+                '| Scenario / run | Phase | Suspend action+drain ms; rendered/R3F/hidden; suspend/defer/cancel; SceneTime; settled | Exact-zero tail rendered/R3F/SceneTime | Resume transition ms; rendered/R3F/owned/surplus; SceneTime; pending end | Steady ms; rendered/R3F/owned; SceneTime; pending start/end | Boundary mode; pre-signal/signal/post-ack productive; post-ack rendered/R3F | Result |',
+                '| --- | --- | --- | --- | --- | --- | --- | --- |',
             );
             for (const scenario of liveLifecycleProfiles) {
                 for (const phaseName of ['offscreen', 'hidden']) {
                     const phase = scenario.lifecycle?.[phaseName];
                     const suspend = phase?.suspendTransition;
+                    const boundary = suspend?.suspensionBoundary;
                     const resume = phase?.resumeTransition;
                     const steady = phase?.resumeWindow;
                     lines.push(
-                        `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${phaseName} | ${suspend?.sample?.elapsedMs ?? 'n/a'} ms; ${suspend?.sample?.renderedFrames ?? 'n/a'}/${suspend?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${suspend?.counterDeltas?.nonessentialHiddenWorkCount ?? 'n/a'}; ${suspend?.counterDeltas?.suspendCount ?? 'n/a'}/${suspend?.counterDeltas?.deferredWorkCount ?? 'n/a'}/${suspend?.counterDeltas?.cancelledCallbackCount ?? 'n/a'}; ${seconds(suspend?.sceneTimeDeltaSeconds)} s; ${suspend?.settledAtEnd ? 'yes' : 'no'} | ${phase?.residual?.sample?.renderedFrames ?? 'n/a'}/${phase?.residualDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${seconds(phase?.residualSceneTimeDeltaSeconds)} s; ${phase?.zeroWorkObserved ? 'yes' : 'no'} | ${resume?.sample?.elapsedMs ?? 'n/a'} ms; ${resume?.sample?.renderedFrames ?? 'n/a'}/${resume?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${resume?.counterDeltas?.ownedInvalidationCount ?? 'n/a'}/${resume?.r3fOwnedInvalidationSurplus ?? 'n/a'}; ${seconds(resume?.sceneTimeDeltaSeconds)} s; ${reasonCount(resume?.sample?.runtimeFrameLoopAtEnd)} | ${steady?.sample?.elapsedMs ?? 'n/a'} ms; ${steady?.sample?.renderedFrames ?? 'n/a'}/${steady?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${steady?.counterDeltas?.ownedInvalidationCount ?? 'n/a'}; ${seconds(steady?.sceneTimeDeltaSeconds)} s; ${reasonCount(steady?.sample?.runtimeFrameLoopAtStart)}/${reasonCount(steady?.sample?.runtimeFrameLoopAtEnd)} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+                        `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${phaseName} | ${suspend?.sample?.elapsedMs ?? 'n/a'} ms; ${suspend?.sample?.renderedFrames ?? 'n/a'}/${suspend?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${suspend?.counterDeltas?.nonessentialHiddenWorkCount ?? 'n/a'}; ${suspend?.counterDeltas?.suspendCount ?? 'n/a'}/${suspend?.counterDeltas?.deferredWorkCount ?? 'n/a'}/${suspend?.counterDeltas?.cancelledCallbackCount ?? 'n/a'}; ${seconds(suspend?.sceneTimeDeltaSeconds)} s; ${suspend?.settledAtEnd ? 'yes' : 'no'} | ${phase?.residual?.sample?.renderedFrames ?? 'n/a'}/${phase?.residualDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${seconds(phase?.residualSceneTimeDeltaSeconds)} s; ${phase?.zeroWorkObserved ? 'yes' : 'no'} | ${resume?.sample?.elapsedMs ?? 'n/a'} ms; ${resume?.sample?.renderedFrames ?? 'n/a'}/${resume?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${resume?.counterDeltas?.ownedInvalidationCount ?? 'n/a'}/${resume?.r3fOwnedInvalidationSurplus ?? 'n/a'}; ${seconds(resume?.sceneTimeDeltaSeconds)} s; ${reasonCount(resume?.sample?.runtimeFrameLoopAtEnd)} | ${steady?.sample?.elapsedMs ?? 'n/a'} ms; ${steady?.sample?.renderedFrames ?? 'n/a'}/${steady?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${steady?.counterDeltas?.ownedInvalidationCount ?? 'n/a'}; ${seconds(steady?.sceneTimeDeltaSeconds)} s; ${reasonCount(steady?.sample?.runtimeFrameLoopAtStart)}/${reasonCount(steady?.sample?.runtimeFrameLoopAtEnd)} | ${boundary?.measurementMode ?? 'n/a'}; ${boundary?.preSignal?.counterDeltas?.productiveWakeupCount ?? 'n/a'}/${boundary?.signalWindow?.counterDeltas?.productiveWakeupCount ?? 'n/a'}/${boundary?.postAcknowledgement?.counterDeltas?.productiveWakeupCount ?? 'n/a'}; ${boundary?.postAcknowledgement?.rendererDeltas?.renderedFrames ?? 'n/a'}/${boundary?.postAcknowledgement?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
                     );
                 }
             }
@@ -21348,6 +21707,7 @@ export {
     installBrowserMetrics,
     installGardenSwitchContextTracker,
     installLifecycleMilestoneTracker,
+    installLifecycleSuspensionBoundaryTracker,
     installProfileContextTracker,
     isExpectedGardenBuildingProfileApiError,
     isExpectedGardenBuildingProfileConsoleError,
@@ -21360,6 +21720,7 @@ export {
     lifecycleOwnedSchedulingZeroObserved,
     lifecycleRendererStatsCanonicalMode,
     lifecycleRendererStatsLegacyMode,
+    lifecycleSuspensionBoundaryMeasurementMode,
     lifecycleZeroWorkObserved,
     measureProfileScreenshotWitness,
     measureStaticSceneCacheImageParity,

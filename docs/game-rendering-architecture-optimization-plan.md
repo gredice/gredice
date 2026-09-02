@@ -68,8 +68,12 @@ Current GitHub delivery stack:
 - Evidence-retention issue [#4778](https://github.com/gredice/gredice/issues/4778)
   blocks #4776. Playwright cleared the untracked scratch reports, so the
   profiler/comparator now use `.game-profile-results` outside resettable test
-  output. A replacement symmetric 2x2 capture is in progress with the same
-  frozen v6 harness and corrected runtime. The blocking chain is
+  output. Both replacement candidate captures pass 39/39 producer runs with the
+  same frozen v6 harness and corrected runtime; all 140 candidate files survived
+  the 43-case WebGL suite byte-for-byte. Baseline capture and the strict symmetric
+  2x2 comparison remain pending. Two full acceptance attempts remain rejected
+  (19/21 and 17/21); a separate display-awake owner control passes 15/15 but is not
+  complete release acceptance. The blocking chain is
   #4778 → #4776 → #4775 → #4773 → #4717.
 - Draft integration [PR #4777](https://github.com/gredice/gredice/pull/4777)
   groups these dependent changes with #4766. Neither producer budget passes
@@ -1181,9 +1185,14 @@ Progress:
   selected legacy baseline side. The initial v6 candidate was rejected for one
   unexpected garden-switch wakeup. The corrected runtime prevents repeated
   cadence probes for one outstanding receipt generation without weakening the
-  bounded retry or exact-zero gate. Its replacement capture is still pending;
-  original scratch reports were cleared by Playwright and are not retained
-  release evidence. Issue #4778 separates profiler artifacts from that cleanup.
+  bounded retry or exact-zero gate. Both retained replacement candidate captures
+  pass 39/39 producer runs; the baseline pair, strict comparison, and complete
+  static/live-lifecycle/owner acceptance are still pending. Original scratch
+  reports were cleared by Playwright and are not retained release evidence.
+  Issue #4778 separates profiler artifacts from that cleanup. The retained
+  19/21 and 17/21 acceptance failures and the separate 15/15 display-awake owner
+  control are documented in `docs/game-scene-performance.md`; a passing control
+  does not erase the failed bundles or establish physical-device clearance.
 
 ## Suggested implementation order
 

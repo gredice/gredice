@@ -1226,6 +1226,219 @@ describe('GameRuntimeScheduler idle and cadence', () => {
         }
     });
 
+    for (const limitedFramesPerSecond of [47, 51]) {
+        it(`preserves demand and bounded receipt probes through 80-to-${limitedFramesPerSecond}-to-80 Hz callback capacity`, () => {
+            const frameStepCounts: number[] = [];
+            const queue = new FakeRuntimeQueue(80, frameStepCounts);
+            const { frameCallbackTimes, invalidations, scheduler } =
+                createScheduler({ queue, simulateFrameCallbacks: true });
+            const release = scheduler.acquireRenderLease('capacity-owner', 60);
+            const probedInvalidations = new Set<number>();
+            let demandedReceiptsRemaining = 0;
+            let expectedTargetFramesPerSecond = 60;
+            const requestDemand = () => {
+                demandedReceiptsRemaining = 3;
+                scheduler.requestRender('capacity-demand', 3);
+                scheduler.requestCoalescedRender('capacity-host-update', 3);
+            };
+            const runNextObserved = () => {
+                const before = scheduler.getSnapshot();
+                const receiptCountBefore = frameCallbackTimes.length;
+                const task = queue.runNext();
+                const after = scheduler.getSnapshot();
+                if (task.source === 'renderer-frame') {
+                    demandedReceiptsRemaining = Math.max(
+                        0,
+                        demandedReceiptsRemaining - 1,
+                    );
+                    assert.equal(
+                        frameCallbackTimes.length,
+                        receiptCountBefore + 1,
+                    );
+                } else {
+                    assert.equal(frameCallbackTimes.length, receiptCountBefore);
+                }
+                assert.deepEqual(
+                    after.renderRequestReasons,
+                    demandedReceiptsRemaining > 0 ? ['capacity-demand'] : [],
+                    'Only real renderer receipts may consume multi-frame demand',
+                );
+                assert.deepEqual(
+                    after.coalescedRenderRequestReasons,
+                    demandedReceiptsRemaining > 0
+                        ? ['capacity-host-update']
+                        : [],
+                );
+                const probeDelta =
+                    after.pendingFrameReceiptReconciliationWakeupCount -
+                    before.pendingFrameReceiptReconciliationWakeupCount;
+                if (probeDelta > 0) {
+                    assert.equal(probeDelta, 1);
+                    assert.equal(task.source, 'timeout');
+                    assert.equal(before.awaitingFrameReceipt, true);
+                    assert.equal(
+                        after.invalidationCount,
+                        before.invalidationCount,
+                    );
+                    assert.equal(
+                        probedInvalidations.has(before.invalidationCount),
+                        false,
+                        'An outstanding invalidation must not receive duplicate cadence probes',
+                    );
+                    probedInvalidations.add(before.invalidationCount);
+                }
+                assert.equal(
+                    after.targetFramesPerSecond,
+                    expectedTargetFramesPerSecond,
+                );
+                assert.equal(
+                    after.unexpectedNoWorkWakeupCount,
+                    calibration.unexpectedNoWorkWakeupCount,
+                );
+                assert.equal(
+                    after.postCalibrationFrameWakeupCount,
+                    calibration.postCalibrationFrameWakeupCount,
+                );
+                assertWakeupClassificationConserved(after);
+                assert.ok(queue.pendingTaskCount <= 2);
+                assert.ok(
+                    [...queue.tasks.values()].filter(
+                        (pending) => pending.source === 'renderer-frame',
+                    ).length <= 1,
+                    'Retries must reuse the one outstanding R3F RAF receipt',
+                );
+            };
+            const runUntilObserved = (targetTime: number) => {
+                let callbackCount = 0;
+                while (
+                    (queue.peekNextTask()?.dueAt ?? Infinity) <= targetTime
+                ) {
+                    assert.ok(callbackCount++ < 1_000);
+                    runNextObserved();
+                }
+                queue.currentTime = Math.max(queue.currentTime, targetTime);
+            };
+            const assertDeliveredCapacity = (
+                from: number,
+                to: number,
+                expectedFramesPerSecond: number,
+            ) => {
+                const delivered = frameCallbackTimes.filter(
+                    (timestamp) => timestamp > from && timestamp <= to,
+                ).length;
+                const expected = ((to - from) * expectedFramesPerSecond) / 1000;
+                assert.ok(
+                    delivered >= Math.floor(expected) - 1 &&
+                        delivered <= Math.ceil(expected) + 1,
+                    `Expected ${expectedFramesPerSecond} FPS capacity in (${from}, ${to}], received ${delivered} frames`,
+                );
+            };
+
+            // Bounded startup calibration observes native RAF slots, including
+            // slots between semantic deadlines. The transition assertions start
+            // after that existing startup behavior has completed.
+            queue.runUntil(1_000);
+            assertDeliveredCapacity(500, 1_000, 60);
+            const calibration = scheduler.getSnapshot();
+            assert.equal(calibration.displayFrameCalibrationCount, 1);
+            assertNear(calibration.displayFrameIntervalMs ?? 0, 1000 / 80);
+
+            // Timers keep their semantic deadlines; only native RAF delivery
+            // opportunities change. A frame already queued keeps its receipt.
+            queue.displayFramesPerSecond = limitedFramesPerSecond;
+            requestDemand();
+            runUntilObserved(2_000);
+            assertDeliveredCapacity(1_100, 1_900, limitedFramesPerSecond);
+            assert.equal(demandedReceiptsRemaining, 0);
+            assert.equal(scheduler.getSnapshot().missedFrameReceiptCount, 0);
+
+            let callbacksUntilReceipt = 0;
+            while (scheduler.getSnapshot().awaitingFrameReceipt) {
+                assert.ok(callbacksUntilReceipt++ < 20);
+                runNextObserved();
+            }
+            // Miss native opportunities for one R3F receipt while timeout
+            // callbacks remain available. The harness coalesces invalidations
+            // behind that real queued receipt, including bounded retries.
+            frameStepCounts.push(Math.ceil(limitedFramesPerSecond * 0.25) + 1);
+            requestDemand();
+            const beforeStall = scheduler.getSnapshot();
+            let callbacksUntilInvalidation = 0;
+            while (
+                scheduler.getSnapshot().invalidationCount ===
+                beforeStall.invalidationCount
+            ) {
+                assert.ok(callbacksUntilInvalidation++ < 20);
+                runNextObserved();
+            }
+            const stalledInvalidationAt = invalidations.at(-1);
+            const stalledReceipt = [...queue.tasks.values()].find(
+                (task) => task.source === 'renderer-frame',
+            );
+            assert.ok(stalledInvalidationAt !== undefined && stalledReceipt);
+            assert.ok(stalledReceipt.dueAt - stalledInvalidationAt >= 250);
+            const stalledReceiptCount = frameCallbackTimes.length;
+            runUntilObserved(stalledReceipt.dueAt - 1);
+            const afterStall = scheduler.getSnapshot();
+            assert.equal(frameCallbackTimes.length, stalledReceiptCount);
+            assert.equal(demandedReceiptsRemaining, 3);
+            assert.equal(
+                afterStall.missedFrameReceiptCount -
+                    beforeStall.missedFrameReceiptCount,
+                2,
+            );
+            const stalledInvalidations = invalidations.slice(
+                beforeStall.invalidationCount,
+            );
+            assert.equal(stalledInvalidations.length, 3);
+            stalledInvalidations.forEach((timestamp, index) => {
+                assertNear(timestamp, stalledInvalidationAt + index * 100);
+            });
+            assert.equal(
+                afterStall.pendingFrameReceiptReconciliationWakeupCount -
+                    beforeStall.pendingFrameReceiptReconciliationWakeupCount,
+                3,
+                'Each initial/retry invalidation receives only one cadence probe',
+            );
+            assert.equal(queue.tasks.get(stalledReceipt.id), stalledReceipt);
+            runNextObserved();
+            assert.equal(demandedReceiptsRemaining, 2);
+            runUntilObserved(3_000);
+            assert.equal(demandedReceiptsRemaining, 0);
+
+            queue.displayFramesPerSecond = 80;
+            requestDemand();
+            runUntilObserved(4_000);
+            // Assert the first recovery second, not a later settled window:
+            // capacity observations must never ratchet the 60 FPS owner down.
+            assertDeliveredCapacity(3_000, 3_250, 60);
+            assertDeliveredCapacity(3_000, 4_000, 60);
+            assert.equal(demandedReceiptsRemaining, 0);
+            const firstRecoveredReceipt = frameCallbackTimes.find(
+                (timestamp) => timestamp > 3_000,
+            );
+            assert.ok(firstRecoveredReceipt !== undefined);
+            assert.ok(
+                firstRecoveredReceipt - 3_000 <=
+                    1000 / limitedFramesPerSecond +
+                        1000 / 60 +
+                        timingToleranceMs,
+            );
+            const final = scheduler.getSnapshot();
+            assert.equal(final.displayFrameCalibrationCount, 1);
+            assert.equal(final.missedFrameReceiptCount, 2);
+            assert.equal(final.invalidationFailureCount, 0);
+            assert.ok(probedInvalidations.size > 3);
+            assert.ok(queue.maximumPendingTaskCount <= 2);
+
+            expectedTargetFramesPerSecond = 0;
+            release();
+            runUntilObserved(4_100);
+            assert.equal(queue.pendingTaskCount, 0);
+            assert.equal(scheduler.getSnapshot().awaitingFrameReceipt, false);
+        });
+    }
+
     it('keeps exact frame gaps across divisor refresh transitions', () => {
         const transitions = [
             { target: 20, to: 120 },

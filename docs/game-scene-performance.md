@@ -424,6 +424,20 @@ the lifecycle scenario's owned-scheduling gate. The `lifecycle-live` closure
 bundle adds exhaustive zero-work and bounded live-resume gates without
 weakening the canonical lifecycle comparison contract.
 
+Live-lifecycle suspension also records a causal boundary using
+`microtask-fresh-visibility-callback-acknowledgement-v1`. It preserves the original
+action-start sample and separates work before browser signal delivery, the
+visibility callback, and the acknowledged inactive interval. The callback is
+invoked normally; acknowledgement is read in the first following microtask so
+the pull-based telemetry cache has reset. No timer or animation-frame task can
+run between that callback and its microtask acknowledgement. The signal window
+requires exact cancellation of a known pending callback, one suspension/defer,
+and zero productive scheduling or rendering. Existing bounded coalesced dirty
+state allowances apply only during that transition. Every runtime counter,
+renderer counter, and SceneTime delta after acknowledgement must remain exactly
+zero. Missing, malformed, or stale boundary evidence fails acceptance. This
+live-only witness does not alter the frozen canonical comparison harness.
+
 A separate `static-idle` scenario now hard-gates a full visible zero-work window.
 It loads a clear, fixed-midday High-quality default mock garden with details,
 controls, HUD, and debug HUD disabled, but keeps normal continuous-render lease
@@ -448,11 +462,13 @@ GAME_PROFILE_SCENARIO_SET=static-idle \
 ```
 
 The required final local closure bundle must be captured under
-`.game-profile-results/4778-release-v6/acceptance`. It combines three repeated
+`.game-profile-results/4778-release-v6/acceptance-awake`. It combines three repeated
 static-idle windows, three fresh-context `lifecycle-live` runs, and three runs
 for each Low, Medium, High, Automatic-standard, and Automatic-constrained owner
 policy. All 21 runs must pass from one clean production build before the issue
-can close. The implementation also gates the shared live-time minute clock,
+can close. The final capture also includes the two matched building controls
+after these cases, retaining all 23 raw runs in one warmed browser execution.
+The implementation also gates the shared live-time minute clock,
 generated-plant work, per-scene ambient audio, and aggregate refetch intervals
 on runtime activity; the lifecycle-live runs cover their shared inactive and
 resume boundary without making claims about a real background tab.
@@ -1790,10 +1806,30 @@ and lifecycle assertions still observe a coherent state.
 
 Required release evidence before merge:
 
-- `4778-release-v6/acceptance` is the 21-run static, live-lifecycle, and cross-policy
-  semantic-owner gate.
-- `4778-release-v6/building-ambient` is the focused two-run control proving an
-  ordinary ambient structure fixture holds one stable 30 FPS owner set.
+- `4778-release-v6/acceptance-awake` is the pending 21-run static, live-lifecycle,
+  and cross-policy semantic-owner gate. The earlier retained `acceptance` and
+  `acceptance-confirmation` bundles passed 19/21 and 17/21 respectively on
+  2026-09-02; neither is release evidence. Camera-owner failures coincided with
+  approximately 46–54 native browser callbacks per second during 60 FPS ownership.
+  Two live-lifecycle failures also counted a productive frame before asynchronous
+  offscreen observer delivery; all post-suspension residual work was exactly zero.
+  Those failures remain retained, not overwritten by passing reruns.
+- The separate `owner-display-awake-control` passed all 15 original owner runs
+  with the same clean runtime, frozen harness, browser flags, and unchanged 0.85
+  minimum delivery ratio. A command-scoped `caffeinate -du` assertion held the
+  macOS display awake; the prior diagnostic reported `Display Asleep: Yes`.
+  Delivered 60 FPS ratios were 0.9448–0.9939. The raw report and
+  `environment-control.json` retain that condition. This supports explicitly
+  recording display state for native-cadence checks, but does not establish
+  display sleep as the sole cause or substitute for the complete acceptance
+  bundle. No browser frame-rate flags, quality policy, or threshold changed.
+- `4778-release-v6/building-ambient` retains the initial focused two-run control:
+  both scenes preserve one stable 30 FPS owner set, but the empty-shell relative
+  native-rAF p95 gate failed (17.3 ms baseline versus 26.3 ms shell). Rendered
+  delivery was 30.0/30.1 FPS, draws 100/100, triangles 5,016/5,016 per frame,
+  and GPU p95 2.49/2.50 ms. This is not a passing control. The final acceptance
+  capture must also pass the matched building pair under the same warmed
+  browser process; all timing thresholds remain unchanged.
 - The earlier `4775-controlled-v5-final` readout remains diagnostic history;
   its raw scratch artifacts were removed by the test runner. That clean matrix was structurally
   valid; 312 of 314 comparisons and all 42 invariants passed, along with its
@@ -1812,8 +1848,12 @@ Required release evidence before merge:
   wakeup and its raw scratch artifacts were subsequently removed. The
   replacement matrix uses frozen harness `f653a380ecb605654920ed24d86892225fdd10f2`,
   clean baseline `8b10710a0958e14d15dcebf9a18969ba969039d9`, and corrected runtime
-  `aa48e2075ca65d083fd5a2fd083e3841e08732f9`. Capture and comparison remain pending;
-  earlier summaries cannot substitute for retained passing raw evidence.
+  `aa48e2075ca65d083fd5a2fd083e3841e08732f9`. Both replacement candidate captures
+  pass all 39 producer runs and canonical input validation; every garden-switch
+  arrival has zero unexpected no-work wakeups. All 140 retained candidate files
+  remained byte-identical across the 43-case WebGL suite and repeated focused
+  tests. Baseline capture, strict comparison, and complete acceptance remain
+  pending; producer or self-comparison passes cannot substitute for them.
 - A producer report's budget/comparability status is not release clearance.
   Garden-switch producer acceptance covers the shared scenario contract; the
   release comparator additionally checks canonical scheduler invariants while

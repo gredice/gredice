@@ -11,6 +11,10 @@ import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import {
+    bindRuntimeFrameLoopProfileTelemetry,
+    createRuntimeFrameLoopProfileTelemetry,
+} from '../../../packages/game/src/scene/gameProfileMetadata.ts';
 import { assertSafeGameProfileOutputDirectory } from './game-profile-output.mjs';
 import {
     applyGardenBuildingMatchedBaselineComparison,
@@ -59,6 +63,7 @@ import {
     installBrowserMetrics,
     installGardenSwitchContextTracker,
     installLifecycleMilestoneTracker,
+    installLifecycleSuspensionBoundaryTracker,
     installProfileContextTracker,
     isExpectedGardenBuildingProfileApiError,
     isExpectedGardenBuildingProfileConsoleError,
@@ -71,6 +76,7 @@ import {
     lifecycleOwnedSchedulingZeroObserved,
     lifecycleRendererStatsCanonicalMode,
     lifecycleRendererStatsLegacyMode,
+    lifecycleSuspensionBoundaryMeasurementMode,
     lifecycleZeroWorkObserved,
     measureStaticSceneCacheImageParity,
     mergeGardenStructureAssetNetworkRuntime,
@@ -7976,14 +7982,12 @@ function createPassingLifecycleLiveAcceptanceInput() {
             },
         });
     };
-    const suspendTransition = (sceneTimeSeconds, lateFrameCount) => {
+    const suspendTransition = (sceneTimeSeconds, lateFrameCount, phaseName) => {
         const startCounters = fullRuntimeCounterValues(10);
         const endCounters = {
             ...startCounters,
             cancelledCallbackCount: startCounters.cancelledCallbackCount + 1,
             deferredWorkCount: startCounters.deferredWorkCount + 1,
-            nonessentialHiddenWorkCount:
-                startCounters.nonessentialHiddenWorkCount + lateFrameCount,
             r3fFrameCallbackCount:
                 startCounters.r3fFrameCallbackCount + lateFrameCount,
             suspendCount: startCounters.suspendCount + 1,
@@ -7994,6 +7998,35 @@ function createPassingLifecycleLiveAcceptanceInput() {
         endCounters.hiddenCoalescedRenderRequestCount = 3;
         startCounters.coalescedRenderRequestReasons = [];
         endCounters.coalescedRenderRequestReasons = ['r3f-root-update'];
+        const startSnapshot = {
+            ...startCounters,
+            callbackPending: true,
+            canvasVisible: true,
+            documentVisible: true,
+            effectiveVisible: true,
+            loopActive: true,
+            pendingCallbackKind: 'timeout',
+            sceneTimeSeconds,
+            targetFramesPerSecond: 30,
+        };
+        const endSnapshot = {
+            ...endCounters,
+            callbackPending: false,
+            canvasVisible: phaseName !== 'offscreen',
+            documentVisible: phaseName !== 'hidden',
+            effectiveVisible: false,
+            loopActive: false,
+            pendingCallbackDueAt: null,
+            pendingCallbackKind: 'none',
+            sceneTimeSeconds: sceneTimeSeconds + lateFrameCount * 0.03,
+            targetFramesPerSecond: 0,
+        };
+        const rendererAtEnd = {
+            drawCalls: lateFrameCount * 10,
+            instancedDrawCalls: 0,
+            renderedFrames: lateFrameCount,
+            submittedTriangles: lateFrameCount * 100,
+        };
         return buildLifecycleSuspendTransitionEvidence({
             cdp: {
                 layoutDuration: 0,
@@ -8001,26 +8034,47 @@ function createPassingLifecycleLiveAcceptanceInput() {
                 taskDuration: lateFrameCount * 0.002,
             },
             sample: {
-                drawCalls: lateFrameCount * 10,
+                ...rendererAtEnd,
                 elapsedMs: 250,
                 frames: 15,
+                lifecycleSuspensionBoundary: {
+                    afterAcknowledgement: {
+                        recordedAt: 1_011,
+                        renderer: { ...rendererAtEnd },
+                        runtimeFrameLoop: { ...endSnapshot },
+                    },
+                    beforeSignal: {
+                        recordedAt: 1_010,
+                        renderer: { ...rendererAtEnd },
+                        runtimeFrameLoop: {
+                            ...startSnapshot,
+                            r3fFrameCallbackCount:
+                                endSnapshot.r3fFrameCallbackCount,
+                            sceneTimeSeconds: endSnapshot.sceneTimeSeconds,
+                        },
+                    },
+                    callbackReturnedAt: 1_011,
+                    intersection:
+                        phaseName === 'offscreen'
+                            ? {
+                                  height: 0,
+                                  isIntersecting: false,
+                                  time: 1_009,
+                                  width: 0,
+                              }
+                            : null,
+                    measurementMode: lifecycleSuspensionBoundaryMeasurementMode,
+                    requestedAt: 1_001,
+                    sampleEndedAt: 1_250,
+                    sampleStartedAt: 1_000,
+                    signal:
+                        phaseName === 'offscreen'
+                            ? 'intersection-observer'
+                            : 'synthetic-document-hidden',
+                },
                 renderedFps: lateFrameCount * 4,
-                renderedFrames: lateFrameCount,
-                runtimeFrameLoopAtEnd: {
-                    ...endCounters,
-                    callbackPending: false,
-                    effectiveVisible: false,
-                    loopActive: false,
-                    pendingCallbackKind: 'none',
-                    sceneTimeSeconds: sceneTimeSeconds + lateFrameCount * 0.03,
-                    targetFramesPerSecond: 0,
-                },
-                runtimeFrameLoopAtStart: {
-                    ...startCounters,
-                    sceneTimeSeconds,
-                    targetFramesPerSecond: 0,
-                },
-                submittedTriangles: lateFrameCount * 100,
+                runtimeFrameLoopAtEnd: endSnapshot,
+                runtimeFrameLoopAtStart: startSnapshot,
             },
         });
     };
@@ -8056,6 +8110,8 @@ function createPassingLifecycleLiveAcceptanceInput() {
     };
     input.requested.fixedTimeSeconds = null;
     input.requested.lifecycleLiveProfile = true;
+    input.requested.lifecycleSuspensionBoundaryMeasurementMode =
+        lifecycleSuspensionBoundaryMeasurementMode;
 
     for (const [index, phaseName] of ['offscreen', 'hidden'].entries()) {
         const phase = input[phaseName];
@@ -8076,6 +8132,7 @@ function createPassingLifecycleLiveAcceptanceInput() {
         phase.suspendTransition = suspendTransition(
             99 + index,
             phaseName === 'hidden' ? 1 : 0,
+            phaseName,
         );
         phase.resumed = {
             ...phase.resumed,
@@ -8098,6 +8155,448 @@ function createPassingLifecycleLiveAcceptanceInput() {
 
     return input;
 }
+
+test('lifecycle suspension tracker observes only the actual Canvas callback and preserves native semantics', (t) => {
+    const keys = [
+        'document',
+        'IntersectionObserver',
+        'performance',
+        'queueMicrotask',
+        '__grediceGameProfile',
+        '__gameProfileMetrics',
+        '__gameProfileLifecycleSuspensionBoundary',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    t.after(() => {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    });
+    const canvas = {};
+    let now = 1_000;
+    const microtasks = [];
+    const drainMicrotasks = () => {
+        while (microtasks.length > 0) {
+            microtasks.shift()();
+        }
+    };
+    const start = structuredClone(
+        createPassingLifecycleLiveAcceptanceInput().offscreen.suspendTransition
+            .sample.runtimeFrameLoopAtStart,
+    );
+    class NativeIntersectionObserver {
+        constructor(callback, options) {
+            if (typeof callback !== 'function') {
+                throw new TypeError('Callback must be a function.');
+            }
+            this.callback = callback;
+            this.options = options;
+        }
+        deliver(entries) {
+            return this.callback.call(this, entries, this);
+        }
+    }
+    const globals = {
+        document: { querySelector: () => canvas },
+        IntersectionObserver: NativeIntersectionObserver,
+        performance: { now: () => now },
+        queueMicrotask: (callback) => microtasks.push(callback),
+        __grediceGameProfile: {
+            runtimeFrameLoop: createRuntimeFrameLoopProfileTelemetry(),
+        },
+        __gameProfileMetrics: {
+            drawCalls: 0,
+            instancedDrawCalls: 0,
+            renderedFrames: 0,
+            submittedTriangles: 0,
+        },
+    };
+    for (const [key, value] of Object.entries(globals)) {
+        Object.defineProperty(globalThis, key, {
+            configurable: true,
+            value,
+            writable: true,
+        });
+    }
+    const unbind = bindRuntimeFrameLoopProfileTelemetry(
+        globals.__grediceGameProfile.runtimeFrameLoop,
+        () => ({ ...createRuntimeFrameLoopProfileTelemetry(), ...start }),
+        (callback) => microtasks.push(callback),
+    );
+    t.after(unbind);
+    installLifecycleSuspensionBoundaryTracker({
+        measurementMode: lifecycleSuspensionBoundaryMeasurementMode,
+    });
+    const tracker = globalThis.__gameProfileLifecycleSuspensionBoundary;
+    tracker.beginSample(now);
+    now += 1;
+    tracker.arm('intersection-observer');
+    const options = { root: {}, rootMargin: '8px', threshold: [0, 0.5] };
+    const entry = {
+        intersectionRect: { height: 0, width: 0 },
+        isIntersecting: false,
+        target: canvas,
+        time: 1_050,
+    };
+    const entries = [entry];
+    let unrelatedCalls = 0;
+    const unrelated = new globalThis.IntersectionObserver(() => {
+        unrelatedCalls += 1;
+    });
+    class GameObserver extends globalThis.IntersectionObserver {}
+    const observer = new GameObserver(function (
+        receivedEntries,
+        receivedObserver,
+    ) {
+        assert.equal(this, observer);
+        assert.equal(receivedEntries, entries);
+        assert.equal(receivedObserver, observer);
+        Object.assign(start, {
+            callbackPending: false,
+            cancelledCallbackCount: start.cancelledCallbackCount + 1,
+            canvasVisible: false,
+            deferredWorkCount: start.deferredWorkCount + 1,
+            effectiveVisible: false,
+            loopActive: false,
+            pendingCallbackDueAt: null,
+            pendingCallbackKind: 'none',
+            suspendCount: start.suspendCount + 1,
+        });
+        now += 1;
+        return 'native-callback-result';
+    }, options);
+    assert.ok(observer instanceof NativeIntersectionObserver);
+    assert.ok(observer instanceof GameObserver);
+    assert.equal(observer.options, options);
+    assert.throws(() => new globalThis.IntersectionObserver(null), TypeError);
+
+    // A timer legitimately fires while the offscreen entry awaits delivery.
+    now = 1_050;
+    start.productiveWakeupCount += 1;
+    unrelated.deliver(entries);
+    drainMicrotasks();
+    assert.equal(tracker.finishSample(1_051).afterAcknowledgement, null);
+    assert.equal(observer.deliver(entries), 'native-callback-result');
+    // The actual bound telemetry is stale until its scheduled reset runs.
+    assert.equal(
+        globals.__grediceGameProfile.runtimeFrameLoop.effectiveVisible,
+        true,
+    );
+    drainMicrotasks();
+    const observed = tracker.finishSample(1_250);
+    assert.equal(
+        observed.beforeSignal.runtimeFrameLoop.productiveWakeupCount,
+        11,
+    );
+    assert.equal(observed.beforeSignal.runtimeFrameLoop.effectiveVisible, true);
+    assert.equal(
+        observed.afterAcknowledgement.runtimeFrameLoop.effectiveVisible,
+        false,
+    );
+    assert.deepEqual(observed.intersection, {
+        height: 0,
+        isIntersecting: false,
+        time: 1_050,
+        width: 0,
+    });
+    unrelated.deliver(entries);
+    drainMicrotasks();
+    assert.equal(unrelatedCalls, 2);
+    assert.deepEqual(tracker.finishSample(1_250), observed);
+
+    // Synthetic visibility delivery uses the same synchronous boundary.
+    Object.assign(start, { effectiveVisible: true, documentVisible: true });
+    tracker.beginSample(2_000);
+    now = 2_001;
+    tracker.arm('synthetic-document-hidden');
+    const result = tracker.capture('synthetic-document-hidden', () => {
+        start.documentVisible = false;
+        start.effectiveVisible = false;
+        return 42;
+    });
+    assert.equal(result, 42);
+    drainMicrotasks();
+    assert.equal(
+        tracker.finishSample(2_250).afterAcknowledgement.runtimeFrameLoop
+            .documentVisible,
+        false,
+    );
+    tracker.beginSample(3_000);
+    now = 3_001;
+    tracker.arm('intersection-observer');
+    const callbackError = new Error('native callback failure');
+    const throwing = new globalThis.IntersectionObserver(() => {
+        throw callbackError;
+    });
+    assert.throws(
+        () => throwing.deliver(entries),
+        (error) => error === callbackError,
+    );
+    drainMicrotasks();
+
+    // A hostile microtask queued by a visibility handler must be captured by
+    // the fresh acknowledgement and fail, not disappear behind cached getters.
+    const input = createPassingLifecycleLiveAcceptanceInput();
+    const transition = input.offscreen.suspendTransition;
+    Object.assign(start, transition.sample.runtimeFrameLoopAtStart);
+    tracker.beginSample(4_000);
+    now = 4_001;
+    tracker.arm('intersection-observer');
+    const hostileEntries = [{ ...entry, time: 4_010 }];
+    const hostile = new globalThis.IntersectionObserver(() => {
+        Object.assign(start, {
+            callbackPending: false,
+            cancelledCallbackCount: start.cancelledCallbackCount + 1,
+            canvasVisible: false,
+            deferredWorkCount: start.deferredWorkCount + 1,
+            effectiveVisible: false,
+            loopActive: false,
+            pendingCallbackDueAt: null,
+            pendingCallbackKind: 'none',
+            suspendCount: start.suspendCount + 1,
+        });
+        queueMicrotask(() => {
+            start.productiveWakeupCount += 1;
+            start.wakeupCount += 1;
+        });
+    });
+    now = 4_010;
+    hostile.deliver(hostileEntries);
+    drainMicrotasks();
+    transition.sample.lifecycleSuspensionBoundary = tracker.finishSample(4_250);
+    transition.sample.runtimeFrameLoopAtEnd = structuredClone(start);
+    input.offscreen.suspendTransition =
+        buildLifecycleSuspendTransitionEvidence(transition);
+    assert.equal(
+        input.offscreen.suspendTransition.suspensionBoundary.valid,
+        true,
+    );
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            input,
+            'lifecycleLiveOffscreenSuspendTransitionProductiveWakeupCountDelta',
+        ).pass,
+        false,
+    );
+    assert.equal(
+        input.offscreen.suspendTransition.suspensionBoundary.signalWindow
+            .counterDeltas.productiveWakeupCount,
+        1,
+    );
+});
+
+test('delayed lifecycle signal delivery retains productive pre-signal work without failing suspension', () => {
+    for (const phaseName of ['offscreen', 'hidden']) {
+        const input = createPassingLifecycleLiveAcceptanceInput();
+        const transition = input[phaseName].suspendTransition;
+        const sample = transition.sample;
+        const raw = sample.lifecycleSuspensionBoundary;
+        for (const snapshot of [
+            raw.beforeSignal.runtimeFrameLoop,
+            raw.afterAcknowledgement.runtimeFrameLoop,
+            sample.runtimeFrameLoopAtEnd,
+        ]) {
+            for (const field of [
+                'scheduledCallbackCount',
+                'wakeupCount',
+                'productiveWakeupCount',
+                'invalidationCount',
+                'ownedInvalidationCount',
+                'r3fFrameCallbackCount',
+            ]) {
+                snapshot[field] += 4;
+            }
+            snapshot.sceneTimeSeconds += 0.133;
+        }
+        for (const renderer of [
+            raw.beforeSignal.renderer,
+            raw.afterAcknowledgement.renderer,
+            sample,
+        ]) {
+            renderer.drawCalls += 40;
+            renderer.renderedFrames += 4;
+            renderer.submittedTriangles += 400;
+        }
+        raw.beforeSignal.recordedAt = 1_140;
+        raw.callbackReturnedAt = 1_141;
+        raw.afterAcknowledgement.recordedAt = 1_141;
+        if (raw.intersection) {
+            raw.intersection.time = 1_139;
+        }
+        input[phaseName].suspendTransition =
+            buildLifecycleSuspendTransitionEvidence(transition);
+        const evidence = input[phaseName].suspendTransition;
+        assert.equal(evidence.counterDeltas.productiveWakeupCount, 4);
+        assert.equal(
+            evidence.suspensionBoundary.preSignal.counterDeltas
+                .productiveWakeupCount,
+            4,
+        );
+        assert.equal(
+            evidence.suspensionBoundary.signalWindow.counterDeltas
+                .productiveWakeupCount,
+            0,
+        );
+        assert.equal(
+            evidence.suspensionBoundary.postAcknowledgement.counterDeltas
+                .productiveWakeupCount,
+            0,
+        );
+        assert.deepEqual(
+            evaluateLifecycleAcceptance(input).checks.filter(
+                (check) => !check.pass,
+            ),
+            [],
+            phaseName,
+        );
+    }
+});
+
+test('live lifecycle boundary fails closed on missing or malformed acknowledgement and raw evidence tampering', () => {
+    const cases = [
+        (raw) => {
+            raw.beforeSignal = null;
+        },
+        (raw) => {
+            raw.afterAcknowledgement = null;
+        },
+        (raw) => {
+            raw.measurementMode = 'unknown';
+        },
+        (raw) => {
+            raw.beforeSignal.recordedAt = raw.requestedAt - 1;
+        },
+        (raw) => {
+            raw.afterAcknowledgement.recordedAt = raw.sampleEndedAt + 1;
+        },
+        (raw) => {
+            raw.afterAcknowledgement.runtimeFrameLoop.loopActive = true;
+        },
+        (raw) => {
+            raw.afterAcknowledgement.runtimeFrameLoop.callbackPending = true;
+        },
+        (raw) => {
+            raw.afterAcknowledgement.runtimeFrameLoop.pendingCallbackDueAt = 1_500;
+        },
+        (raw) => {
+            delete raw.beforeSignal.runtimeFrameLoop.productiveWakeupCount;
+        },
+        (raw) => {
+            raw.afterAcknowledgement.runtimeFrameLoop.productiveWakeupCount -= 1;
+        },
+        (raw) => {
+            raw.afterAcknowledgement.renderer.drawCalls = -1;
+        },
+        (raw) => {
+            raw.sampleEndedAt += 1;
+        },
+    ];
+    for (const phaseName of ['offscreen', 'hidden']) {
+        const phaseLabel = phaseName[0].toUpperCase() + phaseName.slice(1);
+        const prefix = `lifecycleLive${phaseLabel}SuspendTransition`;
+        for (const [index, mutate] of cases.entries()) {
+            const input = createPassingLifecycleLiveAcceptanceInput();
+            const transition = input[phaseName].suspendTransition;
+            mutate(transition.sample.lifecycleSuspensionBoundary);
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    input,
+                    `${prefix}BoundaryMatchesRawEvidence`,
+                ).pass,
+                false,
+                `${phaseName}:tampering:${index}`,
+            );
+            input[phaseName].suspendTransition =
+                buildLifecycleSuspendTransitionEvidence(transition);
+            assert.equal(
+                lifecycleAcceptanceCheck(input, `${prefix}BoundaryValid`).pass,
+                false,
+                `${phaseName}:invalid:${index}`,
+            );
+        }
+        const missing = createPassingLifecycleLiveAcceptanceInput();
+        delete missing[phaseName].suspendTransition.sample
+            .lifecycleSuspensionBoundary;
+        missing[phaseName].suspendTransition =
+            buildLifecycleSuspendTransitionEvidence(
+                missing[phaseName].suspendTransition,
+            );
+        assert.equal(
+            lifecycleAcceptanceCheck(missing, `${prefix}BoundaryValid`).pass,
+            false,
+        );
+    }
+});
+
+test('live lifecycle suspension requires cancellation at signal delivery and exact-zero work after acknowledgement', () => {
+    for (const phaseName of ['offscreen', 'hidden']) {
+        const phaseLabel = phaseName[0].toUpperCase() + phaseName.slice(1);
+        const prefix = `lifecycleLive${phaseLabel}SuspendTransition`;
+        for (const field of fullRuntimeFrameLoopCounterFields) {
+            const input = createPassingLifecycleLiveAcceptanceInput();
+            const transition = input[phaseName].suspendTransition;
+            transition.sample.runtimeFrameLoopAtEnd[field] += 1;
+            input[phaseName].suspendTransition =
+                buildLifecycleSuspendTransitionEvidence(transition);
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    input,
+                    `${prefix}PostAcknowledgement${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                ).pass,
+                false,
+                `${phaseName}:${field}`,
+            );
+        }
+        for (const field of [
+            'drawCalls',
+            'instancedDrawCalls',
+            'renderedFrames',
+            'submittedTriangles',
+        ]) {
+            const input = createPassingLifecycleLiveAcceptanceInput();
+            const transition = input[phaseName].suspendTransition;
+            transition.sample[field] += 1;
+            input[phaseName].suspendTransition =
+                buildLifecycleSuspendTransitionEvidence(transition);
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    input,
+                    `${prefix}PostAcknowledgement${field[0].toUpperCase()}${field.slice(1)}`,
+                ).pass,
+                false,
+                `${phaseName}:${field}`,
+            );
+        }
+        for (const [field, suffix] of [
+            ['cancelledCallbackCount', 'CancelledCallbackCountDelta'],
+            ['suspendCount', 'SuspendCountDelta'],
+            ['deferredWorkCount', 'DeferredWorkCountDelta'],
+        ]) {
+            const input = createPassingLifecycleLiveAcceptanceInput();
+            const transition = input[phaseName].suspendTransition;
+            transition.sample.lifecycleSuspensionBoundary.afterAcknowledgement.runtimeFrameLoop[
+                field
+            ] -= 1;
+            transition.sample.runtimeFrameLoopAtEnd[field] -= 1;
+            input[phaseName].suspendTransition =
+                buildLifecycleSuspendTransitionEvidence(transition);
+            assert.equal(
+                lifecycleAcceptanceCheck(input, `${prefix}${suffix}`).pass,
+                false,
+            );
+        }
+    }
+});
 
 test('lifecycle suspension evidence requires a settled endpoint and causal frame drain', () => {
     const start = {
@@ -8231,7 +8730,7 @@ test('live lifecycle suspension bounds action drain and requires exact-zero sett
         const excessiveCoalescedHiddenWork = structuredClone(input);
         excessiveCoalescedHiddenWork[
             phaseName
-        ].suspendTransition.counterDeltas.hiddenDeferredCoalescedRenderRequestCount =
+        ].suspendTransition.suspensionBoundary.signalWindow.counterDeltas.hiddenDeferredCoalescedRenderRequestCount =
             2;
         assert.equal(
             lifecycleAcceptanceCheck(
@@ -8245,7 +8744,8 @@ test('live lifecycle suspension bounds action drain and requires exact-zero sett
         const excessiveTotalCoalescedHiddenWork = structuredClone(input);
         excessiveTotalCoalescedHiddenWork[
             phaseName
-        ].suspendTransition.counterDeltas.hiddenCoalescedRenderRequestCount = 4;
+        ].suspendTransition.suspensionBoundary.signalWindow.counterDeltas.hiddenCoalescedRenderRequestCount =
+            4;
         assert.equal(
             lifecycleAcceptanceCheck(
                 excessiveTotalCoalescedHiddenWork,
@@ -8258,7 +8758,8 @@ test('live lifecycle suspension bounds action drain and requires exact-zero sett
         const missingTotalCoalescedHiddenWork = structuredClone(input);
         missingTotalCoalescedHiddenWork[
             phaseName
-        ].suspendTransition.counterDeltas.hiddenCoalescedRenderRequestCount = 0;
+        ].suspendTransition.suspensionBoundary.signalWindow.counterDeltas.hiddenCoalescedRenderRequestCount =
+            0;
         assert.equal(
             lifecycleAcceptanceCheck(
                 missingTotalCoalescedHiddenWork,
@@ -8366,7 +8867,9 @@ test('live lifecycle suspension bounds action drain and requires exact-zero sett
             'ownedInvalidationCount',
         ]) {
             const oneInFlightCallback = structuredClone(input);
-            oneInFlightCallback[phaseName].suspendTransition.counterDeltas[
+            oneInFlightCallback[
+                phaseName
+            ].suspendTransition.suspensionBoundary.signalWindow.counterDeltas[
                 field
             ] = 1;
             assert.equal(
@@ -8374,12 +8877,16 @@ test('live lifecycle suspension bounds action drain and requires exact-zero sett
                     oneInFlightCallback,
                     `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
                 ).pass,
-                true,
-                `${phaseName}:one-in-flight:${field}`,
+                false,
+                `${phaseName}:work-during-signal:${field}`,
             );
 
             const callbackBurst = structuredClone(input);
-            callbackBurst[phaseName].suspendTransition.counterDeltas[field] = 2;
+            callbackBurst[
+                phaseName
+            ].suspendTransition.suspensionBoundary.signalWindow.counterDeltas[
+                field
+            ] = 2;
             assert.equal(
                 lifecycleAcceptanceCheck(
                     callbackBurst,
@@ -8396,7 +8903,9 @@ test('live lifecycle suspension bounds action drain and requires exact-zero sett
             ['cancelledCallbackCount', 2, 'CancelledCallbackCountDelta'],
         ]) {
             const invalidTransition = structuredClone(input);
-            invalidTransition[phaseName].suspendTransition.counterDeltas[
+            invalidTransition[
+                phaseName
+            ].suspendTransition.suspensionBoundary.signalWindow.counterDeltas[
                 field
             ] = value;
             assert.equal(
@@ -8418,7 +8927,9 @@ test('live lifecycle suspension bounds action drain and requires exact-zero sett
         );
 
         const sceneTimeAdvanced = structuredClone(input);
-        sceneTimeAdvanced[phaseName].suspendTransition.sceneTimeDeltaSeconds =
+        sceneTimeAdvanced[
+            phaseName
+        ].suspendTransition.suspensionBoundary.signalWindow.sceneTimeDeltaSeconds =
             0.100_001;
         assert.equal(
             lifecycleAcceptanceCheck(
@@ -9867,8 +10378,13 @@ test('live lifecycle markdown exposes suspension, resume transition, and steady 
         summary: { failedScenarios: 0 },
     });
 
-    assert.match(markdown, /measure from before each visibility mutation/);
-    assert.match(markdown, /action-plus-R3F drain by observed browser frames/);
+    assert.match(markdown, /pre-signal work as diagnostics/);
+    assert.match(markdown, /microtask-fresh acknowledgement/);
+    assert.match(markdown, /exact-zero work after acknowledgement/);
+    assert.match(
+        markdown,
+        /action-plus-R3F drain remains bounded by observed browser frames/,
+    );
     assert.match(markdown, /Candidate-live visibility transition evidence/);
     assert.match(
         markdown,
@@ -9876,7 +10392,7 @@ test('live lifecycle markdown exposes suspension, resume transition, and steady 
     );
     assert.match(
         markdown,
-        /hidden \| 250 ms; 1\/1\/1; 1\/1\/1; 0\.03 s; yes \| 0\/0\/0 s; yes/,
+        /hidden \| 250 ms; 1\/1\/0; 1\/1\/1; 0\.03 s; yes \| 0\/0\/0 s; yes/,
     );
     assert.match(markdown, /900 ms; 33\/33\/27\/6; 0\.9 s; 0/);
     assert.match(markdown, /2000 ms; 60\/60\/60; 2 s; 0\/0/);
