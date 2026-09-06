@@ -349,6 +349,116 @@ export async function getEntitiesRaw(entityTypeName: string, state?: string) {
     );
 }
 
+export type EntityDisplayLabel = {
+    id: number;
+    entityTypeName: string;
+    label: string;
+    isDeleted: boolean;
+};
+
+/**
+ * Resolves display labels for entities by id, including soft-deleted ones.
+ *
+ * Use where a reference can outlive the entity it points at (inventory items,
+ * for example) and the last known name still helps whoever reads the record.
+ * Everything that should only ever see live entities keeps using
+ * {@link getEntitiesRaw}.
+ */
+export async function getEntityDisplayLabels(
+    entityIds: number[],
+): Promise<EntityDisplayLabel[]> {
+    const uniqueEntityIds = [...new Set(entityIds)];
+    if (uniqueEntityIds.length === 0) {
+        return [];
+    }
+
+    const entityRows = await storage().query.entities.findMany({
+        columns: {
+            id: true,
+            entityTypeName: true,
+            isDeleted: true,
+        },
+        where: inArray(entities.id, uniqueEntityIds),
+    });
+
+    if (entityRows.length === 0) {
+        return [];
+    }
+
+    const [labelAttributes, entityTypeRows] = await Promise.all([
+        storage()
+            .select({
+                entityId: attributeValues.entityId,
+                name: attributeDefinitions.name,
+                value: attributeValues.value,
+            })
+            .from(attributeValues)
+            .innerJoin(
+                attributeDefinitions,
+                eq(attributeDefinitions.id, attributeValues.attributeDefinitionId),
+            )
+            .where(
+                and(
+                    inArray(
+                        attributeValues.entityId,
+                        entityRows.map((entity) => entity.id),
+                    ),
+                    eq(attributeValues.isDeleted, false),
+                    eq(attributeDefinitions.category, 'information'),
+                    inArray(attributeDefinitions.name, ['label', 'name']),
+                ),
+            ),
+        storage().query.entityTypes.findMany({
+            columns: {
+                name: true,
+                label: true,
+            },
+            where: inArray(entityTypes.name, [
+                ...new Set(entityRows.map((entity) => entity.entityTypeName)),
+            ]),
+        }),
+    ]);
+
+    const namedAttributesByEntityId = new Map<
+        number,
+        { label?: string; name?: string }
+    >();
+    for (const attribute of labelAttributes) {
+        if (!attribute.value) {
+            continue;
+        }
+
+        const entityAttributes =
+            namedAttributesByEntityId.get(attribute.entityId) ?? {};
+        if (attribute.name === 'label') {
+            entityAttributes.label ??= attribute.value;
+        } else {
+            entityAttributes.name ??= attribute.value;
+        }
+        namedAttributesByEntityId.set(attribute.entityId, entityAttributes);
+    }
+
+    const entityTypeLabels = new Map(
+        entityTypeRows.map((entityType) => [entityType.name, entityType.label]),
+    );
+
+    return entityRows.map((entity) => {
+        const namedAttributes = namedAttributesByEntityId.get(entity.id);
+        const entityTypeLabel =
+            entityTypeLabels.get(entity.entityTypeName) ?? entity.entityTypeName;
+
+        return {
+            id: entity.id,
+            entityTypeName: entity.entityTypeName,
+            label:
+                namedAttributes?.label ??
+                namedAttributes?.name ??
+                `${entityTypeLabel} ${entity.id}`,
+            isDeleted: entity.isDeleted,
+        };
+    });
+}
+
 export async function getEntitiesCount(entityTypeName: string, state?: string) {
     const result = await storage()
         .select({ count: count() })
