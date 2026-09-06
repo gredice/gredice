@@ -131,7 +131,7 @@ function itemLabel(
 function itemDetails(item: InventoryItem) {
     return [
         ...(isInventoryItemOrphaned(item)
-            ? ['Entitet je obrisan - stavku treba povezati ponovno.']
+            ? ['Entitet nije dostupan - stavku treba povezati ponovno.']
             : []),
         ...(item.serialNumber ? [`Serijski br.: ${item.serialNumber}`] : []),
         ...(item.notes ? [`Biljeska: ${item.notes}`] : []),

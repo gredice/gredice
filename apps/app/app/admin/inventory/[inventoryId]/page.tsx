@@ -110,7 +110,7 @@ export default async function InventoryConfigPage({
         },
         {
             id: 'orphaned',
-            label: 'Bez postojećeg entiteta',
+            label: 'Bez dostupnog entiteta',
             value: orphanedItemsCount,
         },
     ];

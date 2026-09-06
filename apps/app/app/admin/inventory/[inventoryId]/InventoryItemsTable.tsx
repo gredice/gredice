@@ -111,7 +111,7 @@ export function InventoryItemsTable({
             : stateFilteredItems.length === 0
               ? 'Nema stavki za odabrano stanje zalihe.'
               : linkFilteredItems.length === 0
-                ? 'Nema stavki bez postojećeg entiteta.'
+                ? 'Nema stavki s nedostupnim entitetom.'
                 : 'Nema stavki za upisanu pretragu.';
 
     function updateSortKey(key: SortKey) {
@@ -278,9 +278,9 @@ export function InventoryItemsTable({
                                                     color="warning"
                                                     size="sm"
                                                     variant="soft"
-                                                    title={`Entitet #${item.entityId} je obrisan. Stavka je zadržana kako bi se mogla povezati s drugim entitetom.`}
+                                                    title={`Entitet #${item.entityId} nije dostupan (obrisan je ili ne postoji). Stavka je zadržana kako bi se mogla povezati s drugim entitetom.`}
                                                 >
-                                                    Obrisani entitet
+                                                    Nedostupan entitet
                                                 </Chip>
                                             ) : null}
                                         </div>

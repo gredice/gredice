@@ -184,7 +184,8 @@ export default async function InventoryItemPage({
                                         level="body2"
                                         className="text-amber-600"
                                     >
-                                        Entitet ove stavke je obrisan. Stavka je
+                                        Entitet ove stavke nije dostupan
+                                        (obrisan je ili ne postoji). Stavka je
                                         zadržana - odaberi drugi entitet ili
                                         obriši stavku.
                                     </Typography>

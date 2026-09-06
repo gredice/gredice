@@ -44,7 +44,7 @@ const INVENTORY_LINK_FILTER_OPTIONS: FilterOption = {
         { value: '', label: 'Sve stavke' },
         {
             value: 'orphaned',
-            label: 'Obrisani entitet',
+            label: 'Nedostupan entitet',
             icon: <LinkOff className="size-4 text-amber-500" />,
         },
     ],
