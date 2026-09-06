@@ -1,6 +1,12 @@
 'use client';
 
-import { Check, Error as ErrorIcon, Warning } from '@gredice/ui/icons';
+import {
+    Check,
+    Error as ErrorIcon,
+    Link,
+    LinkOff,
+    Warning,
+} from '@gredice/ui/icons';
 import {
     type FilterOption,
     TableFilter,
@@ -30,11 +36,28 @@ const INVENTORY_STATE_FILTER_OPTIONS: FilterOption = {
     ],
 };
 
+const INVENTORY_LINK_FILTER_OPTIONS: FilterOption = {
+    key: 'link',
+    label: 'Veza s entitetom',
+    icon: <Link className="size-4" />,
+    options: [
+        { value: '', label: 'Sve stavke' },
+        {
+            value: 'orphaned',
+            label: 'Obrisani entitet',
+            icon: <LinkOff className="size-4 text-amber-500" />,
+        },
+    ],
+};
+
 export function InventoryFilters() {
     return (
         <TableFilter
-            filters={[INVENTORY_STATE_FILTER_OPTIONS]}
-            defaultValues={{ state: '' }}
+            filters={[
+                INVENTORY_STATE_FILTER_OPTIONS,
+                INVENTORY_LINK_FILTER_OPTIONS,
+            ]}
+            defaultValues={{ state: '', link: '' }}
             className="flex"
         />
     );

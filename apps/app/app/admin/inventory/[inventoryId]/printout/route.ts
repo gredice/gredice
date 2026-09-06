@@ -1,5 +1,4 @@
 import {
-    getEntitiesRaw,
     getInventoryConfig,
     getInventoryItemsByConfig,
 } from '@gredice/storage';
@@ -9,7 +8,11 @@ import {
     type InventoryPrintoutPdfItem,
     inventoryPrintoutFilename,
 } from '../inventoryPrintoutPdf';
-import { getInventoryItemState } from '../inventoryStatus';
+import { getInventoryEntityLabels } from '../inventoryEntityLabels';
+import {
+    getInventoryItemState,
+    isInventoryItemOrphaned,
+} from '../inventoryStatus';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,12 +33,10 @@ export async function GET(
         return new Response('Inventory not found.', { status: 404 });
     }
 
-    const [items, entities] = await Promise.all([
-        getInventoryItemsByConfig(id),
-        getEntitiesRaw(config.entityTypeName),
-    ]);
-    const entityLabels = new Map(
-        entities.map((entity) => [entity.id, entityDisplayName(entity)]),
+    const items = await getInventoryItemsByConfig(id);
+    const entityLabels = await getInventoryEntityLabels(
+        config.entityTypeName,
+        items.map((item) => item.entityId),
     );
     const printoutItems = items
         .map((item) => {
@@ -88,7 +89,6 @@ export async function GET(
     });
 }
 
-type InventoryEntity = Awaited<ReturnType<typeof getEntitiesRaw>>[number];
 type InventoryItem = Awaited<
     ReturnType<typeof getInventoryItemsByConfig>
 >[number];
@@ -130,27 +130,10 @@ function itemLabel(
 
 function itemDetails(item: InventoryItem) {
     return [
+        ...(isInventoryItemOrphaned(item)
+            ? ['Entitet je obrisan - stavku treba povezati ponovno.']
+            : []),
         ...(item.serialNumber ? [`Serijski br.: ${item.serialNumber}`] : []),
         ...(item.notes ? [`Biljeska: ${item.notes}`] : []),
     ];
-}
-
-function entityDisplayName(entity: InventoryEntity) {
-    return (
-        entityAttributeValue(entity, 'information', 'label') ??
-        entityAttributeValue(entity, 'information', 'name') ??
-        `${entity.entityType.label} ${entity.id}`
-    );
-}
-
-function entityAttributeValue(
-    entity: InventoryEntity,
-    categoryName: string,
-    attributeName: string,
-) {
-    return entity.attributes.find(
-        (attribute) =>
-            attribute.attributeDefinition.category === categoryName &&
-            attribute.attributeDefinition.name === attributeName,
-    )?.value;
 }

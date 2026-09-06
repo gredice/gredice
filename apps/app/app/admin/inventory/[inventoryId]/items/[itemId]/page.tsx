@@ -1,5 +1,6 @@
 import {
     getEntitiesRaw,
+    getEntityDisplayLabels,
     getInventoryItem,
     getInventoryItemEvents,
 } from '@gredice/storage';
@@ -21,6 +22,7 @@ import {
     getInventorySelectOptions,
 } from '../../../../../../lib/inventoryFieldTypes';
 import { KnownPages } from '../../../../../../src/KnownPages';
+import { isInventoryItemOrphaned } from '../../inventoryStatus';
 import {
     quickAdjustInventoryItemAction,
     updateInventoryItemAction,
@@ -65,6 +67,21 @@ export default async function InventoryItemPage({
         }),
     ];
     const entityId = item.entityId;
+    const isOrphaned = isInventoryItemOrphaned(item);
+    if (
+        entityId &&
+        !entityItems.some(
+            (entityItem) => entityItem.value === entityId.toString(),
+        )
+    ) {
+        // Keep the current reference selectable so saving any other field does
+        // not silently re-point the item at a different entity.
+        const [deletedEntity] = await getEntityDisplayLabels([entityId]);
+        entityItems.splice(1, 0, {
+            value: entityId.toString(),
+            label: `${deletedEntity?.label ?? `Entitet #${entityId}`} (obrisano)`,
+        });
+    }
     const entityLabel = entityId
         ? entityItems.find(
               (entityItem) => entityItem.value === entityId.toString(),
@@ -162,6 +179,16 @@ export default async function InventoryItemPage({
                                         noEntityValue
                                     }
                                 />
+                                {isOrphaned ? (
+                                    <Typography
+                                        level="body2"
+                                        className="text-amber-600"
+                                    >
+                                        Entitet ove stavke je obrisan. Stavka je
+                                        zadržana - odaberi drugi entitet ili
+                                        obriši stavku.
+                                    </Typography>
+                                ) : null}
                                 <SelectItems
                                     name="trackingType"
                                     label="Način praćenja"

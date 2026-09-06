@@ -1,6 +1,5 @@
 import {
     computeInventoryItemsSummary,
-    getEntitiesRaw,
     getInventoryConfig,
     getInventoryItemsByConfig,
 } from '@gredice/storage';
@@ -29,7 +28,12 @@ import { KnownPages } from '../../../../src/KnownPages';
 import { InventoryFilters } from './InventoryFilters';
 import { InventoryItemsTable } from './InventoryItemsTable';
 import { InventoryStatusProgress } from './InventoryStatusProgress';
-import { normalizeInventoryStateFilter } from './inventoryStatus';
+import { getInventoryEntityLabels } from './inventoryEntityLabels';
+import {
+    isInventoryItemOrphaned,
+    normalizeInventoryLinkFilter,
+    normalizeInventoryStateFilter,
+} from './inventoryStatus';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +52,9 @@ export default async function InventoryConfigPage({
     const stateFilter = normalizeInventoryStateFilter(
         typeof urlParams.state === 'string' ? urlParams.state : '',
     );
+    const linkFilter = normalizeInventoryLinkFilter(
+        typeof urlParams.link === 'string' ? urlParams.link : '',
+    );
 
     const config = await getInventoryConfig(id);
 
@@ -55,15 +62,14 @@ export default async function InventoryConfigPage({
         notFound();
     }
 
-    const [items, entities] = await Promise.all([
-        getInventoryItemsByConfig(id),
-        getEntitiesRaw(config.entityTypeName),
-    ]);
+    const items = await getInventoryItemsByConfig(id);
+    const entityLabels = await getInventoryEntityLabels(
+        config.entityTypeName,
+        items.map((item) => item.entityId),
+    );
 
     const summary = computeInventoryItemsSummary(items);
-    const entityLabels = new Map(
-        entities.map((entity) => [entity.id, entityDisplayName(entity)]),
-    );
+    const orphanedItemsCount = items.filter(isInventoryItemOrphaned).length;
     const tracksSerialNumbers =
         config.defaultTrackingType === 'serialNumber' ||
         items.some((item) => item.trackingType === 'serialNumber');
@@ -79,6 +85,7 @@ export default async function InventoryConfigPage({
             item.lowCountThreshold ?? config.lowCountThreshold ?? null,
         notes: item.notes,
         createdAt: item.createdAt.toISOString(),
+        isOrphaned: isInventoryItemOrphaned(item),
     }));
     const summaryItems: EntityDetailsPropertyListItem[] = [
         {
@@ -100,6 +107,11 @@ export default async function InventoryConfigPage({
             id: 'serial-number',
             label: 'Praćeno serijski',
             value: summary.byTrackingType.serialNumber,
+        },
+        {
+            id: 'orphaned',
+            label: 'Bez postojećeg entiteta',
+            value: orphanedItemsCount,
         },
     ];
     const propertiesPanel = (
@@ -178,6 +190,7 @@ export default async function InventoryConfigPage({
                                     items={tableItems}
                                     tracksSerialNumbers={tracksSerialNumbers}
                                     stateFilter={stateFilter}
+                                    linkFilter={linkFilter}
                                 />
                             </CardOverflow>
                         </Card>
@@ -186,26 +199,4 @@ export default async function InventoryConfigPage({
             </Stack>
         </EntityDetailsPropertiesProvider>
     );
-}
-
-type InventoryEntity = Awaited<ReturnType<typeof getEntitiesRaw>>[number];
-
-function entityDisplayName(entity: InventoryEntity) {
-    return (
-        entityAttributeValue(entity, 'information', 'label') ??
-        entityAttributeValue(entity, 'information', 'name') ??
-        `${entity.entityType.label} ${entity.id}`
-    );
-}
-
-function entityAttributeValue(
-    entity: InventoryEntity,
-    categoryName: string,
-    attributeName: string,
-) {
-    return entity.attributes.find(
-        (attribute) =>
-            attribute.attributeDefinition.category === categoryName &&
-            attribute.attributeDefinition.name === attributeName,
-    )?.value;
 }
