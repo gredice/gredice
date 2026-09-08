@@ -357,6 +357,19 @@ editing source events, or deleting history.
 Operational read paths remain compatible with both legacy and selected
 plantings.
 
+Admin field tiles, Farm bed previews and field details, and both greenhouse
+pages use `getRaisedBedPlantOccupancy` from `@gredice/storage`. It combines
+active legacy field crops with active selected plantings, without counting
+legacy planting projections twice. Field views show every occupied membership
+and each co-plant; greenhouse lists show one row per logical planting with all
+position numbers and lifecycle dates. Deleted memberships and inactive
+plantings are excluded. Greenhouse eligibility uses the sowing location and
+current lifecycle status for either model.
+
+These are display rows with explicit `legacyField` and `planting` references;
+they must never be passed to field mutations as fabricated legacy targets.
+Selected crop-specific actions remain subject to the lifecycle boundary below.
+
 - Admin and Farm key rows and mutations by `plantingId` plus the expected
   planting version.
 - A multi-field planting appears once and lists its footprint; co-plants appear

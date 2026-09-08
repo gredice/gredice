@@ -3,6 +3,8 @@ import {
     getEntitiesFormatted,
     getRaisedBed,
     getRaisedBedFieldPlantCycles,
+    getRaisedBedPlantOccupancy,
+    isRaisedBedPlantInGreenhouse,
 } from '@gredice/storage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Stack } from '@gredice/ui/Stack';
@@ -24,6 +26,7 @@ import {
     RaisedBedRemovedFieldsModal,
     type RemovedFieldDetails,
 } from './RaisedBedRemovedFieldsModal';
+import { RaisedBedSelectedPlantFieldTile } from './RaisedBedSelectedPlantFieldTile';
 
 type RaisedBedField = NonNullable<
     Awaited<ReturnType<typeof getRaisedBed>>
@@ -165,10 +168,11 @@ export async function RaisedBedFieldsTable({
     ]);
     const fields = raisedBed?.fields ?? [];
 
-    if (!raisedBed || fields.length === 0) {
+    if (!raisedBed) {
         return <NoDataPlaceholder />;
     }
 
+    const occupants = getRaisedBedPlantOccupancy(raisedBed);
     const plantCyclesByPosition = new Map<number, RaisedBedFieldPlantCycle[]>();
     for (const plantCycle of plantCycles) {
         const positionPlantCycles = plantCyclesByPosition.get(
@@ -184,6 +188,9 @@ export async function RaisedBedFieldsTable({
     const highestPositionIndex = Math.max(
         8,
         ...fields.map((f) => f.positionIndex),
+        ...occupants.flatMap((plant) =>
+            plant.positionNumbers.map((position) => position - 1),
+        ),
     );
     const orderedPositions = Array.from(
         { length: highestPositionIndex + 1 },
@@ -198,6 +205,34 @@ export async function RaisedBedFieldsTable({
         <Stack spacing={0}>
             <RaisedBedFieldCardGrid>
                 {orderedPositions.map((positionIndex) => {
+                    const positionPlants = occupants.filter((plant) =>
+                        plant.positionNumbers.includes(positionIndex + 1),
+                    );
+                    if (positionPlants.some((plant) => plant.planting)) {
+                        return (
+                            <RaisedBedSelectedPlantFieldTile
+                                key={positionIndex}
+                                positionIndex={positionIndex}
+                                plants={positionPlants.map((plant) => ({
+                                    key: plant.key,
+                                    plantSortId: plant.plantSortId,
+                                    plantStatus: plant.plantStatus,
+                                    positionNumbers: plant.positionNumbers,
+                                    locationLabel: isRaisedBedPlantInGreenhouse(
+                                        plant,
+                                    )
+                                        ? 'Staklenik'
+                                        : 'Gredica',
+                                    plantCount:
+                                        plant.planting?.plantCount ?? null,
+                                    spacingCm:
+                                        plant.planting
+                                            ?.selectedSeedingDistanceCm ?? null,
+                                }))}
+                                plantSorts={sortsData ?? []}
+                            />
+                        );
+                    }
                     const positionPlantCycles = [
                         ...(plantCyclesByPosition.get(positionIndex) ?? []),
                     ].sort(
@@ -218,7 +253,14 @@ export async function RaisedBedFieldsTable({
                         .sort((a, b) => a - b)
                         .filter(
                             (targetPositionIndex) =>
-                                targetPositionIndex !== positionIndex,
+                                targetPositionIndex !== positionIndex &&
+                                !occupants.some(
+                                    (plant) =>
+                                        plant.planting &&
+                                        plant.positionNumbers.includes(
+                                            targetPositionIndex + 1,
+                                        ),
+                                ),
                         )
                         .map((targetPositionIndex) => {
                             const targetField = fields.find(
