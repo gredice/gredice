@@ -598,7 +598,7 @@ explicit planting targets instead of inferring a crop from the shared field.
 
 Deployment requires an ordered migration adding `operations.planting_id`, its
 foreign key/index and exclusive-target constraint before the new code runs.
-Migration files are generated for local tests but excluded from the PR under
-the repository's shared migration policy. Harvest QR trace support is a separate
+Migration 0091 is included in the maintainer-authorized merge, after the
+existing migrations and before the harvest-trace schema. Harvest QR trace support is a separate
 follow-up; an explicit planting operation must never inherit a legacy field's
 trace or status mutation.
