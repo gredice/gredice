@@ -36,7 +36,6 @@ import {
     knownEventTypes,
     notifications,
     OperationTargetConflictError,
-    raisedBeds,
     rescheduleSelectedRaisedBedPlantingTask,
     rescheduleSelectedRaisedBedPlantingTaskForOwner,
     ScheduleTaskSubmissionError,
@@ -699,10 +698,6 @@ async function createSproutedOperationFixture() {
         multiField: true,
         sowingLocation: 'greenhouse',
     });
-    await storage()
-        .update(raisedBeds)
-        .set({ status: 'active' })
-        .where(eq(raisedBeds.id, fixture.raisedBedId));
     const actor = { userId: fixture.adminId, role: 'admin' as const };
     const sowed = await completeSelectedRaisedBedPlantingTask({
         ...commandIdentity(fixture.task),

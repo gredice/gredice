@@ -1024,7 +1024,7 @@ export async function assertOperationTargetAllowsDefinition(
             (planting.lifecycleStoppedAt && operation.entityId !== 346) ||
             !bed ||
             bed.isDeleted ||
-            bed.status !== 'active' ||
+            bed.status === 'abandoned' ||
             !garden ||
             garden.isDeleted ||
             garden.isSandbox ||
