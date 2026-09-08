@@ -102,7 +102,12 @@ function buildOperationCardData(
                     !membership.isDeleted &&
                     !membership.raisedBedField.isDeleted,
             )
-            .map((membership) => membership.raisedBedField.positionIndex + 1)
+            .map((membership) =>
+                getFieldPhysicalPositionIndex(
+                    membership.raisedBedField,
+                    raisedBeds,
+                ),
+            )
             .sort((a, b) => a - b) ?? [];
     const plantSortId = planting?.plantSortId ?? field?.plantSortId;
     const sort = plantSortId ? plantSortById.get(plantSortId) : undefined;

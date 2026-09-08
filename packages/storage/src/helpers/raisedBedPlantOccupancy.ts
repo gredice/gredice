@@ -75,59 +75,7 @@ export function getRaisedBedPlantOccupancy(raisedBed: {
         ].sort((a, b) => a - b);
         const positionIndex = positions[0];
         if (positionIndex === undefined) continue;
-        const dates: Pick<
-            RaisedBedPlantOccupancy,
-            | 'plantSowDate'
-            | 'plantGrowthDate'
-            | 'plantReadyDate'
-            | 'plantHarvestedDate'
-            | 'plantDeadDate'
-            | 'plantRemovedDate'
-        > = {
-            plantSowDate: undefined,
-            plantGrowthDate: undefined,
-            plantReadyDate: undefined,
-            plantDeadDate: undefined,
-            plantHarvestedDate: undefined,
-            plantRemovedDate: undefined,
-        };
-        for (const change of planting.lifecycleStatusChanges) {
-            const status = change.status;
-            if (
-                [
-                    'planned',
-                    'pendingVerification',
-                    'sowed',
-                    'sprouted',
-                    'firstFlowers',
-                    'firstFruitSet',
-                    'ready',
-                ].includes(status)
-            ) {
-                dates.plantDeadDate = undefined;
-                dates.plantHarvestedDate = undefined;
-                dates.plantRemovedDate = undefined;
-                if (status !== 'ready') dates.plantReadyDate = undefined;
-            }
-            if (status === 'planned') {
-                dates.plantSowDate = undefined;
-                dates.plantGrowthDate = undefined;
-            } else if (status === 'sowed' || status === 'pendingVerification') {
-                dates.plantSowDate ??= change.occurredAt;
-                dates.plantGrowthDate = undefined;
-            } else if (status === 'sprouted')
-                dates.plantGrowthDate = change.occurredAt;
-            else if (status === 'firstFlowers' || status === 'firstFruitSet')
-                dates.plantGrowthDate ??= change.occurredAt;
-            else if (status === 'ready')
-                dates.plantReadyDate = change.occurredAt;
-            else if (status === 'died' || status === 'notSprouted')
-                dates.plantDeadDate = change.occurredAt;
-            else if (status === 'harvested')
-                dates.plantHarvestedDate = change.occurredAt;
-            else if (status === 'removed')
-                dates.plantRemovedDate = change.occurredAt;
-        }
+        const dates = getSelectedPlantingLifecycleDates(planting);
         const scheduledDate = planting.selectedTask?.scheduledDate;
         rows.push({
             key: `planting-${planting.id}`,
@@ -171,4 +119,62 @@ export function isRaisedBedPlantInGreenhouse(plant: RaisedBedPlantOccupancy) {
         !plant.plantHarvestedDate &&
         !plant.plantRemovedDate
     );
+}
+
+export function getSelectedPlantingLifecycleDates(
+    planting: Pick<RaisedBedPlantingWithFields, 'lifecycleStatusChanges'>,
+) {
+    const dates: Pick<
+        RaisedBedPlantOccupancy,
+        | 'plantSowDate'
+        | 'plantGrowthDate'
+        | 'plantReadyDate'
+        | 'plantHarvestedDate'
+        | 'plantDeadDate'
+        | 'plantRemovedDate'
+    > = {
+        plantSowDate: undefined,
+        plantGrowthDate: undefined,
+        plantReadyDate: undefined,
+        plantDeadDate: undefined,
+        plantHarvestedDate: undefined,
+        plantRemovedDate: undefined,
+    };
+    for (const change of planting.lifecycleStatusChanges) {
+        const status = change.status;
+        if (
+            [
+                'planned',
+                'pendingVerification',
+                'sowed',
+                'sprouted',
+                'firstFlowers',
+                'firstFruitSet',
+                'ready',
+            ].includes(status)
+        ) {
+            dates.plantDeadDate = undefined;
+            dates.plantHarvestedDate = undefined;
+            dates.plantRemovedDate = undefined;
+            if (status !== 'ready') dates.plantReadyDate = undefined;
+        }
+        if (status === 'planned') {
+            dates.plantSowDate = undefined;
+            dates.plantGrowthDate = undefined;
+        } else if (status === 'sowed' || status === 'pendingVerification') {
+            dates.plantSowDate ??= change.occurredAt;
+            dates.plantGrowthDate = undefined;
+        } else if (status === 'sprouted')
+            dates.plantGrowthDate = change.occurredAt;
+        else if (status === 'firstFlowers' || status === 'firstFruitSet')
+            dates.plantGrowthDate ??= change.occurredAt;
+        else if (status === 'ready') dates.plantReadyDate = change.occurredAt;
+        else if (status === 'died' || status === 'notSprouted')
+            dates.plantDeadDate = change.occurredAt;
+        else if (status === 'harvested')
+            dates.plantHarvestedDate = change.occurredAt;
+        else if (status === 'removed')
+            dates.plantRemovedDate = change.occurredAt;
+    }
+    return dates;
 }
