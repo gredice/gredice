@@ -17,6 +17,8 @@ import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
+import { SelectedPlantingStatusControl } from '../../../components/raised-beds/SelectedPlantingStatusControl';
+import { getSelectedPlantingStatusControl } from '../../../components/raised-beds/selectedPlantingStatusControls';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
 import { KnownPages } from '../../../src/KnownPages';
@@ -270,6 +272,10 @@ export default async function GreenhousePage() {
                                     plantSort,
                                     field.plantSortId,
                                 );
+                                const statusControl =
+                                    getSelectedPlantingStatusControl(
+                                        field.planting,
+                                    );
                                 const activePlantCycle =
                                     field.legacyField?.plantCycles.find(
                                         (plantCycle) => plantCycle.active,
@@ -386,6 +392,24 @@ export default async function GreenhousePage() {
                                                             sproutedDate={
                                                                 field.plantGrowthDate ??
                                                                 null
+                                                            }
+                                                        />
+                                                    ) : statusControl?.options.some(
+                                                          (option) =>
+                                                              option.value ===
+                                                              'sprouted',
+                                                      ) ? (
+                                                        <SelectedPlantingStatusControl
+                                                            control={
+                                                                statusControl
+                                                            }
+                                                            initialStatus="sprouted"
+                                                            label={
+                                                                field.plantGrowthDate
+                                                                    ? field.plantGrowthDate.toLocaleDateString(
+                                                                          'hr-HR',
+                                                                      )
+                                                                    : 'Datum klijanja'
                                                             }
                                                         />
                                                     ) : field.plantGrowthDate ? (

@@ -368,7 +368,10 @@ current lifecycle status for either model.
 
 These are display rows with explicit `legacyField` and `planting` references;
 they must never be passed to field mutations as fabricated legacy targets.
-Selected crop-specific actions remain subject to the lifecycle boundary below.
+Admin field tiles and greenhouse date controls expose planting-scoped lifecycle
+status/date changes after sowing verification, with the current planting version
+and chronological date validation. Their actions also revalidate the greenhouse.
+Selected crop-specific operations remain subject to the lifecycle boundary below.
 
 - Admin and Farm key rows and mutations by `plantingId` plus the expected
   planting version.

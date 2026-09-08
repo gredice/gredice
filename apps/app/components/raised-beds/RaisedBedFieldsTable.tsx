@@ -27,6 +27,7 @@ import {
     type RemovedFieldDetails,
 } from './RaisedBedRemovedFieldsModal';
 import { RaisedBedSelectedPlantFieldTile } from './RaisedBedSelectedPlantFieldTile';
+import { getSelectedPlantingStatusControl } from './selectedPlantingStatusControls';
 
 type RaisedBedField = NonNullable<
     Awaited<ReturnType<typeof getRaisedBed>>
@@ -232,6 +233,10 @@ export async function RaisedBedFieldsTable({
                                 .filter((plant) => plant.planting)
                                 .map((plant) => ({
                                     key: plant.key,
+                                    statusControl:
+                                        getSelectedPlantingStatusControl(
+                                            plant.planting,
+                                        ),
                                     plantSortId: plant.plantSortId,
                                     plantStatus: plant.plantStatus,
                                     positionNumbers: plant.positionNumbers,
