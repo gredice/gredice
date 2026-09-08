@@ -461,13 +461,15 @@ GAME_PROFILE_SCENARIO_SET=static-idle \
   pnpm run profile:game
 ```
 
-The required final local closure bundle must be captured under
-`.game-profile-results/4778-release-v6/acceptance-awake`. It combines three repeated
+The current final local closure bundle is retained under
+`.game-profile-results/4800-release-v6/acceptance`. It combines three repeated
 static-idle windows, three fresh-context `lifecycle-live` runs, and three runs
 for each Low, Medium, High, Automatic-standard, and Automatic-constrained owner
 policy. All 21 runs must pass from one clean production build before the issue
 can close. The final capture also includes the two matched building controls
 after these cases, retaining all 23 raw runs in one warmed browser execution.
+All 23 passed on the clean `9884d89ca` production build on 2026-09-08; the
+broader repeated baseline/candidate comparison remains a separate merge gate.
 The implementation also gates the shared live-time minute clock,
 generated-plant work, per-scene ambient audio, and aggregate refetch intervals
 on runtime activity; the lifecycle-live runs cover their shared inactive and
@@ -611,7 +613,7 @@ test -z "$(git status --porcelain --untracked-files=normal)" || exit 1
 
 # The legacy scheduler is expected to fail only its superseded scheduler checks;
 # the symmetric comparator validates that exact failure set.
-GAME_PROFILE_OUT_DIR=.game-profile-results/4778-release-v6/baseline-1 \
+GAME_PROFILE_OUT_DIR=.game-profile-results/4800-release-v6/baseline-1 \
 GAME_PROFILE_BASE_URL=http://localhost:3101 \
 GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
 GAME_PROFILE_BUILD=0 \
@@ -632,7 +634,7 @@ GAME_PROFILE_SCREENSHOTS=1 \
 
 # Independent second capture of the same clean baseline subject with the same
 # exact clean harness; this must be a new profiler run, not a copied report.
-GAME_PROFILE_OUT_DIR=.game-profile-results/4778-release-v6/baseline-2 \
+GAME_PROFILE_OUT_DIR=.game-profile-results/4800-release-v6/baseline-2 \
 GAME_PROFILE_BASE_URL=http://localhost:3101 \
 GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
 GAME_PROFILE_BUILD=0 \
@@ -651,7 +653,7 @@ GAME_PROFILE_FAIL_ON_BUDGET=0 \
 GAME_PROFILE_SCREENSHOTS=1 \
   pnpm run profile:game:existing
 
-GAME_PROFILE_OUT_DIR=.game-profile-results/4778-release-v6/candidate-1 \
+GAME_PROFILE_OUT_DIR=.game-profile-results/4800-release-v6/candidate-1 \
 GAME_PROFILE_BASE_URL=http://localhost:3102 \
 GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
 GAME_PROFILE_BUILD=0 \
@@ -672,7 +674,7 @@ GAME_PROFILE_SCREENSHOTS=1 \
 
 # Independent second capture of the same clean candidate subject with the same
 # exact clean harness.
-GAME_PROFILE_OUT_DIR=.game-profile-results/4778-release-v6/candidate-2 \
+GAME_PROFILE_OUT_DIR=.game-profile-results/4800-release-v6/candidate-2 \
 GAME_PROFILE_BASE_URL=http://localhost:3102 \
 GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
 GAME_PROFILE_BUILD=0 \
@@ -697,12 +699,12 @@ Compare the four raw repeated-run reports with the checked-in relative policy:
 ```bash
 cd apps/garden
 pnpm run profile:game:compare \
-  --baseline .game-profile-results/4778-release-v6/baseline-1/latest.json \
-  --baseline-confirmation .game-profile-results/4778-release-v6/baseline-2/latest.json \
+  --baseline .game-profile-results/4800-release-v6/baseline-1/latest.json \
+  --baseline-confirmation .game-profile-results/4800-release-v6/baseline-2/latest.json \
   --baseline-scheduler-contract legacy-heartbeat-v1 \
-  --candidate .game-profile-results/4778-release-v6/candidate-1/latest.json \
-  --confirmation .game-profile-results/4778-release-v6/candidate-2/latest.json \
-  --out-dir .game-profile-results/4778-release-v6/comparison
+  --candidate .game-profile-results/4800-release-v6/candidate-1/latest.json \
+  --confirmation .game-profile-results/4800-release-v6/candidate-2/latest.json \
+  --out-dir .game-profile-results/4800-release-v6/comparison
 ```
 
 The comparator validates and pairs raw scenarios by stable base name and repeat
@@ -1804,10 +1806,36 @@ Normal frames and scheduler wakeups therefore do not push or deep-copy full
 telemetry merely because the profiling fixture is enabled, while exact endpoint
 and lifecycle assertions still observe a coherent state.
 
-Required release evidence before merge:
+Release evidence status, 2026-09-08:
 
-- `4778-release-v6/acceptance-awake` is the pending 21-run static, live-lifecycle,
-  and cross-policy semantic-owner gate. The earlier retained `acceptance` and
+- `4800-release-v6/acceptance` passes all 23 runs: static idle, live lifecycle,
+  cross-policy semantic owners, and the matched ambient-building pair. Both
+  clean production subject and harness are
+  `9884d89ca3254bdaa2f2f6727182af7cbee6cd15`; Chromium 149.0.7827.55 uses ANGLE
+  Metal on macOS arm64 with Node 24.15.0, 5-second warmup/sample windows, and
+  a command-scoped `caffeinate -du` display assertion. Camera delivery across
+  all 15 owner runs is 0.9360–0.9933 against the unchanged 0.85 minimum.
+  Building browser-rAF p95 is 26.2/26.2 ms, rendered delivery 29.9/30.1 FPS,
+  draws 100/100, triangles 5,016/5,016, and GPU p95 2.48/2.53 ms. Raw reports,
+  screenshots, and `verification-notes.md` are retained outside test scratch.
+  This is local headless acceptance, not physical-device thermal clearance.
+  Owner fixtures use a 1,280 × 720 CSS viewport and report device DPR 2;
+  existing quality caps produce the backing sizes below. The first raw run
+  for each policy is shown for traceability, not as a cross-policy speed ranking.
+  Whole-window FPS mixes 30 FPS ambient and 60 FPS camera ownership; the
+  separate camera-delivery ratios above are measured only during 60 FPS ownership.
+
+  | Policy | Backing canvas | Effective DPR | Rendered FPS | Draws/render | Triangles/render | Long tasks |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | Low | 1,280 × 720 | 1 | 46.5 | 212.1 | 46,068 | 0 |
+  | Medium | 1,920 × 1,080 | 1.5 | 45.5 | 205.8 | 51,590 | 0 |
+  | High | 2,560 × 1,440 | 2 | 46.3 | 218.6 | 48,485 | 0 |
+  | Automatic-standard (Medium) | 1,920 × 1,080 | 1.5 | 46.9 | 202.6 | 50,815 | 0 |
+  | Automatic-constrained | 1,280 × 720 | 1 | 46.0 | 216.4 | 45,046 | 0 |
+
+- `4778-release-v6/acceptance-awake` completed 22/23 on 2026-09-02. Its Low
+  camera ratio was 0.8475116293888981, below 0.85; it remains a failed bundle,
+  not a rounded pass. The earlier retained `acceptance` and
   `acceptance-confirmation` bundles passed 19/21 and 17/21 respectively on
   2026-09-02; neither is release evidence. Camera-owner failures coincided with
   approximately 46–54 native browser callbacks per second during 60 FPS ownership.
@@ -1827,16 +1855,16 @@ Required release evidence before merge:
   both scenes preserve one stable 30 FPS owner set, but the empty-shell relative
   native-rAF p95 gate failed (17.3 ms baseline versus 26.3 ms shell). Rendered
   delivery was 30.0/30.1 FPS, draws 100/100, triangles 5,016/5,016 per frame,
-  and GPU p95 2.49/2.50 ms. This is not a passing control. The final acceptance
-  capture must also pass the matched building pair under the same warmed
-  browser process; all timing thresholds remain unchanged.
+  and GPU p95 2.49/2.50 ms. This is not a passing control. The new complete
+  acceptance bundle above passes that same pair in one warmed browser process;
+  all timing thresholds remain unchanged.
 - The earlier `4775-controlled-v5-final` readout remains diagnostic history;
   its raw scratch artifacts were removed by the test runner. That clean matrix was structurally
   valid; 312 of 314 comparisons and all 42 invariants passed, along with its
   meaningful work, GPU, and memory gates. Its host/double-RAF cold Canvas timing
   and dynamic-butterfly endpoint geometry mismatches are profiler/fixture
   artifacts, so the matrix is not release evidence.
-- `.game-profile-results/4778-release-v6/baseline-1`, `baseline-2`, `candidate-1`, and
+- `.game-profile-results/4800-release-v6/baseline-1`, `baseline-2`, `candidate-1`, and
   `candidate-2` must be independent captures collected by the same exact clean
   contract-v6 profiler harness. The origin/main pair uses the exact
   `legacy-heartbeat-v1` baseline contract; its superseded scheduler checks may
@@ -1852,8 +1880,30 @@ Required release evidence before merge:
   pass all 39 producer runs and canonical input validation; every garden-switch
   arrival has zero unexpected no-work wakeups. All 140 retained candidate files
   remained byte-identical across the 43-case WebGL suite and repeated focused
-  tests. Baseline capture, strict comparison, and complete acceptance remain
-  pending; producer or self-comparison passes cannot substitute for them.
+  tests. These reports remain under `4778-release-v6`, but do not establish
+  performance for the subsequent context-loss recovery fix. Fresh baseline and
+  candidate pairs under `4800-release-v6` must use the same frozen
+  `f653a380ecb605654920ed24d86892225fdd10f2` harness, current-main baseline
+  `4b0ebfbc6c052909fe8ecf0e2594930d82f176c2`, and new candidate
+  `9884d89ca3254bdaa2f2f6727182af7cbee6cd15`. Their strict symmetric comparison
+  remains pending; producer, self-comparison, CI, or standalone acceptance
+  passes cannot substitute for it. The new first candidate capture passes
+  39/39 runs; the independent repeat is still pending. Both comparison subjects
+  now contain the same context-loss recovery correction.
+- Context-loss recovery #4800 merged separately in PR #4801 as
+  `4b0ebfbc6c052909fe8ecf0e2594930d82f176c2` on 2026-09-08, after its own required
+  CI run `34214459200` passed; its Outlet lifecycle route passed on the first
+  attempt. Remote PR MERGED and issue CLOSED/COMPLETED states were read back.
+  Native browser
+  instrumentation reproduced the missing Outlet fallback: the SceneTime
+  visibility listener refreshes the Canvas imperative ref during dispatch,
+  removing the ordinary recovery listener before it runs. Capture-phase
+  reporting fixes the event ordering without changing frame cadence. The
+  unchanged production reload/open-drawer/context-loss route then passed 3/3
+  local repetitions without retries and integration CI on its first attempt.
+  Integration head `9884d89ca` also passes all 1,962 game units, game/garden/www
+  typechecks, its clean production build, and required CI run `34213541744`.
+  The broader optimization PR remains unmerged pending its release comparison.
 - A producer report's budget/comparability status is not release clearance.
   Garden-switch producer acceptance covers the shared scenario contract; the
   release comparator additionally checks canonical scheduler invariants while

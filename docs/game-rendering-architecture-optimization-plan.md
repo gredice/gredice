@@ -71,14 +71,26 @@ Current GitHub delivery stack:
   output. Both replacement candidate captures pass 39/39 producer runs with the
   same frozen v6 harness and corrected runtime; all 140 candidate files survived
   the 43-case WebGL suite byte-for-byte. Baseline capture and the strict symmetric
-  2x2 comparison remain pending. Two full acceptance attempts remain rejected
-  (19/21 and 17/21); a separate display-awake owner control passes 15/15 but is not
-  complete release acceptance. The blocking chain is
+  2x2 comparison remain pending. Three earlier acceptance attempts remain rejected
+  (19/21, 17/21, and 22/23). The new clean `9884d89ca` production build passes
+  the complete 23-run acceptance bundle on 2026-09-08, including both building
+  controls, with unchanged thresholds. Fresh candidate captures for that source
+  and the baseline pair belong under `.game-profile-results/4800-release-v6`;
+  the older candidate pair does not establish the new source revision.
+  The blocking chain is
   #4778 → #4776 → #4775 → #4773 → #4717.
 - Draft integration [PR #4777](https://github.com/gredice/gredice/pull/4777)
   groups these dependent changes with #4766. Neither producer budget passes
   nor lower-stack revisions establish release clearance; the complete
   integrated tree must pass the strict comparator and CI before merge.
+- Context-loss recovery prerequisite [#4800](https://github.com/gredice/gredice/issues/4800)
+  merged independently in [PR #4801](https://github.com/gredice/gredice/pull/4801)
+  as `4b0ebfbc6c052909fe8ecf0e2594930d82f176c2` on 2026-09-08 after its own required
+  CI passed. Capture-phase reporting preserves the Outlet fallback when
+  scene suspension rebinds the Canvas ref during native event dispatch. The
+  integration route test passes 3/3 local repetitions; both integration and
+  standalone CI pass it on their first attempt. The release comparison uses
+  the merged fix as its current-main baseline so both sides share this correction.
 
 ## Milestone 1: Camera ownership
 
@@ -1179,18 +1191,20 @@ Progress:
   diagnostic.
   Because contract v6 replaces those witnesses with semantic cold milestones
   and exposure-matched fresh resources, its symmetric 2x2 matrix must be
-  freshly captured at `.game-profile-results/4778-release-v6`; contract-v5 and earlier
+  freshly captured at `.game-profile-results/4800-release-v6`; contract-v5 and earlier
   reports are not release evidence for this stack.
   `legacy-heartbeat-v1` baseline omissions remain valid only on the explicitly
   selected legacy baseline side. The initial v6 candidate was rejected for one
   unexpected garden-switch wakeup. The corrected runtime prevents repeated
   cadence probes for one outstanding receipt generation without weakening the
   bounded retry or exact-zero gate. Both retained replacement candidate captures
-  pass 39/39 producer runs; the baseline pair, strict comparison, and complete
-  static/live-lifecycle/owner acceptance are still pending. Original scratch
+  pass 39/39 producer runs for the older `aa48e2075` subject. The new `9884d89ca`
+  source passes all 23 static/live-lifecycle/owner/building acceptance runs;
+  its candidate pair, the baseline pair, and strict comparison are still pending.
+  Original scratch
   reports were cleared by Playwright and are not retained release evidence.
   Issue #4778 separates profiler artifacts from that cleanup. The retained
-  19/21 and 17/21 acceptance failures and the separate 15/15 display-awake owner
+  19/21, 17/21, and 22/23 acceptance failures and the separate 15/15 display-awake owner
   control are documented in `docs/game-scene-performance.md`; a passing control
   does not erase the failed bundles or establish physical-device clearance.
 
