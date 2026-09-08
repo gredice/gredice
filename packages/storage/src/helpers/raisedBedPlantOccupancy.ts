@@ -75,10 +75,52 @@ export function getRaisedBedPlantOccupancy(raisedBed: {
         ].sort((a, b) => a - b);
         const positionIndex = positions[0];
         if (positionIndex === undefined) continue;
-        const statusDate = (...statuses: string[]) =>
-            planting.lifecycleStatusChanges.findLast((change) =>
-                statuses.includes(change.status),
-            )?.occurredAt;
+        const dates: Pick<
+            RaisedBedPlantOccupancy,
+            | 'plantSowDate'
+            | 'plantGrowthDate'
+            | 'plantReadyDate'
+            | 'plantHarvestedDate'
+            | 'plantDeadDate'
+            | 'plantRemovedDate'
+        > = {};
+        for (const change of planting.lifecycleStatusChanges) {
+            const status = change.status;
+            if (
+                [
+                    'planned',
+                    'pendingVerification',
+                    'sowed',
+                    'sprouted',
+                    'firstFlowers',
+                    'firstFruitSet',
+                    'ready',
+                ].includes(status)
+            ) {
+                dates.plantDeadDate = undefined;
+                dates.plantHarvestedDate = undefined;
+                dates.plantRemovedDate = undefined;
+                if (status !== 'ready') dates.plantReadyDate = undefined;
+            }
+            if (status === 'planned') {
+                dates.plantSowDate = undefined;
+                dates.plantGrowthDate = undefined;
+            } else if (status === 'sowed' || status === 'pendingVerification') {
+                dates.plantSowDate ??= change.occurredAt;
+                dates.plantGrowthDate = undefined;
+            } else if (status === 'sprouted')
+                dates.plantGrowthDate = change.occurredAt;
+            else if (status === 'firstFlowers' || status === 'firstFruitSet')
+                dates.plantGrowthDate ??= change.occurredAt;
+            else if (status === 'ready')
+                dates.plantReadyDate = change.occurredAt;
+            else if (status === 'died' || status === 'notSprouted')
+                dates.plantDeadDate = change.occurredAt;
+            else if (status === 'harvested')
+                dates.plantHarvestedDate = change.occurredAt;
+            else if (status === 'removed')
+                dates.plantRemovedDate = change.occurredAt;
+        }
         const scheduledDate = planting.selectedTask?.scheduledDate;
         rows.push({
             key: `planting-${planting.id}`,
@@ -90,14 +132,11 @@ export function getRaisedBedPlantOccupancy(raisedBed: {
             plantScheduledDate: scheduledDate
                 ? new Date(scheduledDate)
                 : undefined,
-            plantSowDate:
-                planting.selectedTask?.completion?.completedAt ??
-                statusDate('sowed', 'pendingVerification'),
-            plantGrowthDate: statusDate('sprouted'),
-            plantReadyDate: statusDate('ready'),
-            plantHarvestedDate: statusDate('harvested'),
-            plantDeadDate: statusDate('died', 'notSprouted'),
-            plantRemovedDate: statusDate('removed'),
+            ...dates,
+            plantSowDate: dates.plantSowDate
+                ? (planting.selectedTask?.completion?.completedAt ??
+                  dates.plantSowDate)
+                : undefined,
             legacyField: null,
             planting,
         });

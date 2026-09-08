@@ -212,12 +212,29 @@ export async function RaisedBedFieldsTable({
                     const positionPlants = occupants.filter((plant) =>
                         plant.positionNumbers.includes(positionIndex + 1),
                     );
-                    if (positionPlants.some((plant) => plant.planting)) {
-                        return (
-                            <RaisedBedSelectedPlantFieldTile
-                                key={positionIndex}
-                                positionIndex={positionIndex}
-                                plants={positionPlants.map((plant) => ({
+                    const selectedTile = positionPlants.some(
+                        (plant) => plant.planting,
+                    ) ? (
+                        <RaisedBedSelectedPlantFieldTile
+                            key={positionIndex}
+                            positionIndex={positionIndex}
+                            weedControl={
+                                <RaisedBedFieldWeedStateSelector
+                                    raisedBedId={raisedBedId}
+                                    positionIndex={positionIndex}
+                                    level={
+                                        fields.find(
+                                            (field) =>
+                                                field.positionIndex ===
+                                                positionIndex,
+                                        )?.weedState?.level ?? 'none'
+                                    }
+                                    className={raisedBedFieldCardChipClassName}
+                                />
+                            }
+                            plants={positionPlants
+                                .filter((plant) => plant.planting)
+                                .map((plant) => ({
                                     key: plant.key,
                                     statusControl:
                                         getSelectedPlantingStatusControl(
@@ -237,23 +254,22 @@ export async function RaisedBedFieldsTable({
                                         plant.planting
                                             ?.selectedSeedingDistanceCm ?? null,
                                 }))}
-                                plantSorts={sortsData ?? []}
-                                operationOptions={operationDefinitions
-                                    .filter(
-                                        (operation) =>
-                                            operation.attributes
-                                                ?.application === 'plant',
-                                    )
-                                    .map((operation) => ({
-                                        value: String(operation.id),
-                                        label:
-                                            operation.information?.label ??
-                                            operation.information?.name ??
-                                            `Radnja #${operation.id}`,
-                                    }))}
-                            />
-                        );
-                    }
+                            plantSorts={sortsData ?? []}
+                            operationOptions={operationDefinitions
+                                .filter(
+                                    (operation) =>
+                                        operation.attributes?.application ===
+                                        'plant',
+                                )
+                                .map((operation) => ({
+                                    value: String(operation.id),
+                                    label:
+                                        operation.information?.label ??
+                                        operation.information?.name ??
+                                        `Radnja #${operation.id}`,
+                                }))}
+                        />
+                    ) : null;
                     const positionPlantCycles = [
                         ...(plantCyclesByPosition.get(positionIndex) ?? []),
                     ].sort(
@@ -377,7 +393,7 @@ export async function RaisedBedFieldsTable({
                             );
                         });
 
-                    return (
+                    const legacyTile = (
                         <RaisedBedFieldTile
                             key={positionIndex}
                             field={field}
@@ -388,6 +404,14 @@ export async function RaisedBedFieldsTable({
                             removedFields={removedFieldsAtPosition}
                             moveTargetOptions={moveTargetOptions}
                         />
+                    );
+                    return selectedTile ? (
+                        <div key={positionIndex} className="min-w-0">
+                            {selectedTile}
+                            {field && legacyTile}
+                        </div>
+                    ) : (
+                        legacyTile
                     );
                 })}
             </RaisedBedFieldCardGrid>

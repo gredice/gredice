@@ -226,32 +226,34 @@ async function RaisedBedDetailPageContent({
                             positionNumber: positionIndex + 1,
                             readyDate: formatDate(field?.plantReadyDate),
                             sowingDate: formatDate(field?.plantSowDate),
-                            statusControl: field?.planting ? (
-                                <Typography level="body3">
-                                    {
-                                        plantFieldStatusLabel(field.plantStatus)
-                                            .label
-                                    }
-                                </Typography>
-                            ) : field?.plantStatus ? (
-                                <RaisedBedResponsiveLayout layout="mobile">
-                                    <PlantStateRequestForm
-                                        currentStatus={field.plantStatus}
-                                        pendingRequestedStatus={
-                                            pendingRequestedStatus
+                            statusControl:
+                                field?.planting && field.plantStatus ? (
+                                    <Typography level="body3">
+                                        {
+                                            plantFieldStatusLabel(
+                                                field.plantStatus,
+                                            ).label
                                         }
-                                        positionIndex={positionIndex}
-                                        raisedBedId={raisedBed.id}
-                                    />
-                                </RaisedBedResponsiveLayout>
-                            ) : (
-                                <Typography
-                                    className="text-muted-foreground"
-                                    level="body3"
-                                >
-                                    —
-                                </Typography>
-                            ),
+                                    </Typography>
+                                ) : field?.plantStatus ? (
+                                    <RaisedBedResponsiveLayout layout="mobile">
+                                        <PlantStateRequestForm
+                                            currentStatus={field.plantStatus}
+                                            pendingRequestedStatus={
+                                                pendingRequestedStatus
+                                            }
+                                            positionIndex={positionIndex}
+                                            raisedBedId={raisedBed.id}
+                                        />
+                                    </RaisedBedResponsiveLayout>
+                                ) : (
+                                    <Typography
+                                        className="text-muted-foreground"
+                                        level="body3"
+                                    >
+                                        —
+                                    </Typography>
+                                ),
                         }),
                     )}
                 />
@@ -306,7 +308,8 @@ async function RaisedBedDetailPageContent({
                                                 )}
                                             </Table.Cell>
                                             <Table.Cell>
-                                                {field?.planting ? (
+                                                {field?.planting &&
+                                                field.plantStatus ? (
                                                     <Typography level="body3">
                                                         {
                                                             plantFieldStatusLabel(

@@ -279,3 +279,30 @@ test('greenhouse excludes direct sowing, transplanted and terminal crops for bot
     });
     assert.equal(rows.filter(isRaisedBedPlantInGreenhouse).length, 0);
 });
+
+test('recovered selected greenhouse crops clear obsolete terminal and later-stage dates', () => {
+    for (const terminalStatus of [
+        'died',
+        'notSprouted',
+        'harvested',
+    ] as const) {
+        const selected = planting({
+            lifecycleStatus: 'sprouted',
+            lifecycleStatusChanges: [
+                { eventId: 1, status: 'sowed', occurredAt: sowedAt },
+                { eventId: 2, status: 'ready', occurredAt: sowedAt },
+                { eventId: 3, status: terminalStatus, occurredAt: sowedAt },
+                { eventId: 4, status: 'sprouted', occurredAt: sowedAt },
+            ],
+        });
+        const [row] = getRaisedBedPlantOccupancy({
+            fields: [],
+            plantings: [selected],
+        });
+        assert.ok(row);
+        assert.equal(row.plantDeadDate, undefined);
+        assert.equal(row.plantHarvestedDate, undefined);
+        assert.equal(row.plantReadyDate, undefined);
+        assert.equal(isRaisedBedPlantInGreenhouse(row), true);
+    }
+});
