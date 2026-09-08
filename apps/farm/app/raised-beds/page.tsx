@@ -49,7 +49,7 @@ function getFieldPreviews(
             key: `position-${positionIndex}`,
             hasPlant: occupants.length > 0,
             label: occupants.length
-                ? occupants
+                ? `Polje ${positionIndex + 1} · ${occupants
                       .map((plant) => {
                           const sort = plantSortsById.get(plant.plantSortId);
                           return (
@@ -58,7 +58,7 @@ function getFieldPreviews(
                               `Sorta #${plant.plantSortId}`
                           );
                       })
-                      .join(', ')
+                      .join(', ')}`
                 : `Polje ${positionIndex + 1} prazno`,
             plants: occupants.map((plant) => ({
                 key: plant.key,

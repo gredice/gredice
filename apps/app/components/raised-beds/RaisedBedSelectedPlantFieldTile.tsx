@@ -2,12 +2,14 @@ import type { PlantSortData } from '@gredice/client';
 import { plantFieldStatusLabel } from '@gredice/js/plants';
 import type { RaisedBedPlantOccupancy } from '@gredice/storage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
+import type { ReactNode } from 'react';
 import { RaisedBedFieldCard } from './RaisedBedFieldCard';
 
 export function RaisedBedSelectedPlantFieldTile({
     positionIndex,
     plants,
     plantSorts,
+    weedControl,
 }: {
     positionIndex: number;
     plants: Array<
@@ -21,10 +23,12 @@ export function RaisedBedSelectedPlantFieldTile({
         }
     >;
     plantSorts: PlantSortData[];
+    weedControl?: ReactNode;
 }) {
     return (
         <RaisedBedFieldCard
             className="aspect-auto"
+            weedControl={weedControl}
             image={<div className="size-full bg-muted/40" />}
             fieldBadge={
                 <span className="rounded-full border bg-background px-2 py-1 text-xs font-semibold">
