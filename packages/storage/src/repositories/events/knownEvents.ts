@@ -67,6 +67,7 @@ import type {
     RaisedBedPlantingTaskCompletedPayload,
     RaisedBedPlantingTaskScheduledPayload,
     RaisedBedPlantingTaskVerifiedPayload,
+    RaisedBedPlantingTransplantedPayload,
     RaisedBedWeedStateSetPayload,
     ReceiptCreatePayload,
     ReceiptFiscalizePayload,
@@ -411,6 +412,15 @@ export const knownEvents = {
             data: RaisedBedPlantingLifecycleStatusChangedPayload,
         ) => ({
             type: knownEventTypes.raisedBedPlantings.lifecycleStatusChanged,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        transplantedV1: (
+            aggregateId: string,
+            data: RaisedBedPlantingTransplantedPayload,
+        ) => ({
+            type: knownEventTypes.raisedBedPlantings.transplanted,
             version: 1,
             aggregateId,
             data,

@@ -60,6 +60,7 @@ export const knownEventTypes = {
     raisedBedPlantings: {
         lifecycleStarted: 'raisedBedPlanting.lifecycle.started',
         lifecycleStatusChanged: 'raisedBedPlanting.lifecycle.statusChanged',
+        transplanted: 'raisedBedPlanting.transplanted',
         taskScheduled: 'raisedBedPlanting.task.scheduled',
         taskAssigned: 'raisedBedPlanting.task.assigned',
         taskBlocked: 'raisedBedPlanting.task.blocked',

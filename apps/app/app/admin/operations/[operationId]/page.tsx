@@ -391,6 +391,26 @@ export default async function OperationDetailsPage({
             ),
         });
     }
+    const selectedPlanting = raisedBed?.plantings.find(
+        (planting) => planting.id === operation.plantingId,
+    );
+    if (selectedPlanting) {
+        locationItems.push({
+            id: 'planting-fields',
+            label: 'Polja sadnje',
+            value: selectedPlanting.memberships
+                .filter(
+                    (membership) =>
+                        !membership.isDeleted &&
+                        !membership.raisedBedField.isDeleted,
+                )
+                .map(
+                    (membership) => membership.raisedBedField.positionIndex + 1,
+                )
+                .sort((a, b) => a - b)
+                .join(', '),
+        });
+    }
     if (raisedBedField) {
         locationItems.push({
             id: 'raised-bed-field',

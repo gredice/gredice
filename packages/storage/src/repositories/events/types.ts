@@ -368,6 +368,12 @@ export type RaisedBedPlantingLifecycleStatusChangedPayload =
         >;
     };
 
+export type RaisedBedPlantingTransplantedPayload =
+    RaisedBedPlantingCommandPayload & {
+        changedBy: string;
+        operationId: number;
+    };
+
 export type RaisedBedPlantingTaskScheduledPayload =
     RaisedBedPlantingCommandPayload & {
         scheduledBy: string;
@@ -410,6 +416,7 @@ export type RaisedBedPlantingTaskCancelledPayload =
 export type RaisedBedPlantingEventsPayload =
     | RaisedBedPlantingLifecycleStartedPayload
     | RaisedBedPlantingLifecycleStatusChangedPayload
+    | RaisedBedPlantingTransplantedPayload
     | RaisedBedPlantingTaskScheduledPayload
     | RaisedBedPlantingTaskAssignedPayload
     | RaisedBedPlantingTaskBlockedPayload

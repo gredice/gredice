@@ -1,6 +1,7 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
     boolean,
+    check,
     index,
     integer,
     pgTable,
@@ -10,7 +11,12 @@ import {
 } from 'drizzle-orm/pg-core';
 import { entities, entityTypes } from './cmsSchema';
 import { farms } from './farmsSchema';
-import { gardens, raisedBedFields, raisedBeds } from './gardenSchema';
+import {
+    gardens,
+    raisedBedFields,
+    raisedBedPlantings,
+    raisedBeds,
+} from './gardenSchema';
 import { accounts } from './usersSchema';
 
 export const operations = pgTable(
@@ -24,12 +30,20 @@ export const operations = pgTable(
         gardenId: integer('garden_id'),
         raisedBedId: integer('raised_bed_id'),
         raisedBedFieldId: integer('raised_bed_field_id'),
+        plantingId: integer('planting_id').references(
+            () => raisedBedPlantings.id,
+        ),
         timestamp: timestamp('timestamp').notNull().defaultNow(),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         isAccepted: boolean('is_accepted').notNull().default(false),
         isDeleted: boolean('is_deleted').notNull().default(false),
     },
     (table) => [
+        index('operations_planting_id_idx').on(table.plantingId),
+        check(
+            'operations_exclusive_crop_target',
+            sql`${table.plantingId} IS NULL OR (${table.raisedBedFieldId} IS NULL AND ${table.raisedBedId} IS NOT NULL)`,
+        ),
         index('operations_entity_id_idx').on(table.entityId),
         index('operations_entity_type_name_idx').on(table.entityTypeName),
         index('operations_account_id_idx').on(table.accountId),
@@ -64,6 +78,10 @@ export const operationsRelations = relations(operations, ({ one }) => ({
         references: [raisedBeds.id],
         relationName: 'raisedBedOperations',
     }),
+    planting: one(raisedBedPlantings, {
+        fields: [operations.plantingId],
+        references: [raisedBedPlantings.id],
+    }),
     raisedBedField: one(raisedBedFields, {
         fields: [operations.raisedBedFieldId],
         references: [raisedBedFields.id],
@@ -85,4 +103,7 @@ export type InsertOperation = Omit<
     typeof operations.$inferInsert,
     'id' | 'createdAt'
 >;
-export type SelectOperation = typeof operations.$inferSelect;
+export type SelectOperation = Omit<
+    typeof operations.$inferSelect,
+    'plantingId'
+> & { plantingId?: number | null };

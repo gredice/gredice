@@ -19,6 +19,7 @@ import {
 export const selectedRaisedBedPlantingEventTypes = [
     knownEventTypes.raisedBedPlantings.lifecycleStarted,
     knownEventTypes.raisedBedPlantings.lifecycleStatusChanged,
+    knownEventTypes.raisedBedPlantings.transplanted,
     knownEventTypes.raisedBedPlantings.taskScheduled,
     knownEventTypes.raisedBedPlantings.taskAssigned,
     knownEventTypes.raisedBedPlantings.taskBlocked,
@@ -669,6 +670,30 @@ export function projectSelectedRaisedBedPlantingLifecycle(
                         verifiedBy: requiredString(data.verifiedBy, event.id),
                     },
                 },
+            };
+        } else if (
+            event.type === knownEventTypes.raisedBedPlantings.transplanted
+        ) {
+            requiredString(data.changedBy, event.id);
+            positiveSafeInteger(data.operationId, event.id);
+            if (
+                projection.task.status !== 'completed' ||
+                !projection.isActive ||
+                projection.stoppedAt ||
+                projection.task.sowingLocation !== 'greenhouse' ||
+                ![
+                    'sprouted',
+                    'firstFlowers',
+                    'firstFruitSet',
+                    'ready',
+                ].includes(projection.status)
+            ) {
+                projectionError('invalid_transition', event.id);
+            }
+            projection = {
+                ...projection,
+                versionEventId: event.id,
+                task: { ...projection.task, sowingLocation: 'direct' },
             };
         } else if (
             event.type ===

@@ -1,5 +1,6 @@
 import type { PlantSortData } from '@gredice/client';
 import {
+    type EntityStandardized,
     getEntitiesFormatted,
     getRaisedBed,
     getRaisedBedFieldPlantCycles,
@@ -162,11 +163,13 @@ interface RaisedBedFieldsTableProps {
 export async function RaisedBedFieldsTable({
     raisedBedId,
 }: RaisedBedFieldsTableProps) {
-    const [sortsData, raisedBed, plantCycles] = await Promise.all([
-        getEntitiesFormatted<PlantSortData>('plantSort'),
-        getRaisedBed(raisedBedId),
-        getRaisedBedFieldPlantCycles(raisedBedId),
-    ]);
+    const [sortsData, raisedBed, plantCycles, operationDefinitions] =
+        await Promise.all([
+            getEntitiesFormatted<PlantSortData>('plantSort'),
+            getRaisedBed(raisedBedId),
+            getRaisedBedFieldPlantCycles(raisedBedId),
+            getEntitiesFormatted<EntityStandardized>('operation'),
+        ]);
     const fields = raisedBed?.fields ?? [];
 
     if (!raisedBed) {
@@ -252,6 +255,19 @@ export async function RaisedBedFieldsTable({
                                             ?.selectedSeedingDistanceCm ?? null,
                                 }))}
                             plantSorts={sortsData ?? []}
+                            operationOptions={operationDefinitions
+                                .filter(
+                                    (operation) =>
+                                        operation.attributes?.application ===
+                                        'plant',
+                                )
+                                .map((operation) => ({
+                                    value: String(operation.id),
+                                    label:
+                                        operation.information?.label ??
+                                        operation.information?.name ??
+                                        `Radnja #${operation.id}`,
+                                }))}
                         />
                     ) : null;
                     const positionPlantCycles = [

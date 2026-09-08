@@ -51,6 +51,7 @@ import type {
     CheckoutOperationCreatedPayload,
     OperationEventsAnyPayload,
 } from './events/types';
+import { getRaisedBedPlanting } from './raisedBedPlantingsRepo';
 
 export type OperationStatus =
     | 'new'
@@ -649,7 +650,13 @@ function isSelectedPlantingBlockingOperationStatus(
 
 type OperationTarget = Pick<
     InsertOperation,
-    'entityId' | 'entityTypeName' | 'raisedBedFieldId'
+    | 'entityId'
+    | 'entityTypeName'
+    | 'raisedBedFieldId'
+    | 'plantingId'
+    | 'raisedBedId'
+    | 'gardenId'
+    | 'accountId'
 >;
 
 export type BlockingPlantOperation = {
@@ -968,10 +975,80 @@ async function lockRaisedBedFieldsForOperationGuard(
         .for('update');
 }
 
-async function assertOperationTargetAllowsDefinition(
+export async function assertOperationTargetAllowsDefinition(
     operation: OperationTarget,
     db: DatabaseClient,
 ) {
+    if (operation.plantingId != null) {
+        if (
+            !Number.isSafeInteger(operation.plantingId) ||
+            operation.plantingId <= 0 ||
+            operation.raisedBedFieldId != null ||
+            operation.entityTypeName !== 'operation'
+        ) {
+            throw new OperationTargetConflictError(
+                'selected_planting_conflict',
+                'Radnja mora imati jednu točno određenu sadnju.',
+            );
+        }
+        await db
+            .select({ id: raisedBedPlantings.id })
+            .from(raisedBedPlantings)
+            .where(eq(raisedBedPlantings.id, operation.plantingId))
+            .for('update');
+        const planting = await getRaisedBedPlanting(operation.plantingId, db);
+        const bed = planting
+            ? await db.query.raisedBeds.findFirst({
+                  where: eq(raisedBeds.id, planting.raisedBedId),
+              })
+            : null;
+        const garden = bed?.gardenId
+            ? await db.query.gardens.findFirst({
+                  where: eq(gardens.id, bed.gardenId),
+              })
+            : null;
+        await lockOperationDefinitionApplications(
+            db,
+            await getOperationEntityLineage(db, operation.entityId),
+        );
+        const application = await getEffectiveOperationApplication(
+            db,
+            operation.entityId,
+            operation.entityTypeName,
+        );
+        if (
+            planting?.configurationSource !== 'selected' ||
+            !planting.isActive ||
+            planting.isDeleted ||
+            planting.selectedTask?.status !== 'completed' ||
+            (planting.lifecycleStoppedAt && operation.entityId !== 346) ||
+            (operation.entityId === 346 &&
+                !['died', 'notSprouted', 'harvested'].includes(
+                    planting.lifecycleStatus ?? '',
+                )) ||
+            !bed ||
+            bed.isDeleted ||
+            bed.status === 'abandoned' ||
+            !garden ||
+            garden.isDeleted ||
+            garden.isSandbox ||
+            bed.id !== operation.raisedBedId ||
+            bed.gardenId !== operation.gardenId ||
+            bed.accountId !== operation.accountId ||
+            application !== 'plant' ||
+            !planting.memberships.some(
+                (membership) =>
+                    !membership.isDeleted &&
+                    !membership.raisedBedField.isDeleted,
+            )
+        ) {
+            throw new OperationTargetConflictError(
+                'selected_planting_conflict',
+                'Sadnja više nije dostupna za ovu radnju.',
+            );
+        }
+        return;
+    }
     if (
         operation.entityTypeName !== 'operation' ||
         !operation.raisedBedFieldId
@@ -2034,6 +2111,7 @@ export async function createOperation(
         gardenId,
         raisedBedId,
         raisedBedFieldId,
+        plantingId,
         timestamp,
     }: InsertOperation,
     db?: DatabaseClient,
@@ -2046,6 +2124,7 @@ export async function createOperation(
         gardenId,
         raisedBedId,
         raisedBedFieldId,
+        plantingId,
         timestamp: timestamp ?? new Date(),
     };
     const insertOperation = async (client: DatabaseClient) => {
@@ -2403,6 +2482,10 @@ async function ensureCheckoutOperation(
     options: CheckoutOperationOptions,
     db: DatabaseClient,
 ) {
+    if (operation.plantingId != null)
+        throw new CheckoutOperationConflictError(
+            'Planting-targeted checkout operations require a dedicated purchase contract.',
+        );
     const fingerprint = checkoutOperationFingerprint(operation, options);
     const stored = await getCheckoutOperationMapping(cartItemId, db);
     if (stored) {
@@ -2533,6 +2616,10 @@ export async function switchOperationEntity(
             .select({
                 id: operations.id,
                 raisedBedFieldId: operations.raisedBedFieldId,
+                plantingId: operations.plantingId,
+                raisedBedId: operations.raisedBedId,
+                gardenId: operations.gardenId,
+                accountId: operations.accountId,
             })
             .from(operations)
             .where(and(eq(operations.id, id), eq(operations.isDeleted, false)))
@@ -2545,8 +2632,8 @@ export async function switchOperationEntity(
 
         await assertOperationTargetAllowsDefinition(
             {
+                ...currentOperation,
                 ...entity,
-                raisedBedFieldId: currentOperation.raisedBedFieldId,
             },
             client,
         );
