@@ -1,6 +1,7 @@
 import 'server-only';
 import { createHash, randomBytes } from 'node:crypto';
 import { plantFieldStatusLabel } from '@gredice/js/plants';
+import { getFieldPhysicalPositionIndex } from '@gredice/js/raisedBeds';
 import {
     and,
     asc,
@@ -2119,6 +2120,19 @@ export async function createOrGetSelectedPlantingHarvestTraceLink(input: {
             where: existingWhere,
         });
         if (existing) return existing;
+        const physicalBeds = bed.physicalId
+            ? await tx
+                  .select({ id: raisedBeds.id })
+                  .from(raisedBeds)
+                  .where(
+                      and(
+                          eq(raisedBeds.physicalId, bed.physicalId),
+                          eq(raisedBeds.gardenId, garden.id),
+                          eq(raisedBeds.accountId, garden.accountId),
+                          eq(raisedBeds.isDeleted, false),
+                      ),
+                  )
+            : [bed];
         const token = randomBytes(24).toString('base64url');
         const [inserted] = await tx
             .insert(harvestTraceLinks)
@@ -2132,8 +2146,11 @@ export async function createOrGetSelectedPlantingHarvestTraceLink(input: {
                 fieldPositionIndex: anchor.raisedBedField.positionIndex,
                 fieldLabel: [
                     ...new Set(
-                        memberships.map(
-                            (member) => member.raisedBedField.positionIndex + 1,
+                        memberships.map((member) =>
+                            getFieldPhysicalPositionIndex(
+                                member.raisedBedField,
+                                physicalBeds,
+                            ),
                         ),
                     ),
                 ]

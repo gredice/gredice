@@ -437,6 +437,7 @@ async function buildOperationLabels(
     groupedRaisedBeds: FarmRaisedBed[],
     plantSortById: Map<number, EntityStandardized>,
     dateLabel: string,
+    allRaisedBeds: FarmRaisedBed[],
 ) {
     if (
         !shouldPrintOperationLabel(operationData) ||
@@ -478,15 +479,28 @@ async function buildOperationLabels(
         return [
             {
                 raisedBedPhysicalId: raisedBed.physicalId,
-                fieldLabel: [
-                    ...new Set(
-                        memberships.map(
-                            (member) => member.raisedBedField.positionIndex + 1,
+                fieldLabel:
+                    trace?.fieldLabel ??
+                    [
+                        ...new Set(
+                            memberships.map((member) =>
+                                getFieldPhysicalPositionIndex(
+                                    member.raisedBedField,
+                                    allRaisedBeds.filter(
+                                        (bed) =>
+                                            bed.physicalId ===
+                                                raisedBed.physicalId &&
+                                            bed.gardenId ===
+                                                raisedBed.gardenId &&
+                                            bed.accountId ===
+                                                raisedBed.accountId,
+                                    ),
+                                ),
+                            ),
                         ),
-                    ),
-                ]
-                    .sort((a, b) => a - b)
-                    .join(', '),
+                    ]
+                        .sort((a, b) => a - b)
+                        .join(', '),
                 detailLabel,
                 plantSortName,
                 dateLabel,
@@ -616,6 +630,7 @@ async function buildHarvestLabels(
                 raisedBedGroup.raisedBeds,
                 plantSortById,
                 dateLabel,
+                dayData.raisedBeds,
             )),
         );
     }

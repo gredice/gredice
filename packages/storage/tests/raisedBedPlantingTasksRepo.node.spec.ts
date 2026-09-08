@@ -36,6 +36,7 @@ import {
     knownEventTypes,
     notifications,
     OperationTargetConflictError,
+    raisedBeds,
     rescheduleSelectedRaisedBedPlantingTask,
     rescheduleSelectedRaisedBedPlantingTaskForOwner,
     ScheduleTaskSubmissionError,
@@ -76,10 +77,12 @@ async function createSelectedTaskFixture({
     multiField = false,
     sunflowerAmount = 1250,
     sowingLocation = 'direct',
+    secondPhysicalBlock = false,
 }: {
     multiField?: boolean;
     sunflowerAmount?: number;
     sowingLocation?: 'direct' | 'greenhouse';
+    secondPhysicalBlock?: boolean;
 } = {}) {
     createTestDb();
     const [adminId, farmerId, otherFarmerId, outsiderId, ownerUserId] =
@@ -109,7 +112,24 @@ async function createSelectedTaskFixture({
         gardenId,
         `selected-task-${randomUUID()}`,
     );
+    const firstBlockId = secondPhysicalBlock
+        ? await createTestBlock(gardenId, `first-block-${randomUUID()}`)
+        : null;
+    const firstBedId = firstBlockId
+        ? await createTestRaisedBed(gardenId, accountId, firstBlockId)
+        : null;
     const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    if (firstBedId) {
+        const physicalId = `shared-${randomUUID()}`;
+        await storage()
+            .update(raisedBeds)
+            .set({ physicalId })
+            .where(eq(raisedBeds.id, firstBedId));
+        await storage()
+            .update(raisedBeds)
+            .set({ physicalId })
+            .where(eq(raisedBeds.id, raisedBedId));
+    }
     const positions = multiField ? [17, 16, 14, 13] : [0];
     await Promise.all(
         positions.map((positionIndex) =>
@@ -693,9 +713,16 @@ test('rolls back selected cancellation when its immutable refund conflicts', asy
     assert.equal(await getSunflowers(fixture.accountId), balanceBefore);
 });
 
-async function createSproutedOperationFixture() {
+async function createSproutedOperationFixture({
+    secondPhysicalBlock = false,
+    multiField = true,
+}: {
+    secondPhysicalBlock?: boolean;
+    multiField?: boolean;
+} = {}) {
     const fixture = await createSelectedTaskFixture({
-        multiField: true,
+        multiField,
+        secondPhysicalBlock,
         sowingLocation: 'greenhouse',
     });
     const actor = { userId: fixture.adminId, role: 'admin' as const };
@@ -1083,4 +1110,29 @@ test('selected harvest trace never includes care performed on a co-plant', async
     assert.ok(
         !JSON.stringify(trace).includes('expectedLifecycleVersionEventId'),
     );
+});
+
+test('selected harvest traces use physical numbering in a second logical block', async () => {
+    const fixture = await createSproutedOperationFixture({
+        secondPhysicalBlock: true,
+        multiField: false,
+    });
+    const entityId = await harvestDefinition();
+    const harvest = await createSelectedPlantingOperation({
+        ...fixture.sprouted.task.identity,
+        actor: fixture.actor,
+        entityId,
+    });
+    await submitOperationTaskCompletion({
+        operationId: harvest.operationId,
+        actor: fixture.actor,
+    });
+    const link = await createOrGetSelectedPlantingHarvestTraceLink({
+        plantingId: fixture.plantingId,
+        harvestOperationId: harvest.operationId,
+    });
+    assert.equal(link.fieldPositionIndex, 0);
+    assert.equal(link.fieldLabel, '10');
+    const trace = await getPublicHarvestTraceByToken(link.publicToken);
+    assert.equal(trace?.context.fieldLabel, '10');
 });

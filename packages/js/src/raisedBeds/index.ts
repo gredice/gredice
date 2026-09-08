@@ -11,3 +11,14 @@ export const RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE =
 export function isRaisedBedAbandoned(status?: string | null) {
     return status === RAISED_BED_STATUS_ABANDONED;
 }
+
+/** Physical numbering for legacy logical blocks sharing a raised-bed label. */
+export function getFieldPhysicalPositionIndex(
+    field: { positionIndex: number; raisedBedId: number },
+    raisedBeds: readonly { id: number }[],
+) {
+    const blockIndex = [...raisedBeds]
+        .sort((left, right) => left.id - right.id)
+        .findIndex((bed) => bed.id === field.raisedBedId);
+    return field.positionIndex + 1 + Math.max(blockIndex, 0) * 9;
+}
