@@ -602,3 +602,27 @@ Migration files are generated for local tests but excluded from the PR under
 the repository's shared migration policy. Harvest QR trace support is a separate
 follow-up; an explicit planting operation must never inherit a legacy field's
 trace or status mutation.
+
+
+### Selected planting harvest traces
+
+Selected harvest labels use one QR identity per harvest operation and planting,
+with its full footprint. The trace stores `plantingId`; its legacy
+`plantPlaceEventId` is null. A physical anchor field is retained for location
+joins, never used to infer crop history. Retries reuse the same trace, including
+revocation state. Farm printing verifies the operation's planting identity and
+account/garden scope.
+
+Public traces read the selected lifecycle and initial sowing location, include
+operations for that exact planting and physical care of its footprint, and
+exclude other co-plants. They become public after harvest completion submission.
+Legacy traces explicitly exclude selected operations. Selected watering history
+shows recorded watering counts and bed totals rather than assuming the legacy
+one-crop-per-field water allocation. Completed selected harvests are also
+supported by trace backfill.
+
+This follow-up requires the operation target schema first, then a migration
+making `harvest_trace_links.plant_place_event_id` nullable, adding `planting_id`
+and its foreign key/unique harvest target, and enforcing exactly one crop
+identity. Both migrations were generated and tested in a disposable local
+database; migration ordering remains a maintainer prerequisite to deployment.

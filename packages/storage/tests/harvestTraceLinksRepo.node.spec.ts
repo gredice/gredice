@@ -558,6 +558,7 @@ test('getHarvestTraceLinksForOperationIds returns active trace summaries', async
         harvestOperationId: fixture.harvestOperationId,
         raisedBedFieldId: fixture.raisedBedFieldId,
         plantPlaceEventId: fixture.plantPlaceEventId,
+        plantingId: null,
         plantSortId: fixture.plantSortId,
     });
 

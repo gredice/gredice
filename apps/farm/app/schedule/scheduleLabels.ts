@@ -3,6 +3,7 @@ import { calculatePlantsPerField } from '@gredice/js/plants';
 import type { FieldOperationLabelData } from '@gredice/label-printer';
 import {
     createOrGetHarvestTraceLink,
+    createOrGetSelectedPlantingHarvestTraceLink,
     type EntityStandardized,
 } from '@gredice/storage';
 import type { FarmScheduleDayData } from './scheduleData';
@@ -453,6 +454,57 @@ async function buildOperationLabels(
 
     const detailLabel = getOperationDetailLabel(operationData);
     const createTraceLink = isHarvestOperation(operationData);
+    if (operation.plantingId) {
+        const planting = raisedBed.plantings.find(
+            (candidate) =>
+                candidate.id === operation.plantingId &&
+                candidate.configurationSource === 'selected' &&
+                !candidate.isDeleted,
+        );
+        if (!planting || !raisedBed.physicalId) return [];
+        const memberships = planting.memberships.filter(
+            (member) => !member.isDeleted && !member.raisedBedField.isDeleted,
+        );
+        if (!memberships.length) return [];
+        const plantSortName = plantSortById.get(planting.plantSortId)
+            ?.information?.name;
+        if (!plantSortName) return [];
+        const trace = createTraceLink
+            ? await createOrGetSelectedPlantingHarvestTraceLink({
+                  plantingId: planting.id,
+                  harvestOperationId: operation.id,
+              })
+            : null;
+        return [
+            {
+                raisedBedPhysicalId: raisedBed.physicalId,
+                fieldLabel: [
+                    ...new Set(
+                        memberships.map(
+                            (member) => member.raisedBedField.positionIndex + 1,
+                        ),
+                    ),
+                ]
+                    .sort((a, b) => a - b)
+                    .join(', '),
+                detailLabel,
+                plantSortName,
+                dateLabel,
+                ...(trace
+                    ? {
+                          traceLinkId: trace.id,
+                          traceStatus: trace.status,
+                          traceUrl:
+                              trace.status === 'active'
+                                  ? buildHarvestTracePublicUrl(
+                                        trace.publicToken,
+                                    )
+                                  : undefined,
+                      }
+                    : {}),
+            } satisfies FieldOperationLabelData,
+        ];
+    }
     if (operation.raisedBedFieldId) {
         const field = raisedBed.fields.find(
             (candidate) => candidate.id === operation.raisedBedFieldId,

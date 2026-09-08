@@ -1,5 +1,6 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
+    check,
     index,
     integer,
     pgTable,
@@ -10,7 +11,12 @@ import {
 } from 'drizzle-orm/pg-core';
 import { entities } from './cmsSchema';
 import { events } from './eventsSchema';
-import { gardens, raisedBedFields, raisedBeds } from './gardenSchema';
+import {
+    gardens,
+    raisedBedFields,
+    raisedBedPlantings,
+    raisedBeds,
+} from './gardenSchema';
 import { operations } from './operationsSchema';
 import { accounts } from './usersSchema';
 
@@ -40,9 +46,12 @@ export const harvestTraceLinks = pgTable(
             .references(() => raisedBedFields.id),
         fieldPositionIndex: integer('field_position_index').notNull(),
         fieldLabel: text('field_label').notNull(),
-        plantPlaceEventId: integer('plant_place_event_id')
-            .notNull()
-            .references(() => events.id),
+        plantingId: integer('planting_id').references(
+            () => raisedBedPlantings.id,
+        ),
+        plantPlaceEventId: integer('plant_place_event_id').references(
+            () => events.id,
+        ),
         plantSortId: integer('plant_sort_id').references(() => entities.id),
         harvestOperationId: integer('harvest_operation_id')
             .notNull()
@@ -56,6 +65,14 @@ export const harvestTraceLinks = pgTable(
         revokedAt: timestamp('revoked_at'),
     },
     (table) => [
+        uniqueIndex('harvest_trace_links_planting_target_unique').on(
+            table.harvestOperationId,
+            table.plantingId,
+        ),
+        check(
+            'harvest_trace_links_crop_identity',
+            sql`(${table.plantingId} IS NULL) <> (${table.plantPlaceEventId} IS NULL)`,
+        ),
         uniqueIndex('harvest_trace_links_public_token_unique').on(
             table.publicToken,
         ),
@@ -99,6 +116,10 @@ export const harvestTraceLinksRelations = relations(
             fields: [harvestTraceLinks.raisedBedFieldId],
             references: [raisedBedFields.id],
             relationName: 'raisedBedFieldHarvestTraceLinks',
+        }),
+        planting: one(raisedBedPlantings, {
+            fields: [harvestTraceLinks.plantingId],
+            references: [raisedBedPlantings.id],
         }),
         plantSort: one(entities, {
             fields: [harvestTraceLinks.plantSortId],
