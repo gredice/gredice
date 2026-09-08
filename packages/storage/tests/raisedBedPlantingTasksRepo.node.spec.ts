@@ -835,10 +835,25 @@ test('planting operations reject unauthorized, stale, mixed and retired targets'
         }),
         'task_changed',
     );
+    await expectSubmissionError(
+        createSelectedPlantingOperation({ ...input, entityId: 346 }),
+        'invalid_status',
+    );
     const { operationId } = await createSelectedPlantingOperation(input);
     const operation = await getOperationById(operationId);
     const [field] = await getRaisedBedFieldsWithEvents(fixture.raisedBedId);
     assert.ok(field);
+    await assert.rejects(
+        createOperation({
+            entityId: 346,
+            entityTypeName: 'operation',
+            accountId: operation.accountId,
+            gardenId: operation.gardenId,
+            raisedBedId: fixture.raisedBedId,
+            plantingId: fixture.plantingId,
+        }),
+        OperationTargetConflictError,
+    );
     await assert.rejects(
         createOperation({
             entityId: 593,

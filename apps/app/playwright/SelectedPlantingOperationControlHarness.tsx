@@ -1,7 +1,13 @@
 import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime';
+import { useState } from 'react';
 import { SelectedPlantingOperationControl } from '../components/raised-beds/SelectedPlantingOperationControl';
 
-export function SelectedPlantingOperationControlHarness() {
+export function SelectedPlantingOperationControlHarness({
+    recoverable = false,
+}: {
+    recoverable?: boolean;
+}) {
+    const [recovered, setRecovered] = useState(false);
     return (
         <AppRouterContext.Provider
             value={{
@@ -14,14 +20,23 @@ export function SelectedPlantingOperationControlHarness() {
                 prefetch() {},
             }}
         >
+            {recoverable && (
+                <button type="button" onClick={() => setRecovered(true)}>
+                    Oporavi sadnju
+                </button>
+            )}
             <SelectedPlantingOperationControl
                 identity={{
                     kind: 'selected',
                     plantingId: 20,
                     expectedPlantSortId: 50,
-                    expectedLifecycleVersionEventId: 3,
+                    expectedLifecycleVersionEventId: recovered ? 4 : 3,
                 }}
-                options={[{ value: '593', label: 'Presađivanje' }]}
+                options={
+                    recoverable && !recovered
+                        ? [{ value: '346', label: 'Uklanjanje' }]
+                        : [{ value: '593', label: 'Presađivanje' }]
+                }
             />
         </AppRouterContext.Provider>
     );

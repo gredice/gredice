@@ -82,6 +82,17 @@ export async function createSelectedPlantingOperation(
                     'Presađivanje je dostupno za proklijalu sadnju u stakleniku.',
                 );
             }
+            if (
+                input.entityId === 346 &&
+                !['died', 'notSprouted', 'harvested'].includes(
+                    planting.lifecycleStatus ?? '',
+                )
+            ) {
+                throw new ScheduleTaskSubmissionError(
+                    'invalid_status',
+                    'Uklanjanje je dostupno tek nakon završetka uzgoja sadnje.',
+                );
+            }
             const existing = await tx.query.operations.findMany({
                 where: and(
                     eq(operations.plantingId, input.plantingId),

@@ -9,15 +9,25 @@ import { useState, useTransition } from 'react';
 import { createSelectedPlantingOperationAction } from '../../app/(actions)/selectedRaisedBedPlantingActions';
 import { KnownPages } from '../../src/KnownPages';
 
-export function SelectedPlantingOperationControl({
-    identity,
-    options,
-    label = 'Dodaj radnju',
-}: {
+type SelectedPlantingOperationControlProps = {
     identity: SelectedRaisedBedPlantingTaskCommandIdentity;
     options: { value: string; label: string }[];
     label?: string;
-}) {
+};
+
+export function SelectedPlantingOperationControl(
+    props: SelectedPlantingOperationControlProps,
+) {
+    const { identity, options } = props;
+    const formKey = `${identity.plantingId}:${identity.expectedPlantSortId}:${identity.expectedLifecycleVersionEventId}:${options.map((option) => option.value).join(',')}`;
+    return <SelectedPlantingOperationForm key={formKey} {...props} />;
+}
+
+function SelectedPlantingOperationForm({
+    identity,
+    options,
+    label = 'Dodaj radnju',
+}: SelectedPlantingOperationControlProps) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
     const [entityId, setEntityId] = useState(options[0]?.value ?? '');
