@@ -6,6 +6,9 @@ import {
     type EntityStandardized,
     getEntitiesFormatted,
     getFarmUserRaisedBeds,
+    getRaisedBedPlantOccupancy,
+    isRaisedBedPlantInGreenhouse,
+    type RaisedBedPlantOccupancy,
 } from '@gredice/storage';
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
 import {
@@ -30,34 +33,10 @@ import { GreenhouseMobilePlantList } from './GreenhouseMobilePlantList';
 
 export const dynamic = 'force-dynamic';
 
-const GREENHOUSE_PLANT_STATUSES = new Set([
-    'new',
-    'planned',
-    'pendingVerification',
-    'sowed',
-    'sprouted',
-]);
-
 type FarmRaisedBed = Awaited<ReturnType<typeof getFarmUserRaisedBeds>>[number];
-type FarmRaisedBedField = FarmRaisedBed['fields'][number];
-type GreenhouseRaisedBedField = FarmRaisedBedField & { plantSortId: number };
 type GreenhouseRaisedBed = Omit<FarmRaisedBed, 'fields'> & {
-    fields: GreenhouseRaisedBedField[];
+    fields: RaisedBedPlantOccupancy[];
 };
-
-function canFieldCurrentlyBeInGreenhouse(
-    field: FarmRaisedBedField,
-): field is GreenhouseRaisedBedField {
-    return (
-        field.active &&
-        field.sowingLocation === 'greenhouse' &&
-        typeof field.plantSortId === 'number' &&
-        GREENHOUSE_PLANT_STATUSES.has(field.plantStatus ?? '') &&
-        !field.plantDeadDate &&
-        !field.plantHarvestedDate &&
-        !field.plantRemovedDate
-    );
-}
 
 function comparePhysicalIdsDescending(
     left: string | null,
@@ -85,7 +64,10 @@ function comparePhysicalIdsDescending(
     return 0;
 }
 
-function compareRaisedBeds(left: FarmRaisedBed, right: FarmRaisedBed) {
+function compareRaisedBeds(
+    left: GreenhouseRaisedBed,
+    right: GreenhouseRaisedBed,
+) {
     const physicalIdComparison = comparePhysicalIdsDescending(
         left.physicalId,
         right.physicalId,
@@ -111,8 +93,8 @@ function getGreenhouseRaisedBeds(
     return raisedBeds
         .map((raisedBed) => ({
             ...raisedBed,
-            fields: raisedBed.fields
-                .filter(canFieldCurrentlyBeInGreenhouse)
+            fields: getRaisedBedPlantOccupancy(raisedBed)
+                .filter(isRaisedBedPlantInGreenhouse)
                 .sort(
                     (left, right) => left.positionIndex - right.positionIndex,
                 ),
@@ -274,7 +256,7 @@ async function GreenhousePageContent() {
                                 Gredice: {greenhouseRaisedBeds.length}
                             </Chip>
                             <Chip color="success">
-                                Biljaka: {greenhouseFieldCount}
+                                Sadnji: {greenhouseFieldCount}
                             </Chip>
                         </Row>
                     </Row>
@@ -322,7 +304,7 @@ async function GreenhousePageContent() {
                                         </CardTitle>
                                     </Link>
                                     <Chip size="sm">
-                                        Biljaka: {raisedBed.fields.length}
+                                        Sadnji: {raisedBed.fields.length}
                                     </Chip>
                                 </Row>
                             </CardHeader>
@@ -336,13 +318,14 @@ async function GreenhousePageContent() {
                                         germinationDate: formatDate(
                                             field.plantGrowthDate,
                                         ),
-                                        key: `${raisedBed.id}-${field.id}`,
+                                        key: `${raisedBed.id}-${field.key}`,
                                         plantName: getPlantName(
                                             plantSort,
                                             field.plantSortId,
                                         ),
                                         plantSort,
-                                        positionNumber: field.positionIndex + 1,
+                                        positionNumber:
+                                            field.positionNumbers.join(', '),
                                         sowingDate: sowingDateCell(
                                             field.plantSowDate,
                                             field.plantGrowthDate,
@@ -385,11 +368,12 @@ async function GreenhousePageContent() {
 
                                             return (
                                                 <Table.Row
-                                                    key={`${raisedBed.id}-${field.id}`}
+                                                    key={`${raisedBed.id}-${field.key}`}
                                                 >
                                                     <Table.Cell className="font-medium">
-                                                        {field.positionIndex +
-                                                            1}
+                                                        {field.positionNumbers.join(
+                                                            ', ',
+                                                        )}
                                                     </Table.Cell>
                                                     <Table.Cell>
                                                         <div className="flex min-w-0 items-center gap-3">

@@ -4,6 +4,9 @@ import {
     getEntitiesFormatted,
     getOperations,
     getPreviousPlantStatusChangedAtForUpdate,
+    getRaisedBedPlantOccupancy,
+    isRaisedBedPlantInGreenhouse,
+    type RaisedBedPlantOccupancy,
 } from '@gredice/storage';
 import { Card, CardHeader, CardOverflow } from '@gredice/ui/Card';
 import { Chip, type ColorPaletteProp } from '@gredice/ui/Chip';
@@ -24,14 +27,6 @@ import { SproutedDateQuickAction } from './SproutedDateQuickAction';
 
 export const dynamic = 'force-dynamic';
 
-const GREENHOUSE_PLANT_STATUSES = new Set([
-    'new',
-    'planned',
-    'pendingVerification',
-    'sowed',
-    'sprouted',
-]);
-
 const statusLabels: Record<string, string> = {
     new: 'Novo',
     planned: 'Planirano',
@@ -42,26 +37,14 @@ const statusLabels: Record<string, string> = {
 
 type RaisedBed = Awaited<ReturnType<typeof getAllRaisedBeds>>[number];
 type RaisedBedField = RaisedBed['fields'][number];
-type GreenhouseRaisedBedField = RaisedBedField & { plantSortId: number };
 type GreenhouseRaisedBed = Omit<RaisedBed, 'fields'> & {
-    fields: GreenhouseRaisedBedField[];
+    fields: RaisedBedPlantOccupancy[];
 };
 
-function canFieldCurrentlyBeInGreenhouse(
-    field: RaisedBedField,
-): field is GreenhouseRaisedBedField {
-    return (
-        field.active &&
-        field.sowingLocation === 'greenhouse' &&
-        typeof field.plantSortId === 'number' &&
-        GREENHOUSE_PLANT_STATUSES.has(field.plantStatus ?? '') &&
-        !field.plantDeadDate &&
-        !field.plantHarvestedDate &&
-        !field.plantRemovedDate
-    );
-}
-
-function compareRaisedBeds(left: RaisedBed, right: RaisedBed) {
+function compareRaisedBeds(
+    left: GreenhouseRaisedBed,
+    right: GreenhouseRaisedBed,
+) {
     const leftLabel = left.physicalId ?? left.name ?? left.id.toString();
     const rightLabel = right.physicalId ?? right.name ?? right.id.toString();
 
@@ -97,8 +80,8 @@ function getPlantName(
 }
 
 function getSproutedDateMinimum(
-    field: GreenhouseRaisedBedField,
-    activePlantCycle: GreenhouseRaisedBedField['plantCycles'][number],
+    field: RaisedBedField,
+    activePlantCycle: RaisedBedField['plantCycles'][number],
 ) {
     const previousStatusChangedAt = getPreviousPlantStatusChangedAtForUpdate({
         currentStatus: field.plantStatus,
@@ -164,8 +147,8 @@ function getGreenhouseRaisedBeds(
     return raisedBeds
         .map((raisedBed) => ({
             ...raisedBed,
-            fields: raisedBed.fields
-                .filter(canFieldCurrentlyBeInGreenhouse)
+            fields: getRaisedBedPlantOccupancy(raisedBed)
+                .filter(isRaisedBedPlantInGreenhouse)
                 .sort(
                     (left, right) => left.positionIndex - right.positionIndex,
                 ),
@@ -179,13 +162,20 @@ async function getTransplantingOperationIdsByFieldId(
 ) {
     const fieldsById = new Map(
         raisedBeds.flatMap((raisedBed) =>
-            raisedBed.fields.map((field) => [field.id, field] as const),
+            raisedBed.fields.flatMap((plant) =>
+                plant.legacyField
+                    ? [[plant.legacyField.id, plant.legacyField] as const]
+                    : [],
+            ),
         ),
     );
     const operations = (
         await Promise.all(
             raisedBeds.map((raisedBed) => {
-                if (!raisedBed.accountId) {
+                if (
+                    !raisedBed.accountId ||
+                    !raisedBed.fields.some((plant) => plant.legacyField)
+                ) {
                     return Promise.resolve([]);
                 }
 
@@ -193,7 +183,9 @@ async function getTransplantingOperationIdsByFieldId(
                     raisedBed.accountId,
                     raisedBed.gardenId ?? undefined,
                     raisedBed.id,
-                    raisedBed.fields.map((field) => field.id),
+                    raisedBed.fields.flatMap((plant) =>
+                        plant.legacyField ? [plant.legacyField.id] : [],
+                    ),
                 );
             }),
         )
@@ -264,7 +256,7 @@ export default async function GreenhousePage() {
                                 />
                             </Link>
                             <Chip size="sm">
-                                Biljaka: {raisedBed.fields.length}
+                                Sadnji: {raisedBed.fields.length}
                             </Chip>
                         </Row>
                     </CardHeader>
@@ -278,13 +270,14 @@ export default async function GreenhousePage() {
                                     plantSort,
                                     field.plantSortId,
                                 );
-                                const activePlantCycle = field.plantCycles.find(
-                                    (plantCycle) => plantCycle.active,
-                                );
+                                const activePlantCycle =
+                                    field.legacyField?.plantCycles.find(
+                                        (plantCycle) => plantCycle.active,
+                                    );
 
                                 return (
                                     <li
-                                        key={`${raisedBed.id}-${field.id}`}
+                                        key={`${raisedBed.id}-${field.key}`}
                                         className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
                                     >
                                         <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
@@ -308,8 +301,9 @@ export default async function GreenhousePage() {
                                                             variant="outlined"
                                                         >
                                                             Polje{' '}
-                                                            {field.positionIndex +
-                                                                1}
+                                                            {field.positionNumbers.join(
+                                                                ', ',
+                                                            )}
                                                         </Chip>
                                                         <Typography
                                                             level="body2"
@@ -367,7 +361,8 @@ export default async function GreenhousePage() {
                                                     >
                                                         Proklijalo
                                                     </Typography>
-                                                    {activePlantCycle ? (
+                                                    {activePlantCycle &&
+                                                    field.legacyField ? (
                                                         <SproutedDateQuickAction
                                                             raisedBedId={
                                                                 raisedBed.id
@@ -385,7 +380,7 @@ export default async function GreenhousePage() {
                                                                 field.plantSortId
                                                             }
                                                             minimumDate={getSproutedDateMinimum(
-                                                                field,
+                                                                field.legacyField,
                                                                 activePlantCycle,
                                                             )}
                                                             sproutedDate={
@@ -393,6 +388,14 @@ export default async function GreenhousePage() {
                                                                 null
                                                             }
                                                         />
+                                                    ) : field.plantGrowthDate ? (
+                                                        <LocalDateTime
+                                                            time={false}
+                                                        >
+                                                            {
+                                                                field.plantGrowthDate
+                                                            }
+                                                        </LocalDateTime>
                                                     ) : (
                                                         '-'
                                                     )}
@@ -406,7 +409,8 @@ export default async function GreenhousePage() {
                                                         Presađivanje
                                                     </Typography>
                                                     <div className="flex min-w-0 xl:justify-end">
-                                                        {field.plantStatus ===
+                                                        {field.legacyField &&
+                                                        field.plantStatus ===
                                                             'sprouted' &&
                                                         raisedBed.accountId ? (
                                                             <SeedlingTransplantingQuickAction
@@ -418,7 +422,9 @@ export default async function GreenhousePage() {
                                                                 }
                                                                 existingOperationId={
                                                                     transplantingOperationIdsByFieldId.get(
-                                                                        field.id,
+                                                                        field
+                                                                            .legacyField
+                                                                            .id,
                                                                     ) ?? null
                                                                 }
                                                             />

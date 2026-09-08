@@ -22,6 +22,7 @@ export * from './helpers/plantHealth';
 export * from './helpers/plantRelationships';
 export * from './helpers/plantStatusChronology';
 export * from './helpers/raisedBedPhotoOperations';
+export * from './helpers/raisedBedPlantOccupancy';
 export * from './helpers/selectedRaisedBedPlantingLifecycle';
 export * from './helpers/timeSlotAutomation';
 export * from './helpers/timezoneUtils';

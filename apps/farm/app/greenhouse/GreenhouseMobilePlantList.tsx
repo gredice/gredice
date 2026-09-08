@@ -10,7 +10,7 @@ export type GreenhouseMobilePlantListItem = {
     key: string;
     plantName: string;
     plantSort: EntityStandardized | undefined;
-    positionNumber: number;
+    positionNumber: number | string;
     sowingDate: ReactNode;
     statusColor: ColorPaletteProp;
     statusEmoji: string;

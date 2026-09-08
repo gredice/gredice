@@ -1,10 +1,14 @@
-import { buildRaisedBedPlantingReadModels } from '@gredice/js/plants';
+import {
+    buildRaisedBedPlantingReadModels,
+    plantFieldStatusLabel,
+} from '@gredice/js/plants';
 import {
     type ApprovalRequest,
     type EntityStandardized,
     getApprovalRequests,
     getEntitiesFormatted,
     getFarmUserRaisedBeds,
+    getRaisedBedPlantOccupancy,
 } from '@gredice/storage';
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
 import {
@@ -116,48 +120,53 @@ async function RaisedBedDetailPageContent({
         notFound();
     }
 
+    const occupants = getRaisedBedPlantOccupancy(raisedBed);
     const highestPositionIndex = Math.max(
         8,
         ...raisedBed.fields.map((field) => field.positionIndex),
+        ...occupants.flatMap((plant) =>
+            plant.positionNumbers.map((position) => position - 1),
+        ),
     );
     const orderedPositions = Array.from(
         { length: highestPositionIndex + 1 },
         (_, index) => index,
     );
-    const activeFieldsByPosition = new Map(
-        raisedBed.fields
-            .filter((field) => field.active)
-            .map((field) => [field.positionIndex, field]),
-    );
-    const fieldRows = orderedPositions.map((positionIndex) => {
-        const field = activeFieldsByPosition.get(positionIndex);
-        const pendingRequest = getPendingPlantStatusRequest(
-            pendingPlantStatusRequests,
-            raisedBed.id,
-            positionIndex,
+    const fieldRows = orderedPositions.flatMap((positionIndex) => {
+        const plants = occupants.filter((plant) =>
+            plant.positionNumbers.includes(positionIndex + 1),
         );
-        const currentStatus = field?.plantStatus ?? null;
-        const activePendingRequest = isRequestForCurrentStatus(
-            pendingRequest,
-            currentStatus,
-        )
-            ? pendingRequest
-            : undefined;
-        const pendingRequestedStatus =
-            activePendingRequest?.target.kind === 'raisedBedField.plantStatus'
-                ? activePendingRequest.target.requestedStatus
+        return (plants.length ? plants : [undefined]).map((field) => {
+            const pendingRequest = getPendingPlantStatusRequest(
+                pendingPlantStatusRequests,
+                raisedBed.id,
+                positionIndex,
+            );
+            const currentStatus = field?.plantStatus ?? null;
+            const activePendingRequest = isRequestForCurrentStatus(
+                pendingRequest,
+                currentStatus,
+            )
+                ? pendingRequest
+                : undefined;
+            const pendingRequestedStatus =
+                activePendingRequest?.target.kind ===
+                'raisedBedField.plantStatus'
+                    ? activePendingRequest.target.requestedStatus
+                    : null;
+            const plantSort = field?.plantSortId
+                ? (plantSortsById.get(field.plantSortId) ?? null)
                 : null;
-        const plantSort = field?.plantSortId
-            ? (plantSortsById.get(field.plantSortId) ?? null)
-            : null;
 
-        return {
-            field,
-            pendingRequestedStatus,
-            plantName: resolvePlantName(field?.plantSortId, plantSort),
-            plantSort,
-            positionIndex,
-        };
+            return {
+                field,
+                key: `${positionIndex}-${field?.key ?? 'empty'}`,
+                pendingRequestedStatus,
+                plantName: resolvePlantName(field?.plantSortId, plantSort),
+                plantSort,
+                positionIndex,
+            };
+        });
     });
     const plantingItems = buildRaisedBedPlantingReadModels(
         raisedBed.plantings,
@@ -201,6 +210,7 @@ async function RaisedBedDetailPageContent({
                     items={fieldRows.map(
                         ({
                             field,
+                            key,
                             pendingRequestedStatus,
                             plantName,
                             plantSort,
@@ -209,32 +219,41 @@ async function RaisedBedDetailPageContent({
                             harvestedDate: formatDate(
                                 field?.plantHarvestedDate,
                             ),
-                            key: `position-${positionIndex}`,
+                            key,
                             plannedDate: formatDate(field?.plantScheduledDate),
                             plantName,
                             plantSort,
                             positionNumber: positionIndex + 1,
                             readyDate: formatDate(field?.plantReadyDate),
                             sowingDate: formatDate(field?.plantSowDate),
-                            statusControl: field?.plantStatus ? (
-                                <RaisedBedResponsiveLayout layout="mobile">
-                                    <PlantStateRequestForm
-                                        currentStatus={field.plantStatus}
-                                        pendingRequestedStatus={
-                                            pendingRequestedStatus
+                            statusControl:
+                                field?.planting && field.plantStatus ? (
+                                    <Typography level="body3">
+                                        {
+                                            plantFieldStatusLabel(
+                                                field.plantStatus,
+                                            ).label
                                         }
-                                        positionIndex={positionIndex}
-                                        raisedBedId={raisedBed.id}
-                                    />
-                                </RaisedBedResponsiveLayout>
-                            ) : (
-                                <Typography
-                                    className="text-muted-foreground"
-                                    level="body3"
-                                >
-                                    —
-                                </Typography>
-                            ),
+                                    </Typography>
+                                ) : field?.plantStatus ? (
+                                    <RaisedBedResponsiveLayout layout="mobile">
+                                        <PlantStateRequestForm
+                                            currentStatus={field.plantStatus}
+                                            pendingRequestedStatus={
+                                                pendingRequestedStatus
+                                            }
+                                            positionIndex={positionIndex}
+                                            raisedBedId={raisedBed.id}
+                                        />
+                                    </RaisedBedResponsiveLayout>
+                                ) : (
+                                    <Typography
+                                        className="text-muted-foreground"
+                                        level="body3"
+                                    >
+                                        —
+                                    </Typography>
+                                ),
                         }),
                     )}
                 />
@@ -255,13 +274,14 @@ async function RaisedBedDetailPageContent({
                             {fieldRows.map(
                                 ({
                                     field,
+                                    key,
                                     pendingRequestedStatus,
                                     plantName,
                                     plantSort,
                                     positionIndex,
                                 }) => {
                                     return (
-                                        <Table.Row key={positionIndex}>
+                                        <Table.Row key={key}>
                                             <Table.Cell>
                                                 {positionIndex + 1}
                                             </Table.Cell>
@@ -288,7 +308,16 @@ async function RaisedBedDetailPageContent({
                                                 )}
                                             </Table.Cell>
                                             <Table.Cell>
-                                                {field?.plantStatus ? (
+                                                {field?.planting &&
+                                                field.plantStatus ? (
+                                                    <Typography level="body3">
+                                                        {
+                                                            plantFieldStatusLabel(
+                                                                field.plantStatus,
+                                                            ).label
+                                                        }
+                                                    </Typography>
+                                                ) : field?.plantStatus ? (
                                                     <RaisedBedResponsiveLayout layout="desktop">
                                                         <PlantStateRequestForm
                                                             raisedBedId={
