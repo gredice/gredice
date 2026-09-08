@@ -915,6 +915,7 @@ async function harvestDefinition() {
             eq(attributeDefinitions.entityTypeName, 'operation'),
             eq(attributeDefinitions.category, 'attributes'),
             eq(attributeDefinitions.name, 'application'),
+            eq(attributeDefinitions.isDeleted, false),
         ),
         orderBy: attributeDefinitions.id,
     });
