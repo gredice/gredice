@@ -159,7 +159,6 @@ export function FarmOperationsScheduleSection({
             (operation) =>
                 !isOperationBlocked(operation.status) &&
                 !isOperationCompleted(operation.status) &&
-                !isOperationPendingVerification(operation.status) &&
                 !isOperationCancelled(operation.status),
         )
         .map((operation) => ({
@@ -707,7 +706,10 @@ export function FarmOperationsScheduleSection({
                                         ] ?? []
                                     }
                                     assignedUsers={operation.assignedUsers}
-                                    disabled={operationLocked}
+                                    disabled={
+                                        operationLocked &&
+                                        !operationPendingVerification
+                                    }
                                     onSubmit={(assignedUserIds) => {
                                         const farmUsers =
                                             assignableFarmUsersByOperationId[

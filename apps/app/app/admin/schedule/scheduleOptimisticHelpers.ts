@@ -105,7 +105,6 @@ export function isDayBulkOperationAssignmentTargetVisible(
         !patch?.assignedUserId &&
         !isOperationBlocked(patch?.status) &&
         !isOperationCompleted(patch?.status) &&
-        !isOperationPendingVerification(patch?.status) &&
         !isOperationCancelled(patch?.status)
     );
 }
