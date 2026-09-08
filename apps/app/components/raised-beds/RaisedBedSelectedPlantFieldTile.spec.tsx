@@ -12,6 +12,7 @@ for (const width of [390, 768, 1280]) {
             <RaisedBedFieldCardGrid>
                 <RaisedBedSelectedPlantFieldTile
                     positionIndex={16}
+                    weedControl={<button type="button">Korov</button>}
                     plantSorts={[]}
                     plants={[
                         {
@@ -47,6 +48,9 @@ for (const width of [390, 768, 1280]) {
             component.getByText('Broj biljaka: 16 · 7.5 cm'),
         ).toBeVisible();
         await expect(component.getByText('Posijana · Staklenik')).toBeVisible();
+        await expect(
+            component.getByRole('button', { name: 'Korov' }),
+        ).toBeVisible();
         await expect(component.getByText('Prazno polje')).toHaveCount(0);
         await expect(component.getByRole('combobox')).toHaveCount(0);
         await page.screenshot({
