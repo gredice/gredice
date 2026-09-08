@@ -645,6 +645,13 @@
       "when": 1788907896905,
       "tag": "0091_pale_vermin",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1788907945077,
+      "tag": "0092_normal_silverclaw",
+      "breakpoints": true
     }
   ]
 }

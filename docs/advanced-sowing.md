@@ -624,5 +624,6 @@ supported by trace backfill.
 This follow-up requires the operation target schema first, then a migration
 making `harvest_trace_links.plant_place_event_id` nullable, adding `planting_id`
 and its foreign key/unique harvest target, and enforcing exactly one crop
-identity. Both migrations were generated and tested in a disposable local
-database; migration ordering remains a maintainer prerequisite to deployment.
+identity. Migrations 0091 and 0092 are included in that order following maintainer merge
+authorization. Both were generated and tested in a disposable local database;
+deployment must apply them before running the new storage readers.
