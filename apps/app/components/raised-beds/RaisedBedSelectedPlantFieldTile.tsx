@@ -3,6 +3,8 @@ import { plantFieldStatusLabel } from '@gredice/js/plants';
 import type { RaisedBedPlantOccupancy } from '@gredice/storage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedFieldCard } from './RaisedBedFieldCard';
+import { SelectedPlantingStatusControl } from './SelectedPlantingStatusControl';
+import type { SelectedPlantingStatusControlModel } from './selectedPlantingStatusControls';
 
 export function RaisedBedSelectedPlantFieldTile({
     positionIndex,
@@ -15,6 +17,7 @@ export function RaisedBedSelectedPlantFieldTile({
             RaisedBedPlantOccupancy,
             'key' | 'plantSortId' | 'plantStatus' | 'positionNumbers'
         > & {
+            statusControl?: SelectedPlantingStatusControlModel | null;
             locationLabel: string;
             plantCount: number | null;
             spacingCm: number | null;
@@ -58,10 +61,14 @@ export function RaisedBedSelectedPlantFieldTile({
                                     </span>
                                 </div>
                                 <div className="mt-1">
-                                    {
+                                    {plant.statusControl ? (
+                                        <SelectedPlantingStatusControl
+                                            control={plant.statusControl}
+                                        />
+                                    ) : (
                                         plantFieldStatusLabel(plant.plantStatus)
                                             .shortLabel
-                                    }{' '}
+                                    )}{' '}
                                     · {plant.locationLabel}
                                 </div>
                                 {plant.positionNumbers.length > 1 && (

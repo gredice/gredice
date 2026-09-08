@@ -34,6 +34,8 @@ async function revalidateSelectedPlantingPaths(plantingId: number) {
     }
     const raisedBed = await getRaisedBed(planting.raisedBedId);
     revalidatePath(KnownPages.Schedule);
+    revalidatePath(KnownPages.Greenhouse);
+    revalidatePath(KnownPages.RaisedBeds);
     revalidatePath(KnownPages.RaisedBed(planting.raisedBedId));
     if (raisedBed?.accountId) {
         revalidatePath(KnownPages.Account(raisedBed.accountId));

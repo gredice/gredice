@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import {
     defineConfig,
     devices,
@@ -29,6 +30,31 @@ export const config: PlaywrightTestConfig = {
         baseURL: getPlaywrightBaseUrl(app),
         trace: 'on-first-retry',
         ctPort: getComponentTestPort(app),
+        ctViteConfig: {
+            plugins: [
+                {
+                    name: 'selected-planting-status-actions',
+                    enforce: 'pre',
+                    resolveId(source, importer) {
+                        if (
+                            source.endsWith(
+                                '/selectedRaisedBedPlantingActions',
+                            ) &&
+                            importer?.endsWith(
+                                '/SelectedPlantingStatusControl.tsx',
+                            )
+                        ) {
+                            return fileURLToPath(
+                                new URL(
+                                    './playwright/selectedPlantingActionsMock.ts',
+                                    import.meta.url,
+                                ),
+                            );
+                        }
+                    },
+                },
+            ],
+        },
     },
     projects: [
         {
