@@ -1885,11 +1885,37 @@ Release evidence status, 2026-09-08:
   candidate pairs under `4800-release-v6` must use the same frozen
   `f653a380ecb605654920ed24d86892225fdd10f2` harness, current-main baseline
   `4b0ebfbc6c052909fe8ecf0e2594930d82f176c2`, and new candidate
-  `9884d89ca3254bdaa2f2f6727182af7cbee6cd15`. Their strict symmetric comparison
-  remains pending; producer, self-comparison, CI, or standalone acceptance
-  passes cannot substitute for it. The new first candidate capture passes
-  39/39 runs; the independent repeat is still pending. Both comparison subjects
-  now contain the same context-loss recovery correction.
+  `9884d89ca3254bdaa2f2f6727182af7cbee6cd15`. Both new independent candidate
+  captures pass 39/39 runs. Both baseline captures are comparable and fail only
+  the five explicitly permitted legacy scheduler checks across their 30
+  cross-tier runs; their other nine runs pass. Both comparison subjects contain
+  the same context-loss recovery correction.
+- The completed `4800-release-v6/comparison` strict symmetric 2x2 result is
+  **REGRESSION**, not diagnostic: 343/344 comparisons and 42/42 invariants pass,
+  with zero input validation errors and zero unresolved replications. Issue
+  [#4802](https://github.com/gredice/gredice/issues/4802) blocks PR #4777.
+  `game-garden-switch-high-fauna-single-context-desktop`,
+  `arrival-4-fauna-heavy`, GPU p95 reproduces above the unchanged 15% / 3 ms
+  allowance in all four pairings:
+
+  | Capture | Median GPU p95 |
+  | --- | --- |
+  | baseline-1 | 19.70 ms |
+  | baseline-2 | 19.04 ms |
+  | candidate-1 | 23.91 ms |
+  | candidate-2 | 30.18 ms |
+
+  This is a 21.37–58.51% increase. The earlier arrival-2 screening signal does
+  not reproduce across all four pairings; it remains visible in the report,
+  not a confirmed regression. Candidate submission, semantic-delivery, resource,
+  and scheduler invariants pass but cannot override the GPU failure. Queries
+  are complete, valid, and non-disjoint; the failing short transition windows
+  include the existing microtask-ended timer boundary. A causal explanation is
+  not yet established. Do not relabel the failure as a cadence or measurement
+  artifact without controlled evidence, change thresholds, or repeat unchanged
+  release captures until green. Producer, standalone acceptance, and CI passes
+  do not substitute for the failed comparison. Its SHA-256 is
+  `e4b3b8731919f2715097743fde9ec0616429396fd7cc4c51f3b75c5e445e2c13`.
 - Context-loss recovery #4800 merged separately in PR #4801 as
   `4b0ebfbc6c052909fe8ecf0e2594930d82f176c2` on 2026-09-08, after its own required
   CI run `34214459200` passed; its Outlet lifecycle route passed on the first
@@ -1903,7 +1929,8 @@ Release evidence status, 2026-09-08:
   local repetitions without retries and integration CI on its first attempt.
   Integration head `9884d89ca` also passes all 1,962 game units, game/garden/www
   typechecks, its clean production build, and required CI run `34213541744`.
-  The broader optimization PR remains unmerged pending its release comparison.
+  The broader optimization PR remains unmerged because its release comparison
+  reproduces the GPU regression tracked by #4802.
 - A producer report's budget/comparability status is not release clearance.
   Garden-switch producer acceptance covers the shared scenario contract; the
   release comparator additionally checks canonical scheduler invariants while

@@ -1200,7 +1200,14 @@ Progress:
   bounded retry or exact-zero gate. Both retained replacement candidate captures
   pass 39/39 producer runs for the older `aa48e2075` subject. The new `9884d89ca`
   source passes all 23 static/live-lifecycle/owner/building acceptance runs;
-  its candidate pair, the baseline pair, and strict comparison are still pending.
+  its two independent candidate captures each pass 39/39 canonical producer
+  runs. Both fresh baseline captures are comparable under the explicit legacy
+  scheduler contract. The complete symmetric 2x2 comparison is **REGRESSION**:
+  343/344 comparisons and 42/42 invariants pass, but `arrival-4-fauna-heavy`
+  GPU p95 increases from baseline medians 19.70/19.04 ms to candidate medians
+  23.91/30.18 ms across all four pairings. There are zero input errors and zero
+  unresolved replications. #4802 blocks integration PR #4777 until the cause is
+  established, corrected, and freshly verified against unchanged thresholds.
   Original scratch
   reports were cleared by Playwright and are not retained release evidence.
   Issue #4778 separates profiler artifacts from that cleanup. The retained
