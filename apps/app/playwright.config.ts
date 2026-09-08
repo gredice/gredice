@@ -40,9 +40,10 @@ export const config: PlaywrightTestConfig = {
                             source.endsWith(
                                 '/selectedRaisedBedPlantingActions',
                             ) &&
-                            importer?.endsWith(
+                            [
                                 '/SelectedPlantingStatusControl.tsx',
-                            )
+                                '/SelectedPlantingOperationControl.tsx',
+                            ].some((name) => importer?.endsWith(name))
                         ) {
                             return fileURLToPath(
                                 new URL(

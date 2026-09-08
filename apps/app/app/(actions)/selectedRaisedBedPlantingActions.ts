@@ -4,6 +4,7 @@ import {
     assignSelectedRaisedBedPlantingTask,
     blockSelectedRaisedBedPlantingTask,
     cancelSelectedRaisedBedPlantingTask,
+    createSelectedPlantingOperation,
     getRaisedBed,
     getRaisedBedPlanting,
     type RaisedBedFieldSowingLocation,
@@ -155,4 +156,18 @@ export async function updateSelectedPlantingLifecycleStatusAction(
     });
     await revalidateSelectedPlantingPaths(identity.plantingId);
     return { result, success: true as const };
+}
+
+export async function createSelectedPlantingOperationAction(
+    identity: SelectedRaisedBedPlantingTaskCommandIdentity,
+    entityId: number,
+) {
+    const result = await createSelectedPlantingOperation({
+        ...identity,
+        entityId,
+        actor: await getAdminActor(),
+    });
+    await revalidateSelectedPlantingPaths(identity.plantingId);
+    revalidatePath(KnownPages.Operations);
+    return result;
 }

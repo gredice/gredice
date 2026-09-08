@@ -578,3 +578,27 @@ exact test plant and layouts, cart currency, Farm and Admin
 task outcome, paid-fulfillment result, and rollback result. A passing storage
 test does not replace the later Garden interaction and real Farm task smoke
 checks.
+
+
+### Explicit planting operations
+
+Admin field tiles can create plant-scoped operations for a completed selected
+planting. Operations persist a nullable `plantingId`, exclusive with the legacy
+`raisedBedFieldId`; their account, garden, bed and crop membership are validated
+in storage. Farm and Admin schedule cards show the complete planting footprint
+and snapshotted plant count. Retrying creation reuses the unresolved operation
+for that planting and definition.
+
+Admin verification of transplant operation 593 changes the selected planting's
+sowing location to direct in the same transaction as operation verification.
+Farmer completion alone leaves it in the greenhouse. Verification of removal
+operation 346 retires the exact stopped planting. Removed or invalid targets
+reject completion/verification atomically. Field-based crop automations skip
+explicit planting targets instead of inferring a crop from the shared field.
+
+Deployment requires an ordered migration adding `operations.planting_id`, its
+foreign key/index and exclusive-target constraint before the new code runs.
+Migration files are generated for local tests but excluded from the PR under
+the repository's shared migration policy. Harvest QR trace support is a separate
+follow-up; an explicit planting operation must never inherit a legacy field's
+trace or status mutation.

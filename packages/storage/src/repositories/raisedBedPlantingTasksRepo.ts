@@ -46,6 +46,7 @@ import {
     startOfUtcDay,
 } from './gardenDiaryRescheduleRepo';
 import { createNotificationWithStatus } from './notificationsRepo';
+import { getOperationById } from './operationsRepo';
 import { getRaisedBedPlanting } from './raisedBedPlantingsRepo';
 import {
     type ScheduleTaskActor,
@@ -1493,6 +1494,64 @@ export async function cancelSelectedRaisedBedPlantingTaskForOwner(
                 normalized.owner,
                 plantingId,
             ),
+        transaction,
+    );
+}
+
+export async function transplantSelectedRaisedBedPlanting(
+    input: SelectedRaisedBedPlantingTaskCommandBase & { operationId: number },
+    transaction?: ScheduleTaskTransaction,
+) {
+    const normalized = normalizeIdentity(input);
+    assertAdmin(normalized.actor);
+    const operationId = positiveSafeInteger(
+        input.operationId,
+        'ID presađivanja',
+    );
+    const payload = {
+        commandId: normalized.commandId,
+        expectedLifecycleVersionEventId:
+            normalized.expectedLifecycleVersionEventId,
+        changedBy: normalized.actor.userId,
+        operationId,
+    };
+    return executeSelectedPlantingCommand(
+        normalized,
+        payload,
+        (aggregateId) =>
+            knownEvents.raisedBedPlantings.transplantedV1(aggregateId, payload),
+        async ({ context, projection, task, transaction: tx }) => {
+            const operation = await getOperationById(operationId, tx);
+            if (
+                operation.plantingId !== context.plantingId ||
+                operation.entityId !== 593 ||
+                operation.status !== 'completed' ||
+                operation.isDeleted
+            ) {
+                throw new ScheduleTaskSubmissionError(
+                    'invalid_status',
+                    'Presađivanje mora biti potvrđena radnja ove sadnje.',
+                );
+            }
+            assertRaisedBedAvailable(context);
+            if (
+                task.status !== 'completed' ||
+                !projection.isActive ||
+                projection.stoppedAt ||
+                task.sowingLocation !== 'greenhouse' ||
+                ![
+                    'sprouted',
+                    'firstFlowers',
+                    'firstFruitSet',
+                    'ready',
+                ].includes(projection.status)
+            ) {
+                throw new ScheduleTaskSubmissionError(
+                    'invalid_status',
+                    'Sadnja više nije spremna za presađivanje.',
+                );
+            }
+        },
         transaction,
     );
 }

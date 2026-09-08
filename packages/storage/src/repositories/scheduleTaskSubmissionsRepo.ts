@@ -23,6 +23,7 @@ import {
 } from './events';
 import { normalizeAssignedUserIds } from './events/normalizeAssignedUserIds';
 import {
+    assertOperationTargetAllowsDefinition,
     getFarmUserAcceptedOperationById,
     getOperationById,
     lockOperationFarmUserMemberships,
@@ -33,6 +34,7 @@ import {
     withOperationScheduleTaskTransaction,
     withPlantingScheduleTaskTransaction,
 } from './scheduleTaskTransactionsRepo';
+import { applySelectedPlantingOperationVerification } from './selectedPlantingOperationsRepo';
 
 export {
     acquireScheduleTaskAdvisoryLock,
@@ -974,7 +976,7 @@ export async function submitOperationTaskCompletion(
                                     'Zadatak je u međuvremenu promijenjen. Osvježi zadatke i pokušaj ponovno.',
                                 );
                             }
-                            await createEvent(
+                            const verificationEvent = await createEvent(
                                 knownEvents.operations.verifiedV1(
                                     normalizedTarget.operationId.toString(),
                                     {
@@ -982,6 +984,12 @@ export async function submitOperationTaskCompletion(
                                             normalizedTarget.actor.userId,
                                     },
                                 ),
+                                transaction,
+                            );
+                            await applySelectedPlantingOperationVerification(
+                                operation,
+                                verificationEvent.id,
+                                normalizedTarget.actor.userId,
                                 transaction,
                             );
                             return {
@@ -1018,6 +1026,11 @@ export async function submitOperationTaskCompletion(
                 );
             }
             assertOperationAssignment(operation, normalizedTarget.actor);
+            if (operation.plantingId)
+                await assertOperationTargetAllowsDefinition(
+                    operation,
+                    transaction,
+                );
 
             const event = await createEvent(
                 knownEvents.operations.completedV1(
@@ -1055,11 +1068,17 @@ export async function submitOperationTaskCompletion(
                 transaction,
             );
             if (normalizedTarget.actor.role === 'admin') {
-                await createEvent(
+                const verificationEvent = await createEvent(
                     knownEvents.operations.verifiedV1(
                         normalizedTarget.operationId.toString(),
                         { verifiedBy: normalizedTarget.actor.userId },
                     ),
+                    transaction,
+                );
+                await applySelectedPlantingOperationVerification(
+                    operation,
+                    verificationEvent.id,
+                    normalizedTarget.actor.userId,
                     transaction,
                 );
             }
@@ -1741,6 +1760,12 @@ export async function verifyOperationTaskCompletion(
                 knownEvents.operations.verifiedV1(validOperationId.toString(), {
                     verifiedBy,
                 }),
+                transaction,
+            );
+            await applySelectedPlantingOperationVerification(
+                operation,
+                event.id,
+                verifiedBy,
                 transaction,
             );
             return {

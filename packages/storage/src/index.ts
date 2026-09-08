@@ -98,6 +98,7 @@ export * from './repositories/refreshTokensRepo';
 export * from './repositories/scheduleTaskSubmissionsRepo';
 export * from './repositories/scheduleTaskTransactionsRepo';
 export * from './repositories/seasonalOffersRepo';
+export * from './repositories/selectedPlantingOperationsRepo';
 export * from './repositories/settingsRepo';
 export * from './repositories/shoppingCartRepo';
 export * from './repositories/socialAccountsRepo';

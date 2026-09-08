@@ -17,6 +17,7 @@ import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
+import { SelectedPlantingOperationControl } from '../../../components/raised-beds/SelectedPlantingOperationControl';
 import { SelectedPlantingStatusControl } from '../../../components/raised-beds/SelectedPlantingStatusControl';
 import { getSelectedPlantingStatusControl } from '../../../components/raised-beds/selectedPlantingStatusControls';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
@@ -451,6 +452,27 @@ export default async function GreenhousePage() {
                                                                             .id,
                                                                     ) ?? null
                                                                 }
+                                                            />
+                                                        ) : field.planting
+                                                              ?.selectedTask &&
+                                                          field.plantStatus ===
+                                                              'sprouted' ? (
+                                                            <SelectedPlantingOperationControl
+                                                                identity={
+                                                                    field
+                                                                        .planting
+                                                                        .selectedTask
+                                                                        .identity
+                                                                }
+                                                                label="Presađivanje"
+                                                                options={[
+                                                                    {
+                                                                        value: String(
+                                                                            SEEDLING_TRANSPLANTING_OPERATION_ENTITY_ID,
+                                                                        ),
+                                                                        label: 'Presađivanje presadnica',
+                                                                    },
+                                                                ]}
                                                             />
                                                         ) : (
                                                             <span className="text-sm text-muted-foreground">

@@ -60,6 +60,7 @@ export type Operation = {
     farmId?: number | null;
     raisedBedId: number | null;
     raisedBedFieldId?: number | null;
+    plantingId?: number | null;
     entityId: number;
     entityTypeName: string;
     taskVersionEventId: number;

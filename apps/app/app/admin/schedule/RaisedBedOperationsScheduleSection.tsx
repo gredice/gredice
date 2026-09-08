@@ -120,15 +120,30 @@ export function RaisedBedOperationsScheduleSection({
                               raisedBedField.id === operation.raisedBedFieldId,
                       )
                 : undefined;
-            const sort = field?.plantSortId
-                ? plantSorts?.find(
-                      (plantSort) => plantSort.id === field.plantSortId,
-                  )
+            const planting = sortedRaisedBeds
+                .flatMap((bed) => bed.plantings ?? [])
+                .find((planting) => planting.id === operation.plantingId);
+            const plantSortId = planting?.plantSortId ?? field?.plantSortId;
+            const sort = plantSortId
+                ? plantSorts?.find((plantSort) => plantSort.id === plantSortId)
                 : null;
 
-            const physicalPositionIndex = field
-                ? (field.positionIndex + 1).toString()
-                : '';
+            const physicalPositionIndex = planting
+                ? planting.memberships
+                      .filter(
+                          (membership) =>
+                              !membership.isDeleted &&
+                              !membership.raisedBedField.isDeleted,
+                      )
+                      .map(
+                          (membership) =>
+                              membership.raisedBedField.positionIndex + 1,
+                      )
+                      .sort((a, b) => a - b)
+                      .join(', ')
+                : field
+                  ? (field.positionIndex + 1).toString()
+                  : '';
 
             return {
                 ...operation,

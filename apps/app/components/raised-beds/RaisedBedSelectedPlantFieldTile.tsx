@@ -3,6 +3,7 @@ import { plantFieldStatusLabel } from '@gredice/js/plants';
 import type { RaisedBedPlantOccupancy } from '@gredice/storage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedFieldCard } from './RaisedBedFieldCard';
+import { SelectedPlantingOperationControl } from './SelectedPlantingOperationControl';
 import { SelectedPlantingStatusControl } from './SelectedPlantingStatusControl';
 import type { SelectedPlantingStatusControlModel } from './selectedPlantingStatusControls';
 
@@ -10,6 +11,7 @@ export function RaisedBedSelectedPlantFieldTile({
     positionIndex,
     plants,
     plantSorts,
+    operationOptions = [],
 }: {
     positionIndex: number;
     plants: Array<
@@ -24,6 +26,7 @@ export function RaisedBedSelectedPlantFieldTile({
         }
     >;
     plantSorts: PlantSortData[];
+    operationOptions?: { value: string; label: string }[];
 }) {
     return (
         <RaisedBedFieldCard
@@ -71,6 +74,28 @@ export function RaisedBedSelectedPlantFieldTile({
                                     )}{' '}
                                     · {plant.locationLabel}
                                 </div>
+                                {plant.statusControl && (
+                                    <SelectedPlantingOperationControl
+                                        identity={plant.statusControl.identity}
+                                        options={operationOptions.filter(
+                                            (option) =>
+                                                [
+                                                    'died',
+                                                    'notSprouted',
+                                                    'harvested',
+                                                ].includes(
+                                                    plant.plantStatus ?? '',
+                                                )
+                                                    ? option.value === '346'
+                                                    : option.value !== '346' &&
+                                                      (option.value !== '593' ||
+                                                          (plant.locationLabel ===
+                                                              'Staklenik' &&
+                                                              plant.plantStatus ===
+                                                                  'sprouted')),
+                                        )}
+                                    />
+                                )}
                                 {plant.positionNumbers.length > 1 && (
                                     <div>
                                         Polja {plant.positionNumbers.join(', ')}
