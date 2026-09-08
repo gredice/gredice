@@ -1022,6 +1022,10 @@ export async function assertOperationTargetAllowsDefinition(
             planting.isDeleted ||
             planting.selectedTask?.status !== 'completed' ||
             (planting.lifecycleStoppedAt && operation.entityId !== 346) ||
+            (operation.entityId === 346 &&
+                !['died', 'notSprouted', 'harvested'].includes(
+                    planting.lifecycleStatus ?? '',
+                )) ||
             !bed ||
             bed.isDeleted ||
             bed.status === 'abandoned' ||
