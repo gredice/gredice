@@ -83,7 +83,14 @@ export function getRaisedBedPlantOccupancy(raisedBed: {
             | 'plantHarvestedDate'
             | 'plantDeadDate'
             | 'plantRemovedDate'
-        > = {};
+        > = {
+            plantSowDate: undefined,
+            plantGrowthDate: undefined,
+            plantReadyDate: undefined,
+            plantDeadDate: undefined,
+            plantHarvestedDate: undefined,
+            plantRemovedDate: undefined,
+        };
         for (const change of planting.lifecycleStatusChanges) {
             const status = change.status;
             if (

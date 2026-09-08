@@ -47,3 +47,22 @@ test('keeps version conflicts visible and does not pretend the update succeeded'
         page.getByRole('button', { name: 'Spremi', exact: true }),
     ).toBeVisible();
 });
+
+test('new statuses default to today and returning to the current status restores its date', async ({
+    mount,
+    page,
+}) => {
+    await page.clock.setFixedTime(new Date('2026-09-08T12:00:00Z'));
+    await mount(<SelectedPlantingStatusControlHarness />);
+    await page.getByRole('button', { name: 'Datum klijanja' }).click();
+    await page.getByRole('combobox').click();
+    await page.getByRole('option', { name: 'Posijana', exact: true }).click();
+    await expect(page.getByLabel('Datum stanja', { exact: true })).toHaveValue(
+        '2026-08-02',
+    );
+    await page.getByRole('combobox').click();
+    await page.getByRole('option', { name: 'Proklijala', exact: true }).click();
+    await expect(page.getByLabel('Datum stanja', { exact: true })).toHaveValue(
+        '2026-09-08',
+    );
+});

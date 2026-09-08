@@ -107,7 +107,17 @@ export function SelectedPlantingStatusControl({
                 label="Stanje biljke"
                 items={control.options}
                 value={status}
-                onValueChange={setStatus}
+                onValueChange={(nextStatus) => {
+                    setStatus(nextStatus);
+                    setDate(
+                        dateInput(
+                            nextStatus === control.status
+                                ? control.statusDate
+                                : new Date(),
+                        ),
+                    );
+                    setError(null);
+                }}
                 disabled={pending}
             />
             <Input
