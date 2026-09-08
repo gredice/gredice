@@ -5,6 +5,7 @@ export function SelectedPlantingStatusControlHarness() {
     return (
         <AppRouterContext.Provider
             value={{
+                bfcacheId: 'selected-planting-status-control',
                 back() {},
                 forward() {},
                 refresh() {},
