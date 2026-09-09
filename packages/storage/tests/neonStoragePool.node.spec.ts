@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { neonPoolErrorDetails } from '../src/neonPoolError';
 
 test('pool diagnostics allow safe codes without serializing error payloads', () => {
@@ -35,6 +36,7 @@ test('production Neon pool handles background errors and preserves database fail
     // process to exercise the production singleton, with no real credentials.
     const env = { ...process.env };
     delete env.NODE_TEST_CONTEXT;
+    delete env.NODE_OPTIONS;
     const result = spawnSync(
         process.execPath,
         [
@@ -44,7 +46,9 @@ test('production Neon pool handles background errors and preserves database fail
             '--test-reporter=tap',
             '--test-timeout=10000',
             '--conditions=react-server',
-            new URL('./fixtures/neonStoragePool.ts', import.meta.url).pathname,
+            fileURLToPath(
+                new URL('./fixtures/neonStoragePool.ts', import.meta.url),
+            ),
         ],
         {
             env: {
