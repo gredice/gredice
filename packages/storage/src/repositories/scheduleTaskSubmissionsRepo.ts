@@ -1946,11 +1946,12 @@ export async function assignOperationTaskUsers(
             if (
                 operation.status !== 'new' &&
                 operation.status !== 'planned' &&
-                operation.status !== 'failed'
+                operation.status !== 'failed' &&
+                operation.status !== 'pendingVerification'
             ) {
                 throw new ScheduleTaskSubmissionError(
                     'invalid_status',
-                    'Dodjela se više ne može promijeniti nakon završetka ili prijave prepreke.',
+                    'Dodjela se više ne može promijeniti nakon verifikacije ili prijave prepreke.',
                 );
             }
             if (operation.isAccepted && nextAssignedUserIds.length === 0) {

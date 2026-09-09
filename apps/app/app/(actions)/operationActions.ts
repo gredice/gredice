@@ -784,7 +784,10 @@ async function assignOperationUser(
         return;
     }
 
-    if (assignment.newlyAssignedUserIds.length > 0) {
+    if (
+        operation.status !== 'pendingVerification' &&
+        assignment.newlyAssignedUserIds.length > 0
+    ) {
         await notifyOperationAssignedUsers(
             operationId,
             assignment.newlyAssignedUserIds,
