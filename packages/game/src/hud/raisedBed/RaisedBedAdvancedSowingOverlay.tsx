@@ -1,26 +1,17 @@
 'use client';
 
-import { PlantOrSortImage } from '@gredice/ui/plants';
-import { Tabs, TabsContent } from '@gredice/ui/Tabs';
 import { useState } from 'react';
-import { GameModal } from '../../shared-ui/game-modal';
 import {
     type AdvancedSowingGardenPlantingVisual,
     groupAdvancedSowingGardenPlantingsByFootprint,
+    indexAdvancedSowingPlantingsByPosition,
 } from './advancedSowingGardenVisuals';
 import {
     RaisedBedAdvancedSowingFieldItem,
     type RaisedBedAdvancedSowingFieldSegment,
 } from './RaisedBedAdvancedSowingFieldItem';
-import {
-    advancedSowingPlantingFieldsHeading,
-    RaisedBedAdvancedSowingPlantingDetails,
-} from './RaisedBedAdvancedSowingPlantingDetails';
 import { RaisedBedFieldItemPlanted } from './RaisedBedFieldItemPlanted';
-import {
-    type RaisedBedPlantTab,
-    RaisedBedPlantTabsList,
-} from './RaisedBedPlantTabsList';
+import type { RaisedBedPlantTab } from './RaisedBedPlantTabsList';
 
 export type AdvancedSowingPlantSortVisual = {
     coverUrl: string | null;
@@ -49,20 +40,20 @@ function standardPlantTabValue(positionIndex: number) {
 
 export function RaisedBedAdvancedSowingOverlay({
     bedFieldCount,
-    gardenId,
     plantings,
     plantingMode = false,
     plantSorts,
     raisedBedId,
     standardFields = [],
+    pendingPositionIndices = [],
 }: {
     bedFieldCount: number;
-    gardenId: number;
     plantings: readonly AdvancedSowingGardenPlantingVisual[];
     plantingMode?: boolean;
     plantSorts: readonly AdvancedSowingPlantSortVisual[];
     raisedBedId: number;
     standardFields?: readonly AdvancedSowingStandardFieldVisual[];
+    pendingPositionIndices?: readonly number[];
 }) {
     const [selectedFieldPlant, setSelectedFieldPlant] =
         useState<SelectedFieldPlant | null>(null);
@@ -73,6 +64,14 @@ export function RaisedBedAdvancedSowingOverlay({
     const standardFieldByPosition = new Map(
         standardFields.map((field) => [field.positionIndex, field]),
     );
+    const plantingsByPosition =
+        indexAdvancedSowingPlantingsByPosition(plantings);
+    const firstGroupByPosition = new Map<number, string>();
+    for (const group of groups)
+        for (const position of group.positionIndices) {
+            if (!firstGroupByPosition.has(position))
+                firstGroupByPosition.set(position, group.key);
+        }
     const totalRows = bedFieldCount / 3;
 
     if (groups.length === 0 || !Number.isSafeInteger(totalRows)) {
@@ -97,7 +96,7 @@ export function RaisedBedAdvancedSowingOverlay({
                         ? selectedFieldPlant
                         : null;
                 const selectedAdvancedPlanting = activeSelection
-                    ? group.plantings.find(
+                    ? plantings.find(
                           (planting) =>
                               advancedPlantTabValue(planting.id) ===
                               activeSelection.value,
@@ -113,9 +112,6 @@ export function RaisedBedAdvancedSowingOverlay({
                             selectedStandardField.positionIndex,
                         ) === activeSelection.value,
                 );
-                const selectedPlantSort = selectedAdvancedPlanting
-                    ? plantSortById.get(selectedAdvancedPlanting.plantSortId)
-                    : undefined;
                 const tabs: RaisedBedPlantTab[] = activeSelection
                     ? [
                           ...(selectedStandardField
@@ -135,7 +131,11 @@ export function RaisedBedAdvancedSowingOverlay({
                                     },
                                 ]
                               : []),
-                          ...group.plantings.map((planting) => {
+                          ...(
+                              plantingsByPosition.get(
+                                  activeSelection.positionIndex,
+                              ) ?? []
+                          ).map((planting) => {
                               const plantSort = plantSortById.get(
                                   planting.plantSortId,
                               );
@@ -177,6 +177,13 @@ export function RaisedBedAdvancedSowingOverlay({
                         }}
                     >
                         {group.positionIndices.map((positionIndex) => {
+                            if (pendingPositionIndices.includes(positionIndex))
+                                return null;
+                            if (
+                                firstGroupByPosition.get(positionIndex) !==
+                                group.key
+                            )
+                                return null;
                             const visualIndex =
                                 bedFieldCount - 1 - positionIndex;
                             const visualRow = Math.floor(visualIndex / 3) + 1;
@@ -203,7 +210,11 @@ export function RaisedBedAdvancedSowingOverlay({
                                               },
                                           ]
                                         : []),
-                                    ...group.plantings.map((planting) => {
+                                    ...(
+                                        plantingsByPosition.get(
+                                            positionIndex,
+                                        ) ?? []
+                                    ).map((planting) => {
                                         const plantSort = plantSortById.get(
                                             planting.plantSortId,
                                         );
@@ -220,6 +231,12 @@ export function RaisedBedAdvancedSowingOverlay({
                                     }),
                                 ];
 
+                            const singlePlanting =
+                                !standardField && segments.length === 1
+                                    ? plantingsByPosition.get(
+                                          positionIndex,
+                                      )?.[0]
+                                    : undefined;
                             return (
                                 <div
                                     className="pointer-events-none min-h-0 min-w-0 p-0.5"
@@ -230,83 +247,56 @@ export function RaisedBedAdvancedSowingOverlay({
                                         gridRow: visualRow - gridRowStart + 1,
                                     }}
                                 >
-                                    <RaisedBedAdvancedSowingFieldItem
-                                        disabled={plantingMode}
-                                        onSelect={(value) =>
-                                            selectPlant(value, positionIndex)
-                                        }
-                                        positionIndex={positionIndex}
-                                        segments={segments}
-                                    />
+                                    {singlePlanting ? (
+                                        <div
+                                            className="size-full"
+                                            data-advanced-sowing-field-position={
+                                                positionIndex
+                                            }
+                                        >
+                                            <RaisedBedFieldItemPlanted
+                                                raisedBedId={raisedBedId}
+                                                positionIndex={positionIndex}
+                                                selectedPlanting={
+                                                    singlePlanting
+                                                }
+                                                interactionDisabled={
+                                                    plantingMode
+                                                }
+                                                open={false}
+                                                onOpenChange={(open) => {
+                                                    if (open)
+                                                        selectPlant(
+                                                            advancedPlantTabValue(
+                                                                singlePlanting.id,
+                                                            ),
+                                                            positionIndex,
+                                                        );
+                                                }}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <RaisedBedAdvancedSowingFieldItem
+                                            disabled={plantingMode}
+                                            onSelect={(value) =>
+                                                selectPlant(
+                                                    value,
+                                                    positionIndex,
+                                                )
+                                            }
+                                            positionIndex={positionIndex}
+                                            segments={segments}
+                                        />
+                                    )}
                                 </div>
                             );
                         })}
-                        {selectedAdvancedPlanting && activeSelection ? (
-                            <GameModal
-                                className="max-w-md"
-                                description="Detalji odabrane sadnje."
-                                headerDescription={advancedSowingPlantingFieldsHeading(
-                                    selectedAdvancedPlanting,
-                                )}
-                                headerIcon={
-                                    <PlantOrSortImage
-                                        alt={
-                                            selectedPlantSort?.name ??
-                                            'Nepoznata biljka'
-                                        }
-                                        className="size-12 rounded-full object-cover"
-                                        coverUrl={
-                                            selectedPlantSort?.coverUrl ?? null
-                                        }
-                                        height={48}
-                                        width={48}
-                                    />
-                                }
-                                modal={false}
-                                onOpenChange={(open) => {
-                                    if (!open) {
-                                        setSelectedFieldPlant(null);
-                                    }
-                                }}
-                                open
-                                showHeader
-                                title={
-                                    selectedPlantSort?.name ??
-                                    'Nepoznata biljka'
-                                }
-                            >
-                                {tabs.length > 1 ? (
-                                    <Tabs
-                                        className="flex flex-col"
-                                        onValueChange={selectTab}
-                                        value={activeSelection.value}
-                                    >
-                                        <RaisedBedPlantTabsList tabs={tabs} />
-                                        <TabsContent
-                                            className="mt-4"
-                                            value={activeSelection.value}
-                                        >
-                                            <RaisedBedAdvancedSowingPlantingDetails
-                                                gardenId={gardenId}
-                                                planting={
-                                                    selectedAdvancedPlanting
-                                                }
-                                                raisedBedId={raisedBedId}
-                                            />
-                                        </TabsContent>
-                                    </Tabs>
-                                ) : (
-                                    <RaisedBedAdvancedSowingPlantingDetails
-                                        gardenId={gardenId}
-                                        planting={selectedAdvancedPlanting}
-                                        raisedBedId={raisedBedId}
-                                    />
-                                )}
-                            </GameModal>
-                        ) : null}
-                        {isStandardFieldSelected && activeSelection ? (
+                        {(isStandardFieldSelected ||
+                            selectedAdvancedPlanting) &&
+                        activeSelection ? (
                             <RaisedBedFieldItemPlanted
-                                key={`standard:${activeSelection.positionIndex.toString()}`}
+                                key={activeSelection.value}
+                                selectedPlanting={selectedAdvancedPlanting}
                                 onOpenChange={(open) => {
                                     if (!open) {
                                         setSelectedFieldPlant(null);

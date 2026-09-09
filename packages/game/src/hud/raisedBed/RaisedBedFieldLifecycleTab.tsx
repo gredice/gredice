@@ -60,12 +60,14 @@ export function RaisedBedFieldLifecycleTab({
     includeInactive = false,
     fieldOverride,
     onShowOperations,
+    disableFieldActions = false,
 }: {
     raisedBedId: number;
     positionIndex: number;
     includeInactive?: boolean;
     fieldOverride?: RaisedBedFieldPlantHistoryEntry;
     onShowOperations?: () => void;
+    disableFieldActions?: boolean;
 }) {
     const { data: garden } = useCurrentGarden();
     const lifecycleData = useRaisedBedFieldLifecycleData(
@@ -88,7 +90,9 @@ export function RaisedBedFieldLifecycleTab({
         return null;
     }
 
-    const currentPlantIdentity = getRaisedBedFieldActivePlantIdentity(field);
+    const currentPlantIdentity = disableFieldActions
+        ? undefined
+        : getRaisedBedFieldActivePlantIdentity(field);
 
     const handleRemovePlant = async () => {
         if (!field.toBeRemoved || !currentPlantIdentity) {
@@ -193,7 +197,8 @@ export function RaisedBedFieldLifecycleTab({
                 }
             />
 
-            {field.active &&
+            {!disableFieldActions &&
+                field.active &&
                 typeof field.plantSortId === 'number' &&
                 showPlantOperationRecommendations && (
                     <RecommendationsCard

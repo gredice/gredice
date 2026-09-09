@@ -29,6 +29,10 @@ export type AdvancedSowingGardenPlantingInput = {
         sowingLocation: 'direct' | 'greenhouse';
         status: SelectedPlantingOwnerTaskStatus;
         verification: null | { verifiedAt: Date | string };
+        completion?: null | {
+            completedAt: Date | string;
+            status: 'pendingVerification' | 'sowed';
+        };
     } | null;
     spanColumns: number;
     spanRows: number;
@@ -41,6 +45,7 @@ export type AdvancedSowingGardenPlantingVisual = {
     layoutKey: string;
     lifecycleStartedAt: string | null;
     lifecycleStatus: string | null;
+    sowedAt?: string | null;
     memberships: Array<{
         isAnchor: boolean;
         positionIndex: number;
@@ -61,6 +66,7 @@ type ParsedAdvancedSowingGardenPlantingInput = Omit<
     'lifecycleVersionEventId' | 'selectedTask'
 > & {
     lifecycleVersionEventId: number | null;
+    sowedAt: string | null;
     selectedTask: SelectedPlantingOwnerTaskSnapshot | null;
 };
 
@@ -149,7 +155,21 @@ function readAdvancedSowingGardenPlantingInput(
         return null;
     }
 
+    const completion =
+        isRecord(value.selectedTask) && isRecord(value.selectedTask.completion)
+            ? value.selectedTask.completion
+            : null;
+    const completedAt = completion?.completedAt;
+    const sowedAt =
+        (completion?.status === 'sowed' ||
+            (isRecord(value.selectedTask) &&
+                value.selectedTask.status === 'completed')) &&
+        (typeof completedAt === 'string' || completedAt instanceof Date)
+            ? readIsoDateString(completedAt)
+            : null;
+
     return {
+        sowedAt,
         anchorPositionIndex: value.anchorPositionIndex,
         configurationSource: value.configurationSource,
         id: value.id,
@@ -284,6 +304,7 @@ export function buildAdvancedSowingGardenPlantingVisuals(
                     planting.lifecycleStartedAt,
                 ),
                 lifecycleStatus: planting.lifecycleStatus ?? null,
+                sowedAt: planting.sowedAt,
                 memberships: [...planting.memberships].sort(
                     (left, right) =>
                         left.relativeRow - right.relativeRow ||

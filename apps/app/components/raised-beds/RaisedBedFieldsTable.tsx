@@ -1,4 +1,5 @@
 import type { PlantSortData } from '@gredice/client';
+import { getRaisedBedFieldGroups } from '@gredice/js/plants';
 import {
     type EntityStandardized,
     getEntitiesFormatted,
@@ -7,68 +8,21 @@ import {
     getRaisedBedPlantOccupancy,
     isRaisedBedPlantInGreenhouse,
 } from '@gredice/storage';
-import { PlantOrSortImage } from '@gredice/ui/plants';
+import { RaisedBedFieldsGrid } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
-import { RaisedBedFieldLocationSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldLocationSelector';
-import { RaisedBedFieldPlantSortSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantSortSelector';
 import { RaisedBedFieldWeedStateSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldWeedStateSelector';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
-import { MoveRaisedBedFieldPlantModal } from './MoveRaisedBedFieldPlantModal';
-import {
-    RaisedBedFieldCard,
-    RaisedBedFieldCardGrid,
-    raisedBedFieldCardButtonClassName,
-    raisedBedFieldCardChipClassName,
-    raisedBedFieldCardSelectClassName,
-} from './RaisedBedFieldCard';
-import type { RaisedBedFieldDateItem } from './RaisedBedFieldDatesPopover';
-import { RaisedBedFieldStatusDateChip } from './RaisedBedFieldStatusDateChip';
+import { raisedBedFieldCardChipClassName } from './RaisedBedFieldCard';
+import { RaisedBedLegacyPlantItem } from './RaisedBedLegacyPlantItem';
 import {
     RaisedBedRemovedFieldsModal,
     type RemovedFieldDetails,
 } from './RaisedBedRemovedFieldsModal';
-import { RaisedBedSelectedPlantFieldTile } from './RaisedBedSelectedPlantFieldTile';
-import { getSelectedPlantingStatusControl } from './selectedPlantingStatusControls';
+import { RaisedBedSelectedPlantItem } from './RaisedBedSelectedPlantItem';
 
-type RaisedBedField = NonNullable<
-    Awaited<ReturnType<typeof getRaisedBed>>
->['fields'][number];
 type RaisedBedFieldPlantCycle = Awaited<
     ReturnType<typeof getRaisedBedFieldPlantCycles>
 >[number];
-
-const STATUSES_BEFORE_TRANSPLANT = new Set([
-    'new',
-    'planned',
-    'pendingVerification',
-    'sowed',
-    'sprouted',
-]);
-
-function canFieldCurrentlyBeInGreenhouse(field: RaisedBedField) {
-    if (
-        field.active &&
-        STATUSES_BEFORE_TRANSPLANT.has(field.plantStatus ?? '') &&
-        !field.plantDeadDate &&
-        !field.plantHarvestedDate &&
-        !field.plantRemovedDate
-    ) {
-        return true;
-    }
-
-    return false;
-}
-
-function getCurrentLocation(field: RaisedBedField): 'greenhouse' | 'raisedBed' {
-    if (
-        field.sowingLocation === 'greenhouse' &&
-        canFieldCurrentlyBeInGreenhouse(field)
-    ) {
-        return 'greenhouse';
-    }
-
-    return 'raisedBed';
-}
 
 const fieldStatusMetadata: Record<string, { label: string; icon: string }> = {
     new: { label: 'Novo', icon: '🆕' },
@@ -98,35 +52,6 @@ function getSortLabel(sort?: PlantSortData, plantSortId?: number | null) {
         sort?.information?.name ||
         (plantSortId ? `Sorta biljke ${plantSortId}` : 'Nepoznata biljka')
     );
-}
-
-function getCurrentDateKey(status?: string | null) {
-    switch (status) {
-        case 'planned':
-            return 'plantScheduledDate';
-        case 'pendingVerification':
-        case 'sowed':
-            return 'plantSowDate';
-        case 'sprouted':
-            return 'plantGrowthDate';
-        case 'firstFlowers':
-            return 'plantFirstFlowersDate';
-        case 'firstFruitSet':
-            return 'plantFirstFruitSetDate';
-        case 'ready':
-            return 'plantReadyDate';
-        case 'harvested':
-            return 'plantHarvestedDate';
-        case 'notSprouted':
-        case 'died':
-            return 'plantDeadDate';
-        case 'removed':
-            return 'plantRemovedDate';
-        case 'new':
-            return 'createdAt';
-        default:
-            return null;
-    }
 }
 
 function normalizeDate(value?: Date | string | null) {
@@ -205,416 +130,272 @@ export async function RaisedBedFieldsTable({
         return <NoDataPlaceholder />;
     }
 
-    return (
-        <Stack spacing={0}>
-            <RaisedBedFieldCardGrid>
-                {orderedPositions.map((positionIndex) => {
-                    const positionPlants = occupants.filter((plant) =>
-                        plant.positionNumbers.includes(positionIndex + 1),
+    const operationOptions = operationDefinitions
+        .filter((operation) => operation.attributes?.application === 'plant')
+        .map((operation) => ({
+            value: String(operation.id),
+            label:
+                operation.information?.label ??
+                operation.information?.name ??
+                `Radnja #${operation.id}`,
+        }));
+    const groups = getRaisedBedFieldGroups(orderedPositions, occupants);
+    const positionContent = new Map(
+        orderedPositions.map((positionIndex) => {
+            const positionPlantCycles = [
+                ...(plantCyclesByPosition.get(positionIndex) ?? []),
+            ].sort(
+                (left, right) =>
+                    new Date(right.startedAt).getTime() -
+                    new Date(left.startedAt).getTime(),
+            );
+            const activePlantCycle = positionPlantCycles.find(
+                (plantCycle) => plantCycle.active,
+            );
+            const field = fields.find(
+                (item) =>
+                    item.positionIndex === positionIndex &&
+                    item.active &&
+                    typeof item.plantSortId === 'number',
+            );
+            const moveTargetOptions = [...orderedPositions]
+                .sort((a, b) => a - b)
+                .filter(
+                    (targetPositionIndex) =>
+                        targetPositionIndex !== positionIndex &&
+                        !occupants.some(
+                            (plant) =>
+                                plant.planting &&
+                                plant.positionNumbers.includes(
+                                    targetPositionIndex + 1,
+                                ),
+                        ),
+                )
+                .map((targetPositionIndex) => {
+                    const targetField = fields.find(
+                        (item) =>
+                            item.positionIndex === targetPositionIndex &&
+                            item.active &&
+                            typeof item.plantSortId === 'number',
                     );
-                    const selectedTile = positionPlants.some(
-                        (plant) => plant.planting,
-                    ) ? (
-                        <RaisedBedSelectedPlantFieldTile
-                            key={positionIndex}
-                            positionIndex={positionIndex}
-                            weedControl={
+                    const targetSort = targetField?.plantSortId
+                        ? sortsData?.find(
+                              (item) => item.id === targetField.plantSortId,
+                          )
+                        : undefined;
+
+                    return {
+                        value: targetPositionIndex.toString(),
+                        label: `Polje ${targetPositionIndex + 1} · ${
+                            targetField
+                                ? getSortLabel(
+                                      targetSort,
+                                      targetField.plantSortId,
+                                  )
+                                : 'Prazno'
+                        }`,
+                    };
+                });
+            const removedFieldsAtPosition = positionPlantCycles
+                .filter((plantCycle) => !plantCycle.active)
+                .map((plantCycle) => {
+                    const sort = sortsData?.find(
+                        (item) => item.id === plantCycle.plantSortId,
+                    );
+                    const statusMeta = getStatusMeta(plantCycle.plantStatus);
+                    return {
+                        id: plantCycle.plantPlaceEventId,
+                        positionIndex: plantCycle.positionIndex,
+                        plantPlaceEventId: plantCycle.plantPlaceEventId,
+                        plantLabel: getSortLabel(sort, plantCycle.plantSortId),
+                        plantStatusLabel: statusMeta?.label ?? null,
+                        plantStatusIcon: statusMeta?.icon ?? null,
+                        sortData: sort,
+                        createdAt: normalizeDate(plantCycle.startedAt),
+                        plantScheduledDate: normalizeDate(
+                            plantCycle.plantScheduledDate,
+                        ),
+                        plantSowDate: normalizeDate(plantCycle.plantSowDate),
+                        plantGrowthDate: normalizeDate(
+                            plantCycle.plantGrowthDate,
+                        ),
+                        plantFirstFlowersDate: normalizeDate(
+                            getPlantStatusDate(plantCycle, 'firstFlowers'),
+                        ),
+                        plantFirstFruitSetDate: normalizeDate(
+                            getPlantStatusDate(plantCycle, 'firstFruitSet'),
+                        ),
+                        plantReadyDate: normalizeDate(
+                            plantCycle.plantReadyDate,
+                        ),
+                        plantHarvestedDate: normalizeDate(
+                            plantCycle.plantHarvestedDate,
+                        ),
+                        plantDeadDate: normalizeDate(plantCycle.plantDeadDate),
+                        plantRemovedDate: normalizeDate(
+                            plantCycle.plantRemovedDate ?? plantCycle.endedAt,
+                        ),
+                    } satisfies RemovedFieldDetails;
+                })
+                .sort((a, b) => {
+                    const dateA = a.plantRemovedDate ?? a.createdAt;
+                    const dateB = b.plantRemovedDate ?? b.createdAt;
+                    if (!dateA || !dateB) return 0;
+                    return (
+                        new Date(dateB).getTime() - new Date(dateA).getTime()
+                    );
+                });
+
+            return [
+                positionIndex,
+                {
+                    field,
+                    activePlantCycle,
+                    moveTargetOptions,
+                    history:
+                        removedFieldsAtPosition.length > 0 ? (
+                            <RaisedBedRemovedFieldsModal
+                                raisedBedId={raisedBedId}
+                                fields={removedFieldsAtPosition}
+                                targetOptions={moveTargetOptions}
+                            />
+                        ) : undefined,
+                },
+            ];
+        }),
+    );
+    const completedPlantings = raisedBed.plantings.filter(
+        (planting) =>
+            planting.configurationSource === 'selected' &&
+            !planting.isActive &&
+            !planting.isDeleted,
+    );
+
+    return (
+        <Stack spacing={3}>
+            <RaisedBedFieldsGrid
+                groups={groups.map((group) => ({
+                    ...group,
+                    fields: group.positionNumbers.map((position) => ({
+                        position,
+                        controls: (
+                            <>
                                 <RaisedBedFieldWeedStateSelector
                                     raisedBedId={raisedBedId}
-                                    positionIndex={positionIndex}
+                                    positionIndex={position - 1}
                                     level={
                                         fields.find(
                                             (field) =>
                                                 field.positionIndex ===
-                                                positionIndex,
+                                                position - 1,
                                         )?.weedState?.level ?? 'none'
                                     }
                                     className={raisedBedFieldCardChipClassName}
                                 />
-                            }
-                            plants={positionPlants
-                                .filter((plant) => plant.planting)
-                                .map((plant) => ({
-                                    key: plant.key,
-                                    statusControl:
-                                        getSelectedPlantingStatusControl(
-                                            plant.planting,
-                                        ),
-                                    plantSortId: plant.plantSortId,
-                                    plantStatus: plant.plantStatus,
-                                    positionNumbers: plant.positionNumbers,
-                                    locationLabel: isRaisedBedPlantInGreenhouse(
-                                        plant,
-                                    )
-                                        ? 'Staklenik'
-                                        : 'Gredica',
-                                    plantCount:
-                                        plant.planting?.plantCount ?? null,
-                                    spacingCm:
-                                        plant.planting
-                                            ?.selectedSeedingDistanceCm ?? null,
-                                }))}
-                            plantSorts={sortsData ?? []}
-                            operationOptions={operationDefinitions
+                                {positionContent.get(position - 1)?.history}
+                            </>
+                        ),
+                    })),
+                    children: (
+                        <>
+                            {occupants
                                 .filter(
-                                    (operation) =>
-                                        operation.attributes?.application ===
-                                        'plant',
-                                )
-                                .map((operation) => ({
-                                    value: String(operation.id),
-                                    label:
-                                        operation.information?.label ??
-                                        operation.information?.name ??
-                                        `Radnja #${operation.id}`,
-                                }))}
-                        />
-                    ) : null;
-                    const positionPlantCycles = [
-                        ...(plantCyclesByPosition.get(positionIndex) ?? []),
-                    ].sort(
-                        (left, right) =>
-                            new Date(right.startedAt).getTime() -
-                            new Date(left.startedAt).getTime(),
-                    );
-                    const activePlantCycle = positionPlantCycles.find(
-                        (plantCycle) => plantCycle.active,
-                    );
-                    const field = fields.find(
-                        (item) =>
-                            item.positionIndex === positionIndex &&
-                            item.active &&
-                            typeof item.plantSortId === 'number',
-                    );
-                    const moveTargetOptions = [...orderedPositions]
-                        .sort((a, b) => a - b)
-                        .filter(
-                            (targetPositionIndex) =>
-                                targetPositionIndex !== positionIndex &&
-                                !occupants.some(
                                     (plant) =>
                                         plant.planting &&
-                                        plant.positionNumbers.includes(
-                                            targetPositionIndex + 1,
+                                        plant.positionNumbers.some((position) =>
+                                            group.positionNumbers.includes(
+                                                position,
+                                            ),
                                         ),
-                                ),
-                        )
-                        .map((targetPositionIndex) => {
-                            const targetField = fields.find(
-                                (item) =>
-                                    item.positionIndex ===
-                                        targetPositionIndex &&
-                                    item.active &&
-                                    typeof item.plantSortId === 'number',
-                            );
-                            const targetSort = targetField?.plantSortId
-                                ? sortsData?.find(
-                                      (item) =>
-                                          item.id === targetField.plantSortId,
-                                  )
-                                : undefined;
-
-                            return {
-                                value: targetPositionIndex.toString(),
-                                label: `Polje ${targetPositionIndex + 1} · ${
-                                    targetField
-                                        ? getSortLabel(
-                                              targetSort,
-                                              targetField.plantSortId,
-                                          )
-                                        : 'Prazno'
-                                }`,
-                            };
-                        });
-                    const removedFieldsAtPosition = positionPlantCycles
-                        .filter((plantCycle) => !plantCycle.active)
-                        .map((plantCycle) => {
-                            const sort = sortsData?.find(
-                                (item) => item.id === plantCycle.plantSortId,
-                            );
-                            const statusMeta = getStatusMeta(
-                                plantCycle.plantStatus,
-                            );
-                            return {
-                                id: plantCycle.plantPlaceEventId,
-                                positionIndex: plantCycle.positionIndex,
-                                plantPlaceEventId: plantCycle.plantPlaceEventId,
-                                plantLabel: getSortLabel(
-                                    sort,
-                                    plantCycle.plantSortId,
-                                ),
-                                plantStatusLabel: statusMeta?.label ?? null,
-                                plantStatusIcon: statusMeta?.icon ?? null,
-                                sortData: sort,
-                                createdAt: normalizeDate(plantCycle.startedAt),
-                                plantScheduledDate: normalizeDate(
-                                    plantCycle.plantScheduledDate,
-                                ),
-                                plantSowDate: normalizeDate(
-                                    plantCycle.plantSowDate,
-                                ),
-                                plantGrowthDate: normalizeDate(
-                                    plantCycle.plantGrowthDate,
-                                ),
-                                plantFirstFlowersDate: normalizeDate(
-                                    getPlantStatusDate(
-                                        plantCycle,
-                                        'firstFlowers',
-                                    ),
-                                ),
-                                plantFirstFruitSetDate: normalizeDate(
-                                    getPlantStatusDate(
-                                        plantCycle,
-                                        'firstFruitSet',
-                                    ),
-                                ),
-                                plantReadyDate: normalizeDate(
-                                    plantCycle.plantReadyDate,
-                                ),
-                                plantHarvestedDate: normalizeDate(
-                                    plantCycle.plantHarvestedDate,
-                                ),
-                                plantDeadDate: normalizeDate(
-                                    plantCycle.plantDeadDate,
-                                ),
-                                plantRemovedDate: normalizeDate(
-                                    plantCycle.plantRemovedDate ??
-                                        plantCycle.endedAt,
-                                ),
-                            } satisfies RemovedFieldDetails;
-                        })
-                        .sort((a, b) => {
-                            const dateA = a.plantRemovedDate ?? a.createdAt;
-                            const dateB = b.plantRemovedDate ?? b.createdAt;
-                            if (!dateA || !dateB) return 0;
-                            return (
-                                new Date(dateB).getTime() -
-                                new Date(dateA).getTime()
-                            );
-                        });
-
-                    const legacyTile = (
-                        <RaisedBedFieldTile
-                            key={positionIndex}
-                            field={field}
-                            activePlantCycle={activePlantCycle}
-                            positionIndex={positionIndex}
-                            plantSorts={sortsData ?? []}
-                            raisedBedId={raisedBedId}
-                            removedFields={removedFieldsAtPosition}
-                            moveTargetOptions={moveTargetOptions}
-                        />
-                    );
-                    return selectedTile ? (
-                        <div key={positionIndex} className="min-w-0">
-                            {selectedTile}
-                            {field && legacyTile}
-                        </div>
-                    ) : (
-                        legacyTile
-                    );
-                })}
-            </RaisedBedFieldCardGrid>
+                                )
+                                .map(
+                                    (plant) =>
+                                        plant.planting && (
+                                            <RaisedBedSelectedPlantItem
+                                                key={plant.key}
+                                                planting={plant.planting}
+                                                positionNumbers={
+                                                    plant.positionNumbers
+                                                }
+                                                plantSort={sortsData.find(
+                                                    (sort) =>
+                                                        sort.id ===
+                                                        plant.plantSortId,
+                                                )}
+                                                locationLabel={
+                                                    isRaisedBedPlantInGreenhouse(
+                                                        plant,
+                                                    )
+                                                        ? 'Staklenik'
+                                                        : 'Gredica'
+                                                }
+                                                operationOptions={
+                                                    operationOptions
+                                                }
+                                            />
+                                        ),
+                                )}
+                            {group.positionNumbers.map((position) => {
+                                const content = positionContent.get(
+                                    position - 1,
+                                );
+                                if (
+                                    !content ||
+                                    (!content.field &&
+                                        occupants.some((plant) =>
+                                            plant.positionNumbers.includes(
+                                                position,
+                                            ),
+                                        ))
+                                )
+                                    return null;
+                                return (
+                                    <RaisedBedLegacyPlantItem
+                                        key={position}
+                                        field={content.field}
+                                        activePlantCycle={
+                                            content.activePlantCycle
+                                        }
+                                        positionIndex={position - 1}
+                                        plantSorts={sortsData}
+                                        raisedBedId={raisedBedId}
+                                        moveTargetOptions={
+                                            content.moveTargetOptions
+                                        }
+                                    />
+                                );
+                            })}
+                        </>
+                    ),
+                }))}
+            />
+            {completedPlantings.length > 0 && (
+                <details className="rounded-md border p-3">
+                    <summary className="cursor-pointer text-sm font-medium">
+                        Povijest sadnji ({completedPlantings.length})
+                    </summary>
+                    <div className="mt-3 divide-y">
+                        {completedPlantings.map((planting) => (
+                            <RaisedBedSelectedPlantItem
+                                key={planting.id}
+                                planting={planting}
+                                positionNumbers={planting.memberships
+                                    .filter(
+                                        (membership) => !membership.isDeleted,
+                                    )
+                                    .map(
+                                        (membership) =>
+                                            membership.raisedBedField
+                                                .positionIndex + 1,
+                                    )}
+                                plantSort={sortsData.find(
+                                    (sort) => sort.id === planting.plantSortId,
+                                )}
+                            />
+                        ))}
+                    </div>
+                </details>
+            )}
         </Stack>
-    );
-}
-
-type RaisedBedFieldTileProps = {
-    field?: RaisedBedField;
-    activePlantCycle?: RaisedBedFieldPlantCycle;
-    positionIndex: number;
-    plantSorts: PlantSortData[];
-    raisedBedId: number;
-    removedFields: RemovedFieldDetails[];
-    moveTargetOptions: Array<{
-        value: string;
-        label: string;
-    }>;
-};
-
-function RaisedBedFieldTile({
-    field,
-    activePlantCycle,
-    positionIndex,
-    plantSorts,
-    raisedBedId,
-    removedFields,
-    moveTargetOptions,
-}: RaisedBedFieldTileProps) {
-    const sort = field?.plantSortId
-        ? plantSorts.find((item) => item.id === field.plantSortId)
-        : undefined;
-    const plantLabel = field
-        ? getSortLabel(sort, field.plantSortId)
-        : 'Prazno polje';
-    const currentDateKey = getCurrentDateKey(field?.plantStatus);
-    const dateItems: RaisedBedFieldDateItem[] = [
-        {
-            key: 'createdAt',
-            label: 'Stvoreno',
-            value: normalizeDate(field?.createdAt),
-            current: currentDateKey === 'createdAt',
-        },
-        {
-            key: 'plantScheduledDate',
-            label: 'Planirano',
-            value: normalizeDate(field?.plantScheduledDate),
-            current: currentDateKey === 'plantScheduledDate',
-        },
-        {
-            key: 'plantSowDate',
-            label: 'Sijano',
-            value: normalizeDate(field?.plantSowDate),
-            current: currentDateKey === 'plantSowDate',
-        },
-        {
-            key: 'plantGrowthDate',
-            label: 'Proklijalo',
-            value: normalizeDate(field?.plantGrowthDate),
-            current: currentDateKey === 'plantGrowthDate',
-        },
-        {
-            key: 'plantFirstFlowersDate',
-            label: 'Prvi cvjetovi',
-            value: normalizeDate(
-                getPlantStatusDate(activePlantCycle, 'firstFlowers'),
-            ),
-            current: currentDateKey === 'plantFirstFlowersDate',
-        },
-        {
-            key: 'plantFirstFruitSetDate',
-            label: 'Prvi plodovi',
-            value: normalizeDate(
-                getPlantStatusDate(activePlantCycle, 'firstFruitSet'),
-            ),
-            current: currentDateKey === 'plantFirstFruitSetDate',
-        },
-        {
-            key: 'plantReadyDate',
-            label: 'Spremno',
-            value: normalizeDate(field?.plantReadyDate),
-            current: currentDateKey === 'plantReadyDate',
-        },
-        {
-            key: 'plantHarvestedDate',
-            label: 'Ubrano',
-            value: normalizeDate(field?.plantHarvestedDate),
-            current: currentDateKey === 'plantHarvestedDate',
-        },
-        {
-            key: 'plantDeadDate',
-            label: 'Uginulo',
-            value: normalizeDate(field?.plantDeadDate),
-            current: currentDateKey === 'plantDeadDate',
-        },
-        {
-            key: 'plantRemovedDate',
-            label: 'Uklonjeno',
-            value: normalizeDate(field?.plantRemovedDate),
-            current: currentDateKey === 'plantRemovedDate',
-        },
-    ];
-
-    const image =
-        field?.active && sort ? (
-            <PlantOrSortImage
-                plantSort={sort}
-                alt={plantLabel}
-                fill
-                className="object-contain"
-                sizes="(min-width: 1536px) 14rem, (min-width: 1280px) 16rem, (min-width: 768px) 18rem, 50vw"
-            />
-        ) : undefined;
-    const locationControl =
-        field?.active && field.plantSortId && activePlantCycle ? (
-            <RaisedBedFieldLocationSelector
-                raisedBedId={raisedBedId}
-                positionIndex={positionIndex}
-                expectedPlantCycleEventId={activePlantCycle.plantPlaceEventId}
-                expectedPlantCycleVersionEventId={activePlantCycle.endedEventId}
-                expectedPlantSortId={field.plantSortId}
-                sowingLocation={field.sowingLocation}
-                currentLocation={getCurrentLocation(field)}
-                greenhouseCurrentLocationEligible={canFieldCurrentlyBeInGreenhouse(
-                    field,
-                )}
-                className={raisedBedFieldCardChipClassName}
-            />
-        ) : undefined;
-    const fieldBadge =
-        field?.active && activePlantCycle ? (
-            <MoveRaisedBedFieldPlantModal
-                raisedBedId={raisedBedId}
-                sourcePositionIndex={positionIndex}
-                sourcePlantPlaceEventId={activePlantCycle.plantPlaceEventId}
-                sourcePlantLabel={plantLabel}
-                targetOptions={moveTargetOptions}
-                triggerVariant="fieldIndex"
-            />
-        ) : (
-            <div
-                className={`rounded-full px-2 py-1 text-xs font-semibold ${raisedBedFieldCardButtonClassName}`}
-            >
-                {positionIndex + 1}
-            </div>
-        );
-    const historyControl =
-        removedFields.length > 0 ? (
-            <RaisedBedRemovedFieldsModal
-                raisedBedId={raisedBedId}
-                fields={removedFields}
-                targetOptions={moveTargetOptions}
-            />
-        ) : undefined;
-    const plantSortControl = (
-        <RaisedBedFieldPlantSortSelector
-            raisedBedId={raisedBedId}
-            positionIndex={positionIndex}
-            status={field?.plantStatus ?? null}
-            plantSortId={field?.plantSortId}
-            expectedPlantCycleEventId={activePlantCycle?.plantPlaceEventId}
-            expectedPlantCycleVersionEventId={activePlantCycle?.endedEventId}
-            plantSorts={plantSorts}
-            variant="plain"
-            className={raisedBedFieldCardSelectClassName}
-        />
-    );
-    const statusControl =
-        field?.active &&
-        field.plantStatus &&
-        field.plantSortId &&
-        activePlantCycle ? (
-            <RaisedBedFieldStatusDateChip
-                raisedBedId={raisedBedId}
-                positionIndex={positionIndex}
-                status={field.plantStatus}
-                expectedPlantCycleEventId={activePlantCycle.plantPlaceEventId}
-                expectedPlantCycleVersionEventId={activePlantCycle.endedEventId}
-                expectedPlantSortId={field.plantSortId}
-                expectedPlantStatusEventId={field.plantStatusEventId ?? null}
-                date={dateItems.find((item) => item.current)?.value ?? null}
-                dateItems={dateItems}
-                className={raisedBedFieldCardButtonClassName}
-            />
-        ) : undefined;
-    const weedControl = (
-        <RaisedBedFieldWeedStateSelector
-            raisedBedId={raisedBedId}
-            positionIndex={positionIndex}
-            level={field?.weedState?.level ?? 'none'}
-            className={raisedBedFieldCardChipClassName}
-        />
-    );
-
-    return (
-        <RaisedBedFieldCard
-            image={image}
-            locationControl={locationControl}
-            fieldBadge={fieldBadge}
-            historyControl={historyControl}
-            plantSortControl={plantSortControl}
-            statusControl={statusControl}
-            weedControl={weedControl}
-        />
     );
 }

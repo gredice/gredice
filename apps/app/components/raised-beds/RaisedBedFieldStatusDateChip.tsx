@@ -1,5 +1,6 @@
 'use client';
 
+import { plantFieldStatusLabel } from '@gredice/js/plants';
 import { Button } from '@gredice/ui/Button';
 import { Input } from '@gredice/ui/Input';
 import { Calendar } from '@gredice/ui/icons';
@@ -26,6 +27,7 @@ type RaisedBedFieldStatusDateChipProps = {
     date: string | null;
     dateItems?: RaisedBedFieldDateItem[];
     className?: string;
+    compact?: boolean;
 };
 
 function parseDate(value: string | null) {
@@ -99,6 +101,7 @@ export function RaisedBedFieldStatusDateChip({
     date,
     dateItems = [],
     className,
+    compact = false,
 }: RaisedBedFieldStatusDateChipProps) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
@@ -192,20 +195,29 @@ export function RaisedBedFieldStatusDateChip({
                     title="Promijeni stanje i datum biljke"
                     variant="plain"
                     className={cx(
-                        'h-8 w-full justify-start px-2 text-foreground',
+                        'h-8 justify-start px-2 text-foreground',
+                        !compact && 'w-full',
                         className,
                     )}
                     startDecorator={
-                        <span aria-hidden="true">{statusItem.icon}</span>
+                        compact ? undefined : (
+                            <span aria-hidden="true">{statusItem.icon}</span>
+                        )
                     }
                     endDecorator={
-                        <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-muted-foreground">
-                            <Calendar className="size-3.5 shrink-0" />
-                            <span>{dateLabel}</span>
-                        </span>
+                        compact ? undefined : (
+                            <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-muted-foreground">
+                                <Calendar className="size-3.5 shrink-0" />
+                                <span>{dateLabel}</span>
+                            </span>
+                        )
                     }
                 >
-                    <span className="min-w-0 truncate">{statusItem.label}</span>
+                    <span className="min-w-0 truncate">
+                        {compact
+                            ? plantFieldStatusLabel(status).shortLabel
+                            : statusItem.label}
+                    </span>
                 </Button>
             }
         >
