@@ -16,6 +16,7 @@ import type { PgQueryResultHKT } from 'drizzle-orm/pg-core/session';
 import type { PgliteDatabase } from 'drizzle-orm/pglite';
 // @ts-expect-error Type definitions for 'pg' ESM entry may not be resolved under NodeNext; runtime is fine for tests
 import { Pool as PgPool } from 'pg';
+import { neonPoolErrorDetails } from './neonPoolError';
 import * as schema from './schema';
 
 type StorageDatabase = PgDatabase<PgQueryResultHKT, typeof schema>;
@@ -98,7 +99,22 @@ function nodePgStorage() {
 
 function neonStorage() {
     if (!pool) {
-        pool = new Pool({ connectionString: getDbConnectionString() });
+        const neonPool = new Pool({
+            connectionString: getDbConnectionString(),
+        });
+        // The driver removes a failed idle client before emitting this event.
+        // Handle it before first use so background disconnects cannot become
+        // uncaught errors. Query/transaction rejections still reach their callers.
+        neonPool.on('error', (error: unknown) => {
+            console.error('Neon pool background connection error', {
+                event: 'storage.neon.pool.error',
+                error: neonPoolErrorDetails(error),
+                totalCount: neonPool.totalCount,
+                idleCount: neonPool.idleCount,
+                waitingCount: neonPool.waitingCount,
+            });
+        });
+        pool = neonPool;
     }
     if (!neonClient) {
         neonClient = neonDrizzle({

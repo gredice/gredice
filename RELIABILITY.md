@@ -58,6 +58,18 @@ Use this guide for database, storage, background jobs, payments, notifications, 
 
 ## Logging
 
+The production Neon pool reports background connection errors with the stable
+`storage.neon.pool.error` event, error kind, safe SQLSTATE/transport code when
+available, and total/idle/waiting pool counts. Every event is logged at error
+level; raw errors, clients, URLs, messages, and stacks are omitted because Neon
+attaches the client to the error. The driver removes the failed idle client;
+the listener does not retry work, close the shared pool, or intercept query and
+transaction failures. Repeated events warrant investigating database availability
+and transport health even when the associated HTTP request succeeded.
+
+Run its isolated regression without a database:
+`pnpm --filter @gredice/storage exec node --import tsx --test --conditions=react-server tests/neonStoragePool.node.spec.ts`.
+
 - Keep console messages stable and action-oriented; put request, account, garden, operation, and entity IDs in the second argument object.
 - Include the caught `error` in that context object when logging failed critical-path work.
 - Do not interpolate IDs or secrets into log messages. Never log tokens; use booleans like `hasToken` when presence is enough for diagnosis.
