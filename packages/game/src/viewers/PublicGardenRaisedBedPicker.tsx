@@ -1,6 +1,5 @@
 'use client';
-
-import { RaisedBedSimpleIcon } from '@gredice/ui/RaisedBedSimpleIcon';
+import { GameRaisedBedSimpleIcon as RaisedBedSimpleIcon } from '@gredice/ui/GameIcons';
 import { useId } from 'react';
 import type { PublicGardenRaisedBed } from './publicGardenRaisedBedDetailsModel';
 

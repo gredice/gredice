@@ -1,7 +1,7 @@
 'use client';
-
+import { GameSeedlingIcon as Sprout } from '@gredice/ui/GameIcons';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Edit, Leaf, Redo, Settings, Sprout, Undo } from '@gredice/ui/icons';
+import { Edit, Leaf, Redo, Settings, Undo } from '@gredice/ui/icons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import type { PlantControlsProps } from '../@types/plant-generator';

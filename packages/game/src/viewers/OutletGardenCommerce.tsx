@@ -1,7 +1,7 @@
 'use client';
-
 import { Button } from '@gredice/ui/Button';
-import { Check, Reset, Sprout } from '@gredice/ui/icons';
+import { GameSeedlingIcon as Sprout } from '@gredice/ui/GameIcons';
+import { Check, Reset } from '@gredice/ui/icons';
 import { Spinner } from '@gredice/ui/Spinner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

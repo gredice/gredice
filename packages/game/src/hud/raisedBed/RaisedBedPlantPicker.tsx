@@ -9,6 +9,10 @@ import {
     CalendarDatePicker,
     parseCalendarDateKey,
 } from '@gredice/ui/CalendarDatePicker';
+import {
+    GameSeedPacketIcon as PlantingSeedIcon,
+    GameSeedlingIcon as Sprout,
+} from '@gredice/ui/GameIcons';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
 import {
@@ -19,9 +23,7 @@ import {
     Left,
     Search,
     ShoppingCart,
-    Sprout,
 } from '@gredice/ui/icons';
-import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Switch } from '@gredice/ui/Switch';

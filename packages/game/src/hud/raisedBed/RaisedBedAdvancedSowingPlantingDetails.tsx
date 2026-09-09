@@ -1,6 +1,7 @@
 import { plantFieldStatusLabel } from '@gredice/js/plants';
+import { GameSeedlingIcon as Sprout } from '@gredice/ui/GameIcons';
 import { PlantGridIcon } from '@gredice/ui/GridIcons';
-import { MapPin, Sprout } from '@gredice/ui/icons';
+import { MapPin } from '@gredice/ui/icons';
 import type { AdvancedSowingGardenPlantingVisual } from './advancedSowingGardenVisuals';
 import { RaisedBedSelectedPlantingOwnerControls } from './RaisedBedSelectedPlantingOwnerControls';
 

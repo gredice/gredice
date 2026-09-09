@@ -1,6 +1,5 @@
 'use client';
-
-import { Sprout } from '@gredice/ui/icons';
+import { GameSeedlingIcon as Sprout } from '@gredice/ui/GameIcons';
 import { Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import {

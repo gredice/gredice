@@ -1,10 +1,7 @@
 import { getAchievementDefinition } from '@gredice/js/achievements';
 import { BlockImage } from '@gredice/ui/BlockImage';
-import {
-    Empty,
-    ListTodo,
-    ShoppingCart as ShoppingCartIcon,
-} from '@gredice/ui/icons';
+import { GameTasksIcon as ListTodo } from '@gredice/ui/GameIcons';
+import { Empty, ShoppingCart as ShoppingCartIcon } from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';
 import { ListItem } from '@gredice/ui/ListItem';
 import { Row } from '@gredice/ui/Row';

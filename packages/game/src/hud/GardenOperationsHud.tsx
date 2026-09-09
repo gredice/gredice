@@ -1,16 +1,19 @@
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
 import { DotIndicator } from '@gredice/ui/DotIndicator';
+import {
+    GameHistoryIcon as History,
+    GameMailboxIcon as Inbox,
+    GameTasksIcon as ListTodo,
+    GameRaisedBedIcon as RaisedBedIcon,
+} from '@gredice/ui/GameIcons';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
 import {
     Approved,
     Calendar,
     Error as ErrorIcon,
-    History,
     Hourglass,
-    Inbox,
     Info,
-    ListTodo,
     MailCheck,
     Navigate,
     ShoppingCart,
@@ -19,7 +22,6 @@ import { Markdown } from '@gredice/ui/Markdown';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Popper } from '@gredice/ui/Popper';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { ScrollArea } from '@gredice/ui/ScrollArea';
 import { Stack } from '@gredice/ui/Stack';
@@ -1993,7 +1995,7 @@ export function GardenOperationsHud() {
                             <DotIndicator color={'success'} />
                         </div>
                     )}
-                    <ListTodo className="size-5" />
+                    <ListTodo className="size-8" />
                 </Button>
             }
         >

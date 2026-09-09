@@ -1,4 +1,3 @@
-import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { test } from '@playwright/experimental-ct-react';
 import sharp from 'sharp';
@@ -8,7 +7,6 @@ import { OperationCoverSnapshotViewer } from './OperationCoverSnapshotViewer';
 
 const SNAPSHOT_SIZE = 192;
 const SNAPSHOT_DEVICE_SCALE_FACTOR = 4;
-const OUTPUT_PATH = './public/assets/hud/tutorial-task-list.png';
 const gameAssetBaseUrl =
     process.env.GAME_ASSET_BASE_URL ?? 'https://vrt.gredice.com';
 
@@ -198,8 +196,6 @@ test('tutorial task list icon', async ({ mount, page }) => {
         console.error('Browser page error:', error.message);
     });
 
-    await mkdir('./public/assets/hud', { recursive: true });
-
     const component = await mount(
         <div
             style={{
@@ -228,5 +224,10 @@ test('tutorial task list icon', async ({ mount, page }) => {
         omitBackground: true,
     });
 
-    await saveIconPng(buffer, OUTPUT_PATH);
+    // Keep the model preview separate from the selected HUD artwork.
+    // See public/assets/hud/README.md for the current icon's source.
+    await saveIconPng(
+        buffer,
+        test.info().outputPath('tutorial-task-list-model-preview.png'),
+    );
 });

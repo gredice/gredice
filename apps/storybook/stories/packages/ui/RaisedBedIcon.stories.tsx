@@ -31,3 +31,21 @@ export const IconOnly: Story = {
         physicalId: null,
     },
 };
+
+export const GameWithIdentifier: Story = {
+    args: { appearance: 'game' },
+};
+export const GameIconOnly: Story = {
+    args: { appearance: 'game', physicalId: null, className: 'size-10' },
+};
+export const GameLongIdentifier: Story = {
+    args: {
+        appearance: 'game',
+        physicalId: 'ZG-12345',
+        containerClassName: 'h-6 w-6 min-w-6',
+        className: 'size-5',
+    },
+};
+export const GameNumericZero: Story = {
+    args: { appearance: 'game', physicalId: 0 },
+};
