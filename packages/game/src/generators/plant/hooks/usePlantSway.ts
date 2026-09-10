@@ -1,7 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useSceneTimeUniform } from '../../../scene/SceneTime';
+import {
+    useSceneFixedTimeSeconds,
+    useSceneTimeInvalidation,
+    useSceneTimeUniform,
+} from '../../../scene/SceneTime';
 import { useGameState } from '../../../useGameState';
 import { SeededRNG } from '../lib/rng';
 
@@ -116,9 +120,14 @@ export const plantSwayVertexShader = /* glsl */ `
 
 export function usePlantSway(seed: string, options: PlantSwayOptions) {
     const weather = useGameState((state) => state.weather);
+    const fixedTimeSeconds = useSceneFixedTimeSeconds();
     const timeUniform = useSceneTimeUniform();
     const prefersReducedMotion = usePrefersReducedMotion();
     const swayDisabled = options.enabled === false || prefersReducedMotion;
+    useSceneTimeInvalidation(
+        'plant-sway',
+        !swayDisabled && fixedTimeSeconds === undefined,
+    );
     const uniforms = useMemo(() => {
         const rng = new SeededRNG(seed);
         return {

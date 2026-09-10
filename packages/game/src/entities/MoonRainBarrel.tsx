@@ -7,6 +7,10 @@ import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { GardenNightLight } from './helpers/GardenNightLight';
+import {
+    resolveTimeDrivenMaterialSpeed,
+    useTimeDrivenMaterialAnimation,
+} from './helpers/timeDrivenMaterialAnimation';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
@@ -41,6 +45,7 @@ export function MoonRainBarrel({
         () => [waterMaterialRef, moonStoneMaterialRef],
         [],
     );
+    const materialAnimationActive = useTimeDrivenMaterialAnimation();
 
     return (
         <animated.group
@@ -107,7 +112,10 @@ export function MoonRainBarrel({
                     ref={waterMaterialRef}
                     roughness={0.3}
                     side={DoubleSide}
-                    speed={0.55}
+                    speed={resolveTimeDrivenMaterialSpeed(
+                        0.55,
+                        materialAnimationActive,
+                    )}
                     transparent
                 />
             </WeatheredEntityPart>

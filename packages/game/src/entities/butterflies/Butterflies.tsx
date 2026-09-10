@@ -12,6 +12,10 @@ import {
 import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
+import {
+    sceneFrameRates,
+    useSceneTimeInvalidation,
+} from '../../scene/SceneTime';
 import type { Stack } from '../../types/Stack';
 import {
     type AnimalDebugEntry,
@@ -1277,6 +1281,11 @@ export function Butterflies({
     const lastSpawnAtRef = useRef(new Map<string, number>());
     const sequenceRef = useRef(new Map<string, number>());
     const lastPopulationTickRef = useRef(Number.NEGATIVE_INFINITY);
+    useSceneTimeInvalidation(
+        'fauna:butterflies',
+        (activeConditions && habitats.length > 0) || spawns.length > 0,
+        sceneFrameRates.ambient,
+    );
 
     const commitSpawns = useCallback((nextSpawns: ButterflySpawn[]) => {
         spawnsRef.current = nextSpawns;

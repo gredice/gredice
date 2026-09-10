@@ -6,9 +6,14 @@ import {
     useLayoutEffect,
     useMemo,
     useRef,
+    useState,
 } from 'react';
 import { Euler, type InstancedMesh, Object3D, Vector3 } from 'three';
 import { isWaterBlockName } from '../entities/waterBlockNames';
+import {
+    useSceneRenderRequest,
+    useSceneTimeInvalidation,
+} from '../scene/SceneTime';
 
 export enum ParticleType {
     Default = 'default',
@@ -96,6 +101,10 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
     const meshTreeLeaf = useRef<InstancedMesh>(null);
     const meshStone = useRef<InstancedMesh>(null);
     const meshWater = useRef<InstancedMesh>(null);
+    const particlesActiveRef = useRef(false);
+    const [particlesActive, setParticlesActive] = useState(false);
+    const requestRender = useSceneRenderRequest();
+    useSceneTimeInvalidation('particle-bursts', particlesActive);
     const particles = useMemo(() => {
         const temp = [];
         for (let i = 0; i < particlePoolSize; i++) {
@@ -238,6 +247,11 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
                 break;
             }
         }
+        if (activatedParticles > 0) {
+            particlesActiveRef.current = true;
+            setParticlesActive(true);
+            requestRender('particle-burst-spawned', 2);
+        }
     };
 
     const dummy = useMemo(() => new Object3D(), []);
@@ -282,6 +296,10 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
     }, []);
 
     useFrame((_, delta) => {
+        if (!particlesActiveRef.current) {
+            return;
+        }
+
         const activeCounts: Record<ParticleType, number> = {
             [ParticleType.Default]: 0,
             [ParticleType.Hay]: 0,
@@ -291,6 +309,7 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
             [ParticleType.Water]: 0,
         };
         const touchedMeshes = new Set<InstancedMesh>();
+        let activeParticleCount = 0;
 
         for (const p of particles) {
             if (p.life >= p.maxLife) {
@@ -409,6 +428,7 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
 
             const matrixIndex = activeCounts[p.type];
             activeCounts[p.type] += 1;
+            activeParticleCount += 1;
             targetMesh.setMatrixAt(matrixIndex, dummy.matrix);
             touchedMeshes.add(targetMesh);
         }
@@ -430,6 +450,11 @@ export function ParticleSystemProvider({ children }: PropsWithChildren) {
             if (nextCount > 0 && touchedMeshes.has(mesh)) {
                 mesh.instanceMatrix.needsUpdate = true;
             }
+        }
+
+        if (activeParticleCount === 0) {
+            particlesActiveRef.current = false;
+            setParticlesActive(false);
         }
     });
 

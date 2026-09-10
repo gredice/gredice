@@ -15,7 +15,7 @@ export const Drops = ({ count = 2000, intensity }: DropsProps) => {
     const fref = useRef<THREE.Group>(null);
     usePrecipitationFieldPosition({ fieldRef: fref, followCamera: true });
     const timeUniform = useSceneTimeUniform();
-    useSceneTimeInvalidation();
+    useSceneTimeInvalidation('rain-particles');
     const rainProgressUniformRef = useRef<THREE.IUniform<number> | null>(null);
     if (!rainProgressUniformRef.current) {
         rainProgressUniformRef.current = {

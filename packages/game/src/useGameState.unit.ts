@@ -56,6 +56,34 @@ function createStructureEditor(templateKey: 'barn' | 'house') {
     return confirmed.value;
 }
 
+test('authenticated garden queries stay enabled by default and allow explicit isolation', () => {
+    const defaultStore = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+    const isolatedStore = createGameState({
+        appBaseUrl: '',
+        authenticatedGardenQueriesEnabled: false,
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        assert.equal(
+            defaultStore.getState().authenticatedGardenQueriesEnabled,
+            true,
+        );
+        assert.equal(
+            isolatedStore.getState().authenticatedGardenQueriesEnabled,
+            false,
+        );
+    } finally {
+        defaultStore.getState().audio.dispose();
+        isolatedStore.getState().audio.dispose();
+    }
+});
+
 test('mock garden profile changes without recreating runtime resources', () => {
     const store = createGameState({
         appBaseUrl: '',

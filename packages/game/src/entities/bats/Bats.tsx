@@ -12,6 +12,10 @@ import type { Group } from 'three';
 import { MathUtils, type Mesh, Vector3 } from 'three';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
+import {
+    sceneFrameRates,
+    useSceneTimeInvalidation,
+} from '../../scene/SceneTime';
 import type { Stack } from '../../types/Stack';
 import {
     type AnimalDebugEntry,
@@ -752,6 +756,11 @@ export function Bats({
     const renderedBatCount = populationPlan.reduce(
         (total, group) => total + group.count,
         0,
+    );
+    useSceneTimeInvalidation(
+        'fauna:bats',
+        claimedCount > 0,
+        sceneFrameRates.ambient,
     );
     const onHidden = useCallback(
         (id: string) => {

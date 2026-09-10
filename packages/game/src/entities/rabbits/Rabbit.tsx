@@ -14,6 +14,10 @@ import {
     type Vector3,
 } from 'three';
 import { useBlockData } from '../../hooks/useBlockData';
+import {
+    sceneFrameRates,
+    useSceneTimeInvalidation,
+} from '../../scene/SceneTime';
 import type { EntityInstanceProps } from '../../types/runtime/EntityInstanceProps';
 import { useGameStateStore } from '../../useGameState';
 import { useStackHeight } from '../../utils/getStackHeight';
@@ -505,6 +509,7 @@ export function Rabbit({
         primaryCasterCount: rabbitModel.primaryCasterCount,
         species: 'rabbit',
     });
+    useSceneTimeInvalidation('fauna:rabbits', true, sceneFrameRates.ambient);
 
     useEffect(() => {
         const group = groupRef.current;

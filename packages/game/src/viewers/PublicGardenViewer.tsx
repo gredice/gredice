@@ -6,6 +6,7 @@ import {
     isGameBackgroundPaletteKey,
 } from '@gredice/js/gameBackground';
 import { cx } from '@gredice/ui/utils';
+import type { Frameloop } from '@react-three/fiber';
 import {
     QueryClient,
     QueryClientProvider,
@@ -106,6 +107,12 @@ import { PublicGardenRaisedBedPicker } from './PublicGardenRaisedBedPicker';
 import type { PublicGardenRaisedBed } from './publicGardenRaisedBedDetailsModel';
 
 export type PublicGardenBlock = Block;
+
+export function resolvePublicGardenSceneFrameloop(
+    captureEnabled: boolean,
+): Frameloop {
+    return captureEnabled ? 'never' : 'demand';
+}
 
 const PublicGardenVisualOccludersContext = createContext<Group | null>(null);
 
@@ -804,11 +811,15 @@ function PublicGardenScene({
             {blockDataLoaded ? (
                 <Scene
                     baseFramesPerSecond={capture ? 0 : undefined}
+                    continuousRenderLeasesEnabled={!capture}
                     fixedTimeSeconds={
                         capture
                             ? publicGardenCaptureSceneTimeSeconds
                             : undefined
                     }
+                    frameloop={resolvePublicGardenSceneFrameloop(
+                        Boolean(capture),
+                    )}
                     pixelRatio={capture ? 1 : undefined}
                     position={resolvedInitialView.cameraPosition}
                     quality={qualityProfile}

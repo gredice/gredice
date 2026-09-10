@@ -19,7 +19,11 @@ import {
 import { SeededRNG } from '../../generators/plant/lib/rng';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
-import { useSceneTimeUniform } from '../../scene/SceneTime';
+import {
+    useSceneFixedTimeSeconds,
+    useSceneTimeInvalidation,
+    useSceneTimeUniform,
+} from '../../scene/SceneTime';
 import { resolveSpriteAtlasAssetPaths } from '../../sprites/resolveSpriteAtlasAssetPaths';
 import { getSpriteBrightness } from '../../sprites/spriteLighting';
 import type { SpriteAtlasPage, SpriteAtlasSprite } from '../../sprites/types';
@@ -632,6 +636,13 @@ function GroundDecorationInstancedBatch({
     const windDirectionX = Math.sin((windDirectionDegrees * Math.PI) / 180);
     const windDirectionZ = -Math.cos((windDirectionDegrees * Math.PI) / 180);
     const windStrength = Math.max(0, Math.min(1, windSpeed / 16));
+    const fixedTimeSeconds = useSceneFixedTimeSeconds();
+    useSceneTimeInvalidation(
+        'ground-decoration-wobble',
+        batch.instances.length > 0 &&
+            windStrength > 0 &&
+            fixedTimeSeconds === undefined,
+    );
     const brightness = getSpriteBrightness(
         timeOfDay,
         weather

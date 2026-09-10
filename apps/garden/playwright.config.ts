@@ -20,7 +20,7 @@ const reporter: PlaywrightTestConfig['reporter'] = [
     ['html', { open: 'never' }],
 ];
 const webglComponentTestPattern =
-    /(actor-speech-bubble|cursor-anchored-zoom|detailed-inspection-farmer|garden-building-avatar-interiors|garden-building-pointer-profile|garden-building-vertical-slice|garden-preview-capture|garden-structure-kit-renderer|hover-outline|instanced-mesh-material-swap|precipitation-camera-follow|public-garden-switch|raised-bed-notification-bubble|solar-eclipse)\.spec\.tsx/;
+    /(actor-speech-bubble|cursor-anchored-zoom|detailed-inspection-farmer|garden-building-avatar-interiors|garden-building-pointer-profile|garden-building-vertical-slice|garden-preview-capture|garden-structure-kit-renderer|hover-outline|instanced-mesh-material-swap|precipitation-camera-follow|public-garden-switch|r3f-root-isolation|raised-bed-notification-bubble|solar-eclipse)\.spec\.tsx/;
 const outletGardenRouteTestPattern = /outlet-garden-route\.spec\.ts/;
 
 // Plugin to intercept next/font/google before Vite's resolver

@@ -14,9 +14,17 @@ import {
     normalizePublicGardenStacks,
     type PublicGardenCapturePhase,
     type PublicGardenStack,
+    resolvePublicGardenSceneFrameloop,
     resolvePublicGardenSceneInitialView,
     shouldRenderPublicGardenGroundDecorations,
 } from './PublicGardenViewer';
+
+describe('resolvePublicGardenSceneFrameloop', () => {
+    it('isolates capture roots while ordinary scenes remain demand-rendered', () => {
+        assert.equal(resolvePublicGardenSceneFrameloop(false), 'demand');
+        assert.equal(resolvePublicGardenSceneFrameloop(true), 'never');
+    });
+});
 
 describe('shouldRenderPublicGardenGroundDecorations', () => {
     it('keeps the normal detail default while allowing an isolated foliage override', () => {

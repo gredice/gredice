@@ -11,6 +11,11 @@ import {
 } from 'three';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
+import {
+    sceneFrameRates,
+    useSceneDeadline,
+    useSceneTimeInvalidation,
+} from '../../scene/SceneTime';
 import type { Stack } from '../../types/Stack';
 import { type AnimalDebugEntry, useGameState } from '../../useGameState';
 import { useGameGLTF } from '../../utils/useGameGLTF';
@@ -1046,6 +1051,11 @@ export function Squirrels({
             }),
         [cooldowns, gardenSeed, habitats, now],
     );
+    useSceneTimeInvalidation(
+        'fauna:squirrels',
+        spawnPlan.length > 0,
+        sceneFrameRates.ambient,
+    );
 
     useEffect(() => {
         setCooldowns((current) =>
@@ -1056,7 +1066,7 @@ export function Squirrels({
         );
     }, [habitats]);
 
-    useEffect(() => {
+    const nextCooldownDelayMs = useMemo(() => {
         let nextDelay = Number.POSITIVE_INFINITY;
         for (const habitat of habitats) {
             const remaining = getSquirrelCooldownRemainingMs({
@@ -1067,15 +1077,20 @@ export function Squirrels({
                 nextDelay = Math.min(nextDelay, remaining);
             }
         }
-        if (!Number.isFinite(nextDelay)) {
-            return;
-        }
-        const timeout = window.setTimeout(
-            () => setNow(Date.now()),
-            Math.max(25, nextDelay + 1),
-        );
-        return () => window.clearTimeout(timeout);
+        return Number.isFinite(nextDelay) ? Math.max(25, nextDelay + 1) : null;
     }, [cooldowns, habitats, now]);
+    const cooldownDeadlineMs = useMemo(
+        () =>
+            nextCooldownDelayMs === null
+                ? null
+                : globalThis.performance.now() + nextCooldownDelayMs,
+        [nextCooldownDelayMs],
+    );
+    useSceneDeadline({
+        callback: () => setNow(Date.now()),
+        deadlineMs: cooldownDeadlineMs,
+        owner: 'fauna:squirrels:cooldown',
+    });
 
     const handleDespawn = useCallback((habitatId: string) => {
         const despawnedAt = Date.now();

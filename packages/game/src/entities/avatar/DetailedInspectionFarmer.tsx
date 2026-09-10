@@ -60,7 +60,11 @@ export function DetailedInspectionFarmer({
         species: 'avatar',
     });
 
-    useSceneTimeInvalidation(true, sceneFrameRates.interactive);
+    useSceneTimeInvalidation(
+        'detailed-inspection-farmer',
+        true,
+        sceneFrameRates.interactive,
+    );
 
     useLayoutEffect(() => {
         for (const mesh of model.meshes) {

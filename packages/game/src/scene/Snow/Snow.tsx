@@ -160,7 +160,7 @@ const Snow = ({
     const meshRef = useRef<THREE.InstancedMesh>(null);
     usePrecipitationFieldPosition({ fieldRef: fref, followCamera });
     const timeUniform = useSceneTimeUniform();
-    useSceneTimeInvalidation();
+    useSceneTimeInvalidation('snow-particles');
     const heightRange = Math.max(0.001, height + heightOffset - groundLevel);
     const requestedActiveCount = activeCount ?? count;
     const particleCapacity = Math.max(

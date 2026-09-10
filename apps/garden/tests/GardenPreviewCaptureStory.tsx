@@ -1,12 +1,20 @@
 'use client';
 
 import { createGardenStructureTemplateSeed } from '@gredice/js/gardenStructures';
+import { Canvas } from '@react-three/fiber';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createRuntimeFrameLoopProfileTelemetry } from '../../../packages/game/src/scene/gameProfileMetadata';
+import {
+    SceneTimeProvider,
+    useSceneAfterRenderSubscription,
+    useSceneFrameReceiptSubscription,
+} from '../../../packages/game/src/scene/SceneTime';
 import {
     type PublicGardenDetail,
     PublicGardenViewer,
 } from '../../../packages/game/src/viewers/PublicGardenViewer';
+import { R3FRootIsolationSpring } from '../../../packages/game/tests/R3FRootIsolationSpring';
 
 const capturedAt = '2026-07-11T10:00:00.000Z';
 const raisedBedId = 8_101;
@@ -117,16 +125,25 @@ const captureGarden = {
                 { id: 'grass-0-0', name: 'Block_Grass', rotation: 0 },
                 { id: 'water-0-0', name: 'Block_Water', rotation: 0 },
             ],
-            '1': [{ id: 'grass-0-1', name: 'Block_Grass', rotation: 0 }],
+            '1': [
+                { id: 'grass-0-1', name: 'Block_Grass', rotation: 0 },
+                { id: 'capture-cow', name: 'Cow', rotation: 0 },
+            ],
             '2': [{ id: 'grass-0-2', name: 'Block_Grass', rotation: 0 }],
         },
         '1': {
-            '0': [{ id: 'grass-1-0', name: 'Block_Grass', rotation: 0 }],
+            '0': [
+                { id: 'grass-1-0', name: 'Block_Grass', rotation: 0 },
+                { id: 'capture-rabbit', name: 'Rabbit', rotation: 0 },
+            ],
             '1': [{ id: 'grass-1-1', name: 'Block_Grass', rotation: 0 }],
             '2': [{ id: 'grass-1-2', name: 'Block_Grass', rotation: 0 }],
         },
         '2': {
-            '0': [{ id: 'grass-2-0', name: 'Block_Grass', rotation: 0 }],
+            '0': [
+                { id: 'grass-2-0', name: 'Block_Grass', rotation: 0 },
+                { id: 'capture-horse', name: 'Horse', rotation: 0 },
+            ],
             '1': [
                 { id: 'grass-2-1', name: 'Block_Grass', rotation: 0 },
                 {
@@ -183,6 +200,44 @@ type CaptureResult = {
     uniqueColorCount?: number;
     width?: number;
 };
+
+type CapturePostRenderCounters = {
+    afterRenderPassCount: number;
+    frameReceiptCount: number;
+};
+
+function CapturePostRenderWitness({
+    counters,
+    onFirstFrameReceipt,
+}: {
+    counters: CapturePostRenderCounters;
+    onFirstFrameReceipt: () => void;
+}) {
+    const firstFrameReceiptObservedRef = useRef(false);
+    const subscribeAfterRender = useSceneAfterRenderSubscription();
+    const subscribeFrameReceipt = useSceneFrameReceiptSubscription();
+
+    useEffect(
+        () =>
+            subscribeAfterRender(() => {
+                counters.afterRenderPassCount += 1;
+            }),
+        [counters, subscribeAfterRender],
+    );
+    useEffect(
+        () =>
+            subscribeFrameReceipt(() => {
+                counters.frameReceiptCount += 1;
+                if (!firstFrameReceiptObservedRef.current) {
+                    firstFrameReceiptObservedRef.current = true;
+                    onFirstFrameReceipt();
+                }
+            }),
+        [counters, onFirstFrameReceipt, subscribeFrameReceipt],
+    );
+
+    return null;
+}
 
 async function inspectCapturedPreview(blob: Blob) {
     const bitmap = await createImageBitmap(blob);
@@ -242,6 +297,7 @@ async function inspectCapturedPreview(blob: Blob) {
 }
 
 export function GardenPreviewCaptureStory() {
+    const [activeRootMounted, setActiveRootMounted] = useState(false);
     const [result, setResult] = useState<CaptureResult>({
         count: 0,
         status: 'waiting',
@@ -278,12 +334,82 @@ export function GardenPreviewCaptureStory() {
     }, []);
     const assetBaseUrl =
         typeof window === 'undefined' ? '' : window.location.origin;
+    const activeRootCounters = useMemo(
+        () => ({
+            frameloop: 'demand',
+            springChangeCount: 0,
+            submittedFrameCount: 0,
+        }),
+        [],
+    );
+    const activeRootTelemetry = useMemo(
+        createRuntimeFrameLoopProfileTelemetry,
+        [],
+    );
+    const capturePostRenderCounters = useMemo<CapturePostRenderCounters>(
+        () => ({ afterRenderPassCount: 0, frameReceiptCount: 0 }),
+        [],
+    );
+    const handleFirstCaptureFrameReceipt = useCallback(
+        () => setActiveRootMounted(true),
+        [],
+    );
+    const outputRef = useRef<HTMLOutputElement>(null);
+
+    useEffect(() => {
+        const publish = () => {
+            if (!outputRef.current) {
+                return;
+            }
+            outputRef.current.textContent = JSON.stringify({
+                ...result,
+                activeRootMounted,
+                activeRootSubmittedFrameCount:
+                    activeRootCounters.submittedFrameCount,
+                captureAfterRenderPassCount:
+                    capturePostRenderCounters.afterRenderPassCount,
+                captureFrameReceiptCount:
+                    capturePostRenderCounters.frameReceiptCount,
+            });
+        };
+        publish();
+        const interval = window.setInterval(publish, 50);
+        return () => window.clearInterval(interval);
+    }, [
+        activeRootCounters,
+        activeRootMounted,
+        capturePostRenderCounters,
+        result,
+    ]);
 
     return (
         <NuqsTestingAdapter searchParams="vrt=8001">
-            <output data-testid="garden-preview-capture-result">
-                {JSON.stringify(result)}
-            </output>
+            <output
+                data-testid="garden-preview-capture-result"
+                ref={outputRef}
+            />
+            <div
+                aria-hidden
+                data-testid="garden-preview-active-spring-root"
+                style={{ height: 96, width: 96 }}
+            >
+                {activeRootMounted ? (
+                    <Canvas camera={{ position: [0, 0, 4] }} frameloop="demand">
+                        <SceneTimeProvider
+                            ambientFramesPerSecond={30}
+                            baseFramesPerSecond={0}
+                            continuousRenderLeasesEnabled
+                            runtimeFrameLoop={activeRootTelemetry}
+                            suspendWhenOffscreen
+                        >
+                            <R3FRootIsolationSpring
+                                counters={activeRootCounters}
+                                ownsCadence
+                            />
+                        </SceneTimeProvider>
+                    </Canvas>
+                ) : null}
+            </div>
             <div
                 aria-hidden
                 style={{
@@ -307,6 +433,12 @@ export function GardenPreviewCaptureStory() {
                     className="size-full"
                     deferDetails={false}
                     garden={captureGarden}
+                    sceneChildren={
+                        <CapturePostRenderWitness
+                            counters={capturePostRenderCounters}
+                            onFirstFrameReceipt={handleFirstCaptureFrameReceipt}
+                        />
+                    }
                     spriteBaseUrl={assetBaseUrl}
                 />
             </div>

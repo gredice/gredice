@@ -1,5 +1,7 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useGameSceneRuntimeActive } from '../scene/sceneRuntimeActivity';
 import { useGameState } from '../useGameState';
 import { useCurrentGarden } from './useCurrentGarden';
 
@@ -12,12 +14,18 @@ export function detailedRaisedBedInspectionReportsQueryKey(
     ] as const;
 }
 
-async function getDetailedRaisedBedInspectionReports(gardenId: number) {
+async function getDetailedRaisedBedInspectionReports(
+    gardenId: number,
+    signal?: AbortSignal,
+) {
     const response = await clientAuthenticated().api.gardens[':gardenId'][
         'detailed-inspection-reports'
-    ].$get({
-        param: { gardenId: gardenId.toString() },
-    });
+    ].$get(
+        {
+            param: { gardenId: gardenId.toString() },
+        },
+        { init: { signal } },
+    );
 
     if (!response.ok) {
         throw new Error(
@@ -37,28 +45,46 @@ type DetailedRaisedBedInspectionReportsResponse = Awaited<
 
 export function useDetailedRaisedBedInspectionReports() {
     const { data: currentGarden } = useCurrentGarden();
+    const runtimeActive = useGameSceneRuntimeActive();
+    const queryClient = useQueryClient();
     const isMock = useGameState((state) => state.isMock);
     const localSandboxStorageKey = useGameState(
         (state) => state.localSandboxStorageKey,
     );
     const enabled =
+        runtimeActive &&
         currentGarden?.id != null &&
         !currentGarden.isSandbox &&
         !isMock &&
         localSandboxStorageKey === null;
 
+    useEffect(() => {
+        if (runtimeActive) {
+            return;
+        }
+        void queryClient.cancelQueries({
+            exact: true,
+            queryKey: detailedRaisedBedInspectionReportsQueryKey(
+                currentGarden?.id,
+            ),
+        });
+    }, [currentGarden?.id, queryClient, runtimeActive]);
+
     return useQuery({
         queryKey: detailedRaisedBedInspectionReportsQueryKey(currentGarden?.id),
-        queryFn: async () => {
+        queryFn: async ({ signal }) => {
             if (currentGarden?.id == null) {
                 throw new Error(
                     'Garden ID is required to load detailed inspection reports',
                 );
             }
-            return getDetailedRaisedBedInspectionReports(currentGarden.id);
+            return getDetailedRaisedBedInspectionReports(
+                currentGarden.id,
+                signal,
+            );
         },
         enabled,
-        refetchInterval: 60_000,
+        refetchInterval: enabled ? 60_000 : false,
         staleTime: 30_000,
     });
 }

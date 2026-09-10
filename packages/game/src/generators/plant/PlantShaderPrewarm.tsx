@@ -6,6 +6,7 @@ import {
     getGeneratedPlantProfileSessionId,
     recordGeneratedPlantProfileShaderPrewarm,
 } from '../../scene/generatedPlantProfileMetrics';
+import { useSceneRuntimeVisible } from '../../scene/SceneTime';
 import {
     GENERATED_PLANT_SHADER_PREWARM_COMPILE_TIMEOUT_MS,
     type GeneratedPlantShaderPrewarmLifecycleStatus,
@@ -38,13 +39,15 @@ export function PlantShaderPrewarm({
     const camera = useThree((state) => state.camera);
     const gl = useThree((state) => state.gl);
     const scene = useThree((state) => state.scene);
+    const runtimeVisible = useSceneRuntimeVisible();
+    const runtimeEnabled = enabled && runtimeVisible;
 
     useEffect(() => {
         let active = true;
         let activeAttemptController: AbortController | null = null;
         let attemptId = 0;
         let completed = false;
-        const profileSessionId = enabled
+        const profileSessionId = runtimeEnabled
             ? getGeneratedPlantProfileSessionId()
             : null;
         let programCountBefore = gl.info.programs?.length ?? null;
@@ -153,13 +156,13 @@ export function PlantShaderPrewarm({
                     publishStatus(null);
                 },
                 onContextRestored: () => {
-                    if (enabled) {
+                    if (runtimeEnabled) {
                         scheduleCompile();
                     }
                 },
                 renderer: gl,
             });
-        if (enabled) {
+        if (runtimeEnabled) {
             scheduleCompile();
         }
 
@@ -180,10 +183,10 @@ export function PlantShaderPrewarm({
     }, [
         camera,
         compileTimeoutMs,
-        enabled,
         gl,
         onComplete,
         onStatusChange,
+        runtimeEnabled,
         scene,
         variantKey,
     ]);

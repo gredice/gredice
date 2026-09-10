@@ -9,6 +9,7 @@ const TASK_PRIORITY_WEIGHT = {
 export interface GeneratedPlantTaskExecutionContext {
     key: string;
     priority: GeneratedPlantTaskPriority;
+    signal: AbortSignal;
 }
 
 export interface ScheduleGeneratedPlantTaskOptions<Task> {
@@ -54,6 +55,7 @@ interface TaskSubscriber<Result> {
 }
 
 interface TaskEntry<Task, Result> {
+    executionController: AbortController | null;
     key: string;
     priority: GeneratedPlantTaskPriority;
     sequence: number;
@@ -122,6 +124,7 @@ export class GeneratedPlantTaskScheduler<Task, Result> {
             this.promoteEntry(entry, priority);
         } else {
             entry = {
+                executionController: null,
                 key,
                 priority,
                 sequence: this.nextSequence,
@@ -239,6 +242,14 @@ export class GeneratedPlantTaskScheduler<Task, Result> {
                 this.entriesByKey.delete(entry.key);
             }
             this.queuedTaskRemovalCount += 1;
+        } else if (
+            entry.state === 'in-flight' &&
+            entry.subscribers.size === 0
+        ) {
+            if (this.entriesByKey.get(entry.key) === entry) {
+                this.entriesByKey.delete(entry.key);
+            }
+            entry.executionController?.abort(reason);
         }
     }
 
@@ -299,6 +310,8 @@ export class GeneratedPlantTaskScheduler<Task, Result> {
         }
 
         next.state = 'in-flight';
+        const executionController = new AbortController();
+        next.executionController = executionController;
         this.inFlight = next;
         this.startedTaskCount += 1;
 
@@ -307,6 +320,7 @@ export class GeneratedPlantTaskScheduler<Task, Result> {
                 this.execute(next.task, {
                     key: next.key,
                     priority: next.priority,
+                    signal: executionController.signal,
                 }),
             )
             .then(
@@ -355,7 +369,11 @@ export class GeneratedPlantTaskScheduler<Task, Result> {
 
     private failEntry(entry: TaskEntry<Task, Result>, error: unknown) {
         this.finishEntry(entry);
-        this.failedTaskCount += 1;
+        if (error instanceof Error && error.name === 'AbortError') {
+            this.staleResultCount += 1;
+        } else {
+            this.failedTaskCount += 1;
+        }
 
         for (const subscriber of Array.from(entry.subscribers)) {
             this.removeSubscriber(entry, subscriber);
@@ -366,6 +384,7 @@ export class GeneratedPlantTaskScheduler<Task, Result> {
     }
 
     private finishEntry(entry: TaskEntry<Task, Result>) {
+        entry.executionController = null;
         if (this.inFlight === entry) {
             this.inFlight = null;
         }

@@ -1,11 +1,18 @@
 import type { BlockData } from '@gredice/client';
 import { useFrame } from '@react-three/fiber';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Group, Material, Object3D } from 'three';
 import { MathUtils, type Mesh, Vector3 } from 'three';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
+import {
+    sceneFrameRates,
+    useSceneDeadline,
+    useSceneFixedStepWork,
+    useSceneRenderRequest,
+    useSceneTimeInvalidation,
+} from '../../scene/SceneTime';
 import type { Stack } from '../../types/Stack';
 import {
     type AnimalDebugEntry,
@@ -666,6 +673,30 @@ const emptySlugRainHistory: SlugRainHistory = {
     rainActive: false,
 };
 
+function slugPopulationStatesEqual(
+    left: SlugPopulationState,
+    right: SlugPopulationState,
+) {
+    const leftCooldowns = Object.entries(left.cooldownUntilById);
+    const rightCooldowns = Object.entries(right.cooldownUntilById);
+    return (
+        leftCooldowns.length === rightCooldowns.length &&
+        leftCooldowns.every(
+            ([id, deadline]) => right.cooldownUntilById[id] === deadline,
+        ) &&
+        left.entries.length === right.entries.length &&
+        left.entries.every((entry, index) => {
+            const other = right.entries[index];
+            return (
+                other !== undefined &&
+                entry.lifecycle === other.lifecycle &&
+                entry.lifecycleStartedAtMs === other.lifecycleStartedAtMs &&
+                entry.spawn === other.spawn
+            );
+        })
+    );
+}
+
 export function Slugs({
     farmId,
     garden,
@@ -716,29 +747,31 @@ export function Slugs({
             }),
         );
     }, [observedRainIntensity, weatherDisabled]);
-    useEffect(() => {
+    const rainHistoryDeadlineMs = useMemo(() => {
         const rainEndedAt = rainHistory.lastRainEndedAtMs;
-        if (rainEndedAt === null) {
-            return;
-        }
-        const remaining = rainEndedAt + slugPostRainWindowMs - Date.now();
-        if (remaining <= 0) {
-            setRainHistory((current) =>
-                current.lastRainEndedAtMs === rainEndedAt
-                    ? { ...current, lastRainEndedAtMs: null }
-                    : current,
-            );
-            return;
-        }
-        const timeout = window.setTimeout(() => {
-            setRainHistory((current) =>
-                current.lastRainEndedAtMs === rainEndedAt
-                    ? { ...current, lastRainEndedAtMs: null }
-                    : current,
-            );
-        }, remaining + 1);
-        return () => window.clearTimeout(timeout);
+        return rainEndedAt === null
+            ? null
+            : globalThis.performance.now() +
+                  Math.max(
+                      1,
+                      rainEndedAt + slugPostRainWindowMs - Date.now() + 1,
+                  );
     }, [rainHistory.lastRainEndedAtMs]);
+    useSceneDeadline({
+        callback: () => {
+            const rainEndedAt = rainHistory.lastRainEndedAtMs;
+            if (rainEndedAt === null) {
+                return;
+            }
+            setRainHistory((current) =>
+                current.lastRainEndedAtMs === rainEndedAt
+                    ? { ...current, lastRainEndedAtMs: null }
+                    : current,
+            );
+        },
+        deadlineMs: rainHistoryDeadlineMs,
+        owner: 'fauna:slugs:post-rain-window',
+    });
     const postRainSurfaceWetness = weatherDisabled
         ? 0
         : getSlugPostRainWetness({
@@ -775,20 +808,71 @@ export function Slugs({
     );
     const [population, setPopulation] =
         useState<SlugPopulationState>(emptySlugPopulation);
+    const requestRender = useSceneRenderRequest();
+    const reconcilePopulation = useCallback(() => {
+        setPopulation((previous) => {
+            const next = reconcileSlugPopulation({
+                nowMs: Date.now(),
+                plan,
+                previous,
+            });
+            return slugPopulationStatesEqual(previous, next) ? previous : next;
+        });
+    }, [plan]);
 
     useEffect(() => {
-        const reconcile = () =>
-            setPopulation((previous) =>
-                reconcileSlugPopulation({
-                    nowMs: Date.now(),
-                    plan,
-                    previous,
-                }),
-            );
-        reconcile();
-        const interval = window.setInterval(reconcile, 500);
-        return () => window.clearInterval(interval);
-    }, [plan]);
+        reconcilePopulation();
+    }, [reconcilePopulation]);
+    const populationTransitionActive = population.entries.some(
+        (entry) => entry.lifecycle !== 'active',
+    );
+    useSceneFixedStepWork({
+        callback: reconcilePopulation,
+        enabled: populationTransitionActive,
+        maxDeltaMs: 500,
+        owner: 'fauna:slugs:population',
+        stepsPerSecond: 2,
+    });
+    const populationCooldownDeadlineMs = useMemo(() => {
+        let nextCooldownAtMs = Number.POSITIVE_INFINITY;
+        for (const spawn of plan) {
+            if (
+                population.entries.some(
+                    (entry) =>
+                        entry.spawn.id === spawn.id &&
+                        entry.lifecycle !== 'departing',
+                )
+            ) {
+                continue;
+            }
+            const cooldownUntilMs = population.cooldownUntilById[spawn.id] ?? 0;
+            if (cooldownUntilMs > 0) {
+                nextCooldownAtMs = Math.min(nextCooldownAtMs, cooldownUntilMs);
+            }
+        }
+        return Number.isFinite(nextCooldownAtMs)
+            ? globalThis.performance.now() +
+                  Math.max(1, nextCooldownAtMs - Date.now() + 1)
+            : null;
+    }, [plan, population]);
+    useSceneDeadline({
+        callback: reconcilePopulation,
+        deadlineMs: populationCooldownDeadlineMs,
+        owner: 'fauna:slugs:population-cooldown',
+    });
+    const activeSlugCount = population.entries.length;
+    useEffect(() => {
+        requestRender(
+            activeSlugCount > 0
+                ? 'fauna:slugs:population-active'
+                : 'fauna:slugs:population-empty',
+        );
+    }, [activeSlugCount, requestRender]);
+    useSceneTimeInvalidation(
+        'fauna:slugs',
+        population.entries.length > 0,
+        sceneFrameRates.ambient,
+    );
 
     return (
         <group name="EnvironmentSlugs">

@@ -323,6 +323,7 @@ export function AdaptiveHighQualityController({
     onProfileChangeRef.current = onProfileChange;
     interactionActiveRef.current = interactionActive;
     useSceneTimeInvalidation(
+        'adaptive-high-interaction',
         enabled && interactionActive,
         sceneFrameRates.interactive,
     );

@@ -9,15 +9,55 @@ import {
 } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { assertSafeGameProfileOutputDirectory } from './game-profile-output.mjs';
 
-const comparisonContractVersion = 1;
-const profileSchemaVersion = 5;
+const displayCadenceControlComparisonContractVersion = 4;
+const cadenceAndLifetimeComparisonContractVersion = 5;
+const populationExposureComparisonContractVersion =
+    cadenceAndLifetimeComparisonContractVersion + 1;
+const comparisonContractVersion = populationExposureComparisonContractVersion;
+const comparisonReportSchemaVersion = 3;
+const profileSchemaVersion = 6;
 const defaultOutDir = resolve(
     dirname(fileURLToPath(import.meta.url)),
     '..',
-    'test-results/game-profile/comparisons',
+    '.game-profile-results/comparisons',
 );
 const commitPattern = /^[0-9a-f]{40}$/;
+const retainedHeapMeasurementMode = 'post-scenario-forced-gc-v1';
+const crossTierPerformanceMeasurementMode = 'separate-observer-free-window-v1';
+const crossTierRuntimeFrameLoopObservationMode =
+    'separate-semantic-raf-window-v1';
+const canonicalSchedulerBaselineContract = 'canonical-v1';
+const legacyHeartbeatSchedulerBaselineContract = 'legacy-heartbeat-v1';
+const lifecycleRendererStatsCanonicalMode = 'post-render-receipt-v1';
+const lifecycleRendererStatsLegacyMode = 'legacy-pre-render-settled-v1';
+const rendererStatsRuntimeMeasurementMode = 'post-render-microtask-v1';
+const crossTierColdMilestoneMeasurementMode =
+    'document-start-dpr-aware-canvas-and-fixture-v1';
+const crossTierResourceSnapshotMeasurementMode =
+    'population-exposure-post-render-resource-snapshot-v1';
+const lifecycleLegacyRendererStatsSettleMs = 600;
+const lifecycleRuntimeFrameLoopBooleanFields = [
+    'canvasVisible',
+    'documentVisible',
+    'effectiveVisible',
+    'loopActive',
+];
+const lifecycleRuntimeFrameLoopNumberFields = [
+    'activeLeaseCount',
+    'targetFramesPerSecond',
+    'scheduledCallbackCount',
+    'wakeupCount',
+    'ownedInvalidationCount',
+    'cancelledCallbackCount',
+    'suspendCount',
+    'resumeCount',
+];
+const schedulerBaselineContracts = new Set([
+    canonicalSchedulerBaselineContract,
+    legacyHeartbeatSchedulerBaselineContract,
+]);
 const regressionScenarioSet = 'cross-tier,fauna,garden-switch,lifecycle';
 const regressionScenarioBaseNames = [
     'game-cross-tier-low-steady-desktop',
@@ -37,6 +77,264 @@ const regressionScenarioBaseNames = [
 const regressionScenarioRunKeys = regressionScenarioBaseNames.flatMap(
     (baseName) => [1, 2, 3].map((profileRun) => `${baseName}::${profileRun}`),
 );
+const legacyContinuousRenderLeaseCompatibilityScenarioBaseNames = new Set(
+    regressionScenarioBaseNames.filter(
+        (baseName) =>
+            baseName.startsWith('game-cross-tier-') ||
+            baseName === 'game-fauna-heavy-day-interaction-desktop',
+    ),
+);
+const gardenSwitchScenarioBaseName =
+    'game-garden-switch-high-fauna-single-context-desktop';
+const gardenSwitchTargetFramesPerSecond = 30;
+const gardenSwitchRenderedFpsTolerance = 2;
+const gardenSwitchMinimumRenderedFps =
+    gardenSwitchTargetFramesPerSecond - gardenSwitchRenderedFpsTolerance;
+const gardenSwitchMaximumRenderedFps =
+    gardenSwitchTargetFramesPerSecond + gardenSwitchRenderedFpsTolerance;
+const gardenSwitchGpuOccupancyDiagnosticGate =
+    'GPU p95, semantic delivery, causal scheduler wakeup accounting, and submitted render work';
+const gardenSwitchResourceDiagnosticGate =
+    'garden-switch mature repeated arrivals and workflow lifetime peak resource gates';
+const gardenSwitchLifetimeResourceMeasurementMode =
+    'page-lifetime-webgl-program-texture-and-arrival-snapshot-geometry-v1';
+const lifecycleScenarioBaseName = 'game-high-target-runtime-lifecycle-desktop';
+const lifecycleTargetFramesPerSecond = 30;
+const lifecycleRenderedFpsTolerance = 2;
+const lifecycleMinimumRenderedFps =
+    lifecycleTargetFramesPerSecond - lifecycleRenderedFpsTolerance;
+const lifecycleMaximumRenderedFps =
+    lifecycleTargetFramesPerSecond + lifecycleRenderedFpsTolerance;
+const lifecycleMaximumP95FrameMs = 33.3;
+const lifecycleResourceDiagnosticGate =
+    'lifecycle mature and peak resource gates';
+const crossTierTargetFramesPerSecond = 30;
+const crossTierDisplayCadenceControlMode = 'profiler-owned-raf-v1';
+const crossTierDisplayCadenceCallbackTimestampMode = 'scheduled-phase-v1';
+const crossTierDisplayCadenceObservedRateClock = 'native-wall-time-v1';
+const crossTierDisplayCadencePhaseAdvanceToleranceMs = 0.001;
+const crossTierDisplayCadenceObservedRateToleranceFps = 0.01;
+const crossTierDisplayCadenceCounterFields = [
+    'cancelRequestCount',
+    'cancelledBeforeDeliveryCount',
+    'deliveredCallbackCount',
+    'deliveredFrameCount',
+    'nativeFrameCancellationCount',
+    'nativeFrameCount',
+    'requestCount',
+    'skippedPhaseCount',
+];
+const crossTierDisplayCadenceDeltaFields = [
+    ['cancelRequestCountDelta', 'cancelRequestCount'],
+    ['cancelledBeforeDeliveryCountDelta', 'cancelledBeforeDeliveryCount'],
+    ['deliveredCallbackCountDelta', 'deliveredCallbackCount'],
+    ['deliveredFrameCountDelta', 'deliveredFrameCount'],
+    ['nativeFrameCountDelta', 'nativeFrameCount'],
+    ['skippedPhaseCountDelta', 'skippedPhaseCount'],
+];
+const crossTierRenderedFpsTolerance = 2;
+const crossTierMinimumRenderedFps =
+    crossTierTargetFramesPerSecond - crossTierRenderedFpsTolerance;
+const crossTierMaximumRenderedFps =
+    crossTierTargetFramesPerSecond + crossTierRenderedFpsTolerance;
+const crossTierMatchedCadenceMedianToleranceFps = 2;
+const crossTierCadenceConfoundedGpuGate =
+    'mapped same-tier steady GPU p95 under matched 28-32 FPS cadence';
+const legacyHeartbeatRequiredFailureNames = [
+    'crossTierSampleStartActiveLeaseCount',
+    'crossTierSemanticLeaseTopologyAvailable',
+    'crossTierSemanticStartLeaseTopologyCount',
+    'crossTierSemanticEndLeaseTopologyCount',
+    'crossTierRenderedFramesMatchR3fFrameCallbackDelta',
+];
+const crossTierAcceptanceCheckPrefix = [
+    'crossTierGardenProfile',
+    'crossTierColdMeasurementMode',
+    'crossTierColdTrackerInstalled',
+    'crossTierColdMutationObserverStopped',
+    'crossTierColdExpectedDpr',
+    'crossTierColdCanvasAttachmentCount',
+    'crossTierColdFirstCanvasPersistent',
+    'crossTierColdTrackerInstalledMs',
+    'crossTierColdDomContentLoadedMs',
+    'crossTierColdCanvasAttachedMs',
+    'crossTierColdCanvasSizedMs',
+    'crossTierColdFirstSubmittedFrameMs',
+    'crossTierColdFixtureReadyMs',
+    'crossTierColdObservationStoppedMs',
+    'crossTierColdHostCanvasReadyDiagnosticMs',
+    'crossTierColdMilestoneOrder',
+    'crossTierColdInstalledBeforeDomContentLoaded',
+    'crossTierColdCanvasClientWidth',
+    'crossTierColdCanvasClientHeight',
+    'crossTierColdCanvasWidth',
+    'crossTierColdCanvasHeight',
+    'crossTierResourceSnapshotMeasurementMode',
+    'crossTierResourceSnapshotAttemptCount',
+    'crossTierResourceSnapshotCapturedAt',
+    'crossTierResourceSnapshotCapturedAfterReceipt',
+    'crossTierResourcePopulationStable',
+    'crossTierResourcePopulationExposureStable',
+    'crossTierResourcePopulationExposureMatchesSnapshot',
+    'crossTierResourcePopulationExposureCoversEndpoint',
+    'crossTierResourcePopulationExposureAvailable',
+    'crossTierResourcePopulationExposureEntryState',
+    'crossTierResourcePopulationExposureSignature',
+    'crossTierResourceRendererStatsMode',
+    'crossTierResourceRendererStatsMeasurementValid',
+    'crossTierResourceSnapshot:rendererGeometries',
+    'crossTierResourceSnapshot:rendererShaders',
+    'crossTierResourceSnapshot:rendererTextures',
+    'crossTierResourceSnapshotMatchesRuntime:rendererGeometries',
+    'crossTierResourceSnapshotMatchesRuntime:rendererShaders',
+    'crossTierResourceSnapshotMatchesRuntime:rendererTextures',
+    'crossTierResourceSnapshotPopulationMatchesRuntime',
+    'crossTierDisplayCadenceControlMode',
+    'crossTierDisplayCadenceControlTargetFramesPerSecond',
+    'crossTierDisplayCadenceControlInstalledAtStart',
+    'crossTierDisplayCadenceControlInstalledAtEnd',
+    'crossTierDisplayCadenceControlObservedMode',
+    'crossTierDisplayCadenceControlObservedTargetFramesPerSecond',
+    'crossTierDisplayCadenceControlObservedFramesPerSecond',
+    'crossTierDisplayCadenceControlRequestedCallbackTimestampMode',
+    'crossTierDisplayCadenceControlRequestedObservedRateClock',
+    'crossTierDisplayCadenceControlObservedCallbackTimestampMode',
+    'crossTierDisplayCadenceControlObservedRateClock',
+    'crossTierDisplayCadenceControlIntervalMs',
+    'crossTierDisplayCadenceControlStartPhaseTimestamp',
+    'crossTierDisplayCadenceControlEndPhaseTimestamp',
+    'crossTierDisplayCadenceControlDeliveredFrameCount',
+    'crossTierDisplayCadenceControlSkippedPhaseCount',
+    'crossTierDisplayCadenceControlPhaseAdvanceConservation',
+    'crossTierQualityRequest',
+    'crossTierQualityTier',
+];
+const crossTierAutoAcceptanceChecks = [
+    'crossTierAutoMemoryGb',
+    'crossTierAutoCoreCount',
+    'crossTierAutoReportedDpr',
+    'crossTierAutoCoarsePointer',
+    'crossTierAutoNarrowViewport',
+];
+const crossTierAcceptanceChecksBeforeMotion = [
+    'crossTierDprCap',
+    'crossTierShadowsEnabled',
+    'crossTierShadowMapSize',
+    'crossTierGroundDecorationDensity',
+    'crossTierReportedDpr',
+    'crossTierCanvasClientWidth',
+    'crossTierCanvasClientHeight',
+    'crossTierCanvasWidth',
+    'crossTierCanvasHeight',
+    'crossTierGeneratedPlantFields',
+    'crossTierExpectedGeneratedPlantInstances',
+    'crossTierGeneratedPlantInstances',
+    'crossTierVisiblePlantFields',
+    'crossTierVisiblePlantInstances',
+    'crossTierMinimumVisiblePlantFields',
+    'crossTierMinimumVisiblePlantInstances',
+    'crossTierRuntimeTargetFramesPerSecond',
+    'crossTierSampleStartTargetFramesPerSecond',
+    'crossTierSampleMaximumTargetFramesPerSecond',
+    'crossTierSampleMinimumTargetFramesPerSecond',
+    'crossTierSampleEndTargetFramesPerSecond',
+    'crossTierSampleStartSnapshotTargetFramesPerSecond',
+    'crossTierSampleEndSnapshotTargetFramesPerSecond',
+    'crossTierSampleStartVisible',
+    'crossTierSampleEndVisible',
+    'crossTierSampleStartActiveLeaseCount',
+    'crossTierSampleMaximumActiveLeaseCount',
+    'crossTierSampleMinimumActiveLeaseCount',
+    'crossTierSampleEndActiveLeaseCount',
+    'crossTierSemanticLeaseTopologyAvailable',
+    'crossTierSemanticStartLeaseTopologyCount',
+    'crossTierSemanticEndLeaseTopologyCount',
+    'crossTierSemanticEndLeaseTopology',
+    'crossTierControlStartLeaseTopology',
+    'crossTierControlEndLeaseTopology',
+    'crossTierRafFrames',
+    'crossTierSemanticRafFrames',
+    'crossTierRuntimeFrameLoopObservationCount',
+    'crossTierPerformanceMeasurementMode',
+    'crossTierRuntimeFrameLoopObservationMode',
+    'crossTierRenderedFramesMatchR3fFrameCallbackDelta',
+];
+const crossTierCameraMotionAcceptanceChecks = [
+    'crossTierCameraMotionObserved',
+    'crossTierCameraSnapshotVersionDelta',
+];
+const crossTierAcceptanceChecksBeforeOutlinePipeline = [
+    'crossTierStaticSceneCacheRequest',
+    'crossTierStaticSceneCacheEnabled',
+    'crossTierOutlineFlag',
+    'crossTierOutlineProfile',
+    'crossTierOutlineRaisedBedId',
+    'crossTierOutlineProfileDispatched',
+    'crossTierOutlineTelemetryAvailable',
+    'crossTierOutlineActiveTargets',
+    'crossTierOutlineStyleGroups',
+];
+const crossTierLegacyOutlineAcceptanceChecks = [
+    'crossTierOutlinePipeline',
+    'crossTierOutlineLegacyHorizontalPassAlignment',
+    'crossTierOutlineLegacyCompositePassAlignment',
+];
+const crossTierCachedOutlineAcceptanceChecks = [
+    'crossTierOutlinePipeline',
+    'crossTierOutlineCacheEligibleTargets',
+    'crossTierOutlineCacheBypasses',
+    'crossTierOutlineCacheHits',
+    'crossTierOutlineCacheMisses',
+    'crossTierOutlineMaskMissAlignment',
+    'crossTierOutlineHorizontalPassAlignment',
+    'crossTierOutlineCacheConservation',
+    'crossTierOutlinePerformanceWindowBypasses',
+    'crossTierOutlinePerformanceWindowHits',
+    'crossTierOutlinePerformanceWindowMisses',
+    'crossTierOutlinePerformanceWindowMaskPasses',
+    'crossTierOutlinePerformanceWindowHorizontalPasses',
+    'crossTierOutlinePerformanceWindowCompositePasses',
+    'crossTierOutlinePerformanceWindowMaskConservation',
+    'crossTierOutlinePerformanceWindowHorizontalAlignment',
+    'crossTierOutlinePerformanceWindowCompositeConservation',
+    'crossTierOutlineSemanticWindowBypasses',
+    'crossTierOutlineSemanticWindowHits',
+    'crossTierOutlineSemanticWindowMisses',
+    'crossTierOutlineSemanticWindowMaskPasses',
+    'crossTierOutlineSemanticWindowHorizontalPasses',
+    'crossTierOutlineSemanticWindowCompositePasses',
+    'crossTierOutlineSemanticWindowMaskConservation',
+    'crossTierOutlineSemanticWindowHorizontalAlignment',
+    'crossTierOutlineSemanticWindowCompositeConservation',
+];
+const crossTierAcceptanceCheckSuffix = [
+    'crossTierOutlineCommandAction',
+    'crossTierOutlineTargetBlockId',
+    'crossTierScreenshotWitnessValid',
+    'crossTierScreenshotWidth',
+    'crossTierScreenshotHeight',
+    'crossTierScreenshotOpaque',
+    'crossTierScreenshotEntropy',
+    'crossTierScreenshotMaximumChannelStandardDeviation',
+    'crossTierScreenshotSampledLumaRange',
+    'crossTierScreenshotSampledUniqueColorCount',
+    'crossTierRenderedFps',
+    'crossTierRenderedFrames',
+    'crossTierDrawCalls',
+    'crossTierSubmittedTriangles',
+    'crossTierApiErrors',
+    'crossTierConsoleErrors',
+    'crossTierPageErrors',
+];
+const crossTierPerformanceCheckNames = [
+    'p95FrameMs',
+    'maxFrameMs',
+    'longTaskCount',
+    'retainedJsHeapMb',
+    'drawCallsPerRenderedFrame',
+    'trianglesPerRenderedFrame',
+    'gpuElapsedP95Ms',
+];
 const crossTierBaseNamePattern =
     /^game-cross-tier-(low|medium|high|auto-standard|auto-constrained)-(steady|camera-motion)-desktop$/;
 const canonicalCrossTierPolicies = {
@@ -148,17 +446,6 @@ const ratioMetricRegistry = [
         unit: 'triangles/frame',
     },
     {
-        id: 'memory.js_heap_mb',
-        label: 'JavaScript heap',
-        direction: 'maximum',
-        medianAbsoluteTolerance: 8,
-        medianLimit: 1.15,
-        runAbsoluteTolerance: 16,
-        runLimit: 1.3,
-        read: ({ cdp, sample }) => cdp?.jsHeapMb ?? sample?.jsHeapMb,
-        unit: 'MiB',
-    },
-    {
         id: 'cpu.script_duration_s',
         label: 'script duration',
         direction: 'maximum',
@@ -170,6 +457,38 @@ const ratioMetricRegistry = [
         unit: 's',
     },
 ];
+
+const gardenSwitchInitialTotalWorkMetricRegistry = [
+    {
+        id: 'render.draw_calls_total',
+        label: 'total draw calls',
+        direction: 'maximum',
+        medianLimit: 1.05,
+        runLimit: 1.1,
+        read: ({ sample }) => sample?.drawCalls,
+        unit: 'draws',
+    },
+    {
+        id: 'render.triangles_total',
+        label: 'total submitted triangles',
+        direction: 'maximum',
+        medianLimit: 1.05,
+        runLimit: 1.1,
+        read: ({ sample }) => sample?.submittedTriangles,
+        unit: 'triangles',
+    },
+];
+
+const retainedHeapMetric = {
+    id: 'memory.js_heap_mb',
+    label: 'retained JavaScript heap',
+    direction: 'maximum',
+    medianAbsoluteTolerance: 8,
+    medianLimit: 1.15,
+    runAbsoluteTolerance: 16,
+    runLimit: 1.3,
+    unit: 'MiB',
+};
 
 function timingThresholds(metricId) {
     if (metricId === 'cold.dom_content_loaded_ms') {
@@ -267,6 +586,7 @@ const reportOptionFields = [
     'closeupRepeat',
     'closeupTimeoutMs',
     'graphicsBackend',
+    'legacyOutlinePipeline',
     'managedServer',
     'sampleMs',
     'scenarioSet',
@@ -285,6 +605,24 @@ const commonRequestedStringFields = [
     'quality',
     'staticSceneCache',
 ];
+
+// Schema v6 captures exist on both sides of the scheduler rollout. Newer v6
+// harnesses materialize these optional request values while older v6 harnesses
+// omit them. Normalize only the documented semantic defaults so an older
+// omission remains comparable without hiding an enabled profile or warmup.
+const requestedCompatibilityDefaultsBySchemaVersion = new Map([
+    [
+        6,
+        {
+            legacyOutlinePipeline: false,
+            lifecycleLiveProfile: false,
+            motionWarmupMs: 0,
+            runtimeOwnersProfile: false,
+            staticIdle: '0',
+            staticIdleProfile: false,
+        },
+    ],
+]);
 
 const rendererResourceFields = [
     'rendererGeometries',
@@ -356,12 +694,947 @@ function validatePositiveNumber(errors, value, path) {
     }
 }
 
+function validatePositiveInteger(errors, value, path) {
+    if (!Number.isInteger(value) || value <= 0) {
+        errors.push(`${path} must be a positive integer`);
+    }
+}
+
 function validateExactValue(errors, value, expected, path) {
     if (canonicalJson(value) !== canonicalJson(expected)) {
         errors.push(
             `${path} must be ${canonicalJson(expected)}; received ${canonicalJson(value)}`,
         );
     }
+}
+
+function validateRetainedHeapEvidence(errors, memory, path) {
+    if (!isRecord(memory)) {
+        errors.push(`${path} is missing`);
+        return;
+    }
+    validateExactValue(
+        errors,
+        memory.measurementMode,
+        retainedHeapMeasurementMode,
+        `${path}.measurementMode`,
+    );
+    validatePositiveNumber(
+        errors,
+        memory.jsHeapBeforeCollectionMb,
+        `${path}.jsHeapBeforeCollectionMb`,
+    );
+    validatePositiveNumber(
+        errors,
+        memory.retainedJsHeapMb,
+        `${path}.retainedJsHeapMb`,
+    );
+}
+
+function validateCrossTierDisplayCadenceControlSnapshot(errors, value, path) {
+    if (!isRecord(value)) {
+        errors.push(`${path} is missing`);
+        return null;
+    }
+    validateExactValue(errors, value.installed, true, `${path}.installed`);
+    validateExactValue(
+        errors,
+        value.installationError,
+        null,
+        `${path}.installationError`,
+    );
+    validateExactValue(
+        errors,
+        value.mode,
+        crossTierDisplayCadenceControlMode,
+        `${path}.mode`,
+    );
+    validateExactValue(
+        errors,
+        value.callbackTimestampMode,
+        crossTierDisplayCadenceCallbackTimestampMode,
+        `${path}.callbackTimestampMode`,
+    );
+    validateExactValue(
+        errors,
+        value.observedRateClock,
+        crossTierDisplayCadenceObservedRateClock,
+        `${path}.observedRateClock`,
+    );
+    validateExactValue(
+        errors,
+        value.requestedFramesPerSecond,
+        crossTierTargetFramesPerSecond,
+        `${path}.requestedFramesPerSecond`,
+    );
+    validatePositiveNumber(errors, value.intervalMs, `${path}.intervalMs`);
+    if (
+        isFiniteNumber(value.intervalMs) &&
+        Math.abs(value.intervalMs - 1_000 / crossTierTargetFramesPerSecond) >
+            0.01
+    ) {
+        errors.push(
+            `${path}.intervalMs must match the ${crossTierTargetFramesPerSecond} FPS target`,
+        );
+    }
+    for (const field of crossTierDisplayCadenceCounterFields) {
+        if (!Number.isInteger(value[field]) || value[field] < 0) {
+            errors.push(`${path}.${field} must be a non-negative integer`);
+        }
+    }
+    if (
+        !Number.isInteger(value.pendingCallbackCount) ||
+        value.pendingCallbackCount < 0
+    ) {
+        errors.push(
+            `${path}.pendingCallbackCount must be a non-negative integer`,
+        );
+    }
+    if (typeof value.nativeFramePending !== 'boolean') {
+        errors.push(`${path}.nativeFramePending must be a boolean`);
+    }
+    if (
+        Number.isInteger(value.requestCount) &&
+        Number.isInteger(value.deliveredCallbackCount) &&
+        Number.isInteger(value.cancelledBeforeDeliveryCount) &&
+        Number.isInteger(value.pendingCallbackCount) &&
+        value.requestCount !==
+            value.deliveredCallbackCount +
+                value.cancelledBeforeDeliveryCount +
+                value.pendingCallbackCount
+    ) {
+        errors.push(
+            `${path} requestCount must equal deliveredCallbackCount + cancelledBeforeDeliveryCount + pendingCallbackCount`,
+        );
+    }
+    if (
+        Number.isInteger(value.cancelRequestCount) &&
+        Number.isInteger(value.cancelledBeforeDeliveryCount) &&
+        value.cancelRequestCount < value.cancelledBeforeDeliveryCount
+    ) {
+        errors.push(
+            `${path}.cancelRequestCount must not be less than cancelledBeforeDeliveryCount`,
+        );
+    }
+    if (
+        Number.isInteger(value.deliveredCallbackCount) &&
+        Number.isInteger(value.deliveredFrameCount) &&
+        value.deliveredCallbackCount < value.deliveredFrameCount
+    ) {
+        errors.push(
+            `${path}.deliveredCallbackCount must not be less than deliveredFrameCount`,
+        );
+    }
+    if (
+        Number.isInteger(value.nativeFrameCount) &&
+        Number.isInteger(value.deliveredFrameCount) &&
+        value.nativeFrameCount < value.deliveredFrameCount
+    ) {
+        errors.push(
+            `${path}.nativeFrameCount must not be less than deliveredFrameCount`,
+        );
+    }
+    if (
+        Number.isInteger(value.deliveredFrameCount) &&
+        value.deliveredFrameCount > 0
+    ) {
+        for (const field of [
+            'firstDeliveredAt',
+            'firstDeliveredPhaseAt',
+            'lastDeliveredAt',
+            'lastDeliveredPhaseAt',
+        ]) {
+            validateNonNegativeNumber(errors, value[field], `${path}.${field}`);
+        }
+        if (
+            isFiniteNumber(value.firstDeliveredAt) &&
+            isFiniteNumber(value.lastDeliveredAt) &&
+            value.firstDeliveredAt > value.lastDeliveredAt
+        ) {
+            errors.push(
+                `${path}.firstDeliveredAt must not be later than lastDeliveredAt`,
+            );
+        }
+        if (
+            isFiniteNumber(value.firstDeliveredPhaseAt) &&
+            isFiniteNumber(value.lastDeliveredPhaseAt) &&
+            value.firstDeliveredPhaseAt > value.lastDeliveredPhaseAt
+        ) {
+            errors.push(
+                `${path}.firstDeliveredPhaseAt must not be later than lastDeliveredPhaseAt`,
+            );
+        }
+        if (
+            isFiniteNumber(value.firstDeliveredPhaseAt) &&
+            isFiniteNumber(value.firstDeliveredAt) &&
+            value.firstDeliveredPhaseAt > value.firstDeliveredAt
+        ) {
+            errors.push(
+                `${path}.firstDeliveredPhaseAt must not be later than firstDeliveredAt`,
+            );
+        }
+        if (
+            isFiniteNumber(value.lastDeliveredPhaseAt) &&
+            isFiniteNumber(value.lastDeliveredAt) &&
+            value.lastDeliveredPhaseAt > value.lastDeliveredAt
+        ) {
+            errors.push(
+                `${path}.lastDeliveredPhaseAt must not be later than lastDeliveredAt`,
+            );
+        }
+        if (
+            Number.isInteger(value.skippedPhaseCount) &&
+            isFiniteNumber(value.intervalMs) &&
+            isFiniteNumber(value.firstDeliveredPhaseAt) &&
+            isFiniteNumber(value.lastDeliveredPhaseAt)
+        ) {
+            const actualLifetimePhaseAdvanceMs =
+                value.lastDeliveredPhaseAt - value.firstDeliveredPhaseAt;
+            const expectedLifetimePhaseAdvanceMs =
+                (value.deliveredFrameCount + value.skippedPhaseCount - 1) *
+                value.intervalMs;
+            if (
+                Math.abs(
+                    actualLifetimePhaseAdvanceMs -
+                        expectedLifetimePhaseAdvanceMs,
+                ) > crossTierDisplayCadencePhaseAdvanceToleranceMs
+            ) {
+                errors.push(
+                    `${path} lifetime phase advance must equal (deliveredFrameCount + skippedPhaseCount - 1) * intervalMs within ${crossTierDisplayCadencePhaseAdvanceToleranceMs} ms`,
+                );
+            }
+        }
+    }
+    if (Number.isInteger(value.deliveredFrameCount)) {
+        if (value.deliveredFrameCount < 2) {
+            validateExactValue(
+                errors,
+                value.observedFramesPerSecond,
+                null,
+                `${path}.observedFramesPerSecond`,
+            );
+        } else {
+            validatePositiveNumber(
+                errors,
+                value.observedFramesPerSecond,
+                `${path}.observedFramesPerSecond`,
+            );
+            if (
+                isFiniteNumber(value.firstDeliveredAt) &&
+                isFiniteNumber(value.lastDeliveredAt) &&
+                value.lastDeliveredAt <= value.firstDeliveredAt
+            ) {
+                errors.push(
+                    `${path}.lastDeliveredAt must be later than firstDeliveredAt after multiple deliveries`,
+                );
+            }
+            if (
+                isFiniteNumber(value.firstDeliveredAt) &&
+                isFiniteNumber(value.lastDeliveredAt) &&
+                value.lastDeliveredAt > value.firstDeliveredAt &&
+                isFiniteNumber(value.observedFramesPerSecond)
+            ) {
+                const derivedObservedFramesPerSecond =
+                    ((value.deliveredFrameCount - 1) * 1_000) /
+                    (value.lastDeliveredAt - value.firstDeliveredAt);
+                if (
+                    Math.abs(
+                        derivedObservedFramesPerSecond -
+                            value.observedFramesPerSecond,
+                    ) > crossTierDisplayCadenceObservedRateToleranceFps
+                ) {
+                    errors.push(
+                        `${path}.observedFramesPerSecond must match native delivery timestamps within report precision`,
+                    );
+                }
+            }
+        }
+    }
+    return value;
+}
+
+function validateCrossTierDisplayCadenceControlEvidence(
+    errors,
+    scenario,
+    path,
+) {
+    const requestedControl = scenario.requested?.displayCadenceControl;
+    validateExactValue(
+        errors,
+        requestedControl,
+        {
+            callbackTimestampMode: crossTierDisplayCadenceCallbackTimestampMode,
+            framesPerSecond: crossTierTargetFramesPerSecond,
+            mode: crossTierDisplayCadenceControlMode,
+            observedRateClock: crossTierDisplayCadenceObservedRateClock,
+        },
+        `${path}.requested.displayCadenceControl`,
+    );
+
+    const sample = scenario.sample;
+    const samplePath = `${path}.sample`;
+    if (!isRecord(sample)) {
+        errors.push(`${samplePath} is missing`);
+        return;
+    }
+    if (!Number.isInteger(sample.frames) || sample.frames <= 0) {
+        errors.push(`${samplePath}.frames must be a positive integer`);
+    }
+
+    const control = sample.displayCadenceControl;
+    const controlPath = `${samplePath}.displayCadenceControl`;
+    if (!isRecord(control)) {
+        errors.push(`${controlPath} is missing`);
+        return;
+    }
+    validateExactValue(
+        errors,
+        control.installedAtStart,
+        true,
+        `${controlPath}.installedAtStart`,
+    );
+    validateExactValue(
+        errors,
+        control.installedAtEnd,
+        true,
+        `${controlPath}.installedAtEnd`,
+    );
+    validateExactValue(
+        errors,
+        control.mode,
+        crossTierDisplayCadenceControlMode,
+        `${controlPath}.mode`,
+    );
+    validateExactValue(
+        errors,
+        control.requestedFramesPerSecond,
+        crossTierTargetFramesPerSecond,
+        `${controlPath}.requestedFramesPerSecond`,
+    );
+    validateExactValue(
+        errors,
+        control.callbackTimestampMode,
+        crossTierDisplayCadenceCallbackTimestampMode,
+        `${controlPath}.callbackTimestampMode`,
+    );
+    validateExactValue(
+        errors,
+        control.observedRateClock,
+        crossTierDisplayCadenceObservedRateClock,
+        `${controlPath}.observedRateClock`,
+    );
+    validateExactValue(
+        errors,
+        control.intervalMs,
+        1_000 / crossTierTargetFramesPerSecond,
+        `${controlPath}.intervalMs`,
+    );
+
+    const atStart = validateCrossTierDisplayCadenceControlSnapshot(
+        errors,
+        control.atStart,
+        `${controlPath}.atStart`,
+    );
+    const atEnd = validateCrossTierDisplayCadenceControlSnapshot(
+        errors,
+        control.atEnd,
+        `${controlPath}.atEnd`,
+    );
+    if (atStart && atEnd) {
+        for (const field of ['firstDeliveredAt', 'firstDeliveredPhaseAt']) {
+            validateExactValue(
+                errors,
+                atEnd[field],
+                atStart[field],
+                `${controlPath}.${field} across atStart and atEnd`,
+            );
+        }
+        for (const [snapshotName, snapshot] of [
+            ['atStart', atStart],
+            ['atEnd', atEnd],
+        ]) {
+            validateExactValue(
+                errors,
+                snapshot.intervalMs,
+                control.intervalMs,
+                `${controlPath}.${snapshotName}.intervalMs`,
+            );
+        }
+        for (const field of crossTierDisplayCadenceCounterFields) {
+            if (
+                Number.isInteger(atStart[field]) &&
+                Number.isInteger(atEnd[field]) &&
+                atEnd[field] < atStart[field]
+            ) {
+                errors.push(
+                    `${controlPath}.${field} must not decrease from atStart to atEnd`,
+                );
+            }
+        }
+        for (const field of ['lastDeliveredAt', 'lastDeliveredPhaseAt']) {
+            if (
+                isFiniteNumber(atStart[field]) &&
+                isFiniteNumber(atEnd[field]) &&
+                atEnd[field] < atStart[field]
+            ) {
+                errors.push(
+                    `${controlPath}.${field} must not decrease from atStart to atEnd`,
+                );
+            }
+        }
+    }
+
+    const positiveDeltaFields = new Set([
+        'deliveredCallbackCountDelta',
+        'deliveredFrameCountDelta',
+        'nativeFrameCountDelta',
+    ]);
+    for (const [
+        deltaField,
+        snapshotField,
+    ] of crossTierDisplayCadenceDeltaFields) {
+        const delta = control[deltaField];
+        if (
+            !Number.isInteger(delta) ||
+            delta < 0 ||
+            (positiveDeltaFields.has(deltaField) && delta === 0)
+        ) {
+            errors.push(
+                `${controlPath}.${deltaField} must be a ${positiveDeltaFields.has(deltaField) ? 'positive' : 'non-negative'} integer`,
+            );
+        }
+        if (
+            atStart &&
+            atEnd &&
+            Number.isInteger(atStart[snapshotField]) &&
+            Number.isInteger(atEnd[snapshotField]) &&
+            delta !== atEnd[snapshotField] - atStart[snapshotField]
+        ) {
+            errors.push(
+                `${controlPath}.${deltaField} must equal atEnd.${snapshotField} - atStart.${snapshotField}`,
+            );
+        }
+    }
+    if (
+        Number.isInteger(control.deliveredCallbackCountDelta) &&
+        Number.isInteger(control.deliveredFrameCountDelta) &&
+        control.deliveredCallbackCountDelta < control.deliveredFrameCountDelta
+    ) {
+        errors.push(
+            `${controlPath}.deliveredCallbackCountDelta must not be less than deliveredFrameCountDelta`,
+        );
+    }
+    if (
+        Number.isInteger(control.nativeFrameCountDelta) &&
+        Number.isInteger(control.deliveredFrameCountDelta) &&
+        control.nativeFrameCountDelta < control.deliveredFrameCountDelta
+    ) {
+        errors.push(
+            `${controlPath}.nativeFrameCountDelta must not be less than deliveredFrameCountDelta`,
+        );
+    }
+    if (
+        atStart &&
+        atEnd &&
+        isFiniteNumber(atStart.lastDeliveredPhaseAt) &&
+        isFiniteNumber(atEnd.lastDeliveredPhaseAt) &&
+        Number.isInteger(control.deliveredFrameCountDelta) &&
+        Number.isInteger(control.skippedPhaseCountDelta) &&
+        isFiniteNumber(control.intervalMs)
+    ) {
+        const actualPhaseAdvanceMs =
+            atEnd.lastDeliveredPhaseAt - atStart.lastDeliveredPhaseAt;
+        const expectedPhaseAdvanceMs =
+            (control.deliveredFrameCountDelta +
+                control.skippedPhaseCountDelta) *
+            control.intervalMs;
+        if (
+            Math.abs(actualPhaseAdvanceMs - expectedPhaseAdvanceMs) >
+            crossTierDisplayCadencePhaseAdvanceToleranceMs
+        ) {
+            errors.push(
+                `${controlPath} phase advance must equal (deliveredFrameCountDelta + skippedPhaseCountDelta) * intervalMs within ${crossTierDisplayCadencePhaseAdvanceToleranceMs} ms`,
+            );
+        }
+    }
+
+    validatePositiveNumber(
+        errors,
+        control.elapsedMs,
+        `${controlPath}.elapsedMs`,
+    );
+    if (
+        isFiniteNumber(control.elapsedMs) &&
+        isFiniteNumber(sample.elapsedMs) &&
+        Math.abs(control.elapsedMs - sample.elapsedMs) > 0.02
+    ) {
+        errors.push(
+            `${controlPath}.elapsedMs must match sample.elapsedMs within profiler rounding tolerance`,
+        );
+    }
+    const observedFramesPerSecond = control.observedFramesPerSecond;
+    if (
+        !isFiniteNumber(observedFramesPerSecond) ||
+        observedFramesPerSecond < crossTierMinimumRenderedFps ||
+        observedFramesPerSecond > crossTierMaximumRenderedFps
+    ) {
+        errors.push(
+            `${controlPath}.observedFramesPerSecond must be within ${crossTierMinimumRenderedFps}-${crossTierMaximumRenderedFps} FPS`,
+        );
+    }
+    if (
+        Number.isInteger(control.deliveredFrameCountDelta) &&
+        control.deliveredFrameCountDelta > 0 &&
+        isFiniteNumber(control.elapsedMs) &&
+        control.elapsedMs > 0 &&
+        isFiniteNumber(observedFramesPerSecond)
+    ) {
+        const derivedFramesPerSecond =
+            (control.deliveredFrameCountDelta * 1_000) / control.elapsedMs;
+        if (Math.abs(derivedFramesPerSecond - observedFramesPerSecond) > 0.05) {
+            errors.push(
+                `${controlPath}.observedFramesPerSecond must match deliveredFrameCountDelta / elapsedMs`,
+            );
+        }
+    }
+}
+
+function readCrossTierLeaseTopology(value) {
+    if (
+        !isRecord(value) ||
+        !Number.isInteger(value.activeLeaseCount) ||
+        value.activeLeaseCount <= 0 ||
+        !Number.isInteger(value.activeRenderLeaseCount) ||
+        value.activeRenderLeaseCount !== value.activeLeaseCount ||
+        !isFiniteNumber(value.targetFramesPerSecond) ||
+        value.targetFramesPerSecond <= 0 ||
+        !Array.isArray(value.renderLeaseOwners) ||
+        value.renderLeaseOwners.some((owner) => !isNonEmptyString(owner)) ||
+        !Array.isArray(value.renderLeaseSummaries) ||
+        value.renderLeaseSummaries.some(
+            (summary) =>
+                !isRecord(summary) ||
+                !isNonEmptyString(summary.owner) ||
+                !isFiniteNumber(summary.framesPerSecond) ||
+                summary.framesPerSecond <= 0 ||
+                !Number.isInteger(summary.leaseCount) ||
+                summary.leaseCount <= 0,
+        )
+    ) {
+        return null;
+    }
+
+    const summaryLeaseCount = value.renderLeaseSummaries.reduce(
+        (total, summary) => total + summary.leaseCount,
+        0,
+    );
+    const summaryOwners = [
+        ...new Set(value.renderLeaseSummaries.map((summary) => summary.owner)),
+    ].sort();
+    if (
+        summaryLeaseCount !== value.activeRenderLeaseCount ||
+        canonicalJson(summaryOwners) !== canonicalJson(value.renderLeaseOwners)
+    ) {
+        return null;
+    }
+
+    return {
+        activeLeaseCount: value.activeLeaseCount,
+        activeRenderLeaseCount: value.activeRenderLeaseCount,
+        renderLeaseOwners: value.renderLeaseOwners,
+        renderLeaseSummaries: value.renderLeaseSummaries,
+        targetFramesPerSecond: value.targetFramesPerSecond,
+    };
+}
+
+function validateCrossTierObserverIsolation(errors, sample, path) {
+    if (!isRecord(sample)) {
+        errors.push(`${path} is missing`);
+        return;
+    }
+    validateExactValue(
+        errors,
+        sample.performanceMeasurementMode,
+        crossTierPerformanceMeasurementMode,
+        `${path}.performanceMeasurementMode`,
+    );
+    validateExactValue(
+        errors,
+        sample.runtimeFrameLoopObservationMode,
+        crossTierRuntimeFrameLoopObservationMode,
+        `${path}.runtimeFrameLoopObservationMode`,
+    );
+
+    const rafFrameCount = sample.runtimeFrameLoopObservationRafFrameCount;
+    if (!Number.isInteger(rafFrameCount) || rafFrameCount <= 0) {
+        errors.push(
+            `${path}.runtimeFrameLoopObservationRafFrameCount must be a positive integer`,
+        );
+    }
+    const observationCount = sample.runtimeFrameLoopObservationCount;
+    if (
+        !Number.isInteger(observationCount) ||
+        observationCount !== rafFrameCount + 3
+    ) {
+        errors.push(
+            `${path}.runtimeFrameLoopObservationCount must equal runtimeFrameLoopObservationRafFrameCount + 3`,
+        );
+    }
+
+    const leaseFields = [
+        'runtimeFrameLoopActiveLeaseCountAtStart',
+        'runtimeFrameLoopActiveLeaseCountMin',
+        'runtimeFrameLoopActiveLeaseCountMax',
+        'runtimeFrameLoopActiveLeaseCountAtEnd',
+    ];
+    const leaseCounts = leaseFields.map((field) => sample[field]);
+    for (const [index, leaseCount] of leaseCounts.entries()) {
+        if (!Number.isInteger(leaseCount) || leaseCount <= 0) {
+            errors.push(
+                `${path}.${leaseFields[index]} must be a positive integer`,
+            );
+        }
+    }
+    if (
+        leaseCounts.every(
+            (leaseCount) => Number.isInteger(leaseCount) && leaseCount > 0,
+        ) &&
+        new Set(leaseCounts).size !== 1
+    ) {
+        errors.push(
+            `${path} runtime frame-loop active lease counts must remain stable`,
+        );
+    }
+
+    const topologyEntries = [
+        [
+            'runtimeFrameLoopSemanticLeaseTopologyAtStart',
+            sample.runtimeFrameLoopSemanticLeaseTopologyAtStart,
+        ],
+        [
+            'runtimeFrameLoopSemanticLeaseTopologyAtEnd',
+            sample.runtimeFrameLoopSemanticLeaseTopologyAtEnd,
+        ],
+        ['runtimeFrameLoopAtStart', sample.runtimeFrameLoopAtStart],
+        ['runtimeFrameLoopAtEnd', sample.runtimeFrameLoopAtEnd],
+    ].map(([field, value]) => ({
+        field,
+        topology: readCrossTierLeaseTopology(value),
+    }));
+    for (const entry of topologyEntries) {
+        if (entry.topology === null) {
+            errors.push(`${path}.${entry.field} has invalid lease topology`);
+        }
+    }
+    if (topologyEntries.every((entry) => entry.topology !== null)) {
+        const topologyKeys = topologyEntries.map((entry) =>
+            canonicalJson(entry.topology),
+        );
+        if (new Set(topologyKeys).size !== 1) {
+            errors.push(
+                `${path} semantic and observer-free lease topologies must match`,
+            );
+        }
+        if (
+            Number.isInteger(leaseCounts[0]) &&
+            topologyEntries[0].topology.activeLeaseCount !== leaseCounts[0]
+        ) {
+            errors.push(
+                `${path} semantic lease topology count must match runtimeFrameLoopActiveLeaseCountAtStart`,
+            );
+        }
+    }
+}
+
+function validateLegacyHeartbeatControlSnapshot(errors, value, path) {
+    if (!isRecord(value)) {
+        errors.push(`${path} is missing`);
+        return;
+    }
+    validateExactValue(
+        errors,
+        value.activeLeaseCount,
+        0,
+        `${path}.activeLeaseCount`,
+    );
+    validateExactValue(
+        errors,
+        value.targetFramesPerSecond,
+        crossTierTargetFramesPerSecond,
+        `${path}.targetFramesPerSecond`,
+    );
+    validateExactValue(
+        errors,
+        value.effectiveVisible,
+        true,
+        `${path}.effectiveVisible`,
+    );
+    validateExactValue(errors, value.loopActive, true, `${path}.loopActive`);
+    for (const field of [
+        'activeRenderLeaseCount',
+        'renderLeaseOwners',
+        'renderLeaseSummaries',
+    ]) {
+        if (hasOwn(value, field)) {
+            errors.push(
+                `${path}.${field} must be absent for the legacy contract`,
+            );
+        }
+    }
+}
+
+function validateLegacyHeartbeatCrossTierEvidence(errors, scenario, path) {
+    const runtimeFrameLoop = scenario.runtime?.runtimeFrameLoop;
+    if (!isRecord(runtimeFrameLoop)) {
+        errors.push(`${path}.runtime.runtimeFrameLoop is missing`);
+    } else {
+        validateExactValue(
+            errors,
+            runtimeFrameLoop.activeLeaseCount,
+            0,
+            `${path}.runtime.runtimeFrameLoop.activeLeaseCount`,
+        );
+        validateExactValue(
+            errors,
+            runtimeFrameLoop.targetFramesPerSecond,
+            crossTierTargetFramesPerSecond,
+            `${path}.runtime.runtimeFrameLoop.targetFramesPerSecond`,
+        );
+    }
+
+    const sample = scenario.sample;
+    const samplePath = `${path}.sample`;
+    if (!isRecord(sample)) {
+        errors.push(`${samplePath} is missing`);
+        return;
+    }
+    validateExactValue(
+        errors,
+        sample.performanceMeasurementMode,
+        crossTierPerformanceMeasurementMode,
+        `${samplePath}.performanceMeasurementMode`,
+    );
+    validateExactValue(
+        errors,
+        sample.runtimeFrameLoopObservationMode,
+        crossTierRuntimeFrameLoopObservationMode,
+        `${samplePath}.runtimeFrameLoopObservationMode`,
+    );
+
+    const rafFrameCount = sample.runtimeFrameLoopObservationRafFrameCount;
+    if (!Number.isInteger(rafFrameCount) || rafFrameCount <= 0) {
+        errors.push(
+            `${samplePath}.runtimeFrameLoopObservationRafFrameCount must be a positive integer`,
+        );
+    }
+    const observationCount = sample.runtimeFrameLoopObservationCount;
+    if (
+        !Number.isInteger(observationCount) ||
+        observationCount !== rafFrameCount + 3
+    ) {
+        errors.push(
+            `${samplePath}.runtimeFrameLoopObservationCount must equal runtimeFrameLoopObservationRafFrameCount + 3`,
+        );
+    }
+
+    for (const field of [
+        'runtimeFrameLoopTargetFramesPerSecondAtStart',
+        'runtimeFrameLoopTargetFramesPerSecondMin',
+        'runtimeFrameLoopTargetFramesPerSecondMax',
+        'runtimeFrameLoopTargetFramesPerSecondAtEnd',
+    ]) {
+        validateExactValue(
+            errors,
+            sample[field],
+            crossTierTargetFramesPerSecond,
+            `${samplePath}.${field}`,
+        );
+    }
+    for (const field of [
+        'runtimeFrameLoopActiveLeaseCountAtStart',
+        'runtimeFrameLoopActiveLeaseCountMin',
+        'runtimeFrameLoopActiveLeaseCountMax',
+        'runtimeFrameLoopActiveLeaseCountAtEnd',
+    ]) {
+        validateExactValue(errors, sample[field], 0, `${samplePath}.${field}`);
+    }
+    for (const field of [
+        'runtimeFrameLoopSemanticLeaseTopologyAtStart',
+        'runtimeFrameLoopSemanticLeaseTopologyAtEnd',
+    ]) {
+        if (!hasOwn(sample, field) || sample[field] !== null) {
+            errors.push(`${samplePath}.${field} must be explicit null`);
+        }
+    }
+    validateLegacyHeartbeatControlSnapshot(
+        errors,
+        sample.runtimeFrameLoopAtStart,
+        `${samplePath}.runtimeFrameLoopAtStart`,
+    );
+    validateLegacyHeartbeatControlSnapshot(
+        errors,
+        sample.runtimeFrameLoopAtEnd,
+        `${samplePath}.runtimeFrameLoopAtEnd`,
+    );
+
+    for (const field of ['frames', 'renderedFrames']) {
+        if (!Number.isInteger(sample[field]) || sample[field] <= 0) {
+            errors.push(`${samplePath}.${field} must be a positive integer`);
+        }
+    }
+    if (!isFiniteNumber(sample.renderedFps) || sample.renderedFps <= 0) {
+        errors.push(
+            `${samplePath}.renderedFps must be a positive finite number`,
+        );
+    }
+    const counterDeltas = sample.runtimeFrameLoopCounterDeltas;
+    if (
+        !isRecord(counterDeltas) ||
+        !hasOwn(counterDeltas, 'r3fFrameCallbackCount') ||
+        counterDeltas.r3fFrameCallbackCount !== null
+    ) {
+        errors.push(
+            `${samplePath}.runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount must be explicit null`,
+        );
+    }
+}
+
+function legacyHeartbeatExpectedFailureNames(
+    sample,
+    inputComparisonContractVersion,
+) {
+    const expected = [...legacyHeartbeatRequiredFailureNames];
+    if (
+        inputComparisonContractVersion <
+            displayCadenceControlComparisonContractVersion &&
+        isFiniteNumber(sample?.renderedFps) &&
+        sample.renderedFps > crossTierMaximumRenderedFps
+    ) {
+        expected.push('crossTierRenderedFps');
+    }
+    return expected.sort();
+}
+
+function buildCrossTierCheckNameInventory(
+    baseName,
+    { legacyOutlinePipeline = false } = {},
+) {
+    const acceptance = [
+        ...crossTierAcceptanceCheckPrefix,
+        ...(baseName.includes('-auto-') ? crossTierAutoAcceptanceChecks : []),
+        ...crossTierAcceptanceChecksBeforeMotion,
+        ...(baseName.includes('-camera-motion-')
+            ? crossTierCameraMotionAcceptanceChecks
+            : []),
+        ...crossTierAcceptanceChecksBeforeOutlinePipeline,
+        ...(legacyOutlinePipeline
+            ? crossTierLegacyOutlineAcceptanceChecks
+            : crossTierCachedOutlineAcceptanceChecks),
+        ...crossTierAcceptanceCheckSuffix,
+    ];
+    const performance = [...crossTierPerformanceCheckNames];
+    return {
+        acceptance,
+        budget: [...performance, ...acceptance],
+        performance,
+    };
+}
+
+function validateCheckNameInventory(errors, value, path, expectedNames) {
+    if (!isRecord(value) || !Array.isArray(value.checks)) {
+        errors.push(`${path}.checks must be an array`);
+        return;
+    }
+    const names = [];
+    const seen = new Set();
+    for (const [index, check] of value.checks.entries()) {
+        if (!isRecord(check) || !isNonEmptyString(check.name)) {
+            errors.push(`${path}.checks[${index}] must have a name`);
+            continue;
+        }
+        if (seen.has(check.name)) {
+            errors.push(`${path}.checks has duplicate name ${check.name}`);
+        }
+        seen.add(check.name);
+        names.push(check.name);
+    }
+    validateExactValue(
+        errors,
+        names,
+        expectedNames,
+        `${path} check name inventory`,
+    );
+}
+
+function validateCrossTierCheckNameInventories(
+    errors,
+    scenario,
+    path,
+    { legacyOutlinePipeline },
+) {
+    const expected = buildCrossTierCheckNameInventory(scenario.baseName, {
+        legacyOutlinePipeline,
+    });
+    validateCheckNameInventory(
+        errors,
+        scenario.acceptance,
+        `${path} acceptance`,
+        expected.acceptance,
+    );
+    validateCheckNameInventory(
+        errors,
+        scenario.performanceBudget,
+        `${path} performanceBudget`,
+        expected.performance,
+    );
+    validateCheckNameInventory(
+        errors,
+        scenario.budget,
+        `${path} budget`,
+        expected.budget,
+    );
+}
+
+function validateLegacyHeartbeatCheckOutcome(
+    errors,
+    value,
+    path,
+    expectedFailureNames,
+) {
+    if (!isRecord(value)) {
+        errors.push(`${path} is missing`);
+        return;
+    }
+    if (value.pass !== false) {
+        errors.push(`${path}.pass must be false for the legacy contract`);
+    }
+    if (!Array.isArray(value.checks) || value.checks.length === 0) {
+        errors.push(`${path}.checks must be a non-empty array`);
+        return;
+    }
+    const failedNames = [];
+    const seenNames = new Set();
+    for (const [index, check] of value.checks.entries()) {
+        if (!isRecord(check) || !isNonEmptyString(check.name)) {
+            errors.push(`${path}.checks[${index}] must have a name`);
+            continue;
+        }
+        if (seenNames.has(check.name)) {
+            errors.push(`${path}.checks has duplicate name ${check.name}`);
+        }
+        seenNames.add(check.name);
+        if (typeof check.pass !== 'boolean') {
+            errors.push(`${path}.checks[${index}].pass must be a boolean`);
+        } else if (!check.pass) {
+            failedNames.push(check.name);
+        }
+    }
+    validateExactValue(
+        errors,
+        failedNames.sort(),
+        expectedFailureNames,
+        `${path} failed check names`,
+    );
 }
 
 function validatePassingChecks(errors, value, path) {
@@ -392,6 +1665,448 @@ function validateRendererResources(errors, resources, path) {
     }
     for (const field of rendererResourceFields) {
         validateNonNegativeNumber(errors, resources[field], `${path}.${field}`);
+    }
+}
+
+function validateLifecycleRendererStatsMeasurement(
+    errors,
+    resources,
+    path,
+    expectedMode,
+) {
+    if (!isRecord(resources)) {
+        return;
+    }
+    for (const field of rendererResourceFields) {
+        validatePositiveNumber(errors, resources[field], `${path}.${field}`);
+    }
+    const measurement = resources.rendererStatsMeasurement;
+    const measurementPath = `${path}.rendererStatsMeasurement`;
+    if (!isRecord(measurement)) {
+        errors.push(`${measurementPath} is missing`);
+        return;
+    }
+    validateExactValue(
+        errors,
+        measurement.measurementMode,
+        expectedMode,
+        `${measurementPath}.measurementMode`,
+    );
+    validatePositiveNumber(
+        errors,
+        measurement.startedAt,
+        `${measurementPath}.startedAt`,
+    );
+    validatePositiveNumber(
+        errors,
+        measurement.completedAt,
+        `${measurementPath}.completedAt`,
+    );
+    if (
+        isFiniteNumber(measurement.startedAt) &&
+        isFiniteNumber(measurement.completedAt) &&
+        measurement.completedAt < measurement.startedAt
+    ) {
+        errors.push(
+            `${measurementPath}.completedAt must not precede startedAt`,
+        );
+    }
+    for (const field of [
+        'drawCallsDelta',
+        'renderedFramesDelta',
+        'submittedTrianglesDelta',
+    ]) {
+        validatePositiveNumber(
+            errors,
+            measurement[field],
+            `${measurementPath}.${field}`,
+        );
+    }
+
+    if (expectedMode === lifecycleRendererStatsLegacyMode) {
+        validateExactValue(
+            errors,
+            measurement.legacySettleMs,
+            lifecycleLegacyRendererStatsSettleMs,
+            `${measurementPath}.legacySettleMs`,
+        );
+        for (const field of [
+            'rendererStatsPublishedAt',
+            'rendererStatsReceiptCount',
+            'rendererStatsReceiptDelta',
+            'rendererStatsRenderFrame',
+            'r3fFrameCallbackCountDelta',
+            'runtimeMeasurementMode',
+        ]) {
+            if (!hasOwn(measurement, field) || measurement[field] !== null) {
+                errors.push(
+                    `${measurementPath}.${field} must be explicit null`,
+                );
+            }
+        }
+        return;
+    }
+
+    validateExactValue(
+        errors,
+        measurement.runtimeMeasurementMode,
+        rendererStatsRuntimeMeasurementMode,
+        `${measurementPath}.runtimeMeasurementMode`,
+    );
+    if (measurement.legacySettleMs !== null) {
+        errors.push(`${measurementPath}.legacySettleMs must be explicit null`);
+    }
+    validatePositiveNumber(
+        errors,
+        measurement.rendererStatsPublishedAt,
+        `${measurementPath}.rendererStatsPublishedAt`,
+    );
+    if (
+        isFiniteNumber(measurement.rendererStatsPublishedAt) &&
+        isFiniteNumber(measurement.startedAt) &&
+        measurement.rendererStatsPublishedAt <= measurement.startedAt
+    ) {
+        errors.push(
+            `${measurementPath}.rendererStatsPublishedAt must follow startedAt`,
+        );
+    }
+    for (const field of [
+        'rendererStatsReceiptCount',
+        'rendererStatsReceiptDelta',
+        'rendererStatsRenderFrame',
+        'r3fFrameCallbackCountDelta',
+    ]) {
+        if (!Number.isInteger(measurement[field]) || measurement[field] <= 0) {
+            errors.push(
+                `${measurementPath}.${field} must be a positive integer`,
+            );
+        }
+    }
+}
+
+function validatePopulationRecord(
+    errors,
+    population,
+    path,
+    { allowEmpty = false } = {},
+) {
+    if (!isRecord(population)) {
+        errors.push(`${path} must be a record`);
+        return false;
+    }
+    if (!allowEmpty && Object.keys(population).length === 0) {
+        errors.push(`${path} must be a non-empty record`);
+        return false;
+    }
+    let valid = true;
+    for (const [species, count] of Object.entries(population)) {
+        if (
+            !isNonEmptyString(species) ||
+            !Number.isInteger(count) ||
+            count < 0
+        ) {
+            errors.push(
+                `${path}.${species || '<empty>'} must be a non-negative integer`,
+            );
+            valid = false;
+        }
+    }
+    return valid;
+}
+
+function validateCrossTierResourceSnapshot(
+    errors,
+    snapshot,
+    path,
+    schedulerBaselineContract,
+    { allowEmptyPopulation = false } = {},
+) {
+    if (!isRecord(snapshot)) {
+        errors.push(`${path} is missing`);
+        return;
+    }
+    validateExactValue(
+        errors,
+        snapshot.measurementMode,
+        crossTierResourceSnapshotMeasurementMode,
+        `${path}.measurementMode`,
+    );
+    if (
+        !Number.isInteger(snapshot.attemptCount) ||
+        snapshot.attemptCount < 1 ||
+        snapshot.attemptCount > 3
+    ) {
+        errors.push(`${path}.attemptCount must be an integer from 1 to 3`);
+    }
+    validatePositiveNumber(errors, snapshot.capturedAt, `${path}.capturedAt`);
+    const startValid = validatePopulationRecord(
+        errors,
+        snapshot.populationAtStart,
+        `${path}.populationAtStart`,
+        { allowEmpty: allowEmptyPopulation },
+    );
+    const endValid = validatePopulationRecord(
+        errors,
+        snapshot.populationAtEnd,
+        `${path}.populationAtEnd`,
+        { allowEmpty: allowEmptyPopulation },
+    );
+    const exposureValid = validatePopulationRecord(
+        errors,
+        snapshot.populationExposure,
+        `${path}.populationExposure`,
+        { allowEmpty: allowEmptyPopulation },
+    );
+    const exposureAtStartValid = validatePopulationRecord(
+        errors,
+        snapshot.populationExposureAtStart,
+        `${path}.populationExposureAtStart`,
+        { allowEmpty: allowEmptyPopulation },
+    );
+    const exposureAtEndValid = validatePopulationRecord(
+        errors,
+        snapshot.populationExposureAtEnd,
+        `${path}.populationExposureAtEnd`,
+        { allowEmpty: allowEmptyPopulation },
+    );
+    if (
+        startValid &&
+        endValid &&
+        canonicalJson(snapshot.populationAtStart) !==
+            canonicalJson(snapshot.populationAtEnd)
+    ) {
+        errors.push(
+            `${path}.populationAtStart must equal populationAtEnd elementwise`,
+        );
+    }
+    if (
+        exposureAtStartValid &&
+        exposureAtEndValid &&
+        canonicalJson(snapshot.populationExposureAtStart) !==
+            canonicalJson(snapshot.populationExposureAtEnd)
+    ) {
+        errors.push(
+            `${path}.populationExposureAtStart must equal populationExposureAtEnd elementwise`,
+        );
+    }
+    if (
+        exposureValid &&
+        exposureAtEndValid &&
+        canonicalJson(snapshot.populationExposure) !==
+            canonicalJson(snapshot.populationExposureAtEnd)
+    ) {
+        errors.push(
+            `${path}.populationExposure must equal populationExposureAtEnd elementwise`,
+        );
+    }
+    if (exposureValid) {
+        const exposureAvailable =
+            Object.keys(snapshot.populationExposure).length > 0;
+        if (typeof snapshot.populationExposureAvailable !== 'boolean') {
+            errors.push(
+                `${path}.populationExposureAvailable must be a boolean`,
+            );
+        } else if (snapshot.populationExposureAvailable !== exposureAvailable) {
+            errors.push(
+                `${path}.populationExposureAvailable must match whether populationExposure is non-empty`,
+            );
+        }
+    }
+    if (endValid && exposureValid) {
+        for (const [species, endpointCount] of Object.entries(
+            snapshot.populationAtEnd,
+        )) {
+            const exposureCount = snapshot.populationExposure[species];
+            if (
+                !Number.isInteger(exposureCount) ||
+                exposureCount < endpointCount
+            ) {
+                errors.push(
+                    `${path}.populationExposure.${species} must be at least the endpoint population ${endpointCount}`,
+                );
+            }
+        }
+    }
+    const expectedPopulationExposureAvailable = !allowEmptyPopulation;
+    validateExactValue(
+        errors,
+        snapshot.populationExposureAvailable,
+        expectedPopulationExposureAvailable,
+        `${path}.populationExposureAvailable`,
+    );
+    if (exposureValid) {
+        validateExactValue(
+            errors,
+            snapshot.populationExposureSignature,
+            canonicalJson(snapshot.populationExposure),
+            `${path}.populationExposureSignature`,
+        );
+    }
+    const expectedRendererStatsMode =
+        schedulerBaselineContract === legacyHeartbeatSchedulerBaselineContract
+            ? lifecycleRendererStatsLegacyMode
+            : lifecycleRendererStatsCanonicalMode;
+    validateExactValue(
+        errors,
+        snapshot.rendererStatsMode,
+        expectedRendererStatsMode,
+        `${path}.rendererStatsMode`,
+    );
+    validateLifecycleRendererStatsMeasurement(
+        errors,
+        snapshot.resources,
+        `${path}.resources`,
+        expectedRendererStatsMode,
+    );
+    if (
+        isFiniteNumber(snapshot.capturedAt) &&
+        isFiniteNumber(
+            snapshot.resources?.rendererStatsMeasurement?.completedAt,
+        ) &&
+        snapshot.capturedAt <
+            snapshot.resources.rendererStatsMeasurement.completedAt
+    ) {
+        errors.push(
+            `${path}.capturedAt must not precede the renderer-stats receipt`,
+        );
+    }
+}
+
+function validateCrossTierColdMilestones(errors, scenario, path) {
+    const cold = scenario.crossTierCold;
+    if (!isRecord(cold)) {
+        errors.push(`${path} is missing`);
+        return;
+    }
+    validateExactValue(
+        errors,
+        cold.measurementMode,
+        crossTierColdMilestoneMeasurementMode,
+        `${path}.measurementMode`,
+    );
+    for (const [field, expected] of [
+        ['trackerInstalled', true],
+        ['mutationObserverStopped', true],
+        ['firstCanvasPersistent', true],
+        ['canvasAttachmentCount', 1],
+    ]) {
+        validateExactValue(errors, cold[field], expected, `${path}.${field}`);
+    }
+    for (const field of [
+        'installedMs',
+        'domContentLoadedMs',
+        'canvasAttachedMs',
+        'canvasSizedMs',
+        'firstSubmittedFrameMs',
+        'fixtureReadyMs',
+        'observationStoppedMs',
+        'hostCanvasReadyDiagnosticMs',
+    ]) {
+        validateNonNegativeNumber(errors, cold[field], `${path}.${field}`);
+    }
+    const expectedDpr = Math.min(
+        scenario.requested?.dpr,
+        scenario.requested?.expectedDprCap,
+    );
+    validateExactValue(
+        errors,
+        cold.expectedDpr,
+        expectedDpr,
+        `${path}.expectedDpr`,
+    );
+    const canvas = cold.canvasSize;
+    if (!isRecord(canvas)) {
+        errors.push(`${path}.canvasSize is missing`);
+    } else {
+        validateExactValue(
+            errors,
+            canvas.clientWidth,
+            scenario.requested?.viewport?.width,
+            `${path}.canvasSize.clientWidth`,
+        );
+        validateExactValue(
+            errors,
+            canvas.clientHeight,
+            scenario.requested?.viewport?.height,
+            `${path}.canvasSize.clientHeight`,
+        );
+        validateExactValue(
+            errors,
+            canvas.width,
+            Math.round(canvas.clientWidth * expectedDpr),
+            `${path}.canvasSize.width`,
+        );
+        validateExactValue(
+            errors,
+            canvas.height,
+            Math.round(canvas.clientHeight * expectedDpr),
+            `${path}.canvasSize.height`,
+        );
+    }
+    const orderedFields = [
+        'installedMs',
+        'canvasAttachedMs',
+        'canvasSizedMs',
+        'firstSubmittedFrameMs',
+        'fixtureReadyMs',
+        'observationStoppedMs',
+    ];
+    for (let index = 1; index < orderedFields.length; index += 1) {
+        const previousField = orderedFields[index - 1];
+        const field = orderedFields[index];
+        if (
+            isFiniteNumber(cold[previousField]) &&
+            isFiniteNumber(cold[field]) &&
+            cold[field] < cold[previousField]
+        ) {
+            errors.push(`${path}.${field} must not precede ${previousField}`);
+        }
+    }
+    if (
+        isFiniteNumber(cold.installedMs) &&
+        isFiniteNumber(cold.domContentLoadedMs) &&
+        cold.domContentLoadedMs < cold.installedMs
+    ) {
+        errors.push(`${path}.domContentLoadedMs must not precede installedMs`);
+    }
+    validateExactValue(
+        errors,
+        scenario.canvasReadyMs,
+        cold.canvasSizedMs,
+        `${path}.canvasSizedMs/top-level canvasReadyMs`,
+    );
+}
+
+function validateLifecycleRuntimeFrameLoop(
+    errors,
+    runtimeFrameLoop,
+    path,
+    expectedRendererStatsMode,
+) {
+    if (!isRecord(runtimeFrameLoop)) {
+        errors.push(`${path} is missing`);
+        return;
+    }
+
+    if (expectedRendererStatsMode === lifecycleRendererStatsLegacyMode) {
+        if (hasOwn(runtimeFrameLoop, 'awaitingFrameReceipt')) {
+            errors.push(
+                `${path}.awaitingFrameReceipt must be absent for the legacy contract`,
+            );
+        }
+    } else if (typeof runtimeFrameLoop.awaitingFrameReceipt !== 'boolean') {
+        errors.push(`${path}.awaitingFrameReceipt must be a boolean`);
+    }
+
+    for (const field of lifecycleRuntimeFrameLoopBooleanFields) {
+        if (typeof runtimeFrameLoop[field] !== 'boolean') {
+            errors.push(`${path}.${field} must be a boolean`);
+        }
+    }
+    for (const field of lifecycleRuntimeFrameLoopNumberFields) {
+        if (!isFiniteNumber(runtimeFrameLoop[field])) {
+            errors.push(`${path}.${field} must be a finite number`);
+        }
     }
 }
 
@@ -499,7 +2214,13 @@ function validateAutoQualityMetrics(errors, metrics, path) {
     validatePositiveNumber(errors, metrics.memoryGb, `${path}.memoryGb`);
 }
 
-function validateCanonicalScenarioEvidence(errors, scenario, label, key) {
+function validateCanonicalScenarioEvidence(
+    errors,
+    scenario,
+    label,
+    key,
+    { schedulerBaselineContract = canonicalSchedulerBaselineContract } = {},
+) {
     const requested = scenario.requested;
     const runtime = scenario.runtime;
     const path = `${label} scenario ${key}`;
@@ -512,6 +2233,19 @@ function validateCanonicalScenarioEvidence(errors, scenario, label, key) {
     }
 
     if (scenario.baseName.startsWith('game-cross-tier-')) {
+        validateCrossTierDisplayCadenceControlEvidence(errors, scenario, path);
+        if (
+            schedulerBaselineContract ===
+            legacyHeartbeatSchedulerBaselineContract
+        ) {
+            validateLegacyHeartbeatCrossTierEvidence(errors, scenario, path);
+        } else {
+            validateCrossTierObserverIsolation(
+                errors,
+                scenario.sample,
+                `${path} sample`,
+            );
+        }
         const profileSlug = crossTierBaseNamePattern.exec(
             scenario.baseName,
         )?.[1];
@@ -657,6 +2391,17 @@ function validateCanonicalScenarioEvidence(errors, scenario, label, key) {
                 );
                 if (!isRecord(arrival.sample)) {
                     errors.push(`${arrivalPath}.sample is missing`);
+                } else {
+                    for (const field of [
+                        'rendererShaders',
+                        'rendererTextures',
+                    ]) {
+                        validatePositiveInteger(
+                            errors,
+                            arrival.sample[field],
+                            `${arrivalPath}.sample.${field}`,
+                        );
+                    }
                 }
                 if (index === 0) {
                     if (arrival.timing?.initial !== true) {
@@ -687,21 +2432,90 @@ function validateCanonicalScenarioEvidence(errors, scenario, label, key) {
                 }
             }
         }
+        const lifetimeResources = scenario.gardenSwitch?.lifetimeResources;
+        const lifetimePath = `${path} gardenSwitch.lifetimeResources`;
+        if (!isRecord(lifetimeResources)) {
+            errors.push(`${lifetimePath} is missing`);
+        } else {
+            validateExactValue(
+                errors,
+                lifetimeResources.measurementMode,
+                gardenSwitchLifetimeResourceMeasurementMode,
+                `${lifetimePath}.measurementMode`,
+            );
+            for (const field of rendererResourceFields) {
+                validatePositiveInteger(
+                    errors,
+                    lifetimeResources[field],
+                    `${lifetimePath}.${field}`,
+                );
+            }
+            const geometryArrivalValues = Array.isArray(arrivals)
+                ? arrivals.map(
+                      (arrival) => arrival?.resources?.rendererGeometries,
+                  )
+                : [];
+            if (
+                geometryArrivalValues.every(Number.isInteger) &&
+                geometryArrivalValues.length > 0 &&
+                lifetimeResources.rendererGeometries !==
+                    Math.max(...geometryArrivalValues)
+            ) {
+                errors.push(
+                    `${lifetimePath}.rendererGeometries must equal the maximum arrival snapshot`,
+                );
+            }
+            for (const field of ['rendererShaders', 'rendererTextures']) {
+                const arrivalValues = Array.isArray(arrivals)
+                    ? arrivals.map((arrival) => arrival?.sample?.[field])
+                    : [];
+                if (
+                    arrivalValues.every(Number.isInteger) &&
+                    arrivalValues.length > 0 &&
+                    Number.isInteger(lifetimeResources[field]) &&
+                    lifetimeResources[field] < Math.max(...arrivalValues)
+                ) {
+                    errors.push(
+                        `${lifetimePath}.${field} must cover every instrumented arrival sample`,
+                    );
+                }
+            }
+        }
     }
 
     if (scenario.baseName === 'game-high-target-runtime-lifecycle-desktop') {
+        const lifecycleRendererStatsMode =
+            schedulerBaselineContract ===
+            legacyHeartbeatSchedulerBaselineContract
+                ? lifecycleRendererStatsLegacyMode
+                : lifecycleRendererStatsCanonicalMode;
         validatePositiveNumber(
             errors,
             runtime.browserDpr,
             `${path} runtime.browserDpr`,
         );
-        for (const [phaseName, fixture] of [
+        validateLifecycleRuntimeFrameLoop(
+            errors,
+            scenario.lifecycle?.active?.runtimeFrameLoop,
+            `${path} lifecycle.active.runtimeFrameLoop`,
+            lifecycleRendererStatsMode,
+        );
+        const lifecycleResourceFixtures = [
             ['cold', scenario.lifecycle?.cold?.fixture],
+            [
+                'offscreen-resumed',
+                scenario.lifecycle?.offscreen?.resumedControl?.fixture,
+            ],
+            [
+                'hidden-resumed',
+                scenario.lifecycle?.hidden?.resumedControl?.fixture,
+            ],
             [
                 'context-restored',
                 scenario.lifecycle?.context?.restoredControl?.fixture,
             ],
-        ]) {
+        ];
+        for (const [phaseName, fixture] of lifecycleResourceFixtures) {
             const fixturePath = `${path} lifecycle.${phaseName}.fixture`;
             if (!isRecord(fixture)) {
                 errors.push(`${fixturePath} is missing`);
@@ -723,6 +2537,25 @@ function validateCanonicalScenarioEvidence(errors, scenario, label, key) {
                 fixture.resources,
                 `${fixturePath}.resources`,
             );
+            validateLifecycleRendererStatsMeasurement(
+                errors,
+                fixture.resources,
+                `${fixturePath}.resources`,
+                lifecycleRendererStatsMode,
+            );
+        }
+
+        const offscreenResources = lifecycleResourceFixtures[1][1]?.resources;
+        const hiddenResources = lifecycleResourceFixtures[2][1]?.resources;
+        if (isRecord(offscreenResources) && isRecord(hiddenResources)) {
+            for (const field of rendererResourceFields) {
+                validateExactValue(
+                    errors,
+                    hiddenResources[field],
+                    offscreenResources[field],
+                    `${path} lifecycle mature ${field}`,
+                );
+            }
         }
     }
 }
@@ -792,10 +2625,40 @@ function pushMismatch(errors, path, baselineValue, candidateValue) {
     }
 }
 
-function validateReport(report, label, { allowPartial = false } = {}) {
+function requestedCompatibilitySignature(requested, schemaVersion) {
+    if (!isRecord(requested)) {
+        return requested;
+    }
+    const defaults =
+        requestedCompatibilityDefaultsBySchemaVersion.get(schemaVersion);
+    return defaults ? { ...defaults, ...requested } : requested;
+}
+
+function validateReport(
+    report,
+    label,
+    {
+        allowPartial = false,
+        schedulerBaselineContract = canonicalSchedulerBaselineContract,
+    } = {},
+) {
     const errors = [];
     if (!isRecord(report)) {
         return [`${label} report is not an object`];
+    }
+    if (!schedulerBaselineContracts.has(schedulerBaselineContract)) {
+        errors.push(
+            `${label} scheduler baseline contract is unsupported: ${String(schedulerBaselineContract)}`,
+        );
+    }
+    if (
+        schedulerBaselineContract ===
+            legacyHeartbeatSchedulerBaselineContract &&
+        allowPartial
+    ) {
+        errors.push(
+            `${label} legacy heartbeat scheduler evidence requires the complete canonical manifest`,
+        );
     }
     if (report.schemaVersion !== profileSchemaVersion) {
         errors.push(
@@ -823,12 +2686,23 @@ function validateReport(report, label, { allowPartial = false } = {}) {
         for (const field of [
             'allowLegacyOperationVisuals',
             'build',
+            'legacyOutlinePipeline',
             'managedServer',
             'screenshots',
         ]) {
             if (typeof options[field] !== 'boolean') {
                 errors.push(`${label}.options.${field} must be a boolean`);
             }
+        }
+        if (
+            typeof options.legacyOutlinePipeline === 'boolean' &&
+            options.legacyOutlinePipeline !==
+                (schedulerBaselineContract ===
+                    legacyHeartbeatSchedulerBaselineContract)
+        ) {
+            errors.push(
+                `${label}.options.legacyOutlinePipeline must be ${schedulerBaselineContract === legacyHeartbeatSchedulerBaselineContract} for scheduler contract ${schedulerBaselineContract}`,
+            );
         }
         if (
             options.closeupRepeat !== null &&
@@ -933,11 +2807,17 @@ function validateReport(report, label, { allowPartial = false } = {}) {
         if (harness.dirty !== false) {
             errors.push(`${label}.provenance.harness.dirty must be false`);
         }
-        if (isRecord(subject) && harness.commit !== subject.commit) {
-            errors.push(
-                `${label}.provenance.harness.commit must match the served-build subject commit`,
-            );
-        }
+    }
+    if (
+        schedulerBaselineContract ===
+            legacyHeartbeatSchedulerBaselineContract &&
+        isRecord(subject) &&
+        isRecord(harness) &&
+        subject.commit === harness.commit
+    ) {
+        errors.push(
+            `${label} legacy heartbeat scheduler subject must predate and differ from its profiler harness`,
+        );
     }
 
     for (const field of ['platform', 'arch', 'nodeVersion', 'browserVersion']) {
@@ -953,6 +2833,16 @@ function validateReport(report, label, { allowPartial = false } = {}) {
     }
     if (!['managed', 'external'].includes(provenance.server?.mode)) {
         errors.push(`${label}.provenance.server.mode is invalid`);
+    }
+    if (
+        provenance.server?.mode === 'managed' &&
+        isRecord(subject) &&
+        isRecord(harness) &&
+        harness.commit !== subject.commit
+    ) {
+        errors.push(
+            `${label}.provenance.harness.commit must match the served-build subject commit for a managed server`,
+        );
     }
 
     const seen = new Set();
@@ -1050,6 +2940,26 @@ function validateReport(report, label, { allowPartial = false } = {}) {
                     `${label} scenario ${key} must identify the lifecycle fixture`,
                 );
             }
+            if (
+                legacyContinuousRenderLeaseCompatibilityScenarioBaseNames.has(
+                    scenario.baseName,
+                )
+            ) {
+                if (
+                    schedulerBaselineContract ===
+                    legacyHeartbeatSchedulerBaselineContract
+                ) {
+                    if (requested.continuousRenderLeases != null) {
+                        errors.push(
+                            `${label} scenario ${key} legacy heartbeat requested.continuousRenderLeases must be omitted or null`,
+                        );
+                    }
+                } else if (requested.continuousRenderLeases !== '1') {
+                    errors.push(
+                        `${label} scenario ${key} canonical requested.continuousRenderLeases must be "1"`,
+                    );
+                }
+            }
         }
 
         const runtime = scenario.runtime;
@@ -1110,17 +3020,76 @@ function validateReport(report, label, { allowPartial = false } = {}) {
                 }
             }
         }
-        if (!allowPartial) {
-            validateCanonicalScenarioEvidence(errors, scenario, label, key);
+        if (scenario.baseName?.startsWith('game-cross-tier-')) {
+            validateCrossTierColdMilestones(
+                errors,
+                scenario,
+                `${label} scenario ${key} crossTierCold`,
+            );
+            validateCrossTierResourceSnapshot(
+                errors,
+                scenario.crossTierResourceSnapshot,
+                `${label} scenario ${key} crossTierResourceSnapshot`,
+                schedulerBaselineContract,
+                {
+                    allowEmptyPopulation: requested?.expectedShadows === false,
+                },
+            );
         }
-        if (scenario.acceptance?.pass !== true) {
-            errors.push(`${label} scenario ${key} acceptance.pass is not true`);
-        }
-        validatePassingChecks(
+        validateRetainedHeapEvidence(
             errors,
-            scenario.budget,
-            `${label} scenario ${key} budget`,
+            scenario.memory,
+            `${label} scenario ${key} memory`,
         );
+        if (!allowPartial) {
+            validateCanonicalScenarioEvidence(errors, scenario, label, key, {
+                schedulerBaselineContract,
+            });
+            if (scenario.baseName?.startsWith('game-cross-tier-')) {
+                validateCrossTierCheckNameInventories(
+                    errors,
+                    scenario,
+                    `${label} scenario ${key}`,
+                    {
+                        legacyOutlinePipeline:
+                            options?.legacyOutlinePipeline === true,
+                    },
+                );
+            }
+        }
+        const isLegacyCrossTierScenario =
+            schedulerBaselineContract ===
+                legacyHeartbeatSchedulerBaselineContract &&
+            scenario.baseName?.startsWith('game-cross-tier-');
+        if (isLegacyCrossTierScenario) {
+            const expectedFailureNames = legacyHeartbeatExpectedFailureNames(
+                scenario.sample,
+                report.comparisonContractVersion,
+            );
+            validateLegacyHeartbeatCheckOutcome(
+                errors,
+                scenario.acceptance,
+                `${label} scenario ${key} acceptance`,
+                expectedFailureNames,
+            );
+            validateLegacyHeartbeatCheckOutcome(
+                errors,
+                scenario.budget,
+                `${label} scenario ${key} budget`,
+                expectedFailureNames,
+            );
+        } else {
+            if (scenario.acceptance?.pass !== true) {
+                errors.push(
+                    `${label} scenario ${key} acceptance.pass is not true`,
+                );
+            }
+            validatePassingChecks(
+                errors,
+                scenario.budget,
+                `${label} scenario ${key} budget`,
+            );
+        }
         validatePassingChecks(
             errors,
             scenario.performanceBudget,
@@ -1257,17 +3226,37 @@ function scenarioFixtureSignature(scenario) {
 
 function gpuState(sample) {
     const gpu = sample?.gpu;
+    const elapsedMs = sample?.elapsedMs;
+    const elapsedMaxMs = gpu?.elapsedMaxMs;
+    const elapsedP95Ms = gpu?.elapsedP95Ms;
+    const elapsedTotalMs = gpu?.elapsedTotalMs;
+    const renderedFrames = sample?.renderedFrames;
+    const sampleCount = gpu?.sampleCount;
     const available =
         gpu?.supported === true &&
         gpu?.valid === true &&
         gpu?.complete === true &&
         gpu?.disjoint === false &&
-        Number.isInteger(gpu?.sampleCount) &&
-        gpu.sampleCount > 0 &&
-        isFiniteNumber(gpu.elapsedP95Ms) &&
-        gpu.elapsedP95Ms > 0;
+        gpu.reason === null &&
+        Number.isInteger(renderedFrames) &&
+        renderedFrames > 0 &&
+        Number.isInteger(sampleCount) &&
+        sampleCount === renderedFrames &&
+        isFiniteNumber(elapsedMs) &&
+        elapsedMs > 0 &&
+        isFiniteNumber(elapsedP95Ms) &&
+        elapsedP95Ms > 0 &&
+        isFiniteNumber(elapsedMaxMs) &&
+        elapsedMaxMs >= elapsedP95Ms &&
+        isFiniteNumber(elapsedTotalMs) &&
+        elapsedTotalMs >= elapsedMaxMs;
     if (available) {
-        return { available: true, value: gpu.elapsedP95Ms };
+        return {
+            available: true,
+            elapsedMeanMs: elapsedTotalMs / sampleCount,
+            elapsedOccupancyPercent: (elapsedTotalMs / elapsedMs) * 100,
+            value: elapsedP95Ms,
+        };
     }
     return {
         available: false,
@@ -1280,21 +3269,61 @@ function gpuState(sample) {
     };
 }
 
+function gpuElapsedWindowOccupancyState(sample) {
+    const state = gpuState(sample);
+    return {
+        valid: state.available === true,
+        value: state.available === true ? state.elapsedOccupancyPercent : null,
+    };
+}
+
+function gpuElapsedWorkflowOccupancyState(scenario) {
+    const arrivals = scenario?.gardenSwitch?.arrivals;
+    if (!Array.isArray(arrivals) || arrivals.length === 0) {
+        return { available: false, invalid: true, value: null };
+    }
+
+    const gpuStates = arrivals.map((arrival) => gpuState(arrival?.sample));
+    const availableCount = gpuStates.filter((state) => state.available).length;
+    if (availableCount === 0) {
+        return {
+            available: false,
+            invalid: gpuStates.some((state) => state.invalidAvailableValue),
+            value: null,
+        };
+    }
+    if (availableCount !== arrivals.length) {
+        return { available: true, invalid: true, value: null };
+    }
+
+    let elapsedMs = 0;
+    let elapsedTotalMs = 0;
+    for (const arrival of arrivals) {
+        const occupancy = gpuElapsedWindowOccupancyState(arrival?.sample);
+        if (!occupancy.valid) {
+            return { available: true, invalid: true, value: null };
+        }
+        elapsedMs += arrival.sample.elapsedMs;
+        elapsedTotalMs += arrival.sample.gpu.elapsedTotalMs;
+    }
+    return {
+        available: true,
+        invalid: false,
+        value: (elapsedTotalMs / elapsedMs) * 100,
+    };
+}
+
 function samplePhases(scenario) {
     if (scenario.requested?.lifecycleProfile === true) {
         return [
             {
                 cdp: scenario.lifecycle?.active?.cdp ?? scenario.cdp,
                 name: 'active',
-                resources: scenario.lifecycle?.cold?.fixture?.resources,
                 sample: scenario.lifecycle?.active?.sample ?? scenario.sample,
             },
             {
                 cdp: scenario.lifecycle?.context?.restoredWindow?.cdp,
                 name: 'context-restored',
-                resources:
-                    scenario.lifecycle?.context?.restoredControl?.fixture
-                        ?.resources,
                 sample: scenario.lifecycle?.context?.restoredWindow?.sample,
             },
         ];
@@ -1317,6 +3346,104 @@ function samplePhases(scenario) {
     ];
 }
 
+function lifecycleResourcePhases(scenario) {
+    const witnesses = [
+        {
+            diagnosticOnly: true,
+            gatedBy: lifecycleResourceDiagnosticGate,
+            name: 'cold',
+            resources: scenario.lifecycle?.cold?.fixture?.resources,
+        },
+        {
+            diagnosticOnly: false,
+            name: 'offscreen-resumed',
+            resources:
+                scenario.lifecycle?.offscreen?.resumedControl?.fixture
+                    ?.resources,
+        },
+        {
+            diagnosticOnly: false,
+            name: 'hidden-resumed',
+            resources:
+                scenario.lifecycle?.hidden?.resumedControl?.fixture?.resources,
+        },
+        {
+            diagnosticOnly: true,
+            gatedBy: lifecycleResourceDiagnosticGate,
+            name: 'context-restored',
+            resources:
+                scenario.lifecycle?.context?.restoredControl?.fixture
+                    ?.resources,
+        },
+    ];
+    const resources = Object.fromEntries(
+        rendererResourceFields.map((field) => {
+            const values = witnesses.map((witness) =>
+                isFiniteNumber(witness.resources?.[field])
+                    ? witness.resources[field]
+                    : null,
+            );
+            return [
+                field,
+                values.every(isFiniteNumber) ? Math.max(...values) : null,
+            ];
+        }),
+    );
+    return [
+        ...witnesses,
+        {
+            diagnosticOnly: false,
+            name: 'lifecycle-peak',
+            resources,
+        },
+    ];
+}
+
+function gardenSwitchResourcePhases(scenario) {
+    const arrivals = scenario.gardenSwitch?.arrivals ?? [];
+    return [
+        ...arrivals.map((arrival, index) => ({
+            diagnosticOnly: index < 3,
+            gatedBy: index < 3 ? gardenSwitchResourceDiagnosticGate : null,
+            name: `arrival-${arrival.arrivalIndex}-${arrival.profile}`,
+            resources: arrival.resources,
+        })),
+        {
+            diagnosticOnly: false,
+            gatedBy: null,
+            name: 'switch-lifetime-peak',
+            resources: scenario.gardenSwitch?.lifetimeResources,
+        },
+    ];
+}
+
+function resourcePhases(scenario) {
+    if (scenario.requested?.lifecycleProfile === true) {
+        return lifecycleResourcePhases(scenario);
+    }
+    if (scenario.requested?.gardenSwitchProfile === true) {
+        return gardenSwitchResourcePhases(scenario);
+    }
+    if (scenario.baseName?.startsWith('game-cross-tier-')) {
+        return [
+            {
+                diagnosticOnly: false,
+                gatedBy: null,
+                name: 'sample',
+                populationExposure:
+                    scenario.crossTierResourceSnapshot?.populationExposure,
+                resources: scenario.crossTierResourceSnapshot?.resources,
+            },
+        ];
+    }
+    return samplePhases(scenario).map((phase) => ({
+        diagnosticOnly: false,
+        gatedBy: null,
+        name: phase.name,
+        resources: phase.resources,
+    }));
+}
+
 function timingPhases(scenario) {
     if (scenario.requested?.lifecycleProfile === true) {
         const cold = scenario.lifecycle?.cold;
@@ -1330,6 +3457,23 @@ function timingPhases(scenario) {
                         cold?.firstSubmittedFrameMs,
                     'cold.fixture_ready_ms': cold?.fixtureReadyMs,
                     'cold.interaction_ready_ms': cold?.interactionReadyMs,
+                },
+                name: 'cold',
+            },
+        ];
+    }
+
+    if (scenario.requested?.crossTierProfile === true) {
+        const cold = scenario.crossTierCold;
+        return [
+            {
+                metrics: {
+                    'cold.canvas_attached_ms': cold?.canvasAttachedMs,
+                    'cold.canvas_sized_ms': cold?.canvasSizedMs,
+                    'cold.dom_content_loaded_ms': cold?.domContentLoadedMs,
+                    'cold.first_submitted_frame_ms':
+                        cold?.firstSubmittedFrameMs,
+                    'cold.fixture_ready_ms': cold?.fixtureReadyMs,
                 },
                 name: 'cold',
             },
@@ -1363,8 +3507,50 @@ function timingPhases(scenario) {
     return phases;
 }
 
-function compareScenarioCompatibility(baseline, candidate) {
+function compareScenarioCompatibility(
+    baseline,
+    candidate,
+    {
+        baselineSchedulerContract,
+        baselineSchemaVersion,
+        candidateSchedulerContract,
+        candidateSchemaVersion,
+    },
+) {
     const errors = [];
+    let baselineRequested = requestedCompatibilitySignature(
+        baseline.requested,
+        baselineSchemaVersion,
+    );
+    const candidateRequested = requestedCompatibilitySignature(
+        candidate.requested,
+        candidateSchemaVersion,
+    );
+    const comparesLegacyBaselineToCanonicalCandidate =
+        baselineSchedulerContract ===
+            legacyHeartbeatSchedulerBaselineContract &&
+        candidateSchedulerContract === canonicalSchedulerBaselineContract;
+    if (
+        comparesLegacyBaselineToCanonicalCandidate &&
+        isRecord(baselineRequested)
+    ) {
+        baselineRequested = {
+            ...baselineRequested,
+            legacyOutlinePipeline: false,
+        };
+    }
+    if (
+        comparesLegacyBaselineToCanonicalCandidate &&
+        legacyContinuousRenderLeaseCompatibilityScenarioBaseNames.has(
+            baseline.baseName,
+        ) &&
+        isRecord(baselineRequested)
+    ) {
+        baselineRequested = {
+            ...baselineRequested,
+            continuousRenderLeases: '1',
+        };
+    }
     pushMismatch(errors, 'scenario.name', baseline.name, candidate.name);
     pushMismatch(errors, 'scenario.path', baseline.path, candidate.path);
     pushMismatch(
@@ -1376,8 +3562,8 @@ function compareScenarioCompatibility(baseline, candidate) {
     pushMismatch(
         errors,
         'scenario.requested',
-        baseline.requested,
-        candidate.requested,
+        baselineRequested,
+        candidateRequested,
     );
     pushMismatch(
         errors,
@@ -1466,6 +3652,98 @@ function rankIndependentRuns(rows) {
     }));
 }
 
+function rankPopulationExposureMatchedRuns(rows) {
+    const baselineBySignature = new Map();
+    const candidateBySignature = new Map();
+    const addSample = (buckets, populationExposure, profileRun, value) => {
+        const signature = canonicalJson(populationExposure);
+        const bucket = buckets.get(signature) ?? {
+            populationExposure: canonicalize(populationExposure),
+            samples: [],
+            signature,
+        };
+        bucket.samples.push({ profileRun, value });
+        buckets.set(signature, bucket);
+    };
+    for (const row of rows) {
+        addSample(
+            baselineBySignature,
+            row.baselinePopulationExposure,
+            row.profileRun,
+            row.baseline,
+        );
+        addSample(
+            candidateBySignature,
+            row.candidatePopulationExposure,
+            row.profileRun,
+            row.candidate,
+        );
+    }
+
+    const signatures = [
+        ...new Set([
+            ...baselineBySignature.keys(),
+            ...candidateBySignature.keys(),
+        ]),
+    ].sort();
+    const individual = [];
+    const signatureMatches = signatures.map((signature) => {
+        const baselineBucket = baselineBySignature.get(signature);
+        const candidateBucket = candidateBySignature.get(signature);
+        const baselineSamples = [...(baselineBucket?.samples ?? [])].sort(
+            (left, right) =>
+                left.value - right.value || left.profileRun - right.profileRun,
+        );
+        const candidateSamples = [...(candidateBucket?.samples ?? [])].sort(
+            (left, right) =>
+                left.value - right.value || left.profileRun - right.profileRun,
+        );
+        const matchedSampleCount = Math.min(
+            baselineSamples.length,
+            candidateSamples.length,
+        );
+        const populationExposure =
+            baselineBucket?.populationExposure ??
+            candidateBucket?.populationExposure ??
+            null;
+        for (let index = 0; index < matchedSampleCount; index += 1) {
+            const baseline = baselineSamples[index];
+            const candidate = candidateSamples[index];
+            individual.push({
+                baseline: baseline.value,
+                baselineProfileRun: baseline.profileRun,
+                candidate: candidate.value,
+                candidateProfileRun: candidate.profileRun,
+                populationExposure,
+                populationExposureSampleRank: index + 1,
+                populationExposureSignature: signature,
+                sampleRank: individual.length + 1,
+            });
+        }
+        return {
+            baselineSampleCount: baselineSamples.length,
+            candidateSampleCount: candidateSamples.length,
+            matchedSampleCount,
+            populationExposure,
+            signature,
+        };
+    });
+
+    return {
+        individual,
+        matching: {
+            matchedSampleCount: individual.length,
+            matchedSignatureCount: signatureMatches.filter(
+                ({ matchedSampleCount }) => matchedSampleCount > 0,
+            ).length,
+            mode: 'canonical-full-population-exposure-v1',
+            signatures: signatureMatches,
+            unmatchedBaselineSampleCount: rows.length - individual.length,
+            unmatchedCandidateSampleCount: rows.length - individual.length,
+        },
+    };
+}
+
 function buildRatioComparison({
     direction,
     id,
@@ -1531,6 +3809,477 @@ function buildRatioComparison({
     };
 }
 
+function buildTargetAwareRenderedFpsComparison({
+    maximumRenderedFps = null,
+    minimumRenderedFps,
+    rows,
+    targetFramesPerSecond,
+    targetToleranceFramesPerSecond,
+    ...metric
+}) {
+    const baselineRelative = buildRatioComparison({ ...metric, rows });
+    const individual = baselineRelative.individual.map((run) => {
+        const candidateFloorPass = run.candidate >= minimumRenderedFps;
+        const candidateCeilingPass =
+            maximumRenderedFps === null || run.candidate <= maximumRenderedFps;
+        return {
+            ...run,
+            baselineRelativePass: run.pass,
+            baselineRelativeRatio: run.ratio,
+            baselineRelativeWorsening: run.worsening,
+            candidateCeilingPass,
+            candidateFloorPass,
+            maximumRenderedFps,
+            minimumRenderedFps,
+            pass: candidateFloorPass && candidateCeilingPass,
+            targetFramesPerSecond,
+        };
+    });
+    const pass = individual.every((run) => run.pass);
+    return {
+        ...baselineRelative,
+        baselineRelativeDiagnosticOnly: true,
+        baselineRelativeRegressionBreach: baselineRelative.regressionBreach,
+        baselineRelativeScreeningBreach: baselineRelative.screeningBreach,
+        everyRawRunGate: true,
+        individual,
+        medianPass: pass,
+        maximumRenderedFps,
+        minimumRenderedFps,
+        pass,
+        rawRanksDiagnosticOnly: false,
+        regressionBreach: !pass,
+        screeningBreach: !pass,
+        targetFramesPerSecond,
+        targetToleranceFramesPerSecond,
+        targetAwareRenderedFps: true,
+    };
+}
+
+function buildTargetAwareMaximumComparison({
+    maximumCandidateValue,
+    rows,
+    targetFramesPerSecond,
+    ...metric
+}) {
+    const baselineRelative = buildRatioComparison({ ...metric, rows });
+    const individual = baselineRelative.individual.map((run) => {
+        const candidateMaximumPass = run.candidate <= maximumCandidateValue;
+        return {
+            ...run,
+            baselineRelativePass: run.pass,
+            baselineRelativeRatio: run.ratio,
+            baselineRelativeWorsening: run.worsening,
+            candidateMaximumPass,
+            maximumCandidateValue,
+            pass: candidateMaximumPass,
+            targetFramesPerSecond,
+        };
+    });
+    const pass = individual.every((run) => run.pass);
+    return {
+        ...baselineRelative,
+        baselineRelativeDiagnosticOnly: true,
+        baselineRelativeRegressionBreach: baselineRelative.regressionBreach,
+        baselineRelativeScreeningBreach: baselineRelative.screeningBreach,
+        everyRawRunGate: true,
+        individual,
+        maximumCandidateValue,
+        medianPass: pass,
+        pass,
+        rawRanksDiagnosticOnly: false,
+        regressionBreach: !pass,
+        screeningBreach: !pass,
+        targetFramesPerSecond,
+        targetAwareMaximum: true,
+    };
+}
+
+function buildGardenSwitchRenderedFpsComparison({ phase, rows, ...metric }) {
+    return buildTargetAwareRenderedFpsComparison({
+        ...metric,
+        maximumRenderedFps: phase.startsWith('arrival-1-')
+            ? gardenSwitchMaximumRenderedFps
+            : null,
+        minimumRenderedFps: gardenSwitchMinimumRenderedFps,
+        rows,
+        targetFramesPerSecond: gardenSwitchTargetFramesPerSecond,
+        targetToleranceFramesPerSecond: gardenSwitchRenderedFpsTolerance,
+    });
+}
+
+function buildCrossTierRenderedFpsComparison({ rows, ...metric }) {
+    return buildTargetAwareRenderedFpsComparison({
+        ...metric,
+        maximumRenderedFps: crossTierMaximumRenderedFps,
+        minimumRenderedFps: crossTierMinimumRenderedFps,
+        rows,
+        targetFramesPerSecond: crossTierTargetFramesPerSecond,
+        targetToleranceFramesPerSecond: crossTierRenderedFpsTolerance,
+    });
+}
+
+function buildLifecycleRenderedFpsComparison({ rows, ...metric }) {
+    return buildTargetAwareRenderedFpsComparison({
+        ...metric,
+        maximumRenderedFps: lifecycleMaximumRenderedFps,
+        minimumRenderedFps: lifecycleMinimumRenderedFps,
+        rows,
+        targetFramesPerSecond: lifecycleTargetFramesPerSecond,
+        targetToleranceFramesPerSecond: lifecycleRenderedFpsTolerance,
+    });
+}
+
+function buildLifecycleP95FrameComparison({ rows, ...metric }) {
+    return buildTargetAwareMaximumComparison({
+        ...metric,
+        maximumCandidateValue: lifecycleMaximumP95FrameMs,
+        rows,
+        targetFramesPerSecond: lifecycleTargetFramesPerSecond,
+    });
+}
+
+function buildRatioDiagnosticComparison({ gatedBy, rows, ...metric }) {
+    const baselineRelative = buildRatioComparison({ ...metric, rows });
+    return {
+        ...baselineRelative,
+        baselineRelativeDiagnosticOnly: true,
+        baselineRelativeRegressionBreach: baselineRelative.regressionBreach,
+        baselineRelativeScreeningBreach: baselineRelative.screeningBreach,
+        diagnosticOnly: true,
+        gatedBy,
+        individual: baselineRelative.individual.map((run) => ({
+            ...run,
+            baselineRelativePass: run.pass,
+            baselineRelativeRatio: run.ratio,
+            baselineRelativeWorsening: run.worsening,
+            pass: true,
+        })),
+        medianPass: true,
+        pass: true,
+        regressionBreach: false,
+        screeningBreach: false,
+    };
+}
+
+function buildCadenceConfoundedGpuComparison({ gatedBy, ...metric }) {
+    const diagnostic = buildRatioDiagnosticComparison({
+        ...metric,
+        gatedBy,
+    });
+    return {
+        ...diagnostic,
+        rawThresholdObservation: {
+            medianAbsolutePass: diagnostic.medianAbsolutePass,
+            medianPass: diagnostic.baselineRelativeRegressionBreach !== true,
+            medianRelativePass: diagnostic.medianRelativePass,
+            regressionBreach: diagnostic.baselineRelativeRegressionBreach,
+            screeningBreach: diagnostic.baselineRelativeScreeningBreach,
+        },
+    };
+}
+
+function validateGardenSwitchFrameContract(row, reportKind, errors) {
+    const sample = row[reportKind]?.sample;
+    const boundarySnapshots = [];
+    for (const boundary of [
+        'runtimeFrameLoopAtStart',
+        'runtimeFrameLoopAtEnd',
+    ]) {
+        const snapshot = sample?.[boundary];
+        const path = `${row.scenario} run ${row.profileRun} ${row.phase} ${reportKind}.sample.${boundary}`;
+        if (!isRecord(snapshot)) {
+            errors.push(`${path} is missing`);
+            continue;
+        }
+        boundarySnapshots.push(snapshot);
+        if (
+            snapshot.targetFramesPerSecond !== gardenSwitchTargetFramesPerSecond
+        ) {
+            errors.push(
+                `${path}.targetFramesPerSecond must be ${gardenSwitchTargetFramesPerSecond}; received ${canonicalJson(snapshot.targetFramesPerSecond)}`,
+            );
+        }
+        if (snapshot.effectiveVisible !== true) {
+            errors.push(`${path}.effectiveVisible must be true`);
+        }
+        if (snapshot.callbackPending !== true) {
+            errors.push(`${path}.callbackPending must be true`);
+        }
+        if (snapshot.pendingCallbackKind !== 'timeout') {
+            errors.push(`${path}.pendingCallbackKind must be "timeout"`);
+        }
+        if (
+            !isFiniteNumber(snapshot.pendingCallbackDueAt) ||
+            snapshot.pendingCallbackDueAt < 0
+        ) {
+            errors.push(
+                `${path}.pendingCallbackDueAt must be a non-negative finite number`,
+            );
+        }
+        if (typeof snapshot.awaitingFrameReceipt !== 'boolean') {
+            errors.push(`${path}.awaitingFrameReceipt must be a boolean`);
+        }
+        if (
+            !isFiniteNumber(snapshot.displayFrameIntervalMs) ||
+            snapshot.displayFrameIntervalMs <= 0
+        ) {
+            errors.push(
+                `${path}.displayFrameIntervalMs must be a positive finite number`,
+            );
+        }
+        if (
+            !Number.isInteger(snapshot.displayFrameCalibrationCount) ||
+            snapshot.displayFrameCalibrationCount < 1
+        ) {
+            errors.push(
+                `${path}.displayFrameCalibrationCount must be a positive integer`,
+            );
+        }
+    }
+    if (
+        boundarySnapshots.length === 2 &&
+        boundarySnapshots.every(
+            (snapshot) =>
+                Number.isInteger(snapshot.displayFrameCalibrationCount) &&
+                snapshot.displayFrameCalibrationCount >= 1,
+        ) &&
+        boundarySnapshots[0].displayFrameCalibrationCount !==
+            boundarySnapshots[1].displayFrameCalibrationCount
+    ) {
+        errors.push(
+            `${row.scenario} run ${row.profileRun} ${row.phase} ${reportKind}.sample displayFrameCalibrationCount must remain stable across the sample window`,
+        );
+    }
+
+    const path = `${row.scenario} run ${row.profileRun} ${row.phase} ${reportKind}.sample`;
+    const renderedFrames = sample?.renderedFrames;
+    const counterDeltas = sample?.runtimeFrameLoopCounterDeltas;
+    if (!isRecord(counterDeltas)) {
+        errors.push(`${path}.runtimeFrameLoopCounterDeltas is missing`);
+        return;
+    }
+    const counterFields = [
+        'scheduledCallbackCount',
+        'wakeupCount',
+        'productiveWakeupCount',
+        'retainedTimeoutReconciliationWakeupCount',
+        'pendingFrameReceiptReconciliationWakeupCount',
+        'unexpectedNoWorkWakeupCount',
+        'postCalibrationFrameWakeupCount',
+        'ownedInvalidationCount',
+        'cancelledCallbackCount',
+        'r3fFrameCallbackCount',
+        'fixedStepFailureCount',
+        'invalidationFailureCount',
+        'missedFrameReceiptCount',
+    ];
+    for (const field of counterFields) {
+        const value = counterDeltas[field];
+        if (!Number.isInteger(value) || value < 0) {
+            errors.push(
+                `${path}.runtimeFrameLoopCounterDeltas.${field} must be a non-negative integer`,
+            );
+        }
+    }
+    if (
+        !Number.isInteger(renderedFrames) ||
+        renderedFrames <= 0 ||
+        renderedFrames !== counterDeltas.r3fFrameCallbackCount
+    ) {
+        errors.push(
+            `${path}.renderedFrames must equal the positive runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount`,
+        );
+    }
+
+    const startPending = sample?.runtimeFrameLoopAtStart?.callbackPending;
+    const endPending = sample?.runtimeFrameLoopAtEnd?.callbackPending;
+    if (
+        counterFields.every((field) =>
+            Number.isInteger(counterDeltas[field]),
+        ) &&
+        typeof startPending === 'boolean' &&
+        typeof endPending === 'boolean'
+    ) {
+        const pendingCallbackDelta = Number(endPending) - Number(startPending);
+        const observedCallbackDelta =
+            counterDeltas.scheduledCallbackCount -
+            counterDeltas.wakeupCount -
+            counterDeltas.cancelledCallbackCount;
+        if (observedCallbackDelta !== pendingCallbackDelta) {
+            errors.push(
+                `${path}.runtimeFrameLoopCounterDeltas callback conservation must equal the pending callback delta; received ${observedCallbackDelta}, expected ${pendingCallbackDelta}`,
+            );
+        }
+
+        const classifiedWakeupCount =
+            counterDeltas.productiveWakeupCount +
+            counterDeltas.retainedTimeoutReconciliationWakeupCount +
+            counterDeltas.pendingFrameReceiptReconciliationWakeupCount +
+            counterDeltas.unexpectedNoWorkWakeupCount;
+        if (counterDeltas.wakeupCount !== classifiedWakeupCount) {
+            errors.push(
+                `${path}.runtimeFrameLoopCounterDeltas wakeup classification conservation must equal wakeupCount; received ${classifiedWakeupCount} classified wakeups for ${counterDeltas.wakeupCount} handled wakeups`,
+            );
+        }
+    }
+
+    const awaitingFrameReceiptAtStart =
+        sample?.runtimeFrameLoopAtStart?.awaitingFrameReceipt;
+    if (
+        Number.isInteger(
+            counterDeltas.pendingFrameReceiptReconciliationWakeupCount,
+        ) &&
+        Number.isInteger(counterDeltas.ownedInvalidationCount) &&
+        typeof awaitingFrameReceiptAtStart === 'boolean' &&
+        counterDeltas.pendingFrameReceiptReconciliationWakeupCount >
+            counterDeltas.ownedInvalidationCount +
+                Number(awaitingFrameReceiptAtStart)
+    ) {
+        errors.push(
+            `${path}.runtimeFrameLoopCounterDeltas.pendingFrameReceiptReconciliationWakeupCount must not exceed ownedInvalidationCount plus an awaiting receipt at sample start`,
+        );
+    }
+
+    for (const field of [
+        'fixedStepFailureCount',
+        'invalidationFailureCount',
+        'missedFrameReceiptCount',
+        'postCalibrationFrameWakeupCount',
+        'unexpectedNoWorkWakeupCount',
+    ]) {
+        if (counterDeltas[field] !== 0) {
+            errors.push(
+                `${path}.runtimeFrameLoopCounterDeltas.${field} must be 0; received ${canonicalJson(counterDeltas[field])}`,
+            );
+        }
+    }
+}
+
+function validateLifecycleCandidateFrameContract(row, errors) {
+    const sample = row.candidate?.sample;
+    for (const boundary of [
+        'runtimeFrameLoopAtStart',
+        'runtimeFrameLoopAtEnd',
+    ]) {
+        const snapshot = sample?.[boundary];
+        const path = `${row.scenario} run ${row.profileRun} ${row.phase} candidate.sample.${boundary}`;
+        if (!isRecord(snapshot)) {
+            errors.push(`${path} is missing`);
+            continue;
+        }
+        if (snapshot.targetFramesPerSecond !== lifecycleTargetFramesPerSecond) {
+            errors.push(
+                `${path}.targetFramesPerSecond must be ${lifecycleTargetFramesPerSecond}; received ${canonicalJson(snapshot.targetFramesPerSecond)}`,
+            );
+        }
+        if (snapshot.effectiveVisible !== true) {
+            errors.push(`${path}.effectiveVisible must be true`);
+        }
+    }
+}
+
+function validateCrossTierCandidateFrameContract(row, errors) {
+    const targetFields = [
+        'runtimeFrameLoopTargetFramesPerSecondAtStart',
+        'runtimeFrameLoopTargetFramesPerSecondMax',
+        'runtimeFrameLoopTargetFramesPerSecondAtEnd',
+    ];
+    for (const reportKind of ['baseline', 'candidate']) {
+        const phase = row[reportKind];
+        const path = `${row.scenario} run ${row.profileRun} ${row.phase} ${reportKind}`;
+        const runtimeTarget =
+            phase?.resources?.runtimeFrameLoop?.targetFramesPerSecond;
+        if (runtimeTarget !== crossTierTargetFramesPerSecond) {
+            errors.push(
+                `${path}.runtime.runtimeFrameLoop.targetFramesPerSecond must be ${crossTierTargetFramesPerSecond}; received ${canonicalJson(runtimeTarget)}`,
+            );
+        }
+        for (const field of targetFields) {
+            const value = phase?.sample?.[field];
+            if (value !== crossTierTargetFramesPerSecond) {
+                errors.push(
+                    `${path}.sample.${field} must be ${crossTierTargetFramesPerSecond}; received ${canonicalJson(value)}`,
+                );
+            }
+        }
+    }
+
+    const sample = row.candidate?.sample;
+    const path = `${row.scenario} run ${row.profileRun} ${row.phase} candidate.sample`;
+    if (
+        sample?.runtimeFrameLoopTargetFramesPerSecondMin !==
+        crossTierTargetFramesPerSecond
+    ) {
+        errors.push(
+            `${path}.runtimeFrameLoopTargetFramesPerSecondMin must be ${crossTierTargetFramesPerSecond}; received ${canonicalJson(sample?.runtimeFrameLoopTargetFramesPerSecondMin)}`,
+        );
+    }
+    for (const boundary of [
+        'runtimeFrameLoopAtStart',
+        'runtimeFrameLoopAtEnd',
+    ]) {
+        const snapshot = sample?.[boundary];
+        const snapshotPath = `${path}.${boundary}`;
+        if (!isRecord(snapshot)) {
+            errors.push(`${snapshotPath} is missing`);
+            continue;
+        }
+        if (snapshot.targetFramesPerSecond !== crossTierTargetFramesPerSecond) {
+            errors.push(
+                `${snapshotPath}.targetFramesPerSecond must be ${crossTierTargetFramesPerSecond}; received ${canonicalJson(snapshot.targetFramesPerSecond)}`,
+            );
+        }
+        if (snapshot.effectiveVisible !== true) {
+            errors.push(`${snapshotPath}.effectiveVisible must be true`);
+        }
+    }
+
+    const leaseFields = [
+        'runtimeFrameLoopActiveLeaseCountAtStart',
+        'runtimeFrameLoopActiveLeaseCountMin',
+        'runtimeFrameLoopActiveLeaseCountMax',
+        'runtimeFrameLoopActiveLeaseCountAtEnd',
+    ];
+    const leaseCounts = leaseFields.map((field) => sample?.[field]);
+    for (const [index, leaseCount] of leaseCounts.entries()) {
+        if (!Number.isInteger(leaseCount) || leaseCount <= 0) {
+            errors.push(
+                `${path}.${leaseFields[index]} must be a positive integer`,
+            );
+        }
+    }
+    if (
+        leaseCounts.every(
+            (leaseCount) => Number.isInteger(leaseCount) && leaseCount > 0,
+        ) &&
+        new Set(leaseCounts).size !== 1
+    ) {
+        errors.push(
+            `${path} runtime frame-loop active lease counts must remain stable`,
+        );
+    }
+
+    const frames = sample?.frames;
+    if (!Number.isInteger(frames) || frames <= 0) {
+        errors.push(`${path}.frames must be a positive integer`);
+    }
+    validateCrossTierObserverIsolation(errors, sample, path);
+
+    const renderedFrames = sample?.renderedFrames;
+    const r3fFrameCallbackCount =
+        sample?.runtimeFrameLoopCounterDeltas?.r3fFrameCallbackCount;
+    if (
+        !Number.isInteger(renderedFrames) ||
+        renderedFrames <= 0 ||
+        renderedFrames !== r3fFrameCallbackCount
+    ) {
+        errors.push(
+            `${path}.renderedFrames must equal the positive runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount`,
+        );
+    }
+}
+
 function buildAbsoluteComparison({
     id,
     label,
@@ -1566,6 +4315,70 @@ function buildAbsoluteComparison({
     };
 }
 
+function buildPopulationExposureMatchedAbsoluteComparison({
+    id,
+    label,
+    maximumIncrease,
+    rows,
+    unit = 'count',
+}) {
+    const { individual: ranked, matching } =
+        rankPopulationExposureMatchedRuns(rows);
+    if (ranked.length === 0) {
+        return { comparison: null, matching };
+    }
+    const individual = ranked.map((row) => {
+        const delta = row.candidate - row.baseline;
+        return {
+            ...row,
+            delta: round(delta),
+            pass: delta <= maximumIncrease,
+        };
+    });
+    const baselineMedian = median(individual.map((row) => row.baseline));
+    const candidateMedian = median(individual.map((row) => row.candidate));
+    const medianDelta = candidateMedian - baselineMedian;
+    return {
+        comparison: {
+            baselineMedian: round(baselineMedian),
+            candidateMedian: round(candidateMedian),
+            id,
+            individual,
+            kind: 'absolute',
+            label,
+            maximumIncrease,
+            medianDelta: round(medianDelta),
+            pass: medianDelta <= maximumIncrease,
+            populationExposureMatching: matching,
+            rawRanksDiagnosticOnly: true,
+            regressionBreach: medianDelta > maximumIncrease,
+            screeningBreach: medianDelta > maximumIncrease,
+            unit,
+        },
+        matching,
+    };
+}
+
+function buildAbsoluteDiagnosticComparison({ gatedBy, ...metric }) {
+    const baselineRelative = buildAbsoluteComparison(metric);
+    return {
+        ...baselineRelative,
+        baselineRelativeDiagnosticOnly: true,
+        baselineRelativeRegressionBreach: baselineRelative.regressionBreach,
+        baselineRelativeScreeningBreach: baselineRelative.screeningBreach,
+        diagnosticOnly: true,
+        gatedBy,
+        individual: baselineRelative.individual.map((run) => ({
+            ...run,
+            baselineRelativePass: run.pass,
+            pass: true,
+        })),
+        pass: true,
+        regressionBreach: false,
+        screeningBreach: false,
+    };
+}
+
 function groupRows(rows) {
     const groups = new Map();
     for (const row of rows) {
@@ -1583,6 +4396,146 @@ function groupRows(rows) {
             `${right.scenario}::${right.phase}`,
         ),
     );
+}
+
+function crossTierSteadyScenarioBaseName(baseName) {
+    return baseName.replace('-camera-motion-', '-steady-');
+}
+
+function crossTierCadenceState(rows) {
+    const baselineValues = rows.map((row) => row.baseline.sample?.renderedFps);
+    const candidateValues = rows.map(
+        (row) => row.candidate?.sample?.renderedFps,
+    );
+    const valuesAreFinite = [...baselineValues, ...candidateValues].every(
+        isFiniteNumber,
+    );
+    const baselineMedian = valuesAreFinite ? median(baselineValues) : null;
+    const candidateMedian = valuesAreFinite ? median(candidateValues) : null;
+    const everyRawSampleInTargetRange = valuesAreFinite
+        ? [...baselineValues, ...candidateValues].every(
+              (value) =>
+                  value >= crossTierMinimumRenderedFps &&
+                  value <= crossTierMaximumRenderedFps,
+          )
+        : false;
+    const medianDeltaFps = valuesAreFinite
+        ? Math.abs(candidateMedian - baselineMedian)
+        : null;
+    return {
+        baselineMedian: isFiniteNumber(baselineMedian)
+            ? round(baselineMedian)
+            : null,
+        baselineValues,
+        candidateMedian: isFiniteNumber(candidateMedian)
+            ? round(candidateMedian)
+            : null,
+        candidateValues,
+        everyRawSampleInTargetRange,
+        matched:
+            everyRawSampleInTargetRange &&
+            medianDeltaFps <= crossTierMatchedCadenceMedianToleranceFps,
+        medianDeltaFps: isFiniteNumber(medianDeltaFps)
+            ? round(medianDeltaFps)
+            : null,
+    };
+}
+
+function pushCrossTierCadenceError(errors, scenario, state, purpose) {
+    errors.push(
+        `${scenario} ${purpose} requires every baseline and candidate raw sample at ${crossTierMinimumRenderedFps}-${crossTierMaximumRenderedFps} FPS and a bundle-median delta no greater than ${crossTierMatchedCadenceMedianToleranceFps} FPS; received baseline=${canonicalJson(state.baselineValues)}, candidate=${canonicalJson(state.candidateValues)}, medianDelta=${canonicalJson(state.medianDeltaFps)}`,
+    );
+}
+
+function crossTierGpuCadencePolicy({
+    baselineSchedulerContract,
+    errors,
+    group,
+    groupsByScenario,
+    inputComparisonContractVersion,
+}) {
+    const cadence = crossTierCadenceState(group.rows);
+    const isCameraMotion = group.scenario.includes('-camera-motion-');
+    if (cadence.matched) {
+        return {
+            cadence,
+            controlScenario: null,
+            decisionStatus: 'comparable',
+            gateBasis: 'matched-cadence',
+        };
+    }
+
+    const candidateMotionInTargetRange = cadence.candidateValues.every(
+        (value) =>
+            isFiniteNumber(value) &&
+            value >= crossTierMinimumRenderedFps &&
+            value <= crossTierMaximumRenderedFps,
+    );
+    // Contract v4 makes the profiler-owned 30 FPS control mandatory. Preserve
+    // the raw-motion diagnostic only for already-produced pre-v4 history.
+    const intentionalLegacyCameraConfound =
+        inputComparisonContractVersion <
+            displayCadenceControlComparisonContractVersion &&
+        isCameraMotion &&
+        baselineSchedulerContract ===
+            legacyHeartbeatSchedulerBaselineContract &&
+        isFiniteNumber(cadence.baselineMedian) &&
+        cadence.baselineMedian > crossTierMaximumRenderedFps &&
+        candidateMotionInTargetRange &&
+        cadence.baselineMedian > cadence.candidateMedian;
+    if (!intentionalLegacyCameraConfound) {
+        pushCrossTierCadenceError(
+            errors,
+            group.scenario,
+            cadence,
+            'GPU p95 comparison cadence',
+        );
+        return {
+            cadence,
+            controlScenario: null,
+            decisionStatus: 'invalid',
+            gateBasis: 'cadence-mismatch',
+        };
+    }
+
+    const controlScenario = crossTierSteadyScenarioBaseName(group.scenario);
+    const control = groupsByScenario.get(controlScenario);
+    if (!control) {
+        errors.push(
+            `${group.scenario} cadence-confounded GPU p95 evidence requires mapped same-tier steady control ${controlScenario}`,
+        );
+        return {
+            cadence,
+            controlScenario,
+            decisionStatus: 'invalid',
+            gateBasis: 'cadence-confounded',
+        };
+    }
+    const controlCadence = crossTierCadenceState(control.rows);
+    if (!controlCadence.matched) {
+        pushCrossTierCadenceError(
+            errors,
+            controlScenario,
+            controlCadence,
+            `mapped steady control for ${group.scenario}`,
+        );
+    }
+    for (const row of control.rows) {
+        const baselineGpu = gpuState(row.baseline.sample);
+        const candidateGpu = gpuState(row.candidate?.sample);
+        if (!baselineGpu.available || !candidateGpu.available) {
+            errors.push(
+                `${group.scenario} cadence-confounded GPU p95 evidence requires complete strict GPU timing in mapped steady control ${controlScenario} run ${row.profileRun}`,
+            );
+        }
+    }
+    return {
+        cadence,
+        controlCadence,
+        controlScenario,
+        decisionStatus: 'not-comparable',
+        gateBasis: 'cadence-confounded',
+    };
 }
 
 function addMetricRows({
@@ -1627,24 +4580,88 @@ function addMetricRows({
     }
     rows.push({
         baseline: baselineValue,
+        ...(row.baselinePopulationExposure
+            ? {
+                  baselinePopulationExposure: row.baselinePopulationExposure,
+              }
+            : {}),
         candidate: candidateValue,
+        ...(row.candidatePopulationExposure
+            ? {
+                  candidatePopulationExposure: row.candidatePopulationExposure,
+              }
+            : {}),
         phase: row.phase,
         profileRun: row.profileRun,
         scenario: row.scenario,
     });
 }
 
-function comparePairedScenarios(pairs) {
+function comparePairedScenarios(
+    pairs,
+    {
+        baselineSchedulerContract = canonicalSchedulerBaselineContract,
+        inputComparisonContractVersion = comparisonContractVersion,
+        requireCandidateFrameContract = true,
+        requireGardenSwitchWorkflowGpuTiming = false,
+    } = {},
+) {
     const comparisons = [];
     const errors = [];
     const invariants = [];
     const skipped = [];
+    const gardenSwitchWorkflowRows = [];
+    const resourceRows = [];
+    const retainedHeapRows = [];
     const sampleRows = [];
     const timingRows = [];
 
     for (const { baseline, candidate } of pairs) {
         const baseName = scenarioBaseName(baseline);
         const profileRun = scenarioRun(baseline);
+        retainedHeapRows.push({
+            baseline: baseline.memory.retainedJsHeapMb,
+            candidate: candidate.memory.retainedJsHeapMb,
+            phase: 'post-scenario',
+            profileRun,
+            scenario: baseName,
+        });
+        if (baseName === gardenSwitchScenarioBaseName) {
+            const baselineWorkflow = gpuElapsedWorkflowOccupancyState(baseline);
+            const candidateWorkflow =
+                gpuElapsedWorkflowOccupancyState(candidate);
+            const workflowPath = `${baseName} run ${profileRun} workflow`;
+            if (baselineWorkflow.invalid || candidateWorkflow.invalid) {
+                errors.push(
+                    `${workflowPath} GPU elapsed-workflow occupancy requires complete GPU timing and valid elapsed-window totals for every arrival in both reports`,
+                );
+            } else if (
+                baselineWorkflow.available !== candidateWorkflow.available
+            ) {
+                errors.push(
+                    `${workflowPath} GPU timing availability differs between reports`,
+                );
+            } else if (baselineWorkflow.available) {
+                gardenSwitchWorkflowRows.push({
+                    baseline: baselineWorkflow.value,
+                    candidate: candidateWorkflow.value,
+                    phase: 'workflow',
+                    profileRun,
+                    scenario: baseName,
+                });
+            } else if (requireGardenSwitchWorkflowGpuTiming) {
+                errors.push(
+                    `${workflowPath} GPU elapsed-workflow occupancy timing is required for confirmed release evidence`,
+                );
+            } else {
+                skipped.push({
+                    metric: 'gpu.elapsed_workflow_occupancy_percent',
+                    phase: 'workflow',
+                    reason: 'GPU timing unavailable for every arrival in both reports',
+                    scenario: baseName,
+                });
+            }
+        }
         const baselineSamplePhases = samplePhases(baseline);
         const candidateSamplePhases = samplePhases(candidate);
         for (const [index, baselinePhase] of baselineSamplePhases.entries()) {
@@ -1652,6 +4669,45 @@ function comparePairedScenarios(pairs) {
             sampleRows.push({
                 baseline: baselinePhase,
                 candidate: candidatePhase,
+                phase: baselinePhase.name,
+                profileRun,
+                scenario: baseName,
+            });
+        }
+
+        const baselineResourcePhases = resourcePhases(baseline);
+        const candidateResourcePhases = resourcePhases(candidate);
+        for (const [index, baselinePhase] of baselineResourcePhases.entries()) {
+            const candidatePhase = candidateResourcePhases[index];
+            if (!candidatePhase || candidatePhase.name !== baselinePhase.name) {
+                errors.push(
+                    `${baseName} run ${profileRun} resource phase ${baselinePhase.name} is missing from candidate evidence`,
+                );
+                continue;
+            }
+            if (
+                candidatePhase.diagnosticOnly !== baselinePhase.diagnosticOnly
+            ) {
+                errors.push(
+                    `${baseName} run ${profileRun} resource phase ${baselinePhase.name} diagnostic policy differs between reports`,
+                );
+                continue;
+            }
+            if (candidatePhase.gatedBy !== baselinePhase.gatedBy) {
+                errors.push(
+                    `${baseName} run ${profileRun} resource phase ${baselinePhase.name} diagnostic gate differs between reports`,
+                );
+                continue;
+            }
+            resourceRows.push({
+                baseline: baselinePhase,
+                baselinePopulationExposure:
+                    baselinePhase.populationExposure ?? null,
+                candidate: candidatePhase,
+                candidatePopulationExposure:
+                    candidatePhase.populationExposure ?? null,
+                diagnosticOnly: baselinePhase.diagnosticOnly,
+                gatedBy: baselinePhase.gatedBy ?? null,
                 phase: baselinePhase.name,
                 profileRun,
                 scenario: baseName,
@@ -1717,7 +4773,16 @@ function comparePairedScenarios(pairs) {
         }
     }
 
-    for (const group of groupRows(sampleRows)) {
+    const sampleGroups = groupRows(sampleRows);
+    const sampleGroupsByScenario = new Map(
+        sampleGroups.map((group) => [group.scenario, group]),
+    );
+    for (const group of sampleGroups) {
+        const targetAwareLifecycle =
+            requireCandidateFrameContract &&
+            baselineSchedulerContract ===
+                legacyHeartbeatSchedulerBaselineContract &&
+            group.scenario === lifecycleScenarioBaseName;
         for (const metric of [
             {
                 field: 'longTaskCount',
@@ -1790,6 +4855,32 @@ function comparePairedScenarios(pairs) {
         for (const metric of ratioMetricRegistry) {
             const rows = [];
             for (const row of group.rows) {
+                if (
+                    requireCandidateFrameContract &&
+                    metric.id === 'frame.rendered_fps'
+                ) {
+                    if (group.scenario === gardenSwitchScenarioBaseName) {
+                        if (
+                            baselineSchedulerContract ===
+                            canonicalSchedulerBaselineContract
+                        ) {
+                            validateGardenSwitchFrameContract(
+                                row,
+                                'baseline',
+                                errors,
+                            );
+                        }
+                        validateGardenSwitchFrameContract(
+                            row,
+                            'candidate',
+                            errors,
+                        );
+                    } else if (crossTierBaseNamePattern.test(group.scenario)) {
+                        validateCrossTierCandidateFrameContract(row, errors);
+                    } else if (targetAwareLifecycle) {
+                        validateLifecycleCandidateFrameContract(row, errors);
+                    }
+                }
                 addMetricRows({
                     baselineValue: metric.read(row.baseline),
                     candidateValue: metric.read(row.candidate),
@@ -1797,10 +4888,7 @@ function comparePairedScenarios(pairs) {
                     metricId: metric.id,
                     positiveRequired: true,
                     required:
-                        ![
-                            'cpu.script_duration_s',
-                            'memory.js_heap_mb',
-                        ].includes(metric.id) ||
+                        metric.id !== 'cpu.script_duration_s' ||
                         isRecord(row.baseline.cdp) ||
                         isRecord(row.candidate.cdp),
                     row,
@@ -1812,12 +4900,80 @@ function comparePairedScenarios(pairs) {
                 comparisons.push({
                     phase: group.phase,
                     scenario: group.scenario,
-                    ...buildRatioComparison({ ...metric, rows }),
+                    ...(targetAwareLifecycle && metric.id === 'frame.p95_ms'
+                        ? buildLifecycleP95FrameComparison({
+                              ...metric,
+                              rows,
+                          })
+                        : targetAwareLifecycle &&
+                            metric.id === 'frame.rendered_fps'
+                          ? buildLifecycleRenderedFpsComparison({
+                                ...metric,
+                                rows,
+                            })
+                          : requireCandidateFrameContract &&
+                              metric.id === 'frame.rendered_fps' &&
+                              group.scenario === gardenSwitchScenarioBaseName
+                            ? buildGardenSwitchRenderedFpsComparison({
+                                  ...metric,
+                                  phase: group.phase,
+                                  rows,
+                              })
+                            : requireCandidateFrameContract &&
+                                metric.id === 'frame.rendered_fps' &&
+                                crossTierBaseNamePattern.test(group.scenario)
+                              ? buildCrossTierRenderedFpsComparison({
+                                    ...metric,
+                                    rows,
+                                })
+                              : buildRatioComparison({ ...metric, rows })),
                 });
             }
         }
 
+        if (
+            requireCandidateFrameContract &&
+            group.scenario === gardenSwitchScenarioBaseName &&
+            group.phase.startsWith('arrival-1-')
+        ) {
+            for (const metric of gardenSwitchInitialTotalWorkMetricRegistry) {
+                const rows = [];
+                for (const row of group.rows) {
+                    addMetricRows({
+                        baselineValue: metric.read(row.baseline),
+                        candidateValue: metric.read(row.candidate),
+                        errors,
+                        metricId: metric.id,
+                        positiveRequired: true,
+                        required: true,
+                        row,
+                        rows,
+                        skipped,
+                    });
+                }
+                if (rows.length > 0) {
+                    comparisons.push({
+                        phase: group.phase,
+                        scenario: group.scenario,
+                        ...buildRatioComparison({ ...metric, rows }),
+                    });
+                }
+            }
+        }
+
+        const crossTierGpuCadence =
+            requireCandidateFrameContract &&
+            crossTierBaseNamePattern.test(group.scenario)
+                ? crossTierGpuCadencePolicy({
+                      baselineSchedulerContract,
+                      errors,
+                      group,
+                      groupsByScenario: sampleGroupsByScenario,
+                      inputComparisonContractVersion,
+                  })
+                : null;
         const gpuRows = [];
+        const gpuOccupancyRows = [];
         for (const row of group.rows) {
             const baselineGpu = gpuState(row.baseline.sample);
             const candidateGpu = gpuState(row.candidate.sample);
@@ -1826,7 +4982,7 @@ function comparePairedScenarios(pairs) {
                 candidateGpu.invalidAvailableValue
             ) {
                 errors.push(
-                    `${row.scenario} ${row.phase} GPU timing must be complete, non-disjoint, sampled, and positive when marked valid`,
+                    `${row.scenario} ${row.phase} GPU timing marked valid requires a positive sample window and rendered-frame count; complete, valid, non-disjoint queries; a null reason; positive ordered p95, maximum, and total elapsed time; and gpu.sampleCount equal to sample.renderedFrames`,
                 );
             } else if (baselineGpu.available !== candidateGpu.available) {
                 errors.push(
@@ -1841,6 +4997,10 @@ function comparePairedScenarios(pairs) {
                     errors.push(
                         `${row.scenario} ${row.phase} GPU timing unavailable for different reasons: baseline=${baselineGpu.reason}, candidate=${candidateGpu.reason}`,
                     );
+                } else if (crossTierGpuCadence) {
+                    errors.push(
+                        `${row.scenario} run ${row.profileRun} ${row.phase} GPU timing is required for cadence-safe cross-tier comparison`,
+                    );
                 } else {
                     skipped.push({
                         metric: 'gpu.p95_ms',
@@ -1852,31 +5012,138 @@ function comparePairedScenarios(pairs) {
             } else {
                 gpuRows.push({
                     baseline: baselineGpu.value,
+                    baselineElapsedMeanMs: baselineGpu.elapsedMeanMs,
+                    baselineElapsedOccupancyPercent:
+                        baselineGpu.elapsedOccupancyPercent,
                     candidate: candidateGpu.value,
+                    candidateElapsedMeanMs: candidateGpu.elapsedMeanMs,
+                    candidateElapsedOccupancyPercent:
+                        candidateGpu.elapsedOccupancyPercent,
                     phase: row.phase,
                     profileRun: row.profileRun,
                     scenario: row.scenario,
                 });
+                if (
+                    requireCandidateFrameContract &&
+                    group.scenario === gardenSwitchScenarioBaseName
+                ) {
+                    const baselineOccupancy = gpuElapsedWindowOccupancyState(
+                        row.baseline.sample,
+                    );
+                    const candidateOccupancy = gpuElapsedWindowOccupancyState(
+                        row.candidate.sample,
+                    );
+                    if (!baselineOccupancy.valid || !candidateOccupancy.valid) {
+                        errors.push(
+                            `${row.scenario} run ${row.profileRun} ${row.phase} GPU elapsed-window evidence requires complete, valid, non-disjoint timing; positive ordered gpu.elapsedP95Ms, gpu.elapsedMaxMs, and gpu.elapsedTotalMs; a null gpu.reason; positive sample.elapsedMs and sample.renderedFrames; and gpu.sampleCount equal to sample.renderedFrames in both reports`,
+                        );
+                    } else {
+                        gpuOccupancyRows.push({
+                            baseline: baselineOccupancy.value,
+                            candidate: candidateOccupancy.value,
+                            phase: row.phase,
+                            profileRun: row.profileRun,
+                            scenario: row.scenario,
+                        });
+                    }
+                }
             }
         }
         if (gpuRows.length > 0) {
+            const metric = {
+                direction: 'maximum',
+                id: 'gpu.p95_ms',
+                label: 'GPU p95 duration',
+                medianAbsoluteTolerance: 3,
+                medianLimit: 1.15,
+                rows: gpuRows,
+                runAbsoluteTolerance: 6,
+                runLimit: 1.4,
+                unit: 'ms',
+            };
+            const timingDiagnostics = {
+                baselineElapsedMeanMedianMs: round(
+                    median(gpuRows.map((row) => row.baselineElapsedMeanMs)),
+                ),
+                baselineElapsedOccupancyMedianPercent: round(
+                    median(
+                        gpuRows.map(
+                            (row) => row.baselineElapsedOccupancyPercent,
+                        ),
+                    ),
+                ),
+                candidateElapsedMeanMedianMs: round(
+                    median(gpuRows.map((row) => row.candidateElapsedMeanMs)),
+                ),
+                candidateElapsedOccupancyMedianPercent: round(
+                    median(
+                        gpuRows.map(
+                            (row) => row.candidateElapsedOccupancyPercent,
+                        ),
+                    ),
+                ),
+            };
+            const cadenceConfounded =
+                crossTierGpuCadence?.gateBasis === 'cadence-confounded' &&
+                crossTierGpuCadence.decisionStatus === 'not-comparable';
             comparisons.push({
                 phase: group.phase,
                 scenario: group.scenario,
-                ...buildRatioComparison({
+                ...(cadenceConfounded
+                    ? buildCadenceConfoundedGpuComparison({
+                          ...metric,
+                          gatedBy: `${crossTierCadenceConfoundedGpuGate}: ${crossTierGpuCadence.controlScenario}`,
+                      })
+                    : buildRatioComparison(metric)),
+                ...(crossTierGpuCadence
+                    ? {
+                          cadence: crossTierGpuCadence.cadence,
+                          cadenceControl:
+                              crossTierGpuCadence.controlCadence ?? null,
+                          controlScenario: crossTierGpuCadence.controlScenario,
+                          decisionStatus: crossTierGpuCadence.decisionStatus,
+                          gateBasis: crossTierGpuCadence.gateBasis,
+                      }
+                    : {
+                          decisionStatus: 'comparable',
+                          gateBasis: 'direct',
+                      }),
+                gpuTimingDiagnostics: timingDiagnostics,
+            });
+        }
+        if (gpuOccupancyRows.length > 0) {
+            comparisons.push({
+                phase: group.phase,
+                scenario: group.scenario,
+                ...buildRatioDiagnosticComparison({
                     direction: 'maximum',
-                    id: 'gpu.p95_ms',
-                    label: 'GPU p95 duration',
-                    medianAbsoluteTolerance: 3,
+                    gatedBy: gardenSwitchGpuOccupancyDiagnosticGate,
+                    id: 'gpu.elapsed_window_occupancy_percent',
+                    label: 'GPU elapsed-window occupancy',
+                    medianAbsoluteTolerance: 5,
                     medianLimit: 1.15,
-                    rows: gpuRows,
-                    runAbsoluteTolerance: 6,
-                    runLimit: 1.4,
-                    unit: 'ms',
+                    rows: gpuOccupancyRows,
+                    runAbsoluteTolerance: 10,
+                    runLimit: 1.3,
+                    unit: '%',
                 }),
             });
         }
+    }
 
+    for (const group of groupRows(resourceRows)) {
+        const diagnosticOnly = group.rows.every(
+            (row) => row.diagnosticOnly === true,
+        );
+        if (
+            !diagnosticOnly &&
+            group.rows.some((row) => row.diagnosticOnly === true)
+        ) {
+            errors.push(
+                `${group.scenario} ${group.phase} resource diagnostic policy is inconsistent`,
+            );
+            continue;
+        }
         for (const metric of resourceMetricRegistry) {
             const rows = [];
             for (const row of group.rows) {
@@ -1892,13 +5159,93 @@ function comparePairedScenarios(pairs) {
                 });
             }
             if (rows.length > 0) {
+                const populationExposureMatchedGeometry =
+                    inputComparisonContractVersion >=
+                        populationExposureComparisonContractVersion &&
+                    metric.id === 'resources.geometries' &&
+                    crossTierBaseNamePattern.test(group.scenario);
+                if (populationExposureMatchedGeometry) {
+                    const { comparison, matching } =
+                        buildPopulationExposureMatchedAbsoluteComparison({
+                            ...metric,
+                            rows,
+                        });
+                    if (!comparison) {
+                        errors.push(
+                            `${group.scenario} ${group.phase} resources.geometries requires at least one matched population-exposure sample; baseline signatures=${canonicalJson(
+                                matching.signatures
+                                    .filter(
+                                        ({ baselineSampleCount }) =>
+                                            baselineSampleCount > 0,
+                                    )
+                                    .map(
+                                        ({ populationExposure }) =>
+                                            populationExposure,
+                                    ),
+                            )}, candidate signatures=${canonicalJson(
+                                matching.signatures
+                                    .filter(
+                                        ({ candidateSampleCount }) =>
+                                            candidateSampleCount > 0,
+                                    )
+                                    .map(
+                                        ({ populationExposure }) =>
+                                            populationExposure,
+                                    ),
+                            )}`,
+                        );
+                        continue;
+                    }
+                    comparisons.push({
+                        phase: group.phase,
+                        scenario: group.scenario,
+                        ...comparison,
+                    });
+                    continue;
+                }
                 comparisons.push({
                     phase: group.phase,
                     scenario: group.scenario,
-                    ...buildAbsoluteComparison({ ...metric, rows }),
+                    ...(diagnosticOnly
+                        ? buildAbsoluteDiagnosticComparison({
+                              ...metric,
+                              gatedBy: group.rows[0].gatedBy,
+                              rows,
+                          })
+                        : buildAbsoluteComparison({ ...metric, rows })),
                 });
             }
         }
+    }
+
+    for (const group of groupRows(retainedHeapRows)) {
+        comparisons.push({
+            phase: group.phase,
+            scenario: group.scenario,
+            ...buildRatioComparison({
+                ...retainedHeapMetric,
+                rows: group.rows,
+            }),
+        });
+    }
+
+    if (gardenSwitchWorkflowRows.length > 0) {
+        comparisons.push({
+            phase: 'workflow',
+            scenario: gardenSwitchScenarioBaseName,
+            ...buildRatioDiagnosticComparison({
+                direction: 'maximum',
+                gatedBy: gardenSwitchGpuOccupancyDiagnosticGate,
+                id: 'gpu.elapsed_workflow_occupancy_percent',
+                label: 'GPU elapsed-workflow occupancy',
+                medianAbsoluteTolerance: 5,
+                medianLimit: 1.15,
+                rows: gardenSwitchWorkflowRows,
+                runAbsoluteTolerance: 10,
+                runLimit: 1.3,
+                unit: '%',
+            }),
+        });
     }
 
     const timingMetricIds = [
@@ -1969,14 +5316,32 @@ function compareReportPair(
     {
         allowPartial = false,
         allowSameSource = false,
+        baselineSchedulerContract = canonicalSchedulerBaselineContract,
         baselinePath = null,
         candidatePath = null,
+        candidateSchedulerContract = canonicalSchedulerBaselineContract,
         confirmedMatrixMember = false,
+        permitLegacySameSourceRepeat = false,
+        requireCandidateFrameContract = true,
     } = {},
 ) {
     const validationErrors = [
-        ...validateReport(baseline, 'baseline', { allowPartial }),
-        ...validateReport(candidate, 'candidate', { allowPartial }),
+        ...(baselineSchedulerContract ===
+            legacyHeartbeatSchedulerBaselineContract &&
+        allowSameSource &&
+        !permitLegacySameSourceRepeat
+            ? [
+                  'legacy heartbeat scheduler baseline evidence cannot use same-source comparison mode',
+              ]
+            : []),
+        ...validateReport(baseline, 'baseline', {
+            allowPartial,
+            schedulerBaselineContract: baselineSchedulerContract,
+        }),
+        ...validateReport(candidate, 'candidate', {
+            allowPartial,
+            schedulerBaselineContract: candidateSchedulerContract,
+        }),
     ];
 
     if (validationErrors.length === 0) {
@@ -1997,6 +5362,12 @@ function compareReportPair(
         );
         pushMismatch(
             validationErrors,
+            'profiler harness provenance',
+            baseline.provenance.harness,
+            candidate.provenance.harness,
+        );
+        pushMismatch(
+            validationErrors,
             'runtime provenance',
             baseline.provenance.runtime,
             candidate.provenance.runtime,
@@ -2010,8 +5381,18 @@ function compareReportPair(
         pushMismatch(
             validationErrors,
             'profile options',
-            pick(baseline.options, reportOptionFields),
-            pick(candidate.options, reportOptionFields),
+            pick(
+                baseline.options,
+                reportOptionFields.filter(
+                    (field) => field !== 'legacyOutlinePipeline',
+                ),
+            ),
+            pick(
+                candidate.options,
+                reportOptionFields.filter(
+                    (field) => field !== 'legacyOutlinePipeline',
+                ),
+            ),
         );
     }
 
@@ -2048,6 +5429,12 @@ function compareReportPair(
                     ...compareScenarioCompatibility(
                         pair.baseline,
                         pair.candidate,
+                        {
+                            baselineSchedulerContract,
+                            baselineSchemaVersion: baseline.schemaVersion,
+                            candidateSchedulerContract,
+                            candidateSchemaVersion: candidate.schemaVersion,
+                        },
                     ).map((error) => `${pair.key}: ${error}`),
                 );
             }
@@ -2061,7 +5448,12 @@ function compareReportPair(
         skipped: [],
     };
     if (validationErrors.length === 0) {
-        comparisonData = comparePairedScenarios(pairs);
+        comparisonData = comparePairedScenarios(pairs, {
+            baselineSchedulerContract,
+            inputComparisonContractVersion: baseline.comparisonContractVersion,
+            requireCandidateFrameContract,
+            requireGardenSwitchWorkflowGpuTiming: confirmedMatrixMember,
+        });
         validationErrors.push(...comparisonData.errors);
     }
 
@@ -2095,12 +5487,14 @@ function compareReportPair(
             generatedAt: baseline?.generatedAt ?? null,
             harnessCommit: baseline?.provenance?.harness?.commit ?? null,
             path: baselinePath,
+            schedulerContract: baselineSchedulerContract,
             subjectCommit: baseline?.provenance?.subject?.commit ?? null,
         },
         candidate: {
             generatedAt: candidate?.generatedAt ?? null,
             harnessCommit: candidate?.provenance?.harness?.commit ?? null,
             path: candidatePath,
+            schedulerContract: candidateSchedulerContract,
             subjectCommit: candidate?.provenance?.subject?.commit ?? null,
         },
         comparable,
@@ -2115,10 +5509,16 @@ function compareReportPair(
         exitCode,
         generatedAt: new Date().toISOString(),
         invariants: comparable ? comparisonData.invariants : [],
-        schemaVersion: 2,
+        schemaVersion: comparisonReportSchemaVersion,
         skipped: comparable ? comparisonData.skipped : [],
         status,
         summary: {
+            cadenceConfoundedComparisons: comparable
+                ? comparisonData.comparisons.filter(
+                      (comparison) =>
+                          comparison.gateBasis === 'cadence-confounded',
+                  ).length
+                : 0,
             failedComparisons: comparable ? failedComparisons.length : 0,
             failedInvariants: comparable ? failedInvariants.length : 0,
             passedComparisons: comparable
@@ -2140,9 +5540,24 @@ function compareReportPair(
     };
 }
 
-function compareReports(baseline, candidate, options = {}) {
+function compareReports(
+    baseline,
+    candidate,
+    {
+        allowPartial = false,
+        allowSameSource = false,
+        baselinePath = null,
+        baselineSchedulerContract = canonicalSchedulerBaselineContract,
+        candidatePath = null,
+    } = {},
+) {
     return compareReportPair(baseline, candidate, {
-        ...options,
+        allowPartial,
+        allowSameSource,
+        baselinePath,
+        baselineSchedulerContract,
+        candidatePath,
+        candidateSchedulerContract: canonicalSchedulerBaselineContract,
         confirmedMatrixMember: false,
     });
 }
@@ -2155,11 +5570,16 @@ function invariantKey(result) {
     return `${result.scenario}::${result.phase}::${result.profileRun}::${result.field}`;
 }
 
-function reportCapture(report, path) {
+function reportCapture(
+    report,
+    path,
+    schedulerContract = canonicalSchedulerBaselineContract,
+) {
     return {
         generatedAt: report?.generatedAt ?? null,
         harnessCommit: report?.provenance?.harness?.commit ?? null,
         path,
+        schedulerContract,
         subjectCommit: report?.provenance?.subject?.commit ?? null,
     };
 }
@@ -2223,6 +5643,70 @@ function validateIndependentCapture(
     return errors;
 }
 
+function validateCadenceDecisionMatrix(comparisonPairs) {
+    const errors = [];
+    const resultsByKey = new Map();
+    for (const { comparison, label } of comparisonPairs) {
+        for (const result of comparison.comparisons) {
+            if (
+                result.id !== 'gpu.p95_ms' ||
+                !result.scenario.includes('-camera-motion-') ||
+                !crossTierBaseNamePattern.test(result.scenario)
+            ) {
+                continue;
+            }
+            const values = resultsByKey.get(metricKey(result)) ?? [];
+            values.push({ label, result });
+            resultsByKey.set(metricKey(result), values);
+        }
+    }
+    for (const [key, values] of resultsByKey) {
+        const hasCadenceConfound = values.some(
+            ({ result }) => result.gateBasis === 'cadence-confounded',
+        );
+        if (!hasCadenceConfound) {
+            continue;
+        }
+        if (
+            values.length !== comparisonPairs.length ||
+            values.some(
+                ({ result }) =>
+                    result.gateBasis !== 'cadence-confounded' ||
+                    result.decisionStatus !== 'not-comparable',
+            )
+        ) {
+            errors.push(
+                `${key} cadence-confounded GPU p95 classification must hold in every symmetric comparison pairing`,
+            );
+            continue;
+        }
+        const baselineMedians = values.map(
+            ({ result }) => result.cadence?.baselineMedian,
+        );
+        const candidateMedians = values.map(
+            ({ result }) => result.cadence?.candidateMedian,
+        );
+        if (
+            baselineMedians.some(
+                (value) =>
+                    !isFiniteNumber(value) ||
+                    value <= crossTierMaximumRenderedFps,
+            ) ||
+            candidateMedians.some((value) => !isFiniteNumber(value)) ||
+            baselineMedians.some((baselineMedian) =>
+                candidateMedians.some(
+                    (candidateMedian) => baselineMedian <= candidateMedian,
+                ),
+            )
+        ) {
+            errors.push(
+                `${key} cadence-confounded GPU p95 classification requires both legacy baseline medians above ${crossTierMaximumRenderedFps} FPS and above both canonical candidate medians`,
+            );
+        }
+    }
+    return errors;
+}
+
 function compareConfirmedReports(
     baseline,
     candidate,
@@ -2233,11 +5717,17 @@ function compareConfirmedReports(
         baselineConfirmation = null,
         baselineConfirmationPath = null,
         baselinePath = null,
+        baselineSchedulerContract = canonicalSchedulerBaselineContract,
         candidatePath = null,
         confirmationPath = null,
     } = {},
 ) {
-    const sharedOptions = { allowPartial, allowSameSource, baselinePath };
+    const sharedOptions = {
+        allowPartial,
+        allowSameSource,
+        baselinePath,
+        baselineSchedulerContract,
+    };
     const primary = compareReportPair(baseline, candidate, {
         ...sharedOptions,
         candidatePath,
@@ -2259,15 +5749,20 @@ function compareConfirmedReports(
         ? compareReportPair(baseline, baselineConfirmation, {
               allowPartial,
               allowSameSource: true,
+              baselineSchedulerContract,
               baselinePath,
               candidatePath: baselineConfirmationPath,
+              candidateSchedulerContract: baselineSchedulerContract,
               confirmedMatrixMember: true,
+              permitLegacySameSourceRepeat: true,
+              requireCandidateFrameContract: false,
           })
         : null;
     const baselineRepeatedPrimary = baselineConfirmation
         ? compareReportPair(baselineConfirmation, candidate, {
               allowPartial,
               allowSameSource,
+              baselineSchedulerContract,
               baselinePath: baselineConfirmationPath,
               candidatePath,
               confirmedMatrixMember: true,
@@ -2277,6 +5772,7 @@ function compareConfirmedReports(
         ? compareReportPair(baselineConfirmation, confirmation, {
               allowPartial,
               allowSameSource,
+              baselineSchedulerContract,
               baselinePath: baselineConfirmationPath,
               candidatePath: confirmationPath,
               confirmedMatrixMember: true,
@@ -2298,6 +5794,15 @@ function compareConfirmedReports(
             (error) => `baseline confirmation / confirmation: ${error}`,
         ),
     ];
+    if (
+        baselineSchedulerContract ===
+            legacyHeartbeatSchedulerBaselineContract &&
+        (allowPartial || allowSameSource || !baselineConfirmation)
+    ) {
+        validationErrors.push(
+            'legacy heartbeat scheduler baseline evidence requires a non-diagnostic symmetric 2x2 comparison',
+        );
+    }
     if (!baselineConfirmation && !allowPartial && !allowSameSource) {
         validationErrors.push(
             'baseline confirmation is required for a non-diagnostic symmetric 2x2 comparison',
@@ -2351,44 +5856,6 @@ function compareConfirmedReports(
             }),
         );
     }
-    if (validationErrors.length > 0) {
-        return {
-            ...primary,
-            baselineConfirmation: reportCapture(
-                baselineConfirmation,
-                baselineConfirmationPath,
-            ),
-            baselineConfirmationUsed: Boolean(baselineConfirmation),
-            comparable: false,
-            comparisons: [],
-            confirmation: reportCapture(confirmation, confirmationPath),
-            confirmationUsed: true,
-            exitCode: 2,
-            invariants: [],
-            schemaVersion: 2,
-            skipped: [],
-            status: 'invalid',
-            summary: {
-                failedComparisons: 0,
-                failedInvariants: 0,
-                passedComparisons: 0,
-                passedInvariants: 0,
-                comparisonPairCount: baselineConfirmation ? 4 : 2,
-                primaryScreeningComparisons: 0,
-                confirmationScreeningComparisons: 0,
-                replicationScreeningComparisons: [],
-                reproducedRegressions: 0,
-                scenarioRunCount: 0,
-                screeningComparisons: 0,
-                skippedMetrics: 0,
-                totalComparisons: 0,
-                totalInvariants: 0,
-                unresolvedReplications: 0,
-            },
-            validationErrors,
-        };
-    }
-
     const comparisonPairs = [
         {
             comparison: primary,
@@ -2411,6 +5878,55 @@ function compareConfirmedReports(
               ]
             : []),
     ];
+    if (validationErrors.length === 0) {
+        validationErrors.push(
+            ...validateCadenceDecisionMatrix(comparisonPairs),
+        );
+    }
+    if (validationErrors.length > 0) {
+        return {
+            ...primary,
+            baselineConfirmation: reportCapture(
+                baselineConfirmation,
+                baselineConfirmationPath,
+                baselineSchedulerContract,
+            ),
+            baselineConfirmationUsed: Boolean(baselineConfirmation),
+            comparable: false,
+            comparisons: [],
+            confirmation: reportCapture(
+                confirmation,
+                confirmationPath,
+                canonicalSchedulerBaselineContract,
+            ),
+            confirmationUsed: true,
+            exitCode: 2,
+            invariants: [],
+            schemaVersion: comparisonReportSchemaVersion,
+            skipped: [],
+            status: 'invalid',
+            summary: {
+                cadenceConfoundedComparisons: 0,
+                failedComparisons: 0,
+                failedInvariants: 0,
+                passedComparisons: 0,
+                passedInvariants: 0,
+                comparisonPairCount: baselineConfirmation ? 4 : 2,
+                primaryScreeningComparisons: 0,
+                confirmationScreeningComparisons: 0,
+                replicationScreeningComparisons: [],
+                reproducedRegressions: 0,
+                scenarioRunCount: 0,
+                screeningComparisons: 0,
+                skippedMetrics: 0,
+                totalComparisons: 0,
+                totalInvariants: 0,
+                unresolvedReplications: 0,
+            },
+            validationErrors,
+        };
+    }
+
     const comparisonMaps = comparisonPairs.map(({ comparison, label }) => ({
         label,
         results: new Map(
@@ -2436,11 +5952,21 @@ function compareConfirmedReports(
                       available: true,
                       baselineMedian: result.baselineMedian,
                       candidateMedian: result.candidateMedian,
+                      decisionStatus: result.decisionStatus,
+                      gateBasis: result.gateBasis,
                       individual: result.individual,
                       label,
                       medianDelta: result.medianDelta,
                       medianRatio: result.medianRatio,
                       medianWorsening: result.medianWorsening,
+                      observedRegressionBreach:
+                          result.baselineRelativeRegressionBreach ??
+                          result.regressionBreach,
+                      observedScreeningBreach:
+                          result.baselineRelativeScreeningBreach ??
+                          result.screeningBreach,
+                      populationExposureMatching:
+                          result.populationExposureMatching ?? null,
                       regressionBreach: result.regressionBreach,
                       screeningBreach: result.screeningBreach,
                   }
@@ -2452,14 +5978,19 @@ function compareConfirmedReports(
         const screeningBreach = availableReplications.some(
             (replication) => replication.screeningBreach,
         );
-        const replicationIncomplete =
-            screeningBreach &&
-            availableReplications.length !== comparisonPairs.length;
-        const reproducedRegression =
-            availableReplications.length === comparisonPairs.length &&
-            availableReplications.every(
-                (replication) => replication.screeningBreach,
-            );
+        const everyRawRunGate = template.everyRawRunGate === true;
+        const replicationIncomplete = everyRawRunGate
+            ? availableReplications.length !== comparisonPairs.length
+            : screeningBreach &&
+              availableReplications.length !== comparisonPairs.length;
+        const reproducedRegression = everyRawRunGate
+            ? availableReplications.some(
+                  (replication) => replication.regressionBreach,
+              )
+            : availableReplications.length === comparisonPairs.length &&
+              availableReplications.every(
+                  (replication) => replication.screeningBreach,
+              );
         return {
             ...template,
             baselineConfirmationMedian:
@@ -2558,17 +6089,25 @@ function compareConfirmedReports(
         baselineConfirmation: reportCapture(
             baselineConfirmation,
             baselineConfirmationPath,
+            baselineSchedulerContract,
         ),
         baselineConfirmationUsed: Boolean(baselineConfirmation),
         comparisons,
-        confirmation: reportCapture(confirmation, confirmationPath),
+        confirmation: reportCapture(
+            confirmation,
+            confirmationPath,
+            canonicalSchedulerBaselineContract,
+        ),
         confirmationUsed: true,
         exitCode: status === 'pass' ? 0 : 1,
         invariants,
-        schemaVersion: 2,
+        schemaVersion: comparisonReportSchemaVersion,
         skipped,
         status,
         summary: {
+            cadenceConfoundedComparisons: comparisons.filter(
+                (result) => result.gateBasis === 'cadence-confounded',
+            ).length,
             failedComparisons: failedComparisons.length,
             failedInvariants: failedInvariants.length,
             passedComparisons: comparisons.filter((result) => result.pass)
@@ -2609,22 +6148,28 @@ function buildMarkdown(comparison) {
         '',
         `Generated: ${comparison.generatedAt}`,
         `Status: **${comparison.status}**`,
+        `Comparison schema: ${comparison.schemaVersion}`,
+        `Comparison contract: ${comparison.comparisonContractVersion}`,
         `Diagnostic only: ${comparison.diagnostic ? `yes (${comparison.diagnosticReasons.join('; ')})` : 'no'}`,
         `Comparable: ${comparison.comparable ? 'yes' : 'no'}`,
         `Baseline subject: ${comparison.baseline.subjectCommit ?? 'unknown'}`,
+        `Baseline scheduler contract: ${comparison.baseline.schedulerContract ?? canonicalSchedulerBaselineContract}`,
         `Candidate subject: ${comparison.candidate.subjectCommit ?? 'unknown'}`,
+        `Candidate scheduler contract: ${comparison.candidate.schedulerContract ?? canonicalSchedulerBaselineContract}`,
         `Baseline harness: ${comparison.baseline.harnessCommit ?? 'unknown'}`,
         `Candidate harness: ${comparison.candidate.harnessCommit ?? 'unknown'}`,
     ];
     if (comparison.confirmationUsed) {
         lines.push(
             `Confirmation subject: ${comparison.confirmation.subjectCommit ?? 'unknown'}`,
+            `Confirmation scheduler contract: ${comparison.confirmation.schedulerContract ?? canonicalSchedulerBaselineContract}`,
             `Confirmation harness: ${comparison.confirmation.harnessCommit ?? 'unknown'}`,
         );
     }
     if (comparison.baselineConfirmationUsed) {
         lines.push(
             `Baseline confirmation subject: ${comparison.baselineConfirmation.subjectCommit ?? 'unknown'}`,
+            `Baseline confirmation scheduler contract: ${comparison.baselineConfirmation.schedulerContract ?? canonicalSchedulerBaselineContract}`,
             `Baseline confirmation harness: ${comparison.baselineConfirmation.harnessCommit ?? 'unknown'}`,
         );
     }
@@ -2632,7 +6177,7 @@ function buildMarkdown(comparison) {
         '',
         '## Summary',
         '',
-        `Scenario runs: ${comparison.summary.scenarioRunCount}; comparison pairs: ${comparison.summary.comparisonPairCount ?? 1}; comparisons: ${comparison.summary.passedComparisons}/${comparison.summary.totalComparisons} passed; screening signals: ${comparison.summary.screeningComparisons}; reproduced regressions: ${comparison.summary.reproducedRegressions ?? comparison.summary.failedComparisons}; unresolved replications: ${comparison.summary.unresolvedReplications ?? 0}; invariants: ${comparison.summary.passedInvariants}/${comparison.summary.totalInvariants} passed; skipped metrics: ${comparison.summary.skippedMetrics}.`,
+        `Scenario runs: ${comparison.summary.scenarioRunCount}; comparison pairs: ${comparison.summary.comparisonPairCount ?? 1}; comparisons: ${comparison.summary.passedComparisons}/${comparison.summary.totalComparisons} passed; cadence-confounded GPU diagnostics: ${comparison.summary.cadenceConfoundedComparisons ?? 0}; screening signals: ${comparison.summary.screeningComparisons}; reproduced regressions: ${comparison.summary.reproducedRegressions ?? comparison.summary.failedComparisons}; unresolved replications: ${comparison.summary.unresolvedReplications ?? 0}; invariants: ${comparison.summary.passedInvariants}/${comparison.summary.totalInvariants} passed; skipped metrics: ${comparison.summary.skippedMetrics}.`,
     );
 
     if (comparison.validationErrors.length > 0) {
@@ -2670,19 +6215,35 @@ function buildMarkdown(comparison) {
                     ? `${display(result.confirmation.medianRatio)}x`
                     : `${display(result.confirmation.medianDelta)} ${result.unit}`
                 : null;
+            const populationExposureGate = result.populationExposureMatching
+                ? `; population exposure matched ${result.populationExposureMatching.matchedSampleCount} samples across ${result.populationExposureMatching.matchedSignatureCount} signatures`
+                : '';
             const gate =
-                result.kind === 'ratio'
-                    ? `${result.direction === 'minimum' ? '>=' : '<='} ${result.medianLimit}x screen; ${result.medianAbsoluteTolerance} ${result.unit} practical floor; repeat required`
-                    : `median <= +${result.maximumIncrease} ${result.unit}; repeat required`;
-            const resultLabel = result.regressionBreach
-                ? 'fail'
-                : result.replicationIncomplete
-                  ? 'needs rerun'
-                  : result.screeningBreach
-                    ? comparison.confirmationUsed
-                        ? 'pass (not reproduced)'
-                        : 'needs rerun'
-                    : 'pass';
+                result.gateBasis === 'cadence-confounded'
+                    ? `not comparable: cadence-confounded; raw ${result.medianLimit}x / ${result.medianAbsoluteTolerance} ${result.unit} observation retained; gated by ${result.gatedBy}`
+                    : result.targetAwareMaximum
+                      ? `candidate <= ${result.maximumCandidateValue} ${result.unit} under declared ${result.targetFramesPerSecond} fps target; every raw run; baseline-relative ratio diagnostic only`
+                      : result.targetAwareRenderedFps
+                        ? result.maximumRenderedFps === null
+                            ? `candidate >= ${result.minimumRenderedFps} ${result.unit} (target ${result.targetFramesPerSecond} ${result.unit}, ${result.targetToleranceFramesPerSecond} ${result.unit} tolerance); baseline-relative ratio diagnostic only`
+                            : `candidate ${result.minimumRenderedFps}-${result.maximumRenderedFps} ${result.unit} around declared ${result.targetFramesPerSecond} ${result.unit} target; every raw run; baseline-relative ratio diagnostic only`
+                        : result.diagnosticOnly
+                          ? `diagnostic only; gated by ${result.gatedBy}`
+                          : result.kind === 'ratio'
+                            ? `${result.direction === 'minimum' ? '>=' : '<='} ${result.medianLimit}x screen; ${result.medianAbsoluteTolerance} ${result.unit} practical floor; repeat required`
+                            : `median <= +${result.maximumIncrease} ${result.unit}; repeat required${populationExposureGate}`;
+            const resultLabel =
+                result.decisionStatus === 'not-comparable'
+                    ? 'not comparable (cadence-confounded)'
+                    : result.regressionBreach
+                      ? 'fail'
+                      : result.replicationIncomplete
+                        ? 'needs rerun'
+                        : result.screeningBreach
+                          ? comparison.confirmationUsed
+                              ? 'pass (not reproduced)'
+                              : 'needs rerun'
+                          : 'pass';
             if (comparison.baselineConfirmationUsed) {
                 lines.push(
                     `| ${result.scenario} | ${result.phase} | ${result.label} | ${display(result.baselineMedian)} | ${display(result.baselineConfirmationMedian)} | ${display(result.candidateMedian)} | ${display(result.confirmation?.candidateMedian)} | ${gate} | ${resultLabel} |`,
@@ -2696,6 +6257,29 @@ function buildMarkdown(comparison) {
                     `| ${result.scenario} | ${result.phase} | ${result.label} | ${display(result.baselineMedian)} | ${display(result.candidateMedian)} | ${delta} | ${gate} | ${resultLabel} |`,
                 );
             }
+        }
+    }
+
+    const cadenceConfoundedGpu = comparison.comparisons.filter(
+        (result) =>
+            result.id === 'gpu.p95_ms' &&
+            result.gateBasis === 'cadence-confounded',
+    );
+    if (cadenceConfoundedGpu.length > 0) {
+        lines.push(
+            '',
+            '## Cadence-confounded GPU diagnostics',
+            '',
+            'These camera-motion GPU p95 observations are retained but do not decide the result. The mapped same-tier steady row remains the decisive GPU gate.',
+            '',
+            '| Scenario | Legacy motion median FPS | Canonical motion median FPS | Raw GPU p95 ratio | Raw threshold observation | Mapped steady control | GPU mean median (baseline / candidate) | GPU occupancy median (baseline / candidate) |',
+            '| --- | ---: | ---: | ---: | --- | --- | ---: | ---: |',
+        );
+        for (const result of cadenceConfoundedGpu) {
+            const diagnostics = result.gpuTimingDiagnostics ?? {};
+            lines.push(
+                `| ${result.scenario} | ${display(result.cadence?.baselineMedian)} | ${display(result.cadence?.candidateMedian)} | ${display(result.medianRatio)}x | ${result.rawThresholdObservation?.regressionBreach ? 'breach' : result.rawThresholdObservation?.screeningBreach ? 'screen' : 'within threshold'} | ${result.controlScenario ?? 'missing'} | ${display(diagnostics.baselineElapsedMeanMedianMs)} / ${display(diagnostics.candidateElapsedMeanMedianMs)} ms | ${display(diagnostics.baselineElapsedOccupancyMedianPercent)} / ${display(diagnostics.candidateElapsedOccupancyMedianPercent)} % |`,
+            );
         }
     }
 
@@ -2728,8 +6312,11 @@ function buildMarkdown(comparison) {
                 .filter((run) => !run.pass)
                 .map((run) => run.sampleRank)
                 .join(', ');
+            const failedRankLabel = failure.rawRanksDiagnosticOnly
+                ? 'diagnostic primary rank breaches'
+                : 'decisive primary raw-run breaches';
             lines.push(
-                `- ${failure.scenario} / ${failure.phase} / ${failure.id}: ${replicationSummary || `median ${failure.kind === 'ratio' ? `${display(failure.medianRatio)}x` : display(failure.medianDelta)}`}${failedRanks ? `; diagnostic primary rank breaches ${failedRanks}` : ''}`,
+                `- ${failure.scenario} / ${failure.phase} / ${failure.id}: ${replicationSummary || `median ${failure.kind === 'ratio' ? `${display(failure.medianRatio)}x` : display(failure.medianDelta)}`}${failedRanks ? `; ${failedRankLabel} ${failedRanks}` : ''}`,
             );
         }
         for (const failure of invariantFailures) {
@@ -2789,7 +6376,16 @@ function buildMarkdown(comparison) {
         );
     });
     if (rankDiagnostics.length > 0) {
-        lines.push('', '## Raw-rank diagnostics', '');
+        const hasDecisiveRawRunFailure = rankDiagnostics.some(
+            (result) => result.rawRanksDiagnosticOnly === false,
+        );
+        lines.push(
+            '',
+            hasDecisiveRawRunFailure
+                ? '## Raw-run gate evidence'
+                : '## Raw-rank diagnostics',
+            '',
+        );
         for (const result of rankDiagnostics) {
             const replications = result.replications ?? [
                 {
@@ -2812,9 +6408,19 @@ function buildMarkdown(comparison) {
                     if (!replication.available) {
                         return `${replication.label}: unavailable`;
                     }
+                    const gate = result.targetAwareMaximum
+                        ? `candidate <= ${result.maximumCandidateValue} ${result.unit}`
+                        : result.targetAwareRenderedFps
+                          ? result.maximumRenderedFps === null
+                              ? `candidate >= ${result.minimumRenderedFps} ${result.unit}`
+                              : `candidate ${result.minimumRenderedFps}-${result.maximumRenderedFps} ${result.unit}`
+                          : 'raw rank is diagnostic';
                     const ranks = replication.individual
                         .filter((run) => !run.pass)
-                        .map((run) => run.sampleRank)
+                        .map(
+                            (run) =>
+                                `rank ${run.sampleRank} (baseline run ${run.baselineProfileRun} = ${display(run.baseline)} ${result.unit}; candidate run ${run.candidateProfileRun} = ${display(run.candidate)} ${result.unit}; ${gate})`,
+                        )
                         .join(', ');
                     return `${replication.label}: ${ranks || 'none'}`;
                 })
@@ -2852,11 +6458,12 @@ async function writeComparisonReports(
     outDir,
     { inputPaths = [] } = {},
 ) {
+    const safeOutDir = assertSafeGameProfileOutputDirectory(outDir);
     const stamp = comparison.generatedAt.replaceAll(/[:.]/g, '-');
     const json = `${JSON.stringify(comparison, null, 2)}\n`;
     const markdown = buildMarkdown(comparison);
-    await mkdir(outDir, { recursive: true });
-    const canonicalOutDir = await realpath(outDir);
+    await mkdir(safeOutDir, { recursive: true });
+    const canonicalOutDir = await realpath(safeOutDir);
     const canonicalInputPaths = await Promise.all(
         inputPaths.map((inputPath) => realpath(inputPath)),
     );
@@ -2889,6 +6496,7 @@ function parseArgs(args) {
         allowSameSource: false,
         baselineConfirmationPath: null,
         baselinePath: null,
+        baselineSchedulerContract: canonicalSchedulerBaselineContract,
         candidatePath: null,
         confirmationPath: null,
         help: false,
@@ -2914,6 +6522,8 @@ function parseArgs(args) {
             options.baselinePath = resolve(next());
         } else if (argument === '--baseline-confirmation') {
             options.baselineConfirmationPath = resolve(next());
+        } else if (argument === '--baseline-scheduler-contract') {
+            options.baselineSchedulerContract = next();
         } else if (argument === '--candidate') {
             options.candidatePath = resolve(next());
         } else if (argument === '--confirmation') {
@@ -2932,6 +6542,20 @@ function parseArgs(args) {
     options.candidatePath ??= positional[1] ? resolve(positional[1]) : null;
     if (positional.length > 2) {
         throw new Error('Expected at most two positional report paths');
+    }
+    if (!schedulerBaselineContracts.has(options.baselineSchedulerContract)) {
+        throw new Error(
+            `Unsupported baseline scheduler contract: ${options.baselineSchedulerContract}`,
+        );
+    }
+    if (
+        options.baselineSchedulerContract ===
+            legacyHeartbeatSchedulerBaselineContract &&
+        (options.allowPartial || options.allowSameSource)
+    ) {
+        throw new Error(
+            'The legacy heartbeat scheduler baseline contract cannot be combined with --allow-partial or --allow-same-source',
+        );
     }
     if (!options.help && (!options.baselinePath || !options.candidatePath)) {
         throw new Error(
@@ -2957,6 +6581,7 @@ function parseArgs(args) {
             'A non-diagnostic comparison requires both --baseline-confirmation and --confirmation for a symmetric 2x2 gate',
         );
     }
+    options.outDir = assertSafeGameProfileOutputDirectory(options.outDir);
     return options;
 }
 
@@ -2964,12 +6589,14 @@ function printHelp() {
     console.log(`Usage: node scripts/compare-game-profile-reports.mjs [options] <baseline.json> <candidate.json>
 
 Options:
-  --baseline <path>       Baseline schema-v5 profile report
+  --baseline <path>       Baseline schema-v6 profile report
   --baseline-confirmation <path>
                           Independent repeat of the exact baseline commit
-  --candidate <path>      Candidate schema-v5 profile report
+  --baseline-scheduler-contract <contract>
+                          canonical-v1 (default) or legacy-heartbeat-v1
+  --candidate <path>      Candidate schema-v6 profile report
   --confirmation <path>   Independent repeat of the exact candidate commit
-  --out-dir <path>        Comparison report directory
+  --out-dir <path>        Comparison directory. Default: .game-profile-results/comparisons
   --allow-partial         Permit a noncanonical scenario manifest for diagnostics
   --allow-same-source     Permit same-commit diagnostic comparison
   --help                  Show this help
@@ -3055,6 +6682,7 @@ async function runCli(args = process.argv.slice(2)) {
 }
 
 export {
+    buildCrossTierCheckNameInventory,
     buildMarkdown,
     compareConfirmedReports,
     compareReports,

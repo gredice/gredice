@@ -1,6 +1,6 @@
 import { useAnimations } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     type Group,
     LoopOnce,
@@ -11,6 +11,12 @@ import {
 } from 'three';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
+import {
+    sceneFrameRates,
+    useSceneFixedStepWork,
+    useSceneRenderRequest,
+    useSceneTimeInvalidation,
+} from '../../scene/SceneTime';
 import type { Stack } from '../../types/Stack';
 import {
     type AnimalDebugEntry,
@@ -55,6 +61,7 @@ import {
     createInitialFrogSpawnState,
     type FrogSpawnCandidate,
     type FrogTarget,
+    frogMaxPopulation,
     frogMaxShallowWaterDepth,
     hashFrogSeed,
     reconcileFrogSpawns,
@@ -85,6 +92,21 @@ type MovingFrogState = {
 };
 
 type FrogRuntimeState = MovingFrogState | SettledFrogState;
+
+function frogSpawnStatesEqual(
+    left: ReturnType<typeof createInitialFrogSpawnState>,
+    right: ReturnType<typeof createInitialFrogSpawnState>,
+) {
+    return (
+        left.nextSpawnAt === right.nextSpawnAt &&
+        left.sequence === right.sequence &&
+        left.activeCandidateIds.length === right.activeCandidateIds.length &&
+        left.activeCandidateIds.every(
+            (candidateId, index) =>
+                candidateId === right.activeCandidateIds[index],
+        )
+    );
+}
 
 const frogScale = 0.42;
 const frogGroundLift = 0.018;
@@ -725,23 +747,43 @@ export function Frogs({
         () => hashFrogSeed(`garden:${gardenId ?? 'public'}:frog`),
         [gardenId],
     );
-
-    useEffect(() => {
-        const reconcile = () => {
-            const now = performance.now() / 1000;
-            setSpawnState((previous) =>
-                reconcileFrogSpawns({
+    const requestRender = useSceneRenderRequest();
+    const reconcileSpawns = useCallback(
+        (now: number) => {
+            setSpawnState((previous) => {
+                const next = reconcileFrogSpawns({
                     candidates,
                     now,
                     previous,
                     seed,
-                }),
-            );
-        };
-        reconcile();
-        const interval = window.setInterval(reconcile, 1000);
-        return () => window.clearInterval(interval);
-    }, [candidates, seed]);
+                });
+                return frogSpawnStatesEqual(previous, next) ? previous : next;
+            });
+        },
+        [candidates, seed],
+    );
+
+    useEffect(() => {
+        reconcileSpawns(globalThis.performance.now() / 1000);
+    }, [reconcileSpawns]);
+    const frogPopulationIncomplete =
+        spawnState.activeCandidateIds.length <
+        Math.min(frogMaxPopulation, candidates.length);
+    useSceneFixedStepWork({
+        callback: ({ nowMs }) => reconcileSpawns(nowMs / 1000),
+        enabled: frogPopulationIncomplete,
+        maxDeltaMs: 1000,
+        owner: 'fauna:frogs:population',
+        stepsPerSecond: 1,
+    });
+    const activeFrogCount = spawnState.activeCandidateIds.length;
+    useEffect(() => {
+        requestRender(
+            activeFrogCount > 0
+                ? 'fauna:frogs:population-active'
+                : 'fauna:frogs:population-empty',
+        );
+    }, [activeFrogCount, requestRender]);
 
     const candidatesById = useMemo(
         () => new Map(candidates.map((candidate) => [candidate.id, candidate])),
@@ -751,6 +793,11 @@ export function Frogs({
         const candidate = candidatesById.get(id);
         return candidate ? [candidate] : [];
     });
+    useSceneTimeInvalidation(
+        'fauna:frogs',
+        activeCandidates.length > 0,
+        sceneFrameRates.ambient,
+    );
 
     return (
         <>

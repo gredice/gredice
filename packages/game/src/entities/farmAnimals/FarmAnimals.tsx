@@ -13,6 +13,10 @@ import { RotatableGroup } from '../../controls/RotatableGroup';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
+import {
+    sceneFrameRates,
+    useSceneTimeInvalidation,
+} from '../../scene/SceneTime';
 import type { Block } from '../../types/Block';
 import type { EntityInstanceProps } from '../../types/runtime/EntityInstanceProps';
 import type { Stack } from '../../types/Stack';
@@ -2521,6 +2525,11 @@ function FarmAnimalCollection({
             }),
         [blockData, config, stacks],
     );
+    useSceneTimeInvalidation(
+        `fauna:farm-animals:${config.species.toLowerCase()}`,
+        habitats.length > 0,
+        sceneFrameRates.ambient,
+    );
     if (habitats.length === 0) {
         return null;
     }
@@ -2682,6 +2691,11 @@ export function Goat({
             }).find((candidate) => candidate.home.id === `home-${block.id}`) ??
             null,
         [block.id, blockData, habitatStacks],
+    );
+    useSceneTimeInvalidation(
+        'fauna:farm-animals:goat',
+        habitat !== null,
+        sceneFrameRates.ambient,
     );
     if (!habitat) {
         return null;

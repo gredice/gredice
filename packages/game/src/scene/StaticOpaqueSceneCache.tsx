@@ -46,7 +46,7 @@ import {
     getCloudShadowAttenuationMaterialUniforms,
 } from './cloudShadowAttenuation';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
-import { useSceneResume } from './SceneTime';
+import { useSceneRenderRequest, useSceneResume } from './SceneTime';
 import {
     createStaticOpaqueSceneCacheReplay,
     isStaticOpaqueSceneCacheReplayEligible,
@@ -1505,10 +1505,13 @@ export function StaticOpaqueSceneCacheProvider({
     qualityKey: string;
     wireframe: boolean;
 }>) {
-    const invalidate = useThree((state) => state.invalidate);
+    const requestRender = useSceneRenderRequest();
     const registry = useMemo(
-        () => new StaticOpaqueSceneCacheRegistry(invalidate),
-        [invalidate],
+        () =>
+            new StaticOpaqueSceneCacheRegistry(() =>
+                requestRender('static-opaque-cache'),
+            ),
+        [requestRender],
     );
 
     useEffect(() => {
