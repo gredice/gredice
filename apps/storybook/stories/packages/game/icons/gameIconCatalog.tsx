@@ -293,7 +293,7 @@ export const gameIconCatalog: GameIconEntry[] = [
     ...[0, 50, 100].map((chance) => ({
         name: `RainIcon · ${chance}%`,
         group: 'Weather',
-        description: 'Precipitation probability fill.',
+        description: 'Precipitation indicator with adjustable fill.',
         sources: [
             'packages/game/src/hud/components/weather/icons/RainIcon.tsx',
         ],

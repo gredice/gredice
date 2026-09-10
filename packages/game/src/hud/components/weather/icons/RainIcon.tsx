@@ -8,7 +8,7 @@ export function RainIcon({ chance }: { chance: number }) {
         <span
             className="relative inline-block size-4 shrink-0"
             role="img"
-            aria-label={`Vjerojatnost oborina: ${fillPercentage}%`}
+            aria-label="Oborine"
             data-rain-chance={fillPercentage}
         >
             <svg

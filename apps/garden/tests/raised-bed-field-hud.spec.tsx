@@ -21,6 +21,20 @@ import {
 
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 };
+
+async function expectRenderedGameIcon(icon: Locator, label: string) {
+    await expect(icon.locator('title')).toHaveText(label);
+    const artwork = icon.locator('image');
+    await expect(artwork).toBeVisible();
+    await artwork.evaluate(async (element) => {
+        const url = element.getAttribute('href');
+        if (!url) throw new Error('Missing game icon artwork');
+        const image = new Image();
+        image.src = url;
+        await image.decode();
+    });
+}
+
 const favoriteTimestamp = '2026-06-01T00:00:00.000Z';
 const healthRecommendationsViewedEvent =
     'game_plant_health_recommendations_viewed';
@@ -1309,9 +1323,10 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
 
         const stack = page.locator('[data-field-icon-stack]');
         await expect(stack).toBeVisible();
-        await expect(
-            stack.locator('button.bg-blue-600 svg.lucide-sprout'),
-        ).toBeVisible();
+        await expectRenderedGameIcon(
+            stack.locator('button.bg-blue-600 svg'),
+            'Biljka',
+        );
     });
 
     test('status popover allows reverting ready state back to sprouted', async ({
@@ -1438,9 +1453,10 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
 
         const stack = page.locator('[data-field-icon-stack]');
         await expect(stack).toBeVisible();
-        await expect(
-            stack.locator('button.bg-blue-600 svg.lucide-sprout'),
-        ).toBeVisible();
+        await expectRenderedGameIcon(
+            stack.locator('button.bg-blue-600 svg'),
+            'Biljka',
+        );
         await expect(
             page.getByRole('button', { name: /Povijest biljke / }),
         ).toHaveCount(2);
@@ -1494,9 +1510,12 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             '[data-recommendation-section="operations"]',
         );
         await expect(operationsSection).toBeVisible();
-        await expect(
-            operationsSection.locator('svg.lucide-hammer'),
-        ).toBeVisible();
+        await expectRenderedGameIcon(
+            operationsSection
+                .locator('svg')
+                .filter({ hasText: 'Vrtne radnje' }),
+            'Vrtne radnje',
+        );
         await expect(
             operationsSection.locator('[data-recommendation-section-icon]'),
         ).not.toHaveClass(/green/);

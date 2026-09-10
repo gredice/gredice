@@ -9,6 +9,6 @@ inventory independent of live services:
 
 HUD images and the recycle texture are imported directly from garden's existing
 public assets. Refresh these snapshots when the corresponding CDN artwork changes.
-The usage baseline lives in `stories/packages/game/icons/gameIconUsage.ts`;
+The usage baseline lives in `apps/storybook/stories/packages/game/icons/gameIconUsage.ts`;
 update it when game or garden icon imports change. Keep aliased exports separate
 because their replacement contexts may differ.

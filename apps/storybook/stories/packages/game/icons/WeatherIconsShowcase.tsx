@@ -92,9 +92,12 @@ export function WeatherIconsShowcase({ dark = false }: { dark?: boolean }) {
                         ))}
                     </div>
                 </section>
-                <section aria-label="Rain probability" className="space-y-3">
+                <section
+                    aria-label="Precipitation indicator"
+                    className="space-y-3"
+                >
                     <h2 className="text-lg font-semibold">
-                        Rain probability · 16px
+                        Precipitation fill · 16px
                     </h2>
                     <div className="flex flex-wrap gap-6">
                         {[0, 25, 50, 75, 100].map((chance) => (

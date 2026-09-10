@@ -44,9 +44,14 @@ const meta = {
             ),
         );
         for (const chance of [0, 25, 50, 75, 100]) {
-            const rain = canvas.getByRole('img', {
-                name: `Vjerojatnost oborina: ${chance}%`,
-            });
+            const rain = canvas
+                .getAllByRole('img', { name: 'Oborine' })
+                .find(
+                    (image) =>
+                        image.getAttribute('data-rain-chance') ===
+                        String(chance),
+                );
+            if (!rain) throw new Error(`Missing precipitation fill: ${chance}`);
             await expect(rain.querySelector('svg:last-child')).toHaveStyle({
                 clipPath: `inset(${100 - chance}% 0 0 0)`,
             });
