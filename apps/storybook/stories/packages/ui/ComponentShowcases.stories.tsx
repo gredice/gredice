@@ -185,6 +185,7 @@ import { UserAvatar } from '@gredice/ui/UserAvatar';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import Image from 'next/image';
 import { useMemo, useState } from 'react';
+import { RaisedBedFieldsGridFixture } from '../../../../../packages/ui/src/raisedBeds/RaisedBedFieldsGrid.fixture';
 
 const sampleImages = [
     {
@@ -2011,4 +2012,8 @@ export const AccountAndStates: Story = {
 
 export const SurveyForm: Story = {
     render: () => <SurveyQuestionnaireShowcase />,
+};
+
+export const RaisedBedPlantings: Story = {
+    render: () => <RaisedBedFieldsGridFixture />,
 };

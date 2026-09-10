@@ -4,15 +4,20 @@ import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
 import { Calendar } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { Switch } from '@gredice/ui/Switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@gredice/ui/Tooltip';
 import { Typography } from '@gredice/ui/Typography';
-import { type FormEvent, type ReactNode, useState } from 'react';
+import { type FormEvent, type ReactNode, useId, useState } from 'react';
 import {
     type DiaryRescheduleTarget,
     formatDiaryRescheduleDateInput,
     getMinimumDiaryRescheduleDateInput,
     useRescheduleDiaryEntry,
 } from '../../hooks/useRescheduleDiaryEntry';
+import {
+    type SelectedPlantingDiaryTarget,
+    useSelectedPlantingOwnerAction,
+} from '../../hooks/useSelectedPlantingOwnerAction';
 import { GameModal } from '../../shared-ui/game-modal';
 
 export function RaisedBedDiaryRescheduleAction({
@@ -25,12 +30,25 @@ export function RaisedBedDiaryRescheduleAction({
     disabledReason?: string | null;
     entryName: string;
     gardenId: number;
-    target: DiaryRescheduleTarget;
+    target: DiaryRescheduleTarget | SelectedPlantingDiaryTarget;
     triggerLabel?: ReactNode;
 }) {
+    const greenhouseSwitchId = useId();
     const [open, setOpen] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const mutation = useRescheduleDiaryEntry(gardenId);
+    const selectedMutation = useSelectedPlantingOwnerAction(
+        gardenId,
+        target.raisedBedId ?? 0,
+    );
+    const isPending =
+        target.type === 'selectedPlanting'
+            ? selectedMutation.isPending
+            : mutation.isPending;
+    const [sowInGreenhouse, setSowInGreenhouse] = useState(
+        target.type === 'selectedPlanting' &&
+            target.sowingLocation === 'greenhouse',
+    );
     const minimumDate = getMinimumDiaryRescheduleDateInput();
     const hasScheduledDate = Boolean(target.scheduledDate);
     const defaultDate = target.scheduledDate
@@ -91,10 +109,16 @@ export function RaisedBedDiaryRescheduleAction({
         }
 
         try {
-            await mutation.mutateAsync({
-                scheduledDate,
-                target,
-            });
+            if (target.type === 'selectedPlanting') {
+                await selectedMutation.mutateAsync({
+                    type: 'reschedule',
+                    scheduledDate,
+                    sowingLocation: sowInGreenhouse ? 'greenhouse' : 'direct',
+                    target,
+                });
+            } else {
+                await mutation.mutateAsync({ scheduledDate, target });
+            }
             setOpen(false);
         } catch (error) {
             setErrorMessage(
@@ -112,6 +136,10 @@ export function RaisedBedDiaryRescheduleAction({
             onOpenChange={(nextOpen) => {
                 if (nextOpen) {
                     setScheduledDate(currentValue);
+                    setSowInGreenhouse(
+                        target.type === 'selectedPlanting' &&
+                            target.sowingLocation === 'greenhouse',
+                    );
                 }
                 setOpen(nextOpen);
                 if (!nextOpen) {
@@ -139,7 +167,7 @@ export function RaisedBedDiaryRescheduleAction({
                     ) : null}
 
                     <CalendarDatePicker
-                        disabled={mutation.isPending}
+                        disabled={isPending}
                         fullWidth
                         label="Novi datum"
                         min={minimumDate}
@@ -149,11 +177,27 @@ export function RaisedBedDiaryRescheduleAction({
                         value={scheduledDate}
                     />
 
+                    {target.type === 'selectedPlanting' && (
+                        <label
+                            htmlFor={greenhouseSwitchId}
+                            className="flex items-center gap-2 text-sm"
+                        >
+                            <Switch
+                                id={greenhouseSwitchId}
+                                aria-label="Sijanje u stakleniku"
+                                checked={sowInGreenhouse}
+                                disabled={isPending}
+                                onCheckedChange={setSowInGreenhouse}
+                                size="sm"
+                            />
+                            Sijanje u stakleniku
+                        </label>
+                    )}
                     <Row spacing={2} className="justify-end">
                         <Button
                             type="button"
                             variant="plain"
-                            disabled={mutation.isPending}
+                            disabled={isPending}
                             onClick={() => setOpen(false)}
                         >
                             Odustani
@@ -161,8 +205,8 @@ export function RaisedBedDiaryRescheduleAction({
                         <Button
                             type="submit"
                             variant="solid"
-                            loading={mutation.isPending}
-                            disabled={mutation.isPending}
+                            loading={isPending}
+                            disabled={isPending}
                             startDecorator={
                                 <Calendar className="size-4 shrink-0" />
                             }

@@ -61,7 +61,9 @@ test('uses the Croatian plural form for a four-plant density', async ({
     await expect(component.getByText('2 × 2 (4 biljke)')).toBeVisible();
 });
 
-test('marks legacy density and footprint unknown', async ({ mount }) => {
+test('shows legacy plantings without missing-layout warnings', async ({
+    mount,
+}) => {
     const component = await mount(
         <RaisedBedPlantingsReadOnly
             items={[
@@ -79,10 +81,7 @@ test('marks legacy density and footprint unknown', async ({ mount }) => {
         />,
     );
 
-    await expect(
-        component.getByText(
-            /Naslijeđena sadnja: raspored, gustoća i broj biljaka nisu zabilježeni\./u,
-        ),
-    ).toBeVisible();
+    await expect(component.getByText(/Naslijeđena sadnja/u)).toHaveCount(0);
+    await expect(component.getByText('Polja: 3')).toBeVisible();
     await expect(component.getByText('Odabrani razmak')).toHaveCount(0);
 });

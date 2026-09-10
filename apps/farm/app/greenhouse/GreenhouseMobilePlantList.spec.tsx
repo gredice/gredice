@@ -23,6 +23,16 @@ function greenhouseList(positionNumber: number | string = 5) {
                             plantName: longPlantName,
                             plantSort: undefined,
                             positionNumber,
+                            planting:
+                                typeof positionNumber === 'string'
+                                    ? {
+                                          plantCount: 1,
+                                          plantsPerAxis: 1,
+                                          spanRows: 2,
+                                          spanColumns: 2,
+                                          selectedSeedingDistanceCm: 60,
+                                      }
+                                    : undefined,
                             sowingDate: (
                                 <div className="space-y-0.5">
                                     <span>25. 06. 2026.</span>
@@ -89,7 +99,10 @@ test('shows all positions of a multi-field planting in one mobile row', async ({
 }) => {
     await page.setViewportSize({ width: 320, height: 568 });
     const component = await mount(greenhouseList('1, 2, 4, 5'));
-    await expect(component.getByText('Polje 1, 2, 4, 5')).toBeVisible();
+    await expect(component.getByText('Polja 1, 2, 4, 5')).toBeVisible();
+    await expect(
+        component.getByText(/Broj biljaka: 1.*Zauzima: 2 × 2 polja/),
+    ).toBeVisible();
     await expect(component.locator('[data-greenhouse-plant-name]')).toHaveCount(
         1,
     );

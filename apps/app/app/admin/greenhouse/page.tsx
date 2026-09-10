@@ -13,7 +13,7 @@ import { Chip, type ColorPaletteProp } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
-import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
+import { RaisedBedLabel, RaisedBedPlantingFacts } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
@@ -307,7 +307,11 @@ export default async function GreenhousePage() {
                                                             size="sm"
                                                             variant="outlined"
                                                         >
-                                                            Polje{' '}
+                                                            {field
+                                                                .positionNumbers
+                                                                .length === 1
+                                                                ? 'Polje'
+                                                                : 'Polja'}{' '}
                                                             {field.positionNumbers.join(
                                                                 ', ',
                                                             )}
@@ -321,6 +325,9 @@ export default async function GreenhousePage() {
                                                             {plantName}
                                                         </Typography>
                                                     </div>
+                                                    <RaisedBedPlantingFacts
+                                                        {...field.planting}
+                                                    />
                                                 </Stack>
                                             </div>
                                             <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:min-w-[36rem] xl:justify-items-end xl:text-right">

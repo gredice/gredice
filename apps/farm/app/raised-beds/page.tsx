@@ -1,4 +1,5 @@
 import {
+    getRaisedBedFieldGroups,
     plantFieldStatusEmoji,
     plantFieldStatusLabel,
 } from '@gredice/js/plants';
@@ -36,20 +37,25 @@ function getFieldPreviews(
     }
 
     const plants = getRaisedBedPlantOccupancy(raisedBed);
-    return getRaisedBedPositionIndexesDescending([
+    const positions = getRaisedBedPositionIndexesDescending([
         ...raisedBed.fields.map((field) => field.positionIndex),
         ...plants.flatMap((plant) =>
             plant.positionNumbers.map((position) => position - 1),
         ),
-    ]).map((positionIndex) => {
+    ]);
+    return getRaisedBedFieldGroups(positions, plants).map((group) => {
         const occupants = plants.filter((plant) =>
-            plant.positionNumbers.includes(positionIndex + 1),
+            plant.positionNumbers.some((position) =>
+                group.positionNumbers.includes(position),
+            ),
         );
+        const fieldLabel = `${group.positionNumbers.length === 1 ? 'Polje' : 'Polja'} ${group.positionNumbers.join(', ')}`;
         return {
-            key: `position-${positionIndex}`,
+            ...group,
+            key: `positions-${group.positionNumbers.join('-')}`,
             hasPlant: occupants.length > 0,
             label: occupants.length
-                ? `Polje ${positionIndex + 1} · ${occupants
+                ? `${fieldLabel} · ${occupants
                       .map((plant) => {
                           const sort = plantSortsById.get(plant.plantSortId);
                           return (
@@ -59,10 +65,12 @@ function getFieldPreviews(
                           );
                       })
                       .join(', ')}`
-                : `Polje ${positionIndex + 1} prazno`,
+                : `${fieldLabel} prazno`,
             plants: occupants.map((plant) => ({
                 key: plant.key,
                 plantSort: plantSortsById.get(plant.plantSortId),
+                positionNumbers: plant.positionNumbers,
+                plantCount: plant.planting?.plantCount,
                 status: plant.plantStatus,
                 statusLabel: plant.plantStatus
                     ? plantFieldStatusLabel(plant.plantStatus).shortLabel
@@ -180,6 +188,10 @@ async function RaisedBedsPageContent() {
                                                 <div
                                                     key={`${raisedBed.id}-${field.key}`}
                                                     title={field.label}
+                                                    style={{
+                                                        gridRow: `${field.row} / span ${field.rowSpan}`,
+                                                        gridColumn: `${field.column} / span ${field.columnSpan}`,
+                                                    }}
                                                     className={
                                                         field.hasPlant
                                                             ? 'relative flex aspect-square items-center justify-center rounded-md border bg-muted/40 p-1'
@@ -191,10 +203,7 @@ async function RaisedBedsPageContent() {
                                                             <div
                                                                 key={plant.key}
                                                                 className="relative flex min-w-0 flex-1 items-center justify-center"
-                                                                title={
-                                                                    plant.statusLabel ??
-                                                                    undefined
-                                                                }
+                                                                title={`Polja ${plant.positionNumbers.join(', ')}${plant.statusLabel ? ` · ${plant.statusLabel}` : ''}${plant.plantCount != null ? ` · Broj biljaka: ${plant.plantCount}` : ''}`}
                                                             >
                                                                 {plant.plantSort ? (
                                                                     <PlantOrSortImage

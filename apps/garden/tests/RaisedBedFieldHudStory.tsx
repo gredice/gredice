@@ -172,7 +172,7 @@ type ProvidersProps = PropsWithChildren<{
     searchParams?: string;
 }>;
 
-function RaisedBedHudTestProviders({
+export function RaisedBedHudTestProviders({
     children,
     scenario,
     favorites = [],

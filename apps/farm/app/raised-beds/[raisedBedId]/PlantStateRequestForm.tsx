@@ -38,10 +38,12 @@ export function PlantStateRequestForm({
     positionIndex,
     currentStatus,
     pendingRequestedStatus,
+    compact = false,
 }: {
     raisedBedId: number;
     positionIndex: number;
     currentStatus?: string | null;
+    compact?: boolean;
     pendingRequestedStatus?: string | null;
 }) {
     const [open, setOpen] = useState(false);
@@ -80,7 +82,11 @@ export function PlantStateRequestForm({
                     color="neutral"
                     size="sm"
                     disabled
-                    className="h-auto justify-start px-1 py-1 text-left"
+                    className={
+                        compact
+                            ? 'h-8 justify-start border border-input bg-background px-2 text-left shadow-xs'
+                            : 'h-auto justify-start px-1 py-1 text-left'
+                    }
                     startDecorator={
                         <span
                             className="text-base leading-none"
@@ -110,7 +116,11 @@ export function PlantStateRequestForm({
                     variant="plain"
                     color="primary"
                     size="sm"
-                    className="h-auto justify-start px-1 py-1 text-left"
+                    className={
+                        compact
+                            ? 'h-8 justify-start border border-input bg-background px-2 text-left shadow-xs'
+                            : 'h-auto justify-start px-1 py-1 text-left'
+                    }
                     aria-label={`Promijeni stanje biljke. Trenutno stanje: ${currentStatusLabel}`}
                     startDecorator={
                         <span
