@@ -586,8 +586,8 @@ export function RaisedBedField({
             {advancedSowingPlantings.length > 0 ? (
                 <RaisedBedAdvancedSowingOverlay
                     bedFieldCount={totalRows * totalColumns}
-                    gardenId={gardenId}
                     plantings={advancedSowingPlantings}
+                    pendingPositionIndices={[...cartItemsByPosition.keys()]}
                     plantingMode={isPlantingMode}
                     plantSorts={advancedSowingPlantSorts}
                     raisedBedId={raisedBedId}

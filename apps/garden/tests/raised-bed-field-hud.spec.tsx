@@ -1197,19 +1197,17 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             .click();
 
         const advancedDialog = page.getByRole('dialog', {
-            name: 'Klasični bosiljak',
+            name: 'Biljka "Klasični bosiljak"',
         });
         await expect(advancedDialog).toBeVisible();
-        await expect(
-            advancedDialog.getByText('Gustoća', { exact: true }),
-        ).toBeVisible();
+        await expect(advancedDialog.getByText(/4 biljke/u)).toBeVisible();
         await advancedDialog.getByRole('button', { name: 'Zatvori' }).click();
 
         await splitField
             .locator('[data-advanced-sowing-field-segment="advanced:202"]')
             .click();
         await expect(
-            page.getByRole('dialog', { name: 'Klasični bosiljak' }),
+            page.getByRole('dialog', { name: 'Biljka "Klasični bosiljak"' }),
         ).toBeVisible();
     });
 

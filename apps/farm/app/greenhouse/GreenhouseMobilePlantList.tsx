@@ -2,10 +2,12 @@ import type { EntityStandardized } from '@gredice/storage';
 import { CardOverflow } from '@gredice/ui/Card';
 import { Chip, type ColorPaletteProp } from '@gredice/ui/Chip';
 import { PlantOrSortImage } from '@gredice/ui/plants';
+import { RaisedBedPlantingFacts } from '@gredice/ui/raisedBeds';
 import { Typography } from '@gredice/ui/Typography';
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 
 export type GreenhouseMobilePlantListItem = {
+    planting?: ComponentProps<typeof RaisedBedPlantingFacts>;
     germinationDate: string;
     key: string;
     plantName: string;
@@ -43,7 +45,12 @@ export function GreenhouseMobilePlantList({
                                         level="body3"
                                         className="text-muted-foreground"
                                     >
-                                        Polje {item.positionNumber}
+                                        {String(item.positionNumber).includes(
+                                            ',',
+                                        )
+                                            ? 'Polja'
+                                            : 'Polje'}{' '}
+                                        {item.positionNumber}
                                     </Typography>
                                     <Typography
                                         level="body1"
@@ -54,6 +61,7 @@ export function GreenhouseMobilePlantList({
                                         {item.plantName}
                                     </Typography>
                                 </div>
+                                <RaisedBedPlantingFacts {...item.planting} />
                                 <Chip
                                     color={item.statusColor}
                                     size="sm"

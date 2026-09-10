@@ -20,10 +20,12 @@ export function SelectedPlantingStatusControl({
     control,
     initialStatus,
     label,
+    compact = false,
 }: {
     control: SelectedPlantingStatusControlModel;
     initialStatus?: SelectedPlantingStatusControlModel['options'][number]['value'];
     label?: string;
+    compact?: boolean;
 }) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
@@ -96,7 +98,11 @@ export function SelectedPlantingStatusControl({
                     type="button"
                     size="sm"
                     variant="plain"
-                    className="h-auto max-w-full whitespace-normal px-1 text-left"
+                    className={
+                        compact
+                            ? 'h-8 max-w-full border border-input bg-background px-2 text-left shadow-xs'
+                            : 'h-auto max-w-full whitespace-normal px-1 text-left'
+                    }
                     aria-label={label ?? 'Promijeni stanje biljke'}
                 >
                     {label ?? plantFieldStatusLabel(control.status).shortLabel}

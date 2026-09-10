@@ -1,6 +1,7 @@
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
+import { Input } from '@gredice/ui/Input';
 import { Close, Warning } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -11,6 +12,10 @@ import {
     type DiaryCancelTarget,
     useCancelDiaryEntry,
 } from '../../hooks/useCancelDiaryEntry';
+import {
+    type SelectedPlantingDiaryTarget,
+    useSelectedPlantingOwnerAction,
+} from '../../hooks/useSelectedPlantingOwnerAction';
 import { GameModal } from '../../shared-ui/game-modal';
 
 export function RaisedBedDiaryCancelAction({
@@ -23,12 +28,22 @@ export function RaisedBedDiaryCancelAction({
     disabledReason?: string | null;
     entryName: string;
     gardenId: number;
-    target: DiaryCancelTarget;
+    target: DiaryCancelTarget | SelectedPlantingDiaryTarget;
     triggerLabel?: ReactNode;
 }) {
     const [open, setOpen] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const mutation = useCancelDiaryEntry(gardenId);
+    const selectedMutation = useSelectedPlantingOwnerAction(
+        gardenId,
+        target.raisedBedId ?? 0,
+    );
+    const isPending =
+        target.type === 'selectedPlanting'
+            ? selectedMutation.isPending
+            : mutation.isPending;
+    const [reason, setReason] = useState('');
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const triggerTitle =
         typeof triggerLabel === 'string' ? triggerLabel : 'Otkaži';
     const triggerButton = (
@@ -67,8 +82,22 @@ export function RaisedBedDiaryCancelAction({
         setErrorMessage(null);
 
         try {
-            await mutation.mutateAsync(target);
-            setOpen(false);
+            if (target.type === 'selectedPlanting') {
+                if (!reason.trim()) return;
+                const result = await selectedMutation.mutateAsync({
+                    type: 'cancel',
+                    reason: reason.trim(),
+                    target,
+                });
+                setSuccessMessage(
+                    result.type === 'cancel' && result.refundAmount > 0
+                        ? `Sijanje je otkazano. Vraćeno je ${result.refundAmount} 🌻.`
+                        : 'Sijanje je otkazano. Za ovu sadnju nema povrata.',
+                );
+            } else {
+                await mutation.mutateAsync(target);
+                setOpen(false);
+            }
         } catch (error) {
             setErrorMessage(
                 error instanceof Error
@@ -86,6 +115,8 @@ export function RaisedBedDiaryCancelAction({
                 setOpen(nextOpen);
                 if (!nextOpen) {
                     setErrorMessage(null);
+                    setReason('');
+                    setSuccessMessage(null);
                 }
             }}
             trigger={triggerButton}
@@ -94,8 +125,10 @@ export function RaisedBedDiaryCancelAction({
                 <Stack spacing={1}>
                     <Typography level="h5">Otkaži radnju</Typography>
                     <Typography level="body2" secondary>
-                        Otkazat ćeš {entryName}. Suncokreti će se vratiti na
-                        račun, a obavijest će ostati u porukama.
+                        Otkazat ćeš {entryName}.{' '}
+                        {target.type === 'selectedPlanting'
+                            ? 'Otkazivanje vrijedi za cijelu sadnju. Mogući povrat prikazat će se nakon potvrde.'
+                            : 'Suncokreti će se vratiti na račun, a obavijest će ostati u porukama.'}
                     </Typography>
                 </Stack>
 
@@ -112,26 +145,47 @@ export function RaisedBedDiaryCancelAction({
                     </Alert>
                 ) : null}
 
+                {target.type === 'selectedPlanting' && !successMessage && (
+                    <Input
+                        label="Razlog otkazivanja"
+                        value={reason}
+                        onChange={(event) => setReason(event.target.value)}
+                        maxLength={2000}
+                        disabled={isPending}
+                        fullWidth
+                    />
+                )}
+                {successMessage && (
+                    <Alert color="success">{successMessage}</Alert>
+                )}
                 <Row spacing={2} className="justify-end">
                     <Button
                         type="button"
                         variant="plain"
-                        disabled={mutation.isPending}
+                        disabled={isPending}
                         onClick={() => setOpen(false)}
                     >
-                        Odustani
+                        {successMessage ? 'Zatvori' : 'Odustani'}
                     </Button>
-                    <Button
-                        type="button"
-                        variant="solid"
-                        color="danger"
-                        loading={mutation.isPending}
-                        disabled={mutation.isPending}
-                        startDecorator={<Close className="size-4 shrink-0" />}
-                        onClick={handleCancel}
-                    >
-                        Otkaži
-                    </Button>
+                    {!successMessage && (
+                        <Button
+                            type="button"
+                            variant="solid"
+                            color="danger"
+                            loading={isPending}
+                            disabled={
+                                isPending ||
+                                (target.type === 'selectedPlanting' &&
+                                    !reason.trim())
+                            }
+                            startDecorator={
+                                <Close className="size-4 shrink-0" />
+                            }
+                            onClick={handleCancel}
+                        >
+                            Otkaži
+                        </Button>
+                    )}
                 </Row>
             </Stack>
         </GameModal>
