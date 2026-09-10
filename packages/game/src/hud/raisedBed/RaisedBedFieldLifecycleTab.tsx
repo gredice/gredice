@@ -3,8 +3,8 @@ import {
     userAllowedPlantStatusTransitions,
 } from '@gredice/js/plants';
 import { Button } from '@gredice/ui/Button';
+import { GameShovelIcon as ShovelIcon } from '@gredice/ui/GameIcons';
 import { Row } from '@gredice/ui/Row';
-import { ShovelIcon } from '@gredice/ui/ShovelIcon';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';

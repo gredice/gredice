@@ -9,8 +9,11 @@ import {
     useSensors,
 } from '@dnd-kit/core';
 import { rectSwappingStrategy, SortableContext } from '@dnd-kit/sortable';
-import { Heart, History, Lightning } from '@gredice/ui/icons';
-import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
+import {
+    GameHistoryIcon as History,
+    GameSeedPacketIcon as PlantingSeedIcon,
+} from '@gredice/ui/GameIcons';
+import { Heart, Lightning } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';

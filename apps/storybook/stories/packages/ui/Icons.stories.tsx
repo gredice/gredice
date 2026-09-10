@@ -11,6 +11,7 @@ const iconModules = import.meta.glob(
 // Only icons that require props beyond SVGProps need an entry here.
 const iconDefaultProps: Record<string, Record<string, unknown>> = {
     RaisedBedIcon: { physicalId: null },
+    GameRaisedBedIcon: { physicalId: null },
     RaisedBedIdentifierIcon: { physicalId: null },
     PlantGridIcon: { totalPlants: 4 },
 };

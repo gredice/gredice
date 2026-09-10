@@ -26,7 +26,7 @@
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
         "typecheck": "tsc --noEmit --pretty false",
-        "test": "tsx --test \"src/**/*.unit.ts\""
+        "test": "tsx --import ./scripts/register-test-assets.mjs --test \"src/**/*.unit.ts\""
     },
     "devDependencies": {
         "@biomejs/biome": "2.5.3",

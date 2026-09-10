@@ -1,11 +1,11 @@
 import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
 import { Alert } from '@gredice/ui/Alert';
+import { GameRaisedBedIcon as RaisedBedIcon } from '@gredice/ui/GameIcons';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
 import { Check } from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';
 import { ListItem } from '@gredice/ui/ListItem';
 import { Markdown } from '@gredice/ui/Markdown';
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Skeleton } from '@gredice/ui/Skeleton';
 import { Stack } from '@gredice/ui/Stack';

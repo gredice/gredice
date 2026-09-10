@@ -1,4 +1,4 @@
-import { Sprout } from '@gredice/ui/icons';
+import { GameSeedlingIcon as Sprout } from '@gredice/ui/GameIcons';
 import { cx } from '@gredice/ui/utils';
 
 export function GreenhouseSowingToggle({

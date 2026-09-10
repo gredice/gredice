@@ -1,10 +1,11 @@
 'use client';
-
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card } from '@gredice/ui/Card';
-import { Sprout } from '@gredice/ui/icons';
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
+import {
+    GameRaisedBedIcon as RaisedBedIcon,
+    GameSeedlingIcon as Sprout,
+} from '@gredice/ui/GameIcons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';

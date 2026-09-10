@@ -64,6 +64,17 @@ import {
 import { ExpandableSearchInput } from '@gredice/ui/ExpandableSearchInput';
 import { FilterInput } from '@gredice/ui/FilterInput';
 import { Gallery } from '@gredice/ui/Gallery';
+import {
+    GameCameraIcon,
+    GameHistoryIcon,
+    GameInformationIcon,
+    GameJournalIcon,
+    GameMailboxIcon,
+    GameRaisedBedIcon,
+    GameSeedPacketIcon,
+    GameTasksIcon,
+    GameToolsIcon,
+} from '@gredice/ui/GameIcons';
 import { GentleSlide } from '@gredice/ui/GentleSlide';
 import {
     Grid1Icon,
@@ -149,7 +160,6 @@ import {
     PlantYieldTooltip,
     SeedTimeInformationBadge,
 } from '@gredice/ui/plants';
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { RaisedBedIdentifierIcon } from '@gredice/ui/RaisedBedIdentifierIcon';
 import { RaisedBedSimpleIcon } from '@gredice/ui/RaisedBedSimpleIcon';
 import { Row } from '@gredice/ui/Row';
@@ -1361,9 +1371,9 @@ function GardenWorkspaceShowcase() {
                     subHeader="A responsive workbench for garden state, field selection, and HUD-style controls."
                     visual={
                         <div className="grid size-full place-items-center bg-lime-100 text-lime-900">
-                            <RaisedBedIcon
+                            <GameRaisedBedIcon
                                 physicalId="A12"
-                                className="size-24"
+                                className="size-12"
                             />
                         </div>
                     }
@@ -1386,6 +1396,33 @@ function GardenWorkspaceShowcase() {
                         </CardContent>
                     </Card>
                 </PageHeader>
+
+                <Row spacing={3} className="flex-wrap">
+                    <IconButton aria-label="Obavijesti" variant="outlined">
+                        <GameMailboxIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Vrtni zadaci" variant="outlined">
+                        <GameTasksIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Sijanje" variant="outlined">
+                        <GameSeedPacketIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Vrtne radnje" variant="outlined">
+                        <GameToolsIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Dnevnik" variant="outlined">
+                        <GameJournalIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Informacije" variant="outlined">
+                        <GameInformationIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Fotografije" variant="outlined">
+                        <GameCameraIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Povijest" variant="outlined">
+                        <GameHistoryIcon className="size-8" />
+                    </IconButton>
+                </Row>
 
                 <div className="h-[44rem] overflow-hidden rounded-lg border bg-card">
                     <SplitView

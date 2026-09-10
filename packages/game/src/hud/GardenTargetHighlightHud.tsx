@@ -1,7 +1,7 @@
 'use client';
-
 import { Button } from '@gredice/ui/Button';
-import { Close, Sprout } from '@gredice/ui/icons';
+import { GameSeedlingIcon as Sprout } from '@gredice/ui/GameIcons';
+import { Close } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';

@@ -3,14 +3,14 @@ import {
     userAllowedPlantStatusTransitions,
 } from '@gredice/js/plants';
 import {
-    Book,
+    GameHistoryIcon as History,
+    GameSeedlingIcon as Sprout,
+} from '@gredice/ui/GameIcons';
+import {
     Check,
     ExternalLink,
-    Hammer,
-    History,
     Home,
     MoreHorizontal,
-    Sprout,
     Warning,
 } from '@gredice/ui/icons';
 import { Link } from '@gredice/ui/Link';
@@ -19,7 +19,7 @@ import { Row } from '@gredice/ui/Row';
 import { ScrollArea } from '@gredice/ui/ScrollArea';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
 import { Stack } from '@gredice/ui/Stack';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
+import { Tabs, TabsContent } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import { type ReactElement, useEffect, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
@@ -46,6 +46,7 @@ import {
 } from './greenhouseSeedlings';
 import { plantFieldStatusEmoji } from './PlantFieldStatusEmoji';
 import { RaisedBedAdvancedSowingPlantingDetails } from './RaisedBedAdvancedSowingPlantingDetails';
+import { RaisedBedDetailsTabsList } from './RaisedBedDetailsTabsList';
 import { RaisedBedFieldIconStack } from './RaisedBedFieldIconStack';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import {
@@ -612,28 +613,10 @@ export function RaisedBedFieldItemPlanted({
                         }}
                         className="flex flex-col"
                     >
-                        <TabsList className="border w-fit self-center">
-                            <TabsTrigger value="lifecycle">
-                                <Row spacing={2}>
-                                    <Sprout className="size-4 shrink-0" />
-                                    <Typography>Biljka</Typography>
-                                </Row>
-                            </TabsTrigger>
-                            <TabsTrigger value="diary">
-                                <Row spacing={2}>
-                                    <Book className="size-4 shrink-0" />
-                                    <Typography>Dnevnik</Typography>
-                                </Row>
-                            </TabsTrigger>
-                            {!isHistorical && (
-                                <TabsTrigger value="operations">
-                                    <Row spacing={2}>
-                                        <Hammer className="size-4 shrink-0" />
-                                        <Typography>Radnje</Typography>
-                                    </Row>
-                                </TabsTrigger>
-                            )}
-                        </TabsList>
+                        <RaisedBedDetailsTabsList
+                            view="plant"
+                            showOperations={!isHistorical}
+                        />
                         {!isHistorical && (
                             <TabsContent value="operations">
                                 {garden && selectedPlanting ? (

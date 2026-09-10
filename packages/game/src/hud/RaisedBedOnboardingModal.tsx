@@ -1,10 +1,10 @@
 'use client';
-
 import { isRaisedBedAbandoned } from '@gredice/js/raisedBeds';
 import { firstRaisedBedTutorialTasks } from '@gredice/js/raisedBedTutorial';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
+import { GameSeedlingIcon as Sprout } from '@gredice/ui/GameIcons';
 import { IconButton } from '@gredice/ui/IconButton';
 import {
     Check,
@@ -13,7 +13,6 @@ import {
     Left,
     Navigate,
     ShoppingCart,
-    Sprout,
 } from '@gredice/ui/icons';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';

@@ -1,15 +1,15 @@
 import { EditableInput } from '@gredice/ui/EditableInput';
-import { Book, Hammer, Info } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { ScrollArea } from '@gredice/ui/ScrollArea';
 import { Stack } from '@gredice/ui/Stack';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
+import { Tabs, TabsContent } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import type { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useUpdateRaisedBed } from '../../hooks/useUpdateRaisedBed';
 import { SuncokretChatTrigger } from '../SuncokretChatTrigger';
 import { suncokretContextConversationLabel } from '../suncokretChatContext';
+import { RaisedBedDetailsTabsList } from './RaisedBedDetailsTabsList';
 import { RaisedBedInfoTab } from './RaisedBedInfoTab';
 import { RaisedBedOperationHistoryList } from './RaisedBedOperationHistoryList';
 import { RaisedBedOperationsTab } from './RaisedBedOperationsTab';
@@ -79,26 +79,7 @@ export function RaisedBedInfo({
                 className="flex flex-col pt-2"
             >
                 <div className="flex justify-center">
-                    <TabsList className="border w-fit self-center">
-                        <TabsTrigger value="diary">
-                            <Row spacing={2}>
-                                <Book className="size-4 shrink-0" />
-                                <Typography>Dnevnik</Typography>
-                            </Row>
-                        </TabsTrigger>
-                        <TabsTrigger value="operations">
-                            <Row spacing={2}>
-                                <Hammer className="size-4 shrink-0" />
-                                <Typography>Radnje</Typography>
-                            </Row>
-                        </TabsTrigger>
-                        <TabsTrigger value="info">
-                            <Row spacing={2}>
-                                <Info className="size-4 shrink-0" />
-                                <Typography>Informacije</Typography>
-                            </Row>
-                        </TabsTrigger>
-                    </TabsList>
+                    <RaisedBedDetailsTabsList view="bed" />
                 </div>
                 <TabsContent value="info">
                     <RaisedBedInfoTab
