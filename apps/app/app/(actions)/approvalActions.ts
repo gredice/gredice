@@ -168,12 +168,13 @@ export async function approveScheduleOperationTaskAction(
     expectedEntityId: number,
     expectedTaskVersionEventId: number,
 ) {
-    await completeOperation(
+    const result = await completeOperation(
         operationId,
         expectedEntityId,
         expectedTaskVersionEventId,
     );
     revalidateApprovalQueues();
+    return result;
 }
 
 export async function approveSchedulePlantingTaskAction(
@@ -183,7 +184,7 @@ export async function approveSchedulePlantingTaskAction(
     expectedPlantSortId: number,
     expectedPlantCycleVersionEventId: number,
 ) {
-    await verifyRaisedBedPlantingAction(
+    const result = await verifyRaisedBedPlantingAction(
         raisedBedId,
         positionIndex,
         expectedPlantCycleEventId,
@@ -191,4 +192,5 @@ export async function approveSchedulePlantingTaskAction(
         expectedPlantCycleVersionEventId,
     );
     revalidateApprovalQueues();
+    return result;
 }

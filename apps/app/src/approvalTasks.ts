@@ -1,4 +1,3 @@
-import { plantFieldStatusLabel } from '@gredice/js/plants';
 import {
     type ApprovalRequest,
     type EntityStandardized,
@@ -8,11 +7,15 @@ import {
     getEntitiesFormatted,
 } from '@gredice/storage';
 
+import { serializeOperationDefinitionForList } from '../app/admin/operations/operationListDefinitionVisual';
+import type { EntityStandardized as OperationEntityStandardized } from '../lib/@types/EntityStandardized';
+
 type ApprovalTaskBase = {
     id: string;
     title: string;
     description: string;
     receivedAt: Date;
+    plantImageUrl?: string;
     accountId?: string | null;
     gardenId?: number | null;
     raisedBedId?: number | null;
@@ -32,6 +35,9 @@ export type AdminApprovalTask =
     | (ApprovalTaskBase & {
           kind: 'scheduleOperationVerification';
           operationId: number;
+          operationDefinition: ReturnType<
+              typeof serializeOperationDefinitionForList
+          >;
           expectedEntityId: number;
           expectedTaskVersionEventId: number;
           completedBy?: string | null;
@@ -45,7 +51,10 @@ export type AdminApprovalTask =
           positionIndex: number;
       });
 
-function entityLabel(entity: EntityStandardized | undefined, fallback: string) {
+function entityLabel(
+    entity: EntityStandardized | OperationEntityStandardized | undefined,
+    fallback: string,
+) {
     return entity?.information?.label ?? entity?.information?.name ?? fallback;
 }
 
@@ -60,6 +69,15 @@ function plantSortName(
     return entityLabel(
         plantSortsById.get(plantSortId),
         `Sorta #${plantSortId}`,
+    );
+}
+
+function plantSortImageUrl(plantSort: EntityStandardized | undefined) {
+    return (
+        plantSort?.image?.cover?.url ??
+        plantSort?.images?.cover?.url ??
+        plantSort?.information?.plant?.image?.cover?.url ??
+        plantSort?.information?.plant?.images?.cover?.url
     );
 }
 
@@ -93,12 +111,6 @@ function buildPlantStatusRequestTask(
     }
 
     const raisedBed = raisedBedsById.get(request.target.raisedBedId);
-    const currentStatusLabel = request.target.currentStatus
-        ? plantFieldStatusLabel(request.target.currentStatus).shortLabel
-        : 'Nepoznato';
-    const requestedStatusLabel = plantFieldStatusLabel(
-        request.target.requestedStatus,
-    ).shortLabel;
     const plantName = plantSortName(plantSortsById, request.target.plantSortId);
     const fieldLabel = raisedBedFieldLabel(request.target.positionIndex);
 
@@ -107,8 +119,11 @@ function buildPlantStatusRequestTask(
         kind: 'plantStatusRequest',
         requestId: request.id,
         title: 'Promjena stanja biljke',
-        description: `${fieldLabel ? `${fieldLabel}: ` : ''}${plantName}, ${currentStatusLabel} → ${requestedStatusLabel}`,
+        description: `${fieldLabel ? `${fieldLabel}: ` : ''}${plantName}`,
         receivedAt: request.requestedAt,
+        plantImageUrl: plantSortImageUrl(
+            plantSortsById.get(request.target.plantSortId ?? 0),
+        ),
         accountId: request.target.accountId,
         gardenId: request.target.gardenId,
         raisedBedId: request.target.raisedBedId,
@@ -132,7 +147,7 @@ export async function getPendingAdminApprovalTasks() {
         getApprovalRequests({ status: 'pending' }),
         getAllOperations({ status: 'pendingVerification' }),
         getAllRaisedBeds(),
-        getEntitiesFormatted<EntityStandardized>('operation'),
+        getEntitiesFormatted<OperationEntityStandardized>('operation'),
         getEntitiesFormatted<EntityStandardized>('plantSort'),
     ]);
 
@@ -170,6 +185,10 @@ export async function getPendingAdminApprovalTasks() {
                 id: `operation:${operation.id}`,
                 kind: 'scheduleOperationVerification',
                 operationId: operation.id,
+                operationDefinition: serializeOperationDefinitionForList(
+                    operationsById.get(operation.entityId),
+                    operationName,
+                ),
                 expectedEntityId: operation.entityId,
                 expectedTaskVersionEventId: operation.taskVersionEventId,
                 title: 'Verifikacija radnje',
@@ -220,6 +239,9 @@ export async function getPendingAdminApprovalTasks() {
                         title: 'Verifikacija sijanja',
                         description: `${fieldLabel ? `${fieldLabel}: ` : ''}${plantSortName(plantSortsById, field.plantSortId)}`,
                         receivedAt: field.plantSowDate ?? field.updatedAt,
+                        plantImageUrl: plantSortImageUrl(
+                            plantSortsById.get(field.plantSortId),
+                        ),
                         accountId: raisedBed.accountId,
                         gardenId: raisedBed.gardenId,
                         raisedBedPhysicalId: raisedBed.physicalId,
