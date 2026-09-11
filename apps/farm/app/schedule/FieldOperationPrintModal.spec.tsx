@@ -49,6 +49,9 @@ test('lets farmers exclude labels and restore the full print selection', async (
         name: 'Ispis dnevnih etiketa',
     });
 
+    await expect(dialog.getByRole('tab', { name: 'V2 · jasnija' })).toHaveCount(
+        0,
+    );
     await expect(dialog.getByText('Odabrano: 3 od 3 etiketa')).toBeVisible();
     await expect(dialog.getByText('QR trag uključen')).toHaveCount(0);
     const secondLabel = dialog.getByRole('checkbox', {
