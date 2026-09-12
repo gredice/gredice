@@ -742,7 +742,15 @@ async function createSproutedOperationFixture({
     await storage()
         .insert(entities)
         .values({ id: 593, entityTypeName: 'operation', state: 'published' })
-        .onConflictDoNothing();
+        .onConflictDoUpdate({
+            target: entities.id,
+            set: {
+                entityTypeName: 'operation',
+                state: 'published',
+                isDeleted: false,
+                parentId: null,
+            },
+        });
     const definition = await storage().query.attributeDefinitions.findFirst({
         where: and(
             eq(attributeDefinitions.entityTypeName, 'operation'),
@@ -770,7 +778,16 @@ async function createSproutedOperationFixture({
     await storage()
         .insert(entities)
         .values({ id: 346, entityTypeName: 'operation', state: 'published' })
-        .onConflictDoNothing();
+        // Serial specs can already have auto-generated catalogue rows at these IDs.
+        .onConflictDoUpdate({
+            target: entities.id,
+            set: {
+                entityTypeName: 'operation',
+                state: 'published',
+                isDeleted: false,
+                parentId: null,
+            },
+        });
     await upsertAttributeValue({
         attributeDefinitionId: definitionId,
         entityTypeName: 'operation',
@@ -1163,6 +1180,18 @@ test('admin corrects a grown multi-field planting while preserving its lifecycle
         actor,
         plantSortId,
     };
+    await storage()
+        .update(entities)
+        .set({ isDeleted: true })
+        .where(eq(entities.id, plantSortId));
+    await expectSubmissionError(
+        correctSelectedRaisedBedPlantingSort(input),
+        'invalid_input',
+    );
+    await storage()
+        .update(entities)
+        .set({ isDeleted: false })
+        .where(eq(entities.id, plantSortId));
     const changed = await correctSelectedRaisedBedPlantingSort(input);
     const retry = await correctSelectedRaisedBedPlantingSort(input);
     assert.equal(changed.eventId, retry.eventId);

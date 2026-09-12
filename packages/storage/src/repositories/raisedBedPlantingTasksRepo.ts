@@ -1613,7 +1613,12 @@ export async function correctSelectedRaisedBedPlantingSort(
             const [sort] = await tx
                 .select({ type: entities.entityTypeName })
                 .from(entities)
-                .where(eq(entities.id, plantSortId))
+                .where(
+                    and(
+                        eq(entities.id, plantSortId),
+                        eq(entities.isDeleted, false),
+                    ),
+                )
                 .limit(1);
             if (sort?.type !== 'plantSort') {
                 throw new ScheduleTaskSubmissionError(

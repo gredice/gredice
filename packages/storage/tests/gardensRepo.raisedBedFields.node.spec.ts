@@ -32,7 +32,7 @@ import {
     withPlantingScheduleTaskFootprintTransaction,
 } from '@gredice/storage';
 import { eq } from 'drizzle-orm';
-import { events, raisedBeds } from '../src/schema';
+import { entities, events, raisedBeds } from '../src/schema';
 import {
     createTestBlock,
     createTestGarden,
@@ -2037,6 +2037,22 @@ test('admin sort correction retains the active legacy cycle and refuses stale or
         .update(raisedBeds)
         .set({ isDeleted: false })
         .where(eq(raisedBeds.id, raisedBedId));
+    await storage()
+        .update(entities)
+        .set({ isDeleted: true })
+        .where(eq(entities.id, nextPlantSortId));
+    await assert.rejects(
+        correctLegacyRaisedBedPlantSort({
+            ...identity,
+            actor,
+            plantSortId: nextPlantSortId,
+        }),
+        { code: 'invalid_input' },
+    );
+    await storage()
+        .update(entities)
+        .set({ isDeleted: false })
+        .where(eq(entities.id, nextPlantSortId));
     await correctLegacyRaisedBedPlantSort({
         ...identity,
         actor,
