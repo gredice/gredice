@@ -1,31 +1,101 @@
 import {
     GameCameraIcon,
+    GameHealthIcon,
+    GameHeartIcon,
     GameHistoryIcon,
     GameInformationIcon,
     GameJournalIcon,
+    GameLightningIcon,
     GameMailboxIcon,
     GameRaisedBedSimpleIcon,
     GameSeedlingIcon,
     GameSeedPacketIcon,
     GameShovelIcon,
     GameTasksIcon,
+    GameThermometerIcon,
     GameToolsIcon,
+    GameWaterIcon,
 } from '@gredice/ui/GameIcons';
 import {
+    Add,
     Book,
     Camera,
+    Droplet,
     Hammer,
+    Heart,
     History,
     Inbox,
     Info,
+    Lightning,
     ListTodo,
     Sprout,
+    Thermometer,
 } from '@gredice/ui/icons';
 import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { RaisedBedSimpleIcon } from '@gredice/ui/RaisedBedSimpleIcon';
 import { ShovelIcon } from '@gredice/ui/ShovelIcon';
 
 export const gameIconComparisons = [
+    {
+        name: 'Soil moisture',
+        before: Droplet,
+        after: GameWaterIcon,
+        usage: 'Soil moisture HUD and sensor detail',
+        legacyName: 'Droplet',
+        componentName: 'GameWaterIcon',
+        sources: [
+            'packages/ui/src/GameIcons/GameWaterIcon.tsx',
+            'packages/game/src/hud/raisedBed/RaisedBedSensorInfo.tsx',
+        ],
+    },
+    {
+        name: 'Soil temperature',
+        before: Thermometer,
+        after: GameThermometerIcon,
+        usage: 'Soil temperature HUD and sensor detail',
+        legacyName: 'Thermometer',
+        componentName: 'GameThermometerIcon',
+        sources: [
+            'packages/ui/src/GameIcons/GameThermometerIcon.tsx',
+            'packages/game/src/hud/raisedBed/RaisedBedSensorInfo.tsx',
+        ],
+    },
+    {
+        name: 'Good neighbours',
+        before: Heart,
+        after: GameHeartIcon,
+        usage: 'Neighbour layer toggle and companion badges',
+        legacyName: 'Heart',
+        componentName: 'GameHeartIcon',
+        sources: [
+            'packages/ui/src/GameIcons/GameHeartIcon.tsx',
+            'packages/game/src/hud/raisedBed/RaisedBedFieldRelationshipIndicator.tsx',
+        ],
+    },
+    {
+        name: 'Bad neighbours',
+        before: Lightning,
+        after: GameLightningIcon,
+        usage: 'Neighbour layer toggle and antagonist badges',
+        legacyName: 'Lightning',
+        componentName: 'GameLightningIcon',
+        sources: [
+            'packages/ui/src/GameIcons/GameLightningIcon.tsx',
+            'packages/game/src/hud/raisedBed/RaisedBedFieldRelationshipIndicator.tsx',
+        ],
+    },
+    {
+        name: 'Plant health',
+        before: Add,
+        after: GameHealthIcon,
+        usage: 'Plant health recommendations',
+        legacyName: 'Add',
+        componentName: 'GameHealthIcon',
+        sources: [
+            'packages/ui/src/GameIcons/GameHealthIcon.tsx',
+            'packages/game/src/hud/raisedBed/RecommendationsCard.tsx',
+        ],
+    },
     {
         name: 'Mailbox',
         before: Inbox,

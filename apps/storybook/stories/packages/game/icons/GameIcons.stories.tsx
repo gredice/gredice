@@ -35,3 +35,7 @@ export const Weather: Story = { args: { initialGroup: 'Weather' } };
 export const StyledGameIllustrations: Story = {
     args: { initialGroup: 'Styled game illustrations' },
 };
+
+export const PlantStatuses: Story = {
+    args: { initialGroup: 'Plant statuses' },
+};

@@ -4,6 +4,7 @@ import backpackReference from '../../../../garden/public/assets/hud/inventory-ba
 import basketReference from '../../../../garden/public/assets/hud/shopping-basket.webp?url';
 import { GameIconGroups } from '../game/icons/GameIconGroups';
 import { gameIconComparisons } from './gameIconComparisons';
+import { PlantCareHudPreview } from './PlantCareHudPreview';
 
 export function GameIconsShowcase({ dark = false }: { dark?: boolean }) {
     return (
@@ -56,6 +57,7 @@ export function GameIconsShowcase({ dark = false }: { dark?: boolean }) {
                     </figure>
                 </section>
                 <GameIconGroups />
+                <PlantCareHudPreview />
                 <div className="space-y-3">
                     {gameIconComparisons.map(
                         ({ name, before: Before, after: After, usage }) => (
