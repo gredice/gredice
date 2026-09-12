@@ -111,11 +111,16 @@ export function resolveRaisedBedAddons({
             scope = 'planting';
         } else if (operation.raisedBedFieldId != null) {
             const field = fields.find(
-                (item) => item.id === operation.raisedBedFieldId && item.active,
+                (item) => item.id === operation.raisedBedFieldId,
             );
             if (!field) continue;
             const cycle = field.plantCycles?.find((item) => item.active);
-            if (cycle && appliedAt < (timestamp(cycle.startedAt) ?? Infinity))
+            if (
+                definition?.attributes?.appliesToEmptyFields !== true &&
+                (!field.active ||
+                    (cycle &&
+                        appliedAt < (timestamp(cycle.startedAt) ?? Infinity)))
+            )
                 continue;
             positions = [field.positionIndex + 1];
             scope = 'field';

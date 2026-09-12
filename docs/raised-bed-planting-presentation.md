@@ -77,8 +77,10 @@ remaining fields instead of claiming whole-bed coverage.
 and applied operation statuses for mulch, supports, agrotextile and insect mesh.
 It processes applications and removals by completion time (creation time fallback,
 then operation ID), resolving each family at each physical field. Bed additions
-include empty fields and survive replanting. Field additions belong to the active
-plant cycle; selected-planting operations follow that planting's exact memberships.
+include empty fields and survive replanting. Field treatments marked
+`appliesToEmptyFields` also persist on empty or replanted fields; other field
+additions belong to the active plant cycle. Selected-planting operations follow
+that planting's exact memberships.
 Missing plant targets are never promoted to whole-bed coverage. Pending
 verification is visibly distinguished; planned, cancelled and unrelated operations
 are excluded. This is a projection of recorded operations, not a physical inventory.

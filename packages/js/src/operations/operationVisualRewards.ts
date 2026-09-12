@@ -28,6 +28,7 @@ export type OperationVisualDefinitionInput = {
     slug?: string | null;
     attributes?: {
         application?: string | null;
+        appliesToEmptyFields?: boolean | null;
         stage?: {
             information?: {
                 label?: string | null;

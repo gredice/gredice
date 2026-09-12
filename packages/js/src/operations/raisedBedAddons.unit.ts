@@ -10,7 +10,11 @@ const definitions = [
     },
     {
         id: 2,
-        attributes: { visualReward: 'removeMulch', application: 'plant' },
+        attributes: {
+            visualReward: 'removeMulch',
+            application: 'plant',
+            appliesToEmptyFields: true,
+        },
     },
     {
         id: 3,
@@ -49,6 +53,14 @@ const definitions = [
     {
         id: 9,
         attributes: { visualReward: 'removeInsectMesh', application: 'plant' },
+    },
+    {
+        id: 10,
+        attributes: {
+            visualReward: 'mulch',
+            application: 'plant',
+            appliesToEmptyFields: true,
+        },
     },
 ];
 const fields = [0, 1, 2].map((positionIndex) => ({
@@ -188,5 +200,42 @@ test('cover removals follow the same scope rules as mulch', () => {
     assert.deepEqual(
         result.map((item) => [item.family, item.positionNumbers]),
         [['insectMesh', [2, 3]]],
+    );
+});
+
+test('physical mulch on an empty field is visible and its removal clears inherited bed coverage', () => {
+    const emptyFields = fields.map((field) => ({
+        ...field,
+        active: false,
+        plantCycles: [{ active: false, startedAt: '2026-08-01' }],
+    }));
+    assert.deepEqual(
+        resolve([operation(1, 10, { raisedBedFieldId: 11 })], {
+            fields: emptyFields,
+        }).map((addon) => [addon.family, addon.positionNumbers]),
+        [['mulch', [1]]],
+    );
+    assert.deepEqual(
+        resolve([operation(1, 1), operation(2, 2, { raisedBedFieldId: 11 })], {
+            fields: emptyFields,
+        }).map((addon) => [addon.family, addon.positionNumbers]),
+        [['mulch', [2, 3]]],
+    );
+    assert.deepEqual(
+        resolve([operation(1, 3, { raisedBedFieldId: 11 })], {
+            fields: emptyFields,
+        }),
+        [],
+    );
+});
+
+test('physical field mulch survives a new plant cycle while plant-specific additions do not', () => {
+    const result = resolve([
+        operation(1, 10, { raisedBedFieldId: 11, completedAt: '2026-08-20' }),
+        operation(2, 3, { raisedBedFieldId: 11, completedAt: '2026-08-21' }),
+    ]);
+    assert.deepEqual(
+        result.map((addon) => [addon.family, addon.positionNumbers]),
+        [['mulch', [1]]],
     );
 });
