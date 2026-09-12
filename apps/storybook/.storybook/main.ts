@@ -39,7 +39,6 @@ const config: StorybookConfig = {
                 '../../packages/game/src/structures/catalog/GardenStructureCatalogThumbnail.tsx',
                 '../../packages/game/src/shared-ui/delivery/DeliverySlotPicker.tsx',
                 '../app/components/admin/cards/FactCard.tsx',
-                '../app/components/operations/FarmerPaperNote.tsx',
                 '../app/components/raised-beds/RaisedBedFieldCard.tsx',
                 '../app/components/shared/ServerActionButton.tsx',
                 '../app/components/shared/ServerActionIconButton.tsx',

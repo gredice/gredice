@@ -4,6 +4,7 @@ import { IconButton } from '@gredice/ui/IconButton';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { FileText } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
+import { PaperNote } from '@gredice/ui/PaperNote';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -66,9 +67,9 @@ export function OperationCompletionAttachments({
                         >
                             Radnja #{operationId}
                         </Typography>
-                        <Typography className="whitespace-pre-wrap [overflow-wrap:anywhere]">
+                        <PaperNote noteKey={operationId}>
                             {trimmedNotes}
-                        </Typography>
+                        </PaperNote>
                     </Stack>
                 </Modal>
             )}

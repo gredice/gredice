@@ -152,6 +152,7 @@ import {
     OperationImage,
 } from '@gredice/ui/OperationImage';
 import { PageHeader, PageHeaderSection } from '@gredice/ui/PageHeader';
+import { PaperNote } from '@gredice/ui/PaperNote';
 import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { Popper } from '@gredice/ui/Popper';
 import { Progress } from '@gredice/ui/Progress';
@@ -1423,6 +1424,16 @@ function GardenWorkspaceShowcase() {
                         <GameHistoryIcon className="size-8" />
                     </IconButton>
                 </Row>
+
+                <Stack spacing={2}>
+                    <Typography level="h3">
+                        Bilješka iz pregleda gredice
+                    </Typography>
+                    <PaperNote noteKey="garden-inspection-42">
+                        Tlo je rahlo i dovoljno vlažno. Uklonjen je korov oko
+                        rajčice.
+                    </PaperNote>
+                </Stack>
 
                 <div className="h-[44rem] overflow-hidden rounded-lg border bg-card">
                     <SplitView

@@ -1,0 +1,1 @@
+export { PaperNote } from './PaperNote';
