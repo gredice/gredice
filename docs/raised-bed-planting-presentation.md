@@ -30,10 +30,32 @@ not a warning and must not be inferred from today's catalogue.
   occupy the selected field.
 - Rendering must not turn display occupancy into a mutation identity. Preserve
   selected-planting IDs/versions, legacy cycle IDs/versions, and role-specific
-  actions. Customer lifecycle status does not become editable through the
-  field HUD.
+  actions. Selected-planting lifecycle status remains read-only in the customer
+  field HUD; legacy plant cycles retain the status menu below.
 - Collision/capacity validation remains in the sowing picker. Removing a legacy
   information notice does not relax those checks.
+
+## Customer plant status menu
+
+The legacy plant status menu and Garden PATCH endpoint share
+`userAllowedPlantStatusTransitions` in `@gredice/js/plants`. Existing statuses
+are offered according to the current stage:
+
+| Current state | Available changes |
+| --- | --- |
+| Sowed | Sprouted, failed to sprout |
+| Sprouted | First flowers, first fruits, ready for harvest, died; existing corrections to sowed or failed to sprout |
+| First flowers | First fruits, ready for harvest, died |
+| First fruits | Ready for harvest, died |
+| Ready for harvest | Harvested, died; existing correction to sprouted |
+| Failed to sprout or died | Existing correction to sprouted |
+
+Sowed plants must sprout before later growth or harvest stages. Flowering and
+fruiting are optional because some crops are harvested without those stages.
+Harvest completion requires harvest readiness. Planning, sowing verification,
+and removal retain their separate controls; harvested plants use the existing
+removal action. Changes retain date confirmation and active-cycle identity and
+version checks.
 
 ## Verification
 
