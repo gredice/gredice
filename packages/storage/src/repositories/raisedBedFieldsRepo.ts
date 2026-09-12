@@ -1017,6 +1017,7 @@ function summarizePlantCycle(
             } else if (plantStatus === 'died') {
                 plantDeadDate = statusEventDate;
                 stoppedDate = statusEventDate;
+                toBeRemoved = true;
             } else if (plantStatus === 'firstFlowers') {
                 active = true;
                 toBeRemoved = false;
@@ -1046,6 +1047,7 @@ function summarizePlantCycle(
             } else if (plantStatus === 'harvested') {
                 plantHarvestedDate = statusEventDate;
                 stoppedDate = statusEventDate;
+                toBeRemoved = true;
             } else if (plantStatus === 'removed') {
                 plantRemovedDate = statusEventDate;
                 active = false;
@@ -1694,6 +1696,7 @@ function reduceRaisedBedFieldWithEvents(
             } else if (plantStatus === 'died') {
                 plantDeadDate = statusEventDate;
                 stoppedDate = statusEventDate;
+                toBeRemoved = true;
             } else if (plantStatus === 'firstFlowers') {
                 active = true;
                 toBeRemoved = false;
@@ -1723,6 +1726,7 @@ function reduceRaisedBedFieldWithEvents(
             } else if (plantStatus === 'harvested') {
                 plantHarvestedDate = statusEventDate;
                 stoppedDate = statusEventDate;
+                toBeRemoved = true;
             } else if (plantStatus === 'removed') {
                 plantRemovedDate = statusEventDate;
                 active = false;
