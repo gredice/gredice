@@ -1,5 +1,7 @@
+import type { RaisedBedAddon } from '@gredice/js/operations';
 import { getRaisedBedFieldGroups } from '@gredice/js/plants';
 import {
+    RaisedBedAddons,
     RaisedBedFieldsGrid,
     RaisedBedPlantDetails,
     RaisedBedPlantItem,
@@ -24,15 +26,49 @@ const plants = [
     },
 ];
 
+export const raisedBedAddonFixture: RaisedBedAddon[] = [
+    {
+        family: 'mulch',
+        label: 'Malčiranje slamom',
+        operationId: 1,
+        appliedAt: '2026-09-02T08:00:00Z',
+        pendingVerification: false,
+        scope: 'raisedBed',
+        positionNumbers: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    },
+    {
+        family: 'supports',
+        label: 'Postavljanje potpornja i vezanje',
+        operationId: 2,
+        appliedAt: '2026-09-03T08:00:00Z',
+        pendingVerification: true,
+        scope: 'field',
+        positionNumbers: [8],
+    },
+];
+
 export function RaisedBedFieldsGridFixture() {
     const groups = getRaisedBedFieldGroups([8, 7, 6, 5, 4, 3, 2, 1, 0], plants);
     return (
         <div style={{ maxWidth: 1000, margin: '0 auto', padding: 16 }}>
+            <div className="mb-3">
+                <RaisedBedAddons
+                    addons={raisedBedAddonFixture}
+                    fieldCount={9}
+                />
+            </div>
             <RaisedBedFieldsGrid
                 groups={groups.map((group) => ({
                     ...group,
                     fields: group.positionNumbers.map((position) => ({
                         position,
+                        addons: (
+                            <RaisedBedAddons
+                                addons={raisedBedAddonFixture}
+                                position={position}
+                                fieldCount={9}
+                            />
+                        ),
                         controls: (
                             <Button
                                 size="sm"

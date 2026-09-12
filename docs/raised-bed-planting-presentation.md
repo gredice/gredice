@@ -65,3 +65,30 @@ selection, overlapping footprints, pending carts, and owner controls. Pure
 footprint tests cover co-plants, overlapping rectangles, and missing memberships.
 Shared examples are available in Storybook under `UI/Raised beds/Fields` and the
 raised-bed component showcase.
+
+## Applied additions and catalogue corrections
+
+Admin and Farm raised-bed details share `RaisedBedAddons`. Field indicators open
+operation details with the application date, affected fields, and verification
+state. Whole-bed additions also appear above the grid; partial removal lists the
+remaining fields instead of claiming whole-bed coverage.
+
+`resolveRaisedBedAddons` uses the directory's existing `visualReward` attribute
+and applied operation statuses for mulch, supports, agrotextile and insect mesh.
+It processes applications and removals by completion time (creation time fallback,
+then operation ID), resolving each family at each physical field. Bed additions
+include empty fields and survive replanting. Field additions belong to the active
+plant cycle; selected-planting operations follow that planting's exact memberships.
+Missing plant targets are never promoted to whole-bed coverage. Pending
+verification is visibly distinguished; planned, cancelled and unrelated operations
+are excluded. This is a projection of recorded operations, not a physical inventory.
+
+Admin's **Ispravi sortu** control corrects any active planting, including crops
+that have already sprouted or fruited. It retains the cycle/planting identity,
+status, dates, footprint, plant count, spacing and purchase snapshot. Corrections
+are authorized and version checked inside the existing task transaction locks.
+Legacy corrections use `plantReplaceSort`; selected corrections use
+`raisedBedPlanting.sort.corrected`, preserving the initial catalogue ID in the
+lifecycle-start event and task read model so checkout replays still match the
+original immutable plan. The current selected catalogue ID and its correction
+event are updated atomically. Farm remains read-only for catalogue corrections.

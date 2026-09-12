@@ -9,6 +9,7 @@ import {
     blockSelectedRaisedBedPlantingTask,
     cancelSelectedRaisedBedPlantingTaskForOwner,
     completeSelectedRaisedBedPlantingTask,
+    correctSelectedRaisedBedPlantingSort,
     createAccount,
     createAttributeDefinition,
     createEntity,
@@ -144,7 +145,7 @@ async function createSelectedTaskFixture({
     const plantSortId = await createEntity('plantSort');
     const aggregateId = `raised-bed-planting:selected:task:${randomUUID()}`;
     const membershipPositions = multiField ? [17, 16, 14, 13] : [0];
-    const planting = await createRaisedBedPlanting({
+    const plantingInput = {
         raisedBedId,
         plantSortId,
         eventAggregateId: aggregateId,
@@ -183,10 +184,12 @@ async function createSelectedTaskFixture({
                 isAnchor: index === 0,
             };
         }),
-    });
+    } satisfies Parameters<typeof createRaisedBedPlanting>[0];
+    const planting = await createRaisedBedPlanting(plantingInput);
     assert.ok(planting.planting.selectedTask);
     return {
         accountId,
+        plantingInput,
         adminId,
         aggregateId,
         farmerId,
@@ -1135,4 +1138,86 @@ test('selected harvest traces use physical numbering in a second logical block',
     assert.equal(link.fieldLabel, '10');
     const trace = await getPublicHarvestTraceByToken(link.publicToken);
     assert.equal(trace?.context.fieldLabel, '10');
+});
+
+test('admin corrects a grown multi-field planting while preserving its lifecycle, layout and purchase', async () => {
+    const fixture = await createSelectedTaskFixture({ multiField: true });
+    const actor: { role: 'admin'; userId: string } = {
+        role: 'admin',
+        userId: fixture.adminId,
+    };
+    const completed = await completeSelectedRaisedBedPlantingTask({
+        ...commandIdentity(fixture.task),
+        actor,
+    });
+    await updateSelectedRaisedBedPlantingLifecycleStatus({
+        ...commandIdentity(completed.task),
+        actor,
+        status: 'sprouted',
+    });
+    const before = await getRaisedBedPlanting(fixture.plantingId);
+    assert.ok(before?.selectedTask);
+    const plantSortId = await createEntity('plantSort');
+    const input = {
+        ...commandIdentity(before.selectedTask),
+        actor,
+        plantSortId,
+    };
+    const changed = await correctSelectedRaisedBedPlantingSort(input);
+    const retry = await correctSelectedRaisedBedPlantingSort(input);
+    assert.equal(changed.eventId, retry.eventId);
+    const after = await getRaisedBedPlanting(fixture.plantingId);
+    assert.ok(after?.selectedTask);
+    assert.equal(after.plantSortId, plantSortId);
+    const replay = await createRaisedBedPlanting(fixture.plantingInput);
+    assert.equal(replay.created, false);
+    assert.equal(replay.planting.id, fixture.plantingId);
+    assert.equal(replay.planting.plantSortId, plantSortId);
+    assert.equal(after.selectedTask.initialPlantSortId, fixture.plantSortId);
+    assert.equal(after.lifecycleStatus, 'sprouted');
+    assert.deepEqual(
+        after.lifecycleStatusChanges,
+        before.lifecycleStatusChanges,
+    );
+    assert.deepEqual(after.lifecycleStartedAt, before.lifecycleStartedAt);
+    assert.deepEqual(after.memberships, before.memberships);
+    assert.equal(after.plantCount, before.plantCount);
+    assert.equal(
+        after.selectedSeedingDistanceCm,
+        before.selectedSeedingDistanceCm,
+    );
+    assert.deepEqual(after.selectedTask.purchase, before.selectedTask.purchase);
+    assert.equal(after.selectedTask.identity.expectedPlantSortId, plantSortId);
+    assert.equal(after.lifecycleVersionEventId, changed.eventId);
+    await expectSubmissionError(
+        correctSelectedRaisedBedPlantingSort({
+            ...input,
+            commandId: randomUUID(),
+        }),
+        'task_changed',
+    );
+    await expectSubmissionError(
+        correctSelectedRaisedBedPlantingSort({
+            ...commandIdentity(after.selectedTask),
+            actor: { role: 'farmer', userId: fixture.farmerId },
+            plantSortId: fixture.plantSortId,
+        }),
+        'not_authorized',
+    );
+    const operationId = await createEntity('operation');
+    await expectSubmissionError(
+        correctSelectedRaisedBedPlantingSort({
+            ...commandIdentity(after.selectedTask),
+            actor,
+            plantSortId: operationId,
+        }),
+        'invalid_input',
+    );
+    const next = await updateSelectedRaisedBedPlantingLifecycleStatus({
+        ...commandIdentity(after.selectedTask),
+        actor,
+        status: 'firstFlowers',
+    });
+    assert.equal(next.lifecycleStatus, 'firstFlowers');
+    assert.equal(next.task.identity.expectedPlantSortId, plantSortId);
 });

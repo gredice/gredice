@@ -61,6 +61,7 @@ import type {
     RaisedBedFieldPlantUpdatePayload,
     RaisedBedPlantingLifecycleStartedPayload,
     RaisedBedPlantingLifecycleStatusChangedPayload,
+    RaisedBedPlantingSortCorrectedPayload,
     RaisedBedPlantingTaskAssignedPayload,
     RaisedBedPlantingTaskBlockedPayload,
     RaisedBedPlantingTaskCancelledPayload,
@@ -398,6 +399,15 @@ export const knownEvents = {
         }),
     },
     raisedBedPlantings: {
+        sortCorrectedV1: (
+            aggregateId: string,
+            data: RaisedBedPlantingSortCorrectedPayload,
+        ) => ({
+            type: knownEventTypes.raisedBedPlantings.sortCorrected,
+            version: 1,
+            aggregateId,
+            data,
+        }),
         lifecycleStartedV1: (
             aggregateId: string,
             data: RaisedBedPlantingLifecycleStartedPayload,

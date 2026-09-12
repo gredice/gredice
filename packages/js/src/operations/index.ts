@@ -1,3 +1,6 @@
+export * from './operationVisualRewards';
+export * from './raisedBedAddons';
+
 type PlantOperationApplicability = {
     attributes: {
         application?: string | null;

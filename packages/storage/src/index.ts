@@ -90,6 +90,7 @@ export * from './repositories/plantRelationshipsRepo';
 export * from './repositories/raisedBedDiaryRepo';
 export * from './repositories/raisedBedFieldEventMutationsRepo';
 export * from './repositories/raisedBedFieldsRepo';
+export * from './repositories/raisedBedPlantCorrectionsRepo';
 export * from './repositories/raisedBedPlantingsRepo';
 export * from './repositories/raisedBedPlantingTasksRepo';
 export * from './repositories/raisedBedsRepo';

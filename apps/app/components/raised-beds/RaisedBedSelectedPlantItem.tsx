@@ -7,18 +7,21 @@ import {
     RaisedBedPlantDetails,
     RaisedBedPlantItem,
 } from '@gredice/ui/raisedBeds';
+import { RaisedBedPlantSortCorrection } from './RaisedBedPlantSortCorrection';
 import { SelectedPlantingOperationControl } from './SelectedPlantingOperationControl';
 import { SelectedPlantingStatusControl } from './SelectedPlantingStatusControl';
 import { getSelectedPlantingStatusControl } from './selectedPlantingStatusControls';
 
 export function RaisedBedSelectedPlantItem({
     planting,
+    plantSorts = [],
     positionNumbers,
     plantSort,
     locationLabel,
     operationOptions = [],
 }: {
     planting: RaisedBedPlantingWithFields;
+    plantSorts?: PlantSortData[];
     positionNumbers: number[];
     plantSort?: PlantSortData;
     locationLabel?: string;
@@ -102,22 +105,42 @@ export function RaisedBedSelectedPlantItem({
                 />
             }
             actions={
-                control && (
-                    <SelectedPlantingOperationControl
-                        identity={control.identity}
-                        options={operationOptions.filter((option) =>
-                            ['died', 'notSprouted', 'harvested'].includes(
-                                planting.lifecycleStatus ?? '',
-                            )
-                                ? option.value === '346'
-                                : option.value !== '346' &&
-                                  (option.value !== '593' ||
-                                      (locationLabel === 'Staklenik' &&
-                                          planting.lifecycleStatus ===
-                                              'sprouted')),
+                <>
+                    {planting.isActive &&
+                        planting.selectedTask &&
+                        plantSorts.length > 0 && (
+                            <RaisedBedPlantSortCorrection
+                                identity={planting.selectedTask.identity}
+                                name={name}
+                                options={plantSorts
+                                    .map((sort) => ({
+                                        value: String(sort.id),
+                                        label:
+                                            sort.information?.name ??
+                                            `Sorta #${sort.id}`,
+                                    }))
+                                    .sort((a, b) =>
+                                        a.label.localeCompare(b.label, 'hr'),
+                                    )}
+                            />
                         )}
-                    />
-                )
+                    {control && (
+                        <SelectedPlantingOperationControl
+                            identity={control.identity}
+                            options={operationOptions.filter((option) =>
+                                ['died', 'notSprouted', 'harvested'].includes(
+                                    planting.lifecycleStatus ?? '',
+                                )
+                                    ? option.value === '346'
+                                    : option.value !== '346' &&
+                                      (option.value !== '593' ||
+                                          (locationLabel === 'Staklenik' &&
+                                              planting.lifecycleStatus ===
+                                                  'sprouted')),
+                            )}
+                        />
+                    )}
+                </>
             }
         />
     );

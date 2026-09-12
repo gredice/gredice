@@ -15,6 +15,7 @@ import {
 } from '../helpers/selectedRaisedBedPlantingLifecycle';
 import {
     accountUsers,
+    entities,
     events,
     farms,
     farmUsers,
@@ -1553,5 +1554,94 @@ export async function transplantSelectedRaisedBedPlanting(
             }
         },
         transaction,
+    );
+}
+
+/** Correct catalogue identity without replacing the planting, footprint or lifecycle. */
+export async function correctSelectedRaisedBedPlantingSort(
+    input: SelectedRaisedBedPlantingTaskCommandBase & { plantSortId: number },
+) {
+    const normalized = normalizeIdentity(input);
+    assertAdmin(normalized.actor);
+    const plantSortId = positiveSafeInteger(input.plantSortId, 'Sorta biljke');
+    return withSelectedRaisedBedPlantingScheduleTaskTransaction(
+        normalized.plantingId,
+        async (tx) => {
+            const { context, planting, task } =
+                await getAuthorizedSelectedPlanting(
+                    tx,
+                    normalized.actor,
+                    normalized.plantingId,
+                );
+            const payload = {
+                commandId: normalized.commandId,
+                expectedLifecycleVersionEventId:
+                    normalized.expectedLifecycleVersionEventId,
+                previousPlantSortId: normalized.expectedPlantSortId,
+                plantSortId,
+                correctedBy: normalized.actor.userId,
+            };
+            const sourceEvents = await loadSelectedPlantingEvents(
+                tx,
+                context.eventAggregateId,
+            );
+            const previous = sourceEvents.find(
+                (event) => eventCommandId(event) === normalized.commandId,
+            );
+            if (previous) {
+                if (
+                    previous.type !==
+                        knownEventTypes.raisedBedPlantings.sortCorrected ||
+                    !sameJsonValue(previous.data, payload)
+                ) {
+                    throw new ScheduleTaskSubmissionError(
+                        'submission_conflict',
+                        'Ova je naredba već iskorištena s drukčijim podacima.',
+                    );
+                }
+                return { plantingId: planting.id, eventId: previous.id };
+            }
+            assertExpectedIdentity(context, normalized);
+            assertExpectedVersion(task, normalized);
+            assertRaisedBedAvailable(context);
+            if (!planting.isActive) {
+                throw new ScheduleTaskSubmissionError(
+                    'invalid_status',
+                    'Sadnja više nije na gredici.',
+                );
+            }
+            const [sort] = await tx
+                .select({ type: entities.entityTypeName })
+                .from(entities)
+                .where(eq(entities.id, plantSortId))
+                .limit(1);
+            if (sort?.type !== 'plantSort') {
+                throw new ScheduleTaskSubmissionError(
+                    'invalid_input',
+                    'Odabrana sorta biljke ne postoji.',
+                );
+            }
+            const event = await createEvent(
+                knownEvents.raisedBedPlantings.sortCorrectedV1(
+                    context.eventAggregateId,
+                    payload,
+                ),
+                tx,
+            );
+            // Validate the same projection every subsequent reader will use before persisting.
+            projectSelectedRaisedBedPlantingLifecycle(
+                [...sourceEvents, event],
+                {
+                    aggregateId: context.eventAggregateId,
+                    plantingId: planting.id,
+                    plantSortId,
+                },
+            );
+            await tx
+                .update(raisedBedPlantings)
+                .set({ plantSortId })
+                .where(eq(raisedBedPlantings.id, planting.id));
+            return { plantingId: planting.id, eventId: event.id };
+        },
     );
 }

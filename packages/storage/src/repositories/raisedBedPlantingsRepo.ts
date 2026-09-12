@@ -358,7 +358,8 @@ export function isSameRaisedBedPlantingImmutablePlan(
     if (
         existing.raisedBedId !== input.raisedBedId ||
         (input.configurationSource === 'selected' &&
-            existing.plantSortId !== input.plantSortId) ||
+            (existing.selectedTask?.initialPlantSortId ??
+                existing.plantSortId) !== input.plantSortId) ||
         existing.eventAggregateId !== input.eventAggregateId ||
         existing.legacyPlantPlaceEventId !== input.legacyPlantPlaceEventId ||
         existing.anchorPositionIndex !== input.anchorPositionIndex ||
@@ -1395,7 +1396,8 @@ async function loadExistingByIdentity(
             if (
                 existing.raisedBedId !== input.raisedBedId ||
                 (input.configurationSource === 'selected' &&
-                    existing.plantSortId !== input.plantSortId) ||
+                    (existing.selectedTask?.initialPlantSortId ??
+                        existing.plantSortId) !== input.plantSortId) ||
                 existing.eventAggregateId !== input.eventAggregateId
             ) {
                 throw new RaisedBedPlantingError(
@@ -1424,7 +1426,8 @@ async function loadExistingByIdentity(
     if (
         existingAggregate.raisedBedId !== input.raisedBedId ||
         (input.configurationSource === 'selected' &&
-            existingAggregate.plantSortId !== input.plantSortId) ||
+            (existingAggregate.selectedTask?.initialPlantSortId ??
+                existingAggregate.plantSortId) !== input.plantSortId) ||
         existingAggregate.legacyPlantPlaceEventId !==
             input.legacyPlantPlaceEventId
     ) {

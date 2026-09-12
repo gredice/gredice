@@ -1,3 +1,4 @@
+export * from './RaisedBedAddons';
 export * from './RaisedBedFieldsGrid';
 export * from './RaisedBedLabel';
 export * from './RaisedBedPlantDetails';

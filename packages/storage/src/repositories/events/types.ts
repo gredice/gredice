@@ -291,6 +291,8 @@ export type RaisedBedFieldPlantUpdatePayload =
 
 export type RaisedBedFieldPlantReplaceSortPayload = {
     plantSortId: string;
+    previousPlantSortId?: number;
+    correctedBy?: string;
 };
 export type RaisedBedFieldAiAnalysisPayload = {
     markdown: string;
@@ -413,7 +415,15 @@ export type RaisedBedPlantingTaskCancelledPayload =
         status: 'cancelled';
     };
 
+export type RaisedBedPlantingSortCorrectedPayload =
+    RaisedBedPlantingCommandPayload & {
+        previousPlantSortId: number;
+        plantSortId: number;
+        correctedBy: string;
+    };
+
 export type RaisedBedPlantingEventsPayload =
+    | RaisedBedPlantingSortCorrectedPayload
     | RaisedBedPlantingLifecycleStartedPayload
     | RaisedBedPlantingLifecycleStatusChangedPayload
     | RaisedBedPlantingTransplantedPayload
