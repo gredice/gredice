@@ -9,3 +9,10 @@ export function getRaisedBedPositionIndexesDescending(
         (_, displayIndex) => positionCount - 1 - displayIndex,
     );
 }
+
+export function getPlantDetailsPositionIndex(plant: {
+    positionIndex: number;
+    planting?: { anchorPositionIndex: number } | null;
+}) {
+    return plant.planting?.anchorPositionIndex ?? plant.positionIndex;
+}

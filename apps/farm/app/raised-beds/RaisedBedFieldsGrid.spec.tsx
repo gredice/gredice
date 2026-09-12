@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import { RaisedBedFieldsGridFixture } from '../../../../packages/ui/src/raisedBeds/RaisedBedFieldsGrid.fixture';
 
+test.use({ timezoneId: 'Europe/Zagreb' });
+
 for (const width of [375, 1024]) {
     test(`shared Farm planting grid handles mixed sowing and footprints at ${width}px`, async ({
         mount,

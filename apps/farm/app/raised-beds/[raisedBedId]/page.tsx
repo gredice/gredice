@@ -26,7 +26,10 @@ import { notFound } from 'next/navigation';
 import LoginDialog from '../../../components/auth/LoginDialog';
 import { HomeButton } from '../../../components/HomeButton';
 import { auth } from '../../../lib/auth/auth';
-import { getRaisedBedPositionIndexesDescending } from '../raisedBedPositionOrder';
+import {
+    getPlantDetailsPositionIndex,
+    getRaisedBedPositionIndexesDescending,
+} from '../raisedBedPositionOrder';
 import { PlantStateRequestForm } from './PlantStateRequestForm';
 
 export const dynamic = 'force-dynamic';
@@ -207,7 +210,9 @@ async function RaisedBedDetailPageContent({
                         position,
                         controls: occupants
                             .filter(
-                                (plant) => plant.positionIndex === position - 1,
+                                (plant) =>
+                                    getPlantDetailsPositionIndex(plant) ===
+                                    position - 1,
                             )
                             .map((plant) => plantDetails.get(plant.key)),
                     })),
