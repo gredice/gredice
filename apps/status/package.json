@@ -11,7 +11,8 @@
         "build": "next build",
         "start": "node ../../scripts/run-app-command.mjs start",
         "test": "pnpm run test:node",
-        "test:node": "node --import tsx --test ./lib/**/*.node.spec.ts"
+        "test:node": "node --import tsx --test --conditions=react-server ./lib/**/*.node.spec.ts",
+        "test:disconnect": "node --import tsx --test --experimental-test-module-mocks --conditions=react-server --test-timeout=60000 ./tests/livePools.disconnect.ts"
     },
     "dependencies": {
         "next": "16.3.0",
