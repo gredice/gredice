@@ -91,3 +91,10 @@ export function publicChromeHref(
 
     return `${getBrowserWwwOrigin()}${href}`;
 }
+
+export function publicUserProfileHref(
+    publicId: string,
+    mode: PublicChromeLinkMode = 'relative',
+) {
+    return publicChromeHref(`/korisnici/${encodeURIComponent(publicId)}`, mode);
+}

@@ -378,7 +378,7 @@ test('desktop floating navbar keeps its width and balanced CTA spacing', async (
     expect(headerBox.x).toBeGreaterThanOrEqual(70);
 });
 
-test('logged-in landing promotes the owned garden and links it to the game', async ({
+test('logged-in landing links the owned garden and its owner to their destinations', async ({
     page,
 }) => {
     test.slow();
@@ -390,6 +390,7 @@ test('logged-in landing promotes the owned garden and links it to the game', asy
             await route.fulfill({
                 body: JSON.stringify({
                     id: 'test-user',
+                    publicId: 'u_test-user',
                     userName: 'test',
                     displayName: 'Test User',
                     avatarUrl: null,
@@ -455,8 +456,26 @@ test('logged-in landing promotes the owned garden and links it to the game', asy
     );
     await expect(page.getByText('Testov vrt', { exact: true })).toBeVisible();
     await expect(page.getByText('Tvoj vrt', { exact: true })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Otvori' })).toHaveAttribute(
-        'href',
-        /[?&]vrt=37(?:&|$)/u,
+    await expect(
+        featuredGardens.getByRole('link', { name: 'Otvori profil: Test User' }),
+    ).toHaveAttribute('href', '/korisnici/u_test-user');
+    await expect(
+        page.getByRole('link', { name: 'Otvori', exact: true }),
+    ).toHaveAttribute('href', /[?&]vrt=37(?:&|$)/u);
+    await page.route('**/api/users/public/u_test-user/profile', (route) =>
+        route.fulfill({
+            json: {
+                user: { displayName: 'Test User' },
+                gardens: [],
+                achievements: [],
+            },
+        }),
     );
+    await featuredGardens
+        .getByRole('link', { name: 'Otvori profil: Test User' })
+        .click();
+    await expect(page).toHaveURL(/\/korisnici\/u_test-user$/u);
+    await expect(
+        page.getByRole('heading', { name: 'Test User', exact: true }),
+    ).toBeVisible();
 });

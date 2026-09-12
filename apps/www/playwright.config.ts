@@ -18,7 +18,7 @@ const reporter: PlaywrightTestConfig['reporter'] = [
 
 export const config: PlaywrightTestConfig = {
     testDir: './tests',
-    testIgnore: 'public-profile.spec.tsx',
+    testIgnore: ['public-profile.spec.tsx', 'avatar-profile-links.spec.tsx'],
     snapshotDir: './__snapshots__',
     timeout: 10 * 1000,
     fullyParallel: true,

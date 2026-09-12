@@ -1,4 +1,5 @@
 import { pbkdf2Sync, randomUUID } from 'node:crypto';
+import { userIdToPublicId } from '@gredice/js/publicId';
 import { notifyNewUserRegistered } from '@gredice/notifications';
 import {
     blockLogin,
@@ -105,6 +106,7 @@ type CurrentSessionClaims = {
 };
 
 type CurrentClaims = CurrentSessionClaims & {
+    publicId: string;
     displayName: string;
     avatarUrl: string | null;
     isTemporary: boolean;
@@ -144,6 +146,7 @@ function currentClaimsFromUser(
 ): CurrentClaims {
     return {
         id: user.id,
+        publicId: userIdToPublicId(user.id),
         userName: user.userName,
         displayName: user.displayName ?? user.userName,
         avatarUrl: user.avatarUrl,
@@ -487,6 +490,7 @@ const app = new Hono()
             return context.json(
                 {
                     id: temporary.userId,
+                    publicId: userIdToPublicId(temporary.userId),
                     userName: temporary.userName,
                     displayName: temporary.displayName,
                     avatarUrl: null,
