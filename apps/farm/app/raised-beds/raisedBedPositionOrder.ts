@@ -1,10 +1,11 @@
 export function getRaisedBedPositionIndexesDescending(
     positionIndexes: number[],
 ) {
-    const highestPositionIndex = Math.max(8, ...positionIndexes);
+    const positionCount =
+        Math.ceil((Math.max(8, ...positionIndexes) + 1) / 3) * 3;
 
     return Array.from(
-        { length: highestPositionIndex + 1 },
-        (_, displayIndex) => highestPositionIndex - displayIndex,
+        { length: positionCount },
+        (_, displayIndex) => positionCount - 1 - displayIndex,
     );
 }

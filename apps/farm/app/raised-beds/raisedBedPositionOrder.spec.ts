@@ -14,3 +14,9 @@ test('keeps the minimum three-by-three preview for sparse raised beds', () => {
         8, 7, 6, 5, 4, 3, 2, 1, 0,
     ]);
 });
+
+test('completes a partial top row so field 1 remains bottom-right', () => {
+    expect(getRaisedBedPositionIndexesDescending([0, 9])).toEqual([
+        11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
+    ]);
+});
