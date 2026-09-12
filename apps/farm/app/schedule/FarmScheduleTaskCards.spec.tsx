@@ -301,7 +301,9 @@ for (const width of [320, 375, 390, 430]) {
         const requirements = component.getByRole('note', {
             name: 'Zahtjevi dokaza završetka',
         });
-        await expect(requirements.getByText('Dokaz završetka')).toBeVisible();
+        await expect(
+            requirements.getByText('Dokaz završetka', { exact: true }),
+        ).toHaveCount(0);
         await expect(
             requirements.getByText('Dodaj fotografiju (obavezno)'),
         ).toBeVisible();
