@@ -1,6 +1,7 @@
 import type { EntityStandardized } from '@gredice/storage';
 import { CardOverflow } from '@gredice/ui/Card';
 import { Chip, type ColorPaletteProp } from '@gredice/ui/Chip';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedPlantingFacts } from '@gredice/ui/raisedBeds';
 import { Typography } from '@gredice/ui/Typography';
@@ -15,7 +16,7 @@ export type GreenhouseMobilePlantListItem = {
     positionNumber: number | string;
     sowingDate: ReactNode;
     statusColor: ColorPaletteProp;
-    statusEmoji: string;
+    plantStatus: string | null | undefined;
     statusLabel: string;
 };
 
@@ -66,9 +67,11 @@ export function GreenhouseMobilePlantList({
                                     color={item.statusColor}
                                     size="sm"
                                     startDecorator={
-                                        <span aria-hidden="true">
-                                            {item.statusEmoji}
-                                        </span>
+                                        <GamePlantStatusIcon
+                                            status={item.plantStatus}
+                                            className="size-5 shrink-0"
+                                            aria-hidden
+                                        />
                                     }
                                 >
                                     {item.statusLabel}

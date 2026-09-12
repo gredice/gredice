@@ -3,7 +3,10 @@ import {
     userAllowedPlantStatusTransitions,
 } from '@gredice/js/plants';
 import { Button } from '@gredice/ui/Button';
-import { GameShovelIcon as ShovelIcon } from '@gredice/ui/GameIcons';
+import {
+    GamePlantStatusIcon,
+    GameShovelIcon as ShovelIcon,
+} from '@gredice/ui/GameIcons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -22,7 +25,6 @@ import {
     isPlantFieldStatus,
     shouldShowPlantOperationRecommendations,
 } from './featuredOperations';
-import { plantFieldStatusEmoji } from './PlantFieldStatusEmoji';
 import {
     getPlantLifecycleProgressData,
     PlantLifecycleProgress,
@@ -137,9 +139,11 @@ export function RaisedBedFieldLifecycleTab({
         shouldShowPlantOperationRecommendations(plantStatus);
     const statusContent = (
         <>
-            <span className="text-2xl leading-none" aria-hidden="true">
-                {plantFieldStatusEmoji(field.plantStatus ?? undefined)}
-            </span>
+            <GamePlantStatusIcon
+                status={field.plantStatus ?? undefined}
+                className="size-7 shrink-0"
+                aria-hidden="true"
+            />
             <Typography level="body1" className="text-center" semiBold>
                 {localizedStatus.shortLabel}
             </Typography>

@@ -1,11 +1,9 @@
 'use client';
 
-import {
-    plantFieldStatusEmoji,
-    plantFieldStatusLabel,
-} from '@gredice/js/plants';
+import { plantFieldStatusLabel } from '@gredice/js/plants';
 import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { Down } from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';
 import { Popper } from '@gredice/ui/Popper';
@@ -29,7 +27,6 @@ function getStatusOptionLabel(status: string) {
     return {
         value: status,
         label: statusLabel,
-        icon: plantFieldStatusEmoji(status),
     };
 }
 
@@ -88,19 +85,28 @@ export function PlantStateRequestForm({
                             : 'h-auto justify-start px-1 py-1 text-left'
                     }
                     startDecorator={
-                        <span
-                            className="text-base leading-none"
-                            aria-hidden="true"
-                        >
-                            {plantFieldStatusEmoji(currentStatus)}
-                        </span>
+                        <GamePlantStatusIcon
+                            status={currentStatus}
+                            className="size-5 shrink-0"
+                            aria-hidden
+                        />
                     }
                 >
                     {currentStatusLabel}
                 </Button>
-                <Chip color="warning" size="sm" variant="soft">
-                    {plantFieldStatusEmoji(pendingRequestedStatus)} Čeka:{' '}
-                    {pendingStatusLabel}
+                <Chip
+                    color="warning"
+                    size="sm"
+                    variant="soft"
+                    startDecorator={
+                        <GamePlantStatusIcon
+                            status={pendingRequestedStatus}
+                            className="size-5 shrink-0"
+                            aria-hidden
+                        />
+                    }
+                >
+                    Čeka: {pendingStatusLabel}
                 </Chip>
             </Stack>
         );
@@ -123,12 +129,11 @@ export function PlantStateRequestForm({
                     }
                     aria-label={`Promijeni stanje biljke. Trenutno stanje: ${currentStatusLabel}`}
                     startDecorator={
-                        <span
-                            className="text-base leading-none"
-                            aria-hidden="true"
-                        >
-                            {plantFieldStatusEmoji(currentStatus)}
-                        </span>
+                        <GamePlantStatusIcon
+                            status={currentStatus}
+                            className="size-5 shrink-0"
+                            aria-hidden
+                        />
                     }
                     endDecorator={
                         <Down className="size-3.5 shrink-0" aria-hidden />
@@ -151,12 +156,11 @@ export function PlantStateRequestForm({
                 />
                 <Stack spacing={2}>
                     <Row spacing={1} className="items-center">
-                        <span
-                            className="text-base leading-none"
-                            aria-hidden="true"
-                        >
-                            {plantFieldStatusEmoji(currentStatus)}
-                        </span>
+                        <GamePlantStatusIcon
+                            status={currentStatus}
+                            className="size-5 shrink-0"
+                            aria-hidden
+                        />
                         <Typography level="body3" secondary>
                             Trenutno: {currentStatusLabel}
                         </Typography>
@@ -186,12 +190,11 @@ export function PlantStateRequestForm({
                                             className="flex h-auto w-full items-center justify-start gap-2 rounded-none bg-transparent px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
                                             aria-label={`Zatraži promjenu u ${item.label}`}
                                         >
-                                            <span
-                                                className="w-7 text-center text-lg leading-none"
-                                                aria-hidden="true"
-                                            >
-                                                {item.icon}
-                                            </span>
+                                            <GamePlantStatusIcon
+                                                status={item.value}
+                                                className="size-6 shrink-0"
+                                                aria-hidden
+                                            />
                                             <span className="min-w-0 grow font-medium">
                                                 {item.label}
                                             </span>

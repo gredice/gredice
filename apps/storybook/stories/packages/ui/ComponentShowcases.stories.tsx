@@ -197,6 +197,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import { RaisedBedFieldsGridFixture } from '../../../../../packages/ui/src/raisedBeds/RaisedBedFieldsGrid.fixture';
+import { PlantCareHudPreview } from './PlantCareHudPreview';
 
 const sampleImages = [
     {
@@ -1398,6 +1399,7 @@ function GardenWorkspaceShowcase() {
                     </Card>
                 </PageHeader>
 
+                <PlantCareHudPreview />
                 <Row spacing={3} className="flex-wrap">
                     <IconButton aria-label="Obavijesti" variant="outlined">
                         <GameMailboxIcon className="size-8" />

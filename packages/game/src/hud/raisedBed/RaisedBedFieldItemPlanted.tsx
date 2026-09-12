@@ -3,6 +3,7 @@ import {
     userAllowedPlantStatusTransitions,
 } from '@gredice/js/plants';
 import {
+    GamePlantStatusIcon,
     GameHistoryIcon as History,
     GameSeedlingIcon as Sprout,
 } from '@gredice/ui/GameIcons';
@@ -44,7 +45,6 @@ import {
     isGreenhouseSeedlingField,
     useGreenhouseSeedlingProgressData,
 } from './greenhouseSeedlings';
-import { plantFieldStatusEmoji } from './PlantFieldStatusEmoji';
 import { RaisedBedAdvancedSowingPlantingDetails } from './RaisedBedAdvancedSowingPlantingDetails';
 import { RaisedBedDetailsTabsList } from './RaisedBedDetailsTabsList';
 import { RaisedBedFieldIconStack } from './RaisedBedFieldIconStack';
@@ -317,9 +317,11 @@ export function RaisedBedFieldItemPlanted({
     );
     const statusContent = (
         <>
-            <span className="text-2xl leading-none" aria-hidden="true">
-                {plantFieldStatusEmoji(field.plantStatus ?? undefined)}
-            </span>
+            <GamePlantStatusIcon
+                status={field.plantStatus ?? undefined}
+                className="size-7 shrink-0"
+                aria-hidden="true"
+            />
             <Typography level="body1" className="text-center" semiBold>
                 {localizedStatus.shortLabel}
             </Typography>

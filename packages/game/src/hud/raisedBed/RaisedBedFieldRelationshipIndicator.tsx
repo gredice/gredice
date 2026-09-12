@@ -1,4 +1,4 @@
-import { Heart, Lightning } from '@gredice/ui/icons';
+import { GameHeartIcon, GameLightningIcon } from '@gredice/ui/GameIcons';
 import { cx } from '@gredice/ui/utils';
 import type { RaisedBedFieldRelationshipIndicator as RaisedBedFieldRelationshipIndicatorData } from './plantRelationshipSignals';
 
@@ -144,24 +144,22 @@ export function RaisedBedFieldRelationshipIndicator({
                         'pointer-events-none absolute z-10 flex size-6 items-center justify-center rounded-full shadow-md ring-1',
                         directionClassNames[indicator.direction],
                         indicator.status === 'companion'
-                            ? 'bg-green-500 text-white ring-green-950/20'
-                            : 'bg-red-600 text-white ring-red-950/20',
+                            ? 'bg-lime-50 ring-green-900/30'
+                            : 'bg-red-50 ring-red-800/40',
                     )}
                     data-relationship-status={indicator.status}
                     role="img"
                     title={title}
                 >
                     {indicator.status === 'companion' ? (
-                        <Heart
+                        <GameHeartIcon
                             aria-hidden
-                            className="size-3.5 fill-current"
-                            strokeWidth={3}
+                            className="size-5 shrink-0"
                         />
                     ) : (
-                        <Lightning
+                        <GameLightningIcon
                             aria-hidden
-                            className="size-4 fill-current"
-                            strokeWidth={3}
+                            className="size-5 shrink-0"
                         />
                     )}
                 </div>

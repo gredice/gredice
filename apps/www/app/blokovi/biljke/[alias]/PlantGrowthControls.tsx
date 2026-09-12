@@ -1,3 +1,4 @@
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -51,27 +52,21 @@ export function PlantGrowthControls({
             </Row>
             <Stack>
                 <Row justifyContent="space-between">
-                    <span
+                    <GamePlantStatusIcon
+                        status="sowed"
                         aria-label="Sjemenka"
-                        className="shrink-0 text-lg"
-                        role="img"
-                    >
-                        🌱
-                    </span>
-                    <span
+                        className="size-6 shrink-0"
+                    />
+                    <GamePlantStatusIcon
+                        status="sprouted"
                         aria-label="Rastuća biljka"
-                        className="shrink-0 text-lg"
-                        role="img"
-                    >
-                        🌿
-                    </span>
-                    <span
+                        className="size-6 shrink-0"
+                    />
+                    <GamePlantStatusIcon
+                        status="ready"
                         aria-label="Zrela biljka"
-                        className="shrink-0 text-lg"
-                        role="img"
-                    >
-                        🥬
-                    </span>
+                        className="size-6 shrink-0"
+                    />
                 </Row>
                 <label className="flex h-8 flex-1 cursor-pointer items-center">
                     <input

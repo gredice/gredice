@@ -42,7 +42,7 @@ function greenhouseList(positionNumber: number | string = 5) {
                                 </div>
                             ),
                             statusColor: 'success',
-                            statusEmoji: '🌱',
+                            plantStatus: 'sprouted',
                             statusLabel: 'Proklijalo',
                         },
                     ]}
@@ -63,6 +63,16 @@ for (const viewport of phoneViewports) {
         await expect(component.getByText('Polje 5')).toBeVisible();
         await expect(component.getByText(longPlantName)).toBeVisible();
         await expect(component.getByText('Proklijalo')).toHaveCount(2);
+        const statusIcon = component.locator(
+            '[data-plant-status-icon="sprouted"]',
+        );
+        await expect(statusIcon).toBeVisible();
+        await expect(statusIcon).toHaveAttribute('aria-hidden', 'true');
+        await statusIcon.locator('image').evaluate(async (element) => {
+            const image = new Image();
+            image.src = element.getAttribute('href') ?? '';
+            await image.decode();
+        });
         await expect(component.getByText('Posijano')).toBeVisible();
         await expect(component.getByText('8 dana do klijanja')).toBeVisible();
 

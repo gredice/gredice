@@ -1,4 +1,3 @@
-import { plantFieldStatusEmoji } from '@gredice/js/plants';
 import {
     getPublicHarvestTraceByToken,
     type PublicHarvestTrace,
@@ -10,6 +9,7 @@ import {
 } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
 import { Card } from '@gredice/ui/Card';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
 import {
     Calendar,
@@ -560,9 +560,11 @@ function TraceStatusCalendar({
             key: `${row.status}-${row.label}-${row.occurredAt}`,
             label: row.label,
             leading: (
-                <span className="shrink-0 text-sm leading-none">
-                    {plantFieldStatusEmoji(row.status)}
-                </span>
+                <GamePlantStatusIcon
+                    status={row.status}
+                    className="size-5 shrink-0"
+                    aria-hidden
+                />
             ),
             ranges: [
                 {

@@ -2,6 +2,7 @@
 
 import { plantFieldStatusLabel } from '@gredice/js/plants';
 import { Button } from '@gredice/ui/Button';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { Input } from '@gredice/ui/Input';
 import { Calendar } from '@gredice/ui/icons';
 import { Popper } from '@gredice/ui/Popper';
@@ -12,8 +13,8 @@ import { cx } from '@gredice/ui/utils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { raisedBedFieldUpdatePlant } from '../../app/(actions)/raisedBedFieldsActions';
-import { raisedBedFieldPlantStatusItems } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantStatusSelector';
 import { canUpdatePlantingTaskStatus } from '../../app/admin/schedule/scheduleShared';
+import { raisedBedFieldPlantStatusItems } from '../../src/raisedBedFieldPlantStatusItems';
 import type { RaisedBedFieldDateItem } from './RaisedBedFieldDatesPopover';
 
 type RaisedBedFieldStatusDateChipProps = {
@@ -115,7 +116,7 @@ export function RaisedBedFieldStatusDateChip({
         () =>
             raisedBedFieldPlantStatusItems.find(
                 (item) => item.value === status,
-            ) ?? { value: status, label: status, icon: '' },
+            ) ?? { value: status, label: status },
         [status],
     );
 
@@ -201,7 +202,11 @@ export function RaisedBedFieldStatusDateChip({
                     )}
                     startDecorator={
                         compact ? undefined : (
-                            <span aria-hidden="true">{statusItem.icon}</span>
+                            <GamePlantStatusIcon
+                                status={status}
+                                className="size-5 shrink-0"
+                                aria-hidden
+                            />
                         )
                     }
                     endDecorator={

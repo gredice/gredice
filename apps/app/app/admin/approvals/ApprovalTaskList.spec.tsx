@@ -35,8 +35,23 @@ test('shows plant and state icons, distinct task icons, and plain dismissal with
                 ),
         )
         .toBeGreaterThan(0);
-    await expect(rows.first().getByText('🌸', { exact: true })).toBeVisible();
-    await expect(rows.first().getByText('🍅', { exact: true })).toBeVisible();
+    for (const status of ['firstFlowers', 'firstFruitSet']) {
+        const icon = rows
+            .first()
+            .locator(`[data-plant-status-icon="${status}"]`);
+        await expect(icon).toBeVisible();
+        await expect(icon).toHaveAttribute('aria-hidden', 'true');
+        expect(await icon.locator('image').count()).toBeGreaterThan(0);
+        await icon.locator('image').evaluateAll(async (artwork) => {
+            await Promise.all(
+                artwork.map(async (element) => {
+                    const image = new Image();
+                    image.src = element.getAttribute('href') ?? '';
+                    await image.decode();
+                }),
+            );
+        });
+    }
     await expect(
         rows.first().getByText('Prvi plodovi', { exact: false }),
     ).toBeVisible();
