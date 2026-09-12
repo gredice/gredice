@@ -110,6 +110,37 @@ test('keeps the latest selected garden when an earlier request finishes late', a
     await expect(scene).toHaveAttribute('data-garden-id', '3');
 });
 
+test('cancels an intermediate transition as soon as a newer garden starts loading', async ({
+    mount,
+    page,
+}) => {
+    await page.clock.install();
+    let release = () => {};
+    const blocked = new Promise<void>((resolve) => {
+        release = resolve;
+    });
+    await page.route('**/api/gardens/3/public', async (route) => {
+        await blocked;
+        await route.fulfill({ json: gardens[2] });
+    });
+    await mount(<PublicProfileHarness />);
+    const scene = page.getByTestId('garden-scene');
+    await expect(scene).toHaveAttribute('data-garden-id', '1');
+    await page.getByText('Cvjetni vrt', { exact: true }).click();
+    await expect(page.locator('[data-scene-visible]')).toHaveAttribute(
+        'data-scene-visible',
+        'false',
+    );
+    await page.getByText('Začinsko bilje', { exact: true }).click();
+    await expect(
+        page.getByRole('status').filter({ hasText: 'Učitavanje vrta...' }),
+    ).toBeVisible();
+    await page.clock.runFor(600);
+    await expect(scene).toHaveAttribute('data-garden-id', '1');
+    release();
+    await expect(scene).toHaveAttribute('data-garden-id', '3');
+});
+
 test('recovers from a failed garden request', async ({ mount, page }) => {
     let fail = true;
     await page.route('**/api/gardens/2/public', (route) =>
