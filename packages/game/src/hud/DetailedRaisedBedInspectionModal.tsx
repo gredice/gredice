@@ -1,11 +1,11 @@
 'use client';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
-import { Card } from '@gredice/ui/Card';
 import {
     GameRaisedBedIcon as RaisedBedIcon,
     GameSeedlingIcon as Sprout,
 } from '@gredice/ui/GameIcons';
+import { PaperNote } from '@gredice/ui/PaperNote';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -86,9 +86,9 @@ export function DetailedRaisedBedInspectionModal({
                     className="max-h-[55dvh] overflow-y-auto pr-1"
                 >
                     {reports.map((report) => (
-                        <Card
+                        <div
                             key={report.notificationId}
-                            className="min-w-0 p-4"
+                            className="min-w-0 px-1 py-2"
                         >
                             <Stack spacing={2}>
                                 <Row
@@ -143,15 +143,15 @@ export function DetailedRaisedBedInspectionModal({
                                         </span>
                                     ) : null}
                                 </Row>
-                                <Typography
-                                    className="whitespace-pre-wrap break-words"
-                                    level="body2"
+                                <PaperNote
+                                    noteKey={report.operationId}
+                                    className="w-full"
                                 >
                                     {report.notes ??
                                         'Pregled je završen bez dodatne bilješke.'}
-                                </Typography>
+                                </PaperNote>
                             </Stack>
-                        </Card>
+                        </div>
                     ))}
                 </Stack>
                 {dismissError ? (

@@ -2,6 +2,7 @@
 
 import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { Warning } from '@gredice/ui/icons';
+import { PaperNote } from '@gredice/ui/PaperNote';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 
@@ -77,13 +78,7 @@ export function ScheduleTaskBlockedDetails({
                     </div>
                 </div>
                 {trimmedNote ? (
-                    <Typography
-                        className="whitespace-pre-wrap [overflow-wrap:anywhere]"
-                        level="body2"
-                    >
-                        <span className="font-semibold">Napomena:</span>{' '}
-                        {trimmedNote}
-                    </Typography>
+                    <PaperNote noteKey={taskKey}>{trimmedNote}</PaperNote>
                 ) : null}
                 {normalizedImages.length > 0 ? (
                     <div className="h-11 w-11 overflow-visible">
