@@ -10,6 +10,7 @@ import {
     createOperation,
     events,
     getAllOperations,
+    getAppliedRaisedBedOperations,
     getAppliedRaisedBedOperationsForGarden,
     getAssignableFarmUsersByOperationIds,
     getFarmUserAcceptedOperations,
@@ -745,6 +746,14 @@ test('getAppliedRaisedBedOperationsForGarden matches the previous in-memory appl
     const appliedOperations = await getAppliedRaisedBedOperationsForGarden(
         accountId,
         gardenId,
+    );
+    const bedOperations = await getAppliedRaisedBedOperations(
+        accountId,
+        raisedBedId,
+    );
+    assert.deepEqual(
+        new Set(bedOperations.map((operation) => operation.id)),
+        new Set([completedRaisedBedOperationId, pendingRaisedBedOperationId]),
     );
     const boundedOperationIds = appliedOperations.map(
         (operation) => operation.id,

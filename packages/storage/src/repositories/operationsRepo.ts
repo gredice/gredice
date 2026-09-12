@@ -1379,6 +1379,24 @@ export async function getRaisedBedPhotoPreviews(
     return [...previewByRaisedBedId.values()];
 }
 
+/** Caller must authorize access to this raised bed before reading its operations. */
+export async function getAppliedRaisedBedOperations(
+    accountId: string,
+    raisedBedId: number,
+) {
+    const rows = await storage()
+        .select()
+        .from(operations)
+        .where(
+            and(
+                getOperationsWhere({ accountId, raisedBedId }),
+                eq(operations.isDeleted, false),
+                getOperationStatusWhere(appliedRaisedBedOperationStatuses),
+            ),
+        );
+    return fillOperationAggregates(rows);
+}
+
 export async function getAppliedRaisedBedOperationsForGarden(
     accountId: string,
     gardenId: number,

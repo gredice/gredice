@@ -6,7 +6,11 @@ export function RaisedBedFieldsGrid({
 }: {
     groups: Array<
         ReturnType<typeof getRaisedBedFieldGroups>[number] & {
-            fields: Array<{ position: number; controls?: ReactNode }>;
+            fields: Array<{
+                position: number;
+                controls?: ReactNode;
+                addons?: ReactNode;
+            }>;
             children: ReactNode;
         }
     >;
@@ -41,6 +45,11 @@ export function RaisedBedFieldsGrid({
                                     <div className="flex items-center gap-1">
                                         {field.controls}
                                     </div>
+                                    {field.addons && (
+                                        <div className="w-full">
+                                            {field.addons}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>

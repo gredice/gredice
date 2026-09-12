@@ -9,6 +9,27 @@ for (const width of [375, 1024]) {
         await page.setViewportSize({ width, height: 1000 });
         const component = await mount(<RaisedBedFieldsGridFixture />);
         await expect(
+            component.getByRole('button', {
+                name: 'Malč · Cijela gredica',
+                exact: true,
+            }),
+        ).toBeVisible();
+        await expect(
+            component.getByRole('button', { name: /^Malč · Polje/ }),
+        ).toHaveCount(9);
+        await component
+            .getByRole('button', { name: 'Potporanj · Polje 8', exact: true })
+            .click();
+        await expect(
+            page.getByText('Postavljanje potpornja i vezanje', { exact: true }),
+        ).toBeVisible();
+        await expect(
+            page.getByText('Čeka provjeru', { exact: true }),
+        ).toBeVisible();
+        await expect(page.getByText(/Primijenjeno:/)).toBeVisible();
+        await page.keyboard.press('Escape');
+
+        await expect(
             component
                 .getByRole('region', { name: 'Polja 8, 7, 5, 4', exact: true })
                 .getByRole('article'),

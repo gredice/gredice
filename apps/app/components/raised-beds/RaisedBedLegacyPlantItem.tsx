@@ -8,15 +8,14 @@ import {
     RaisedBedPlantItem,
 } from '@gredice/ui/raisedBeds';
 import { RaisedBedFieldLocationSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldLocationSelector';
-import { RaisedBedFieldPlantSortSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantSortSelector';
 import { MoveRaisedBedFieldPlantModal } from './MoveRaisedBedFieldPlantModal';
 import {
     raisedBedFieldCardButtonClassName,
     raisedBedFieldCardChipClassName,
-    raisedBedFieldCardSelectClassName,
 } from './RaisedBedFieldCard';
 import type { RaisedBedFieldDateItem } from './RaisedBedFieldDatesPopover';
 import { RaisedBedFieldStatusDateChip } from './RaisedBedFieldStatusDateChip';
+import { RaisedBedPlantSortCorrection } from './RaisedBedPlantSortCorrection';
 
 type RaisedBedField = NonNullable<
     Awaited<ReturnType<typeof getRaisedBed>>
@@ -248,19 +247,6 @@ export function RaisedBedLegacyPlantItem({
                 {positionIndex + 1}
             </div>
         );
-    const plantSortControl = (
-        <RaisedBedFieldPlantSortSelector
-            raisedBedId={raisedBedId}
-            positionIndex={positionIndex}
-            status={field?.plantStatus ?? null}
-            plantSortId={field?.plantSortId}
-            expectedPlantCycleEventId={activePlantCycle?.plantPlaceEventId}
-            expectedPlantCycleVersionEventId={activePlantCycle?.endedEventId}
-            plantSorts={plantSorts}
-            variant="plain"
-            className={raisedBedFieldCardSelectClassName}
-        />
-    );
     const statusControl =
         field?.active &&
         field.plantStatus &&
@@ -291,7 +277,6 @@ export function RaisedBedLegacyPlantItem({
                 field && (
                     <RaisedBedPlantDetails
                         name={plantLabel}
-                        controls={plantSortControl}
                         positionNumbers={[positionIndex + 1]}
                         dates={dateItems.flatMap((item) =>
                             item.value
@@ -301,7 +286,41 @@ export function RaisedBedLegacyPlantItem({
                     />
                 )
             }
-            actions={field?.active ? fieldBadge : undefined}
+            actions={
+                field?.active ? (
+                    <>
+                        {fieldBadge}
+                        {activePlantCycle && field.plantSortId && (
+                            <RaisedBedPlantSortCorrection
+                                identity={{
+                                    kind: 'legacy',
+                                    raisedBedId,
+                                    positionIndex,
+                                    expectedPlantSortId: field.plantSortId,
+                                    expectedPlantCycleEventId:
+                                        activePlantCycle.plantPlaceEventId,
+                                    expectedPlantCycleVersionEventId:
+                                        activePlantCycle.endedEventId,
+                                }}
+                                name={
+                                    sort?.information?.name ??
+                                    `Sorta #${field.plantSortId}`
+                                }
+                                options={plantSorts
+                                    .map((sort) => ({
+                                        value: String(sort.id),
+                                        label:
+                                            sort.information?.name ??
+                                            `Sorta #${sort.id}`,
+                                    }))
+                                    .sort((a, b) =>
+                                        a.label.localeCompare(b.label, 'hr'),
+                                    )}
+                            />
+                        )}
+                    </>
+                ) : undefined
+            }
         />
     );
 }
