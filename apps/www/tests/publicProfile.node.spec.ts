@@ -63,6 +63,37 @@ test('handles month-end anniversaries and missing join dates', () => {
     assert.equal(formatProfileMembership('invalid'), null);
 });
 
+test('changes membership days and anniversaries at Croatian midnight', () => {
+    assert.equal(
+        formatProfileMembership(
+            '2026-09-11T23:30:00Z',
+            new Date('2026-09-12T00:30:00Z'),
+        ),
+        'Korisnik od danas',
+    );
+    assert.equal(
+        formatProfileMembership(
+            '2026-09-11T21:30:00Z',
+            new Date('2026-09-11T22:30:00Z'),
+        ),
+        'Korisnik već 1 dan',
+    );
+    assert.equal(
+        formatProfileMembership(
+            '2026-08-12T12:00:00Z',
+            new Date('2026-09-11T22:30:00Z'),
+        ),
+        'Korisnik već 1 mjesec',
+    );
+    assert.equal(
+        formatProfileMembership(
+            '2025-09-12T12:00:00Z',
+            new Date('2026-09-11T22:30:00Z'),
+        ),
+        'Korisnik već 1 godinu',
+    );
+});
+
 test('does not reveal pending, denied, or unknown achievements', () => {
     assert.deepEqual(
         getTopPublicAchievements([
