@@ -97,6 +97,7 @@ export function PublicHeader({
                     <NavUserButton
                         href={PublicPagePaths.GardenApp}
                         apiBasePath={apiBasePath}
+                        linkMode={linkMode}
                     />
                 </div>
             </PageNav>

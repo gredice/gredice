@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
+import { userIdToPublicId } from '@gredice/js/publicId';
 import {
     accountHasActiveRaisedBed,
     accountUsers,
@@ -220,6 +221,7 @@ test('gardens are public by default and can be unlisted', async () => {
     assert.deepEqual(
         publicGardens.find((garden) => garden.id === publicGardenId)?.owner,
         {
+            publicId: userIdToPublicId(ownerId),
             avatarUrl: 'https://cdn.example.com/avatar.webp',
             displayName: 'Vrtlarica Ana',
         },
@@ -250,6 +252,7 @@ test('public garden owners do not expose usernames as display names', async () =
     );
 
     assert.deepEqual(garden?.owner, {
+        publicId: userIdToPublicId(ownerId),
         avatarUrl: null,
         displayName: 'Korisnik Gredica',
     });

@@ -192,7 +192,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Timeline, TimelineEntry, TimelineGroup } from '@gredice/ui/Timeline';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@gredice/ui/Tooltip';
 import { Typography } from '@gredice/ui/Typography';
-import { UserAvatar } from '@gredice/ui/UserAvatar';
+import { UserAvatar, UserAvatarLink } from '@gredice/ui/UserAvatar';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import Image from 'next/image';
 import { useMemo, useState } from 'react';
@@ -997,6 +997,11 @@ function PublicContentShowcase() {
                     { href: '/', text: 'Recepti' },
                 ]}
             >
+                <UserAvatarLink
+                    href="/korisnici/u_demo"
+                    displayName="Ana Kovač"
+                    size="sm"
+                />
                 <IconButton aria-label="Pretraga">
                     <Search className="size-5" />
                 </IconButton>

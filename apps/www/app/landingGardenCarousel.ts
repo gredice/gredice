@@ -6,6 +6,7 @@ export const landingGardenIndicatorLimit = 4;
 export type LandingGardenSource = 'featured' | 'owned';
 
 export type LandingGardenOwner = {
+    publicId?: string;
     avatarUrl: string | null;
     displayName: string;
 };
