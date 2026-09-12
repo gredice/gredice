@@ -10,6 +10,7 @@ import {
 } from '@gredice/storage';
 import { Card, CardHeader, CardOverflow } from '@gredice/ui/Card';
 import { Chip, type ColorPaletteProp } from '@gredice/ui/Chip';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
@@ -344,6 +345,15 @@ export default async function GreenhousePage() {
                                                             field.plantStatus,
                                                         )}
                                                         size="sm"
+                                                        startDecorator={
+                                                            <GamePlantStatusIcon
+                                                                status={
+                                                                    field.plantStatus
+                                                                }
+                                                                className="size-5 shrink-0"
+                                                                aria-hidden
+                                                            />
+                                                        }
                                                     >
                                                         {statusLabels[
                                                             field.plantStatus ??

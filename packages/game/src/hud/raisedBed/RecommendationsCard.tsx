@@ -3,8 +3,8 @@ import { isOperationApplicableToPlant } from '@gredice/js/operations';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardOverflow } from '@gredice/ui/Card';
-import { GameToolsIcon as Hammer } from '@gredice/ui/GameIcons';
-import { Add as Cross, Navigate } from '@gredice/ui/icons';
+import { GameHealthIcon, GameToolsIcon as Hammer } from '@gredice/ui/GameIcons';
+import { Navigate } from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';
 import { Skeleton } from '@gredice/ui/Skeleton';
 import { Stack } from '@gredice/ui/Stack';
@@ -396,7 +396,12 @@ export function RecommendationsCard({
                         {showHealthSection && (
                             <RecommendationSection
                                 count={healthRecommendedOperations.length}
-                                icon={<Cross className="size-4" />}
+                                icon={
+                                    <GameHealthIcon
+                                        className="size-5 shrink-0"
+                                        aria-hidden
+                                    />
+                                }
                                 kind="health"
                                 onOpenChange={setHealthOpen}
                                 open={healthOpen}

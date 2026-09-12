@@ -24,19 +24,19 @@ type RaisedBedFieldPlantCycle = Awaited<
     ReturnType<typeof getRaisedBedFieldPlantCycles>
 >[number];
 
-const fieldStatusMetadata: Record<string, { label: string; icon: string }> = {
-    new: { label: 'Novo', icon: '🆕' },
-    planned: { label: 'Planirano', icon: '🗓️' },
-    pendingVerification: { label: 'Čeka verifikaciju', icon: '🔍' },
-    sowed: { label: 'Sijano', icon: '🫘' },
-    sprouted: { label: 'Proklijalo', icon: '🌱' },
-    firstFlowers: { label: 'Prvi cvjetovi', icon: '🌸' },
-    firstFruitSet: { label: 'Prvi plodovi', icon: '🍅' },
-    notSprouted: { label: 'Nije proklijalo', icon: '❌' },
-    died: { label: 'Uginulo', icon: '💀' },
-    ready: { label: 'Spremno', icon: '🥕' },
-    harvested: { label: 'Ubrano', icon: '🌾' },
-    removed: { label: 'Uklonjeno', icon: '🗑️' },
+const fieldStatusMetadata: Record<string, { label: string }> = {
+    new: { label: 'Novo' },
+    planned: { label: 'Planirano' },
+    pendingVerification: { label: 'Čeka verifikaciju' },
+    sowed: { label: 'Sijano' },
+    sprouted: { label: 'Proklijalo' },
+    firstFlowers: { label: 'Prvi cvjetovi' },
+    firstFruitSet: { label: 'Prvi plodovi' },
+    notSprouted: { label: 'Nije proklijalo' },
+    died: { label: 'Uginulo' },
+    ready: { label: 'Spremno' },
+    harvested: { label: 'Ubrano' },
+    removed: { label: 'Uklonjeno' },
 };
 
 function getStatusMeta(status?: string | null) {
@@ -44,7 +44,7 @@ function getStatusMeta(status?: string | null) {
         return undefined;
     }
 
-    return fieldStatusMetadata[status] ?? { label: status, icon: '' };
+    return fieldStatusMetadata[status] ?? { label: status };
 }
 
 function getSortLabel(sort?: PlantSortData, plantSortId?: number | null) {
@@ -209,7 +209,7 @@ export async function RaisedBedFieldsTable({
                         plantPlaceEventId: plantCycle.plantPlaceEventId,
                         plantLabel: getSortLabel(sort, plantCycle.plantSortId),
                         plantStatusLabel: statusMeta?.label ?? null,
-                        plantStatusIcon: statusMeta?.icon ?? null,
+                        plantStatus: plantCycle.plantStatus ?? null,
                         sortData: sort,
                         createdAt: normalizeDate(plantCycle.startedAt),
                         plantScheduledDate: normalizeDate(

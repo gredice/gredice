@@ -1,6 +1,6 @@
 import { plantFieldStatusLabel } from '@gredice/js/plants';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { ArrowRight } from '@gredice/ui/icons';
-import { raisedBedFieldPlantStatusItems } from '../../../src/raisedBedFieldPlantStatusItems';
 
 export function ApprovalStatusTransition({
     currentStatus,
@@ -12,11 +12,11 @@ export function ApprovalStatusTransition({
     return (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             <span className="inline-flex items-center gap-1 text-muted-foreground">
-                <span aria-hidden="true">
-                    {raisedBedFieldPlantStatusItems.find(
-                        (item) => item.value === currentStatus,
-                    )?.icon ?? '❔'}
-                </span>
+                <GamePlantStatusIcon
+                    status={currentStatus}
+                    className="size-5 shrink-0"
+                    aria-hidden
+                />
                 {plantFieldStatusLabel(currentStatus ?? undefined).shortLabel}
             </span>
             <ArrowRight
@@ -25,11 +25,11 @@ export function ApprovalStatusTransition({
             />
             <span className="sr-only">u</span>
             <span className="inline-flex items-center gap-1 font-medium">
-                <span aria-hidden="true">
-                    {raisedBedFieldPlantStatusItems.find(
-                        (item) => item.value === requestedStatus,
-                    )?.icon ?? '❔'}
-                </span>
+                <GamePlantStatusIcon
+                    status={requestedStatus}
+                    className="size-5 shrink-0"
+                    aria-hidden
+                />
                 {plantFieldStatusLabel(requestedStatus).shortLabel}
             </span>
         </div>

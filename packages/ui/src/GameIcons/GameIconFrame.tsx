@@ -11,7 +11,7 @@ export function GameIconFrame({
     children,
     ...props
 }: SVGProps<SVGSVGElement> & {
-    label: string;
+    label?: string;
     source: string | StaticImageData;
     insetTop?: number;
 }) {
@@ -24,9 +24,11 @@ export function GameIconFrame({
             height={24}
             viewBox="0 0 48 48"
             fill="none"
+            role="img"
+            aria-label={label}
             {...props}
         >
-            <title>{label}</title>
+            {label && <title>{label}</title>}
             <image
                 href={href}
                 x={0}

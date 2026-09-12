@@ -10,6 +10,7 @@ import {
 } from '@gredice/ui/icons';
 import { TimeRange } from '@gredice/ui/LocalDateTime';
 import { OperationImage } from '@gredice/ui/OperationImage';
+import { PaperNote } from '@gredice/ui/PaperNote';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -208,9 +209,12 @@ export function DeliveryRequestRow({
                         <Typography level="body3" secondary>
                             Napomene:
                         </Typography>
-                        <Typography level="body2">
+                        <PaperNote
+                            noteKey={request.id}
+                            aria-label="Napomena dostave"
+                        >
                             {request.requestNotes}
-                        </Typography>
+                        </PaperNote>
                     </Stack>
                 )}
             </Stack>

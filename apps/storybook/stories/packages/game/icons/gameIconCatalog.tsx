@@ -1,6 +1,10 @@
+import { plantFieldStatusLabel } from '@gredice/js/plants';
 import { ArchiveIcon } from '@gredice/ui/ArchiveIcon';
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
-import { GameRaisedBedIcon as RaisedBedIcon } from '@gredice/ui/GameIcons';
+import {
+    GamePlantStatusIcon,
+    GameRaisedBedIcon as RaisedBedIcon,
+} from '@gredice/ui/GameIcons';
 import { PlantGridIcon } from '@gredice/ui/GridIcons';
 import { MoveIndicator } from '@packages/game/controls/components/MoveIndicator';
 import { RainIcon } from '@packages/game/hud/components/weather/icons/RainIcon';
@@ -24,6 +28,7 @@ import basketSrc from '../../../../../garden/public/assets/hud/shopping-basket.w
 import checklistSrc from '../../../../../garden/public/assets/hud/tutorial-task-list.png?url';
 import recycleSrc from '../../../../../garden/public/assets/textures/recycle.png?url';
 import { gameIconComparisons } from '../../ui/gameIconComparisons';
+import { plantStatusIconExamples } from '../../ui/plantStatusIconExamples';
 import { gameIconUsage } from './gameIconUsage';
 
 export type GameIconEntry = {
@@ -38,7 +43,7 @@ const customGlyphs = [
     {
         name: 'BackpackIcon',
         Icon: BackpackIcon,
-        description: 'Inventory items, operations and shopping-cart rows.',
+        description: 'Legacy outline; game surfaces use GameBackpackIcon.',
     },
     {
         name: 'ArchiveIcon',
@@ -67,7 +72,8 @@ const artwork = [
         src: backpackSrc,
         source: 'apps/garden/public/assets/hud/inventory-backpack.webp',
         usage: 'packages/game/src/hud/InventoryHud.tsx',
-        description: 'Styled inventory HUD trigger; compare with BackpackIcon.',
+        description:
+            'Styled inventory HUD trigger; also used by GameBackpackIcon.',
     },
     {
         name: 'Outlet seedling price tag',
@@ -151,6 +157,17 @@ export const gameIconCatalog: GameIconEntry[] = [
         };
     }),
     ...customGlyphs,
+    ...plantStatusIconExamples.map(({ status, idea }) => ({
+        name: `Plant status · ${plantFieldStatusLabel(status).shortLabel} · ${status}`,
+        group: 'Plant statuses',
+        description: idea,
+        sources: [
+            'packages/ui/src/GameIcons/GamePlantStatusIcon.tsx',
+            'packages/game/src/hud/raisedBed/RaisedBedFieldLifecycleTab.tsx',
+            'packages/game/src/hud/raisedBed/RaisedBedFieldStatusChange.tsx',
+        ],
+        preview: <GamePlantStatusIcon status={status} className="size-16" />,
+    })),
     ...[null, 'A12'].map((physicalId) => ({
         name: physicalId
             ? 'GameRaisedBedIcon · identifier'

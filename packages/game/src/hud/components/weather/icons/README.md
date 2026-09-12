@@ -19,8 +19,10 @@ The `chance` prop controls only visual fill: existing callers also derive it
 from rainfall amounts. Its accessible name stays generic (`Oborine`) so those
 amounts are not incorrectly announced as precipitation probabilities.
 
-Assets live with this shared package so Next.js consumers and Vite Storybook
-bundle the same files. `WeatherArtwork.tsx` handles the static-image import shape
+Sun, moon, cloud, snowflake and fog live with this package. Water and lightning
+live in `packages/ui/src/GameIcons/assets` and are shared through
+`gameWeatherArtwork` with the soil-moisture and neighbour HUD icons. Next.js
+consumers and Vite Storybook bundle the same source files. `WeatherArtwork.tsx` handles the static-image import shape
 in both bundlers. There are no CDN URLs or runtime image generation calls.
 
 The images were created with built-in image generation. Exact prompts and style

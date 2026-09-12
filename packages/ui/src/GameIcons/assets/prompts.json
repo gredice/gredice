@@ -62,6 +62,71 @@
             "file": "history.webp",
             "prompt": "Create one isolated 3D low-poly farming-game UI icon on a transparent background. The three input images are STYLE REFERENCES ONLY: match the backpack, basket and journal's chunky beveled polygon volumes, forest green and golden-orange materials, soft upper-left highlights, deep contact shadows and elevated three-quarter camera. Physical toy-like Blender-rendered object, clear silhouette readable at 20-32px. Center the complete object with a small transparent margin. No scene, ground, extra objects, border, text other than the requested symbol, or backdrop graphics. Subject: a thick golden-orange wood-framed clock token with a cream face and two chunky dark green hands; a single thick forest-green backward circular arrow wraps around the upper-left edge, with a broad clearly visible arrowhead pointing counterclockwise on the left. Front three-quarter view, raised hands and deep rim, simple broad shapes, no numbers or words. Read immediately as history of previous garden actions, not an alarm clock.",
             "transparencyEditPrompt": null
+        },
+        {
+            "file": "thermometer.webp",
+            "prompt": "Use case: stylized-concept. Create ONE isolated 3D garden game inventory icon. Style matches chunky modeled low-poly backpack and wooden shopping basket: visibly thick solid objects, broad polygon faces, beveled edges, matte materials, warm upper-left light, dark lower-right side faces, slightly elevated three-quarter camera, compact readable silhouette at 24px. Centered square composition, generous transparent margin. TRUE TRANSPARENT alpha background; no ground plane, no cast shadow outside object, no checkerboard, no text, no border, no scene. Subject: an upright chunky garden thermometer, slightly tilted right, thick ivory cream casing, red round bulb at bottom and red fluid column visible in inset channel, just three dark inset tick marks. Broad bold proportions with visible ochre side depth. No numbers or letters.",
+            "transparencyEditPrompt": null
+        },
+        {
+            "file": "heart.webp",
+            "prompt": "Use case: stylized-concept. Create ONE isolated 3D garden game inventory icon. Style matches chunky modeled low-poly backpack and wooden shopping basket: visibly thick solid objects, broad polygon faces, beveled edges, matte materials, warm upper-left light, dark lower-right side faces, slightly elevated three-quarter camera, compact readable silhouette at 24px. Centered square composition, generous transparent margin. TRUE TRANSPARENT alpha background; no ground plane, no cast shadow outside object, no checkerboard, no text, no border, no scene. Subject: a single solid friendly green heart token, broad heart silhouette with two rounded faceted lobes and pointed bottom, thick beveled edges, lime green lit face and dark forest green side, just enough rotation to see substantial depth. No leaves, no container, no sparkles.",
+            "transparencyEditPrompt": null
+        },
+        {
+            "file": "health-plus.webp",
+            "prompt": "Use case: stylized-concept. Create ONE isolated 3D garden game inventory icon. Style matches chunky modeled low-poly backpack and wooden shopping basket: visibly thick solid objects, broad polygon faces, beveled edges, matte materials, warm upper-left light, dark lower-right side faces, slightly elevated three-quarter camera, compact readable silhouette at 24px. Centered square composition, generous transparent margin. TRUE TRANSPARENT alpha background; no ground plane, no cast shadow outside object, no checkerboard, no text, no border, no scene. Subject: a single solid vivid emerald green PLUS SIGN with four equal thick arms, upright unrotated front face, softly beveled block edges, slight three-quarter depth with dark forest green sides and lime highlights. Recognizable medical/health plus. No badge, circle, leaf, or other objects.",
+            "transparencyEditPrompt": null
+        },
+        {
+            "file": "calendar.webp",
+            "prompt": "Use case: stylized-concept. Create ONE isolated 3D garden game inventory icon. Style matches chunky modeled low-poly backpack and wooden shopping basket: visibly thick solid objects, broad polygon faces, beveled edges, matte materials, warm upper-left light, dark lower-right side faces, slightly elevated three-quarter camera, compact readable silhouette at 24px. Centered square composition, generous transparent margin. TRUE TRANSPARENT alpha background; no ground plane, no cast shadow outside object, no checkerboard, no text, no border, no scene. Subject: a tiny chunky freestanding tear-off desk calendar, cream paper block on thick amber ochre backing, dark green top binding with two small brass rings, three simple embossed green square date marks. No numbers or letters. Compact nearly square silhouette with clear thickness.",
+            "transparencyEditPrompt": null
+        },
+        {
+            "file": "magnifier.webp",
+            "prompt": "Use case: stylized-concept. Create ONE isolated 3D garden game inventory icon. Style matches chunky modeled low-poly backpack and wooden shopping basket: visibly thick solid objects, broad polygon faces, beveled edges, matte materials, warm upper-left light, dark lower-right side faces, slightly elevated three-quarter camera, compact readable silhouette at 24px. Centered square composition, generous transparent margin. TRUE TRANSPARENT alpha background; no ground plane, no cast shadow outside object, no checkerboard, no text, no border, no scene. Subject: one chunky magnifying glass with thick golden ochre circular rim and short dark forest-green handle angled down right, one smooth unbroken pale blue opaque lens with a small clean cream reflection at the upper-left; the lens has no holes or rings, clearly modeled thick side faces. No objects behind lens.",
+            "transparencyEditPrompt": null
+        },
+        {
+            "file": "sown-seed.webp",
+            "prompt": "Use case: stylized-concept. Create ONE isolated 3D garden game inventory icon. Style matches chunky modeled low-poly backpack and wooden shopping basket: visibly thick solid objects, broad polygon faces, beveled edges, matte materials, warm upper-left light, dark lower-right side faces, slightly elevated three-quarter camera, compact readable silhouette at 24px. Centered square composition, generous transparent margin. TRUE TRANSPARENT alpha background; no ground plane, no cast shadow outside object, no checkerboard, no text, no border, no scene. Subject: a single large warm tan bean seed nestled halfway beneath the surface in a compact cross-section clod of rich brown soil, visible seed in a shallow open pocket facing camera, angular brown earth base. No sprout, leaves, tools, extra seeds, or background.",
+            "transparencyEditPrompt": null
+        },
+        {
+            "file": "blossom.webp",
+            "prompt": "Use case: stylized-concept. Create ONE isolated 3D garden game inventory icon. Style matches chunky modeled low-poly backpack and wooden shopping basket: visibly thick solid objects, broad polygon faces, beveled edges, matte materials, warm upper-left light, dark lower-right side faces, slightly elevated three-quarter camera, compact readable silhouette at 24px. Centered square composition, generous transparent margin. TRUE TRANSPARENT alpha background; no ground plane, no cast shadow outside object, no checkerboard, no text, no border, no scene. Subject: a simple fresh pink five-petal flower on a short thick green stem with two broad faceted leaves. Golden yellow center, chunky pink petals with visible side thickness, angular leaves, tiny brown soil base. One flower only.",
+            "transparencyEditPrompt": null
+        },
+        {
+            "file": "first-fruits.webp",
+            "prompt": "Use case: stylized-concept. Create ONE isolated 3D garden game inventory icon. Style matches chunky modeled low-poly backpack and wooden shopping basket: visibly thick solid objects, broad polygon faces, beveled edges, matte materials, warm upper-left light, dark lower-right side faces, slightly elevated three-quarter camera, compact readable silhouette at 24px. Centered square composition, generous transparent margin. TRUE TRANSPARENT alpha background; no ground plane, no cast shadow outside object, no checkerboard, no text, no border, no scene. Subject: a short sturdy green leafy stem with two small developing round fruits hanging beside one another, one pale fresh green and one yellow-orange, a few broad angular leaves at top. Tiny brown soil base. Fruits visibly attached to stem, not picked. Simple bold silhouette, no flower.",
+            "transparencyEditPrompt": null
+        },
+        {
+            "file": "harvest-ready.webp",
+            "prompt": "Use case: stylized-concept. Create ONE isolated 3D garden game inventory icon. Style matches chunky modeled low-poly backpack and wooden shopping basket: visibly thick solid objects, broad polygon faces, beveled edges, matte materials, warm upper-left light, dark lower-right side faces, slightly elevated three-quarter camera, compact readable silhouette at 24px. Centered square composition, generous transparent margin. TRUE TRANSPARENT alpha background; no ground plane, no cast shadow outside object, no checkerboard, no text, no border, no scene. Subject: a single large ripe orange carrot root with a compact fan of three broad green leafy tops, slightly tilted diagonally, chunky angular tapered root, thick low-poly leaves and distinct lit and dark side planes. No soil, extra vegetables, or tools.",
+            "transparencyEditPrompt": null
+        },
+        {
+            "file": "harvest-crate.webp",
+            "prompt": "Use case: stylized-concept. Create ONE isolated 3D garden game inventory icon. Style matches chunky modeled low-poly backpack and wooden shopping basket: visibly thick solid objects, broad polygon faces, beveled edges, matte materials, warm upper-left light, dark lower-right side faces, slightly elevated three-quarter camera, compact readable silhouette at 24px. Centered square composition, generous transparent margin. TRUE TRANSPARENT alpha background; no ground plane, no cast shadow outside object, no checkerboard, no text, no border, no scene. Subject: a small squat honey-gold wooden harvest crate with thick beveled slats, holding one red tomato, one orange carrot with leafy green tops and a leafy green vegetable. Clearly picked produce inside the crate. No handle, text, labels, tools, or ground.",
+            "transparencyEditPrompt": null
+        },
+        {
+            "file": "status-cross.webp",
+            "prompt": "Use case: stylized-concept. Create ONE isolated 3D garden game inventory icon. Style matches chunky modeled low-poly backpack and wooden shopping basket: visibly thick solid objects, broad polygon faces, beveled edges, matte materials, warm upper-left light, dark lower-right side faces, slightly elevated three-quarter camera, compact readable silhouette at 24px. Centered square composition, generous transparent margin. TRUE TRANSPARENT alpha background; no ground plane, no cast shadow outside object, no checkerboard, no text, no border, no scene. Subject: a single solid terracotta red X-shaped token, two equal chunky crossing diagonal bars, beveled block edges, warm coral lit face and dark brick red sides. Clearly diagonal X, no circle, no badge, no additional objects.",
+            "transparencyEditPrompt": null
+        },
+        {
+            "file": "wilted-plant.webp",
+            "prompt": "Use case: stylized-concept. Create ONE isolated 3D garden game inventory icon. Style matches chunky modeled low-poly backpack and wooden shopping basket: visibly thick solid objects, broad polygon faces, beveled edges, matte materials, warm upper-left light, dark lower-right side faces, slightly elevated three-quarter camera, compact readable silhouette at 24px. Centered square composition, generous transparent margin. TRUE TRANSPARENT alpha background; no ground plane, no cast shadow outside object, no checkerboard, no text, no border, no scene. Subject: a small failed garden plant rooted in compact angular brown soil, a bent ochre-brown stem with three limp drooping dry brown leaves, tips pointing downward. Restrained warm brown and muted olive colors. Clearly wilted, no skull, pot, flower or fruit.",
+            "transparencyEditPrompt": null
         }
-    ]
+    ],
+    "reusedWeatherAssets": {
+        "water.webp": "Moved without image changes from packages/game/src/hud/components/weather/icons/assets/raindrop.webp",
+        "lightning.webp": "Moved without image changes from packages/game/src/hud/components/weather/icons/assets/lightning.webp",
+        "prompts": "packages/game/src/hud/components/weather/icons/assets/prompts.json"
+    }
 }

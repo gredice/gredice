@@ -3,6 +3,7 @@ import {
     userAllowedPlantStatusTransitions,
 } from '@gredice/js/plants';
 import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { Calendar, Navigate } from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';
 import { ListItem } from '@gredice/ui/ListItem';
@@ -13,7 +14,6 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { type ReactNode, useCallback, useState } from 'react';
 import { useRaisedBedFieldUpdateStatus } from '../../hooks/useRaisedBedFieldUpdateStatus';
-import { plantFieldStatusEmoji } from './PlantFieldStatusEmoji';
 import { formatLocalDate } from './RaisedBedPlantPicker';
 
 function formatStatusChangeDate(date: string) {
@@ -176,12 +176,11 @@ export function RaisedBedFieldStatusChange({
                                     }}
                                     className="py-3 pr-4"
                                     startDecorator={
-                                        <span
-                                            className="w-8 text-center text-lg leading-none"
+                                        <GamePlantStatusIcon
+                                            status={nextStatus}
+                                            className="size-7 shrink-0"
                                             aria-hidden="true"
-                                        >
-                                            {plantFieldStatusEmoji(nextStatus)}
-                                        </span>
+                                        />
                                     }
                                     endDecorator={
                                         <Navigate
@@ -205,12 +204,11 @@ export function RaisedBedFieldStatusChange({
                 ) : (
                     <Stack spacing={2}>
                         <Row spacing={2} alignItems="center">
-                            <span
-                                className="text-xl leading-none"
+                            <GamePlantStatusIcon
+                                status={currentStatus}
+                                className="size-7 shrink-0"
                                 aria-hidden="true"
-                            >
-                                {plantFieldStatusEmoji(currentStatus)}
-                            </span>
+                            />
                             <Typography level="body1" semiBold>
                                 {currentStatusInfo.shortLabel}
                             </Typography>

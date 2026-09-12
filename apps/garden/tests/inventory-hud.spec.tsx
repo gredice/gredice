@@ -51,6 +51,19 @@ test('inventory can open directly on garden boxes tab', async ({
         'src',
         '/assets/hud/inventory-backpack.webp',
     );
+    await modalIcon.evaluate(async (artwork) => {
+        const image = new Image();
+        image.src = artwork.getAttribute('src') ?? '';
+        await image.decode();
+    });
+    const backpackTab = page.getByRole('tab', { name: /^Ruksak\b/u });
+    const backpackArtwork = backpackTab.locator('svg image');
+    await expect(backpackArtwork).toHaveAttribute('href', /backpack.*\.webp/u);
+    await backpackArtwork.evaluate(async (artwork) => {
+        const image = new Image();
+        image.src = artwork.getAttribute('href') ?? '';
+        await image.decode();
+    });
     await expect(
         page.getByRole('tab', { name: /Kutije\s+1/u }),
     ).toHaveAttribute('aria-selected', 'true');

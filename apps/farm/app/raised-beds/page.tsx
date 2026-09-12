@@ -1,6 +1,5 @@
 import {
     getRaisedBedFieldGroups,
-    plantFieldStatusEmoji,
     plantFieldStatusLabel,
 } from '@gredice/js/plants';
 import {
@@ -11,6 +10,7 @@ import {
 } from '@gredice/storage';
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { Sprout } from '@gredice/ui/icons';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIdentifierIcon } from '@gredice/ui/RaisedBedIdentifierIcon';
@@ -222,11 +222,13 @@ async function RaisedBedsPageContent() {
                                                                     <Sprout className="size-6 text-primary" />
                                                                 )}
                                                                 {plant.status ? (
-                                                                    <span className="absolute right-0 top-0 text-xs">
-                                                                        {plantFieldStatusEmoji(
-                                                                            plant.status,
-                                                                        )}
-                                                                    </span>
+                                                                    <GamePlantStatusIcon
+                                                                        status={
+                                                                            plant.status
+                                                                        }
+                                                                        className="size-5 shrink-0 absolute right-0 top-0"
+                                                                        aria-hidden
+                                                                    />
                                                                 ) : null}
                                                             </div>
                                                         ),

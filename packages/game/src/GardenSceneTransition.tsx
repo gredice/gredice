@@ -87,6 +87,19 @@ export function useGardenSceneTransition<TGarden extends GardenIdentity>(
 
     useEffect(() => {
         if (garden === undefined) {
+            // A newer selection is loading. Keep the current scene instead of
+            // letting a previously loaded garden's transition finish late.
+            if (transitionTimeoutRef.current !== null) {
+                window.clearTimeout(transitionTimeoutRef.current);
+                transitionTimeoutRef.current = null;
+            }
+            if (transitionFrameRef.current !== null) {
+                window.cancelAnimationFrame(transitionFrameRef.current);
+                transitionFrameRef.current = null;
+            }
+            pendingGardenRef.current = null;
+            transitionTargetIdRef.current = undefined;
+            setSceneVisible(true);
             return;
         }
 

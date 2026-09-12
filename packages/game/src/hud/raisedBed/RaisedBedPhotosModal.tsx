@@ -6,6 +6,7 @@ import { GameCameraIcon as Camera } from '@gredice/ui/GameIcons';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { Navigate } from '@gredice/ui/icons';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
+import { PaperNote } from '@gredice/ui/PaperNote';
 import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
@@ -481,12 +482,9 @@ export function RaisedBedPhotosModal({
                                             previewLimitBeforeStack={5}
                                         />
                                         {completionNotes && (
-                                            <Typography
-                                                level="body2"
-                                                className="break-words"
-                                            >
+                                            <PaperNote noteKey={operation.id}>
                                                 {completionNotes}
-                                            </Typography>
+                                            </PaperNote>
                                         )}
                                         <Row
                                             spacing={2}

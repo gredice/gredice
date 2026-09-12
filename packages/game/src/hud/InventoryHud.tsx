@@ -1,7 +1,7 @@
 import type { BlockData, OperationData, PlantSortData } from '@gredice/client';
-import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
+import { GameBackpackIcon as BackpackIcon } from '@gredice/ui/GameIcons';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Add } from '@gredice/ui/icons';
 import { OperationImage } from '@gredice/ui/OperationImage';

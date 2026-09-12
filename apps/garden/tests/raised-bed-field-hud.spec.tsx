@@ -23,8 +23,8 @@ import {
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 };
 
-async function expectRenderedGameIcon(icon: Locator, label: string) {
-    await expect(icon.locator('title')).toHaveText(label);
+async function expectRenderedGameIcon(icon: Locator, label?: string) {
+    if (label) await expect(icon.locator('title')).toHaveText(label);
     const artwork = icon.locator('image');
     await expect(artwork).toBeVisible();
     await artwork.evaluate(async (element) => {
@@ -1285,7 +1285,9 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             }),
         ).toBeVisible();
         await expect(
-            dialog.locator('[data-greenhouse-seedling-progress] svg'),
+            dialog.locator(
+                '[data-greenhouse-seedling-progress] svg:not([data-plant-status-icon])',
+            ),
         ).toHaveCount(2);
         await expect(dialog.getByText('Sadnica je u stakleniku')).toBeVisible();
         await expect(
@@ -1637,10 +1639,10 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             '[data-recommendation-section="health"]',
         );
         await expect(healthSection).toBeVisible();
-        await expect(healthSection.locator('svg.lucide-plus')).toBeVisible();
-        await expect(
-            healthSection.locator('[data-recommendation-section-icon]'),
-        ).not.toHaveClass(/green/);
+        await expectRenderedGameIcon(
+            healthSection.locator('[data-recommendation-section-icon] svg'),
+            'Zdravlje biljke',
+        );
         await expect(
             healthSection.locator('[data-recommendation-section-count]'),
         ).toHaveClass(/size-5/);
@@ -2870,8 +2872,9 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         const readyButton = page.getByRole('button', {
             name: 'Spremna za berbu',
         });
-        await expect(readyButton).toContainText('🥕');
-        await expect(readyButton.locator('svg')).toBeVisible();
+        await expectRenderedGameIcon(
+            readyButton.locator('[data-plant-status-icon="ready"]'),
+        );
 
         const statusChangeDateButton = page.getByRole('button', {
             name: /Odaberi datum promjene: \d{2}\. \d{2}\. \d{4}\./,

@@ -6,13 +6,18 @@ and shaded materials of the existing backpack and shopping basket HUD artwork.
 
 - `assets/*.webp` contains the selected transparent rendered artwork, generated
   with the built-in image tool. The exact prompts and reference descriptions are
-  recorded in `assets/prompts.json`.
+  recorded in `assets/prompts.json`. `backpack.webp` reuses the existing
+  `apps/garden/public/assets/hud/inventory-backpack.webp` byte-for-byte; the
+  public copy remains available for the existing inventory HUD image URLs.
+  Both backpack copies use a lossless re-encoding of the original artwork to
+  avoid browser decoding failures, with all visible pixels preserved.
 - Exports retain `SVGProps<SVGSVGElement>`. An SVG frame embeds the bitmap, so
   existing sizing, titles, accessibility attributes and event handlers still work.
 - Static imports let Next.js and Storybook bundle and cache the assets. There
-  are no production CDN dependencies or duplicated app-public copies.
-- Assets are trimmed only in their empty alpha margins, downsampled to a maximum
+  are no production CDN dependencies.
+- Generated assets are trimmed only in their empty alpha margins, downsampled to a maximum
   content edge of 320px and padded by 8px. WebP preserves full-quality alpha.
+  The reused backpack retains its original 512px dimensions and padding.
 - `GameRaisedBedIcon` keeps the physical ID as real, contrasting text, including
   numeric zero. Its existing width reservation and upper inset remain in place.
 - Keep the default outline appearance of `RaisedBedIcon` unchanged.
@@ -26,3 +31,27 @@ Information; plant details use Seedling, Journal and Tools. Their shared
 `RaisedBedDetailsTabsList` is rendered in the icon story, including historical
 plants without actions. Camera and History cover adjacent photo and past-action
 controls. Keep compact status indicators and standard utility controls legible.
+
+## Plant care and lifecycle
+
+`GameWaterIcon`, `GameThermometerIcon`, `GameHeartIcon`, `GameLightningIcon` and
+`GameHealthIcon` cover soil readings, neighbour relationships and plant health.
+Water and lightning share their exact source bitmaps with composed weather icons
+through `gameWeatherArtwork`; keep these assets in one place.
+
+`GamePlantStatusIcon` covers all 12 plant statuses and an unknown-state fallback.
+It keeps Croatian labels in `@gredice/js/plants`. Related states compose a base
+image with a calendar, magnifier, red cross or shovel. No status text, dates or
+transition rules are baked into artwork. Use `aria-hidden` beside visible labels.
+
+Review `packages/ui/Icons/PlantStatusIcons` for the full before/after set at
+20–64px, on light and dark backgrounds, alongside actual recommendation controls.
+The full game icon inventory includes a dedicated Plant statuses group.
+
+The same `GamePlantStatusIcon` is used by admin status selectors, planting
+controls, approvals and history; farm bed previews, greenhouse lists and status
+requests; and the public harvest timeline, calendar and growth controls. Keep
+status values and localized labels owned by each workflow. Render icons with
+`aria-hidden` beside visible status text, and use 20px in compact controls, 24px
+in menus and 32px in timeline badges. Plain-text notification messages may still
+use emoji because they cannot embed UI components.

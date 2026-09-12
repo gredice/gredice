@@ -1,16 +1,23 @@
 /// <reference types="next/image-types/global" />
 
+import { gameWeatherArtwork } from '@gredice/ui/GameIcons';
 import type { SVGProps } from 'react';
 import cloud from './assets/cloud.webp';
 import fog from './assets/fog.webp';
-import lightning from './assets/lightning.webp';
 import moon from './assets/moon.webp';
-import raindrop from './assets/raindrop.webp';
 import snowflake from './assets/snowflake.webp';
 import sun from './assets/sun.webp';
 import type { WeatherPart } from './weatherComposition';
 
-const artwork = { sun, moon, cloud, raindrop, snowflake, lightning, fog };
+const artwork = {
+    sun,
+    moon,
+    cloud,
+    snowflake,
+    fog,
+    raindrop: gameWeatherArtwork.water,
+    lightning: gameWeatherArtwork.lightning,
+};
 
 export function WeatherArtwork({
     part,
