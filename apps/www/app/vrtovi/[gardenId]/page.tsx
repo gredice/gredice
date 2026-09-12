@@ -1,5 +1,4 @@
 import { Card } from '@gredice/ui/Card';
-import { Calendar, Sprout } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
@@ -7,8 +6,8 @@ import { notFound } from 'next/navigation';
 import { PublicBreadcrumbs } from '../../../components/shared/seo/PublicBreadcrumbs';
 import { KnownPages } from '../../../src/KnownPages';
 import { PublicGardenExplorer } from '../PublicGardenExplorer';
-import { PublicGardenLikeButton } from '../PublicGardenLikeButton';
 import { PublicGardenStatsAccordion } from '../PublicGardenStatsAccordion';
+import { PublicGardenSummary } from '../PublicGardenSummary';
 import {
     getPublicGardenBlockDataForWww,
     getPublicGardenForWww,
@@ -16,8 +15,6 @@ import {
 import {
     calculatePublicGardenStats,
     countActivePlantsFromPublicGarden,
-    formatGardenDate,
-    formatGardenNumber,
 } from '../publicGardenFormatting';
 import { getPublicGardenCardViewTransitionName } from '../publicGardenViewTransition';
 
@@ -96,7 +93,6 @@ export default async function PublicGardenPage({
         getPublicGardenForWww(gardenId),
         getPublicGardenBlockDataForWww(),
     ]);
-    const activePlantCount = countActivePlantsFromPublicGarden(garden);
     const gardenStats = calculatePublicGardenStats(garden, blockData);
 
     return (
@@ -137,53 +133,12 @@ export default async function PublicGardenPage({
                             </Typography>
                         </div>
                     </div>
-                    <div className="grid grid-cols-3 divide-x border-t bg-card">
-                        <div className="flex items-center gap-2 px-4 py-3 sm:px-5">
-                            <Calendar
-                                aria-hidden
-                                className="size-4 shrink-0 text-primary"
-                            />
-                            <div className="min-w-0">
-                                <Typography
-                                    level="body3"
-                                    className="text-muted-foreground"
-                                >
-                                    Stvoren
-                                </Typography>
-                                <Typography
-                                    level="body2"
-                                    className="truncate font-medium"
-                                >
-                                    {formatGardenDate(garden.createdAt)}
-                                </Typography>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2 px-4 py-3 sm:px-5">
-                            <Sprout
-                                aria-hidden
-                                className="size-4 shrink-0 text-primary"
-                            />
-                            <div className="min-w-0">
-                                <Typography
-                                    level="body3"
-                                    className="text-muted-foreground"
-                                >
-                                    Biljaka
-                                </Typography>
-                                <Typography
-                                    level="body2"
-                                    className="truncate font-medium"
-                                >
-                                    {formatGardenNumber(activePlantCount)}
-                                </Typography>
-                            </div>
-                        </div>
-                        <PublicGardenLikeButton
-                            className="sm:px-2"
-                            gardenId={garden.id}
-                            initialLikeCount={garden.likeCount}
-                        />
-                    </div>
+                    <PublicGardenSummary
+                        garden={garden}
+                        activePlantCount={countActivePlantsFromPublicGarden(
+                            garden,
+                        )}
+                    />
                     <PublicGardenStatsAccordion stats={gardenStats} />
                 </div>
             </Card>
