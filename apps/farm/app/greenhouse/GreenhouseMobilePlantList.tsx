@@ -64,12 +64,13 @@ export function GreenhouseMobilePlantList({
                                 </div>
                                 <RaisedBedPlantingFacts {...item.planting} />
                                 <Chip
+                                    variant="outlined"
                                     color={item.statusColor}
                                     size="sm"
                                     startDecorator={
                                         <GamePlantStatusIcon
                                             status={item.plantStatus}
-                                            className="size-5 shrink-0"
+                                            className="size-5! shrink-0"
                                             aria-hidden
                                         />
                                     }

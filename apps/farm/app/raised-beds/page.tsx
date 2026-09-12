@@ -1,110 +1,17 @@
 import {
-    getRaisedBedFieldGroups,
-    plantFieldStatusLabel,
-} from '@gredice/js/plants';
-import {
     type EntityStandardized,
     getEntitiesFormatted,
     getFarmUserRaisedBeds,
-    getRaisedBedPlantOccupancy,
 } from '@gredice/storage';
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
-import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
-import { Sprout } from '@gredice/ui/icons';
-import { PlantOrSortImage } from '@gredice/ui/plants';
-import { RaisedBedIdentifierIcon } from '@gredice/ui/RaisedBedIdentifierIcon';
-import { Row } from '@gredice/ui/Row';
-import { Stack } from '@gredice/ui/Stack';
+import { Card, CardContent } from '@gredice/ui/Card';
 import { Typography } from '@gredice/ui/Typography';
 import LoginDialog from '../../components/auth/LoginDialog';
 import { auth } from '../../lib/auth/auth';
-import { getRaisedBedPositionIndexesDescending } from './raisedBedPositionOrder';
+import { RaisedBedsOverview } from './RaisedBedsOverview';
+import { getFieldPreviews } from './raisedBedFieldPreviews';
 
 export const dynamic = 'force-dynamic';
-
-type FarmRaisedBed = Awaited<ReturnType<typeof getFarmUserRaisedBeds>>[number];
-
-function getFieldPreviews(
-    raisedBed: FarmRaisedBed,
-    sorts: EntityStandardized[] | null | undefined,
-) {
-    const plantSortsById = new Map<number, EntityStandardized>();
-    if (sorts) {
-        for (const sort of sorts) {
-            plantSortsById.set(sort.id, sort);
-        }
-    }
-
-    const plants = getRaisedBedPlantOccupancy(raisedBed);
-    const positions = getRaisedBedPositionIndexesDescending([
-        ...raisedBed.fields.map((field) => field.positionIndex),
-        ...plants.flatMap((plant) =>
-            plant.positionNumbers.map((position) => position - 1),
-        ),
-    ]);
-    return getRaisedBedFieldGroups(positions, plants).map((group) => {
-        const occupants = plants.filter((plant) =>
-            plant.positionNumbers.some((position) =>
-                group.positionNumbers.includes(position),
-            ),
-        );
-        const fieldLabel = `${group.positionNumbers.length === 1 ? 'Polje' : 'Polja'} ${group.positionNumbers.join(', ')}`;
-        return {
-            ...group,
-            key: `positions-${group.positionNumbers.join('-')}`,
-            hasPlant: occupants.length > 0,
-            label: occupants.length
-                ? `${fieldLabel} · ${occupants
-                      .map((plant) => {
-                          const sort = plantSortsById.get(plant.plantSortId);
-                          return (
-                              sort?.information?.label ??
-                              sort?.information?.name ??
-                              `Sorta #${plant.plantSortId}`
-                          );
-                      })
-                      .join(', ')}`
-                : `${fieldLabel} prazno`,
-            plants: occupants.map((plant) => ({
-                key: plant.key,
-                plantSort: plantSortsById.get(plant.plantSortId),
-                positionNumbers: plant.positionNumbers,
-                plantCount: plant.planting?.plantCount,
-                status: plant.plantStatus,
-                statusLabel: plant.plantStatus
-                    ? plantFieldStatusLabel(plant.plantStatus).shortLabel
-                    : null,
-            })),
-        };
-    });
-}
-
-function comparePhysicalIdsDescending(
-    left: string | null,
-    right: string | null,
-) {
-    if (left && right) {
-        const leftNumber = Number(left);
-        const rightNumber = Number(right);
-
-        if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
-            return rightNumber - leftNumber;
-        }
-
-        return right.localeCompare(left, 'hr-HR', { numeric: true });
-    }
-
-    if (left) {
-        return -1;
-    }
-
-    if (right) {
-        return 1;
-    }
-
-    return 0;
-}
 
 async function RaisedBedsPageContent() {
     const { userId } = await auth(['farmer', 'admin']);
@@ -112,31 +19,16 @@ async function RaisedBedsPageContent() {
         getFarmUserRaisedBeds(userId),
         getEntitiesFormatted<EntityStandardized>('plantSort'),
     ]);
-
-    const activeRaisedBeds = raisedBeds
-        .filter(
-            (raisedBed) =>
-                raisedBed.status === 'active' && Boolean(raisedBed.physicalId),
-        )
-        .sort((left, right) => {
-            const physicalIdComparison = comparePhysicalIdsDescending(
-                left.physicalId,
-                right.physicalId,
-            );
-
-            if (physicalIdComparison !== 0) {
-                return physicalIdComparison;
-            }
-
-            return right.id - left.id;
-        });
+    const activeRaisedBeds = raisedBeds.filter(
+        (raisedBed) =>
+            raisedBed.status === 'active' && Boolean(raisedBed.physicalId),
+    );
 
     return (
-        <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
+        <div className="mx-auto w-full max-w-2xl space-y-3 p-2 sm:p-4">
             <Typography component="h1" level="h5" semiBold>
                 Gredice
             </Typography>
-
             {activeRaisedBeds.length === 0 ? (
                 <Card>
                     <CardContent noHeader>
@@ -150,101 +42,14 @@ async function RaisedBedsPageContent() {
                     </CardContent>
                 </Card>
             ) : (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {activeRaisedBeds.map((raisedBed) => {
-                        const fields = getFieldPreviews(raisedBed, plantSorts);
-
-                        return (
-                            <Card
-                                key={raisedBed.id}
-                                href={`/raised-beds/${raisedBed.id}`}
-                                className="cursor-pointer"
-                            >
-                                <CardHeader>
-                                    <Stack spacing={2}>
-                                        <CardTitle>
-                                            <Row
-                                                spacing={2}
-                                                alignItems="center"
-                                            >
-                                                <RaisedBedIdentifierIcon
-                                                    className="text-primary"
-                                                    physicalId={
-                                                        raisedBed.physicalId
-                                                    }
-                                                />
-                                                <Typography level="h6" semiBold>
-                                                    {raisedBed.name ||
-                                                        `Gredica ${raisedBed.physicalId}`}
-                                                </Typography>
-                                            </Row>
-                                        </CardTitle>
-                                    </Stack>
-                                </CardHeader>
-                                <CardContent>
-                                    <Stack spacing={4}>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {fields.map((field) => (
-                                                <div
-                                                    key={`${raisedBed.id}-${field.key}`}
-                                                    title={field.label}
-                                                    style={{
-                                                        gridRow: `${field.row} / span ${field.rowSpan}`,
-                                                        gridColumn: `${field.column} / span ${field.columnSpan}`,
-                                                    }}
-                                                    className={
-                                                        field.hasPlant
-                                                            ? 'relative flex aspect-square items-center justify-center rounded-md border bg-muted/40 p-1'
-                                                            : 'aspect-square rounded-md border border-dashed bg-muted/20'
-                                                    }
-                                                >
-                                                    {field.plants.map(
-                                                        (plant) => (
-                                                            <div
-                                                                key={plant.key}
-                                                                className="relative flex min-w-0 flex-1 items-center justify-center"
-                                                                title={`Polja ${plant.positionNumbers.join(', ')}${plant.statusLabel ? ` · ${plant.statusLabel}` : ''}${plant.plantCount != null ? ` · Broj biljaka: ${plant.plantCount}` : ''}`}
-                                                            >
-                                                                {plant.plantSort ? (
-                                                                    <PlantOrSortImage
-                                                                        plantSort={
-                                                                            plant.plantSort
-                                                                        }
-                                                                        width={
-                                                                            40
-                                                                        }
-                                                                        height={
-                                                                            40
-                                                                        }
-                                                                        className="size-10 max-w-full rounded-md object-cover"
-                                                                    />
-                                                                ) : (
-                                                                    <Sprout className="size-6 text-primary" />
-                                                                )}
-                                                                {plant.status ? (
-                                                                    <GamePlantStatusIcon
-                                                                        status={
-                                                                            plant.status
-                                                                        }
-                                                                        className="size-5 shrink-0 absolute right-0 top-0"
-                                                                        aria-hidden
-                                                                    />
-                                                                ) : null}
-                                                            </div>
-                                                        ),
-                                                    )}
-                                                    <span className="sr-only">
-                                                        {field.label}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </Stack>
-                                </CardContent>
-                            </Card>
-                        );
-                    })}
-                </div>
+                <RaisedBedsOverview
+                    raisedBeds={activeRaisedBeds.map((raisedBed) => ({
+                        id: raisedBed.id,
+                        physicalId: raisedBed.physicalId,
+                        name: raisedBed.name,
+                        fields: getFieldPreviews(raisedBed, plantSorts),
+                    }))}
+                />
             )}
         </div>
     );
@@ -252,7 +57,6 @@ async function RaisedBedsPageContent() {
 
 export default async function RaisedBedsPage() {
     const authFarmer = auth.bind(null, ['farmer', 'admin']);
-
     return (
         <div className="min-h-[100dvh] w-full bg-background">
             <AuthProtectedSection auth={authFarmer}>

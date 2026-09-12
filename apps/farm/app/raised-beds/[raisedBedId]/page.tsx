@@ -13,8 +13,8 @@ import {
     isRaisedBedPlantInGreenhouse,
 } from '@gredice/storage';
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import {
     RaisedBedFieldsGrid,
     RaisedBedPlantDetails,
@@ -26,6 +26,10 @@ import { notFound } from 'next/navigation';
 import LoginDialog from '../../../components/auth/LoginDialog';
 import { HomeButton } from '../../../components/HomeButton';
 import { auth } from '../../../lib/auth/auth';
+import {
+    getPlantDetailsPositionIndex,
+    getRaisedBedPositionIndexesDescending,
+} from '../raisedBedPositionOrder';
 import { PlantStateRequestForm } from './PlantStateRequestForm';
 
 export const dynamic = 'force-dynamic';
@@ -102,21 +106,13 @@ async function RaisedBedDetailPageContent({
     }
 
     const occupants = getRaisedBedPlantOccupancy(raisedBed);
-    const highestPositionIndex = Math.max(
-        8,
+    const orderedPositions = getRaisedBedPositionIndexesDescending([
         ...raisedBed.fields.map((field) => field.positionIndex),
         ...occupants.flatMap((plant) =>
             plant.positionNumbers.map((position) => position - 1),
         ),
-    );
-    const orderedPositions = Array.from(
-        { length: highestPositionIndex + 1 },
-        (_, index) => index,
-    );
-    const groups = getRaisedBedFieldGroups(
-        orderedPositions.toReversed(),
-        occupants,
-    );
+    ]);
+    const groups = getRaisedBedFieldGroups(orderedPositions, occupants);
     const plantingItems = buildRaisedBedPlantingReadModels(
         raisedBed.plantings.filter((planting) => !planting.isActive),
     ).map((planting) => ({
@@ -127,6 +123,76 @@ async function RaisedBedDetailPageContent({
         ),
     }));
 
+    const plantDetails = new Map(
+        occupants.map((plant) => {
+            const name = resolvePlantName(
+                plant.plantSortId,
+                plantSortsById.get(plant.plantSortId),
+            );
+            const dates = [
+                {
+                    label: 'Početak sadnje',
+                    value:
+                        plant.planting?.lifecycleStartedAt ??
+                        plant.legacyField?.createdAt,
+                },
+                {
+                    label: 'Planirano',
+                    value: plant.plantScheduledDate,
+                },
+                {
+                    label: 'Posijano',
+                    value: plant.plantSowDate,
+                },
+                {
+                    label: 'Proklijalo',
+                    value: plant.plantGrowthDate,
+                },
+                {
+                    label: 'Spremno',
+                    value: plant.plantReadyDate,
+                },
+                {
+                    label: 'Ubrano',
+                    value: plant.plantHarvestedDate,
+                },
+                {
+                    label: 'Uginulo',
+                    value: plant.plantDeadDate,
+                },
+                {
+                    label: 'Uklonjeno',
+                    value: plant.plantRemovedDate,
+                },
+            ].flatMap((date) =>
+                date.value
+                    ? [
+                          {
+                              label: date.label,
+                              value: new Date(date.value).toISOString(),
+                          },
+                      ]
+                    : [],
+            );
+
+            return [
+                plant.key,
+                <RaisedBedPlantDetails
+                    key={plant.key}
+                    name={name}
+                    positionNumbers={plant.positionNumbers}
+                    layout={plant.planting ?? undefined}
+                    dates={dates}
+                    sowingDate={
+                        plant.plantSowDate
+                            ? new Date(plant.plantSowDate).toISOString()
+                            : null
+                    }
+                />,
+            ];
+        }),
+    );
+
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
             <div className="flex min-w-0 items-center gap-2">
@@ -136,228 +202,179 @@ async function RaisedBedDetailPageContent({
                 </Typography>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Polja</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <RaisedBedFieldsGrid
-                        groups={groups.map((group) => ({
-                            ...group,
-                            fields: group.positionNumbers.map((position) => ({
-                                position,
-                            })),
-                            children: (
-                                <>
-                                    {occupants
-                                        .filter((plant) =>
-                                            plant.positionNumbers.some(
-                                                (position) =>
-                                                    group.positionNumbers.includes(
-                                                        position,
-                                                    ),
-                                            ),
-                                        )
-                                        .map((plant) => {
-                                            const plantSort =
-                                                plantSortsById.get(
-                                                    plant.plantSortId,
-                                                );
-                                            const name = resolvePlantName(
-                                                plant.plantSortId,
-                                                plantSort,
-                                            );
-                                            const pending = plant.legacyField
-                                                ? getPendingPlantStatusRequest(
-                                                      pendingPlantStatusRequests,
-                                                      raisedBed.id,
-                                                      plant.positionIndex,
-                                                  )
-                                                : undefined;
-                                            const pendingStatus =
-                                                isRequestForCurrentStatus(
-                                                    pending,
-                                                    plant.plantStatus,
-                                                ) &&
-                                                pending?.target.kind ===
-                                                    'raisedBedField.plantStatus'
-                                                    ? pending.target
-                                                          .requestedStatus
-                                                    : null;
-                                            const inGreenhouse =
-                                                isRaisedBedPlantInGreenhouse(
-                                                    plant,
-                                                );
-                                            const dates = [
-                                                {
-                                                    label: 'Početak sadnje',
-                                                    value:
-                                                        plant.planting
-                                                            ?.lifecycleStartedAt ??
-                                                        plant.legacyField
-                                                            ?.createdAt,
-                                                },
-                                                {
-                                                    label: 'Planirano',
-                                                    value: plant.plantScheduledDate,
-                                                },
-                                                {
-                                                    label: 'Posijano',
-                                                    value: plant.plantSowDate,
-                                                },
-                                                {
-                                                    label: 'Proklijalo',
-                                                    value: plant.plantGrowthDate,
-                                                },
-                                                {
-                                                    label: 'Spremno',
-                                                    value: plant.plantReadyDate,
-                                                },
-                                                {
-                                                    label: 'Ubrano',
-                                                    value: plant.plantHarvestedDate,
-                                                },
-                                                {
-                                                    label: 'Uginulo',
-                                                    value: plant.plantDeadDate,
-                                                },
-                                                {
-                                                    label: 'Uklonjeno',
-                                                    value: plant.plantRemovedDate,
-                                                },
-                                            ].flatMap((date) =>
-                                                date.value
-                                                    ? [
-                                                          {
-                                                              label: date.label,
-                                                              value: new Date(
-                                                                  date.value,
-                                                              ).toISOString(),
-                                                          },
-                                                      ]
-                                                    : [],
-                                            );
-                                            return (
-                                                <RaisedBedPlantItem
-                                                    key={plant.key}
-                                                    name={name}
-                                                    plantSort={plantSort}
-                                                    positionNumbers={
-                                                        plant.positionNumbers
-                                                    }
-                                                    plantCount={
-                                                        plant.planting
-                                                            ?.plantCount
-                                                    }
-                                                    spacingCm={
-                                                        plant.planting
-                                                            ?.selectedSeedingDistanceCm
-                                                    }
-                                                    statusControl={
-                                                        plant.plantStatus &&
-                                                        (plant.legacyField ? (
-                                                            <PlantStateRequestForm
-                                                                raisedBedId={
-                                                                    raisedBed.id
-                                                                }
-                                                                positionIndex={
-                                                                    plant.positionIndex
-                                                                }
-                                                                currentStatus={
+            <RaisedBedFieldsGrid
+                compact
+                groups={groups.map((group) => ({
+                    ...group,
+                    fields: group.positionNumbers.map((position) => ({
+                        position,
+                        controls: occupants
+                            .filter(
+                                (plant) =>
+                                    getPlantDetailsPositionIndex(plant) ===
+                                    position - 1,
+                            )
+                            .map((plant) => plantDetails.get(plant.key)),
+                    })),
+                    children: (
+                        <>
+                            {occupants
+                                .filter((plant) =>
+                                    plant.positionNumbers.some((position) =>
+                                        group.positionNumbers.includes(
+                                            position,
+                                        ),
+                                    ),
+                                )
+                                .map((plant) => {
+                                    const plantSort = plantSortsById.get(
+                                        plant.plantSortId,
+                                    );
+                                    const name = resolvePlantName(
+                                        plant.plantSortId,
+                                        plantSort,
+                                    );
+                                    const pending = plant.legacyField
+                                        ? getPendingPlantStatusRequest(
+                                              pendingPlantStatusRequests,
+                                              raisedBed.id,
+                                              plant.positionIndex,
+                                          )
+                                        : undefined;
+                                    const pendingStatus =
+                                        isRequestForCurrentStatus(
+                                            pending,
+                                            plant.plantStatus,
+                                        ) &&
+                                        pending?.target.kind ===
+                                            'raisedBedField.plantStatus'
+                                            ? pending.target.requestedStatus
+                                            : null;
+                                    const inGreenhouse =
+                                        isRaisedBedPlantInGreenhouse(plant);
+                                    return (
+                                        <RaisedBedPlantItem
+                                            key={plant.key}
+                                            name={name}
+                                            compact
+                                            showPositionLabel={
+                                                group.positionNumbers.length > 1
+                                            }
+                                            plantSort={plantSort}
+                                            positionNumbers={
+                                                plant.positionNumbers
+                                            }
+                                            plantCount={
+                                                plant.planting?.plantCount
+                                            }
+                                            spacingCm={
+                                                plant.planting
+                                                    ?.selectedSeedingDistanceCm
+                                            }
+                                            statusControl={
+                                                plant.plantStatus &&
+                                                (plant.legacyField ? (
+                                                    <PlantStateRequestForm
+                                                        raisedBedId={
+                                                            raisedBed.id
+                                                        }
+                                                        positionIndex={
+                                                            plant.positionIndex
+                                                        }
+                                                        currentStatus={
+                                                            plant.plantStatus
+                                                        }
+                                                        pendingRequestedStatus={
+                                                            pendingStatus
+                                                        }
+                                                    />
+                                                ) : (
+                                                    <Chip
+                                                        size="sm"
+                                                        variant="outlined"
+                                                        className="whitespace-normal text-left"
+                                                        startDecorator={
+                                                            <GamePlantStatusIcon
+                                                                status={
                                                                     plant.plantStatus
                                                                 }
-                                                                pendingRequestedStatus={
-                                                                    pendingStatus
-                                                                }
-                                                                compact
+                                                                className="size-5! shrink-0"
+                                                                aria-hidden
                                                             />
-                                                        ) : (
-                                                            <Chip
-                                                                size="sm"
-                                                                variant="outlined"
-                                                            >
-                                                                {
-                                                                    plantFieldStatusLabel(
-                                                                        plant.plantStatus,
-                                                                    ).shortLabel
-                                                                }
-                                                            </Chip>
-                                                        ))
+                                                        }
+                                                    >
+                                                        <span className="min-w-0 [overflow-wrap:anywhere]">
+                                                            {
+                                                                plantFieldStatusLabel(
+                                                                    plant.plantStatus,
+                                                                ).shortLabel
+                                                            }
+                                                        </span>
+                                                    </Chip>
+                                                ))
+                                            }
+                                            locationControl={
+                                                <Chip
+                                                    size="sm"
+                                                    variant="outlined"
+                                                    className="whitespace-normal text-left"
+                                                    color={
+                                                        inGreenhouse
+                                                            ? 'success'
+                                                            : 'neutral'
                                                     }
-                                                    locationControl={
-                                                        <Chip
-                                                            size="sm"
-                                                            variant="solid"
-                                                            color={
-                                                                inGreenhouse
-                                                                    ? 'success'
-                                                                    : 'neutral'
-                                                            }
-                                                            startDecorator={
-                                                                <span
-                                                                    aria-hidden
-                                                                >
-                                                                    {inGreenhouse
-                                                                        ? '🏡'
-                                                                        : '🪴'}
-                                                                </span>
-                                                            }
-                                                        >
+                                                    startDecorator={
+                                                        <span aria-hidden>
                                                             {inGreenhouse
-                                                                ? 'Staklenik'
-                                                                : 'Gredica'}
-                                                        </Chip>
+                                                                ? '🏡'
+                                                                : '🪴'}
+                                                        </span>
                                                     }
-                                                    details={
-                                                        <RaisedBedPlantDetails
-                                                            name={name}
-                                                            positionNumbers={
-                                                                plant.positionNumbers
-                                                            }
-                                                            layout={
-                                                                plant.planting ??
-                                                                undefined
-                                                            }
-                                                            dates={dates}
-                                                        />
-                                                    }
-                                                />
-                                            );
-                                        })}
-                                    {group.positionNumbers
-                                        .filter(
-                                            (position) =>
-                                                !occupants.some((plant) =>
-                                                    plant.positionNumbers.includes(
-                                                        position,
-                                                    ),
-                                                ),
-                                        )
-                                        .map((position) => (
-                                            <RaisedBedPlantItem
-                                                key={`empty-${position}`}
-                                                name="Prazno polje"
-                                                positionNumbers={[position]}
-                                            />
-                                        ))}
-                                </>
-                            ),
-                        }))}
-                    />
-                    {plantingItems.length > 0 && (
-                        <details className="mt-3 rounded-md border p-3">
-                            <summary className="cursor-pointer text-sm font-medium">
-                                Povijest sadnji ({plantingItems.length})
-                            </summary>
-                            <div className="mt-3">
-                                <RaisedBedPlantingsReadOnly
-                                    items={plantingItems}
-                                />
-                            </div>
-                        </details>
-                    )}
-                </CardContent>
-            </Card>
+                                                >
+                                                    <span className="min-w-0 [overflow-wrap:anywhere]">
+                                                        {inGreenhouse
+                                                            ? 'Staklenik'
+                                                            : 'Gredica'}
+                                                    </span>
+                                                </Chip>
+                                            }
+                                        />
+                                    );
+                                })}
+                            {group.positionNumbers
+                                .filter(
+                                    (position) =>
+                                        !occupants.some((plant) =>
+                                            plant.positionNumbers.includes(
+                                                position,
+                                            ),
+                                        ),
+                                )
+                                .map((position) => (
+                                    <RaisedBedPlantItem
+                                        key={`empty-${position}`}
+                                        name="Prazno polje"
+                                        compact
+                                        showPositionLabel={
+                                            group.positionNumbers.length > 1
+                                        }
+                                        positionNumbers={[position]}
+                                    />
+                                ))}
+                        </>
+                    ),
+                }))}
+            />
+            {plantingItems.length > 0 && (
+                <details className="mt-3 rounded-md border p-3">
+                    <summary className="cursor-pointer text-sm font-medium">
+                        Povijest sadnji ({plantingItems.length})
+                    </summary>
+                    <div className="mt-3">
+                        <RaisedBedPlantingsReadOnly items={plantingItems} />
+                    </div>
+                </details>
+            )}
         </div>
     );
 }

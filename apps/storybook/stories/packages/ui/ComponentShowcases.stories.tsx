@@ -2070,5 +2070,5 @@ export const SurveyForm: Story = {
 };
 
 export const RaisedBedPlantings: Story = {
-    render: () => <RaisedBedFieldsGridFixture />,
+    render: () => <RaisedBedFieldsGridFixture compact />,
 };
