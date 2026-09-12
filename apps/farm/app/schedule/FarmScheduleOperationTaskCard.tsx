@@ -169,6 +169,7 @@ export function FarmScheduleOperationTaskCard({
                     className="mt-2"
                     id={proofRequirementsId}
                     requirements={requirements}
+                    showTitle={false}
                 />
             )}
             {hasCompletionAttachments && (
