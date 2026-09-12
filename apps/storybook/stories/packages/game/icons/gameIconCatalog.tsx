@@ -43,7 +43,7 @@ const customGlyphs = [
     {
         name: 'BackpackIcon',
         Icon: BackpackIcon,
-        description: 'Inventory items, operations and shopping-cart rows.',
+        description: 'Legacy outline; game surfaces use GameBackpackIcon.',
     },
     {
         name: 'ArchiveIcon',
@@ -72,7 +72,8 @@ const artwork = [
         src: backpackSrc,
         source: 'apps/garden/public/assets/hud/inventory-backpack.webp',
         usage: 'packages/game/src/hud/InventoryHud.tsx',
-        description: 'Styled inventory HUD trigger; compare with BackpackIcon.',
+        description:
+            'Styled inventory HUD trigger; also used by GameBackpackIcon.',
     },
     {
         name: 'Outlet seedling price tag',

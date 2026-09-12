@@ -11,7 +11,6 @@ import {
     SignUpButton,
     UserButton,
 } from '@gredice/ui/auth';
-import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { BarcodeValue } from '@gredice/ui/Barcode';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { BlurText } from '@gredice/ui/BlurText';
@@ -65,6 +64,7 @@ import { ExpandableSearchInput } from '@gredice/ui/ExpandableSearchInput';
 import { FilterInput } from '@gredice/ui/FilterInput';
 import { Gallery } from '@gredice/ui/Gallery';
 import {
+    GameBackpackIcon as BackpackIcon,
     GameCameraIcon,
     GameHistoryIcon,
     GameInformationIcon,
@@ -152,6 +152,7 @@ import {
     OperationImage,
 } from '@gredice/ui/OperationImage';
 import { PageHeader, PageHeaderSection } from '@gredice/ui/PageHeader';
+import { PaperNote } from '@gredice/ui/PaperNote';
 import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { Popper } from '@gredice/ui/Popper';
 import { Progress } from '@gredice/ui/Progress';
@@ -1425,6 +1426,16 @@ function GardenWorkspaceShowcase() {
                         <GameHistoryIcon className="size-8" />
                     </IconButton>
                 </Row>
+
+                <Stack spacing={2}>
+                    <Typography level="h3">
+                        Bilješka iz pregleda gredice
+                    </Typography>
+                    <PaperNote noteKey="garden-inspection-42">
+                        Tlo je rahlo i dovoljno vlažno. Uklonjen je korov oko
+                        rajčice.
+                    </PaperNote>
+                </Stack>
 
                 <div className="h-[44rem] overflow-hidden rounded-lg border bg-card">
                     <SplitView

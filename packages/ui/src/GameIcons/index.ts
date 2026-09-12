@@ -1,3 +1,4 @@
+export { GameBackpackIcon } from './GameBackpackIcon';
 export { GameCameraIcon } from './GameCameraIcon';
 export { GameHealthIcon } from './GameHealthIcon';
 export { GameHeartIcon } from './GameHeartIcon';
