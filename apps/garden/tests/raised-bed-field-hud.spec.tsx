@@ -15,6 +15,7 @@ import {
 import {
     buildCartItem,
     buildOperation,
+    type FieldConfig,
     type RaisedBedScenario,
     testSorts,
 } from './raisedBedFieldHudScenarios';
@@ -1345,7 +1346,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         const dialog = page.getByRole('dialog');
         await dialog
             .getByRole('button', {
-                name: 'Stanje biljke: Spremna za berbu',
+                name: 'Promijeni stanje biljke: Spremna za berbu',
             })
             .click();
 
@@ -2918,6 +2919,168 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         });
         await expect(entries).toHaveCount(4);
     });
+});
+
+test.describe('plant status transition menu', () => {
+    const stages: {
+        status: FieldConfig['plantStatus'];
+        label: string;
+        allowed: string[];
+        forbidden: string[];
+    }[] = [
+        {
+            status: 'sowed',
+            label: 'Posijana',
+            allowed: ['Proklijala', 'Nije proklijala'],
+            forbidden: [
+                'Prvi cvjetovi',
+                'Prvi plodovi',
+                'Spremna za berbu',
+                'Ubrana',
+                'Neuspjela',
+            ],
+        },
+        {
+            status: 'sprouted',
+            label: 'Proklijala',
+            allowed: [
+                'Prvi cvjetovi',
+                'Prvi plodovi',
+                'Spremna za berbu',
+                'Neuspjela',
+            ],
+            forbidden: ['Ubrana'],
+        },
+        {
+            status: 'firstFlowers',
+            label: 'Prvi cvjetovi',
+            allowed: ['Prvi plodovi', 'Spremna za berbu', 'Neuspjela'],
+            forbidden: ['Posijana', 'Nije proklijala', 'Ubrana'],
+        },
+        {
+            status: 'firstFruitSet',
+            label: 'Prvi plodovi',
+            allowed: ['Spremna za berbu', 'Neuspjela'],
+            forbidden: ['Posijana', 'Nije proklijala', 'Ubrana'],
+        },
+        {
+            status: 'ready',
+            label: 'Spremna za berbu',
+            allowed: ['Proklijala', 'Ubrana', 'Neuspjela'],
+            forbidden: ['Posijana', 'Nije proklijala'],
+        },
+    ];
+
+    for (const stage of stages) {
+        test(`${stage.status} offers logical next states`, async ({
+            mount,
+            page,
+        }) => {
+            await mount(
+                <RaisedBedFieldHudStory
+                    scenario={{
+                        fields: [
+                            {
+                                positionIndex: 0,
+                                plantSortId: testSorts.tomato.id,
+                                plantStatus: stage.status,
+                                plantSowDate: daysAgoIso(40),
+                            },
+                        ],
+                    }}
+                    positionIndex={0}
+                />,
+            );
+            await page.getByRole('button').first().click();
+            await page
+                .getByRole('button', {
+                    name: `Promijeni stanje biljke: ${stage.label}`,
+                })
+                .click();
+
+            for (const label of stage.allowed) {
+                await expect(
+                    page.getByRole('button', { name: label, exact: true }),
+                ).toBeVisible();
+            }
+            for (const label of stage.forbidden) {
+                await expect(
+                    page.getByRole('button', { name: label, exact: true }),
+                ).toHaveCount(0);
+            }
+        });
+    }
+
+    for (const target of [
+        { status: 'ready', label: 'Spremna za berbu' },
+        { status: 'died', label: 'Neuspjela' },
+    ]) {
+        test(`first fruits confirms and submits ${target.status} on mobile`, async ({
+            mount,
+            page,
+        }) => {
+            await page.setViewportSize(MOBILE_VIEWPORT);
+            const requests: unknown[] = [];
+            await page.route(
+                '**/api/gredice/api/gardens/*/raised-beds/*/fields/0',
+                async (route) => {
+                    expect(route.request().method()).toBe('PATCH');
+                    requests.push(route.request().postDataJSON());
+                    await route.fulfill({ json: { success: true } });
+                },
+            );
+            await mount(
+                <RaisedBedFieldHudStory
+                    scenario={{
+                        fields: [
+                            {
+                                positionIndex: 0,
+                                plantSortId: testSorts.tomato.id,
+                                plantStatus: 'firstFruitSet',
+                                plantSowDate: daysAgoIso(90),
+                                plantGrowthDate: daysAgoIso(80),
+                            },
+                        ],
+                    }}
+                    positionIndex={0}
+                />,
+            );
+            await page.getByRole('button').first().click();
+            await page
+                .getByRole('button', {
+                    name: 'Promijeni stanje biljke: Prvi plodovi',
+                })
+                .click();
+            await page
+                .getByRole('button', { name: target.label, exact: true })
+                .click();
+
+            const confirmation = page.getByRole('alertdialog', {
+                name: 'Potvrda promjene stanja',
+            });
+            await expect(confirmation).toContainText(`u "${target.label}"?`);
+            expect(requests).toHaveLength(0);
+            await confirmation
+                .getByRole('button', { name: 'Odustani' })
+                .click();
+            expect(requests).toHaveLength(0);
+
+            await page
+                .getByRole('button', { name: target.label, exact: true })
+                .click();
+            await confirmation
+                .getByRole('button', { name: 'Promijeni stanje', exact: true })
+                .click();
+            await expect.poll(() => requests.length).toBe(1);
+            expect(requests[0]).toEqual({
+                expectedPlantCycleEventId: 101,
+                expectedPlantCycleVersionEventId: 102,
+                expectedPlantSortId: testSorts.tomato.id,
+                status: target.status,
+                timestamp: expect.any(String),
+            });
+        });
+    }
 });
 
 test.describe('RaisedBedFieldItem HUD (mobile)', () => {

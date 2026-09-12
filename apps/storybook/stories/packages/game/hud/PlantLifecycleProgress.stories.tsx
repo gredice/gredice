@@ -1,3 +1,7 @@
+import {
+    plantFieldStatusLabel,
+    userAllowedPlantStatusTransitions,
+} from '@gredice/js/plants';
 import { plantFieldStatusEmoji } from '@packages/game/hud/raisedBed/PlantFieldStatusEmoji';
 import {
     getPlantLifecycleProgressData,
@@ -266,6 +270,9 @@ function StatusTrigger({ field }: { field: RaisedBedFieldPlantHistoryEntry }) {
 }
 
 function LifecyclePanel({ example }: { example: LifecycleExample }) {
+    const statusChanges = example.field.plantStatus
+        ? (userAllowedPlantStatusTransitions[example.field.plantStatus] ?? [])
+        : [];
     const lifecycleData = getPlantLifecycleProgressData({
         field: example.field,
         plantAttributes,
@@ -294,6 +301,17 @@ function LifecyclePanel({ example }: { example: LifecycleExample }) {
                 plantDetailsUrl={plantDetailsUrl}
                 statusTrigger={<StatusTrigger field={example.field} />}
             />
+            <p className="mt-3 text-xs text-secondary-foreground">
+                Dostupne promjene stanja u vrtu:{' '}
+                {statusChanges.length > 0
+                    ? statusChanges
+                          .map(
+                              (status) =>
+                                  plantFieldStatusLabel(status).shortLabel,
+                          )
+                          .join(', ')
+                    : 'Nema promjena kroz izbornik stanja.'}
+            </p>
         </section>
     );
 }

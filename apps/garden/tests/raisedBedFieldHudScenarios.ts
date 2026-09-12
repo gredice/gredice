@@ -134,7 +134,11 @@ export type FieldConfig = {
         | 'pendingVerification'
         | 'sowed'
         | 'sprouted'
+        | 'firstFlowers'
+        | 'firstFruitSet'
         | 'ready'
+        | 'harvested'
+        | 'notSprouted'
         | 'died'
         | 'deleted'
         | 'canceled';
