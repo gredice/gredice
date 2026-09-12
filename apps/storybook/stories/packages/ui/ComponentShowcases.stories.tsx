@@ -11,7 +11,6 @@ import {
     SignUpButton,
     UserButton,
 } from '@gredice/ui/auth';
-import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { BarcodeValue } from '@gredice/ui/Barcode';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { BlurText } from '@gredice/ui/BlurText';
@@ -65,6 +64,7 @@ import { ExpandableSearchInput } from '@gredice/ui/ExpandableSearchInput';
 import { FilterInput } from '@gredice/ui/FilterInput';
 import { Gallery } from '@gredice/ui/Gallery';
 import {
+    GameBackpackIcon as BackpackIcon,
     GameCameraIcon,
     GameHistoryIcon,
     GameInformationIcon,

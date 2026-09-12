@@ -1,4 +1,6 @@
+import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import {
+    GameBackpackIcon,
     GameCameraIcon,
     GameHistoryIcon,
     GameInformationIcon,
@@ -26,6 +28,21 @@ import { RaisedBedSimpleIcon } from '@gredice/ui/RaisedBedSimpleIcon';
 import { ShovelIcon } from '@gredice/ui/ShovelIcon';
 
 export const gameIconComparisons = [
+    {
+        name: 'Backpack',
+        before: BackpackIcon,
+        after: GameBackpackIcon,
+        usage: 'Inventory, operations, plant choices and shopping cart',
+        legacyName: 'BackpackIcon',
+        componentName: 'GameBackpackIcon',
+        sources: [
+            'packages/ui/src/GameIcons/GameBackpackIcon.tsx',
+            'packages/game/src/hud/InventoryHud.tsx',
+            'packages/game/src/hud/raisedBed/PlantsSortList.tsx',
+            'packages/game/src/hud/raisedBed/shared/OperationsListItem.tsx',
+            'packages/game/src/hud/components/shopping-cart/ShoppingCartItem.tsx',
+        ],
+    },
     {
         name: 'Mailbox',
         before: Inbox,
