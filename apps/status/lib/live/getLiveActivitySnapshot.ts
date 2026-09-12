@@ -2,7 +2,8 @@ import 'server-only';
 
 import { createHash } from 'node:crypto';
 import { unstable_cache } from 'next/cache';
-import pg from 'pg';
+import type pg from 'pg';
+import { createLiveActivityPool } from './createLiveActivityPool';
 import { domainLiveEventTypeEntries, liveEventCatalog } from './eventCatalog';
 import {
     type LiveActivityCategory,
@@ -12,7 +13,6 @@ import {
     liveActivitySources,
 } from './types';
 
-const { Pool } = pg;
 const EVENTS_PER_CATEGORY = 96;
 const SYSTEM_EVENT_LIMIT = 384;
 const SOURCE_WINDOW_HOURS = 3;
@@ -41,16 +41,6 @@ type LiveEventRow = {
 };
 
 let pool: pg.Pool | undefined;
-
-function normalizeConnectionString(connectionString: string) {
-    const url = new URL(connectionString);
-
-    if (url.searchParams.get('sslmode') === 'require') {
-        url.searchParams.set('sslmode', 'verify-full');
-    }
-
-    return url.toString();
-}
 
 function emptyCategoryTotals(): Record<LiveActivityCategory, number> {
     return {
@@ -91,12 +81,7 @@ function getPool() {
         return null;
     }
 
-    pool ??= new Pool({
-        connectionString: normalizeConnectionString(connectionString),
-        max: 2,
-        idleTimeoutMillis: 10_000,
-        connectionTimeoutMillis: 5_000,
-    });
+    pool ??= createLiveActivityPool(connectionString, 'read');
 
     return pool;
 }
