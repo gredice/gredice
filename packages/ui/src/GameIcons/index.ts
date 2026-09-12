@@ -1,3 +1,4 @@
+export { GameBackpackIcon } from './GameBackpackIcon';
 export { GameCameraIcon } from './GameCameraIcon';
 export { GameHistoryIcon } from './GameHistoryIcon';
 export { GameInformationIcon } from './GameInformationIcon';

@@ -1,7 +1,7 @@
-import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
 import { Chip } from '@gredice/ui/Chip';
 import {
+    GameBackpackIcon as BackpackIcon,
     GameRaisedBedIcon as RaisedBedIcon,
     GameSeedlingIcon as Sprout,
 } from '@gredice/ui/GameIcons';
