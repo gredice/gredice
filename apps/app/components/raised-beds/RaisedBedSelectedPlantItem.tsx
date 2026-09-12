@@ -2,6 +2,7 @@ import type { PlantSortData } from '@gredice/client';
 import { plantFieldStatusLabel } from '@gredice/js/plants';
 import type { RaisedBedPlantingWithFields } from '@gredice/storage';
 import { Chip } from '@gredice/ui/Chip';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import {
     RaisedBedPlantDetails,
     RaisedBedPlantItem,
@@ -55,7 +56,14 @@ export function RaisedBedSelectedPlantItem({
                 control ? (
                     <SelectedPlantingStatusControl control={control} compact />
                 ) : (
-                    <span className="rounded-md border px-2 py-1">
+                    <span className="inline-flex items-center gap-1 rounded-md border px-2 py-1">
+                        {planting.lifecycleStatus && (
+                            <GamePlantStatusIcon
+                                status={planting.lifecycleStatus}
+                                className="size-5 shrink-0"
+                                aria-hidden
+                            />
+                        )}
                         {planting.lifecycleStatus
                             ? plantFieldStatusLabel(planting.lifecycleStatus)
                                   .shortLabel

@@ -42,3 +42,11 @@ transition rules are baked into artwork. Use `aria-hidden` beside visible labels
 Review `packages/ui/Icons/PlantStatusIcons` for the full before/after set at
 20–64px, on light and dark backgrounds, alongside actual recommendation controls.
 The full game icon inventory includes a dedicated Plant statuses group.
+
+The same `GamePlantStatusIcon` is used by admin status selectors, planting
+controls, approvals and history; farm bed previews, greenhouse lists and status
+requests; and the public harvest timeline, calendar and growth controls. Keep
+status values and localized labels owned by each workflow. Render icons with
+`aria-hidden` beside visible status text, and use 20px in compact controls, 24px
+in menus and 32px in timeline badges. Plain-text notification messages may still
+use emoji because they cannot embed UI components.

@@ -56,7 +56,19 @@ test('new statuses default to today and returning to the current status restores
     await mount(<SelectedPlantingStatusControlHarness />);
     await page.getByRole('button', { name: 'Datum klijanja' }).click();
     await page.getByRole('combobox').click();
-    await page.getByRole('option', { name: 'Posijana', exact: true }).click();
+    const sowedOption = page.getByRole('option', {
+        name: 'Posijana',
+        exact: true,
+    });
+    await expect(
+        sowedOption.locator('[data-plant-status-icon="sowed"]'),
+    ).toBeVisible();
+    await sowedOption.locator('image').evaluate(async (element) => {
+        const image = new Image();
+        image.src = element.getAttribute('href') ?? '';
+        await image.decode();
+    });
+    await sowedOption.click();
     await expect(page.getByLabel('Datum stanja', { exact: true })).toHaveValue(
         '2026-08-02',
     );

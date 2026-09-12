@@ -3,6 +3,7 @@ import { plantFieldStatusLabel } from '@gredice/js/plants';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { expect } from 'storybook/test';
 
 const statusOrder = [
     'pendingVerification',
@@ -39,6 +40,27 @@ const meta = {
     args: {
         item: buildStatusItem('sprouted', 2),
     },
+    play: async ({ canvasElement }) => {
+        const icons = canvasElement.querySelectorAll(
+            '[data-plant-status-icon]',
+        );
+        await expect(icons.length).toBeGreaterThan(0);
+        await expect(canvasElement.textContent).toContain('12B');
+        await Promise.all(
+            Array.from(icons, async (icon) => {
+                await expect(icon).toHaveAttribute('aria-hidden', 'true');
+                const artwork = icon.querySelectorAll('image');
+                await expect(artwork.length).toBeGreaterThan(0);
+                await Promise.all(
+                    Array.from(artwork, async (element) => {
+                        const image = new Image();
+                        image.src = element.getAttribute('href') ?? '';
+                        await image.decode();
+                    }),
+                );
+            }),
+        );
+    },
     parameters: {
         docs: {
             description: {
@@ -56,7 +78,13 @@ type Story = StoryObj<typeof meta>;
 
 const statusItems = statusOrder.map(buildStatusItem);
 
-export const Default: Story = {};
+export const Default: Story = {
+    render: (args) => (
+        <div className="bg-background p-4 text-foreground">
+            <HarvestTraceStatusEvent {...args} />
+        </div>
+    ),
+};
 
 export const DarkModeAllStatuses: Story = {
     render: () => (

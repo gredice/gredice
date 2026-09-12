@@ -1,7 +1,4 @@
-import {
-    plantFieldStatusEmoji,
-    plantFieldStatusLabel,
-} from '@gredice/js/plants';
+import { plantFieldStatusLabel } from '@gredice/js/plants';
 import {
     type EntityStandardized,
     getEntitiesFormatted,
@@ -19,6 +16,7 @@ import {
     CardTitle,
 } from '@gredice/ui/Card';
 import { Chip, type ColorPaletteProp } from '@gredice/ui/Chip';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIdentifierIcon } from '@gredice/ui/RaisedBedIdentifierIcon';
 import { Row } from '@gredice/ui/Row';
@@ -336,9 +334,7 @@ async function GreenhousePageContent() {
                                         statusColor: getStatusColor(
                                             field.plantStatus,
                                         ),
-                                        statusEmoji: plantFieldStatusEmoji(
-                                            field.plantStatus ?? undefined,
-                                        ),
+                                        plantStatus: field.plantStatus,
                                         statusLabel: getStatusLabel(
                                             field.plantStatus,
                                         ),
@@ -407,12 +403,13 @@ async function GreenhousePageContent() {
                                                             )}
                                                             size="sm"
                                                             startDecorator={
-                                                                <span aria-hidden="true">
-                                                                    {plantFieldStatusEmoji(
-                                                                        field.plantStatus ??
-                                                                            undefined,
-                                                                    )}
-                                                                </span>
+                                                                <GamePlantStatusIcon
+                                                                    status={
+                                                                        field.plantStatus
+                                                                    }
+                                                                    className="size-5 shrink-0"
+                                                                    aria-hidden
+                                                                />
                                                             }
                                                         >
                                                             {getStatusLabel(
