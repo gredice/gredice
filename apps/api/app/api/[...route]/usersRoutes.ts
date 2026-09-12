@@ -1,4 +1,4 @@
-import { publicIdToUserId, userIdToPublicId } from '@gredice/js/publicId';
+import { publicIdToUserId } from '@gredice/js/publicId';
 import {
     getAccountAchievements,
     getAccountGardens,
@@ -26,6 +26,7 @@ import {
     MIN_BIRTH_YEAR,
     startOfUtcDay,
 } from '../../../lib/users/birthdayUtils';
+import { publicProfileUser } from '../../../lib/users/publicProfileUser';
 
 const currentYear = new Date().getUTCFullYear();
 const birthdaySchema = z
@@ -108,7 +109,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .get(
         '/public/:publicId/profile',
         describeRoute({
-            description: 'Get public user profile information by public ID.',
+            description:
+                'Get a public user profile by public ID, excluding login names and email addresses.',
             security: [{}, { bearerAuth: [] }, { cookieAuth: [] }],
         }),
         zValidator(
@@ -141,14 +143,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const visibleGardens = gardens.filter((garden) => garden.isPublic);
 
             return context.json({
-                user: {
-                    id: dbUser.id,
-                    publicId: userIdToPublicId(dbUser.id),
-                    userName: dbUser.userName,
-                    displayName: dbUser.displayName ?? dbUser.userName,
-                    avatarUrl: dbUser.avatarUrl,
-                    createdAt: dbUser.createdAt,
-                },
+                user: publicProfileUser(dbUser),
                 gardens: visibleGardens.map((garden) => ({
                     id: garden.id,
                     name: garden.name,
