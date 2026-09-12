@@ -3011,6 +3011,44 @@ test.describe('plant status transition menu', () => {
         });
     }
 
+    test('long growth menu stays inside the mobile plant drawer', async ({
+        mount,
+        page,
+    }, testInfo) => {
+        await page.setViewportSize(MOBILE_VIEWPORT);
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={plantedGrowingScenario()}
+                positionIndex={0}
+            />,
+        );
+        await page.getByRole('button').first().click();
+        await page
+            .getByRole('button', {
+                name: 'Promijeni stanje biljke: Proklijala',
+            })
+            .click();
+
+        const datePicker = page.getByRole('button', {
+            name: /Odaberi datum promjene:/,
+        });
+        await expect(datePicker).toBeInViewport({ ratio: 1 });
+        await expect(
+            page.getByRole('button', { name: 'Posijana', exact: true }),
+        ).toBeInViewport({ ratio: 1 });
+        const ready = page.getByRole('button', {
+            name: 'Spremna za berbu',
+            exact: true,
+        });
+        await ready.scrollIntoViewIfNeeded();
+        await expect(ready).toBeInViewport({ ratio: 1 });
+        await expect(datePicker).toBeInViewport({ ratio: 1 });
+        await testInfo.attach('mobile-growth-status-menu', {
+            body: await page.screenshot(),
+            contentType: 'image/png',
+        });
+    });
+
     for (const target of [
         { status: 'ready', label: 'Spremna za berbu' },
         { status: 'died', label: 'Neuspjela' },

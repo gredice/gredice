@@ -51,9 +51,18 @@ export function RaisedBedFieldStatusChange({
     const [statusToConfirm, setStatusToConfirm] = useState<string | null>(null);
     const [datePickerContainer, setDatePickerContainer] =
         useState<HTMLElement>();
+    const [statusChangeBoundary, setStatusChangeBoundary] = useState<Element>();
     const handleDatePickerContainerRef = useCallback(
         (node: HTMLDivElement | null) => {
             setDatePickerContainer(node ?? undefined);
+            // The popover is portaled inside the plant modal. Its menu must
+            // fit that modal's clipping boundary, including the mobile drawer.
+            const popover = node?.closest('[role="dialog"]');
+            setStatusChangeBoundary(
+                popover?.parentElement?.closest(
+                    '[role="dialog"], [role="alertdialog"]',
+                ) ?? undefined,
+            );
         },
         [],
     );
@@ -101,10 +110,12 @@ export function RaisedBedFieldStatusChange({
             trigger={trigger}
             side="bottom"
             sideOffset={12}
-            className="w-80 border-tertiary border-b-4 p-4"
+            collisionBoundary={statusChangeBoundary}
+            className="flex max-h-(--available-height) w-80 flex-col border-tertiary border-b-4 p-4"
         >
-            <Stack spacing={4} className="relative">
+            <Stack spacing={4} className="relative min-h-0">
                 <Row
+                    className="shrink-0"
                     spacing={2}
                     justifyContent="space-between"
                     alignItems="center"
@@ -146,7 +157,7 @@ export function RaisedBedFieldStatusChange({
                 {hasAllowedNextStatuses ? (
                     <List
                         variant="outlined"
-                        className="bg-card overflow-hidden"
+                        className="min-h-0 overflow-y-auto overscroll-contain bg-card"
                     >
                         {allowedNextStatuses?.map((nextStatus) => {
                             const statusInfo =
