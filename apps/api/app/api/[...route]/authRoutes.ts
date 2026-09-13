@@ -106,6 +106,7 @@ type CurrentSessionClaims = {
 };
 
 type CurrentClaims = CurrentSessionClaims & {
+    achievementCount: number;
     publicId: string;
     displayName: string;
     avatarUrl: string | null;
@@ -150,6 +151,7 @@ function currentClaimsFromUser(
         userName: user.userName,
         displayName: user.displayName ?? user.userName,
         avatarUrl: user.avatarUrl,
+        achievementCount: user.achievementCount,
         role: user.role,
         accountIds: user.accounts.map((account) => account.accountId),
         isTemporary: user.isTemporary,

@@ -143,6 +143,13 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             ),
                         },
                         {
+                            label: 'Korisnici',
+                            href: publicChromeHref(
+                                PublicPagePaths.Users,
+                                linkMode,
+                            ),
+                        },
+                        {
                             label: 'Pozadine',
                             href: publicChromeHref(
                                 PublicPagePaths.Wallpapers,

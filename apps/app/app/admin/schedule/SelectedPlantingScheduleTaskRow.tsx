@@ -51,7 +51,7 @@ import type { AdminSelectedPlantingScheduleItem } from './selectedPlantingSchedu
 
 type AssignableUser = Pick<
     RaisedBedFieldAssignableFarmUser,
-    'avatarUrl' | 'displayName' | 'id' | 'userName'
+    'avatarUrl' | 'displayName' | 'id' | 'userName' | 'achievementCount'
 >;
 
 type MutableLifecycleStatus = Exclude<
@@ -194,6 +194,7 @@ function SelectedPlantingAssignmentModal({
                 <Row spacing={-2}>
                     {assignedUsers.slice(0, 2).map((user) => (
                         <UserAvatar
+                            achievementCount={user.achievementCount}
                             avatarUrl={user.avatarUrl}
                             className="size-6 ring-1 ring-background"
                             displayName={user.displayName ?? user.userName}

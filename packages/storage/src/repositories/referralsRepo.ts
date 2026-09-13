@@ -5,6 +5,7 @@ import { accounts, accountUsers, events, raisedBeds, users } from '../schema';
 import { storage } from '../storage';
 import { knownEventTypes } from './events';
 import type { ScheduleTaskTransaction } from './scheduleTaskTransactionsRepo';
+import { userAchievementCount } from './userAchievementProgress';
 
 export const REFERRAL_REWARD_AMOUNT = 10000;
 
@@ -65,6 +66,7 @@ export type ReferralAccountSummary = {
     id: string;
     displayName: string;
     avatarUrl: string | null;
+    achievementCount?: number;
 };
 
 export type AccountReferralState = {
@@ -322,6 +324,7 @@ async function getReferralAccountSummaries(accountIds: string[]) {
             displayName: users.displayName,
             userName: users.userName,
             avatarUrl: users.avatarUrl,
+            achievementCount: userAchievementCount(users.id),
         })
         .from(accountUsers)
         .innerJoin(users, eq(accountUsers.userId, users.id))
@@ -341,6 +344,7 @@ async function getReferralAccountSummaries(accountIds: string[]) {
                 accountUser.userName ??
                 'Gredice račun',
             avatarUrl: accountUser.avatarUrl ?? null,
+            achievementCount: accountUser.achievementCount,
         });
     }
 

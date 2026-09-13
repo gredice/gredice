@@ -17,7 +17,7 @@ const missingAssignedUserLabel = 'Trenutno dodijeljeni korisnik';
 
 type AssignableUser = Pick<
     RaisedBedFieldAssignableFarmUser,
-    'id' | 'userName' | 'displayName' | 'avatarUrl'
+    'id' | 'userName' | 'displayName' | 'avatarUrl' | 'achievementCount'
 >;
 
 interface AssignRaisedBedFieldModalProps {
@@ -155,6 +155,7 @@ export function AssignRaisedBedFieldModal({
                 <Row spacing={-2}>
                     {selectedUsers.slice(0, 2).map((selectedUser) => (
                         <UserAvatar
+                            achievementCount={selectedUser.achievementCount}
                             key={selectedUser.id}
                             avatarUrl={selectedUser.avatarUrl}
                             displayName={

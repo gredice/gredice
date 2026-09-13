@@ -1,3 +1,4 @@
+import { getAchievementProgress } from '@gredice/js/achievements';
 import { Link } from '../Link';
 import { UserAvatar, type UserAvatarProps } from './UserAvatar';
 
@@ -9,7 +10,11 @@ export function UserAvatarLink({
         return <UserAvatar {...avatarProps} />;
     }
 
-    const label = `Otvori profil: ${avatarProps.displayName}`;
+    const levelLabel =
+        avatarProps.achievementCount === undefined
+            ? ''
+            : `, razina ${getAchievementProgress(avatarProps.achievementCount).level}`;
+    const label = `Otvori profil: ${avatarProps.displayName}${levelLabel}`;
 
     return (
         <Link

@@ -18,7 +18,7 @@ import { assignOperationUserAction } from '../../(actions)/operationActions';
 
 type AssignableUser = Pick<
     OperationAssignableFarmUser,
-    'id' | 'userName' | 'displayName' | 'avatarUrl'
+    'id' | 'userName' | 'displayName' | 'avatarUrl' | 'achievementCount'
 >;
 
 interface AssignOperationModalProps {
@@ -137,6 +137,7 @@ export function AssignOperationModal({
                 <Row spacing={-2}>
                     {(assignedUsers ?? []).slice(0, 2).map((assignedUser) => (
                         <UserAvatar
+                            achievementCount={assignedUser.achievementCount}
                             key={assignedUser.id}
                             avatarUrl={assignedUser.avatarUrl}
                             displayName={

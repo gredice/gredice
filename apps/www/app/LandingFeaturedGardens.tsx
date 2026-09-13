@@ -107,6 +107,7 @@ export function LandingFeaturedGardens({
             ? {
                   publicId: user.publicId,
                   avatarUrl: user.avatarUrl ?? null,
+                  achievementCount: user.achievementCount,
                   displayName: user.displayName ?? 'Korisnik Gredica',
               }
             : null;
@@ -408,6 +409,10 @@ export function LandingFeaturedGardens({
                                 <div className="mt-1 flex min-w-0 items-center gap-2 md:mt-3 md:flex-wrap md:gap-2.5">
                                     {displayedGarden.owner ? (
                                         <UserAvatarLink
+                                            achievementCount={
+                                                displayedGarden.owner
+                                                    .achievementCount
+                                            }
                                             href={
                                                 displayedGarden.owner.publicId
                                                     ? publicUserProfileHref(

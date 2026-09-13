@@ -249,6 +249,7 @@ export default async function OperationDetailsPage({
                             spacing={2}
                         >
                             <UserAvatar
+                                achievementCount={user.achievementCount}
                                 avatarUrl={user.avatarUrl}
                                 displayName={displayName}
                                 className="size-6 shrink-0"

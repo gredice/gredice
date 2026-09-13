@@ -117,6 +117,7 @@ export * from './repositories/timeSlotsRepo';
 export * from './repositories/transactionsRepo';
 export * from './repositories/tutorialChecklistRepo';
 export * from './repositories/userFavoritesRepo';
+export * from './repositories/userLeaderboardRepo';
 export * from './repositories/usersRepo';
 export * from './repositories/weatherHistoryRepo';
 export * from './schema';

@@ -28,6 +28,7 @@ export function NavUserButton({
                                 : undefined
                         }
                         avatarUrl={user.avatarUrl}
+                        achievementCount={user.achievementCount}
                         displayName={user.displayName ?? user.userName}
                         animate
                     />

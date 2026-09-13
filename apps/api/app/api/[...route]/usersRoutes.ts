@@ -4,12 +4,14 @@ import {
     getAccountGardens,
     getLastBirthdayRewardEvent,
     getUser,
+    getUserAchievementLeaderboard,
     getUserWithLogins,
     updateUser,
 } from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import { publicSecurity } from '../../../lib/docs/security';
 import {
     type AuthVariables,
     authValidator,
@@ -107,6 +109,19 @@ function getUpdatedProfileFields(input: {
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
+        '/public/leaderboard',
+        describeRoute({
+            description:
+                'Get the top 10 non-temporary users by approved achievements on their primary account. Equal scores use registration date, then user ID. Each achievement earns 100 XP. Only public profile fields are returned.',
+            security: publicSecurity,
+        }),
+        async (context) => {
+            const users = await getUserAchievementLeaderboard();
+            context.header('Cache-Control', 'no-store');
+            return context.json({ items: users.map(publicProfileUser) });
+        },
+    )
+    .get(
         '/public/:publicId/profile',
         describeRoute({
             description:
@@ -190,6 +205,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 userName: dbUser.userName,
                 displayName: dbUser.displayName ?? dbUser.userName,
                 avatarUrl: dbUser.avatarUrl,
+                achievementCount: dbUser.achievementCount,
                 isTemporary: dbUser.isTemporary,
                 birthday:
                     dbUser.birthdayMonth && dbUser.birthdayDay

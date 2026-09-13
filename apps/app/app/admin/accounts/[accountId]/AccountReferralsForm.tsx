@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReferralAccountSummary } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
 import { Input } from '@gredice/ui/Input';
 import { Clear, Save } from '@gredice/ui/icons';
@@ -21,11 +22,7 @@ type AccountReferralsFormProps = {
     currentCode: string | null;
     usedReferral: {
         code: string;
-        account: {
-            id: string;
-            displayName: string;
-            avatarUrl: string | null;
-        } | null;
+        account: ReferralAccountSummary | null;
     } | null;
 };
 
@@ -111,6 +108,7 @@ export function AccountReferralsForm({
                 {usedReferral ? (
                     <div className="flex items-center gap-3 rounded-md border bg-muted/30 p-3">
                         <UserAvatar
+                            achievementCount={referrerAccount?.achievementCount}
                             avatarUrl={referrerAccount?.avatarUrl}
                             displayName={
                                 referrerAccount?.displayName ?? 'Nepoznat račun'

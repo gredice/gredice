@@ -4,7 +4,11 @@ import { config } from './playwright.config';
 
 export default defineConfig({
     ...config,
-    testMatch: ['public-profile.spec.tsx', 'avatar-profile-links.spec.tsx'],
+    testMatch: [
+        'public-profile.spec.tsx',
+        'avatar-profile-links.spec.tsx',
+        'user-leaderboard.spec.tsx',
+    ],
     testIgnore: [],
     webServer: undefined,
     use: {
