@@ -77,10 +77,16 @@ remaining fields instead of claiming whole-bed coverage.
 and applied operation statuses for mulch, supports, agrotextile and insect mesh.
 It processes applications and removals by completion time (creation time fallback,
 then operation ID), resolving each family at each physical field. Bed additions
-include empty fields and survive replanting. Field treatments marked
-`appliesToEmptyFields` also persist on empty or replanted fields; other field
-additions belong to the active plant cycle. Selected-planting operations follow
-that planting's exact memberships.
+include empty fields. Removing a plant clears all earlier additions at its physical
+field, including inherited whole-bed coverage. Legacy removal dates are read from
+all field cycles; selected-planting removals clear the exact membership footprint.
+This cleanup persists through replanting. Only an application strictly after the
+removal restores coverage; equal timestamps favor cleanup. Harvested/dead plants,
+failed germination and cancelled plans do not imply physical removal.
+Field treatments marked `appliesToEmptyFields` can be applied to an empty field
+and remain when it is planted, until a later removal. Other field additions belong
+to the active plant cycle. Selected-planting operations follow that planting's
+exact memberships.
 Missing plant targets are never promoted to whole-bed coverage. Pending
 verification is visibly distinguished; planned, cancelled and unrelated operations
 are excluded. This is a projection of recorded operations, not a physical inventory.

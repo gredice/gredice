@@ -21,7 +21,12 @@ type AddonField = {
     id: number;
     positionIndex: number;
     active?: boolean | null;
-    plantCycles?: Array<{ active: boolean; startedAt: Date | string }>;
+    plantRemovedDate?: Date | string | null;
+    plantCycles?: Array<{
+        active: boolean;
+        startedAt: Date | string;
+        plantRemovedDate?: Date | string | null;
+    }>;
 };
 
 function timestamp(value: Date | string | null | undefined) {
@@ -47,6 +52,8 @@ export function resolveRaisedBedAddons({
         isActive: boolean;
         isDeleted?: boolean;
         lifecycleStartedAt: Date | string;
+        lifecycleStatus?: string | null;
+        lifecycleStoppedAt?: Date | string | null;
         memberships: Array<{ raisedBedField: { positionIndex: number } }>;
     }>;
     operations: Array<
@@ -61,6 +68,39 @@ export function resolveRaisedBedAddons({
             new Map<string, RaisedBedAddon>(),
         ]),
     );
+    const removedAtByPosition = new Map<number, number>();
+    const recordRemoval = (
+        position: number,
+        removedAt: Date | string | null | undefined,
+    ) => {
+        const removedTimestamp = timestamp(removedAt);
+        if (removedTimestamp !== null) {
+            removedAtByPosition.set(
+                position,
+                Math.max(
+                    removedAtByPosition.get(position) ?? -Infinity,
+                    removedTimestamp,
+                ),
+            );
+        }
+    };
+    // Physical cleanup belongs to the position, including after it is replanted.
+    for (const field of fields) {
+        recordRemoval(field.positionIndex + 1, field.plantRemovedDate);
+        for (const cycle of field.plantCycles ?? []) {
+            recordRemoval(field.positionIndex + 1, cycle.plantRemovedDate);
+        }
+    }
+    for (const planting of plantings) {
+        // Harvested/dead plants and cancelled plans are not physical removals.
+        if (planting.lifecycleStatus !== 'removed') continue;
+        for (const membership of planting.memberships) {
+            recordRemoval(
+                membership.raisedBedField.positionIndex + 1,
+                planting.lifecycleStoppedAt,
+            );
+        }
+    }
     const ordered = operations
         .flatMap((operation) => {
             const appliedAt =
@@ -148,6 +188,10 @@ export function resolveRaisedBedAddons({
             positionNumbers: [],
         };
         for (const position of positions) {
+            // Removal clears every family, even inherited whole-bed coverage.
+            // At equal timestamps cleanup wins; only a later application restores it.
+            if (appliedAt <= (removedAtByPosition.get(position) ?? -Infinity))
+                continue;
             const current = byPosition.get(position);
             if (getOperationVisualRewardPolarity(kind) === 'remove')
                 current?.delete(family);
