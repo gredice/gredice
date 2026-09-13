@@ -8,6 +8,9 @@ declare global {
                 raisedBedId: FormDataEntryValue | null;
                 positionIndex: FormDataEntryValue | null;
                 status: FormDataEntryValue | null;
+                plantingId?: FormDataEntryValue | null;
+                expectedLifecycleVersionEventId?: FormDataEntryValue | null;
+                expectedPlantSortId?: FormDataEntryValue | null;
             };
         };
     }
@@ -22,6 +25,15 @@ export async function requestPlantStateChangeAction(
         raisedBedId: formData.get('raisedBedId'),
         positionIndex: formData.get('positionIndex'),
         status: formData.get('status'),
+        ...(formData.has('plantingId')
+            ? {
+                  plantingId: formData.get('plantingId'),
+                  expectedLifecycleVersionEventId: formData.get(
+                      'expectedLifecycleVersionEventId',
+                  ),
+                  expectedPlantSortId: formData.get('expectedPlantSortId'),
+              }
+            : {}),
     };
     return window.plantStateTest.fail
         ? {

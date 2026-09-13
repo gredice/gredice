@@ -548,7 +548,25 @@ export type PlantStatusApprovalTarget = {
     effectiveAt?: string | null;
 };
 
-export type ApprovalRequestTarget = PlantStatusApprovalTarget;
+export type SelectedPlantStatusApprovalTarget = Omit<
+    PlantStatusApprovalTarget,
+    | 'kind'
+    | 'raisedBedFieldId'
+    | 'plantCycleEventId'
+    | 'plantCycleVersionEventId'
+    | 'plantSortId'
+    | 'currentStatus'
+> & {
+    kind: 'raisedBedPlanting.plantStatus';
+    plantingId: number;
+    lifecycleVersionEventId: number;
+    plantSortId: number;
+    currentStatus: string;
+};
+
+export type ApprovalRequestTarget =
+    | PlantStatusApprovalTarget
+    | SelectedPlantStatusApprovalTarget;
 
 export type ApprovalRequestCreatePayload = {
     target: ApprovalRequestTarget;

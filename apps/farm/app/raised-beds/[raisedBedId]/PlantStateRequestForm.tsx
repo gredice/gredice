@@ -1,6 +1,10 @@
 'use client';
 
-import { plantFieldStatusLabel } from '@gredice/js/plants';
+import {
+    getImageObservablePlantStatusTargets,
+    plantFieldStatusLabel,
+} from '@gredice/js/plants';
+import type { SelectedRaisedBedPlantingTaskCommandIdentity } from '@gredice/storage';
 import { Chip } from '@gredice/ui/Chip';
 import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { Down } from '@gredice/ui/icons';
@@ -34,7 +38,9 @@ export function PlantStateRequestForm({
     positionIndex,
     currentStatus,
     pendingRequestedStatus,
+    selectedIdentity,
 }: {
+    selectedIdentity?: SelectedRaisedBedPlantingTaskCommandIdentity;
     raisedBedId: number;
     positionIndex: number;
     currentStatus?: string | null;
@@ -45,7 +51,18 @@ export function PlantStateRequestForm({
         PlantStateRequestActionState,
         FormData
     >(requestPlantStateChangeAction, null);
-    const groups = getPlantFieldStatusChangeGroups(currentStatus);
+    const groups = getPlantFieldStatusChangeGroups(currentStatus)
+        .map((group) => ({
+            ...group,
+            statuses: selectedIdentity
+                ? group.statuses.filter((status) =>
+                      getImageObservablePlantStatusTargets(
+                          currentStatus,
+                      ).includes(status),
+                  )
+                : group.statuses,
+        }))
+        .filter((group) => group.statuses.length > 0);
 
     useEffect(() => {
         if (state?.success) {
@@ -148,6 +165,27 @@ export function PlantStateRequestForm({
                     name="positionIndex"
                     value={positionIndex}
                 />
+                {selectedIdentity && (
+                    <>
+                        <input
+                            type="hidden"
+                            name="plantingId"
+                            value={selectedIdentity.plantingId}
+                        />
+                        <input
+                            type="hidden"
+                            name="expectedLifecycleVersionEventId"
+                            value={
+                                selectedIdentity.expectedLifecycleVersionEventId
+                            }
+                        />
+                        <input
+                            type="hidden"
+                            name="expectedPlantSortId"
+                            value={selectedIdentity.expectedPlantSortId}
+                        />
+                    </>
+                )}
                 <Stack spacing={2}>
                     <Row spacing={1} className="items-center">
                         <GamePlantStatusIcon

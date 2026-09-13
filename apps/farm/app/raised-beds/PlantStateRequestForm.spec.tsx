@@ -101,3 +101,74 @@ test('long status chips stay inside a narrow mobile field', async ({
         ),
     ).toBe(true);
 });
+
+for (const width of [320, 1024]) {
+    test(`selected planting submits exact identity and only valid transitions at ${width}px`, async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize({ width, height: 800 });
+        const selectedIdentity = {
+            kind: 'selected' as const,
+            plantingId: 921,
+            expectedPlantSortId: 83,
+            expectedLifecycleVersionEventId: 456,
+        };
+        const component = await mount(
+            <PlantStateRequestForm
+                raisedBedId={9}
+                positionIndex={12}
+                currentStatus="sowed"
+                selectedIdentity={selectedIdentity}
+            />,
+        );
+        await page
+            .getByRole('button', { name: /Promijeni stanje biljke/ })
+            .click();
+        await expect(
+            page.getByRole('button', {
+                name: 'Zatraži promjenu u Proklijala',
+                exact: true,
+            }),
+        ).toBeVisible();
+        await expect(
+            page.getByRole('button', {
+                name: 'Zatraži promjenu u Nije proklijala',
+                exact: true,
+            }),
+        ).toBeVisible();
+        await expect(
+            page.getByRole('button', { name: /^Zatraži promjenu/ }),
+        ).toHaveCount(2);
+        await page
+            .getByRole('button', {
+                name: 'Zatraži promjenu u Proklijala',
+                exact: true,
+            })
+            .click();
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+        expect(
+            await page.evaluate(() => window.plantStateTest?.submission),
+        ).toEqual({
+            raisedBedId: '9',
+            positionIndex: '12',
+            status: 'sprouted',
+            plantingId: '921',
+            expectedPlantSortId: '83',
+            expectedLifecycleVersionEventId: '456',
+        });
+        await component.update(
+            <PlantStateRequestForm
+                raisedBedId={9}
+                positionIndex={12}
+                currentStatus="sowed"
+                selectedIdentity={selectedIdentity}
+                pendingRequestedStatus="sprouted"
+            />,
+        );
+        await expect(
+            page.getByRole('button', { name: 'Posijana', exact: true }),
+        ).toBeDisabled();
+        await expect(page.getByText('Čeka: Proklijala')).toBeVisible();
+    });
+}
