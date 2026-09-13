@@ -1,8 +1,8 @@
-import { animated, useSpring } from '@react-spring/three';
 import { useGameSceneDetails } from '../../GameSceneDetailContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useRaisedBedOperationVisualRewards } from '../../hooks/useRaisedBedOperationVisualRewards';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
+import { animated, useSpring } from '../../scene/sceneSpring';
 import { useGameState } from '../../useGameState';
 import {
     findRaisedBedByBlockId,

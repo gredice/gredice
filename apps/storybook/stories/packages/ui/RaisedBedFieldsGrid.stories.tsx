@@ -15,3 +15,9 @@ export const MixedPlantings: Story = {};
 export const Mobile: Story = {
     globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
+
+export const CompactFarm: Story = { args: { compact: true } };
+export const CompactFarmMobile: Story = {
+    args: { compact: true },
+    globals: { viewport: { value: 'mobile1', isRotated: false } },
+};

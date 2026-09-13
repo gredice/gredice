@@ -10,7 +10,7 @@ not a warning and must not be inferred from today's catalogue.
 | --- | --- |
 | Admin raised-bed detail | Shared `RaisedBedFieldsGrid`, `RaisedBedPlantItem`, and `RaisedBedPlantDetails`; field controls and planting actions retain their original command identities. |
 | Farm raised-bed detail | The same grid and plant components; legacy status requests remain available and selected status remains read-only, matching the existing Farm permissions. Completed plantings are behind history, not a second active-planting card. |
-| Farm raised-bed overview | Compact previews use the same footprint grouping and show all companion plants. |
+| Farm raised-bed overview | Compact previews use the same footprint grouping and show all companion plants. Beds keep three columns on every screen, with missing physical identifiers reserved and identifier 1 at the bottom-right. |
 | Admin and Farm greenhouse | One row per occupancy record, all field numbers, and optional `RaisedBedPlantingFacts`; mobile and desktop receive the same facts. |
 | Garden field HUD | Existing `RaisedBedFieldItemPlanted` modal (Biljka, Dnevnik, Radnje) for both methods, the existing plant-grid icon beside the count, a numbered footprint only for multi-field plantings, and explicit plant selection per field. Selected sowing tasks reuse the operation card and reschedule/cancel dialogs; the default plant tab has no editing forms. Overlapping footprints contribute to one field selector. Pending cart controls remain accessible. |
 | Schedule and approvals | Keep their task presentation and role-specific completion/approval controls. Selected task labels already include saved count, density, footprint, and spacing; these are task views rather than a second planting inventory. |
@@ -23,8 +23,14 @@ not a warning and must not be inferred from today's catalogue.
   boundary. It retains all physical cells while joining the bounding rectangles
   of shared plantings. Companion and empty cells inside a group keep explicit
   field numbers. Each active planting appears once within its group.
-- Desktop and tablet use three physical columns; phones stack the groups without
-  horizontal clipping. Compact overview previews keep their spatial arrangement.
+- Farm uses the compact grid on every screen, retaining three physical columns.
+  Admin retains the default responsive grid, stacking groups on phones.
+- Farm detail places each planting's date/details trigger in its anchor field
+  header. An unsowed planting shows “Nije posijano”; no sowing date is inferred.
+  Single-field items omit the repeated field number. Multi-field groups retain
+  planting membership labels, including companions and empty fields.
+- Farm status requests use outlined chips with full-size illustrated icons.
+  The greenhouse uses the same light outlined treatment on desktop and mobile.
 - Garden builds each field's selectors from actual memberships, including
   plantings with different overlapping footprints. Tabs only include plants that
   occupy the selected field.

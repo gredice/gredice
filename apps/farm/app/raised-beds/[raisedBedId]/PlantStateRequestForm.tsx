@@ -1,7 +1,6 @@
 'use client';
 
 import { plantFieldStatusLabel } from '@gredice/js/plants';
-import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
 import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { Down } from '@gredice/ui/icons';
@@ -35,12 +34,10 @@ export function PlantStateRequestForm({
     positionIndex,
     currentStatus,
     pendingRequestedStatus,
-    compact = false,
 }: {
     raisedBedId: number;
     positionIndex: number;
     currentStatus?: string | null;
-    compact?: boolean;
     pendingRequestedStatus?: string | null;
 }) {
     const [open, setOpen] = useState(false);
@@ -73,40 +70,41 @@ export function PlantStateRequestForm({
 
         return (
             <Stack spacing={1} className="items-start">
-                <Button
-                    type="button"
-                    variant="plain"
+                <Chip
+                    variant="outlined"
                     color="neutral"
                     size="sm"
                     disabled
-                    className={
-                        compact
-                            ? 'h-8 justify-start border border-input bg-background px-2 text-left shadow-xs'
-                            : 'h-auto justify-start px-1 py-1 text-left'
-                    }
+                    className="whitespace-normal text-left"
+                    onClick={() => {}}
                     startDecorator={
                         <GamePlantStatusIcon
                             status={currentStatus}
-                            className="size-5 shrink-0"
+                            className="size-5! shrink-0"
                             aria-hidden
                         />
                     }
                 >
-                    {currentStatusLabel}
-                </Button>
+                    <span className="min-w-0 [overflow-wrap:anywhere]">
+                        {currentStatusLabel}
+                    </span>
+                </Chip>
                 <Chip
                     color="warning"
                     size="sm"
-                    variant="soft"
+                    variant="outlined"
+                    className="whitespace-normal text-left"
                     startDecorator={
                         <GamePlantStatusIcon
                             status={pendingRequestedStatus}
-                            className="size-5 shrink-0"
+                            className="size-5! shrink-0"
                             aria-hidden
                         />
                     }
                 >
-                    Čeka: {pendingStatusLabel}
+                    <span className="min-w-0 [overflow-wrap:anywhere]">
+                        Čeka: {pendingStatusLabel}
+                    </span>
                 </Chip>
             </Stack>
         );
@@ -117,30 +115,26 @@ export function PlantStateRequestForm({
             open={open}
             onOpenChange={setOpen}
             trigger={
-                <Button
-                    type="button"
-                    variant="plain"
-                    color="primary"
+                <Chip
+                    variant="outlined"
+                    color="neutral"
                     size="sm"
-                    className={
-                        compact
-                            ? 'h-8 justify-start border border-input bg-background px-2 text-left shadow-xs'
-                            : 'h-auto justify-start px-1 py-1 text-left'
-                    }
+                    className="whitespace-normal text-left"
+                    onClick={() => {}}
                     aria-label={`Promijeni stanje biljke. Trenutno stanje: ${currentStatusLabel}`}
                     startDecorator={
                         <GamePlantStatusIcon
                             status={currentStatus}
-                            className="size-5 shrink-0"
+                            className="size-5! shrink-0"
                             aria-hidden
                         />
                     }
-                    endDecorator={
-                        <Down className="size-3.5 shrink-0" aria-hidden />
-                    }
                 >
-                    {currentStatusLabel}
-                </Button>
+                    <span className="min-w-0 [overflow-wrap:anywhere]">
+                        {currentStatusLabel}
+                    </span>
+                    <Down className="size-3 shrink-0" aria-hidden />
+                </Chip>
             }
             side="bottom"
             align="start"
@@ -158,7 +152,7 @@ export function PlantStateRequestForm({
                     <Row spacing={1} className="items-center">
                         <GamePlantStatusIcon
                             status={currentStatus}
-                            className="size-5 shrink-0"
+                            className="size-5! shrink-0"
                             aria-hidden
                         />
                         <Typography level="body3" secondary>

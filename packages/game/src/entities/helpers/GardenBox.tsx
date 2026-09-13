@@ -1,7 +1,7 @@
-import { animated, useSpring } from '@react-spring/three';
 import { useDeferredSingleClick } from '../../controls/useDeferredSingleClick';
 import { useHoveredBlockStore } from '../../controls/useHoveredBlockStore';
 import { RainWetOverlay } from '../../rain/RainWetOverlay';
+import { animated, useSpring } from '../../scene/sceneSpring';
 import { SnowOverlay } from '../../snow/SnowOverlay';
 import { snowPresets } from '../../snow/snowPresets';
 import type { EntityInstanceProps } from '../../types/runtime/EntityInstanceProps';
@@ -42,6 +42,9 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
     const showHoverOutline =
         !isLocalSandbox && ((!hasActiveDragPreview && hovered) || isLidOpen);
     const { rotation: lidRotation } = useSpring({
+        from: {
+            rotation: [isLidOpen ? lidOpenRotation : lidClosedRotation, 0, 0],
+        },
         config: {
             mass: 0.18,
             tension: 260,

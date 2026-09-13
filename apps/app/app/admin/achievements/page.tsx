@@ -3,6 +3,7 @@ import {
     getAchievementDefinitions,
 } from '@gredice/js/achievements';
 import { getAchievements } from '@gredice/storage';
+import { AchievementAward } from '@gredice/ui/AchievementAwards';
 import { Button } from '@gredice/ui/Button';
 import {
     Card,
@@ -154,28 +155,37 @@ export default async function AchievementsPage({
                                                 spacing={2}
                                                 className="min-w-0 flex-1"
                                             >
-                                                <Stack spacing={1}>
-                                                    <Typography
-                                                        level="body2"
-                                                        component="h3"
-                                                        semiBold
-                                                        className="min-w-0 break-words"
-                                                    >
-                                                        {definition?.title ??
-                                                            achievement.achievementKey}
-                                                    </Typography>
-                                                    {definition?.description ? (
+                                                <div className="flex items-start gap-3">
+                                                    <AchievementAward
+                                                        achievementKey={
+                                                            achievement.achievementKey
+                                                        }
+                                                        className="size-12 shrink-0"
+                                                        aria-hidden
+                                                    />
+                                                    <Stack spacing={1}>
                                                         <Typography
-                                                            level="body3"
-                                                            secondary
+                                                            level="body2"
+                                                            component="h3"
+                                                            semiBold
                                                             className="min-w-0 break-words"
                                                         >
-                                                            {
-                                                                definition.description
-                                                            }
+                                                            {definition?.title ??
+                                                                achievement.achievementKey}
                                                         </Typography>
-                                                    ) : null}
-                                                </Stack>
+                                                        {definition?.description ? (
+                                                            <Typography
+                                                                level="body3"
+                                                                secondary
+                                                                className="min-w-0 break-words"
+                                                            >
+                                                                {
+                                                                    definition.description
+                                                                }
+                                                            </Typography>
+                                                        ) : null}
+                                                    </Stack>
+                                                </div>
                                                 <Typography
                                                     component="div"
                                                     level="body3"

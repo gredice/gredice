@@ -6,7 +6,7 @@ export function AchievementsTab() {
     return (
         <Stack spacing={8}>
             <Typography level="h4" className="hidden md:block">
-                🏆 Postignuća
+                Postignuća
             </Typography>
             <AchievementsOverview />
         </Stack>
