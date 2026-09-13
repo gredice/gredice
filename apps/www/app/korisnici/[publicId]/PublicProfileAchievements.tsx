@@ -1,3 +1,8 @@
+import { getAchievementFamilies } from '@gredice/js/achievements';
+import {
+    AchievementAward,
+    AchievementLevelLabel,
+} from '@gredice/ui/AchievementAwards';
 import {
     type getPublicProfile,
     getTopPublicAchievements,
@@ -7,6 +12,7 @@ export function PublicProfileAchievements({
     achievements,
 }: Pick<Awaited<ReturnType<typeof getPublicProfile>>, 'achievements'>) {
     const topAchievements = getTopPublicAchievements(achievements);
+    const families = getAchievementFamilies(achievements);
 
     return (
         <section
@@ -26,17 +32,25 @@ export function PublicProfileAchievements({
                             key={definition.category}
                             className="flex w-[calc(50%-0.75rem)] max-w-44 flex-col items-center gap-3"
                         >
-                            <span
-                                aria-hidden="true"
-                                className="flex size-20 items-center justify-center rounded-full border-4 border-yellow-400 bg-yellow-100 text-3xl shadow-[0_4px_0_0_theme(colors.yellow.600)] dark:border-yellow-600 dark:bg-yellow-900/30"
-                            >
-                                🏆
-                            </span>
+                            <AchievementAward
+                                achievementKey={definition.key}
+                                className="size-28 sm:size-32"
+                                aria-hidden
+                            />
+                            <AchievementLevelLabel
+                                level={definition.level}
+                                total={
+                                    families.find(
+                                        (family) =>
+                                            family.key === definition.familyKey,
+                                    )?.levels.length ?? definition.level
+                                }
+                            />
                             <div>
                                 <h3 className="font-semibold">
                                     {definition.title}
                                 </h3>
-                                <p className="mt-1 text-sm text-muted-foreground">
+                                <p className="mt-1 text-sm text-foreground/75">
                                     {definition.description}
                                 </p>
                             </div>
@@ -44,7 +58,7 @@ export function PublicProfileAchievements({
                     ))}
                 </ul>
             ) : (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-foreground/75">
                     Još nema otključanih postignuća.
                 </p>
             )}

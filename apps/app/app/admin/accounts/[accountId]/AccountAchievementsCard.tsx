@@ -1,5 +1,6 @@
 import { getAchievementDefinition } from '@gredice/js/achievements';
 import { getAccountAchievements } from '@gredice/storage';
+import { AchievementAward } from '@gredice/ui/AchievementAwards';
 import {
     Card,
     CardContent,
@@ -72,28 +73,37 @@ export async function AccountAchievementsCard({
                                     className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
                                 >
                                     <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                                        <Stack
-                                            spacing={1}
-                                            className="min-w-0 flex-1"
-                                        >
-                                            <Typography
-                                                level="body2"
-                                                semiBold
-                                                className="min-w-0 break-words"
+                                        <div className="flex min-w-0 flex-1 items-start gap-3">
+                                            <AchievementAward
+                                                achievementKey={
+                                                    achievement.achievementKey
+                                                }
+                                                className="size-12 shrink-0"
+                                                aria-hidden
+                                            />
+                                            <Stack
+                                                spacing={1}
+                                                className="min-w-0 flex-1"
                                             >
-                                                {definition?.title ??
-                                                    achievement.achievementKey}
-                                            </Typography>
-                                            {definition?.description ? (
                                                 <Typography
-                                                    level="body3"
-                                                    secondary
+                                                    level="body2"
+                                                    semiBold
                                                     className="min-w-0 break-words"
                                                 >
-                                                    {definition.description}
+                                                    {definition?.title ??
+                                                        achievement.achievementKey}
                                                 </Typography>
-                                            ) : null}
-                                        </Stack>
+                                                {definition?.description ? (
+                                                    <Typography
+                                                        level="body3"
+                                                        secondary
+                                                        className="min-w-0 break-words"
+                                                    >
+                                                        {definition.description}
+                                                    </Typography>
+                                                ) : null}
+                                            </Stack>
+                                        </div>
                                         <div className="flex shrink-0 flex-col gap-2 lg:items-end">
                                             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                                                 <Chip
