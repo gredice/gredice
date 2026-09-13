@@ -298,6 +298,44 @@ hidden phase is explicitly synthetic: the profiler overrides
 those getters in the report. It must not be presented as browser lifecycle or
 background-tab proof.
 
+### Scene-root demand isolation
+
+`Scene` uses a root-owned demand driver (`sceneRootRuntime.ts`). Its Canvas is
+configured with R3F `frameloop="never"`; semantic `state.invalidate()` calls are
+coalesced into one owned RAF, which advances only that root with global effects
+disabled. A synchronous store subscription restores that mode and clears native
+pending frames after configuration changes. This also covers R3F's internal
+store invalidator, which does not call the overridable `state.invalidate()`.
+
+`SceneTimeProvider` retains the existing zero/30/60 FPS lease scheduler and
+supplies document/intersection visibility to the driver. Suspension cancels the
+pending root frame; resume starts with 1/60 second and subsequent deltas are
+bounded at 64 ms. Explicit offscreen preview capture still opts out of
+intersection suspension while respecting document visibility.
+
+Import `animated` and `useSpring` from `scene/sceneSpring`, never the runtime
+`@react-spring/three` adapter. The adapter installs module-global invalidation
+and spring advancement. The local bridge reuses react-spring's animated host,
+controllers, and `SpringValue` physics, but each value joins its own root's
+animation set through the protected `_resume` extension point. Animated writes
+and controller notifications flush on that root's frame. Existing DOM springs
+keep their own driver. Keep these compatibility checks when upgrading the
+pinned react-spring version.
+
+Declare every spring key using `initial` (initialize once, then animate inline
+goals) or `from` (native reset/sequence semantics). This ensures the controller
+receives root-owned values before it starts. Capture scenes set
+`animateSprings={false}`: values settle immediately, loops are disabled, and
+only their own explicit readiness/readback work requests frames. Hover outline
+passes use an own-root submitted-frame gate, including standalone R3F consumers.
+
+`scene-root-isolation.spec.tsx` mounts two real production `Scene` components
+and counts each root's spring advances, R3F callbacks, renderer passes, and
+post-render work. It requires exact zero sibling work, exact hidden/offscreen
+suspension through store changes, bounded spring resume, static settlement,
+30/60 FPS cadence, and bounded offscreen WebP readback. The existing full garden
+1200x630 capture and zero-pixel-difference outline tests remain unchanged.
+
 Both suspended phases require the owned SceneTime scheduler to add zero
 callbacks, wakeups, and invalidations. Browser RAF instrumentation itself is
 active, so submitted WebGL frames/draws/triangles and CDP script time are kept

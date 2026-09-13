@@ -1,4 +1,3 @@
-import { animated, useSpring } from '@react-spring/three';
 import {
     type PropsWithChildren,
     useEffect,
@@ -10,6 +9,7 @@ import {
     resolveBlockParticleType,
     useParticles,
 } from '../../particles/ParticleSystem';
+import { animated, useSpring } from '../../scene/sceneSpring';
 import type { Block } from '../../types/Block';
 import {
     type BlockPlacementDropAnimation,
@@ -61,8 +61,10 @@ export function PlacementDropAnimation({
     const placementRootRef = useRef<Group | null>(null);
     const startedSequence = useRef<number | null>(null);
     const [{ dropOffsetY }, api] = useSpring(() => ({
-        dropOffsetY:
-            animation && !prefersReducedMotion() ? placementDropLift : 0,
+        from: {
+            dropOffsetY:
+                animation && !prefersReducedMotion() ? placementDropLift : 0,
+        },
         config: {
             mass: 0.1,
             tension: 200,

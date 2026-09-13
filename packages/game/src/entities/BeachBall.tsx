@@ -1,4 +1,3 @@
-import { animated } from '@react-spring/three';
 import { type ThreeEvent, useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group } from 'three';
@@ -6,6 +5,7 @@ import { areBlockInteractionsSuppressed } from '../controls/blockInteractionSupp
 import { useBlockData } from '../hooks/useBlockData';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
+import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState, useGameStateStore } from '../useGameState';

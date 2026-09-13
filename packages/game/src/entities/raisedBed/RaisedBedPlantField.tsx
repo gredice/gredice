@@ -1,5 +1,4 @@
 import { calculatePlantsPerField } from '@gredice/js/plants';
-import { animated, useSpring } from '@react-spring/three';
 import { useMemo, useRef } from 'react';
 import type { Group } from 'three';
 import { usePlantLodState } from '../../generators/plant/hooks/usePlantLod';
@@ -14,6 +13,7 @@ import { getApproximatePlantHeight } from '../../generators/plant/lib/plantRende
 import { useIsSandboxGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useSnapshotTime } from '../../hooks/useSnapshotTime';
+import { animated, useSpring } from '../../scene/sceneSpring';
 import { useGameState } from '../../useGameState';
 import {
     getGridPositionFromIndex,

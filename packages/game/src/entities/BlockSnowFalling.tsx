@@ -1,7 +1,7 @@
-import { animated } from '@react-spring/three';
 import { useMemo } from 'react';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import Snow from '../scene/Snow/Snow';
+import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';

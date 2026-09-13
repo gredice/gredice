@@ -1,4 +1,3 @@
-import { animated, useSpring } from '@react-spring/three';
 import { type ThreeEvent, useFrame } from '@react-three/fiber';
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -12,6 +11,7 @@ import {
     useAnimateFlyToSunflowersHud,
 } from '../indicators/AnimateFlyTo';
 import { ParticleType, useParticles } from '../particles/ParticleSystem';
+import { animated, useSpring } from '../scene/sceneSpring';
 import type { Stack } from '../types/Stack';
 import { useStackHeight } from '../utils/getStackHeight';
 import { HoverOutline } from './helpers/HoverOutline';
@@ -119,7 +119,7 @@ function SunflowerDropAtPlacement({
             tension: 170,
             friction: 13,
         },
-        dropOffsetY: reduceMotion ? 0 : sunflowerDropLandingHeight,
+        from: { dropOffsetY: reduceMotion ? 0 : sunflowerDropLandingHeight },
     }));
 
     useEffect(() => {

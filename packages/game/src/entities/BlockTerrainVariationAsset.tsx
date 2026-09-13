@@ -1,5 +1,5 @@
-import { animated } from '@react-spring/three';
 import type { Mesh } from 'three';
+import { animated } from '../scene/sceneSpring';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
