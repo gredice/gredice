@@ -1,5 +1,5 @@
-import { animated } from '@react-spring/three';
 import type { GLTFResult } from '../models/GameAssets';
+import { animated } from '../scene/sceneSpring';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';

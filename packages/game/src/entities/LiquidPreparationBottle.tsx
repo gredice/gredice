@@ -1,9 +1,9 @@
-import { animated } from '@react-spring/three';
 import type { ReactNode } from 'react';
 import { MeshStandardMaterial, SRGBColorSpace } from 'three';
 import type { GameAssetName } from '../data/models';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
+import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
