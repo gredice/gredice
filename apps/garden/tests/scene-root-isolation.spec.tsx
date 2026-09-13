@@ -164,6 +164,12 @@ for (const fps of [30, 60]) {
             b: window.sceneRootWitness?.b?.snapshot(),
         }));
         expect((after.a?.frames ?? 0) - (before.a?.frames ?? 0)).toBe(fps);
+        const measuredDeltas = (after.a?.deltas ?? []).slice(
+            before.a?.deltas.length ?? 0,
+        );
+        expect(measuredDeltas).toHaveLength(fps);
+        for (const delta of measuredDeltas)
+            expect(delta).toBeCloseTo(1 / fps, 8);
         expect(after.b).toEqual(before.b);
     });
 }
