@@ -106,10 +106,6 @@ function buildPlantStatusRequestTask(
         Awaited<ReturnType<typeof getAllRaisedBeds>>[number]
     >,
 ): AdminApprovalTask | null {
-    if (request.target.kind !== 'raisedBedField.plantStatus') {
-        return null;
-    }
-
     const raisedBed = raisedBedsById.get(request.target.raisedBedId);
     const plantName = plantSortName(plantSortsById, request.target.plantSortId);
     const fieldLabel = raisedBedFieldLabel(request.target.positionIndex);

@@ -5,7 +5,6 @@ import {
     plantFieldStatusLabel,
 } from '@gredice/js/plants';
 import {
-    type ApprovalRequest,
     type EntityStandardized,
     getAppliedRaisedBedOperations,
     getApprovalRequests,
@@ -34,6 +33,10 @@ import {
     getRaisedBedPositionIndexesDescending,
 } from '../raisedBedPositionOrder';
 import { PlantStateRequestForm } from './PlantStateRequestForm';
+import {
+    getPendingPlantStateRequestStatus,
+    getSelectedPlantStateRequestIdentity,
+} from './plantStatusRequests';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,37 +53,6 @@ function resolvePlantName(
     return name ? String(name) : `Sorta #${plantSortId}`;
 }
 
-function getPendingPlantStatusRequest(
-    requests: ApprovalRequest[],
-    raisedBedId: number,
-    positionIndex: number,
-) {
-    return requests.find(
-        (request) =>
-            request.target.kind === 'raisedBedField.plantStatus' &&
-            request.target.raisedBedId === raisedBedId &&
-            request.target.positionIndex === positionIndex,
-    );
-}
-
-function isRequestForCurrentStatus(
-    request: ApprovalRequest | undefined,
-    currentStatus?: string | null,
-) {
-    if (
-        !request ||
-        !currentStatus ||
-        request.target.kind !== 'raisedBedField.plantStatus'
-    ) {
-        return false;
-    }
-
-    return (
-        !request.target.currentStatus ||
-        request.target.currentStatus === currentStatus
-    );
-}
-
 async function RaisedBedDetailPageContent({
     raisedBedId,
 }: {
@@ -93,7 +65,6 @@ async function RaisedBedDetailPageContent({
             getEntitiesFormatted<EntityStandardized>('plantSort'),
             getApprovalRequests({
                 status: 'pending',
-                kind: 'raisedBedField.plantStatus',
             }),
         ]);
     const plantSortsById = new Map<number, EntityStandardized>();
@@ -264,22 +235,16 @@ async function RaisedBedDetailPageContent({
                                         plant.plantSortId,
                                         plantSort,
                                     );
-                                    const pending = plant.legacyField
-                                        ? getPendingPlantStatusRequest(
-                                              pendingPlantStatusRequests,
-                                              raisedBed.id,
-                                              plant.positionIndex,
-                                          )
-                                        : undefined;
+                                    const selectedIdentity =
+                                        getSelectedPlantStateRequestIdentity(
+                                            plant,
+                                        );
                                     const pendingStatus =
-                                        isRequestForCurrentStatus(
-                                            pending,
-                                            plant.plantStatus,
-                                        ) &&
-                                        pending?.target.kind ===
-                                            'raisedBedField.plantStatus'
-                                            ? pending.target.requestedStatus
-                                            : null;
+                                        getPendingPlantStateRequestStatus(
+                                            pendingPlantStatusRequests,
+                                            raisedBed.id,
+                                            plant,
+                                        );
                                     const inGreenhouse =
                                         isRaisedBedPlantInGreenhouse(plant);
                                     return (
@@ -303,8 +268,12 @@ async function RaisedBedDetailPageContent({
                                             }
                                             statusControl={
                                                 plant.plantStatus &&
-                                                (plant.legacyField ? (
+                                                (plant.legacyField ||
+                                                selectedIdentity ? (
                                                     <PlantStateRequestForm
+                                                        selectedIdentity={
+                                                            selectedIdentity
+                                                        }
                                                         raisedBedId={
                                                             raisedBed.id
                                                         }

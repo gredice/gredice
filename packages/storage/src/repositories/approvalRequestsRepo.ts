@@ -1,20 +1,35 @@
 import 'server-only';
-import { asc, inArray } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
-import { events } from '../schema';
+import { isSelectedRaisedBedPlantingStatusTransitionAllowed } from '../helpers/selectedRaisedBedPlantingLifecycle';
+import { events, raisedBeds } from '../schema';
 import { storage } from '../storage';
 import type {
     ApprovalRequestCreatePayload,
     ApprovalRequestReviewPayload,
     ApprovalRequestTarget,
     PlantStatusApprovalTarget,
+    SelectedPlantStatusApprovalTarget,
 } from './events/types';
-import { createEvent, knownEvents, knownEventTypes } from './eventsRepo';
+import {
+    createEvent,
+    knownEvents,
+    knownEventTypes,
+    raisedBedPlantingLifecycleStatuses,
+} from './eventsRepo';
 import { getRaisedBedFieldsWithEvents } from './raisedBedFieldsRepo';
+import { getRaisedBedPlanting } from './raisedBedPlantingsRepo';
+import {
+    getSelectedRaisedBedPlantingTaskForActor,
+    type SelectedRaisedBedPlantingTaskCommandIdentity,
+    updateSelectedRaisedBedPlantingLifecycleStatus,
+} from './raisedBedPlantingTasksRepo';
+import type { ScheduleTaskActor } from './scheduleTaskSubmissionsRepo';
 import {
     acquireScheduleTaskAdvisoryLock,
     type ScheduleTaskTransaction,
     withPlantingScheduleTaskTransaction,
+    withSelectedRaisedBedPlantingScheduleTaskTransaction,
 } from './scheduleTaskTransactionsRepo';
 
 export type ApprovalRequestStatus = 'pending' | 'approved' | 'rejected';
@@ -151,6 +166,178 @@ function parsePlantStatusTarget(
     };
 }
 
+function parseSelectedPlantStatusTarget(
+    value: unknown,
+): SelectedPlantStatusApprovalTarget | null {
+    if (!isRecord(value) || value.kind !== 'raisedBedPlanting.plantStatus')
+        return null;
+    const legacyFields = parsePlantStatusTarget({
+        ...value,
+        kind: 'raisedBedField.plantStatus',
+    });
+    const plantingId = optionalNumber(value.plantingId);
+    const lifecycleVersionEventId = optionalNumber(
+        value.lifecycleVersionEventId,
+    );
+    const plantSortId = optionalNumber(value.plantSortId);
+    const currentStatus = optionalString(value.currentStatus);
+    if (
+        !legacyFields ||
+        plantingId === null ||
+        lifecycleVersionEventId === null ||
+        plantSortId === null ||
+        !currentStatus ||
+        !isPositiveSafeInteger(plantingId) ||
+        !isPositiveSafeInteger(lifecycleVersionEventId) ||
+        !isPositiveSafeInteger(plantSortId)
+    )
+        return null;
+    return {
+        kind: 'raisedBedPlanting.plantStatus',
+        plantingId,
+        lifecycleVersionEventId,
+        plantSortId,
+        currentStatus,
+        raisedBedId: legacyFields.raisedBedId,
+        positionIndex: legacyFields.positionIndex,
+        accountId: legacyFields.accountId,
+        gardenId: legacyFields.gardenId,
+        requestedStatus: legacyFields.requestedStatus,
+        effectiveAt: legacyFields.effectiveAt,
+    };
+}
+
+function selectedPlantStatusRequestTarget(
+    planting: Awaited<ReturnType<typeof getRaisedBedPlanting>>,
+    requestedStatus: string,
+) {
+    const currentStatus = planting?.lifecycleStatus;
+    if (
+        !planting?.isActive ||
+        planting.isDeleted ||
+        planting.configurationSource !== 'selected' ||
+        planting.selectedTask?.status !== 'completed' ||
+        !currentStatus ||
+        currentStatus === 'removed' ||
+        currentStatus === 'cancelled'
+    )
+        return undefined;
+    return raisedBedPlantingLifecycleStatuses
+        .filter(
+            (status) =>
+                status !== 'planned' &&
+                status !== 'pendingVerification' &&
+                status !== 'cancelled',
+        )
+        .find(
+            (status) =>
+                status !== currentStatus &&
+                status === requestedStatus &&
+                isSelectedRaisedBedPlantingStatusTransitionAllowed(
+                    currentStatus,
+                    status,
+                ),
+        );
+}
+
+export async function createSelectedPlantStatusApprovalRequest(
+    input: SelectedRaisedBedPlantingTaskCommandIdentity & {
+        actor: ScheduleTaskActor;
+        raisedBedId: number;
+        requestedStatus: string;
+    },
+) {
+    return withSelectedRaisedBedPlantingScheduleTaskTransaction(
+        input.plantingId,
+        async (transaction) => {
+            const task = await getSelectedRaisedBedPlantingTaskForActor(
+                input,
+                transaction,
+            );
+            const planting = await getRaisedBedPlanting(
+                input.plantingId,
+                transaction,
+            );
+            if (
+                !planting ||
+                planting.raisedBedId !== input.raisedBedId ||
+                task.identity.expectedLifecycleVersionEventId !==
+                    input.expectedLifecycleVersionEventId ||
+                task.identity.expectedPlantSortId !== input.expectedPlantSortId
+            ) {
+                throw new Error(
+                    'Biljka se promijenila. Osvježi podatke i pokušaj ponovno.',
+                );
+            }
+            if (
+                !selectedPlantStatusRequestTarget(
+                    planting,
+                    input.requestedStatus,
+                ) ||
+                !planting.lifecycleStatus
+            ) {
+                throw new Error(
+                    'Tražena promjena stanja biljke nije dopuštena.',
+                );
+            }
+            const requests = await getApprovalRequests(
+                { status: 'pending', kind: 'raisedBedPlanting.plantStatus' },
+                transaction,
+            );
+            const existing = requests.find(
+                (request) =>
+                    request.target.kind === 'raisedBedPlanting.plantStatus' &&
+                    request.target.plantingId === input.plantingId &&
+                    request.target.lifecycleVersionEventId ===
+                        input.expectedLifecycleVersionEventId &&
+                    request.target.plantSortId === input.expectedPlantSortId &&
+                    request.target.currentStatus === planting.lifecycleStatus,
+            );
+            if (existing) {
+                if (existing.target.requestedStatus === input.requestedStatus)
+                    return existing;
+                throw new PendingPlantStatusApprovalRequestConflictError();
+            }
+            const [bed] = await transaction
+                .select({
+                    accountId: raisedBeds.accountId,
+                    gardenId: raisedBeds.gardenId,
+                })
+                .from(raisedBeds)
+                .where(eq(raisedBeds.id, planting.raisedBedId));
+            const requestId = uuidV4();
+            const requestedAt = new Date().toISOString();
+            await createEvent(
+                knownEvents.approvalRequests.createdV1(requestId, {
+                    requestedBy: input.actor.userId,
+                    requestedAt,
+                    target: {
+                        kind: 'raisedBedPlanting.plantStatus',
+                        raisedBedId: planting.raisedBedId,
+                        positionIndex: planting.anchorPositionIndex,
+                        plantingId: planting.id,
+                        lifecycleVersionEventId:
+                            input.expectedLifecycleVersionEventId,
+                        plantSortId: planting.plantSortId,
+                        currentStatus: planting.lifecycleStatus,
+                        requestedStatus: input.requestedStatus,
+                        effectiveAt: requestedAt,
+                        accountId: bed?.accountId,
+                        gardenId: bed?.gardenId,
+                    },
+                }),
+                transaction,
+            );
+            const request = await getApprovalRequest(requestId, transaction);
+            if (!request)
+                throw new Error(
+                    'Zahtjev za odobrenje nije pronađen nakon spremanja.',
+                );
+            return request;
+        },
+    );
+}
+
 function parseCreatePayload(
     data: unknown,
 ): ApprovalRequestCreatePayload | null {
@@ -158,7 +345,9 @@ function parseCreatePayload(
         return null;
     }
 
-    const target = parsePlantStatusTarget(data.target);
+    const target =
+        parsePlantStatusTarget(data.target) ??
+        parseSelectedPlantStatusTarget(data.target);
     const requestedBy = optionalString(data.requestedBy);
     const requestedAt = optionalString(data.requestedAt);
     if (!target || !requestedBy || !requestedAt) {
@@ -407,98 +596,135 @@ export async function approvePlantStatusApprovalRequest(
     }
 
     const initialTarget = initialRequest.target;
-    return withPlantingScheduleTaskTransaction(
-        initialTarget.raisedBedId,
-        initialTarget.positionIndex,
-        async (transaction) => {
-            await acquireApprovalRequestReviewLock(
-                transaction,
-                input.requestId,
-            );
-            const request = await getApprovalRequest(
-                input.requestId,
-                transaction,
-            );
-            if (!request) {
-                throw new Error('Zahtjev za odobrenje nije pronađen.');
-            }
-            if (request.status === 'approved') {
-                return request;
-            }
-            if (request.status === 'rejected') {
-                throw new Error('Zahtjev za odobrenje već je odbijen.');
-            }
+    const run = async (transaction: ScheduleTaskTransaction) => {
+        await acquireApprovalRequestReviewLock(transaction, input.requestId);
+        const request = await getApprovalRequest(input.requestId, transaction);
+        if (!request) {
+            throw new Error('Zahtjev za odobrenje nije pronađen.');
+        }
+        if (request.status === 'approved') {
+            return request;
+        }
+        if (request.status === 'rejected') {
+            throw new Error('Zahtjev za odobrenje već je odbijen.');
+        }
 
-            const target = request.target;
-            const field = (
-                await getRaisedBedFieldsWithEvents(
-                    target.raisedBedId,
-                    transaction,
-                )
-            ).find(
-                (candidate) =>
-                    candidate.positionIndex === target.positionIndex &&
-                    candidate.active,
+        const target = request.target;
+        if (target.kind === 'raisedBedPlanting.plantStatus') {
+            const planting = await getRaisedBedPlanting(
+                target.plantingId,
+                transaction,
             );
-            const activePlantCycle = field?.plantCycles.find(
-                (plantCycle) => plantCycle.active,
+            const status = selectedPlantStatusRequestTarget(
+                planting,
+                target.requestedStatus,
             );
             if (
-                !field ||
-                !activePlantCycle ||
-                !isPositiveSafeInteger(target.raisedBedFieldId) ||
-                !isPositiveSafeInteger(target.plantSortId) ||
-                !isPositiveSafeInteger(target.plantCycleEventId) ||
-                !isPositiveSafeInteger(target.plantCycleVersionEventId) ||
-                field.id !== target.raisedBedFieldId ||
-                field.plantSortId !== target.plantSortId ||
-                activePlantCycle.plantPlaceEventId !==
-                    target.plantCycleEventId ||
-                activePlantCycle.endedEventId !==
-                    target.plantCycleVersionEventId ||
-                field.plantStatus !== target.currentStatus
+                !planting ||
+                planting.raisedBedId !== target.raisedBedId ||
+                planting.lifecycleVersionEventId !==
+                    target.lifecycleVersionEventId ||
+                planting.plantSortId !== target.plantSortId ||
+                planting.lifecycleStatus !== target.currentStatus ||
+                !status
             ) {
                 throw new Error(
                     'Biljka se promijenila nakon slanja zahtjeva. Osvježi podatke i pregledaj novi zahtjev.',
                 );
             }
-            if (
-                !target.currentStatus ||
-                !canApplyPlantStatusApproval(
-                    target.currentStatus,
-                    target.requestedStatus,
-                )
-            ) {
-                throw new Error(
-                    'Tražena promjena stanja biljke više nije dopuštena.',
-                );
-            }
-
-            await createEvent(
-                knownEvents.raisedBedFields.plantUpdateV1(
-                    `${target.raisedBedId.toString()}|${target.positionIndex.toString()}`,
-                    {
-                        status: target.requestedStatus,
-                        ...(target.effectiveAt
-                            ? { effectiveDate: target.effectiveAt }
-                            : {}),
-                    },
-                ),
+            await updateSelectedRaisedBedPlantingLifecycleStatus(
+                {
+                    kind: 'selected',
+                    plantingId: target.plantingId,
+                    expectedLifecycleVersionEventId:
+                        target.lifecycleVersionEventId,
+                    expectedPlantSortId: target.plantSortId,
+                    actor: { role: 'admin', userId: input.reviewedBy },
+                    commandId: request.id,
+                    status,
+                    effectiveAt: target.effectiveAt ?? undefined,
+                },
                 transaction,
             );
-
             return appendApprovalReview(
-                {
-                    note: input.note,
-                    requestId: input.requestId,
-                    reviewedBy: input.reviewedBy,
-                    status: 'approved',
-                },
+                { ...input, status: 'approved' },
                 transaction,
                 dependencies,
             );
-        },
-    );
+        }
+        const field = (
+            await getRaisedBedFieldsWithEvents(target.raisedBedId, transaction)
+        ).find(
+            (candidate) =>
+                candidate.positionIndex === target.positionIndex &&
+                candidate.active,
+        );
+        const activePlantCycle = field?.plantCycles.find(
+            (plantCycle) => plantCycle.active,
+        );
+        if (
+            !field ||
+            !activePlantCycle ||
+            !isPositiveSafeInteger(target.raisedBedFieldId) ||
+            !isPositiveSafeInteger(target.plantSortId) ||
+            !isPositiveSafeInteger(target.plantCycleEventId) ||
+            !isPositiveSafeInteger(target.plantCycleVersionEventId) ||
+            field.id !== target.raisedBedFieldId ||
+            field.plantSortId !== target.plantSortId ||
+            activePlantCycle.plantPlaceEventId !== target.plantCycleEventId ||
+            activePlantCycle.endedEventId !== target.plantCycleVersionEventId ||
+            field.plantStatus !== target.currentStatus
+        ) {
+            throw new Error(
+                'Biljka se promijenila nakon slanja zahtjeva. Osvježi podatke i pregledaj novi zahtjev.',
+            );
+        }
+        if (
+            !target.currentStatus ||
+            !canApplyPlantStatusApproval(
+                target.currentStatus,
+                target.requestedStatus,
+            )
+        ) {
+            throw new Error(
+                'Tražena promjena stanja biljke više nije dopuštena.',
+            );
+        }
+
+        await createEvent(
+            knownEvents.raisedBedFields.plantUpdateV1(
+                `${target.raisedBedId.toString()}|${target.positionIndex.toString()}`,
+                {
+                    status: target.requestedStatus,
+                    ...(target.effectiveAt
+                        ? { effectiveDate: target.effectiveAt }
+                        : {}),
+                },
+            ),
+            transaction,
+        );
+
+        return appendApprovalReview(
+            {
+                note: input.note,
+                requestId: input.requestId,
+                reviewedBy: input.reviewedBy,
+                status: 'approved',
+            },
+            transaction,
+            dependencies,
+        );
+    };
+    return initialTarget.kind === 'raisedBedPlanting.plantStatus'
+        ? withSelectedRaisedBedPlantingScheduleTaskTransaction(
+              initialTarget.plantingId,
+              run,
+          )
+        : withPlantingScheduleTaskTransaction(
+              initialTarget.raisedBedId,
+              initialTarget.positionIndex,
+              run,
+          );
 }
 
 export async function getApprovalRequest(
