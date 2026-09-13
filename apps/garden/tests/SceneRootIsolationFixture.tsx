@@ -6,10 +6,12 @@ import { SceneRootIsolationProbe } from './SceneRootIsolationProbe';
 export function SceneRootIsolationFixture({
     capture = false,
     goal = 0,
+    skipDraw = false,
     framesPerSecond = 0,
 }: {
     capture?: boolean;
     goal?: number;
+    skipDraw?: boolean;
     framesPerSecond?: number;
 }) {
     const [captureResult, setCaptureResult] = useState('waiting');
@@ -43,7 +45,11 @@ export function SceneRootIsolationFixture({
                     animateSprings={!capture}
                     rendererOptions={{ preserveDrawingBuffer: true }}
                 >
-                    <SceneRootIsolationProbe id="b" pulse={capture} />
+                    <SceneRootIsolationProbe
+                        id="b"
+                        pulse={capture}
+                        skipDraw={skipDraw}
+                    />
                     {capture && (
                         <PublicGardenCaptureProbe
                             enabled

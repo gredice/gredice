@@ -13,10 +13,12 @@ export function SceneRootIsolationProbe({
     id,
     goal = 0,
     pulse = false,
+    skipDraw = false,
 }: {
     id: 'a' | 'b';
     goal?: number;
     pulse?: boolean;
+    skipDraw?: boolean;
 }) {
     const store = useStore();
     const gl = useThree((state) => state.gl);
@@ -46,10 +48,13 @@ export function SceneRootIsolationProbe({
         y: goal,
         config: { duration: 1000 },
     });
-    useFrame((_state, delta) => {
-        counters.current.frames += 1;
-        counters.current.deltas.push(delta);
-    });
+    useFrame(
+        (_state, delta) => {
+            counters.current.frames += 1;
+            counters.current.deltas.push(delta);
+        },
+        skipDraw ? 1 : 0,
+    );
     useSceneAfterFrame(
         useCallback(() => {
             counters.current.postFrames += 1;

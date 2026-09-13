@@ -3,16 +3,24 @@ import { useEffect, useRef } from 'react';
 import { getSceneRootRuntime } from './sceneRootRuntime';
 
 export function useSceneAfterFrame(callback: () => void, enabled = true) {
-    const runtime = getSceneRootRuntime(useStore());
-    const pending = useRef(false);
-    useFrame(() => {
-        pending.current = enabled;
-    });
+    const store = useStore();
+    const runtime = getSceneRootRuntime(store);
+    const pending = useRef<number | null>(null);
+    // A positive-priority renderer may intentionally skip drawing. Running
+    // useFrame alone is not proof that this root submitted a scene pass.
+    useFrame(({ gl }) => {
+        pending.current = enabled ? gl.info.render.frame : null;
+    }, Number.NEGATIVE_INFINITY);
     useEffect(() => {
         if (!enabled) return;
         const afterFrame = () => {
-            if (!pending.current) return;
-            pending.current = false;
+            const beforeFrame = pending.current;
+            pending.current = null;
+            if (
+                beforeFrame === null ||
+                store.getState().gl.info.render.frame <= beforeFrame
+            )
+                return;
             callback();
         };
         const unsubscribe = runtime.subscribeAfterFrame(afterFrame);
@@ -20,9 +28,9 @@ export function useSceneAfterFrame(callback: () => void, enabled = true) {
         // own-root useFrame gate is consumed once by either rendering path.
         const removeGlobalEffect = addAfterEffect(afterFrame);
         return () => {
-            pending.current = false;
+            pending.current = null;
             unsubscribe();
             removeGlobalEffect();
         };
-    }, [callback, enabled, runtime]);
+    }, [callback, enabled, runtime, store]);
 }

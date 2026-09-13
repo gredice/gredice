@@ -222,3 +222,23 @@ test('unmount cancels both roots and drops pending spring callbacks', async ({
     ).toEqual(stopped);
     await roots.dispose();
 });
+
+test('post-render work requires an actual draw from its own root', async ({
+    mount,
+    page,
+}) => {
+    await mount(<SceneRootIsolationFixture skipDraw />);
+    await page.waitForFunction(() => window.sceneRootWitness?.b?.visible());
+    await page.clock.runFor(1000);
+    await page.evaluate(() => {
+        window.sceneRootWitness?.b?.invalidate();
+        window.sceneRootWitness?.a?.animate();
+    });
+    await page.clock.runFor(2000);
+    const skipped = await page.evaluate(() =>
+        window.sceneRootWitness?.b?.snapshot(),
+    );
+    expect(skipped?.frames).toBeGreaterThan(0);
+    expect(skipped?.gpuPasses).toBe(0);
+    expect(skipped?.postFrames).toBe(0);
+});
