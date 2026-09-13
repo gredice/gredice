@@ -196,8 +196,8 @@ import { UserAvatar, UserAvatarLink } from '@gredice/ui/UserAvatar';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import Image from 'next/image';
 import { useMemo, useState } from 'react';
+import { AchievementCollectionShowcase } from '../../../../../packages/game/src/shared-ui/achievements/AchievementCollection.fixture';
 import { RaisedBedFieldsGridFixture } from '../../../../../packages/ui/src/raisedBeds/RaisedBedFieldsGrid.fixture';
-import { AchievementCollectionShowcase } from '../game/achievements/AchievementCollectionShowcase';
 import { PlantCareHudPreview } from './PlantCareHudPreview';
 
 const sampleImages = [

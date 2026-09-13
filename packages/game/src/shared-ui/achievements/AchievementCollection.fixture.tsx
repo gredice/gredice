@@ -4,8 +4,8 @@ import {
 } from '@gredice/js/achievements';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { accountAchievementsKeys } from '../../../../../../packages/game/src/hooks/useAccountAchievements';
-import { AchievementsOverview } from '../../../../../../packages/game/src/shared-ui/achievements/AchievementsOverview';
+import { accountAchievementsKeys } from '../../hooks/useAccountAchievements';
+import { AchievementsOverview } from './AchievementsOverview';
 
 export type CollectionState = 'empty' | 'starter' | 'experienced' | 'complete';
 function recordsFor(state: CollectionState): AchievementRecord[] {

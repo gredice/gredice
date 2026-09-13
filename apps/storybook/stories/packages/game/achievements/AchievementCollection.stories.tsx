@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { expect, userEvent, within } from 'storybook/test';
-import { AchievementCollectionShowcase } from './AchievementCollectionShowcase';
+import { AchievementCollectionShowcase } from '../../../../../../packages/game/src/shared-ui/achievements/AchievementCollection.fixture';
 
 const meta = {
     title: 'packages/game/Achievements/Collection',

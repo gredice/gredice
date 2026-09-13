@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/experimental-ct-react';
-import { AchievementCollectionShowcase } from '../../storybook/stories/packages/game/achievements/AchievementCollectionShowcase';
+import { AchievementCollectionShowcase } from '../../../packages/game/src/shared-ui/achievements/AchievementCollection.fixture';
 
 test('opens all levels, distinguishes pending awards and restores keyboard focus', async ({
     mount,
