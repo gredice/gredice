@@ -5,6 +5,7 @@ import { Input } from '@gredice/ui/Input';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { UserAchievementProgress } from '@gredice/ui/UserAvatar';
 import type { FormEvent } from 'react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { useUpdateUser } from '../../hooks/useUpdateUser';
@@ -74,6 +75,13 @@ export function UserProfileCard() {
                                     </Typography>
                                 </Stack>
                             </Row>
+                            {currentUser.data && (
+                                <UserAchievementProgress
+                                    achievementCount={
+                                        currentUser.data.achievementCount
+                                    }
+                                />
+                            )}
                             <CardActions className="justify-between">
                                 <Typography level="body2">
                                     Član od: {memberSinceDisplay}

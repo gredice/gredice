@@ -1000,6 +1000,7 @@ function PublicContentShowcase() {
             >
                 <UserAvatarLink
                     href="/korisnici/u_demo"
+                    achievementCount={10}
                     displayName="Ana Kovač"
                     size="sm"
                 />

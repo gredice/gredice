@@ -1,7 +1,8 @@
 'use client';
 
+import { Link } from '@gredice/ui/Link';
 import { Stack } from '@gredice/ui/Stack';
-import { UserAvatar } from '@gredice/ui/UserAvatar';
+import { UserAchievementProgress, UserAvatar } from '@gredice/ui/UserAvatar';
 import { useQuery } from '@tanstack/react-query';
 import { formatGardenDate } from '../../vrtovi/publicGardenFormatting';
 import { PublicProfileAchievements } from './PublicProfileAchievements';
@@ -32,9 +33,16 @@ export function ProfilePageClient({ publicId }: ProfilePageClientProps) {
 
     return (
         <Stack spacing={12} className="pt-8 pb-12 sm:pt-12">
+            <Link
+                href="/korisnici"
+                className="text-sm text-muted-foreground hover:underline"
+            >
+                Svi vrtlari
+            </Link>
             <header className="flex items-center gap-4">
                 <UserAvatar
                     avatarUrl={user.avatarUrl}
+                    achievementCount={user.achievementCount}
                     displayName={user.displayName}
                     size="lg"
                     className="size-16 border-2 border-tertiary text-2xl sm:size-20"
@@ -43,6 +51,9 @@ export function ProfilePageClient({ publicId }: ProfilePageClientProps) {
                     <h1 className="text-3xl font-semibold break-words">
                         {user.displayName}
                     </h1>
+                    <UserAchievementProgress
+                        achievementCount={user.achievementCount}
+                    />
                     {membership && (
                         <p className="mt-2 text-sm text-muted-foreground">
                             <time

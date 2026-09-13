@@ -7,12 +7,14 @@ const user = {
     userName: 'private@example.com',
     displayName: 'Veseli vrtlar',
     avatarUrl: null,
+    achievementCount: 10,
     createdAt: new Date('2026-01-01T00:00:00Z'),
 };
 
 test('public profiles omit the login name from the serialized response', () => {
     const profile = publicProfileUser(user);
     assert.equal(profile.displayName, 'Veseli vrtlar');
+    assert.equal(profile.achievementCount, 10);
     assert.equal(Object.hasOwn(profile, 'userName'), false);
     assert.equal(JSON.stringify(profile).includes(user.userName), false);
 });

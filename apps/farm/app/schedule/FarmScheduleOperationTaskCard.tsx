@@ -118,6 +118,9 @@ export function FarmScheduleOperationTaskCard({
                         title={`Dodijeljeno: ${operation.assignedUser.displayName ?? operation.assignedUser.userName}`}
                     >
                         <UserAvatar
+                            achievementCount={
+                                operation.assignedUser.achievementCount
+                            }
                             avatarUrl={operation.assignedUser.avatarUrl}
                             displayName={
                                 operation.assignedUser.displayName ??

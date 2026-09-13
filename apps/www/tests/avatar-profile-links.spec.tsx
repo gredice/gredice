@@ -41,6 +41,38 @@ test.beforeEach(async ({ page }) => {
     await page.route('**/api/gardens', (route) => route.fulfill({ json: [] }));
 });
 
+test('shows each avatar owner’s actual level and exposes it in the profile link label', async ({
+    mount,
+    page,
+}) => {
+    await page.route('**/api/auth/current-claims**', (route) =>
+        route.fulfill({ json: { ...currentUser, achievementCount: 10 } }),
+    );
+    await mount(
+        <AvatarProfileLinksHarness
+            featuredGardens={[
+                {
+                    ...featuredGardens[0],
+                    owner: {
+                        publicId: 'u_ana',
+                        displayName: 'Ana Kovač',
+                        avatarUrl: null,
+                        achievementCount: 3,
+                    },
+                },
+            ]}
+        />,
+    );
+    await expect(
+        page.locator('header').getByRole('link', {
+            name: 'Otvori profil: Veseli vrtlar, razina 5',
+        }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('link', { name: 'Otvori profil: Ana Kovač, razina 3' }),
+    ).toBeVisible();
+});
+
 test('links the displayed garden owner and updates the link when the garden changes', async ({
     mount,
     page,

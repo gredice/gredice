@@ -28,6 +28,7 @@ import {
 } from '../schema';
 import { createEvent, knownEvents } from './eventsRepo';
 import { createDefaultGardenForAccount } from './gardensRepo';
+import { userAchievementExtras } from './userAchievementProgress';
 
 type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = Parameters<
@@ -81,15 +82,18 @@ export class UserDefaultGardenSandboxError extends Error {
 
 export function getUsers() {
     return storage().query.users.findMany({
+        extras: userAchievementExtras,
         orderBy: desc(users.createdAt),
     });
 }
 
 export function getUser(userId: string) {
     return storage().query.users.findFirst({
+        extras: userAchievementExtras,
         where: eq(users.id, userId),
         with: {
             accounts: {
+                orderBy: [asc(accountUsers.createdAt), asc(accountUsers.id)],
                 with: {
                     account: true,
                 },

@@ -130,6 +130,10 @@ export function DetailedRaisedBedInspectionModal({
                                             title={`Dodijeljeni farmer ${report.assignedFarmer.displayName}`}
                                         >
                                             <UserAvatar
+                                                achievementCount={
+                                                    report.assignedFarmer
+                                                        .achievementCount
+                                                }
                                                 avatarUrl={
                                                     report.assignedFarmer
                                                         .avatarUrl

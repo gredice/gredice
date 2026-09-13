@@ -306,6 +306,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         accountUser.user.displayName ??
                         accountUser.user.userName,
                     avatarUrl: accountUser.user.avatarUrl,
+                    achievementCount: accountUser.user.achievementCount,
                     assignedAt: accountUser.createdAt.toISOString(),
                 })),
             );

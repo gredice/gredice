@@ -8,6 +8,7 @@ export type CurrentUser = {
     userName: string;
     displayName?: string;
     avatarUrl?: string | null;
+    achievementCount?: number;
     role: string;
 };
 

@@ -224,6 +224,7 @@ test('gardens are public by default and can be unlisted', async () => {
             publicId: userIdToPublicId(ownerId),
             avatarUrl: 'https://cdn.example.com/avatar.webp',
             displayName: 'Vrtlarica Ana',
+            achievementCount: 1,
         },
     );
     assert.ok(publicGardens.every((garden) => garden.id !== unlistedGardenId));
@@ -255,6 +256,7 @@ test('public garden owners do not expose usernames as display names', async () =
         publicId: userIdToPublicId(ownerId),
         avatarUrl: null,
         displayName: 'Korisnik Gredica',
+        achievementCount: 1,
     });
 });
 

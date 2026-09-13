@@ -52,6 +52,10 @@ import type {
     OperationEventsAnyPayload,
 } from './events/types';
 import { getRaisedBedPlanting } from './raisedBedPlantingsRepo';
+import {
+    userAchievementCount,
+    userAchievementExtras,
+} from './userAchievementProgress';
 
 export type OperationStatus =
     | 'new'
@@ -138,6 +142,7 @@ export type OperationAssignedUser = {
     userName: string;
     displayName: string | null;
     avatarUrl: string | null;
+    achievementCount?: number;
 };
 
 export type OperationAssignableFarmUser = OperationAssignedUser & {
@@ -469,6 +474,7 @@ async function fillOperationAggregates(
     const assignedUsers =
         assignedUserIds.length > 0
             ? await db.query.users.findMany({
+                  extras: userAchievementExtras,
                   columns: {
                       id: true,
                       userName: true,
@@ -2017,6 +2023,7 @@ export async function getAssignableFarmUsersByOperationIds(
             userName: users.userName,
             displayName: users.displayName,
             avatarUrl: users.avatarUrl,
+            achievementCount: userAchievementCount(users.id),
         })
         .from(operations)
         .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
@@ -2049,6 +2056,7 @@ export async function getAssignableFarmUsersByOperationIds(
             userName: row.userName,
             displayName: row.displayName,
             avatarUrl: row.avatarUrl,
+            achievementCount: row.achievementCount,
             farmId: row.farmId,
         });
         assignableFarmUsersByOperationId[row.operationId] = existingUsers;

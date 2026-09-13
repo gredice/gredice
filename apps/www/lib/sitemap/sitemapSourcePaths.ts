@@ -1,6 +1,11 @@
 const sourceCmsPagePaths = ['/biljni-susjedi', '/kvaliteta-i-sigurnost-uroda'];
 const staticNewsPaths = ['/novosti', '/novosti/sto-je-novo'];
-const dynamicPublicPagePaths = ['/', '/dostava/termini', '/outlet'];
+const dynamicPublicPagePaths = [
+    '/',
+    '/dostava/termini',
+    '/outlet',
+    '/korisnici',
+];
 
 export const excludedSitemapRoutes = [
     '/apple-icon.png',
