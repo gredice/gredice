@@ -11,6 +11,7 @@ export function RaisedBedPlantDetails({
     layout,
     dates,
     controls,
+    sowingDate,
 }: {
     name: string;
     positionNumbers: number[];
@@ -21,6 +22,8 @@ export function RaisedBedPlantDetails({
     };
     controls?: ReactNode;
     dates: Array<{ label: string; value: string }>;
+    /** A compact date trigger for use in a field header. Null means not yet sowed. */
+    sowingDate?: string | null;
 }) {
     return (
         <Popper
@@ -31,9 +34,24 @@ export function RaisedBedPlantDetails({
                 <Button
                     size="sm"
                     variant="plain"
+                    color={sowingDate !== undefined ? 'neutral' : undefined}
+                    className={
+                        sowingDate !== undefined
+                            ? 'h-auto min-h-6 min-w-0 px-1 py-0.5 text-[10px] tabular-nums sm:text-xs'
+                            : undefined
+                    }
                     aria-label={`Detalji sadnje: ${name}`}
+                    title={
+                        sowingDate ? 'Datum sjetve i detalji sadnje' : undefined
+                    }
                 >
-                    Detalji
+                    {sowingDate ? (
+                        <LocalDateTime time={false}>{sowingDate}</LocalDateTime>
+                    ) : sowingDate === null ? (
+                        'Nije posijano'
+                    ) : (
+                        'Detalji'
+                    )}
                 </Button>
             }
         >

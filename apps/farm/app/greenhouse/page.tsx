@@ -398,6 +398,7 @@ async function GreenhousePageContent() {
                                                     </Table.Cell>
                                                     <Table.Cell>
                                                         <Chip
+                                                            variant="outlined"
                                                             color={getStatusColor(
                                                                 field.plantStatus,
                                                             )}
@@ -407,7 +408,7 @@ async function GreenhousePageContent() {
                                                                     status={
                                                                         field.plantStatus
                                                                     }
-                                                                    className="size-5 shrink-0"
+                                                                    className="size-5! shrink-0"
                                                                     aria-hidden
                                                                 />
                                                             }
