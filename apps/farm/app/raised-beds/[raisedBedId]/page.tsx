@@ -1,3 +1,4 @@
+import { resolveRaisedBedAddons } from '@gredice/js/operations';
 import {
     buildRaisedBedPlantingReadModels,
     getRaisedBedFieldGroups,
@@ -6,6 +7,7 @@ import {
 import {
     type ApprovalRequest,
     type EntityStandardized,
+    getAppliedRaisedBedOperations,
     getApprovalRequests,
     getEntitiesFormatted,
     getFarmUserRaisedBeds,
@@ -16,6 +18,7 @@ import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
 import { Chip } from '@gredice/ui/Chip';
 import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import {
+    RaisedBedAddons,
     RaisedBedFieldsGrid,
     RaisedBedPlantDetails,
     RaisedBedPlantItem,
@@ -105,6 +108,12 @@ async function RaisedBedDetailPageContent({
         notFound();
     }
 
+    const [appliedOperations, operationDefinitions] = await Promise.all([
+        raisedBed.accountId
+            ? getAppliedRaisedBedOperations(raisedBed.accountId, raisedBedId)
+            : [],
+        getEntitiesFormatted<EntityStandardized>('operation'),
+    ]);
     const occupants = getRaisedBedPlantOccupancy(raisedBed);
     const orderedPositions = getRaisedBedPositionIndexesDescending([
         ...raisedBed.fields.map((field) => field.positionIndex),
@@ -112,6 +121,14 @@ async function RaisedBedDetailPageContent({
             plant.positionNumbers.map((position) => position - 1),
         ),
     ]);
+    const addons = resolveRaisedBedAddons({
+        raisedBedId,
+        positionNumbers: orderedPositions.map((position) => position + 1),
+        fields: raisedBed.fields,
+        plantings: raisedBed.plantings,
+        operations: appliedOperations,
+        definitions: operationDefinitions ?? [],
+    });
     const groups = getRaisedBedFieldGroups(orderedPositions, occupants);
     const plantingItems = buildRaisedBedPlantingReadModels(
         raisedBed.plantings.filter((planting) => !planting.isActive),
@@ -202,12 +219,25 @@ async function RaisedBedDetailPageContent({
                 </Typography>
             </div>
 
+            <RaisedBedAddons
+                addons={addons}
+                fieldCount={orderedPositions.length}
+            />
             <RaisedBedFieldsGrid
                 compact
                 groups={groups.map((group) => ({
                     ...group,
                     fields: group.positionNumbers.map((position) => ({
                         position,
+                        addons: addons.some((addon) =>
+                            addon.positionNumbers.includes(position),
+                        ) ? (
+                            <RaisedBedAddons
+                                addons={addons}
+                                position={position}
+                                fieldCount={orderedPositions.length}
+                            />
+                        ) : undefined,
                         controls: occupants
                             .filter(
                                 (plant) =>

@@ -4,7 +4,7 @@ import { config } from './playwright.config';
 
 export default defineConfig({
     ...config,
-    testMatch: 'public-profile.spec.tsx',
+    testMatch: ['public-profile.spec.tsx', 'avatar-profile-links.spec.tsx'],
     testIgnore: [],
     webServer: undefined,
     use: {
@@ -15,6 +15,15 @@ export default defineConfig({
                 dedupe: ['nuqs', 'react', 'react-dom'],
                 // Exercise profile data flow without starting the WebGL renderer.
                 alias: [
+                    {
+                        find: './LandingPublicGardenViewer',
+                        replacement: fileURLToPath(
+                            new URL(
+                                './playwright/LandingPublicGardenViewerStub.tsx',
+                                import.meta.url,
+                            ),
+                        ),
+                    },
                     {
                         find: './PublicGardenViewerDynamic',
                         replacement: fileURLToPath(

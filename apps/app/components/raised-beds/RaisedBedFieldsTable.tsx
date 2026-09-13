@@ -1,14 +1,16 @@
 import type { PlantSortData } from '@gredice/client';
+import { resolveRaisedBedAddons } from '@gredice/js/operations';
 import { getRaisedBedFieldGroups } from '@gredice/js/plants';
 import {
     type EntityStandardized,
+    getAppliedRaisedBedOperations,
     getEntitiesFormatted,
     getRaisedBed,
     getRaisedBedFieldPlantCycles,
     getRaisedBedPlantOccupancy,
     isRaisedBedPlantInGreenhouse,
 } from '@gredice/storage';
-import { RaisedBedFieldsGrid } from '@gredice/ui/raisedBeds';
+import { RaisedBedAddons, RaisedBedFieldsGrid } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { RaisedBedFieldWeedStateSelector } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldWeedStateSelector';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
@@ -139,6 +141,19 @@ export async function RaisedBedFieldsTable({
                 operation.information?.name ??
                 `Radnja #${operation.id}`,
         }));
+    const addons = resolveRaisedBedAddons({
+        raisedBedId,
+        positionNumbers: orderedPositions.map((position) => position + 1),
+        fields: raisedBed.fields,
+        plantings: raisedBed.plantings,
+        operations: raisedBed.accountId
+            ? await getAppliedRaisedBedOperations(
+                  raisedBed.accountId,
+                  raisedBedId,
+              )
+            : [],
+        definitions: operationDefinitions ?? [],
+    });
     const groups = getRaisedBedFieldGroups(orderedPositions, occupants);
     const positionContent = new Map(
         orderedPositions.map((positionIndex) => {
@@ -273,11 +288,24 @@ export async function RaisedBedFieldsTable({
 
     return (
         <Stack spacing={3}>
+            <RaisedBedAddons
+                addons={addons}
+                fieldCount={orderedPositions.length}
+            />
             <RaisedBedFieldsGrid
                 groups={groups.map((group) => ({
                     ...group,
                     fields: group.positionNumbers.map((position) => ({
                         position,
+                        addons: addons.some((addon) =>
+                            addon.positionNumbers.includes(position),
+                        ) ? (
+                            <RaisedBedAddons
+                                addons={addons}
+                                position={position}
+                                fieldCount={orderedPositions.length}
+                            />
+                        ) : undefined,
                         controls: (
                             <>
                                 <RaisedBedFieldWeedStateSelector
@@ -314,6 +342,7 @@ export async function RaisedBedFieldsTable({
                                             <RaisedBedSelectedPlantItem
                                                 key={plant.key}
                                                 planting={plant.planting}
+                                                plantSorts={sortsData}
                                                 positionNumbers={
                                                     plant.positionNumbers
                                                 }

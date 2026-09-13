@@ -1,6 +1,6 @@
 'use client';
 
-import { clientPublic } from '@gredice/client';
+import { clientPublic, directoriesClient } from '@gredice/client';
 import {
     GardenSceneTransitionSurface,
     useGardenSceneTransition,
@@ -9,6 +9,12 @@ import { Button } from '@gredice/ui/Button';
 import { Spinner } from '@gredice/ui/Spinner';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { PublicGardenStatsAccordion } from '../../vrtovi/PublicGardenStatsAccordion';
+import { PublicGardenSummary } from '../../vrtovi/PublicGardenSummary';
+import {
+    calculatePublicGardenStats,
+    countActivePlantsFromPublicGarden,
+} from '../../vrtovi/publicGardenFormatting';
 import { PublicGardenViewerDynamic } from './PublicGardenViewerDynamic';
 import type { getPublicProfile } from './publicProfile';
 
@@ -20,6 +26,14 @@ export function PublicProfileGardens({
     );
     const activeGarden =
         gardens.find((garden) => garden.id === selectedGardenId) ?? gardens[0];
+    const blockDataQuery = useQuery({
+        queryKey: ['public-garden-stat-blocks'],
+        enabled: Boolean(activeGarden),
+        queryFn: async () =>
+            (await directoriesClient().GET('/entities/block')).data ?? null,
+        staleTime: 60 * 60 * 1000,
+        retry: false,
+    });
     const gardenQuery = useQuery({
         queryKey: ['public-garden', activeGarden?.id],
         enabled: Boolean(activeGarden),
@@ -69,7 +83,7 @@ export function PublicProfileGardens({
                                     className="peer sr-only"
                                     aria-controls="profile-garden-preview"
                                 />
-                                <span className="flex min-h-11 items-center rounded-xl border-2 border-b-4 border-tertiary bg-background px-4 py-2 font-medium break-words transition-colors hover:bg-tertiary/20 peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary motion-reduce:transition-none">
+                                <span className="flex min-h-11 items-center rounded-xl border-2 border-b-4 border-tertiary/60 bg-background px-4 py-2 font-medium break-words transition-colors hover:bg-tertiary/20 peer-checked:border-tertiary peer-checked:bg-tertiary/30 peer-checked:text-tertiary-foreground peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-tertiary-foreground motion-reduce:transition-none">
                                     {garden.name}
                                 </span>
                             </label>
@@ -79,46 +93,72 @@ export function PublicProfileGardens({
                         id="profile-garden-preview"
                         aria-label={`Vrt: ${activeGarden.name}`}
                         aria-busy={!gardenQuery.error && isSwitchingGarden}
-                        className="relative h-[420px] overflow-hidden rounded-2xl border border-black/10 sm:h-[520px]"
+                        className="overflow-hidden rounded-2xl border border-tertiary"
                     >
-                        {gardenQuery.error ? (
-                            <div
-                                role="alert"
-                                className="flex h-full flex-col items-center justify-center gap-3 p-4 text-center"
-                            >
-                                <p>Vrt trenutno nije dostupan.</p>
-                                <Button
-                                    variant="outlined"
-                                    onClick={() => void gardenQuery.refetch()}
+                        <div className="relative h-[420px] sm:h-[520px]">
+                            {gardenQuery.error ? (
+                                <div
+                                    role="alert"
+                                    className="flex h-full flex-col items-center justify-center gap-3 p-4 text-center"
                                 >
-                                    Pokušaj ponovno
-                                </Button>
-                            </div>
-                        ) : (
-                            <>
-                                <GardenSceneTransitionSurface
-                                    className="h-full"
-                                    visible={
-                                        sceneVisible && !gardenQuery.isLoading
-                                    }
-                                >
-                                    {displayedGarden && (
-                                        <PublicGardenViewerDynamic
-                                            className="h-full"
-                                            garden={displayedGarden}
-                                        />
-                                    )}
-                                </GardenSceneTransitionSurface>
-                                {isSwitchingGarden && (
-                                    <div
-                                        role="status"
-                                        className="absolute inset-0 flex items-center justify-center gap-3 bg-background/40"
+                                    <p>Vrt trenutno nije dostupan.</p>
+                                    <Button
+                                        variant="outlined"
+                                        onClick={() =>
+                                            void gardenQuery.refetch()
+                                        }
                                     >
-                                        <Spinner loadingLabel="Učitavanje vrta" />
-                                        <span>Učitavanje vrta...</span>
-                                    </div>
+                                        Pokušaj ponovno
+                                    </Button>
+                                </div>
+                            ) : (
+                                <>
+                                    <GardenSceneTransitionSurface
+                                        className="h-full"
+                                        visible={
+                                            sceneVisible &&
+                                            !gardenQuery.isLoading
+                                        }
+                                    >
+                                        {displayedGarden && (
+                                            <PublicGardenViewerDynamic
+                                                className="h-full"
+                                                garden={displayedGarden}
+                                            />
+                                        )}
+                                    </GardenSceneTransitionSurface>
+                                    {isSwitchingGarden && (
+                                        <div
+                                            role="status"
+                                            className="absolute inset-0 flex items-center justify-center gap-3 bg-background/40"
+                                        >
+                                            <Spinner loadingLabel="Učitavanje vrta" />
+                                            <span>Učitavanje vrta...</span>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                        {displayedGarden && !gardenQuery.error && (
+                            <div className="bg-card" inert={isSwitchingGarden}>
+                                <h3 className="px-4 py-4 text-lg font-semibold break-words sm:px-5">
+                                    {displayedGarden.name}
+                                </h3>
+                                <PublicGardenSummary
+                                    garden={displayedGarden}
+                                    activePlantCount={countActivePlantsFromPublicGarden(
+                                        displayedGarden,
+                                    )}
+                                />
+                                {blockDataQuery.data && (
+                                    <PublicGardenStatsAccordion
+                                        stats={calculatePublicGardenStats(
+                                            displayedGarden,
+                                            blockDataQuery.data,
+                                        )}
+                                    />
                                 )}
-                            </>
+                            </div>
                         )}
                     </section>
                 </>

@@ -9,7 +9,10 @@ export function PublicProfileAchievements({
     const topAchievements = getTopPublicAchievements(achievements);
 
     return (
-        <section aria-labelledby="profile-achievements-heading">
+        <section
+            aria-labelledby="profile-achievements-heading"
+            className="text-center"
+        >
             <h2
                 id="profile-achievements-heading"
                 className="mb-6 text-xl font-semibold"
@@ -17,11 +20,11 @@ export function PublicProfileAchievements({
                 Postignuća
             </h2>
             {topAchievements.length > 0 ? (
-                <ul className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 lg:grid-cols-5">
+                <ul className="flex flex-wrap justify-center gap-x-6 gap-y-8">
                     {topAchievements.map((definition) => (
                         <li
                             key={definition.category}
-                            className="flex flex-col items-center gap-3 text-center"
+                            className="flex w-[calc(50%-0.75rem)] max-w-44 flex-col items-center gap-3"
                         >
                             <span
                                 aria-hidden="true"

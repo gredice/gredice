@@ -1,4 +1,5 @@
 import 'server-only';
+import { userIdToPublicId } from '@gredice/js/publicId';
 import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { storage } from '..';
@@ -207,6 +208,7 @@ export async function getPublicGardens() {
             ? storage()
                   .select({
                       accountId: accountUsers.accountId,
+                      userId: users.id,
                       avatarUrl: users.avatarUrl,
                       displayName: users.displayName,
                   })
@@ -224,11 +226,12 @@ export async function getPublicGardens() {
     const previewImagesByGardenId = gardenPreviewImagesByGardenId(previews);
     const ownerByAccountId = new Map<
         string,
-        { avatarUrl: string | null; displayName: string }
+        { publicId: string; avatarUrl: string | null; displayName: string }
     >();
     for (const owner of gardenOwners) {
         if (!ownerByAccountId.has(owner.accountId)) {
             ownerByAccountId.set(owner.accountId, {
+                publicId: userIdToPublicId(owner.userId),
                 avatarUrl: owner.avatarUrl,
                 displayName: owner.displayName ?? 'Korisnik Gredica',
             });
