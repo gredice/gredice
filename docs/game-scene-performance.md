@@ -6,6 +6,11 @@ Static inventory refreshed: 2026-08-30
 
 ## Summary
 
+The [2026-09-13 fauna GPU investigation](./game-fauna-gpu-investigation.md)
+records 21 bounded diagnostic runs for issue #4802. The controls did not
+establish a verified correction; the historical GPU regression remains a
+release blocker for draft integration PR #4777.
+
 The 2026-04-29 analysis did not find the scene asset-bound. Game models are now
 split into one runtime GLB per asset under `apps/garden/public/assets/models`,
 generated from one Blender source file per asset under `assets/game-assets`.
