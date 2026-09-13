@@ -1,4 +1,5 @@
 import { getAchievementDefinition } from '@gredice/js/achievements';
+import { AchievementAward } from '@gredice/ui/AchievementAwards';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { GameTasksIcon as ListTodo } from '@gredice/ui/GameIcons';
 import { Empty, ShoppingCart as ShoppingCartIcon } from '@gredice/ui/icons';
@@ -16,7 +17,13 @@ import { NoSunflowersPlaceholder } from './NoSunflowersPlaceholder';
 function sunflowerReasonToDescription(reason: string) {
     if (reason === 'registration') {
         return {
-            icon: <span className="text-4xl text-center size-10">🎉</span>,
+            icon: (
+                <AchievementAward
+                    achievementKey="registration"
+                    className="size-10"
+                    aria-hidden
+                />
+            ),
             label: 'Nagrada za registraciju',
         };
     }
@@ -25,7 +32,13 @@ function sunflowerReasonToDescription(reason: string) {
         const key = reason.split(':')[1];
         const definition = key ? getAchievementDefinition(key) : undefined;
         return {
-            icon: <span className="text-4xl text-center size-10">🏆</span>,
+            icon: (
+                <AchievementAward
+                    achievementKey={key ?? 'unknown'}
+                    className="size-10"
+                    aria-hidden
+                />
+            ),
             label: definition
                 ? `Postignuće: ${definition.title}`
                 : 'Nagrada za postignuće',

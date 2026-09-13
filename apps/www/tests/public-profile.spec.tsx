@@ -70,7 +70,7 @@ test.beforeEach(async ({ page }) => {
     });
 });
 
-test('shows trophy milestones and visible gardens without exposing the login name', async ({
+test('shows custom award milestones and visible gardens without exposing the login name', async ({
     mount,
     page,
 }) => {
@@ -86,7 +86,26 @@ test('shows trophy milestones and visible gardens without exposing the login nam
     await expect(page.getByRole('radio')).toHaveCount(3);
     const achievements = page.getByRole('region', { name: 'Postignuća' });
     await expect(achievements.getByRole('listitem')).toHaveCount(4);
-    await expect(achievements.getByText('🏆')).toHaveCount(4);
+    await expect(achievements.locator('[data-achievement-key]')).toHaveCount(4);
+    await expect(
+        achievements.locator('[data-achievement-key="planting_20"]'),
+    ).toBeVisible();
+    await expect(
+        achievements.locator('[data-achievement-key="harvest_50"]'),
+    ).toHaveCount(0);
+    await expect(achievements.getByText('Razina III / IX')).toHaveCount(3);
+    expect(
+        await achievements.locator('svg image').evaluateAll(async (images) =>
+            Promise.all(
+                images.map(async (element) => {
+                    const image = new Image();
+                    image.src = element.getAttribute('href') ?? '';
+                    await image.decode();
+                    return image.naturalWidth;
+                }),
+            ),
+        ),
+    ).toEqual([512, 512, 512, 512]);
     await expect(
         achievements.getByRole('heading', { name: '20 biljaka' }),
     ).toBeVisible();

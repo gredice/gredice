@@ -196,6 +196,7 @@ import { UserAvatar, UserAvatarLink } from '@gredice/ui/UserAvatar';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import Image from 'next/image';
 import { useMemo, useState } from 'react';
+import { AchievementCollectionShowcase } from '../../../../../packages/game/src/shared-ui/achievements/AchievementCollection.fixture';
 import { RaisedBedFieldsGridFixture } from '../../../../../packages/ui/src/raisedBeds/RaisedBedFieldsGrid.fixture';
 import { PlantCareHudPreview } from './PlantCareHudPreview';
 
@@ -1405,6 +1406,7 @@ function GardenWorkspaceShowcase() {
                 </PageHeader>
 
                 <PlantCareHudPreview />
+                <AchievementCollectionShowcase state="starter" />
                 <Row spacing={3} className="flex-wrap">
                     <IconButton aria-label="Obavijesti" variant="outlined">
                         <GameMailboxIcon className="size-8" />
