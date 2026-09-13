@@ -135,7 +135,7 @@ Extend shared definitions with explicit `familyKey`, `level`, `visualGrade` and 
     familyKey: 'planting',
     level: 3,
     visualGrade: 'growing',
-    artworkKey: 'planting-20',
+    artworkKey: 'planting_20',
     // Existing threshold, reward and other fields remain unchanged.
 }
 ```

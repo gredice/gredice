@@ -16,23 +16,27 @@ function recordsFor(state: CollectionState): AchievementRecord[] {
                 state === 'complete' ||
                 (state === 'starter' ? award.level === 1 : award.level <= 6),
         )
-        .map((award) => ({
-            key: award.key,
-            status:
+        .map((award) => {
+            const status: AchievementRecord['status'] =
                 state === 'experienced' && award.level === 6
                     ? 'denied'
                     : state === 'experienced' && award.level === 5
                       ? 'pending'
-                      : 'approved',
-            earnedAt: '2026-09-10T12:00:00.000Z',
-            rewardSunflowers:
-                award.key === 'watering_20' ? 0 : award.rewardSunflowers,
-            approvedAt: '2026-09-11T10:00:00.000Z',
-            rewardGrantedAt:
-                award.familyKey === 'watering'
-                    ? null
-                    : '2026-09-11T12:00:00.000Z',
-        }));
+                      : 'approved';
+            return {
+                key: award.key,
+                status,
+                earnedAt: '2026-09-10T12:00:00.000Z',
+                rewardSunflowers:
+                    award.key === 'watering_20' ? 0 : award.rewardSunflowers,
+                approvedAt:
+                    status === 'approved' ? '2026-09-11T10:00:00.000Z' : null,
+                rewardGrantedAt:
+                    status === 'approved' && award.familyKey !== 'watering'
+                        ? '2026-09-11T12:00:00.000Z'
+                        : null,
+            };
+        });
 }
 export function AchievementCollectionShowcase({
     state = 'experienced',
