@@ -19,7 +19,7 @@
         "@biomejs/biome": "2.5.3",
         "@ffmpeg-installer/ffmpeg": "1.1.0",
         "@types/node": "24.12.4",
-        "sharp": "0.35.3",
+        "sharp": "0.35.4",
         "typescript": "7.0.2"
     }
 }
