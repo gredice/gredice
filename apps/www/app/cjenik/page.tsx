@@ -1,3 +1,4 @@
+import { minimumShoppingCartAmountEur } from '@gredice/js/shoppingCart';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
@@ -255,11 +256,17 @@ export default async function PricingPage() {
     return (
         <Container className="pb-12" maxWidth="lg">
             <Stack spacing={6}>
-                <PageHeader
-                    header="💶 Cjenik"
-                    padded
-                    subHeader="Jasan pregled cijena i dostupnosti paketa suncokreta, biljaka, sorti, radnji i dostave."
-                />
+                <Stack spacing={2}>
+                    <PageHeader
+                        header="💶 Cjenik"
+                        padded
+                        subHeader="Jasan pregled cijena i dostupnosti paketa suncokreta, biljaka, sorti, radnji i dostave."
+                    />
+                    <Typography level="body2" secondary>
+                        Minimalna vrijednost narudžbe iznosi{' '}
+                        {formatPrice(minimumShoppingCartAmountEur)}.
+                    </Typography>
+                </Stack>
 
                 <Card className="scroll-mt-28" id="suncokreti">
                     <CatalogSectionHeader
