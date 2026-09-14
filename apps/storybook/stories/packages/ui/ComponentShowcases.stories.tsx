@@ -1105,7 +1105,7 @@ function PublicContentShowcase() {
                         ]}
                     />
 
-                    <MarkdownBlock markdown="## Markdown CMS section\n\nMarkdownBlock renders author-provided Markdown with the shared Markdown and StyledHtml primitives.\n\n- Supports lists\n- Supports **emphasis**\n- Supports [links](/)" />
+                    <MarkdownBlock markdown="## Markdown CMS section\n\nMarkdownBlock renders author-provided Markdown with the shared Markdown and StyledHtml primitives.\n\n- Supports lists\n- Supports **emphasis**\n- Supports [links](/)\n\n| Pitanje | Gredice |\n| --- | --- |\n| Što biraš? | Biljke za svoju gredicu |\n| Što pratiš? | Stanje, fotografije i radnje u svojoj gredici |" />
 
                     <HtmlBlock html="<h2>HTML CMS section</h2><p>HtmlBlock renders trusted author-provided HTML with the shared StyledHtml primitive.</p><ul><li>Styled lists</li><li>Styled text</li></ul>" />
 
