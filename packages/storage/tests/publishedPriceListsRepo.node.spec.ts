@@ -1,21 +1,94 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    attributeDefinitions,
+    attributeValues,
+    entities,
+    entityTypes,
     events,
+    getAttributeDefinitions,
     getPublishedPriceList,
     getPublishedPriceLists,
     publishPublicPriceList,
     storage,
 } from '@gredice/storage';
+import { eq } from 'drizzle-orm';
 import { createTestDb } from './testDb';
 
-test('publication is idempotent and preserves immutable archived downloads', async () => {
+test('publication supports parentless sorts, deduplicates prices and preserves older downloads after changes', async (t) => {
     createTestDb();
+    const entityTypeName = 'plantSort';
+    await storage()
+        .insert(entityTypes)
+        .values({ name: entityTypeName, label: 'Plant sort' })
+        .onConflictDoNothing();
+    const existingDefinitions = await getAttributeDefinitions(entityTypeName);
+    const definitions = [];
+    for (const definition of [
+        { category: 'information', name: 'name', dataType: 'text' },
+        { category: 'prices', name: 'perPlant', dataType: 'number' },
+    ]) {
+        const existing = existingDefinitions.find(
+            (entry) =>
+                entry.category === definition.category &&
+                entry.name === definition.name,
+        );
+        if (existing) {
+            definitions.push(existing);
+        } else {
+            const [created] = await storage()
+                .insert(attributeDefinitions)
+                .values({
+                    ...definition,
+                    entityTypeName,
+                    label: definition.name,
+                })
+                .returning();
+            definitions.push(created);
+        }
+    }
+    const [sort] = await storage()
+        .insert(entities)
+        .values({
+            entityTypeName,
+            state: 'published',
+        })
+        .returning();
+    t.after(async () => {
+        await storage()
+            .delete(attributeValues)
+            .where(eq(attributeValues.entityId, sort.id));
+        await storage().delete(entities).where(eq(entities.id, sort.id));
+    });
+    const [, price] = await storage()
+        .insert(attributeValues)
+        .values(
+            definitions.map((definition) => ({
+                entityId: sort.id,
+                entityTypeName,
+                attributeDefinitionId: definition.id,
+                value:
+                    definition.name === 'name'
+                        ? 'Samostalna sorta za cjenik'
+                        : '2.50',
+            })),
+        )
+        .returning();
     const first = await publishPublicPriceList();
     const again = await publishPublicPriceList();
     assert.equal(first.id, again.id);
     assert.equal(first.csv, again.csv);
     assert.ok(first.filename.endsWith('.csv'));
+    assert.ok(first.csv.includes('Uzgoj: Samostalna sorta za cjenik'));
+    assert.deepEqual(await getPublishedPriceList(first.id), first);
+    await storage()
+        .update(attributeValues)
+        .set({ value: '3.50' })
+        .where(eq(attributeValues.id, price.id));
+    const changed = await publishPublicPriceList();
+    assert.notEqual(changed.id, first.id);
+    assert.notEqual(changed.csv, first.csv);
+    assert.deepEqual(await getPublishedPriceList(), changed);
     assert.deepEqual(await getPublishedPriceList(first.id), first);
 });
 

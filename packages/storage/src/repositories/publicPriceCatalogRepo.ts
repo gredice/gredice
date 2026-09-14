@@ -43,7 +43,12 @@ export async function getPublicPriceCatalog() {
         ...sorts.map((sort) => ({
             entityId: sort.id,
             entityTypeName: 'plantSort',
-            name: `Uzgoj: ${sort.information.plant.information.name} – ${sort.information.name}`,
+            name: `Uzgoj: ${[
+                sort.information.plant?.information?.name,
+                sort.information.name,
+            ]
+                .filter(Boolean)
+                .join(' – ')}`,
             price: sort.prices?.perPlant,
             attributeCategory: 'prices',
             attributeName: 'perPlant',
