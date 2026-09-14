@@ -192,14 +192,30 @@ const completedChecklistStateWithNewTask: TutorialChecklistState = {
     totals: getTotals(completedGroupsWithNewTask),
 };
 
-function createTutorialChecklistQueryClient(state: TutorialChecklistState) {
+function createTutorialChecklistQueryClient(
+    state: TutorialChecklistState | null,
+    error: boolean,
+) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
             queries: { retry: false, staleTime: Infinity },
         },
     });
 
-    queryClient.setQueryData(tutorialChecklistKeys, state);
+    if (state) {
+        queryClient.setQueryData(tutorialChecklistKeys, state);
+    } else if (error) {
+        void queryClient.prefetchQuery({
+            queryKey: tutorialChecklistKeys,
+            queryFn: () =>
+                Promise.reject(new Error('Tutorial checklist unavailable')),
+        });
+    } else {
+        void queryClient.prefetchQuery({
+            queryKey: tutorialChecklistKeys,
+            queryFn: () => new Promise<never>(() => undefined),
+        });
+    }
 
     return queryClient;
 }
@@ -207,11 +223,17 @@ function createTutorialChecklistQueryClient(state: TutorialChecklistState) {
 type TutorialChecklistHudStoryVariant =
     | 'completed'
     | 'completed-with-new-task'
-    | 'default';
+    | 'default'
+    | 'error'
+    | 'loading';
 
 function stateForVariant(
     variant: TutorialChecklistHudStoryVariant,
-): TutorialChecklistState {
+): TutorialChecklistState | null {
+    if (variant === 'error' || variant === 'loading') {
+        return null;
+    }
+
     if (variant === 'completed') {
         return completedChecklistState;
     }
@@ -230,7 +252,7 @@ export function TutorialChecklistHudStory({
 }) {
     const state = stateForVariant(variant);
     const [queryClient] = useState(() =>
-        createTutorialChecklistQueryClient(state),
+        createTutorialChecklistQueryClient(state, variant === 'error'),
     );
     const gameStore = useMemo(
         () =>
@@ -244,7 +266,9 @@ export function TutorialChecklistHudStory({
     );
 
     useEffect(() => {
-        queryClient.setQueryData(tutorialChecklistKeys, state);
+        if (state) {
+            queryClient.setQueryData(tutorialChecklistKeys, state);
+        }
     }, [queryClient, state]);
 
     return (

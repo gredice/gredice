@@ -4,6 +4,7 @@ import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { persistLocalSandboxGarden } from '../localSandboxGarden';
 import { createGardenPosition, type GardenStack } from '../types/Stack';
 import { useGameState } from '../useGameState';
+import { getGardenStackPatchError } from './gardenStackPatchError';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
 const mutationKey = ['gardens', 'current', 'blockMove'];
@@ -12,7 +13,7 @@ type MoveBlockArgs = {
     sourcePosition: { x: number; z: number };
     destinationPosition: { x: number; z: number };
     blockIndex: number;
-    sourceBlockId?: string;
+    sourceBlockId: string;
 };
 
 type MoveArgs = MoveBlockArgs & {
@@ -20,11 +21,17 @@ type MoveArgs = MoveBlockArgs & {
     onOptimisticUpdate?: () => void;
 };
 
-type MovePatchOperation = {
-    op: 'move';
-    from: string;
-    path: string;
-};
+type MovePatchOperation =
+    | {
+          op: 'test';
+          path: string;
+          value: string;
+      }
+    | {
+          op: 'move';
+          from: string;
+          path: string;
+      };
 
 function getMoveBlocks(args: MoveArgs): MoveBlockArgs[] {
     return [
@@ -36,6 +43,24 @@ function getMoveBlocks(args: MoveArgs): MoveBlockArgs[] {
         },
         ...(args.additionalBlocks ?? []),
     ];
+}
+
+export function createMovePatchOperations(args: MoveArgs) {
+    return getMoveBlocks(args).flatMap<MovePatchOperation>((moveBlock) => {
+        const sourcePath = `/${moveBlock.sourcePosition.x}/${moveBlock.sourcePosition.z}/${moveBlock.blockIndex}`;
+        return [
+            {
+                op: 'test',
+                path: sourcePath,
+                value: moveBlock.sourceBlockId,
+            },
+            {
+                op: 'move',
+                from: sourcePath,
+                path: `/${moveBlock.destinationPosition.x}/${moveBlock.destinationPosition.z}/-`,
+            },
+        ];
+    });
 }
 
 export function moveBlockOptimistically(
@@ -142,20 +167,19 @@ export function useBlockMove() {
                 return;
             }
             const gardenId = garden.id;
-            const operations: MovePatchOperation[] = getMoveBlocks(args).map(
-                (moveBlock) => ({
-                    op: 'move',
-                    from: `/${moveBlock.sourcePosition.x}/${moveBlock.sourcePosition.z}/${moveBlock.blockIndex}`,
-                    path: `/${moveBlock.destinationPosition.x}/${moveBlock.destinationPosition.z}/-`,
-                }),
-            );
+            const operations = createMovePatchOperations(args);
 
-            await clientAuthenticated().api.gardens[':gardenId'].stacks.$patch({
+            const response = await clientAuthenticated().api.gardens[
+                ':gardenId'
+            ].stacks.$patch({
                 param: {
                     gardenId: gardenId.toString(),
                 },
                 json: operations,
             });
+            if (!response.ok) {
+                throw new Error(await getGardenStackPatchError(response));
+            }
         },
         onMutate: async (args) => {
             if (!garden) {

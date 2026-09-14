@@ -37,6 +37,7 @@ const sharedFields = {
     | 'entityId'
     | 'entityTypeName'
     | 'taskVersionEventId'
+    | 'completionNotes'
 >;
 
 function buildOperation(
@@ -49,6 +50,7 @@ function buildOperation(
         entityId: 501,
         entityTypeName: 'operation',
         taskVersionEventId: 1,
+        completionNotes: null,
         ...overrides,
     };
 }

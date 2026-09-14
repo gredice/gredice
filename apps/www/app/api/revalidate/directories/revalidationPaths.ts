@@ -1,6 +1,7 @@
 export type PublicDirectoryEntityType =
     | 'block'
     | 'brand'
+    | 'hqLocations'
     | 'plant'
     | 'plantDisease'
     | 'plantPest'
@@ -23,6 +24,7 @@ const revalidationPathsByEntityType: Record<
         { path: '/blokovi/ljubimci' },
         { path: '/blokovi/[alias]', type: 'page' },
     ],
+    hqLocations: [{ path: '/dostava' }, { path: '/cjenik' }],
     brand: [
         { path: '/sjeme' },
         { path: '/sjeme/[slug]', type: 'page' },
@@ -54,6 +56,7 @@ const revalidationPathsByEntityType: Record<
         { path: '/biljke/[alias]', type: 'page' },
     ],
     plantSort: [
+        { path: '/cjenik' },
         { path: '/' },
         { path: '/biljke/[alias]', type: 'page' },
         { path: '/biljke/[alias]/sorte/[sortAlias]', type: 'page' },

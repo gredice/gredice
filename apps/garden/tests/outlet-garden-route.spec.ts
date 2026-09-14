@@ -1271,8 +1271,12 @@ test('3D Outlet opens the normal garden in a fresh renderer document', async ({
         Reflect.set(window, '__outletGardenDocumentSentinel', true);
     });
 
-    await page.getByRole('link', { name: 'Moj vrt' }).click();
-    await page.waitForURL((url) => url.pathname === '/');
+    await Promise.all([
+        page.waitForURL((url) => url.pathname === '/', {
+            waitUntil: 'commit',
+        }),
+        page.getByRole('link', { name: 'Moj vrt' }).click(),
+    ]);
     await expect(page.locator('[data-outlet-garden]')).toHaveCount(0);
     await expect(page.locator('canvas')).toBeVisible({ timeout: 30_000 });
     await expect(page.locator('canvas')).toHaveCount(1);
@@ -1283,7 +1287,7 @@ test('3D Outlet opens the normal garden in a fresh renderer document', async ({
         ),
     ).toBeUndefined();
 
-    await page.goBack({ waitUntil: 'domcontentloaded' });
+    await page.goBack({ waitUntil: 'commit' });
     await expect(
         page.locator('[data-outlet-garden-renderer="webgl"] canvas'),
     ).toBeVisible();
@@ -1292,8 +1296,12 @@ test('3D Outlet opens the normal garden in a fresh renderer document', async ({
         'true',
     );
 
-    await page.getByRole('link', { name: 'Moj vrt' }).click();
-    await page.waitForURL((url) => url.pathname === '/');
+    await Promise.all([
+        page.waitForURL((url) => url.pathname === '/', {
+            waitUntil: 'commit',
+        }),
+        page.getByRole('link', { name: 'Moj vrt' }).click(),
+    ]);
     await expect(page.locator('canvas')).toBeVisible({ timeout: 30_000 });
     await expect(page.locator('canvas')).toHaveCount(1);
 
@@ -1651,7 +1659,7 @@ test('expired cached authentication returns to sign-in instead of reporting no f
     ).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Prijavi se i nastavi' }).click();
-    await page.getByRole('button', { name: 'Email prijava' }).click();
+    await page.getByRole('button', { name: 'Nastavi s emailom' }).click();
     await page.getByLabel('Email').fill('vrtlar@example.com');
     await page.getByLabel('Zaporka').fill('sigurna-zaporka');
     await page.getByRole('button', { name: 'Prijava', exact: true }).click();

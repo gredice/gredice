@@ -6,7 +6,7 @@
     "scripts": {
         "android:bundle": "./gradlew --no-daemon bundleRelease",
         "android:clean": "./gradlew --no-daemon clean",
-        "android:verify": "./gradlew --no-daemon lintRelease testDebugUnitTest assembleDebug bundleRelease",
+        "android:verify": "./gradlew --no-daemon lintRelease testDebugUnitTest assembleDebug assembleDebugAndroidTest bundleRelease",
         "contract:validate": "node ../../scripts/validate-delivery-car-contract.mjs",
         "store:validate": "node ../../scripts/validate-android-store-listing.mjs apps/delivery-android --allow-missing-screenshots"
     }

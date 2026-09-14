@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { HomeButton } from '../../components/HomeButton';
 
 const debugGroups = [
@@ -17,10 +16,6 @@ const debugGroups = [
 ] as const;
 
 export default function FarmDebugIndexPage() {
-    if (process.env.NODE_ENV !== 'development') {
-        notFound();
-    }
-
     return (
         <main className="min-h-screen w-full bg-background px-4 py-6 text-foreground sm:px-6 sm:py-8">
             <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">

@@ -1,5 +1,6 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useInfiniteQuery } from '@tanstack/react-query';
+import { isDeterministicEmptyMockGardenProfile } from '../mockGardenProfilePolicy';
 import {
     isOperationVisualRewardDebugProfile,
     operationVisualRewardDebugOperationItems,
@@ -296,12 +297,15 @@ export function useGardenOperations({
     pageSize?: number;
 } & GardenOperationsScope) {
     const { data: currentGarden } = useCurrentGarden();
+    const authenticatedGardenQueriesEnabled = useGameState(
+        (state) => state.authenticatedGardenQueriesEnabled,
+    );
     const isMock = useGameState((state) => state.isMock);
     const mockGardenProfile = useGameState((state) => state.mockGardenProfile);
     const isOperationRewardDebug =
         isMock && isOperationVisualRewardDebugProfile(mockGardenProfile);
     const isDeterministicEmptyMock =
-        isMock && mockGardenProfile === 'high-target';
+        isMock && isDeterministicEmptyMockGardenProfile(mockGardenProfile);
 
     return useInfiniteQuery({
         queryKey: gardenOperationsQueryKey({
@@ -356,6 +360,9 @@ export function useGardenOperations({
         },
         initialPageParam: 0,
         getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-        enabled: Boolean(currentGarden?.id) && enabled,
+        enabled:
+            authenticatedGardenQueriesEnabled &&
+            Boolean(currentGarden?.id) &&
+            enabled,
     });
 }

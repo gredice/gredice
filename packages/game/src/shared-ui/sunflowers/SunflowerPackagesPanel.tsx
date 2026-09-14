@@ -24,6 +24,7 @@ import {
     useSunflowerPackages,
 } from '../../hooks/useSunflowerPackages';
 import { formatSunflowers } from '../../utils/sunflowerPricing';
+import { EntityAnchorPrice } from '../EntityAnchorPrice';
 
 const euroFormatter = new Intl.NumberFormat('hr-HR', {
     currency: 'EUR',
@@ -250,6 +251,11 @@ export function SunflowerPackagesPanel() {
                                     <span className="whitespace-nowrap tabular-nums">
                                         {packagePrice(pkg)}
                                     </span>
+                                    <EntityAnchorPrice
+                                        entityTypeName="sunflowerPackage"
+                                        entityId={pkg.code}
+                                        currentPrice={pkg.priceEur}
+                                    />
                                 </Typography>
                             </Row>
                         </div>

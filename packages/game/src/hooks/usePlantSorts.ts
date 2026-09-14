@@ -1,5 +1,6 @@
 import { directoriesClient } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
+import { isDeterministicEmptyMockGardenProfile } from '../mockGardenProfilePolicy';
 import { useOptionalGameState } from '../useGameState';
 
 async function getPlantSorts() {
@@ -44,7 +45,7 @@ export function useAllSorts(enabled = true) {
         'default',
     );
     const isDeterministicEmptyMock =
-        isMock && mockGardenProfile === 'high-target';
+        isMock && isDeterministicEmptyMockGardenProfile(mockGardenProfile);
 
     return useQuery({
         queryKey: isDeterministicEmptyMock

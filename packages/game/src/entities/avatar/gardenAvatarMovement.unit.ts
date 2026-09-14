@@ -5,11 +5,13 @@ import { getLocalSandboxBlockData } from '../../localSandboxBlockData';
 import type { AnimalMovementSurface } from '../animals/animalMovementTerrain';
 import {
     createGardenAvatarCollisionWorld,
+    createIndexedGardenAvatarCollisionWorld,
     findGardenAvatarRoute,
     findGardenAvatarSpawnPoint,
     type GardenAvatarCollisionWorld,
     gardenAvatarCrouchingCollisionHeight,
     getGardenAvatarCeilingY,
+    getGardenAvatarCollisionCandidates,
     getGardenAvatarGroundY,
     getGardenAvatarNextJumpCount,
     getGardenAvatarRoamBlockedCells,
@@ -1327,4 +1329,36 @@ test('spawns beside a decoration when there is no roamable terrain', () => {
     assert.ok(spawn);
     assert.equal(spawn.y, 0);
     assert.notDeepEqual({ x: spawn.x, z: spawn.z }, { x: 0, z: 0 });
+});
+
+test('queries only nearby collision buckets in a dense structure-sized world', () => {
+    const surfaces = grid({ minX: 0, maxX: 19, minZ: 0, maxZ: 19 });
+    const world = createIndexedGardenAvatarCollisionWorld({
+        blockedCells: [],
+        surfaces,
+    });
+    const candidates = getGardenAvatarCollisionCandidates(world, {
+        x: 10,
+        z: 10,
+    });
+
+    assert.equal(surfaces.length, 400);
+    assert.ok(candidates.surfaces.length > 0);
+    assert.ok(candidates.surfaces.length <= 16);
+});
+
+test('indexes blockers across bucket boundaries for radius-safe collision', () => {
+    const world = createIndexedGardenAvatarCollisionWorld({
+        blockedCells: [{ x: 2, z: 0 }],
+        surfaces: grid({ minX: 0, maxX: 3, minZ: -1, maxZ: 1 }),
+    });
+    const movement = resolveGardenAvatarHorizontalMovement({
+        deltaX: 0.2,
+        deltaZ: 0,
+        position: { x: 1.3, y: 0, z: 0 },
+        world,
+    });
+
+    assert.equal(movement.collided, true);
+    assert.ok(movement.position.x < 1.4);
 });

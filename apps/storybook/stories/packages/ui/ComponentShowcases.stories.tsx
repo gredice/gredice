@@ -1,5 +1,6 @@
 import { Accordion } from '@gredice/ui/Accordion';
 import { Alert } from '@gredice/ui/Alert';
+import { AnchorPrice } from '@gredice/ui/AnchorPrice';
 import { ArchiveIcon } from '@gredice/ui/ArchiveIcon';
 import { Avatar } from '@gredice/ui/Avatar';
 import { AvatarSelectionMenu } from '@gredice/ui/AvatarSelectionMenu';
@@ -11,7 +12,6 @@ import {
     SignUpButton,
     UserButton,
 } from '@gredice/ui/auth';
-import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { BarcodeValue } from '@gredice/ui/Barcode';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { BlurText } from '@gredice/ui/BlurText';
@@ -64,6 +64,18 @@ import {
 import { ExpandableSearchInput } from '@gredice/ui/ExpandableSearchInput';
 import { FilterInput } from '@gredice/ui/FilterInput';
 import { Gallery } from '@gredice/ui/Gallery';
+import {
+    GameBackpackIcon as BackpackIcon,
+    GameCameraIcon,
+    GameHistoryIcon,
+    GameInformationIcon,
+    GameJournalIcon,
+    GameMailboxIcon,
+    GameRaisedBedIcon,
+    GameSeedPacketIcon,
+    GameTasksIcon,
+    GameToolsIcon,
+} from '@gredice/ui/GameIcons';
 import { GentleSlide } from '@gredice/ui/GentleSlide';
 import {
     Grid1Icon,
@@ -141,6 +153,7 @@ import {
     OperationImage,
 } from '@gredice/ui/OperationImage';
 import { PageHeader, PageHeaderSection } from '@gredice/ui/PageHeader';
+import { PaperNote } from '@gredice/ui/PaperNote';
 import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { Popper } from '@gredice/ui/Popper';
 import { Progress } from '@gredice/ui/Progress';
@@ -149,7 +162,6 @@ import {
     PlantYieldTooltip,
     SeedTimeInformationBadge,
 } from '@gredice/ui/plants';
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { RaisedBedIdentifierIcon } from '@gredice/ui/RaisedBedIdentifierIcon';
 import { RaisedBedSimpleIcon } from '@gredice/ui/RaisedBedSimpleIcon';
 import { Row } from '@gredice/ui/Row';
@@ -181,10 +193,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Timeline, TimelineEntry, TimelineGroup } from '@gredice/ui/Timeline';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@gredice/ui/Tooltip';
 import { Typography } from '@gredice/ui/Typography';
-import { UserAvatar } from '@gredice/ui/UserAvatar';
+import { UserAvatar, UserAvatarLink } from '@gredice/ui/UserAvatar';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import Image from 'next/image';
 import { useMemo, useState } from 'react';
+import { AchievementCollectionShowcase } from '../../../../../packages/game/src/shared-ui/achievements/AchievementCollection.fixture';
+import { RaisedBedFieldsGridFixture } from '../../../../../packages/ui/src/raisedBeds/RaisedBedFieldsGrid.fixture';
+import { PlantCareHudPreview } from './PlantCareHudPreview';
 
 const sampleImages = [
     {
@@ -984,6 +999,12 @@ function PublicContentShowcase() {
                     { href: '/', text: 'Recepti' },
                 ]}
             >
+                <UserAvatarLink
+                    href="/korisnici/u_demo"
+                    achievementCount={10}
+                    displayName="Ana Kovač"
+                    size="sm"
+                />
                 <IconButton aria-label="Pretraga">
                     <Search className="size-5" />
                 </IconButton>
@@ -996,6 +1017,15 @@ function PublicContentShowcase() {
                         description="Public content composition with CMS sections, media, text rendering, and navigation controls."
                     />
 
+                    <div className="rounded-lg border p-4">
+                        <Typography level="body1" semiBold>
+                            Uzgoj rajčice · 5,00 €
+                        </Typography>
+                        <AnchorPrice
+                            currentPrice={5}
+                            anchor={{ price: 5, date: '2026-09-10' }}
+                        />
+                    </div>
                     <PublicReleaseTimeline />
 
                     <Heading1
@@ -1360,9 +1390,9 @@ function GardenWorkspaceShowcase() {
                     subHeader="A responsive workbench for garden state, field selection, and HUD-style controls."
                     visual={
                         <div className="grid size-full place-items-center bg-lime-100 text-lime-900">
-                            <RaisedBedIcon
+                            <GameRaisedBedIcon
                                 physicalId="A12"
-                                className="size-24"
+                                className="size-12"
                             />
                         </div>
                     }
@@ -1385,6 +1415,45 @@ function GardenWorkspaceShowcase() {
                         </CardContent>
                     </Card>
                 </PageHeader>
+
+                <PlantCareHudPreview />
+                <AchievementCollectionShowcase state="starter" />
+                <Row spacing={3} className="flex-wrap">
+                    <IconButton aria-label="Obavijesti" variant="outlined">
+                        <GameMailboxIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Vrtni zadaci" variant="outlined">
+                        <GameTasksIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Sijanje" variant="outlined">
+                        <GameSeedPacketIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Vrtne radnje" variant="outlined">
+                        <GameToolsIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Dnevnik" variant="outlined">
+                        <GameJournalIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Informacije" variant="outlined">
+                        <GameInformationIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Fotografije" variant="outlined">
+                        <GameCameraIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Povijest" variant="outlined">
+                        <GameHistoryIcon className="size-8" />
+                    </IconButton>
+                </Row>
+
+                <Stack spacing={2}>
+                    <Typography level="h3">
+                        Bilješka iz pregleda gredice
+                    </Typography>
+                    <PaperNote noteKey="garden-inspection-42">
+                        Tlo je rahlo i dovoljno vlažno. Uklonjen je korov oko
+                        rajčice.
+                    </PaperNote>
+                </Stack>
 
                 <div className="h-[44rem] overflow-hidden rounded-lg border bg-card">
                     <SplitView
@@ -2011,4 +2080,8 @@ export const AccountAndStates: Story = {
 
 export const SurveyForm: Story = {
     render: () => <SurveyQuestionnaireShowcase />,
+};
+
+export const RaisedBedPlantings: Story = {
+    render: () => <RaisedBedFieldsGridFixture compact />,
 };

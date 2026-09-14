@@ -357,6 +357,22 @@ editing source events, or deleting history.
 Operational read paths remain compatible with both legacy and selected
 plantings.
 
+Admin field tiles, Farm bed previews and field details, and both greenhouse
+pages use `getRaisedBedPlantOccupancy` from `@gredice/storage`. It combines
+active legacy field crops with active selected plantings, without counting
+legacy planting projections twice. Field views show every occupied membership
+and each co-plant; greenhouse lists show one row per logical planting with all
+position numbers and lifecycle dates. Deleted memberships and inactive
+plantings are excluded. Greenhouse eligibility uses the sowing location and
+current lifecycle status for either model.
+
+These are display rows with explicit `legacyField` and `planting` references;
+they must never be passed to field mutations as fabricated legacy targets.
+Admin field tiles and greenhouse date controls expose planting-scoped lifecycle
+status/date changes after sowing verification, with the current planting version
+and chronological date validation. Their actions also revalidate the greenhouse.
+Selected crop-specific operations remain subject to the lifecycle boundary below.
+
 - Admin and Farm key rows and mutations by `plantingId` plus the expected
   planting version.
 - A multi-field planting appears once and lists its footprint; co-plants appear
@@ -562,3 +578,52 @@ exact test plant and layouts, cart currency, Farm and Admin
 task outcome, paid-fulfillment result, and rollback result. A passing storage
 test does not replace the later Garden interaction and real Farm task smoke
 checks.
+
+
+### Explicit planting operations
+
+Admin field tiles can create plant-scoped operations for a completed selected
+planting. Operations persist a nullable `plantingId`, exclusive with the legacy
+`raisedBedFieldId`; their account, garden, bed and crop membership are validated
+in storage. Farm and Admin schedule cards show the complete planting footprint
+and snapshotted plant count. Retrying creation reuses the unresolved operation
+for that planting and definition.
+
+Admin verification of transplant operation 593 changes the selected planting's
+sowing location to direct in the same transaction as operation verification.
+Farmer completion alone leaves it in the greenhouse. Verification of removal
+operation 346 retires the exact stopped planting. Removed or invalid targets
+reject completion/verification atomically. Field-based crop automations skip
+explicit planting targets instead of inferring a crop from the shared field.
+
+Deployment requires an ordered migration adding `operations.planting_id`, its
+foreign key/index and exclusive-target constraint before the new code runs.
+Migration 0091 is included in the maintainer-authorized merge, after the
+existing migrations and before the harvest-trace schema. Harvest QR trace support is a separate
+follow-up; an explicit planting operation must never inherit a legacy field's
+trace or status mutation.
+
+
+### Selected planting harvest traces
+
+Selected harvest labels use one QR identity per harvest operation and planting,
+with its full footprint. The trace stores `plantingId`; its legacy
+`plantPlaceEventId` is null. A physical anchor field is retained for location
+joins, never used to infer crop history. Retries reuse the same trace, including
+revocation state. Farm printing verifies the operation's planting identity and
+account/garden scope.
+
+Public traces read the selected lifecycle and initial sowing location, include
+operations for that exact planting and physical care of its footprint, and
+exclude other co-plants. They become public after harvest completion submission.
+Legacy traces explicitly exclude selected operations. Selected watering history
+shows recorded watering counts and bed totals rather than assuming the legacy
+one-crop-per-field water allocation. Completed selected harvests are also
+supported by trace backfill.
+
+This follow-up requires the operation target schema first, then a migration
+making `harvest_trace_links.plant_place_event_id` nullable, adding `planting_id`
+and its foreign key/unique harvest target, and enforcing exactly one crop
+identity. Migrations 0091 and 0092 are included in that order following maintainer merge
+authorization. Both were generated and tested in a disposable local database;
+deployment must apply them before running the new storage readers.

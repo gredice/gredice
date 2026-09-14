@@ -1,5 +1,4 @@
 import { decodeRouteParam } from '@gredice/js/uri';
-import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -7,6 +6,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
+import { PublicBreadcrumbs } from '../../../components/shared/seo/PublicBreadcrumbs';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
@@ -155,7 +155,7 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                 }
             />
             <Stack spacing={8}>
-                <Breadcrumbs
+                <PublicBreadcrumbs
                     items={[
                         { label: 'Biljke', href: KnownPages.Plants },
                         { label: plant.information.name },

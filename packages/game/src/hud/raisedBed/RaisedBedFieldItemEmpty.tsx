@@ -1,5 +1,5 @@
+import { GameSeedPacketIcon as PlantingSeedIcon } from '@gredice/ui/GameIcons';
 import { MoreHorizontal, ShoppingCart } from '@gredice/ui/icons';
-import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { cx } from '@gredice/ui/utils';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
@@ -163,7 +163,7 @@ export function RaisedBedFieldItemEmpty({
                 {...primaryPlantPickerProps}
             />
             <RaisedBedFieldIconStack>
-                {showOperations && (
+                {showOperations && raisedBed.status === 'active' && (
                     <RaisedBedFieldOperationsModal
                         gardenId={gardenId}
                         positionIndex={positionIndex}

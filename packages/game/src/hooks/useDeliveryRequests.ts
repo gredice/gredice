@@ -1,12 +1,18 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
+import { useOptionalGameState } from '../useGameState';
 
 export const deliveryRequestsQueryKey = ['delivery', 'requests'];
 
 export function useDeliveryRequests(options: { enabled?: boolean } = {}) {
+    const authenticatedGardenQueriesEnabled = useOptionalGameState(
+        (state) => state.authenticatedGardenQueriesEnabled,
+        true,
+    );
+
     return useQuery({
         queryKey: deliveryRequestsQueryKey,
-        enabled: options.enabled ?? true,
+        enabled: authenticatedGardenQueriesEnabled && (options.enabled ?? true),
         queryFn: async () => {
             const response =
                 await clientAuthenticated().api.delivery.requests.$get();

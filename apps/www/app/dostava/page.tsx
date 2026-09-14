@@ -1,5 +1,9 @@
-import { deliveryPricePerKilometre } from '@gredice/js/delivery';
+import {
+    deliveryAnchorPricePerKilometre,
+    deliveryPricePerKilometre,
+} from '@gredice/js/delivery';
 import { Alert } from '@gredice/ui/Alert';
+import { AnchorPrice } from '@gredice/ui/AnchorPrice';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Container } from '@gredice/ui/Container';
@@ -16,6 +20,12 @@ import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 import { DeliveryAvailabilityChecker } from './DeliveryAvailabilityChecker';
 import { DeliveryZoneMap } from './DeliveryZoneMap';
+import {
+    deliverySummaryFacts,
+    deliverySummaryHeading,
+    deliverySummaryHeadingId,
+    deliverySummaryLead,
+} from './deliverySummary';
 
 export const metadata = createPublicMetadata({
     title: 'Dostava',
@@ -44,6 +54,15 @@ export default function DeliveryPage() {
                     subHeader="Sve informacije o dostavi povrća iz tvojih gredica"
                 />
                 <StyledHtml>
+                    <h2 id={deliverySummaryHeadingId}>
+                        🌱 {deliverySummaryHeading}
+                    </h2>
+                    <p>{deliverySummaryLead}</p>
+                    <ul>
+                        {deliverySummaryFacts.map((fact) => (
+                            <li key={fact}>{fact}</li>
+                        ))}
+                    </ul>
                     <p>
                         Kad tvoje povrće bude spremno za berbu, mi ćemo se
                         pobrinuti da ga sigurno i svježe dostavimo na tvoju
@@ -98,6 +117,10 @@ export default function DeliveryPage() {
                         </strong>
                         .
                     </p>
+                    <AnchorPrice
+                        currentPrice={deliveryPricePerKilometre}
+                        anchor={deliveryAnchorPricePerKilometre}
+                    />
                     <DeliveryAvailabilityChecker />
                     <p>Vidi mapu zona dostave i tablicu s cijenama ispod:</p>
                     <figure className="not-prose mb-4 w-full">
@@ -182,6 +205,15 @@ export default function DeliveryPage() {
                                             <strong>
                                                 {formatPrice(distanceFee)}
                                             </strong>
+                                            <AnchorPrice
+                                                currentPrice={distanceFee}
+                                                anchor={{
+                                                    ...deliveryAnchorPricePerKilometre,
+                                                    price:
+                                                        location.distance *
+                                                        deliveryAnchorPricePerKilometre.price,
+                                                }}
+                                            />
                                         </td>
                                         <td className="border-border border-t px-2 py-2">
                                             <strong>

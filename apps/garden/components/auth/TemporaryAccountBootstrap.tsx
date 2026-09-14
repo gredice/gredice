@@ -200,11 +200,6 @@ export function TemporaryAccountBootstrap({
                 </div>
             )}
             <LoginModal
-                description={
-                    status === 'awaiting-login'
-                        ? 'Prijavi se kako bismo otvorili tvoj postojeći vrt ili nastavi bez prijave s privremenim vrtom.'
-                        : undefined
-                }
                 dismissible={status !== 'awaiting-login'}
                 onAuthenticated={() => setStatus('ready')}
                 onContinueWithoutLogin={

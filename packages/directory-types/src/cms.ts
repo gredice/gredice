@@ -6,6 +6,7 @@ import type { components } from './v1';
 export interface DirectoryEntityDataMap {
     block: components['schemas']['entity-block'];
     brand: components['schemas']['entity-brand'];
+    environmentAnimal: components['schemas']['entity-environmentAnimal'];
     faq: components['schemas']['entity-faq'];
     'faq-category': components['schemas']['entity-faq-category'];
     farmSupply: components['schemas']['entity-farmSupply'];
@@ -30,6 +31,7 @@ export type DirectoryEntityData<
 
 export type BlockData = DirectoryEntityDataMap['block'];
 export type BrandData = DirectoryEntityDataMap['brand'];
+export type EnvironmentAnimalData = DirectoryEntityDataMap['environmentAnimal'];
 export type FaqData = DirectoryEntityDataMap['faq'];
 export type FaqCategoryData = DirectoryEntityDataMap['faq-category'];
 export type FarmSupplyData = DirectoryEntityDataMap['farmSupply'];

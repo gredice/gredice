@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    AccountDeletionInProgressError,
     clearSandboxField,
     createAccount,
     createEntity,
@@ -15,6 +16,8 @@ import {
     getSandboxGardenDeletionCandidate,
     knownEvents,
     listGardenPreviewBlobDeletions,
+    lockAccountForDeletionLifecycle,
+    markAccountDeletionStarted,
     replaceGardenPreview,
     sowSandboxField,
     storage,
@@ -24,9 +27,15 @@ import {
 } from '@gredice/storage';
 import { and, eq, inArray, like, or } from 'drizzle-orm';
 import {
+    createGardenStructure,
+    withGardenStructureOperation,
+} from '../src/repositories/gardenStructuresRepo';
+import {
     events,
     gardenBlocks,
     gardenStacks,
+    gardenStructureOperations,
+    gardenStructures,
     gardens,
     notifications,
     operations,
@@ -168,11 +177,50 @@ test('deleteSandboxGardenCompletely removes sandbox garden dependencies across r
         status: 'test',
         stripePaymentId: 'sandbox-cleanup-payment',
     });
+    const structureId = `sandbox-structure-${gardenId.toString()}`;
+    await createGardenStructure({
+        id: structureId,
+        gardenId,
+        anchorX: 0,
+        anchorY: 0,
+        rotation: 0,
+        templateKey: 'blank',
+        kitKey: 'gredice-buildings',
+        kitVersion: '1',
+        document: {
+            schemaVersion: 1,
+            footprint: {
+                cells: [{ x: 0, y: 0, spaceKind: 'interior' }],
+            },
+            floors: [],
+            edges: [],
+            roofRegions: [],
+            props: [],
+        },
+    });
+    await withGardenStructureOperation(
+        {
+            gardenId,
+            kind: 'create',
+            operationId: `sandbox-create-${gardenId.toString()}`,
+            payload: { structureId },
+            structureId,
+        },
+        async () => ({
+            response: { structureId },
+        }),
+    );
+    await assert.rejects(
+        storage()
+            .delete(gardenStructures)
+            .where(eq(gardenStructures.id, structureId)),
+    );
 
     let complete = false;
     let attempts = 0;
     while (!complete) {
         const result = await deleteSandboxGardenCompletely(gardenId, {
+            accountId,
             batchSize: 1,
             maxBatches: 1,
         });
@@ -210,6 +258,18 @@ test('deleteSandboxGardenCompletely removes sandbox garden dependencies across r
         .from(gardenStacks)
         .where(eq(gardenStacks.gardenId, gardenId));
     assert.equal(gardenStackRows.length, 0);
+
+    const gardenStructureRows = await storage()
+        .select({ id: gardenStructures.id })
+        .from(gardenStructures)
+        .where(eq(gardenStructures.gardenId, gardenId));
+    assert.equal(gardenStructureRows.length, 0);
+
+    const gardenStructureOperationRows = await storage()
+        .select({ operationId: gardenStructureOperations.operationId })
+        .from(gardenStructureOperations)
+        .where(eq(gardenStructureOperations.gardenId, gardenId));
+    assert.equal(gardenStructureOperationRows.length, 0);
 
     const raisedBedRows = await storage()
         .select({ id: raisedBeds.id })
@@ -296,6 +356,32 @@ test('deleteSandboxGardenCompletely removes sandbox garden dependencies across r
             ),
         );
     assert.equal(eventRows.length, 0);
+});
+
+test('sandbox deletion honors the durable account-deletion fence', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const accountId = await createAccount();
+    const gardenId = await createSandboxGarden({ accountId });
+
+    await storage().transaction(async (transaction) => {
+        assert.ok(
+            await lockAccountForDeletionLifecycle(accountId, transaction),
+        );
+        assert.equal(
+            await markAccountDeletionStarted(accountId, transaction),
+            true,
+        );
+    });
+
+    await assert.rejects(
+        deleteSandboxGardenCompletely(gardenId, { accountId }),
+        AccountDeletionInProgressError,
+    );
+    assert.equal(
+        (await getSandboxGardenDeletionCandidate(gardenId))?.isDeleted,
+        false,
+    );
 });
 
 test('sowSandboxField backdates the plant so it renders already grown', async () => {

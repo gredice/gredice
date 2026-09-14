@@ -12,6 +12,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { useLiveTime } from '../../../hooks/useLiveTime';
+import { EntityAnchorPrice } from '../../../shared-ui/EntityAnchorPrice';
 import { GameModal } from '../../../shared-ui/game-modal';
 import { formatLocalDate } from '../RaisedBedPlantPicker';
 import {
@@ -162,6 +163,13 @@ export function OperationScheduleModal({
                                         {formatPrice(
                                             operation.prices?.perOperation,
                                         )}
+                                        <EntityAnchorPrice
+                                            entityTypeName="operation"
+                                            entityId={operation.id}
+                                            currentPrice={
+                                                operation.prices?.perOperation
+                                            }
+                                        />
                                     </Typography>
                                 </Stack>
                             </Row>

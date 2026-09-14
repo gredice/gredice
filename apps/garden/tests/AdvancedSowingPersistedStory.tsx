@@ -1,5 +1,3 @@
-import * as ReactQuery from '@tanstack/react-query';
-import { useMemo } from 'react';
 import {
     type AdvancedSowingGardenPlantingInput,
     buildAdvancedSowingGardenPlantingVisuals,
@@ -7,36 +5,50 @@ import {
 import type { AdvancedSowingPlantSortVisual } from '../../../packages/game/src/hud/raisedBed/RaisedBedAdvancedSowingOverlay';
 import { RaisedBedAdvancedSowingOverlay } from '../../../packages/game/src/hud/raisedBed/RaisedBedAdvancedSowingOverlay';
 
+import { RaisedBedHudTestProviders } from './RaisedBedFieldHudStory';
+import { allSorts, TEST_RAISED_BED_ID } from './raisedBedFieldHudScenarios';
+
 export function AdvancedSowingPersistedStory({
-    gardenId = 1,
     plantings: plantingInputs,
     plantingMode = false,
+    pendingPositionIndices = [],
     plantSorts,
-    raisedBedId = 101,
 }: {
-    gardenId?: number;
     plantings: AdvancedSowingGardenPlantingInput[];
     plantingMode?: boolean;
+    pendingPositionIndices?: number[];
     plantSorts: AdvancedSowingPlantSortVisual[];
-    raisedBedId?: number;
 }) {
-    const queryClient = useMemo(
-        () =>
-            new ReactQuery.QueryClient({
-                defaultOptions: {
-                    mutations: { retry: false },
-                    queries: { retry: false, staleTime: Infinity },
-                },
-            }),
-        [],
-    );
     const plantings = buildAdvancedSowingGardenPlantingVisuals(
         plantingInputs,
         18,
     );
 
     return (
-        <ReactQuery.QueryClientProvider client={queryClient}>
+        <RaisedBedHudTestProviders
+            scenario={{
+                fields: [],
+                plantings: plantingInputs,
+                sorts: plantSorts.flatMap((sort) => {
+                    const template = allSorts[0];
+                    return template
+                        ? [
+                              {
+                                  ...template,
+                                  id: sort.id,
+                                  information: {
+                                      ...template.information,
+                                      name: sort.name,
+                                  },
+                                  image: {
+                                      cover: { url: sort.coverUrl ?? '' },
+                                  },
+                              },
+                          ]
+                        : [];
+                }),
+            }}
+        >
             <div className="relative h-[600px] w-[360px]">
                 <button
                     className="absolute inset-0"
@@ -47,13 +59,13 @@ export function AdvancedSowingPersistedStory({
                 </button>
                 <RaisedBedAdvancedSowingOverlay
                     bedFieldCount={18}
-                    gardenId={gardenId}
                     plantings={plantings}
                     plantingMode={plantingMode}
+                    pendingPositionIndices={pendingPositionIndices}
                     plantSorts={plantSorts}
-                    raisedBedId={raisedBedId}
+                    raisedBedId={TEST_RAISED_BED_ID}
                 />
             </div>
-        </ReactQuery.QueryClientProvider>
+        </RaisedBedHudTestProviders>
     );
 }

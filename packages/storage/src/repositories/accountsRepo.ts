@@ -1,3 +1,4 @@
+import { userAchievementExtras } from './userAchievementProgress';
 import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
@@ -23,6 +24,83 @@ type TransactionClient = Parameters<
     Parameters<StorageClient['transaction']>[0]
 >[0];
 type DatabaseClient = StorageClient | TransactionClient;
+
+const sunflowerAccountLockTails = new Map<string, Promise<void>>();
+
+function isPgliteTestDatabase() {
+    return (
+        process.env.TEST_ENV === '1' &&
+        process.env.GREDICE_TEST_DB_PROVIDER === 'pglite'
+    );
+}
+
+function sunflowerAccountLockKey(accountId: string) {
+    const normalizedAccountId = accountId.trim();
+    if (!normalizedAccountId) {
+        throw new Error('Sunflower account lock requires an account ID');
+    }
+    return `account-sunflowers:${normalizedAccountId}`;
+}
+
+async function withSunflowerInProcessLock<T>(
+    key: string,
+    callback: () => Promise<T>,
+) {
+    const previous = sunflowerAccountLockTails.get(key) ?? Promise.resolve();
+    let release = () => {};
+    const current = new Promise<void>((resolve) => {
+        release = resolve;
+    });
+    const tail = previous.then(() => current);
+    sunflowerAccountLockTails.set(key, tail);
+
+    await previous;
+    try {
+        return await callback();
+    } finally {
+        release();
+        if (sunflowerAccountLockTails.get(key) === tail) {
+            sunflowerAccountLockTails.delete(key);
+        }
+    }
+}
+
+async function lockSunflowerAccount(
+    accountId: string,
+    transaction: TransactionClient,
+) {
+    const key = sunflowerAccountLockKey(accountId);
+    await transaction.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${key}));`,
+    );
+}
+
+/**
+ * Run account-currency work while holding the lock used by every idempotent
+ * Sunflower debit and credit. Call this before a garden placement lock so
+ * commercial building commands have one global lock order.
+ */
+export async function withSunflowerAccountTransaction<T>(
+    accountId: string,
+    callback: (transaction: TransactionClient) => Promise<T>,
+    transaction?: TransactionClient,
+) {
+    const key = sunflowerAccountLockKey(accountId);
+    const runInTransaction = async (db: TransactionClient) => {
+        if (!isPgliteTestDatabase()) {
+            await lockSunflowerAccount(accountId, db);
+        }
+        return callback(db);
+    };
+    const run = () =>
+        transaction
+            ? runInTransaction(transaction)
+            : storage().transaction(runInTransaction);
+
+    return isPgliteTestDatabase()
+        ? withSunflowerInProcessLock(key, run)
+        : run();
+}
 
 interface SunflowerEventData {
     amount: number;
@@ -158,7 +236,7 @@ export function getAccounts() {
         with: {
             accountUsers: {
                 with: {
-                    user: true,
+                    user: { extras: userAchievementExtras },
                 },
             },
         },
@@ -172,7 +250,7 @@ export function getAccount(accountId: string) {
         with: {
             accountUsers: {
                 with: {
-                    user: true,
+                    user: { extras: userAchievementExtras },
                 },
             },
         },
@@ -183,7 +261,7 @@ export function getAccountUsers(accountId: string) {
     return storage().query.accountUsers.findMany({
         where: eq(accountUsers.accountId, accountId),
         with: {
-            user: true,
+            user: { extras: userAchievementExtras },
         },
         orderBy: asc(accountUsers.createdAt),
     });

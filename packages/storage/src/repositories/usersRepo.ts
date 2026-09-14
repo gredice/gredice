@@ -28,6 +28,7 @@ import {
 } from '../schema';
 import { createEvent, knownEvents } from './eventsRepo';
 import { createDefaultGardenForAccount } from './gardensRepo';
+import { userAchievementExtras } from './userAchievementProgress';
 
 type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = Parameters<
@@ -81,15 +82,18 @@ export class UserDefaultGardenSandboxError extends Error {
 
 export function getUsers() {
     return storage().query.users.findMany({
+        extras: userAchievementExtras,
         orderBy: desc(users.createdAt),
     });
 }
 
 export function getUser(userId: string) {
     return storage().query.users.findFirst({
+        extras: userAchievementExtras,
         where: eq(users.id, userId),
         with: {
             accounts: {
+                orderBy: [asc(accountUsers.createdAt), asc(accountUsers.id)],
                 with: {
                     account: true,
                 },
@@ -457,10 +461,6 @@ export async function promoteTemporaryUser({
             throw new Error('Temporary user not found');
         }
 
-        const userAccounts = await db
-            .select({ accountId: accountUsers.accountId })
-            .from(accountUsers)
-            .where(eq(accountUsers.userId, userId));
         await ensureUserNameIsUnique(userName, userId, db);
         await db
             .update(users)
@@ -471,10 +471,9 @@ export async function promoteTemporaryUser({
                 lastActiveAt: new Date(),
             })
             .where(eq(users.id, userId));
-        await convertTemporaryAccountGardensToAccountGardens(
-            userAccounts.map((accountUser) => accountUser.accountId),
-            db,
-        );
+        // Sandbox gardens are permanent economy-free play spaces. Promoting
+        // their owner must not turn free sandbox mutations into real-garden
+        // inventory or refundable value.
     });
 }
 
@@ -484,23 +483,6 @@ export async function deleteUserAuthenticationData(
 ) {
     await db.delete(refreshTokens).where(eq(refreshTokens.userId, userId));
     await db.delete(userLogins).where(eq(userLogins.userId, userId));
-}
-
-async function convertTemporaryAccountGardensToAccountGardens(
-    accountIds: string[],
-    db: DatabaseClient = storage(),
-) {
-    for (const accountId of accountIds) {
-        await db
-            .update(gardens)
-            .set({ isSandbox: false })
-            .where(
-                and(
-                    eq(gardens.accountId, accountId),
-                    eq(gardens.isSandbox, true),
-                ),
-            );
-    }
 }
 
 async function reassignTemporaryFavoritesToUser({
@@ -610,10 +592,8 @@ export async function attachTemporaryAccountsToUser({
             temporaryUserId,
             db,
         });
-        await convertTemporaryAccountGardensToAccountGardens(
-            attachedAccountIds,
-            db,
-        );
+        // Keep attached sandbox gardens sandboxed. Their contents were created
+        // outside the real economy and may never be promoted into it.
         await db
             .update(aiChatConversations)
             .set({ userId: targetUserId })

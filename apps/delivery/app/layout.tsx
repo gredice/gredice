@@ -1,10 +1,10 @@
 import { ImpersonationBanner } from '@gredice/ui/ImpersonationBanner';
 import { UiApplicationRoot } from '@gredice/ui/PortalRoot';
-import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { AuthAppProvider } from '../components/providers/AuthAppProvider';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
+import { DeliveryAnalytics } from '../components/providers/DeliveryAnalytics';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -39,7 +39,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                             {children}
                         </AuthAppProvider>
                     </ClientAppProvider>
-                    <Analytics />
+                    <DeliveryAnalytics />
                 </UiApplicationRoot>
             </body>
         </html>

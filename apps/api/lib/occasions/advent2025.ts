@@ -59,9 +59,17 @@ function getCurrentAdventDay(timeZone: string, now: Date = new Date()): number {
     // Get day of month and month in user's timezone
     const dayOfMonth = userLocalTime.getDate();
     const month = userLocalTime.getMonth(); // 0-indexed, so December = 11
+    const year = userLocalTime.getFullYear();
 
-    // Only return valid advent days (1-24 in December)
-    if (month === 11 && dayOfMonth >= 1 && dayOfMonth <= ADVENT_TOTAL_DAYS) {
+    // This calendar is a historical 2025 campaign. Keeping the year in the
+    // availability boundary prevents the old award mutation from reopening in
+    // a later December.
+    if (
+        year === ADVENT_YEAR &&
+        month === 11 &&
+        dayOfMonth >= 1 &&
+        dayOfMonth <= ADVENT_TOTAL_DAYS
+    ) {
         return dayOfMonth;
     }
     // Before December 1st or after December 24th

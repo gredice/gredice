@@ -306,6 +306,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         accountUser.user.displayName ??
                         accountUser.user.userName,
                     avatarUrl: accountUser.user.avatarUrl,
+                    achievementCount: accountUser.user.achievementCount,
                     assignedAt: accountUser.createdAt.toISOString(),
                 })),
             );
@@ -744,6 +745,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     rewardSunflowers: achievement.rewardSunflowers,
                     progressValue: achievement.progressValue,
                     threshold: achievement.threshold,
+                    earnedAt: achievement.earnedAt.toISOString(),
+                    approvedAt: achievement.approvedAt?.toISOString() ?? null,
                     rewardGrantedAt:
                         achievement.rewardGrantedAt?.toISOString() ?? null,
                 })),

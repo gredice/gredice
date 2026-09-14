@@ -1,7 +1,7 @@
 type FieldOperationAvailability = {
     attributes: {
         application?: string | null;
-        appliesToAllTargets?: boolean | null;
+        appliesToEmptyFields?: boolean | null;
     };
 };
 
@@ -11,6 +11,6 @@ export function isFieldOperationAvailable(
 ) {
     return (
         operation.attributes.application === 'plant' &&
-        (hasPlantTarget || operation.attributes.appliesToAllTargets === true)
+        (hasPlantTarget || operation.attributes.appliesToEmptyFields === true)
     );
 }

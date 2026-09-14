@@ -195,6 +195,31 @@ function createSunflowersHudQueryClient({
     return queryClient;
 }
 
+function createLoadingSunflowersHudQueryClient() {
+    const queryClient = new ReactQuery.QueryClient({
+        defaultOptions: {
+            queries: { retry: false, staleTime: Infinity },
+        },
+    });
+
+    queryClient.setQueryData(['currentUser'], { id: 'test-user' });
+    queryClient.setQueryData(['shopping-cart'], {
+        allowPurchase: true,
+        hasDeliverableItems: false,
+        id: 1,
+        items: [],
+        notes: [],
+        total: 0,
+        totalSunflowers: 0,
+    });
+    void queryClient.prefetchQuery({
+        queryKey: ['accounts', 'current'],
+        queryFn: () => new Promise<never>(() => undefined),
+    });
+
+    return queryClient;
+}
+
 function NextNavigationTestProvider({ children }: PropsWithChildren) {
     const searchParams = useMemo(() => new URLSearchParams(), []);
 
@@ -256,6 +281,21 @@ export function SunflowersHudStory({
             >
                 <SunflowersHud />
             </SunflowersHudTestProviders>
+        </div>
+    );
+}
+
+export function SunflowersHudLoadingStory() {
+    const queryClient = useMemo(
+        () => createLoadingSunflowersHudQueryClient(),
+        [],
+    );
+
+    return (
+        <div className="min-h-96 p-12">
+            <ReactQuery.QueryClientProvider client={queryClient}>
+                <SunflowersHud />
+            </ReactQuery.QueryClientProvider>
         </div>
     );
 }

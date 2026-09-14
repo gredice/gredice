@@ -10,6 +10,10 @@ export type GameCameraSnapshot = {
 
 export type GameCameraFocusOptions = {
     immediate?: boolean;
+    onComplete?: () => void;
+    /** Normalized canvas position where the focused world point should land. */
+    screenPosition?: Readonly<{ x: number; y: number }>;
+    zoom?: number;
 };
 
 export type GameCameraRigApi = {
@@ -22,5 +26,9 @@ export type GameCameraRigApi = {
         frameDeltaSeconds: number,
     ) => boolean;
     projectToScreen: (position: Vector3) => { x: number; y: number } | null;
+    restore: (
+        snapshot: Pick<GameCameraSnapshot, 'position' | 'target' | 'zoom'>,
+        options?: GameCameraFocusOptions,
+    ) => void;
     subscribe: (listener: (snapshot: GameCameraSnapshot) => void) => () => void;
 };

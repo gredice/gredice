@@ -105,6 +105,7 @@ export function useGardenBoxStoreBlock() {
     return useMutation({
         mutationKey,
         mutationFn: async ({
+            blockEntityId,
             blockIndex,
             gardenBoxBlockId,
             sourceBlockId,
@@ -123,6 +124,7 @@ export function useGardenBoxStoreBlock() {
                 },
                 json: {
                     blockIndex,
+                    entityId: blockEntityId,
                     gardenBoxBlockId,
                     sourcePosition,
                 },

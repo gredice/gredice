@@ -6,7 +6,19 @@ export function subscribeToRendererContextLoss({
     onContextLost: () => void;
 }) {
     const handleContextLost = () => onContextLost();
-    eventTarget.addEventListener('webglcontextlost', handleContextLost);
+    // Report before visibility/cache listeners can synchronously rerender the
+    // Canvas. R3F refreshes its imperative ref on rerender, which removes this
+    // subscription; a replacement listener misses the event already in flight.
+    const options = { capture: true };
+    eventTarget.addEventListener(
+        'webglcontextlost',
+        handleContextLost,
+        options,
+    );
     return () =>
-        eventTarget.removeEventListener('webglcontextlost', handleContextLost);
+        eventTarget.removeEventListener(
+            'webglcontextlost',
+            handleContextLost,
+            options,
+        );
 }

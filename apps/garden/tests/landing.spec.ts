@@ -109,6 +109,7 @@ const gardenOverviewDetail = {
             weedState: null,
         },
     ],
+    structures: [],
     stacks: {
         '0': {
             '0': [
@@ -461,15 +462,26 @@ test('guest explicitly starts a temporary garden with separate login HUD and no 
     await expect(page).toHaveTitle(/Gredice/);
     const initialLogin = page.getByRole('dialog', { name: 'Prijava' });
     await expect(initialLogin).toBeVisible();
-    await expect(
-        initialLogin.getByText(
-            'Prijavi se kako bismo otvorili tvoj postojeći vrt ili nastavi bez prijave s privremenim vrtom.',
-        ),
-    ).toBeVisible();
+    await expect(initialLogin).not.toContainText('privremenim vrtom');
     expect(api.getTemporaryAccountRequestCount()).toBe(0);
-    await initialLogin
-        .getByRole('button', { name: 'Nastavi s privremenim vrtom' })
-        .click();
+    const guestAction = initialLogin.getByRole('button', {
+        name: 'Nastavi kao gost',
+    });
+    const emailAction = initialLogin.getByRole('button', {
+        name: 'Nastavi s emailom',
+    });
+    await expect(guestAction).toBeVisible();
+    await expect(guestAction.locator('svg')).toHaveCount(1);
+    const [guestActionBounds, emailActionBounds] = await Promise.all([
+        guestAction.boundingBox(),
+        emailAction.boundingBox(),
+    ]);
+    if (!guestActionBounds || !emailActionBounds) {
+        throw new Error('Expected guest and email action bounds');
+    }
+    expect(guestActionBounds.y).toBeLessThan(emailActionBounds.y);
+    expect(guestActionBounds.height).toBeGreaterThan(emailActionBounds.height);
+    await guestAction.click();
     await expect(page.getByTitle(/zvuk/u)).toBeVisible({ timeout: 15_000 });
     const loginHud = page.locator('[data-game-hud-temporary-auth="true"]');
     const loginButton = loginHud.getByRole('button', {
@@ -519,9 +531,7 @@ test('rejects malformed current claims before creating a temporary account', asy
     const loginDialog = page.getByRole('dialog', { name: 'Prijava' });
     await expect(loginDialog).toBeVisible();
     expect(api.getTemporaryAccountRequestCount()).toBe(0);
-    await loginDialog
-        .getByRole('button', { name: 'Nastavi s privremenim vrtom' })
-        .click();
+    await loginDialog.getByRole('button', { name: 'Nastavi kao gost' }).click();
     await expect(
         page.getByRole('button', { name: 'Prijava ili registracija' }),
     ).toBeVisible({ timeout: 15_000 });
@@ -536,6 +546,7 @@ test('rejects malformed current claims before creating a temporary account', asy
 test('fresh signed-out visitor can log in without creating a temporary account', async ({
     page,
 }) => {
+    test.setTimeout(20_000);
     const api = await mockGardenApi(page, false);
 
     const response = await page.goto('/');
@@ -545,7 +556,9 @@ test('fresh signed-out visitor can log in without creating a temporary account',
     await expect(loginDialog).toBeVisible();
     expect(api.getTemporaryAccountRequestCount()).toBe(0);
 
-    await loginDialog.getByRole('button', { name: 'Email prijava' }).click();
+    await loginDialog
+        .getByRole('button', { name: 'Nastavi s emailom' })
+        .click();
     await loginDialog.getByLabel('Email').fill('vrtlar@example.com');
     await loginDialog.getByLabel('Zaporka').fill('sigurna-zaporka');
     await loginDialog.getByRole('button', { name: 'Prijava' }).click();
@@ -572,9 +585,10 @@ test('opens and clears a cross-app temporary login request from the URL', async 
     await expect(page).toHaveURL('/');
 });
 
-test('returning user with an expired session sees privacy-neutral login copy before a temporary garden is created', async ({
+test('returning user with an expired session sees simplified login choices before a temporary garden is created', async ({
     page,
 }) => {
+    test.setTimeout(20_000);
     const api = await mockGardenApi(page, false, { returningUser: true });
 
     const response = await page.goto('/');
@@ -582,10 +596,8 @@ test('returning user with an expired session sees privacy-neutral login copy bef
     expect(response?.ok()).toBe(true);
     await expect(page.getByRole('dialog', { name: 'Prijava' })).toBeVisible();
     await expect(
-        page.getByText(
-            'Prijavi se kako bismo otvorili tvoj postojeći vrt ili nastavi bez prijave s privremenim vrtom.',
-        ),
-    ).toBeVisible();
+        page.getByRole('dialog', { name: 'Prijava' }),
+    ).not.toContainText('privremenim vrtom');
     await expect(page.getByText(/prepoznali smo ovaj uređaj/iu)).toHaveCount(0);
     expect(api.getTemporaryAccountRequestCount()).toBe(0);
     expect(
@@ -594,7 +606,7 @@ test('returning user with an expired session sees privacy-neutral login copy bef
         }, returningUserStorageKey),
     ).toBe('1');
 
-    await page.getByRole('button', { name: 'Email prijava' }).click();
+    await page.getByRole('button', { name: 'Nastavi s emailom' }).click();
     await page.getByLabel('Email').fill('vrtlar@example.com');
     await page.getByLabel('Zaporka').fill('sigurna-zaporka');
     await page.getByRole('button', { name: 'Prijava' }).click();
@@ -616,9 +628,7 @@ test('remembered returning user sees login even when the expired account cookie 
     await expect(page.getByRole('dialog', { name: 'Prijava' })).toBeVisible();
     expect(api.getTemporaryAccountRequestCount()).toBe(0);
 
-    await page
-        .getByRole('button', { name: 'Nastavi s privremenim vrtom' })
-        .click();
+    await page.getByRole('button', { name: 'Nastavi kao gost' }).click();
     await expect.poll(() => api.getTemporaryAccountRequestCount()).toBe(1);
     await expect(page.getByTitle(/zvuk/u)).toBeVisible({ timeout: 15_000 });
 });
@@ -651,7 +661,9 @@ test('loads the signed-out React-only garden page behind the login prompt', asyn
     expect(response?.ok()).toBe(true);
     await expect(page.locator('[data-garden-renderer="2d"]')).toBeVisible();
     await expect(
-        page.getByRole('button', { name: 'Prijava' }).first(),
+        page
+            .getByRole('dialog', { name: 'Prijava' })
+            .getByRole('button', { name: 'Nastavi s emailom' }),
     ).toBeVisible();
     await expect(page.locator('canvas')).toHaveCount(0);
     await expectNoImmediateRuntimeFailures(page, failures);

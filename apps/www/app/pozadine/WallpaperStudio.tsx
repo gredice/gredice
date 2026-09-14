@@ -5,8 +5,7 @@ import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { ButtonGroup, buttonGroupItemClassName } from '@gredice/ui/ButtonGroup';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
-import { Chip } from '@gredice/ui/Chip';
-import { ArrowDownToLine, Info, Navigate, Warning } from '@gredice/ui/icons';
+import { Desktop, Laptop, Mobile, Navigate, Warning } from '@gredice/ui/icons';
 import { Logotype } from '@gredice/ui/PublicChrome';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
@@ -36,8 +35,6 @@ import {
     wallpaperFileName,
     wallpaperPhaseLabels,
     wallpaperSizes,
-    wallpaperTemplateLabels,
-    wallpaperThemeLabels,
 } from './wallpaperComposer';
 
 type PendingCapture = {
@@ -47,15 +44,21 @@ type PendingCapture = {
 
 type WallpaperActivity = 'download' | 'idle' | 'macos' | 'preview';
 
-const wallpaperTemplates: WallpaperTemplate[] = ['minimal', 'standard'];
-const wallpaperThemes: WallpaperTheme[] = ['water', 'grass', 'sand', 'dirt'];
-const wallpaperPhases: WallpaperPhase[] = [
+const wallpaperTemplate: WallpaperTemplate = 'standard';
+const wallpaperTheme: WallpaperTheme = 'grass';
+const wallpaperPhases = [
     'morning',
     'day',
     'evening',
     'night',
-];
-const wallpaperSizeKeys: WallpaperSizeKey[] = ['uhd', 'ultrawide'];
+] satisfies WallpaperPhase[];
+const wallpaperSizeKeys = [
+    'uhd',
+    'fullHd',
+    'ultrawide',
+    'tablet',
+    'mobile',
+] satisfies WallpaperSizeKey[];
 
 function captureErrorMessage(error: unknown) {
     if (error instanceof Error && error.message) {
@@ -75,6 +78,59 @@ function downloadBlob(blob: Blob, fileName: string) {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+async function wallpaperDownloadError(response: Response) {
+    const fallback =
+        'Dinamička HEIC pozadina nije se mogla izraditi. Pokušaj ponovno.';
+    try {
+        const body: unknown = await response.json();
+        if (
+            typeof body === 'object' &&
+            body !== null &&
+            'error' in body &&
+            typeof body.error === 'string'
+        ) {
+            return body.error;
+        }
+    } catch {
+        return fallback;
+    }
+    return fallback;
+}
+
+function macOSDynamicWallpaperResponse(body: unknown) {
+    if (
+        typeof body !== 'object' ||
+        body === null ||
+        !('downloadUrl' in body) ||
+        typeof body.downloadUrl !== 'string' ||
+        !('fileName' in body) ||
+        typeof body.fileName !== 'string' ||
+        !('pathname' in body) ||
+        typeof body.pathname !== 'string' ||
+        !body.pathname.startsWith('wallpapers/macos-dynamic/output/') ||
+        !body.pathname.endsWith('.bin')
+    ) {
+        return null;
+    }
+
+    try {
+        const url = new URL(body.downloadUrl);
+        if (
+            url.protocol !== 'https:' ||
+            !url.hostname.endsWith('.blob.vercel-storage.com')
+        ) {
+            return null;
+        }
+    } catch {
+        return null;
+    }
+    return {
+        downloadUrl: body.downloadUrl,
+        fileName: body.fileName,
+        pathname: body.pathname,
+    };
+}
+
 export function WallpaperStudio() {
     const queryClient = useQueryClient();
     const { data: currentUser, isLoading: isLoadingUser } = useCurrentUser();
@@ -82,8 +138,6 @@ export function WallpaperStudio() {
     const [selectedGardenId, setSelectedGardenId] = useState<number | null>(
         null,
     );
-    const [template, setTemplate] = useState<WallpaperTemplate>('minimal');
-    const [theme, setTheme] = useState<WallpaperTheme>('grass');
     const [phase, setPhase] = useState<WallpaperPhase>('day');
     const [sizeKey, setSizeKey] = useState<WallpaperSizeKey>('ultrawide');
     const [branding, setBranding] = useState<WallpaperBranding>('gredice');
@@ -99,8 +153,6 @@ export function WallpaperStudio() {
         phase,
         selectedGardenId?.toString() ?? 'none',
         sizeKey,
-        template,
-        theme,
     ].join(':');
 
     const gardensQuery = useQuery({
@@ -211,8 +263,8 @@ export function WallpaperStudio() {
             captureSequenceRef.current += 1;
             const key = [
                 garden.id.toString(),
-                template,
-                theme,
+                wallpaperTemplate,
+                wallpaperTheme,
                 capturePhase,
                 width.toString(),
                 height.toString(),
@@ -226,12 +278,12 @@ export function WallpaperStudio() {
                     height,
                     key,
                     phase: capturePhase,
-                    transparent: template === 'minimal',
+                    transparent: false,
                     width,
                 });
             });
         },
-        [template, theme],
+        [],
     );
 
     const handleSceneCapture = useCallback((blob: Blob) => {
@@ -274,22 +326,15 @@ export function WallpaperStudio() {
                 height,
                 phase: wallpaperPhase,
                 scene,
-                template,
-                theme,
+                template: wallpaperTemplate,
+                theme: wallpaperTheme,
                 width,
             });
         },
-        [
-            branding,
-            gardenQuery.data,
-            phase,
-            requestSceneCapture,
-            template,
-            theme,
-        ],
+        [branding, gardenQuery.data, phase, requestSceneCapture],
     );
 
-    async function handlePreview() {
+    const handlePreview = useCallback(async () => {
         setActivity('preview');
         setError(null);
         try {
@@ -301,7 +346,14 @@ export function WallpaperStudio() {
         } finally {
             setActivity('idle');
         }
-    }
+    }, [createWallpaper, sizeKey]);
+
+    useEffect(() => {
+        if (!gardenQuery.data) {
+            return;
+        }
+        void handlePreview();
+    }, [gardenQuery.data, handlePreview]);
 
     async function handleDownload() {
         setActivity('download');
@@ -315,7 +367,7 @@ export function WallpaperStudio() {
                     branding,
                     phase,
                     size: sizeKey,
-                    template,
+                    template: wallpaperTemplate,
                 }),
             );
         } catch (downloadError) {
@@ -328,36 +380,153 @@ export function WallpaperStudio() {
     async function handleMacOSDynamicDownload() {
         setActivity('macos');
         setError(null);
+        let cleanupRequest: Record<string, string | number> | null = null;
         try {
-            const {
-                createMacOSDynamicWallpaperBundle,
-                macOSDynamicWallpaperFileName,
-            } = await import('./macOSDynamicWallpaper');
-            const size = wallpaperSizes[sizeKey];
-            const frames: Array<{ blob: Blob; phase: WallpaperPhase }> = [];
-
-            for (const wallpaperPhase of wallpaperPhases) {
-                frames.push({
-                    blob: await createWallpaper({
-                        ...size,
-                        phase: wallpaperPhase,
-                    }),
-                    phase: wallpaperPhase,
-                });
+            if (sizeKey === 'tablet' || sizeKey === 'mobile') {
+                throw new Error(
+                    'Mac dinamička pozadina dostupna je za računalne veličine.',
+                );
             }
 
-            const bundle = await createMacOSDynamicWallpaperBundle({ frames });
-            downloadBlob(
-                bundle,
-                macOSDynamicWallpaperFileName({
+            const [{ upload }, macOSDynamicWallpaper] = await Promise.all([
+                import('@vercel/blob/client'),
+                import('./macOSDynamicWallpaper'),
+            ]);
+            const size = wallpaperSizes[sizeKey];
+            if (selectedGardenId === null) {
+                throw new Error('Najprije odaberi vrt.');
+            }
+
+            const conversionId = crypto.randomUUID();
+            const encryption =
+                await macOSDynamicWallpaper.createMacOSDynamicWallpaperEncryption();
+            cleanupRequest = {
+                branding,
+                conversionId,
+                encryptionKey: encryption.encodedKey,
+                gardenId: selectedGardenId,
+                size: sizeKey,
+                template: wallpaperTemplate,
+            };
+
+            for (const wallpaperPhase of wallpaperPhases) {
+                const frame = await createWallpaper({
+                    ...size,
+                    phase: wallpaperPhase,
+                });
+                const pathname =
+                    macOSDynamicWallpaper.macOSDynamicWallpaperInputPath({
+                        conversionId,
+                        gardenId: selectedGardenId,
+                        phase: wallpaperPhase,
+                    });
+                const encryptedFrame =
+                    await macOSDynamicWallpaper.encryptMacOSDynamicWallpaperBlob(
+                        {
+                            blob: frame,
+                            key: encryption.key,
+                            pathname,
+                        },
+                    );
+                const uploaded = await upload(pathname, encryptedFrame, {
+                    access: 'public',
+                    clientPayload: JSON.stringify({
+                        conversionId,
+                        gardenId: selectedGardenId,
+                        phase: wallpaperPhase,
+                    }),
+                    contentType: 'application/octet-stream',
+                    handleUploadUrl:
+                        '/api/gredice/api/wallpapers/macos-dynamic/uploads',
+                    multipart: encryptedFrame.size > 5 * 1024 * 1024,
+                });
+                if (uploaded.pathname !== pathname) {
+                    throw new Error(
+                        'Prijenos slike za HEIC pozadinu nije potvrđen.',
+                    );
+                }
+            }
+
+            const response = await fetch(
+                '/api/gredice/api/wallpapers/macos-dynamic',
+                {
+                    body: JSON.stringify(cleanupRequest),
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST',
+                },
+            );
+            if (response.status === 401) {
+                queryClient.setQueryData(currentUserQueryKey, null);
+                throw new Error('Prijava je istekla. Prijavi se ponovno.');
+            }
+            if (!response.ok) {
+                throw new Error(await wallpaperDownloadError(response));
+            }
+
+            const conversion = macOSDynamicWallpaperResponse(
+                await response.json(),
+            );
+            const expectedFileName =
+                macOSDynamicWallpaper.macOSDynamicWallpaperFileName({
                     branding,
                     size: sizeKey,
-                    template,
-                }),
-            );
+                    template: wallpaperTemplate,
+                });
+            if (!conversion || conversion.fileName !== expectedFileName) {
+                throw new Error(
+                    'Poslužitelj nije vratio valjanu HEIC pozadinu.',
+                );
+            }
+
+            const downloadResponse = await fetch(conversion.downloadUrl, {
+                cache: 'no-store',
+            });
+            if (!downloadResponse.ok) {
+                throw new Error(
+                    'Preuzimanje gotove HEIC pozadine nije uspjelo.',
+                );
+            }
+            const encryptedHeic = await downloadResponse.blob();
+            if (
+                encryptedHeic.size === 0 ||
+                encryptedHeic.type !== 'application/octet-stream'
+            ) {
+                throw new Error(
+                    'Poslužitelj nije vratio valjanu HEIC pozadinu.',
+                );
+            }
+            const heic =
+                await macOSDynamicWallpaper.decryptMacOSDynamicWallpaperBlob({
+                    blob: encryptedHeic,
+                    contentType: 'image/heic',
+                    key: encryption.key,
+                    pathname: conversion.pathname,
+                });
+            downloadBlob(heic, expectedFileName);
         } catch (downloadError) {
             setError(captureErrorMessage(downloadError));
         } finally {
+            if (cleanupRequest) {
+                const cleanupController = new AbortController();
+                const cleanupTimeout = window.setTimeout(
+                    () => cleanupController.abort(),
+                    3000,
+                );
+                try {
+                    await fetch('/api/gredice/api/wallpapers/macos-dynamic', {
+                        body: JSON.stringify(cleanupRequest),
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        method: 'DELETE',
+                        signal: cleanupController.signal,
+                    });
+                } catch {
+                    // Cleanup is best effort; the server cron removes leftovers.
+                } finally {
+                    window.clearTimeout(cleanupTimeout);
+                }
+            }
             setActivity('idle');
         }
     }
@@ -375,12 +544,7 @@ export function WallpaperStudio() {
             <>
                 <Card className="border-tertiary border-b-4">
                     <CardHeader>
-                        <div className="flex items-start justify-between gap-3">
-                            <CardTitle>Pozadina iz tvog vrta</CardTitle>
-                            <Chip color="success" variant="soft">
-                                Besplatno
-                            </Chip>
-                        </div>
+                        <CardTitle>Pozadina iz tvog vrta</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <Stack spacing={4}>
@@ -462,12 +626,7 @@ export function WallpaperStudio() {
             <div className="grid gap-5 lg:grid-cols-[21rem_minmax(0,1fr)]">
                 <Card className="h-fit border-tertiary border-b-4">
                     <CardHeader>
-                        <div className="flex items-start justify-between gap-3">
-                            <CardTitle>Postavke</CardTitle>
-                            <Chip color="success" size="sm" variant="soft">
-                                Besplatno
-                            </Chip>
-                        </div>
+                        <CardTitle>Postavke</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <Stack spacing={5}>
@@ -502,74 +661,6 @@ export function WallpaperStudio() {
 
                             <div className="grid gap-2">
                                 <Typography level="body2" bold>
-                                    Predložak
-                                </Typography>
-                                <ButtonGroup
-                                    className="grid w-full grid-cols-2"
-                                    legend="Predložak pozadine"
-                                    size="md"
-                                >
-                                    {wallpaperTemplates.map((value) => (
-                                        <Button
-                                            aria-pressed={template === value}
-                                            className={buttonGroupItemClassName(
-                                                {
-                                                    className: 'w-full',
-                                                    size: 'md',
-                                                },
-                                            )}
-                                            disabled={isBusy}
-                                            key={value}
-                                            onClick={() => setTemplate(value)}
-                                            variant={
-                                                template === value
-                                                    ? 'soft'
-                                                    : 'plain'
-                                            }
-                                        >
-                                            {wallpaperTemplateLabels[value]}
-                                        </Button>
-                                    ))}
-                                </ButtonGroup>
-                            </div>
-
-                            {template === 'minimal' ? (
-                                <div className="grid gap-2">
-                                    <Typography level="body2" bold>
-                                        Rub vrta
-                                    </Typography>
-                                    <ButtonGroup
-                                        className="grid w-full grid-cols-4"
-                                        legend="Tonalna tema"
-                                        size="sm"
-                                    >
-                                        {wallpaperThemes.map((value) => (
-                                            <Button
-                                                aria-pressed={theme === value}
-                                                className={buttonGroupItemClassName(
-                                                    {
-                                                        className: 'w-full',
-                                                        size: 'sm',
-                                                    },
-                                                )}
-                                                disabled={isBusy}
-                                                key={value}
-                                                onClick={() => setTheme(value)}
-                                                variant={
-                                                    theme === value
-                                                        ? 'soft'
-                                                        : 'plain'
-                                                }
-                                            >
-                                                {wallpaperThemeLabels[value]}
-                                            </Button>
-                                        ))}
-                                    </ButtonGroup>
-                                </div>
-                            ) : null}
-
-                            <div className="grid gap-2">
-                                <Typography level="body2" bold>
                                     Doba dana
                                 </Typography>
                                 <ButtonGroup
@@ -601,47 +692,37 @@ export function WallpaperStudio() {
                                 </ButtonGroup>
                             </div>
 
-                            <div className="grid gap-2">
-                                <Typography level="body2" bold>
-                                    Veličina
-                                </Typography>
-                                <ButtonGroup
-                                    className="grid w-full grid-cols-2"
-                                    legend="Veličina pozadine"
-                                    size="md"
+                            <label className="grid gap-2 text-sm font-medium">
+                                Veličina
+                                <select
+                                    aria-label="Veličina pozadine"
+                                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                                    disabled={isBusy}
+                                    onChange={(event) => {
+                                        const selectedSizeKey =
+                                            wallpaperSizeKeys.find(
+                                                (value) =>
+                                                    value ===
+                                                    event.currentTarget.value,
+                                            );
+                                        if (selectedSizeKey) {
+                                            setSizeKey(selectedSizeKey);
+                                        }
+                                    }}
+                                    value={sizeKey}
                                 >
                                     {wallpaperSizeKeys.map((value) => (
-                                        <Button
-                                            aria-pressed={sizeKey === value}
-                                            className={buttonGroupItemClassName(
-                                                {
-                                                    className: 'w-full',
-                                                    size: 'md',
-                                                },
-                                            )}
-                                            disabled={isBusy}
-                                            key={value}
-                                            onClick={() => setSizeKey(value)}
-                                            variant={
-                                                sizeKey === value
-                                                    ? 'soft'
-                                                    : 'plain'
-                                            }
-                                        >
-                                            {wallpaperSizes[value].shortLabel}
-                                        </Button>
+                                        <option key={value} value={value}>
+                                            {wallpaperSizes[value].label}
+                                        </option>
                                     ))}
-                                </ButtonGroup>
-                                <Typography level="body3" secondary>
-                                    {selectedSize.label}
-                                </Typography>
-                            </div>
+                                </select>
+                            </label>
 
                             <Switch
                                 checked={branding === 'gredice'}
                                 disabled={isBusy}
-                                label="Gredice potpis"
-                                description="Veliki službeni logotip usklađen s kompozicijom."
+                                label="Gredice logo"
                                 onCheckedChange={(checked) =>
                                     setBranding(checked ? 'gredice' : 'clean')
                                 }
@@ -651,17 +732,24 @@ export function WallpaperStudio() {
                 </Card>
 
                 <Stack spacing={4}>
-                    <Card className="overflow-hidden p-0">
+                    <Card className="flex justify-center overflow-hidden bg-muted p-0">
                         <div
-                            className="relative flex w-full items-center justify-center overflow-hidden bg-muted"
+                            className="relative flex max-w-full items-center justify-center overflow-hidden bg-muted"
                             style={{
                                 aspectRatio: `${selectedSize.width} / ${selectedSize.height}`,
+                                width:
+                                    selectedSize.width < selectedSize.height
+                                        ? `${
+                                              (70 * selectedSize.width) /
+                                              selectedSize.height
+                                          }vh`
+                                        : '100%',
                             }}
                         >
                             {previewUrl ? (
                                 // biome-ignore lint/performance/noImgElement: Browser-generated Blob URLs cannot be optimized by next/image.
                                 <img
-                                    alt={`Pregled pozadine: ${wallpaperTemplateLabels[template]}, ${wallpaperPhaseLabels[phase]}`}
+                                    alt={`Pregled pozadine: U vrtu, ${wallpaperPhaseLabels[phase]}`}
                                     className="size-full object-contain"
                                     src={previewUrl}
                                 />
@@ -672,14 +760,21 @@ export function WallpaperStudio() {
                                         Učitavamo vrt…
                                     </Typography>
                                 </div>
+                            ) : activity === 'preview' ? (
+                                <div className="flex items-center gap-3 px-6 text-center">
+                                    <Spinner loadingLabel="Izrada pregleda" />
+                                    <Typography level="body2" secondary>
+                                        Izrađujemo pregled…
+                                    </Typography>
+                                </div>
                             ) : (
                                 <div className="grid max-w-sm gap-2 px-6 text-center">
                                     <Typography level="body1" bold>
-                                        Pregled je spreman za izradu
+                                        Pregled trenutačno nije dostupan
                                     </Typography>
                                     <Typography level="body2" secondary>
-                                        Izrada koristi isti renderer kao tvoj
-                                        vrt i može potrajati nekoliko sekundi.
+                                        Promijeni postavku kako bismo ga ponovno
+                                        pokušali izraditi.
                                     </Typography>
                                 </div>
                             )}
@@ -702,44 +797,43 @@ export function WallpaperStudio() {
                             {error}
                         </Alert>
                     ) : null}
-                    <Alert
-                        color="info"
-                        startDecorator={<Info className="size-4" />}
-                    >
-                        Pozadina se izrađuje samo u tvom pregledniku. Za
-                        Windows, macOS i Linux možeš preuzeti obični PNG. Mac
-                        dinamički paket uključuje jutro, dan, večer i noć te
-                        upute za izradu nativne HEIC pozadine na Macu.
-                    </Alert>
                     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
+                        {sizeKey !== 'tablet' && sizeKey !== 'mobile' ? (
+                            <Button
+                                aria-label="Preuzmi gotovu Mac dinamičku HEIC pozadinu"
+                                disabled={!gardenQuery.data || isBusy}
+                                loading={activity === 'macos'}
+                                onClick={handleMacOSDynamicDownload}
+                                startDecorator={
+                                    <svg
+                                        aria-hidden="true"
+                                        className="size-4 fill-current"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
+                                    </svg>
+                                }
+                            >
+                                Preuzmi Mac HEIC
+                            </Button>
+                        ) : null}
                         <Button
-                            disabled={!gardenQuery.data || isBusy}
-                            loading={activity === 'preview'}
-                            onClick={handlePreview}
-                            variant="outlined"
-                        >
-                            Izradi pregled
-                        </Button>
-                        <Button
-                            disabled={!gardenQuery.data || isBusy}
-                            loading={activity === 'macos'}
-                            onClick={handleMacOSDynamicDownload}
-                            startDecorator={
-                                <ArrowDownToLine className="size-4" />
-                            }
-                            variant="outlined"
-                        >
-                            Mac dinamički paket
-                        </Button>
-                        <Button
+                            aria-label={`Preuzmi ${selectedSize.shortLabel} za Windows, Linux ili Android`}
                             disabled={!gardenQuery.data || isBusy}
                             loading={activity === 'download'}
                             onClick={handleDownload}
                             startDecorator={
-                                <ArrowDownToLine className="size-4" />
+                                <span
+                                    aria-hidden="true"
+                                    className="flex items-end -space-x-1"
+                                >
+                                    <Laptop className="size-4" />
+                                    <Desktop className="size-4" />
+                                    <Mobile className="size-3.5" />
+                                </span>
                             }
                         >
-                            Preuzmi {selectedSize.shortLabel} PNG
+                            Preuzmi {selectedSize.shortLabel}
                         </Button>
                     </div>
                 </Stack>

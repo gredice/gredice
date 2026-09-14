@@ -2461,3 +2461,100 @@ test('history move commits before stale planting verification', async () => {
     );
     assert.strictEqual(targetField?.plantStatus, 'pendingVerification');
 });
+
+test('completed operations can be assigned until verification without changing completion evidence', async () => {
+    const fixture = await createTaskFixture();
+    const operationId = await createOperation({
+        entityId: fixture.operationEntityId,
+        entityTypeName: 'operation',
+        accountId: fixture.accountId,
+        farmId: fixture.farmId,
+        gardenId: fixture.gardenId,
+        raisedBedId: fixture.raisedBedId,
+        timestamp: new Date('2000-01-01T08:00:00.000Z'),
+    });
+    await acceptOperation(operationId);
+    const operation = await getOperationById(operationId);
+    await submitOperationTaskCompletion({
+        operationId,
+        expectedEntityId: fixture.operationEntityId,
+        expectedTaskVersionEventId: operation.taskVersionEventId,
+        actor: { userId: fixture.farmerId, role: 'farmer' },
+        imageUrls: ['https://example.com/proof.jpg'],
+        notes: 'Završeno prije dodjele',
+    });
+    const pendingOperation = await getOperationById(operationId);
+    assert.strictEqual(pendingOperation.status, 'pendingVerification');
+    assert.deepStrictEqual(pendingOperation.assignedUserIds, []);
+
+    const assignmentInput = {
+        operationId,
+        expectedEntityId: fixture.operationEntityId,
+        expectedTaskVersionEventId: pendingOperation.taskVersionEventId,
+        assignedBy: fixture.adminId,
+        assignedUserIds: [fixture.farmerId],
+    };
+    const assignment = await assignOperationTaskUsers(assignmentInput);
+    assert.strictEqual(assignment.changed, true);
+    assert.deepStrictEqual(assignment.newlyAssignedUserIds, [fixture.farmerId]);
+    const assignedOperation = await getOperationById(operationId);
+    assert.deepStrictEqual(assignedOperation.assignedUserIds, [
+        fixture.farmerId,
+    ]);
+    await assertSubmissionError(
+        assignOperationTaskUsers({
+            ...assignmentInput,
+            assignedUserIds: [fixture.otherFarmerId],
+        }),
+        'task_changed',
+    );
+    await assertSubmissionError(
+        assignOperationTaskUsers({
+            ...assignmentInput,
+            expectedTaskVersionEventId: assignedOperation.taskVersionEventId,
+            assignedUserIds: [await createTestUser('farmer')],
+        }),
+        'not_authorized',
+    );
+    await assignOperationTaskUsers({
+        ...assignmentInput,
+        expectedTaskVersionEventId: assignedOperation.taskVersionEventId,
+        assignedUserIds: [fixture.otherFarmerId],
+    });
+    const reassignedOperation = await getOperationById(operationId);
+    assert.deepStrictEqual(reassignedOperation.assignedUserIds, [
+        fixture.otherFarmerId,
+    ]);
+    assert.strictEqual(reassignedOperation.status, 'pendingVerification');
+    assert.strictEqual(
+        reassignedOperation.completedBy,
+        pendingOperation.completedBy,
+    );
+    assert.deepStrictEqual(
+        reassignedOperation.completedAt,
+        pendingOperation.completedAt,
+    );
+    assert.strictEqual(
+        reassignedOperation.completionNotes,
+        pendingOperation.completionNotes,
+    );
+    assert.deepStrictEqual(
+        reassignedOperation.imageUrls,
+        pendingOperation.imageUrls,
+    );
+
+    await verifyOperationTaskCompletion({
+        operationId,
+        expectedTaskVersionEventId: reassignedOperation.taskVersionEventId,
+        verifiedBy: fixture.adminId,
+    });
+    const verifiedOperation = await getOperationById(operationId);
+    assert.strictEqual(verifiedOperation.status, 'completed');
+    await assertSubmissionError(
+        assignOperationTaskUsers({
+            ...assignmentInput,
+            expectedTaskVersionEventId: verifiedOperation.taskVersionEventId,
+        }),
+        'invalid_status',
+    );
+});

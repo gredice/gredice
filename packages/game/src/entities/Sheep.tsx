@@ -1,6 +1,6 @@
-import { animated } from '@react-spring/three';
 import { useMemo } from 'react';
 import type { Mesh } from 'three';
+import { animated } from '../scene/sceneSpring';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';

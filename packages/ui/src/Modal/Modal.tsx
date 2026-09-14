@@ -153,7 +153,7 @@ function DesktopModal({
                         ) : null}
                         {children}
                         {dismissible && !hideClose ? (
-                            <DialogPrimitive.Close className="absolute right-1 top-1 inline-flex size-11 items-center justify-center rounded-xs bg-accent text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none motion-reduce:transition-none">
+                            <DialogPrimitive.Close className="absolute right-1 top-1 inline-flex size-11 items-center justify-center rounded-xs bg-transparent text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none motion-reduce:transition-none">
                                 <Close aria-hidden className="size-4" />
                                 <span className="sr-only">Zatvori</span>
                             </DialogPrimitive.Close>

@@ -1,11 +1,14 @@
 'use client';
 
-import { clientPublic } from '@gredice/client';
-import { getAchievementDefinition } from '@gredice/js/achievements';
+import { Link } from '@gredice/ui/Link';
 import { Stack } from '@gredice/ui/Stack';
+import { UserAchievementProgress, UserAvatar } from '@gredice/ui/UserAvatar';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import { PublicGardenViewerDynamic } from './PublicGardenViewerDynamic';
+import { formatGardenDate } from '../../vrtovi/publicGardenFormatting';
+import { PublicProfileAchievements } from './PublicProfileAchievements';
+import { PublicProfileGardens } from './PublicProfileGardens';
+import { formatProfileMembership } from './profileMembership';
+import { getPublicProfile } from './publicProfile';
 
 type ProfilePageClientProps = {
     publicId: string;
@@ -14,138 +17,57 @@ type ProfilePageClientProps = {
 export function ProfilePageClient({ publicId }: ProfilePageClientProps) {
     const profileQuery = useQuery({
         queryKey: ['public-profile', publicId],
-        queryFn: async () => {
-            const response = await clientPublic().api.users.public[
-                ':publicId'
-            ].profile.$get({
-                param: { publicId },
-            });
-            if (!response.ok) {
-                throw new Error('Profil nije pronađen.');
-            }
-            return response.json();
-        },
+        queryFn: () => getPublicProfile(publicId),
     });
-
-    const [selectedGardenId, setSelectedGardenId] = useState<number | null>(
-        null,
-    );
-
-    const activeGardenId =
-        selectedGardenId ?? profileQuery.data?.gardens[0]?.id ?? null;
-
-    const gardenQuery = useQuery({
-        queryKey: ['public-garden', activeGardenId],
-        enabled: Boolean(activeGardenId),
-        queryFn: async () => {
-            const response = await clientPublic().api.gardens[
-                ':gardenId'
-            ].public.$get({
-                param: {
-                    gardenId: String(activeGardenId),
-                },
-            });
-            if (!response.ok) {
-                throw new Error('Vrt nije dostupan.');
-            }
-            return response.json();
-        },
-    });
-
-    const approvedAchievements =
-        profileQuery.data?.achievements.filter(
-            (achievement) => achievement.status === 'approved',
-        ) ?? [];
 
     if (profileQuery.isLoading) {
-        return <p>Učitavanje profila...</p>;
+        return <p role="status">Učitavanje profila...</p>;
     }
 
     if (profileQuery.error || !profileQuery.data) {
         return <p>Traženi profil ne postoji ili nije javno dostupan.</p>;
     }
 
-    const { user, gardens } = profileQuery.data;
+    const { user, gardens, achievements } = profileQuery.data;
+    const membership = formatProfileMembership(user.createdAt);
 
     return (
-        <Stack spacing={12} className="pb-12">
-            <section className="rounded-2xl border border-black/10 bg-background/90 p-6">
-                <h1 className="text-3xl font-semibold">{user.displayName}</h1>
-                <p className="text-sm text-muted-foreground">
-                    @{user.userName} · {gardens.length} vrtova
-                </p>
-            </section>
-
-            <section className="rounded-2xl border border-black/10 bg-background/90 p-6">
-                <h2 className="text-xl font-semibold mb-4">Postignuća</h2>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {approvedAchievements.length > 0 ? (
-                        approvedAchievements.map((achievement) => {
-                            const definition = getAchievementDefinition(
-                                achievement.key,
-                            );
-                            return (
-                                <article
-                                    key={achievement.id}
-                                    className="rounded-xl border border-black/10 bg-emerald-50/70 p-4"
-                                >
-                                    <p className="font-medium">
-                                        {definition?.title ?? achievement.key}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {definition?.description ??
-                                            'Postignuće otključano.'}
-                                    </p>
-                                </article>
-                            );
-                        })
-                    ) : (
-                        <p className="text-sm text-muted-foreground">
-                            Još nema otključanih postignuća.
+        <Stack spacing={12} className="pt-8 pb-12 sm:pt-12">
+            <Link
+                href="/korisnici"
+                className="text-sm text-muted-foreground hover:underline"
+            >
+                Svi vrtlari
+            </Link>
+            <header className="flex items-center gap-4">
+                <UserAvatar
+                    avatarUrl={user.avatarUrl}
+                    achievementCount={user.achievementCount}
+                    displayName={user.displayName}
+                    size="lg"
+                    className="size-16 border-2 border-tertiary text-2xl sm:size-20"
+                />
+                <div className="min-w-0">
+                    <h1 className="text-3xl font-semibold break-words">
+                        {user.displayName}
+                    </h1>
+                    <UserAchievementProgress
+                        achievementCount={user.achievementCount}
+                    />
+                    {membership && (
+                        <p className="mt-2 text-sm text-muted-foreground">
+                            <time
+                                dateTime={user.createdAt}
+                                title={`Pridružio se ${formatGardenDate(user.createdAt)}`}
+                            >
+                                {membership}
+                            </time>
                         </p>
                     )}
                 </div>
-            </section>
-
-            <section className="rounded-2xl border border-black/10 bg-background/90 p-4 sm:p-6">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-                    <h2 className="text-xl font-semibold">Vrt</h2>
-                    <label className="text-sm flex items-center gap-2">
-                        <span>Odaberi vrt:</span>
-                        <select
-                            className="rounded-md border border-black/20 bg-background px-2 py-1"
-                            value={activeGardenId ?? ''}
-                            onChange={(event) =>
-                                setSelectedGardenId(
-                                    Number.parseInt(event.target.value, 10),
-                                )
-                            }
-                        >
-                            {gardens.map((garden) => (
-                                <option key={garden.id} value={garden.id}>
-                                    {garden.name}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                </div>
-
-                <div className="h-[520px] rounded-2xl overflow-hidden border border-black/10">
-                    {gardenQuery.isLoading ? (
-                        <p className="p-4">Učitavanje vrta...</p>
-                    ) : gardenQuery.error || !gardenQuery.data ? (
-                        <p className="p-4">Vrt trenutno nije dostupan.</p>
-                    ) : (
-                        <PublicGardenViewerDynamic
-                            className="h-full"
-                            garden={gardenQuery.data}
-                        />
-                    )}
-                </div>
-                <p className="mt-3 text-sm text-muted-foreground">
-                    Prikaz je samo za gledanje (bez HUD-a i uređivanja).
-                </p>
-            </section>
+            </header>
+            <PublicProfileAchievements achievements={achievements} />
+            <PublicProfileGardens key={publicId} gardens={gardens} />
         </Stack>
     );
 }

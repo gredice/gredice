@@ -1,6 +1,7 @@
 export {
     ALargeSmall as Auto,
     AlertTriangle as Warning,
+    Apple,
     ArrowDown,
     ArrowDownLeft,
     ArrowDownRight,
@@ -162,6 +163,7 @@ export {
     ToggleLeft,
     ToggleRight,
     Trash2 as Delete,
+    Trophy,
     Truck,
     Type as FontType,
     Undo,
@@ -181,7 +183,6 @@ export {
     ZoomIn,
     ZoomOut,
 } from 'lucide-react';
-
 export { CompanyFacebook } from './CompanyFacebook';
 export { CompanyGitHub } from './CompanyGitHub';
 export { CompanyReddit } from './CompanyReddit';

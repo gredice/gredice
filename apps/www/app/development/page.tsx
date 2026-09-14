@@ -46,7 +46,6 @@ type EnvironmentHosts = {
     app: string;
     api: string;
     farm: string;
-    farmDebug: string | null;
     garden: string;
     news: string;
     status: string;
@@ -57,8 +56,6 @@ type EnvironmentHosts = {
 function getEnvironmentHosts(): EnvironmentHosts {
     const vercelEnvironment = process.env.NEXT_PUBLIC_VERCEL_ENV;
     const isProduction = vercelEnvironment === 'production';
-    const isLocalDevelopment =
-        !vercelEnvironment || vercelEnvironment === 'development';
     const domain = isProduction ? 'gredice.com' : 'gredice.test';
     const storybookDomain = isProduction
         ? 'dev.gredice.com'
@@ -68,7 +65,6 @@ function getEnvironmentHosts(): EnvironmentHosts {
         app: `https://app.${domain}`,
         api: `https://api.${domain}`,
         farm: `https://farma.${domain}`,
-        farmDebug: isLocalDevelopment ? `https://farma.${domain}` : null,
         garden: `https://vrt.${domain}`,
         news: isProduction
             ? `https://www.${domain}/novosti`
@@ -81,24 +77,20 @@ function getEnvironmentHosts(): EnvironmentHosts {
 
 function getDevelopmentSections(hosts: EnvironmentHosts): DevelopmentSection[] {
     const operationalDebugResources: DevelopmentResource[] = [
-        ...(hosts.farmDebug
-            ? [
-                  {
-                      title: 'Farma debug indeks',
-                      description:
-                          'Lokalni razvojni indeks za farm debug alate i operativne provjere.',
-                      href: `${hosts.farmDebug}/debug`,
-                      icon: '🛠️',
-                  },
-                  {
-                      title: 'Etikete berbe',
-                      description:
-                          'Lokalni pregled generiranih harvest etiketa s reprezentativnim podacima.',
-                      href: `${hosts.farmDebug}/debug/labels`,
-                      icon: '🏷️',
-                  },
-              ]
-            : []),
+        {
+            title: 'Farma debug indeks',
+            description:
+                'Pregled farm debug alata i operativnih provjera za trenutačno okruženje.',
+            href: `${hosts.farm}/debug`,
+            icon: '🛠️',
+        },
+        {
+            title: 'Etikete berbe',
+            description:
+                'Pregled generiranih harvest etiketa s reprezentativnim podacima.',
+            href: `${hosts.farm}/debug/labels`,
+            icon: '🏷️',
+        },
         {
             title: 'Aplikacija debug indeks',
             description:

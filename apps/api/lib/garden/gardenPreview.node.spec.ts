@@ -183,6 +183,22 @@ function previewSource(
                 ],
             },
         },
+        structures: [
+            {
+                anchorX: 6,
+                anchorY: -1,
+                id: 'structure-2',
+                revision: 3,
+                rotation: 1,
+            },
+            {
+                anchorX: 0,
+                anchorY: 2,
+                id: 'structure-1',
+                revision: 1,
+                rotation: 0,
+            },
+        ],
         ...overrides,
     };
 }
@@ -309,6 +325,50 @@ describe('createGardenPreviewSourceRevision', () => {
                 changed,
                 new Date('2026-07-11T10:00:00.000Z'),
             ),
+        );
+    });
+
+    it('is stable across structure ordering and changes for placement or revision', () => {
+        const source = previewSource();
+        const structures = source.structures as unknown[];
+        const reordered = previewSource({
+            structures: [...structures].reverse(),
+        });
+        const moved = previewSource({
+            structures: structures.map((structure, index) =>
+                index === 0 &&
+                typeof structure === 'object' &&
+                structure !== null
+                    ? { ...structure, anchorX: 7 }
+                    : structure,
+            ),
+        });
+        const revised = previewSource({
+            structures: structures.map((structure, index) =>
+                index === 0 &&
+                typeof structure === 'object' &&
+                structure !== null
+                    ? { ...structure, revision: 4 }
+                    : structure,
+            ),
+        });
+        const referenceDate = new Date('2026-07-11T10:00:00.000Z');
+        const revision = createGardenPreviewSourceRevision(
+            source,
+            referenceDate,
+        );
+
+        assert.equal(
+            revision,
+            createGardenPreviewSourceRevision(reordered, referenceDate),
+        );
+        assert.notEqual(
+            revision,
+            createGardenPreviewSourceRevision(moved, referenceDate),
+        );
+        assert.notEqual(
+            revision,
+            createGardenPreviewSourceRevision(revised, referenceDate),
         );
     });
 

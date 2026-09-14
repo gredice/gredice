@@ -1,10 +1,50 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { Vector3 } from 'three';
+import { OrthographicCamera, Vector3 } from 'three';
 import {
+    getGameCameraKeyboardPan,
     getPreservedAngleCameraPosition,
+    getScreenPositionAdjustedCameraTarget,
     resolvePreservedAngleCloseupZoom,
+    shouldGameCameraOwnPointerGesture,
+    shouldReleaseGameCameraPointerCapture,
+    shouldUseImmediateGameCameraTransition,
 } from './GameCameraRig';
+
+describe('camera pointer arbitration', () => {
+    it('reserves one pointer for paint tools while preserving two-finger navigation', () => {
+        assert.equal(shouldGameCameraOwnPointerGesture(0, false), false);
+        assert.equal(shouldGameCameraOwnPointerGesture(1, false), false);
+        assert.equal(shouldGameCameraOwnPointerGesture(2, false), true);
+        assert.equal(shouldGameCameraOwnPointerGesture(1, true), true);
+        assert.equal(shouldGameCameraOwnPointerGesture(2, true), true);
+    });
+
+    it('releases camera capture when a pinch leaves a non-camera-owned pointer', () => {
+        assert.equal(shouldReleaseGameCameraPointerCapture(1, false), true);
+        assert.equal(shouldReleaseGameCameraPointerCapture(1, true), false);
+        assert.equal(shouldReleaseGameCameraPointerCapture(2, false), false);
+    });
+});
+
+describe('camera keyboard arbitration', () => {
+    it('reserves Arrow keys for placement while structure authoring is active', () => {
+        assert.deepEqual(getGameCameraKeyboardPan('ArrowLeft', true), [1, 0]);
+        assert.equal(getGameCameraKeyboardPan('ArrowLeft', false), null);
+        assert.equal(getGameCameraKeyboardPan('KeyQ', true), null);
+    });
+});
+
+describe('camera motion preference', () => {
+    it('makes structure focus and restore immediate for reduced motion', () => {
+        assert.equal(shouldUseImmediateGameCameraTransition(0.65, true), true);
+        assert.equal(shouldUseImmediateGameCameraTransition(0, false), true);
+        assert.equal(
+            shouldUseImmediateGameCameraTransition(0.65, false),
+            false,
+        );
+    });
+});
 
 describe('preserved-angle camera focus', () => {
     it('pans to a new target without changing the camera viewing offset', () => {
@@ -25,6 +65,42 @@ describe('preserved-angle camera focus', () => {
         assert.deepEqual(cameraPosition.toArray(), [-97, 100, -93]);
         assert.deepEqual(cameraTarget.toArray(), [3, 0, 7]);
         assert.deepEqual(focusTarget.toArray(), [14, 1.4, 22]);
+    });
+
+    it('places a focused point at the requested normalized canvas position', () => {
+        const viewportWidth = 844;
+        const viewportHeight = 390;
+        const zoom = 42;
+        const screenPosition = { x: 0.74, y: 0.525 };
+        const focusTarget = new Vector3(1, 0.5, 2);
+        const cameraOffset = new Vector3(-100, 100, -100);
+        const camera = new OrthographicCamera(
+            -viewportWidth / 2,
+            viewportWidth / 2,
+            viewportHeight / 2,
+            -viewportHeight / 2,
+        );
+        camera.position.copy(focusTarget).add(cameraOffset);
+        camera.lookAt(focusTarget);
+        camera.zoom = zoom;
+        camera.updateProjectionMatrix();
+        camera.updateMatrixWorld();
+
+        const adjustedTarget = getScreenPositionAdjustedCameraTarget({
+            camera,
+            focusTarget,
+            screenPosition,
+            viewportHeight,
+            viewportWidth,
+            zoom,
+        });
+        camera.position.copy(adjustedTarget).add(cameraOffset);
+        camera.lookAt(adjustedTarget);
+        camera.updateMatrixWorld();
+        const projected = focusTarget.clone().project(camera);
+
+        assert.ok(Math.abs((projected.x + 1) / 2 - screenPosition.x) < 1e-6);
+        assert.ok(Math.abs((-projected.y + 1) / 2 - screenPosition.y) < 1e-6);
     });
 
     it('zooms in to the requested closeup without zooming out an existing view', () => {

@@ -10,6 +10,7 @@ import {
     createOperation,
     events,
     getAllOperations,
+    getAppliedRaisedBedOperations,
     getAppliedRaisedBedOperationsForGarden,
     getAssignableFarmUsersByOperationIds,
     getFarmUserAcceptedOperations,
@@ -742,9 +743,21 @@ test('getAppliedRaisedBedOperationsForGarden matches the previous in-memory appl
                     operation.status === 'pendingVerification'),
         )
         .map((operation) => operation.id);
-    const boundedOperationIds = (
-        await getAppliedRaisedBedOperationsForGarden(accountId, gardenId)
-    ).map((operation) => operation.id);
+    const appliedOperations = await getAppliedRaisedBedOperationsForGarden(
+        accountId,
+        gardenId,
+    );
+    const bedOperations = await getAppliedRaisedBedOperations(
+        accountId,
+        raisedBedId,
+    );
+    assert.deepEqual(
+        new Set(bedOperations.map((operation) => operation.id)),
+        new Set([completedRaisedBedOperationId, pendingRaisedBedOperationId]),
+    );
+    const boundedOperationIds = appliedOperations.map(
+        (operation) => operation.id,
+    );
 
     assert.deepStrictEqual(
         new Set(boundedOperationIds),
@@ -754,4 +767,20 @@ test('getAppliedRaisedBedOperationsForGarden matches the previous in-memory appl
         new Set(boundedOperationIds),
         new Set([completedRaisedBedOperationId, pendingRaisedBedOperationId]),
     );
+    assert.deepStrictEqual(
+        new Map(
+            appliedOperations.map((operation) => [
+                operation.id,
+                operation.status,
+            ]),
+        ),
+        new Map([
+            [completedRaisedBedOperationId, 'completed'],
+            [pendingRaisedBedOperationId, 'pendingVerification'],
+        ]),
+    );
+    for (const operation of appliedOperations) {
+        assert.ok(operation.completedAt instanceof Date);
+        assert.strictEqual(operation.scheduledDate, undefined);
+    }
 });

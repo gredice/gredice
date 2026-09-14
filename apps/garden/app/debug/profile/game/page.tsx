@@ -1,4 +1,5 @@
 import {
+    faunaHeavyMockGardenProfile,
     type GameSceneProps,
     isOperationVisualRewardDebugProfile,
     operationVisualRewardDebugProfile,
@@ -10,6 +11,9 @@ import {
     resolveGameProfileAdaptiveHigh,
     resolveGameProfileFlags,
     resolveGameProfileGardenAvatar,
+    resolveGameProfileGardenBuilding,
+    resolveGameProfileGardenBuildingFixture,
+    resolveGameProfileGardenBuildingFixtureGate,
     resolveGameProfileOperationVisuals,
     resolveGameProfileStaticSceneCache,
     resolveGameProfileStaticSceneCacheOcclusionFixture,
@@ -42,6 +46,10 @@ type GameProfileMode =
 type GameProfileMockGardenProfile = NonNullable<
     GameSceneProps['mockGardenProfile']
 >;
+
+function resolveAvatarProfileView(value: string | undefined) {
+    return value === 'third-person' ? value : null;
+}
 
 function firstValue(value: string | string[] | undefined) {
     return Array.isArray(value) ? value[0] : value;
@@ -108,6 +116,7 @@ function resolveMockGardenProfile(
 ): GameProfileMockGardenProfile {
     if (
         value === 'dense' ||
+        value === faunaHeavyMockGardenProfile ||
         value === 'high-target' ||
         value === operationVisualRewardDebugProfile ||
         value === 'plant-heavy'
@@ -116,6 +125,21 @@ function resolveMockGardenProfile(
     }
 
     return 'default';
+}
+
+function resolveGardenBuildingAvatarSpawnPoint(
+    fixture: ReturnType<typeof resolveGameProfileGardenBuildingFixture>,
+) {
+    if (fixture === 'house') {
+        // Starts inside the south side of the representative profile house.
+        return { x: 0, z: 1.25 };
+    }
+    if (fixture === 'worst-case') {
+        // Starts outside a solid south wall so repeated forward steps exercise
+        // the furnished 100-cell collision buckets without entering cutaway.
+        return { x: 0, z: -1.85 };
+    }
+    return undefined;
 }
 
 function resolveWeather(
@@ -282,6 +306,9 @@ export default async function GameProfilePage({
     const showHud = firstValue(params.hud) === '1';
     const showDebugHud = firstValue(params.debugHud) === '1';
     const enableControls = firstValue(params.controls) === '1';
+    const cameraProfile = firstValue(params.cameraProfile) === '1';
+    const gardenSwitchProfile = firstValue(params.gardenSwitch) === '1';
+    const lifecycleProfile = firstValue(params.lifecycle) === '1';
     const mockGardenProfile = resolveMockGardenProfile(
         firstValue(params.profile),
     );
@@ -299,9 +326,35 @@ export default async function GameProfilePage({
     const gardenAvatar = resolveGameProfileGardenAvatar(
         firstValue(params.avatar),
     );
+    const avatarProfileView = resolveAvatarProfileView(
+        firstValue(params.avatarProfile),
+    );
+    const gardenBuildingFixtureEnabled =
+        resolveGameProfileGardenBuildingFixtureGate(
+            process.env.GREDICE_GARDEN_BUILDING_PROFILE_FIXTURE_ENABLED,
+        );
+    const gardenBuilding = resolveGameProfileGardenBuilding(
+        firstValue(params.building),
+        gardenBuildingFixtureEnabled,
+    );
+    const gardenBuildingFixture = resolveGameProfileGardenBuildingFixture(
+        firstValue(params.buildingFixture),
+        gardenBuildingFixtureEnabled,
+    );
+    const gardenStructureProfileFixture =
+        gardenBuilding && gardenBuildingFixture
+            ? (
+                  await import('@gredice/game/garden-building-profile-fixture')
+              ).createGardenStructureProfileFixtureDescriptor(
+                  gardenBuildingFixture,
+              )
+            : undefined;
     const debugGameFlags = resolveGameProfileFlags(
         firstValue(params.weatherSurface),
         firstValue(params.avatar),
+        firstValue(params.building),
+        gardenBuildingFixtureEnabled,
+        mockGardenProfile !== 'fauna-heavy',
     );
     const staticSceneCacheMode = resolveGameProfileStaticSceneCache(
         firstValue(params.staticSceneCache),
@@ -327,15 +380,25 @@ export default async function GameProfilePage({
         <main
             className="relative h-screen w-screen overflow-hidden bg-[#e7e2cc]"
             data-game-profile-mode={mode}
+            data-game-profile-comparison-contract-version={
+                process.env.NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION
+            }
             data-game-profile-controls={enableControls ? '1' : '0'}
             data-game-profile-details={renderDetails ? '1' : '0'}
             data-game-profile-fixed-time-seconds={fixedTimeSeconds ?? undefined}
             data-game-profile-debug-hud={showDebugHud ? '1' : '0'}
             data-game-profile-hud={showHud ? '1' : '0'}
             data-game-profile-garden-profile={mockGardenProfile}
+            data-game-profile-garden-switch={gardenSwitchProfile ? '1' : '0'}
+            data-game-profile-lifecycle={lifecycleProfile ? '1' : '0'}
             data-game-profile-quality={quality ?? 'auto'}
             data-game-profile-adaptive-high={adaptiveHigh ? '1' : '0'}
             data-game-profile-avatar={gardenAvatar ? '1' : '0'}
+            data-game-profile-avatar-view={avatarProfileView ?? undefined}
+            data-game-profile-building={gardenBuilding ? '1' : '0'}
+            data-game-profile-building-fixture={
+                gardenBuilding ? gardenBuildingFixture : undefined
+            }
             data-game-profile-closeup-raised-bed-id={
                 closeupRaisedBedId ?? undefined
             }
@@ -345,6 +408,12 @@ export default async function GameProfilePage({
             data-game-profile-static-scene-cache={staticSceneCacheMode}
             data-game-profile-static-scene-cache-occlusion-fixture={
                 staticSceneCacheOcclusionFixture ? '1' : '0'
+            }
+            data-game-profile-source-commit={
+                process.env.NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT
+            }
+            data-game-profile-source-dirty={
+                process.env.NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY
             }
             data-game-profile-weather-surface={weatherSurfaceMode}
             data-game-profile-operation-visual-highlight-raised-bed-id={
@@ -372,10 +441,16 @@ export default async function GameProfilePage({
                 fixedTimeSeconds={fixedTimeSeconds ?? undefined}
                 freezeTime={freezeTime}
                 debugHud={showDebugHud}
+                gardenSwitchEnabled={gardenSwitchProfile}
                 hideHud={!showHud}
                 initialQualitySetting={quality}
                 enableGameProfileController={
                     adaptiveHigh ||
+                    cameraProfile ||
+                    gardenSwitchProfile ||
+                    lifecycleProfile ||
+                    mockGardenProfile === 'fauna-heavy' ||
+                    gardenBuilding ||
                     closeupRaisedBedId !== null ||
                     outlineProfile ||
                     placementProfile ||
@@ -384,6 +459,19 @@ export default async function GameProfilePage({
                 enableStaticOpaqueSceneCacheOcclusionFixture={
                     staticSceneCacheOcclusionFixture
                 }
+                gardenStructureDebugFixture={
+                    gardenBuilding &&
+                    gardenStructureProfileFixture === undefined
+                }
+                gardenStructureProfileFixture={gardenStructureProfileFixture}
+                gardenAvatarInitialSpawnPoint={
+                    gardenAvatar && gardenBuilding
+                        ? resolveGardenBuildingAvatarSpawnPoint(
+                              gardenBuildingFixture,
+                          )
+                        : undefined
+                }
+                gardenAvatarActivationRequest={avatarProfileView ? 1 : 0}
                 mockGarden
                 mockGardenProfile={mockGardenProfile}
                 noControls={!enableControls}

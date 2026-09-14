@@ -22,7 +22,18 @@ export default async function DebugPlantsPage({
     const labelsRequested = isCatalogRequested(query.labels);
 
     return (
-        <div className="flex h-screen w-screen flex-col bg-neutral-900">
+        <div
+            className="flex h-screen w-screen flex-col bg-neutral-900"
+            data-game-profile-comparison-contract-version={
+                process.env.NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION
+            }
+            data-game-profile-source-commit={
+                process.env.NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT
+            }
+            data-game-profile-source-dirty={
+                process.env.NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY
+            }
+        >
             <div className="flex items-start justify-between gap-4 border-b border-neutral-700 p-4">
                 <div>
                     <h1 className="text-xl font-bold text-white">

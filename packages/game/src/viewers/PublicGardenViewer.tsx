@@ -67,6 +67,18 @@ import {
     resolveGameQualityProfile,
 } from '../scene/gameQuality';
 import { Scene } from '../scene/Scene';
+import { GardenStructureSceneLayerDynamic } from '../structures/GardenStructureSceneLayerDynamic';
+import {
+    areGardenStructureAvatarInteriorPresentationsEqual,
+    emptyGardenStructureAvatarInteriorPresentation,
+    type GardenStructureAvatarInteriorPresentation,
+} from '../structures/gardenStructureAvatarInterior';
+import {
+    createGardenStructureSceneBaseHeightResolver,
+    type GardenStructureSceneDiagnosticStatus,
+    useGardenStructureSceneSnapshot,
+} from '../structures/gardenStructureScene';
+import type { GardenStructureHorizontalBounds } from '../structures/structurePlanTypes';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 import {
@@ -120,6 +132,7 @@ export type PublicGardenDetail = Pick<
     | 'name'
     | 'raisedBeds'
     | 'stacks'
+    | 'structures'
     | 'updatedAt'
 >;
 
@@ -137,6 +150,13 @@ export type PublicGardenCaptureViewport = {
 };
 
 export type PublicGardenCapturePhase = 'morning' | 'day' | 'evening' | 'night';
+
+type PublicGardenStructureFramingEntry = Readonly<{
+    footprint: Readonly<{
+        bounds: GardenStructureHorizontalBounds;
+    }>;
+    structureId: string;
+}>;
 
 export type PublicGardenCapture = {
     fitGarden?: boolean;
@@ -168,6 +188,7 @@ export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     onLocalVisitorViewChange?: (view: GardenAvatarView) => void;
     onSceneContextLost?: () => void;
     onSceneReady?: () => void;
+    noControls?: boolean;
     noSound?: boolean;
     noWeather?: boolean;
     overlayChildren?: ReactNode;
@@ -284,25 +305,45 @@ export function getPublicGardenRaisedBedsWithBlocks<
     );
 }
 
-export function getPublicGardenStacksCenter(stacks: Stack[]) {
-    if (stacks.length === 0) {
-        return new Vector3(0, 0, 0);
-    }
+type PublicGardenPlanarBounds = Readonly<{
+    maxX: number;
+    maxZ: number;
+    minX: number;
+    minZ: number;
+}>;
 
+function getPublicGardenPlanarBounds(
+    stacks: Stack[],
+    structureBounds?: GardenStructureHorizontalBounds | null,
+): PublicGardenPlanarBounds | null {
     const bounds = stacks.reduce(
         (acc, stack) => ({
-            maxX: Math.max(acc.maxX, stack.position.x),
-            maxZ: Math.max(acc.maxZ, stack.position.z),
-            minX: Math.min(acc.minX, stack.position.x),
-            minZ: Math.min(acc.minZ, stack.position.z),
+            maxX: Math.max(acc.maxX, stack.position.x + 0.5),
+            maxZ: Math.max(acc.maxZ, stack.position.z + 0.5),
+            minX: Math.min(acc.minX, stack.position.x - 0.5),
+            minZ: Math.min(acc.minZ, stack.position.z - 0.5),
         }),
         {
-            maxX: Number.NEGATIVE_INFINITY,
-            maxZ: Number.NEGATIVE_INFINITY,
-            minX: Number.POSITIVE_INFINITY,
-            minZ: Number.POSITIVE_INFINITY,
+            maxX: structureBounds?.maxX ?? Number.NEGATIVE_INFINITY,
+            maxZ: structureBounds?.maxY ?? Number.NEGATIVE_INFINITY,
+            minX: structureBounds?.minX ?? Number.POSITIVE_INFINITY,
+            minZ: structureBounds?.minY ?? Number.POSITIVE_INFINITY,
         },
     );
+
+    return Number.isFinite(bounds.minX) && Number.isFinite(bounds.minZ)
+        ? bounds
+        : null;
+}
+
+export function getPublicGardenStacksCenter(
+    stacks: Stack[],
+    structureBounds?: GardenStructureHorizontalBounds | null,
+) {
+    const bounds = getPublicGardenPlanarBounds(stacks, structureBounds);
+    if (!bounds) {
+        return new Vector3(0, 0, 0);
+    }
 
     return new Vector3(
         (bounds.minX + bounds.maxX) / 2,
@@ -314,9 +355,11 @@ export function getPublicGardenStacksCenter(stacks: Stack[]) {
 export function getPublicGardenInitialView({
     homeCamera,
     stacks,
+    structureBounds,
 }: {
     homeCamera?: PublicGardenHomeCamera | null;
     stacks: Stack[];
+    structureBounds?: GardenStructureHorizontalBounds | null;
 }): PublicGardenInitialView {
     if (homeCamera) {
         return {
@@ -326,7 +369,7 @@ export function getPublicGardenInitialView({
         };
     }
 
-    const sceneCenter = getPublicGardenStacksCenter(stacks);
+    const sceneCenter = getPublicGardenStacksCenter(stacks, structureBounds);
 
     return {
         cameraPosition: new Vector3(
@@ -342,33 +385,24 @@ export function getPublicGardenInitialView({
 export function getPublicGardenCaptureInitialView({
     minimumZoom = 24,
     stacks,
+    structureBounds,
     viewport,
 }: {
     minimumZoom?: number;
     stacks: Stack[];
+    structureBounds?: GardenStructureHorizontalBounds | null;
     viewport: PublicGardenCaptureViewport;
 }): PublicGardenInitialView {
-    const initialView = getPublicGardenInitialView({ stacks });
-    if (stacks.length === 0 || viewport.width < 1 || viewport.height < 1) {
+    const initialView = getPublicGardenInitialView({
+        stacks,
+        structureBounds,
+    });
+    const bounds = getPublicGardenPlanarBounds(stacks, structureBounds);
+    if (!bounds || viewport.width < 1 || viewport.height < 1) {
         return initialView;
     }
-
-    const bounds = stacks.reduce(
-        (acc, stack) => ({
-            maxX: Math.max(acc.maxX, stack.position.x),
-            maxZ: Math.max(acc.maxZ, stack.position.z),
-            minX: Math.min(acc.minX, stack.position.x),
-            minZ: Math.min(acc.minZ, stack.position.z),
-        }),
-        {
-            maxX: Number.NEGATIVE_INFINITY,
-            maxZ: Number.NEGATIVE_INFINITY,
-            minX: Number.POSITIVE_INFINITY,
-            minZ: Number.POSITIVE_INFINITY,
-        },
-    );
-    const spanX = bounds.maxX - bounds.minX + 1;
-    const spanZ = bounds.maxZ - bounds.minZ + 1;
+    const spanX = bounds.maxX - bounds.minX;
+    const spanZ = bounds.maxZ - bounds.minZ;
     const combinedSpan = spanX + spanZ;
 
     // The camera views the ground plane at an isometric angle. These
@@ -385,6 +419,81 @@ export function getPublicGardenCaptureInitialView({
         ...initialView,
         cameraZoom: Math.max(minimumZoom, Math.min(180, fittedZoom)),
     };
+}
+
+export function resolvePublicGardenSceneInitialView({
+    captureFitGarden,
+    captureViewport,
+    initialView,
+    resolveStructureFraming,
+    stacks,
+    structureBounds,
+}: {
+    captureFitGarden: boolean;
+    captureViewport?: PublicGardenCaptureViewport;
+    initialView: PublicGardenInitialView;
+    resolveStructureFraming: boolean;
+    stacks: Stack[];
+    structureBounds?: GardenStructureHorizontalBounds | null;
+}) {
+    if (!resolveStructureFraming) {
+        return initialView;
+    }
+
+    if (captureFitGarden && captureViewport) {
+        return getPublicGardenCaptureInitialView({
+            stacks,
+            structureBounds,
+            viewport: captureViewport,
+        });
+    }
+
+    return getPublicGardenInitialView({
+        stacks,
+        structureBounds,
+    });
+}
+
+export function getPublicGardenStructureInitialViewKey({
+    gardenId,
+    structures,
+}: {
+    gardenId?: number | string | null;
+    structures: readonly PublicGardenStructureFramingEntry[];
+}) {
+    const gardenKey = gardenId == null ? 'stacks' : gardenId.toString();
+    const footprintKey = structures
+        .map(({ footprint, structureId }) => {
+            const { maxX, maxY, minX, minY } = footprint.bounds;
+            return `${structureId}:${minX},${minY},${maxX},${maxY}`;
+        })
+        .sort()
+        .join('|');
+
+    return `${gardenKey}:structure-footprints:${footprintKey || 'none'}`;
+}
+
+export function isPublicGardenStructureCaptureReady({
+    diagnosticStatus,
+    hasPlan,
+    rejectedRecordCount,
+    rendererReady,
+    savedStructureCount,
+}: {
+    diagnosticStatus: GardenStructureSceneDiagnosticStatus;
+    hasPlan: boolean;
+    rejectedRecordCount: number;
+    rendererReady: boolean;
+    savedStructureCount: number;
+}) {
+    return (
+        savedStructureCount === 0 ||
+        (hasPlan &&
+            rendererReady &&
+            rejectedRecordCount === 0 &&
+            (diagnosticStatus === 'ready' ||
+                diagnosticStatus === 'rendered-with-diagnostics'))
+    );
 }
 
 function normalizePublicGardenBackgroundPalette(value: unknown) {
@@ -416,6 +525,7 @@ function publicGardenForGameState(
         homeCamera: garden.homeCamera ?? null,
         farmId: garden.farmId,
         stacks: normalizedStacks,
+        structures: garden.structures,
         location: {
             lat: garden.latitude,
             lon: garden.longitude,
@@ -463,6 +573,7 @@ function PublicGardenScene({
     loadPlantSorts,
     localVisitorActivationRequest,
     localVisitorSpawnPoint,
+    noControls,
     noSound,
     noWeather,
     normalizedStacks,
@@ -473,6 +584,7 @@ function PublicGardenScene({
     onSceneReady,
     renderDetails,
     renderGroundDecorations,
+    resolveStructureFraming,
     sceneChildren,
     selectedBlockFocus,
     visitorPresence,
@@ -488,6 +600,7 @@ function PublicGardenScene({
     loadPlantSorts: boolean;
     localVisitorActivationRequest?: number;
     localVisitorSpawnPoint?: Pick<GardenAvatarPoint, 'x' | 'z'>;
+    noControls: boolean;
     noSound: boolean;
     noWeather: boolean;
     normalizedStacks: Stack[];
@@ -498,12 +611,82 @@ function PublicGardenScene({
     onSceneReady?: () => void;
     renderDetails: boolean;
     renderGroundDecorations?: boolean;
+    resolveStructureFraming: boolean;
     sceneChildren?: ReactNode;
     selectedBlockFocus?: PublicGardenSelectedBlockFocus;
     visitorPresence?: GardenVisitorPresenceController;
 }) {
     const blockDataQuery = useBlockData();
     const blockDataLoaded = Boolean(blockDataQuery.data);
+    const structureBaseHeightResolver = useMemo(
+        () =>
+            createGardenStructureSceneBaseHeightResolver({
+                blockData: blockDataQuery.data,
+                records: garden?.structures,
+                stacks: normalizedStacks,
+            }),
+        [blockDataQuery.data, garden?.structures, normalizedStacks],
+    );
+    const structureScene = useGardenStructureSceneSnapshot({
+        gardenId: garden?.id,
+        includeCollision: Boolean(visitorPresence),
+        records: blockDataLoaded ? garden?.structures : undefined,
+        resolveBaseHeight: structureBaseHeightResolver,
+    });
+    const savedStructureCount = garden?.structures?.length ?? 0;
+    const structureBounds = structureScene.plan?.worldBounds;
+    const resolvedInitialView = useMemo(
+        () =>
+            resolvePublicGardenSceneInitialView({
+                captureFitGarden: Boolean(capture?.fitGarden),
+                captureViewport:
+                    capture?.fitGarden &&
+                    capture.output?.width &&
+                    capture.output.height
+                        ? {
+                              height: capture.output.height,
+                              width: capture.output.width,
+                          }
+                        : undefined,
+                initialView,
+                resolveStructureFraming,
+                stacks: normalizedStacks,
+                structureBounds,
+            }),
+        [
+            capture?.fitGarden,
+            capture?.output?.height,
+            capture?.output?.width,
+            initialView,
+            normalizedStacks,
+            resolveStructureFraming,
+            structureBounds,
+        ],
+    );
+    const initialViewKey = resolveStructureFraming
+        ? getPublicGardenStructureInitialViewKey({
+              gardenId: garden?.id,
+              structures: structureScene.plan?.structures ?? [],
+          })
+        : (garden?.id ?? 'stacks');
+    const structurePlanKey = structureScene.plan?.cacheKey ?? null;
+    const [readyStructurePlanKey, setReadyStructurePlanKey] = useState<
+        string | null
+    >(null);
+    const structureRendererReady =
+        structurePlanKey !== null && readyStructurePlanKey === structurePlanKey;
+    const markStructureRendererReady = useCallback(() => {
+        if (structurePlanKey !== null) {
+            setReadyStructurePlanKey(structurePlanKey);
+        }
+    }, [structurePlanKey]);
+    const structureCaptureReady = isPublicGardenStructureCaptureReady({
+        diagnosticStatus: structureScene.diagnostics.status,
+        hasPlan: structureScene.plan !== null,
+        rejectedRecordCount: structureScene.diagnostics.rejectedRecordCount,
+        rendererReady: structureRendererReady,
+        savedStructureCount,
+    });
     const plantSortsQuery = useAllSorts(loadPlantSorts);
     const plantSortsLoaded = Boolean(plantSortsQuery.data);
     const fetchingQueryCount = useIsFetching();
@@ -522,6 +705,41 @@ function PublicGardenScene({
     const renderLivingDetails = renderDetails && gardenCacheReady;
     const renderTransientDetails = renderLivingDetails && !capture;
     const [visualOccluders, setVisualOccluders] = useState<Group | null>(null);
+    const [structureInteriorPresentation, setStructureInteriorPresentation] =
+        useState<GardenStructureAvatarInteriorPresentation>(
+            emptyGardenStructureAvatarInteriorPresentation,
+        );
+    const publishStructureInteriorPresentation = useCallback(
+        (next: GardenStructureAvatarInteriorPresentation) => {
+            setStructureInteriorPresentation((current) =>
+                areGardenStructureAvatarInteriorPresentationsEqual(
+                    current,
+                    next,
+                )
+                    ? current
+                    : next,
+            );
+        },
+        [],
+    );
+    const hiddenStructureInstanceIds = useMemo(
+        () => new Set(structureInteriorPresentation.hiddenInstanceIds),
+        [structureInteriorPresentation.hiddenInstanceIds],
+    );
+    const visibleInteriorStructureIds = useMemo(
+        () =>
+            structureInteriorPresentation.structureId
+                ? new Set([structureInteriorPresentation.structureId])
+                : new Set<string>(),
+        [structureInteriorPresentation.structureId],
+    );
+    useEffect(() => {
+        if (!visitorPresence || capture) {
+            publishStructureInteriorPresentation(
+                emptyGardenStructureAvatarInteriorPresentation,
+            );
+        }
+    }, [capture, publishStructureInteriorPresentation, visitorPresence]);
     const interactWithAvatarBlock = useCallback(
         (block: Block): GardenAvatarInteractionResult => {
             if (!onAvatarInteractBlock) {
@@ -550,17 +768,50 @@ function PublicGardenScene({
             data-public-garden-capture-plants-ready={
                 capture ? plantSortsLoaded : undefined
             }
+            data-public-garden-capture-structures-ready={
+                capture ? structureCaptureReady : undefined
+            }
             data-public-garden-sound={noSound ? 'disabled' : 'enabled'}
+            data-garden-structure-collision-status={
+                structureScene.collisionWorld
+                    ? 'ready'
+                    : savedStructureCount > 0
+                      ? 'missing'
+                      : 'empty'
+            }
+            data-garden-structure-diagnostic-status={
+                structureScene.diagnostics.status
+            }
+            data-garden-structure-rejected-count={
+                structureScene.diagnostics.rejectedRecordCount
+            }
+            data-garden-structure-rendered-count={
+                structureScene.plan?.structures.length ?? 0
+            }
+            data-garden-structure-first-id={
+                structureScene.plan?.structures[0]?.structureId
+            }
+            data-garden-structure-hidden-instance-count={
+                structureInteriorPresentation.hiddenInstanceIds.length
+            }
+            data-garden-structure-interior-id={
+                structureInteriorPresentation.structureId ?? 'outside'
+            }
+            data-garden-structure-warning-count={
+                structureScene.diagnostics.warningCount
+            }
         >
-            {blockDataLoaded && gardenCacheReady ? (
+            {blockDataLoaded ? (
                 <Scene
+                    animateSprings={!capture}
+                    baseFramesPerSecond={capture ? 0 : undefined}
                     fixedTimeSeconds={
                         capture
                             ? publicGardenCaptureSceneTimeSeconds
                             : undefined
                     }
                     pixelRatio={capture ? 1 : undefined}
-                    position={initialView.cameraPosition}
+                    position={resolvedInitialView.cameraPosition}
                     quality={qualityProfile}
                     onContextLost={onSceneContextLost}
                     rendererOptions={
@@ -575,7 +826,7 @@ function PublicGardenScene({
                             : undefined
                     }
                     suspendWhenOffscreen={!capture}
-                    zoom={initialView.cameraZoom}
+                    zoom={resolvedInitialView.cameraZoom}
                     className="h-full w-full"
                 >
                     <ParticleSystemProvider>
@@ -637,6 +888,28 @@ function PublicGardenScene({
                                                     renderLivingDetails
                                                 }
                                             />
+                                            {structureScene.plan?.structures
+                                                .length ? (
+                                                <GardenStructureSceneLayerDynamic
+                                                    castShadows={
+                                                        qualityProfile.shadows &&
+                                                        !capture?.transparent
+                                                    }
+                                                    renderProps={
+                                                        renderLivingDetails
+                                                    }
+                                                    hiddenInstanceIds={
+                                                        hiddenStructureInstanceIds
+                                                    }
+                                                    onRendererReady={
+                                                        markStructureRendererReady
+                                                    }
+                                                    snapshot={structureScene}
+                                                    visibleInteriorStructureIds={
+                                                        visibleInteriorStructureIds
+                                                    }
+                                                />
+                                            ) : null}
                                             {sceneChildren}
                                             {onSceneReady ? (
                                                 <PublicGardenSceneReady
@@ -778,6 +1051,9 @@ function PublicGardenScene({
                                             {visitorPresence ? (
                                                 <Suspense fallback={null}>
                                                     <GardenAvatar
+                                                        additionalCollisionWorld={
+                                                            structureScene.collisionWorld
+                                                        }
                                                         activationRequest={
                                                             localVisitorActivationRequest
                                                         }
@@ -793,6 +1069,9 @@ function PublicGardenScene({
                                                         onPresenceChange={
                                                             visitorPresence.onLocalPresenceChange
                                                         }
+                                                        onStructureInteriorChange={
+                                                            publishStructureInteriorPresentation
+                                                        }
                                                         onInteractBlock={
                                                             interactWithAvatarBlock
                                                         }
@@ -805,6 +1084,11 @@ function PublicGardenScene({
                                                         }
                                                         stacks={
                                                             normalizedStacks
+                                                        }
+                                                        structureCollectionPlan={
+                                                            capture
+                                                                ? null
+                                                                : structureScene.plan
                                                         }
                                                     />
                                                     {visitorPresence.visitors.map(
@@ -820,7 +1104,9 @@ function PublicGardenScene({
                                                 </Suspense>
                                             ) : null}
                                         </group>
-                                        {!capture && !gardenAvatarActive ? (
+                                        {!capture &&
+                                        !gardenAvatarActive &&
+                                        !noControls ? (
                                             <>
                                                 {interactiveBlockIds?.size &&
                                                 onSelectBlock ? (
@@ -853,19 +1139,25 @@ function PublicGardenScene({
                                 closeupFocus={selectedBlockFocus}
                                 minZoom={cameraMinZoom}
                                 controlsEnabled={
-                                    !capture && !gardenAvatarActive
+                                    !capture &&
+                                    !gardenAvatarActive &&
+                                    !noControls
                                 }
-                                initialPosition={initialView.cameraPosition}
+                                initialPosition={
+                                    resolvedInitialView.cameraPosition
+                                }
                                 initialSnapshot={initialSnapshot}
-                                initialTarget={initialView.cameraTarget}
-                                initialViewKey={garden?.id ?? 'stacks'}
-                                initialZoom={initialView.cameraZoom}
+                                initialTarget={resolvedInitialView.cameraTarget}
+                                initialViewKey={initialViewKey}
+                                initialZoom={resolvedInitialView.cameraZoom}
                             />
                             {capture ? (
                                 <PublicGardenCaptureProbe
                                     key={capture.key}
                                     enabled={
-                                        renderLivingDetails && plantSortsLoaded
+                                        renderLivingDetails &&
+                                        plantSortsLoaded &&
+                                        structureCaptureReady
                                     }
                                     fitSceneObjectName={
                                         capture.fitGarden
@@ -975,6 +1267,7 @@ export function PublicGardenViewer({
     interactiveBlockIds,
     localVisitorActivationRequest,
     localVisitorSpawnPoint,
+    noControls = false,
     noSound = true,
     noWeather = false,
     overlayChildren,
@@ -1085,6 +1378,9 @@ export function PublicGardenViewer({
         initialViewOverride,
         normalizedStacks,
     ]);
+    const resolveStructureFraming =
+        !initialViewOverride &&
+        (Boolean(capture?.fitGarden) || !garden?.homeCamera);
     const deferredRenderDetails = useDeferredSceneDetails(deferDetails);
     const renderDetails = renderDetailsOverride ?? deferredRenderDetails;
     const loadPlantSorts = renderDetailsOverride !== false || Boolean(capture);
@@ -1236,7 +1532,8 @@ export function PublicGardenViewer({
                                     initialView={initialView}
                                     interactiveBlockIds={interactiveBlockIds}
                                     initialSnapshot={
-                                        initialViewOverride
+                                        initialViewOverride ||
+                                        capture?.fitGarden
                                             ? undefined
                                             : (garden?.homeCamera ?? undefined)
                                     }
@@ -1247,6 +1544,7 @@ export function PublicGardenViewer({
                                     localVisitorSpawnPoint={
                                         localVisitorSpawnPoint
                                     }
+                                    noControls={noControls}
                                     noSound={Boolean(capture) || noSound}
                                     noWeather={noWeather}
                                     normalizedStacks={normalizedStacks}
@@ -1261,11 +1559,14 @@ export function PublicGardenViewer({
                                     renderGroundDecorations={
                                         renderGroundDecorations
                                     }
+                                    resolveStructureFraming={
+                                        resolveStructureFraming
+                                    }
                                     sceneChildren={sceneChildren}
                                     selectedBlockFocus={selectedBlockFocus}
                                     visitorPresence={visitorPresence}
                                 />
-                                {gameGarden && !capture ? (
+                                {gameGarden && !capture && !noControls ? (
                                     <PublicGardenInteractiveOverlays
                                         onCloseRaisedBed={closeRaisedBed}
                                         onSelectRaisedBed={openRaisedBed}

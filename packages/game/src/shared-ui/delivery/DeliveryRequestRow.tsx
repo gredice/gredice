@@ -1,4 +1,5 @@
 import { Button } from '@gredice/ui/Button';
+import { GameRaisedBedIcon as RaisedBedIcon } from '@gredice/ui/GameIcons';
 import {
     Close,
     ExternalLink,
@@ -9,8 +10,8 @@ import {
 } from '@gredice/ui/icons';
 import { TimeRange } from '@gredice/ui/LocalDateTime';
 import { OperationImage } from '@gredice/ui/OperationImage';
+import { PaperNote } from '@gredice/ui/PaperNote';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -208,9 +209,12 @@ export function DeliveryRequestRow({
                         <Typography level="body3" secondary>
                             Napomene:
                         </Typography>
-                        <Typography level="body2">
+                        <PaperNote
+                            noteKey={request.id}
+                            aria-label="Napomena dostave"
+                        >
                             {request.requestNotes}
-                        </Typography>
+                        </PaperNote>
                     </Stack>
                 )}
             </Stack>

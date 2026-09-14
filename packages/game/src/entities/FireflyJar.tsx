@@ -1,9 +1,9 @@
-import { animated } from '@react-spring/three';
 import { useFrame } from '@react-three/fiber';
 import { type ReactNode, useMemo, useRef } from 'react';
 import { DoubleSide, type Group, type MeshStandardMaterial } from 'three';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
+import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';

@@ -5,6 +5,8 @@ import {
     events,
     gardenBlocks,
     gardenStacks,
+    gardenStructureOperations,
+    gardenStructures,
     gardens,
     notifications,
     operations,
@@ -16,9 +18,11 @@ import {
 } from '../schema';
 import { raisedBedFields, raisedBedSensors } from '../schema/gardenSchema';
 import { storage } from '../storage';
+import { withAccountDeletionFenceTransaction } from './accountDeletionFenceRepo';
 import { withCheckoutCartItemLocks } from './checkoutCartItemLock';
 import { createEvent, knownEvents, knownEventTypes } from './eventsRepo';
 import { getFarms } from './farmsRepo';
+import { withGardenPlacementTransaction } from './gardenPlacementRepo';
 import { removeGardenPreviewAndQueueBlobDeletionUsing } from './gardenPreviewsRepo';
 import {
     createGarden,
@@ -40,6 +44,7 @@ type CreateDefaultGardenOptions = {
 };
 
 export type DeleteSandboxGardenCompletelyOptions = {
+    accountId?: string;
     batchSize?: number;
     maxBatches?: number;
     maxDurationMs?: number;
@@ -736,6 +741,57 @@ async function deleteSandboxGardenBlockBatch(
     return rows.length;
 }
 
+async function deleteSandboxGardenStructureOperationBatch(
+    gardenId: number,
+    batchSize: number,
+) {
+    const rows = await storage()
+        .select({ operationId: gardenStructureOperations.operationId })
+        .from(gardenStructureOperations)
+        .where(eq(gardenStructureOperations.gardenId, gardenId))
+        .limit(batchSize);
+    if (rows.length === 0) {
+        return 0;
+    }
+
+    await storage()
+        .delete(gardenStructureOperations)
+        .where(
+            and(
+                eq(gardenStructureOperations.gardenId, gardenId),
+                inArray(
+                    gardenStructureOperations.operationId,
+                    rows.map((row) => row.operationId),
+                ),
+            ),
+        );
+    return rows.length;
+}
+
+async function deleteSandboxGardenStructureBatch(
+    gardenId: number,
+    batchSize: number,
+) {
+    const rows = await storage()
+        .select({ id: gardenStructures.id })
+        .from(gardenStructures)
+        .where(eq(gardenStructures.gardenId, gardenId))
+        .limit(batchSize);
+    if (rows.length === 0) {
+        return 0;
+    }
+
+    await storage()
+        .delete(gardenStructures)
+        .where(
+            inArray(
+                gardenStructures.id,
+                rows.map((row) => row.id),
+            ),
+        );
+    return rows.length;
+}
+
 async function deleteSandboxRaisedBedPlantingBatch(
     raisedBedIds: number[],
     batchSize: number,
@@ -899,6 +955,22 @@ async function deleteNextSandboxGardenDependencyBatch(
         return raisedBedRows;
     }
 
+    // Receipts deliberately do not cascade: remove durable idempotency records
+    // before their authoritative structure rows during sandbox hard deletion.
+    const structureOperationRows =
+        await deleteSandboxGardenStructureOperationBatch(garden.id, batchSize);
+    if (structureOperationRows > 0) {
+        return structureOperationRows;
+    }
+
+    const structureRows = await deleteSandboxGardenStructureBatch(
+        garden.id,
+        batchSize,
+    );
+    if (structureRows > 0) {
+        return structureRows;
+    }
+
     const stackRows = await deleteSandboxGardenStackBatch(garden.id, batchSize);
     if (stackRows > 0) {
         return stackRows;
@@ -913,16 +985,94 @@ export function getSandboxGardenDeletionCandidate(gardenId: number) {
     });
 }
 
+async function lockAndMarkSandboxGardenDeleted(
+    gardenId: number,
+    expectedAccountId?: string,
+) {
+    const candidate = await getSandboxGardenDeletionCandidate(gardenId);
+    if (!candidate) {
+        return null;
+    }
+    const accountId = expectedAccountId ?? candidate.accountId;
+
+    return withAccountDeletionFenceTransaction(accountId, (accountTx) =>
+        withGardenPlacementTransaction(
+            gardenId,
+            async (gardenTx) => {
+                const garden = (
+                    await gardenTx
+                        .select()
+                        .from(gardens)
+                        .where(eq(gardens.id, gardenId))
+                        .for('update')
+                        .limit(1)
+                )[0];
+                if (!garden) {
+                    return null;
+                }
+                if (garden.accountId !== accountId) {
+                    throw new Error(
+                        'Sandbox garden ownership changed before deletion.',
+                    );
+                }
+                if (!garden.isSandbox) {
+                    throw new Error(
+                        'Only sandbox gardens can be deleted completely',
+                    );
+                }
+
+                let markedDeleted = false;
+                if (!garden.isDeleted) {
+                    const [deletedGarden] = await gardenTx
+                        .update(gardens)
+                        .set({ isDeleted: true })
+                        .where(
+                            and(
+                                eq(gardens.id, garden.id),
+                                eq(gardens.isDeleted, false),
+                            ),
+                        )
+                        .returning({ id: gardens.id });
+                    if (!deletedGarden) {
+                        throw new Error(
+                            'Locked sandbox garden changed before deletion.',
+                        );
+                    }
+                    markedDeleted = true;
+                }
+                await removeGardenPreviewAndQueueBlobDeletionUsing(
+                    gardenTx,
+                    garden.id,
+                    'garden_deleted',
+                );
+                return { garden, markedDeleted } as const;
+            },
+            accountTx,
+        ),
+    );
+}
+
 export async function deleteSandboxGardenCompletely(
     gardenId: number,
     options: DeleteSandboxGardenCompletelyOptions = {},
 ): Promise<DeleteSandboxGardenCompletelyResult> {
-    const garden = await getSandboxGardenDeletionCandidate(gardenId);
-    if (!garden) {
+    const prepared = await lockAndMarkSandboxGardenDeleted(
+        gardenId,
+        options.accountId,
+    );
+    if (!prepared) {
         return { batches: 0, complete: true, deletedRows: 0 };
     }
-    if (!garden.isSandbox) {
-        throw new Error('Only sandbox gardens can be deleted completely');
+    const { garden, markedDeleted } = prepared;
+    if (markedDeleted) {
+        try {
+            await bustScheduleCache();
+        } catch (error) {
+            console.error(
+                'Failed to invalidate schedule cache after sandbox garden deletion started',
+                { gardenId, error },
+            );
+        }
     }
 
     const batchSize = normalizeSandboxGardenDeleteBatchSize(options.batchSize);
@@ -942,20 +1092,6 @@ export async function deleteSandboxGardenCompletely(
     const startedAt = Date.now();
     let batches = 0;
     let deletedRows = 0;
-
-    await storage().transaction(async (tx) => {
-        if (!garden.isDeleted) {
-            await tx
-                .update(gardens)
-                .set({ isDeleted: true })
-                .where(eq(gardens.id, garden.id));
-        }
-        await removeGardenPreviewAndQueueBlobDeletionUsing(
-            tx,
-            garden.id,
-            'garden_deleted',
-        );
-    });
 
     while (batches < maxBatches && Date.now() - startedAt < maxDurationMs) {
         const deletedBatchRows = await deleteNextSandboxGardenDependencyBatch(

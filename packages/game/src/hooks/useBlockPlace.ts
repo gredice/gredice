@@ -12,6 +12,7 @@ import {
     persistLocalSandboxGarden,
 } from '../localSandboxGarden';
 import { useGameState } from '../useGameState';
+import { ensureBlockPlaceOperationId } from './blockPlaceOperation';
 import {
     createOptimisticBlockPlacement,
     getPreferredBlockPlacementPosition,
@@ -41,6 +42,7 @@ type BlockPlaceVariables = {
     blockName: string;
     expectedExistingBlocks?: string[];
     localBlockId?: string;
+    operationId?: string;
     position?: BlockPlacePosition;
     variant?: number;
 };
@@ -157,6 +159,7 @@ export function useBlockPlace() {
                 variables.blockName,
                 Math.random,
             );
+            const operationId = ensureBlockPlaceOperationId(variables);
 
             if (localSandboxStorageKey) {
                 return {
@@ -175,6 +178,7 @@ export function useBlockPlace() {
                 },
                 json: {
                     blockName: variables.blockName,
+                    operationId,
                     ...(variables.expectedExistingBlocks
                         ? {
                               expectedExistingBlocks:
@@ -196,6 +200,7 @@ export function useBlockPlace() {
             return await response.json();
         },
         onMutate: async (variables) => {
+            ensureBlockPlaceOperationId(variables);
             variables.variant ??= createEntityAppearanceVariantForPlacement(
                 variables.blockName,
                 Math.random,

@@ -1,7 +1,7 @@
 'use client';
-
 import { Button } from '@gredice/ui/Button';
-import { LayoutGrid, Sprout } from '@gredice/ui/icons';
+import { GameSeedlingIcon as Sprout } from '@gredice/ui/GameIcons';
+import { LayoutGrid } from '@gredice/ui/icons';
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { parseAsInteger, useQueryState } from 'nuqs';

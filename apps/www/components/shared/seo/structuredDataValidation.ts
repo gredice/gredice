@@ -3,6 +3,11 @@ export type StructuredDataIssue = {
     message: string;
 };
 
+export type StructuredDataSerialization = {
+    issues: StructuredDataIssue[];
+    serializedData: string | null;
+};
+
 const schemaContexts = new Set(['https://schema.org', 'https://schema.org/']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -203,6 +208,83 @@ function validateAggregateRating(
     }
 }
 
+function isAbsoluteHttpUrl(value: unknown): value is string {
+    if (!isNonEmptyString(value)) {
+        return false;
+    }
+
+    try {
+        const url = new URL(value);
+        return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+        return false;
+    }
+}
+
+function validateBreadcrumbList(
+    node: Record<string, unknown>,
+    path: string,
+    issues: StructuredDataIssue[],
+) {
+    const itemListElement = node.itemListElement;
+    if (!Array.isArray(itemListElement) || itemListElement.length < 2) {
+        issues.push({
+            path,
+            message: 'BreadcrumbList must contain at least two ListItems.',
+        });
+        return;
+    }
+
+    itemListElement.forEach((item, index) => {
+        const itemPath = `${path}.itemListElement[${index}]`;
+        if (!isRecord(item)) {
+            issues.push({
+                path: itemPath,
+                message: 'BreadcrumbList entries must be ListItem objects.',
+            });
+            return;
+        }
+
+        if (!schemaTypes(item).includes('ListItem')) {
+            issues.push({
+                path: itemPath,
+                message: 'BreadcrumbList entries must use @type ListItem.',
+            });
+        }
+
+        if (
+            typeof item.position !== 'number' ||
+            !Number.isInteger(item.position) ||
+            item.position !== index + 1
+        ) {
+            issues.push({
+                path: itemPath,
+                message:
+                    'Breadcrumb ListItem positions must be sequential positive integers.',
+            });
+        }
+
+        if (!isNonEmptyString(item.name)) {
+            issues.push({
+                path: itemPath,
+                message: 'Breadcrumb ListItem must have a non-empty name.',
+            });
+        }
+
+        const isLastItem = index === itemListElement.length - 1;
+        if (
+            (!isLastItem || item.item !== undefined) &&
+            !isAbsoluteHttpUrl(item.item)
+        ) {
+            issues.push({
+                path: itemPath,
+                message:
+                    'Breadcrumb ListItem must have an absolute HTTP(S) item URL unless it is last.',
+            });
+        }
+    });
+}
+
 function visitNode(
     value: unknown,
     path: string,
@@ -251,6 +333,9 @@ function visitNode(
     if (types.includes('AggregateRating')) {
         validateAggregateRating(value, path, issues);
     }
+    if (types.includes('BreadcrumbList')) {
+        validateBreadcrumbList(value, path, issues);
+    }
 
     for (const [key, entry] of Object.entries(value)) {
         visitNode(entry, `${path}.${key}`, issues);
@@ -298,4 +383,18 @@ export function validateSerializedStructuredData(
             },
         ];
     }
+}
+
+export function serializeValidStructuredData(
+    data: unknown,
+): StructuredDataSerialization {
+    const issues = validateStructuredData(data);
+    if (issues.length > 0) {
+        return { issues, serializedData: null };
+    }
+
+    return {
+        issues,
+        serializedData: JSON.stringify(data).replace(/</g, '\\u003c'),
+    };
 }

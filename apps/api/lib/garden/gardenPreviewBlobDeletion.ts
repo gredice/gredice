@@ -1,6 +1,6 @@
 export type GardenPreviewBlobDeletionCandidate = {
     id: number;
-    imageUrl: string;
+    pathname: string;
 };
 
 export type GardenPreviewBlobDeletionFailure = {
@@ -12,6 +12,7 @@ const defaultConcurrency = 8;
 const maximumErrorLength = 2_000;
 const retryBaseDelayMs = 60_000;
 const retryMaximumDelayMs = 6 * 60 * 60 * 1_000;
+const urlInErrorPattern = /https?:\/\/[^\s]+/giu;
 
 function formatDeletionError(error: unknown) {
     const message =
@@ -19,6 +20,10 @@ function formatDeletionError(error: unknown) {
             ? `${error.name}: ${error.message}`
             : String(error);
     return message.slice(0, maximumErrorLength);
+}
+
+export function redactGardenPreviewBlobDeletionError(error: string) {
+    return error.replace(urlInErrorPattern, '[redacted-url]');
 }
 
 export function getGardenPreviewBlobDeletionRetryAt({
@@ -44,7 +49,7 @@ export async function processGardenPreviewBlobDeletions<
     deletions,
 }: {
     concurrency?: number;
-    deleteBlob: (imageUrl: string) => Promise<void>;
+    deleteBlob: (pathname: string) => Promise<void>;
     deletions: readonly T[];
 }) {
     const completedIds: number[] = [];
@@ -61,7 +66,7 @@ export async function processGardenPreviewBlobDeletions<
             }
 
             try {
-                await deleteBlob(deletion.imageUrl);
+                await deleteBlob(deletion.pathname);
                 completedIds.push(deletion.id);
             } catch (error) {
                 failures.push({

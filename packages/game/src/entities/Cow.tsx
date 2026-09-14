@@ -30,6 +30,7 @@ import {
     animalPresenceUpdateIntervalSeconds,
     freshAnimalPresences,
 } from './animals/animalPresence';
+import { recordAnimalProfileCommandAcknowledgement } from './animals/animalProfileCommandMetrics';
 import {
     type CowBehavior,
     cowHerdSpacingIsSafe,
@@ -538,6 +539,13 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
                     });
                     runtimeRef.current = runtime;
                     herdSpacingStallSecondsRef.current = 0;
+                    recordAnimalProfileCommandAcknowledgement({
+                        actorId: habitat.id,
+                        behavior: runtime.target.behavior,
+                        moving: runtime.phase === 'moving',
+                        sequence: debugCommand.sequence,
+                        species: 'Cow',
+                    });
                 }
             }
         }

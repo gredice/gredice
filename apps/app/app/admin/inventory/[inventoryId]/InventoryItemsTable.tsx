@@ -23,6 +23,7 @@ import { KnownPages } from '../../../../src/KnownPages';
 import { DeleteInventoryItemButton } from './DeleteInventoryItemButton';
 import {
     getInventoryItemState,
+    type InventoryLinkFilter,
     type InventoryStateFilter,
 } from './inventoryStatus';
 
@@ -35,6 +36,7 @@ type InventoryItemTableRow = {
     lowCountThreshold: number | null;
     notes: string | null;
     createdAt: string;
+    isOrphaned: boolean;
 };
 
 type SortDirection = 'asc' | 'desc';
@@ -59,28 +61,34 @@ export function InventoryItemsTable({
     items,
     tracksSerialNumbers,
     stateFilter,
+    linkFilter,
 }: {
     inventoryConfigId: number;
     entityTypeName: string;
     items: InventoryItemTableRow[];
     tracksSerialNumbers: boolean;
     stateFilter?: InventoryStateFilter | '';
+    linkFilter?: InventoryLinkFilter | '';
 }) {
     const [sort, setSort] = useState<SortState>(defaultSort);
     const [searchQuery, setSearchQuery] = useState('');
     const stateFilteredItems = stateFilter
         ? items.filter((item) => getInventoryItemState(item) === stateFilter)
         : items;
+    const linkFilteredItems =
+        linkFilter === 'orphaned'
+            ? stateFilteredItems.filter((item) => item.isOrphaned)
+            : stateFilteredItems;
     const normalizedSearchQuery = normalizeSearchTerm(searchQuery);
     const filteredItems = normalizedSearchQuery
-        ? stateFilteredItems.filter((item) =>
+        ? linkFilteredItems.filter((item) =>
               inventoryItemMatchesSearch(
                   item,
                   entityTypeName,
                   normalizedSearchQuery,
               ),
           )
-        : stateFilteredItems;
+        : linkFilteredItems;
     const sortedItems = [...filteredItems].sort((left, right) =>
         compareInventoryItems(left, right, sort),
     );
@@ -102,7 +110,9 @@ export function InventoryItemsTable({
             ? 'Nema stavki u zalihi. Dodajte prvu stavku.'
             : stateFilteredItems.length === 0
               ? 'Nema stavki za odabrano stanje zalihe.'
-              : 'Nema stavki za upisanu pretragu.';
+              : linkFilteredItems.length === 0
+                ? 'Nema stavki s nedostupnim entitetom.'
+                : 'Nema stavki za upisanu pretragu.';
 
     function updateSortKey(key: SortKey) {
         setSort((current) =>
@@ -230,7 +240,18 @@ export function InventoryItemsTable({
                                                 semiBold
                                                 className="min-w-0"
                                             >
-                                                {item.entityId ? (
+                                                {!item.entityId ? (
+                                                    <span className="text-muted-foreground">
+                                                        Bez entiteta
+                                                    </span>
+                                                ) : item.isOrphaned ? (
+                                                    <span className="min-w-0 break-words">
+                                                        {inventoryItemName(
+                                                            item,
+                                                            entityTypeName,
+                                                        )}
+                                                    </span>
+                                                ) : (
                                                     <Link
                                                         href={KnownPages.DirectoryEntity(
                                                             entityTypeName,
@@ -243,10 +264,6 @@ export function InventoryItemsTable({
                                                             entityTypeName,
                                                         )}
                                                     </Link>
-                                                ) : (
-                                                    <span className="text-muted-foreground">
-                                                        Bez entiteta
-                                                    </span>
                                                 )}
                                             </Typography>
                                             <Chip
@@ -256,6 +273,16 @@ export function InventoryItemsTable({
                                             >
                                                 #{item.id}
                                             </Chip>
+                                            {item.isOrphaned ? (
+                                                <Chip
+                                                    color="warning"
+                                                    size="sm"
+                                                    variant="soft"
+                                                    title={`Entitet #${item.entityId} nije dostupan (obrisan je ili ne postoji). Stavka je zadržana kako bi se mogla povezati s drugim entitetom.`}
+                                                >
+                                                    Nedostupan entitet
+                                                </Chip>
+                                            ) : null}
                                         </div>
 
                                         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">

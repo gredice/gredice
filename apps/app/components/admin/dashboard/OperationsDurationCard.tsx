@@ -26,6 +26,7 @@ export type OperationsDurationPoint = {
         userId: string;
         userName: string;
         userAvatarUrl: string | null;
+        achievementCount?: number;
         operationsMinutes: number;
         plannedMinutes: number;
     }[];
@@ -40,6 +41,7 @@ export type OperationsDurationData = {
         userId: string;
         userName: string;
         userAvatarUrl: string | null;
+        achievementCount?: number;
         operationsMinutes: number;
         plannedMinutes: number;
         operationsCount: number;
@@ -107,6 +109,7 @@ export function OperationsDurationCard({
         userId: user.userId,
         userName: user.userName,
         userAvatarUrl: user.userAvatarUrl,
+        achievementCount: user.achievementCount,
         completedDataKey: getCompletedDataKey(user.userId),
         plannedDataKey: getPlannedDataKey(user.userId),
         color: getUserBarColor(index),
@@ -401,6 +404,9 @@ export function OperationsDurationCard({
                                             <UserAvatar
                                                 size="sm"
                                                 avatarUrl={user.userAvatarUrl}
+                                                achievementCount={
+                                                    user.achievementCount
+                                                }
                                                 displayName={user.userName}
                                             />
                                             <Stack

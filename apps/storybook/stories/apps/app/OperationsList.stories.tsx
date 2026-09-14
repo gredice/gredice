@@ -54,6 +54,7 @@ type OperationSeed = {
     kind?: OperationsListOperation['kind'];
     raisedBedName?: string;
     fieldPosition?: number;
+    completionNotes?: string;
 };
 
 function buildOperation(
@@ -106,6 +107,7 @@ function buildOperation(
         entityId: 500 + index,
         entityTypeName: 'operation',
         taskVersionEventId: 1000 + index,
+        completionNotes: seed.completionNotes ?? null,
     };
 }
 
@@ -113,7 +115,13 @@ const daySeeds: Array<{ dayKey: string; seeds: OperationSeed[] }> = [
     {
         dayKey: '2026-08-26',
         seeds: [
-            { label: 'Zalijevanje', category: 'watering', status: 'completed' },
+            {
+                label: 'Zalijevanje',
+                category: 'watering',
+                status: 'completed',
+                completionNotes:
+                    'Zaliveno uz korijen, tlo je ravnomjerno vlažno.',
+            },
             { label: 'Zalijevanje', category: 'watering', status: 'completed' },
             {
                 label: 'Zalijevanje',

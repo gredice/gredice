@@ -1,4 +1,4 @@
-import { plantFieldStatusEmoji } from '@gredice/js/plants';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -106,7 +106,11 @@ export function HarvestTraceStatusEvent({
                 )}
                 aria-hidden="true"
             >
-                {plantFieldStatusEmoji(item.plantStatus)}
+                <GamePlantStatusIcon
+                    status={item.plantStatus}
+                    className="size-8 shrink-0"
+                    aria-hidden
+                />
             </span>
             <Stack spacing={1} className="min-w-0">
                 <Typography semiBold className="break-words leading-snug">

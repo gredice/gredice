@@ -1,0 +1,640 @@
+import assert from 'node:assert/strict';
+import { describe, test } from 'node:test';
+import type { BlockData } from '@gredice/directory-types';
+import { woodenSignBlockName } from '@gredice/js/woodenSign';
+import {
+    GardenBoxInventoryLimitError,
+    GardenMutationOperationConflictError,
+} from '@gredice/storage';
+import {
+    createGardenBoxBlockStorageService,
+    type GardenBoxBlockStorageCommand,
+    getGardenBoxBlockStorageOperationId,
+} from './gardenBoxBlockStorageService';
+import { validatePersistedStructuresAfterBlockMutation } from './gardenOccupancyService';
+
+const timestamp = '2026-08-30T00:00:00.000Z';
+
+function directoryBlock(id: number, name: string): BlockData {
+    return {
+        id,
+        entityType: { id: 8, name: 'block', label: 'Blok' },
+        slug: name.toLowerCase(),
+        information: {
+            name,
+            label: name,
+            shortDescription: name,
+            fullDescription: name,
+        },
+        attributes: {
+            height: 1,
+            stackable: true,
+            type: 'decoration',
+            nightOnlyPurchase: false,
+        },
+        prices: { sunflowers: 1 },
+        functions: { raisedBed: false, recycler: false },
+        createdAt: timestamp,
+        updatedAt: timestamp,
+    };
+}
+
+function structureDocument() {
+    return {
+        schemaVersion: 1,
+        footprint: {
+            cells: [
+                { spaceKind: 'interior' as const, x: 0, y: 0 },
+                { spaceKind: 'interior' as const, x: 1, y: 0 },
+            ],
+        },
+        floors: [],
+        edges: [],
+        roofRegions: [],
+        props: [],
+    };
+}
+
+const command: GardenBoxBlockStorageCommand = {
+    accountId: 'account-1',
+    blockId: 'stored-1',
+    blockIndex: 0,
+    gardenBoxBlockId: 'box-1',
+    gardenId: 7,
+    sourcePosition: { x: 0, z: 0 },
+};
+
+type HarnessOptions = Readonly<{
+    authorityAccountId?: string;
+    blockMessage?: string | null;
+    blockName?: string;
+    dependencyPreparationTimeoutMs?: number;
+    directoryPending?: () => boolean;
+    directoryUnavailable?: () => boolean;
+    failInventoryAdd?: boolean;
+    structures?: readonly Readonly<{
+        anchorX: number;
+        anchorY: number;
+        document: ReturnType<typeof structureDocument>;
+        id: string;
+        rotation: 0;
+    }>[];
+}>;
+
+function makeHarness(options: HarnessOptions = {}) {
+    const calls: string[] = [];
+    const transaction = { id: 'shared-transaction' };
+    let transactionActive = false;
+    const blockName = options.blockName ?? 'Shade';
+    const blockData = [
+        directoryBlock(1, 'Block_Grass'),
+        directoryBlock(2, 'GardenBox'),
+        directoryBlock(101, blockName),
+    ];
+    const state = {
+        blocks: [
+            {
+                id: command.blockId,
+                message: options.blockMessage ?? null,
+                name: blockName,
+                rotation: 0,
+            },
+            {
+                id: 'support-2',
+                message: null,
+                name: 'Block_Grass',
+                rotation: 0,
+            },
+            {
+                id: command.gardenBoxBlockId,
+                message: null,
+                name: 'GardenBox',
+                rotation: 0,
+            },
+        ],
+        inventoryAdds: 0,
+        stacks: [
+            {
+                blocks: [command.blockId],
+                positionX: command.sourcePosition.x,
+                positionY: command.sourcePosition.z,
+            },
+            { blocks: ['support-2'], positionX: 1, positionY: 0 },
+            {
+                blocks: [command.gardenBoxBlockId],
+                positionX: 2,
+                positionY: 0,
+            },
+        ],
+        structures: [...(options.structures ?? [])],
+    };
+    let receipt:
+        | Readonly<{
+              payload: unknown;
+              response: Readonly<{
+                  gardenBoxBlockId: string;
+                  item: Readonly<{
+                      amount: 1;
+                      entityId: string;
+                      entityTypeName: 'block';
+                  }>;
+              }>;
+          }>
+        | undefined;
+
+    function cloneState() {
+        return {
+            receipt: structuredClone(receipt),
+            state: structuredClone(state),
+        };
+    }
+
+    let snapshotReads = 0;
+    const service = createGardenBoxBlockStorageService({
+        addGardenBoxInventoryItem: async (
+            accountId,
+            gardenId,
+            gardenBoxBlockId,
+            payload,
+            receivedTransaction,
+        ) => {
+            assert.equal(receivedTransaction, transaction);
+            assert.equal(accountId, command.accountId);
+            assert.equal(gardenId, command.gardenId);
+            assert.equal(gardenBoxBlockId, command.gardenBoxBlockId);
+            assert.deepEqual(payload, {
+                entityTypeName: 'block',
+                entityId: '101',
+                amount: 1,
+                source: `gardenBox:store:${getGardenBoxBlockStorageOperationId(command.blockId)}`,
+            });
+            calls.push('inventory-add');
+            if (options.failInventoryAdd) {
+                throw new GardenBoxInventoryLimitError('Vrtna kutija je puna.');
+            }
+            state.inventoryAdds += 1;
+        },
+        deleteGardenBlock: async (gardenId, blockId, receivedTransaction) => {
+            assert.equal(receivedTransaction, transaction);
+            assert.equal(gardenId, command.gardenId);
+            calls.push('delete-block');
+            state.blocks = state.blocks.filter((block) => block.id !== blockId);
+        },
+        dependencyPreparationTimeoutMs: options.dependencyPreparationTimeoutMs,
+        getBlockData: async () => {
+            assert.equal(transactionActive, false);
+            calls.push('catalog');
+            if (options.directoryPending?.()) {
+                return new Promise(() => undefined);
+            }
+            if (options.directoryUnavailable?.()) {
+                throw new Error('Directory unavailable');
+            }
+            return blockData;
+        },
+        getGardenBlockForUpdate: async (input, receivedTransaction) => {
+            assert.equal(receivedTransaction, transaction);
+            calls.push('target-box');
+            const block = state.blocks.find(
+                (candidate) => candidate.id === input.blockId,
+            );
+            return block
+                ? { id: block.id, isDeleted: false, name: block.name }
+                : null;
+        },
+        getGardenMutationAuthorityForUpdate: async (
+            gardenId,
+            receivedTransaction,
+        ) => {
+            assert.equal(gardenId, command.gardenId);
+            assert.equal(receivedTransaction, transaction);
+            calls.push('authority');
+            return {
+                accountId: options.authorityAccountId ?? command.accountId,
+                id: gardenId,
+                isDeleted: false,
+                isSandbox: false,
+            };
+        },
+        getGardenMutationOperationReceipt: async (
+            input,
+            receivedTransaction,
+        ) => {
+            assert.equal(
+                input.operationId,
+                getGardenBoxBlockStorageOperationId(command.blockId),
+            );
+            assert.equal(receivedTransaction, transaction);
+            calls.push('receipt-read');
+            return receipt
+                ? {
+                      kind: 'garden-box-block-store',
+                      response: receipt.response,
+                  }
+                : null;
+        },
+        getGardenPlacementSnapshotForUpdate: async (
+            gardenId,
+            receivedTransaction,
+        ) => {
+            assert.equal(receivedTransaction, transaction);
+            assert.equal(gardenId, command.gardenId);
+            snapshotReads += 1;
+            calls.push(`snapshot:${snapshotReads.toString()}`);
+            return {
+                garden: {
+                    id: command.gardenId,
+                    accountId: command.accountId,
+                    isSandbox: false,
+                },
+                blocks: structuredClone(state.blocks),
+                stacks: structuredClone(state.stacks),
+            };
+        },
+        getGardenStackForUpdate: async (
+            gardenId,
+            position,
+            receivedTransaction,
+        ) => {
+            assert.equal(receivedTransaction, transaction);
+            assert.equal(gardenId, command.gardenId);
+            assert.deepEqual(position, { x: 0, y: 0 });
+            calls.push('source-row');
+            const stack = state.stacks.find(
+                (candidate) =>
+                    candidate.positionX === position.x &&
+                    candidate.positionY === position.y,
+            );
+            return stack ? structuredClone(stack) : null;
+        },
+        listGardenStructures: async (gardenId, receivedTransaction) => {
+            assert.equal(receivedTransaction, transaction);
+            assert.equal(gardenId, command.gardenId);
+            calls.push('structures');
+            return structuredClone(state.structures);
+        },
+        updateGardenStack: async (gardenId, stack, receivedTransaction) => {
+            assert.equal(receivedTransaction, transaction);
+            assert.equal(gardenId, command.gardenId);
+            calls.push('update-stack');
+            const current = state.stacks.find(
+                (candidate) =>
+                    candidate.positionX === stack.x &&
+                    candidate.positionY === stack.y,
+            );
+            assert.ok(current);
+            current.blocks = [...stack.blocks];
+        },
+        validatePersistedStructuresAfterBlockMutation: (input) => {
+            calls.push('validate');
+            return validatePersistedStructuresAfterBlockMutation(input);
+        },
+        withGardenBoxInventoryTransaction: async (
+            accountId,
+            gardenId,
+            gardenBoxBlockId,
+            callback,
+        ) => {
+            assert.equal(accountId, command.accountId);
+            assert.equal(gardenId, command.gardenId);
+            assert.equal(gardenBoxBlockId, command.gardenBoxBlockId);
+            calls.push('inventory-lock');
+            calls.push('account-lock');
+            const before = cloneState();
+            transactionActive = true;
+            try {
+                const result = await callback(transaction);
+                calls.push('commit');
+                return result;
+            } catch (error) {
+                state.blocks = before.state.blocks;
+                state.inventoryAdds = before.state.inventoryAdds;
+                state.stacks = before.state.stacks;
+                state.structures = before.state.structures;
+                receipt = before.receipt;
+                calls.push('rollback');
+                throw error;
+            } finally {
+                transactionActive = false;
+            }
+        },
+        withGardenMutationOperation: async (
+            operation,
+            callback,
+            receivedTransaction,
+        ) => {
+            assert.equal(receivedTransaction, transaction);
+            calls.push('receipt');
+            if (receipt) {
+                if (
+                    JSON.stringify(receipt.payload) !==
+                    JSON.stringify(operation.payload)
+                ) {
+                    throw new GardenMutationOperationConflictError(
+                        operation.gardenId,
+                        operation.operationId,
+                    );
+                }
+                return {
+                    receipt: {
+                        createdAt: new Date(),
+                        gardenId: operation.gardenId,
+                        kind: operation.kind,
+                        operationId: operation.operationId,
+                        payloadHash: '0'.repeat(64),
+                        response: receipt.response,
+                    },
+                    replayed: true,
+                };
+            }
+            const mutation = await callback(transaction);
+            const response = {
+                gardenBoxBlockId: command.gardenBoxBlockId,
+                item: {
+                    amount: 1,
+                    entityId: '101',
+                    entityTypeName: 'block',
+                },
+            } as const;
+            assert.deepEqual(mutation.response, response);
+            receipt = { payload: operation.payload, response };
+            return {
+                receipt: {
+                    createdAt: new Date(),
+                    gardenId: operation.gardenId,
+                    kind: operation.kind,
+                    operationId: operation.operationId,
+                    payloadHash: '0'.repeat(64),
+                    response,
+                },
+                replayed: false,
+            };
+        },
+        withGardenPlacementTransaction: async (
+            gardenId,
+            callback,
+            receivedTransaction,
+        ) => {
+            assert.equal(receivedTransaction, transaction);
+            assert.equal(gardenId, command.gardenId);
+            calls.push('garden-lock');
+            return callback(transaction);
+        },
+    });
+
+    return { calls, receipt: () => receipt, service, state };
+}
+
+describe('storeGardenBlockInGardenBox', () => {
+    test('derives one bounded operation identity from the source block', () => {
+        const operationId = getGardenBoxBlockStorageOperationId(
+            command.blockId,
+        );
+
+        assert.equal(operationId.length <= 96, true);
+        assert.equal(
+            operationId,
+            getGardenBoxBlockStorageOperationId(command.blockId),
+        );
+        assert.notEqual(
+            operationId,
+            getGardenBoxBlockStorageOperationId('different-source-block'),
+        );
+    });
+
+    test('loads the directory before inventory and garden locks, then commits every write once', async () => {
+        let directoryPending = false;
+        const harness = makeHarness({
+            dependencyPreparationTimeoutMs: 5,
+            directoryPending: () => directoryPending,
+        });
+
+        const result = await harness.service(command);
+
+        assert.deepEqual(result, {
+            ok: true,
+            gardenBoxBlockId: 'box-1',
+            item: {
+                entityTypeName: 'block',
+                entityId: '101',
+                amount: 1,
+            },
+            replayed: false,
+        });
+        assert.deepEqual(harness.calls, [
+            'catalog',
+            'inventory-lock',
+            'account-lock',
+            'garden-lock',
+            'authority',
+            'target-box',
+            'receipt-read',
+            'snapshot:1',
+            'source-row',
+            'snapshot:2',
+            'receipt',
+            'update-stack',
+            'delete-block',
+            'snapshot:3',
+            'structures',
+            'validate',
+            'inventory-add',
+            'commit',
+        ]);
+        assert.equal(
+            harness.state.blocks.some((block) => block.id === 'stored-1'),
+            false,
+        );
+        assert.deepEqual(harness.state.stacks[0]?.blocks, []);
+        assert.equal(harness.state.inventoryAdds, 1);
+
+        harness.calls.length = 0;
+        assert.deepEqual(await harness.service(command), {
+            ...result,
+            replayed: true,
+        });
+        assert.deepEqual(harness.calls, [
+            'catalog',
+            'inventory-lock',
+            'account-lock',
+            'garden-lock',
+            'authority',
+            'target-box',
+            'receipt-read',
+            'receipt',
+            'commit',
+        ]);
+        assert.equal(harness.state.inventoryAdds, 1);
+
+        harness.calls.length = 0;
+        directoryPending = true;
+        const conflict = await harness.service({
+            ...command,
+            sourcePosition: { x: 1, z: 0 },
+        });
+        assert.equal(!conflict.ok && conflict.code, 'OPERATION_CONFLICT');
+        assert.equal(harness.state.inventoryAdds, 1);
+    });
+
+    test('replays a committed storage operation when the cold directory read fails', async () => {
+        let directoryUnavailable = false;
+        const harness = makeHarness({
+            directoryUnavailable: () => directoryUnavailable,
+        });
+        const first = await harness.service(command);
+        directoryUnavailable = true;
+
+        const replay = await harness.service(command);
+
+        assert.equal(first.ok && first.replayed, false);
+        assert.equal(replay.ok && replay.replayed, true);
+        assert.equal(harness.state.inventoryAdds, 1);
+        assert.deepEqual(harness.calls.slice(-9), [
+            'catalog',
+            'inventory-lock',
+            'account-lock',
+            'garden-lock',
+            'authority',
+            'target-box',
+            'receipt-read',
+            'receipt',
+            'commit',
+        ]);
+    });
+
+    test('replays a committed storage operation when the cold directory read stalls', async () => {
+        let directoryPending = false;
+        const harness = makeHarness({
+            dependencyPreparationTimeoutMs: 5,
+            directoryPending: () => directoryPending,
+        });
+        const first = await harness.service(command);
+        directoryPending = true;
+
+        const replay = await harness.service(command);
+
+        assert.equal(first.ok && first.replayed, false);
+        assert.equal(replay.ok && replay.replayed, true);
+        assert.equal(harness.state.inventoryAdds, 1);
+        assert.deepEqual(harness.calls.slice(-9), [
+            'catalog',
+            'inventory-lock',
+            'account-lock',
+            'garden-lock',
+            'authority',
+            'target-box',
+            'receipt-read',
+            'receipt',
+            'commit',
+        ]);
+    });
+
+    test('returns a retryable directory failure without storage effects when a new cold read stalls', async () => {
+        const harness = makeHarness({
+            dependencyPreparationTimeoutMs: 5,
+            directoryPending: () => true,
+        });
+        const before = structuredClone(harness.state);
+
+        assert.deepEqual(await harness.service(command), {
+            ok: false,
+            code: 'BLOCK_DIRECTORY_UNAVAILABLE',
+            error: 'Garden block directory data is unavailable',
+            status: 503,
+        });
+        assert.deepEqual(harness.state, before);
+        assert.equal(harness.receipt(), undefined);
+        assert.equal(harness.calls.includes('receipt'), false);
+        assert.equal(harness.calls.includes('update-stack'), false);
+        assert.equal(harness.calls.includes('delete-block'), false);
+        assert.equal(harness.calls.includes('inventory-add'), false);
+        assert.equal(harness.calls.at(-1), 'rollback');
+    });
+
+    test('rolls stack, block, and inventory changes back when support validation fails', async () => {
+        const harness = makeHarness({
+            structures: [
+                {
+                    anchorX: 0,
+                    anchorY: 0,
+                    document: structureDocument(),
+                    id: 'structure-1',
+                    rotation: 0,
+                },
+            ],
+        });
+        const before = structuredClone(harness.state);
+
+        const result = await harness.service(command);
+
+        assert.equal(result.ok, false);
+        if (result.ok) return;
+        assert.equal(result.code, 'GARDEN_OCCUPANCY_CONFLICT');
+        assert.equal(result.status, 409);
+        assert.deepEqual(harness.state, before);
+        assert.equal(harness.calls.includes('inventory-add'), false);
+        assert.equal(harness.calls.at(-1), 'rollback');
+    });
+
+    test('rolls spatial writes back and preserves the inventory-limit response', async () => {
+        const harness = makeHarness({ failInventoryAdd: true });
+        const before = structuredClone(harness.state);
+
+        const result = await harness.service(command);
+
+        assert.deepEqual(result, {
+            ok: false,
+            code: 'GARDEN_BOX_INVENTORY_LIMIT',
+            error: 'Vrtna kutija je puna.',
+            status: 400,
+        });
+        assert.deepEqual(harness.state, before);
+        assert.equal(harness.calls.at(-1), 'rollback');
+    });
+
+    test('preserves the Croatian wooden-sign and appearance restrictions', async () => {
+        const cases = [
+            {
+                options: {
+                    blockMessage: 'Privatna poruka',
+                    blockName: woodenSignBlockName,
+                },
+                error: 'Prije spremanja ploče u vrtnu kutiju obriši njezin natpis.',
+            },
+            {
+                options: { blockName: 'Cow' },
+                error: 'Životinju s odabranom bojom nije moguće spremiti u vrtnu kutiju.',
+            },
+        ] as const;
+
+        for (const entry of cases) {
+            const harness = makeHarness(entry.options);
+            const before = structuredClone(harness.state);
+            const result = await harness.service(command);
+            assert.equal(result.ok, false);
+            if (result.ok) continue;
+            assert.equal(result.code, 'UNSUPPORTED_GARDEN_BOX_BLOCK');
+            assert.equal(result.status, 400);
+            assert.equal(result.error, entry.error);
+            assert.deepEqual(harness.state, before);
+            assert.equal(harness.calls.at(-1), 'rollback');
+        }
+    });
+
+    test('denies a foreign account before reading an operation receipt', async () => {
+        const harness = makeHarness({
+            authorityAccountId: 'account-2',
+            dependencyPreparationTimeoutMs: 5,
+            directoryPending: () => true,
+        });
+
+        assert.deepEqual(await harness.service(command), {
+            ok: false,
+            code: 'GARDEN_NOT_FOUND',
+            error: 'Garden not found',
+            status: 404,
+        });
+        assert.equal(harness.calls.includes('receipt-read'), false);
+        assert.equal(harness.calls.includes('receipt'), false);
+    });
+});

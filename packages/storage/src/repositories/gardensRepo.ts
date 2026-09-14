@@ -1,9 +1,11 @@
 import 'server-only';
+import { userIdToPublicId } from '@gredice/js/publicId';
 import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { storage } from '..';
 import { bustScheduleCache } from '../cache/scheduleCache';
 import {
+    accountUsers,
     gardenBlocks,
     gardenLikes,
     gardenStacks,
@@ -14,6 +16,7 @@ import {
     type UpdateGarden,
     type UpdateGardenBlock,
     type UpdateGardenStack,
+    users,
 } from '../schema';
 import { createEvent, knownEvents } from './eventsRepo';
 import { getFarms } from './farmsRepo';
@@ -27,6 +30,7 @@ import {
     getRaisedBeds,
     getRaisedBedsForGardens,
 } from './raisedBedsRepo';
+import { userAchievementCount } from './userAchievementProgress';
 
 export * from './raisedBedDiaryRepo';
 export * from './raisedBedFieldsRepo';
@@ -199,17 +203,55 @@ export async function getPublicGardens() {
         where: and(eq(gardens.isDeleted, false), eq(gardens.isPublic, true)),
         orderBy: desc(gardens.updatedAt),
     });
-    const previewImagesByGardenId = gardenPreviewImagesByGardenId(
-        await getGardenPreviewsForGardenIds(
-            publicGardens.map((garden) => garden.id),
-        ),
-    );
+    const [previews, gardenOwners] = await Promise.all([
+        getGardenPreviewsForGardenIds(publicGardens.map((garden) => garden.id)),
+        publicGardens.length > 0
+            ? storage()
+                  .select({
+                      accountId: accountUsers.accountId,
+                      userId: users.id,
+                      avatarUrl: users.avatarUrl,
+                      achievementCount: userAchievementCount(users.id),
+                      displayName: users.displayName,
+                  })
+                  .from(accountUsers)
+                  .innerJoin(users, eq(accountUsers.userId, users.id))
+                  .where(
+                      inArray(
+                          accountUsers.accountId,
+                          publicGardens.map((garden) => garden.accountId),
+                      ),
+                  )
+                  .orderBy(asc(accountUsers.createdAt), asc(accountUsers.id))
+            : Promise.resolve([]),
+    ]);
+    const previewImagesByGardenId = gardenPreviewImagesByGardenId(previews);
+    const ownerByAccountId = new Map<
+        string,
+        {
+            publicId: string;
+            avatarUrl: string | null;
+            displayName: string;
+            achievementCount: number;
+        }
+    >();
+    for (const owner of gardenOwners) {
+        if (!ownerByAccountId.has(owner.accountId)) {
+            ownerByAccountId.set(owner.accountId, {
+                publicId: userIdToPublicId(owner.userId),
+                avatarUrl: owner.avatarUrl,
+                achievementCount: owner.achievementCount,
+                displayName: owner.displayName ?? 'Korisnik Gredica',
+            });
+        }
+    }
 
     return publicGardens.map((garden) => {
         const previewImages =
             previewImagesByGardenId.get(garden.id) ?? toGardenPreviewImages([]);
         return {
             ...garden,
+            owner: ownerByAccountId.get(garden.accountId) ?? null,
             previewImage: previewImages.day,
             previewImages,
         };
@@ -536,6 +578,75 @@ export async function deleteGarden(gardenId: number) {
     await bustScheduleCache();
 }
 
+export type SoftDeleteGardenResult =
+    | 'deleted'
+    | 'already-deleted'
+    | 'not-found';
+
+export async function getGardenDeletionTargetForUpdate(
+    gardenId: number,
+    db: TransactionClient,
+) {
+    return (
+        (
+            await db
+                .select({
+                    accountId: gardens.accountId,
+                    id: gardens.id,
+                    isDeleted: gardens.isDeleted,
+                    isSandbox: gardens.isSandbox,
+                })
+                .from(gardens)
+                .where(eq(gardens.id, gardenId))
+                .for('update')
+                .limit(1)
+        )[0] ?? null
+    );
+}
+
+/**
+ * Soft-delete one garden and append its deletion event at most once. The
+ * caller should already own the account-deletion and garden-placement locks;
+ * the row lock keeps this helper safe when exercised directly in tests and
+ * administrative workflows.
+ */
+export async function softDeleteGardenOnce(
+    gardenId: number,
+    db: TransactionClient,
+): Promise<SoftDeleteGardenResult> {
+    const garden = (
+        await db
+            .select({ id: gardens.id, isDeleted: gardens.isDeleted })
+            .from(gardens)
+            .where(eq(gardens.id, gardenId))
+            .for('update')
+            .limit(1)
+    )[0];
+    if (!garden) {
+        return 'not-found';
+    }
+    if (garden.isDeleted) {
+        return 'already-deleted';
+    }
+
+    const [deletedGarden] = await db
+        .update(gardens)
+        .set({ isDeleted: true })
+        .where(and(eq(gardens.id, gardenId), eq(gardens.isDeleted, false)))
+        .returning({ id: gardens.id });
+    if (!deletedGarden) {
+        throw new Error('Locked garden changed before deletion.');
+    }
+
+    await removeGardenPreviewAndQueueBlobDeletionUsing(
+        db,
+        gardenId,
+        'garden_deleted',
+    );
+    await createEvent(knownEvents.gardens.deletedV1(gardenId.toString()), db);
+    return 'deleted';
+}
+
 export async function deleteGardenIfNoActiveRaisedBeds(gardenId: number) {
     let deleted = false;
     const activeRaisedBedCount = await storage().transaction(async (tx) => {
@@ -582,8 +693,11 @@ export async function deleteGardenIfNoActiveRaisedBeds(gardenId: number) {
     };
 }
 
-export async function getGardenBlocks(gardenId: number) {
-    return storage().query.gardenBlocks.findMany({
+export async function getGardenBlocks(
+    gardenId: number,
+    db: DatabaseClient = storage(),
+) {
+    return db.query.gardenBlocks.findMany({
         where: and(
             eq(gardenBlocks.gardenId, gardenId),
             eq(gardenBlocks.isDeleted, false),
@@ -613,15 +727,51 @@ export async function getGardenBoxBlocksForAccount(accountId: string) {
         .orderBy(asc(gardens.createdAt), asc(gardenBlocks.createdAt));
 }
 
-export async function getGardenBlock(gardenId: number, blockId: string) {
+export async function getGardenBlock(
+    gardenId: number,
+    blockId: string,
+    db: DatabaseClient = storage(),
+) {
     return (
-        (await storage().query.gardenBlocks.findFirst({
+        (await db.query.gardenBlocks.findFirst({
             where: and(
                 eq(gardenBlocks.gardenId, gardenId),
                 eq(gardenBlocks.id, blockId),
                 eq(gardenBlocks.isDeleted, false),
             ),
         })) ?? null
+    );
+}
+
+export async function getGardenBlockForUpdate(
+    {
+        blockId,
+        gardenId,
+        includeDeleted = false,
+    }: {
+        blockId: string;
+        gardenId: number;
+        includeDeleted?: boolean;
+    },
+    db: TransactionClient,
+) {
+    const conditions = [
+        eq(gardenBlocks.gardenId, gardenId),
+        eq(gardenBlocks.id, blockId),
+    ];
+    if (!includeDeleted) {
+        conditions.push(eq(gardenBlocks.isDeleted, false));
+    }
+
+    return (
+        (
+            await db
+                .select()
+                .from(gardenBlocks)
+                .where(and(...conditions))
+                .for('update')
+                .limit(1)
+        )[0] ?? null
     );
 }
 
@@ -705,8 +855,61 @@ export async function deleteGardenBlock(
     );
 }
 
-export async function getGardenStacks(gardenId: number) {
-    return storage().query.gardenStacks.findMany({
+export type SoftDeleteGardenBlockResult =
+    | 'deleted'
+    | 'already-deleted'
+    | 'not-found';
+
+/**
+ * Soft-delete one locked garden block and append its removal event exactly
+ * once. Retry callers can distinguish an already-applied deletion from a
+ * block that never belonged to the requested garden.
+ */
+export async function softDeleteGardenBlockOnce(
+    gardenId: number,
+    blockId: string,
+    db: TransactionClient,
+): Promise<SoftDeleteGardenBlockResult> {
+    const block = await getGardenBlockForUpdate(
+        { blockId, gardenId, includeDeleted: true },
+        db,
+    );
+    if (!block) {
+        return 'not-found';
+    }
+    if (block.isDeleted) {
+        return 'already-deleted';
+    }
+
+    const [deletedBlock] = await db
+        .update(gardenBlocks)
+        .set({ isDeleted: true })
+        .where(
+            and(
+                eq(gardenBlocks.gardenId, gardenId),
+                eq(gardenBlocks.id, blockId),
+                eq(gardenBlocks.isDeleted, false),
+            ),
+        )
+        .returning({ id: gardenBlocks.id });
+    if (!deletedBlock) {
+        throw new Error('Locked garden block changed before deletion.');
+    }
+
+    await createEvent(
+        knownEvents.gardens.blockRemovedV1(gardenId.toString(), {
+            id: blockId,
+        }),
+        db,
+    );
+    return 'deleted';
+}
+
+export async function getGardenStacks(
+    gardenId: number,
+    db: DatabaseClient = storage(),
+) {
+    return db.query.gardenStacks.findMany({
         where: and(
             eq(gardenStacks.gardenId, gardenId),
             eq(gardenStacks.isDeleted, false),
@@ -717,9 +920,10 @@ export async function getGardenStacks(gardenId: number) {
 export async function getGardenStack(
     gardenId: number,
     { x, y }: { x: number; y: number },
+    db: DatabaseClient = storage(),
 ) {
     return (
-        (await storage().query.gardenStacks.findFirst({
+        (await db.query.gardenStacks.findFirst({
             where: and(
                 eq(gardenStacks.gardenId, gardenId),
                 eq(gardenStacks.positionX, x),
@@ -840,8 +1044,9 @@ export async function updateGardenStack(
 export async function deleteGardenStack(
     gardenId: number,
     { x, y }: { x: number; y: number },
+    db: DatabaseClient = storage(),
 ) {
-    await storage()
+    await db
         .update(gardenStacks)
         .set({ isDeleted: true })
         .where(

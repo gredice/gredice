@@ -30,16 +30,16 @@ const captureOperations = [
         attributes: {
             application: 'raisedBedFull',
             internal: false,
-            visualReward: 'mulch',
+            visualReward: 'harvest',
         },
         information: {
-            description: 'Malčiranje cijele gredice slamom.',
+            description: 'Berba cijele gredice.',
             instructions: '',
-            label: 'Malčiranje slamom',
-            name: 'mulchStraw',
-            shortDescription: 'Malčiranje slamom.',
+            label: 'Berba gredice',
+            name: 'raisedBedHarvest',
+            shortDescription: 'Berba cijele gredice.',
         },
-        slug: 'mulch-straw',
+        slug: 'raised-bed-harvest',
     },
 ];
 
@@ -49,9 +49,15 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
 }) => {
     test.setTimeout(90_000);
     const blockData = getLocalSandboxBlockData();
+    const authenticatedViewerRequests: string[] = [];
     const browserErrors: string[] = [];
+    const buildingAssetRequests: string[] = [];
     const apiRequests: string[] = [];
     const apiResponses: string[] = [];
+    let releaseBuildingAsset: (() => void) | undefined;
+    const buildingAssetGate = new Promise<void>((resolve) => {
+        releaseBuildingAsset = resolve;
+    });
 
     page.on('console', (message) => {
         if (message.type() === 'error' && browserErrors.length < 20) {
@@ -65,6 +71,9 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
     });
     page.on('request', (request) => {
         const url = request.url();
+        if (new URL(url).pathname.endsWith('/GardenStructureKitV1.glb')) {
+            buildingAssetRequests.push(url);
+        }
         if (url.includes('/api/gredice/')) {
             apiRequests.push(new URL(url).pathname);
         }
@@ -149,10 +158,15 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
             },
         }),
     );
-    await page.route('**/api/gredice/api/gardens/8001/operations**', (route) =>
-        route.fulfill({
-            json: { items: [], nextCursor: null, total: 0 },
-        }),
+    await page.route(
+        /\/api\/gredice\/api\/(?:delivery\/requests|gardens\/8001\/operations)/,
+        (route) => {
+            authenticatedViewerRequests.push(route.request().url());
+            return route.fulfill({
+                json: { error: 'Unauthorized' },
+                status: 401,
+            });
+        },
     );
     await page.route('**/api/gredice/api/shopping-cart', (route) =>
         route.fulfill({
@@ -165,10 +179,34 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
             },
         }),
     );
+    await page.route('**/GardenStructureKitV1.glb*', async (route) => {
+        await buildingAssetGate;
+        await route.continue();
+    });
 
     await mount(<GardenPreviewCaptureStory />);
 
     const resultOutput = page.getByTestId('garden-preview-capture-result');
+    const captureScene = page.locator(
+        '[data-public-garden-capture-blocks-ready]',
+    );
+    try {
+        await expect.poll(() => buildingAssetRequests.length).toBe(1);
+        await expect(captureScene).toHaveAttribute(
+            'data-public-garden-capture-structures-ready',
+            'false',
+        );
+        await expect
+            .poll(async () => {
+                const result = JSON.parse(
+                    (await resultOutput.textContent()) ?? '{}',
+                );
+                return result.status;
+            })
+            .toBe('waiting');
+    } finally {
+        releaseBuildingAsset?.();
+    }
     try {
         await expect
             .poll(
@@ -180,11 +218,8 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
                 },
                 { timeout: 80_000 },
             )
-            .not.toBe('waiting');
+            .toMatch(/^(?:captured|error)$/);
     } catch (error) {
-        const captureScene = page.locator(
-            '[data-public-garden-capture-blocks-ready]',
-        );
         const diagnostics = {
             apiRequests,
             apiResponses,
@@ -206,11 +241,14 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
                           plants: await captureScene.getAttribute(
                               'data-public-garden-capture-plants-ready',
                           ),
+                          structures: await captureScene.getAttribute(
+                              'data-public-garden-capture-structures-ready',
+                          ),
                       },
             webgl,
         };
         throw new Error(
-            `Garden preview capture did not leave its waiting state. Diagnostics: ${JSON.stringify(diagnostics)}`,
+            `Garden preview capture did not reach a terminal state. Diagnostics: ${JSON.stringify(diagnostics)}`,
             { cause: error },
         );
     }
@@ -229,8 +267,18 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
     expect(result.size).toBeLessThanOrEqual(2 * 1024 * 1024);
     expect(result.nonTransparentPixels).toBe(60 * 32);
     expect(result.uniqueColorCount).toBeGreaterThan(16);
+    expect(buildingAssetRequests).toHaveLength(1);
+    await expect(captureScene).toHaveAttribute(
+        'data-public-garden-capture-structures-ready',
+        'true',
+    );
+    await expect(captureScene).toHaveAttribute(
+        'data-garden-structure-rendered-count',
+        '1',
+    );
 
     await page.waitForTimeout(1_000);
+    expect(authenticatedViewerRequests).toEqual([]);
     const settledResult = JSON.parse(
         (await resultOutput.textContent()) ?? '{}',
     );

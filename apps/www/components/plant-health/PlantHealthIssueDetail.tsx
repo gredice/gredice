@@ -1,5 +1,4 @@
 import type { PlantDiseaseData, PlantPestData } from '@gredice/client';
-import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Chip } from '@gredice/ui/Chip';
 import { Bug, Shield } from '@gredice/ui/icons';
 import { Markdown } from '@gredice/ui/Markdown';
@@ -12,6 +11,7 @@ import Link from 'next/link';
 import { KnownPages } from '../../src/KnownPages';
 import { CommunityEditButton } from '../community-edits/CommunityEditButton';
 import { FeedbackModal } from '../shared/feedback/FeedbackModal';
+import { PublicBreadcrumbs } from '../shared/seo/PublicBreadcrumbs';
 import { PlantHealthIssueOperations } from './PlantHealthIssueOperations';
 import {
     type PlantHealthIssueKind,
@@ -49,7 +49,7 @@ export function PlantHealthIssueDetail({
 
     return (
         <Stack spacing={8} className="py-8">
-            <Breadcrumbs
+            <PublicBreadcrumbs
                 items={[
                     {
                         label: plantHealthIssueListLabel(kind),

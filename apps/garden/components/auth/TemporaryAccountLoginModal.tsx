@@ -63,6 +63,10 @@ export function TemporaryAccountLoginModal() {
         );
     }
 
+    if (!open) {
+        return null;
+    }
+
     return (
         <LoginModal
             defaultTab="login"

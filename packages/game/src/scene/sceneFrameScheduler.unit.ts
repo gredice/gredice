@@ -52,6 +52,21 @@ describe('resolveSceneFramesPerSecond', () => {
         leases.set(Symbol('interactive'), 60);
         assert.equal(resolveSceneFramesPerSecond(20, leases.values()), 60);
     });
+
+    it('keeps inherited capture leases demand-only until an explicit lease wakes them', () => {
+        const leases = new Map<symbol, number | undefined>();
+        const ambientLease = Symbol('ambient');
+        const interactionLease = Symbol('interactive');
+
+        leases.set(ambientLease, undefined);
+        assert.equal(resolveSceneFramesPerSecond(0, leases.values()), 0);
+
+        leases.set(interactionLease, 60);
+        assert.equal(resolveSceneFramesPerSecond(0, leases.values()), 60);
+
+        leases.delete(interactionLease);
+        assert.equal(resolveSceneFramesPerSecond(0, leases.values()), 0);
+    });
 });
 
 describe('resolveSceneVisibility', () => {

@@ -1,6 +1,7 @@
 import 'server-only';
 import { createHash, randomBytes } from 'node:crypto';
 import { plantFieldStatusLabel } from '@gredice/js/plants';
+import { getFieldPhysicalPositionIndex } from '@gredice/js/raisedBeds';
 import {
     and,
     asc,
@@ -17,6 +18,7 @@ import {
     sql,
 } from 'drizzle-orm';
 import type { EntityStandardized } from '../@types/EntityStandardized';
+import { getSelectedPlantingLifecycleDates } from '../helpers/raisedBedPlantOccupancy';
 import {
     farmUsers,
     gardens,
@@ -35,7 +37,12 @@ import {
     type RaisedBedFieldPlantCycle,
     type RaisedBedFieldPlantStatusChange,
 } from './gardensRepo';
-import { getOperationsByIds, type OperationStatus } from './operationsRepo';
+import {
+    getOperationById,
+    getOperationsByIds,
+    type OperationStatus,
+} from './operationsRepo';
+import { getRaisedBedPlanting } from './raisedBedPlantingsRepo';
 
 export const HARVEST_TRACE_PUBLIC_PATH_PREFIX = '/trag';
 
@@ -137,7 +144,8 @@ export type HarvestTraceLinkAdminSummary = {
 };
 
 export type HarvestTraceLinkAdminDetail = HarvestTraceLinkAdminSummary & {
-    plantPlaceEventId: number;
+    plantPlaceEventId: number | null;
+    plantingId: number | null;
     plantSortId: number | null;
     fieldPositionIndex: number;
     timeline: PublicHarvestTrace | null;
@@ -150,7 +158,8 @@ export type HarvestTraceLinkDeliverySummary = {
     status: HarvestTraceLinkStatus;
     harvestOperationId: number;
     raisedBedFieldId: number;
-    plantPlaceEventId: number;
+    plantPlaceEventId: number | null;
+    plantingId: number | null;
     plantSortId: number | null;
 };
 
@@ -184,6 +193,20 @@ type CreateOrGetHarvestTraceLinkInput = {
     plantSortId?: number | null;
     harvestOperationId: number;
 };
+
+type TracePlantCycle = Pick<
+    RaisedBedFieldPlantCycle,
+    | 'startedAt'
+    | 'stoppedDate'
+    | 'plantScheduledDate'
+    | 'plantSowDate'
+    | 'plantGrowthDate'
+    | 'plantReadyDate'
+    | 'plantHarvestedDate'
+    | 'plantRemovedDate'
+    | 'sowingLocation'
+    | 'statusChanges'
+> & { fieldIds?: number[] };
 
 type HarvestTraceTargetRow = {
     link: SelectHarvestTraceLink;
@@ -777,7 +800,7 @@ function operationTimelineItem({
 
 function getCycleEndDate(
     link: SelectHarvestTraceLink,
-    cycle: RaisedBedFieldPlantCycle,
+    cycle: TracePlantCycle,
     harvestOperation:
         | (Awaited<ReturnType<typeof getOperationsByIds>>[number] & {
               completedAt?: Date;
@@ -857,7 +880,45 @@ async function getTraceTargetById(id: number) {
     return rows[0] ?? null;
 }
 
-async function findTracePlantCycle(target: HarvestTraceTargetRow) {
+async function findTracePlantCycle(
+    target: HarvestTraceTargetRow,
+): Promise<TracePlantCycle | null> {
+    if (target.link.plantingId) {
+        const planting = await getRaisedBedPlanting(target.link.plantingId);
+        const [operation] = await getOperationsByIds([
+            target.link.harvestOperationId,
+        ]);
+        if (
+            !planting ||
+            planting.isDeleted ||
+            planting.configurationSource !== 'selected' ||
+            planting.raisedBedId !== target.link.raisedBedId ||
+            planting.plantSortId !== target.link.plantSortId ||
+            operation?.plantingId !== planting.id ||
+            !timelineOperationStatuses.has(operation.status) ||
+            !planting.lifecycleStartedAt ||
+            !planting.selectedTask
+        )
+            return null;
+        return {
+            ...getSelectedPlantingLifecycleDates(planting),
+            startedAt: planting.lifecycleStartedAt,
+            stoppedDate: planting.lifecycleStoppedAt ?? undefined,
+            plantScheduledDate: planting.selectedTask.initialScheduledDate
+                ? new Date(planting.selectedTask.initialScheduledDate)
+                : undefined,
+            plantSowDate: planting.selectedTask.completion?.completedAt,
+            sowingLocation: planting.selectedTask.initialSowingLocation,
+            statusChanges: planting.lifecycleStatusChanges,
+            fieldIds: planting.memberships
+                .filter(
+                    (member) =>
+                        !member.isDeleted && !member.raisedBedField.isDeleted,
+                )
+                .map((member) => member.raisedBedFieldId),
+        };
+    }
+
     const cycles = await getRaisedBedFieldPlantCycles(target.link.raisedBedId);
 
     return (
@@ -871,8 +932,9 @@ async function findTracePlantCycle(target: HarvestTraceTargetRow) {
 
 async function getRelevantOperationsForTrace(
     link: SelectHarvestTraceLink,
-    cycle: RaisedBedFieldPlantCycle,
+    cycle: TracePlantCycle,
     cycleEndDate: Date,
+    operationEntities: EntityStandardized[],
 ) {
     const rows = await storage()
         .select({ id: operations.id })
@@ -883,10 +945,30 @@ async function getRelevantOperationsForTrace(
                 eq(operations.gardenId, link.gardenId),
                 eq(operations.raisedBedId, link.raisedBedId),
                 eq(operations.isDeleted, false),
-                or(
-                    eq(operations.raisedBedFieldId, link.raisedBedFieldId),
-                    isNull(operations.raisedBedFieldId),
-                ),
+                link.plantingId
+                    ? or(
+                          eq(operations.plantingId, link.plantingId),
+                          and(
+                              isNull(operations.plantingId),
+                              or(
+                                  isNull(operations.raisedBedFieldId),
+                                  inArray(
+                                      operations.raisedBedFieldId,
+                                      cycle.fieldIds ?? [link.raisedBedFieldId],
+                                  ),
+                              ),
+                          ),
+                      )
+                    : and(
+                          isNull(operations.plantingId),
+                          or(
+                              eq(
+                                  operations.raisedBedFieldId,
+                                  link.raisedBedFieldId,
+                              ),
+                              isNull(operations.raisedBedFieldId),
+                          ),
+                      ),
             ),
         )
         .orderBy(asc(operations.timestamp));
@@ -909,6 +991,17 @@ async function getRelevantOperationsForTrace(
                 return false;
             }
 
+            if (link.plantingId && !operation.plantingId) {
+                const application = operationApplication(
+                    findEntityById(operationEntities, operation.entityId),
+                );
+                if (
+                    !['raisedBedFull', 'raisedBed1m'].includes(
+                        application ?? '',
+                    )
+                )
+                    return false;
+            }
             const operationDate = getOperationTimelineDate(operation);
             return isDateInWindow(operationDate, cycle.startedAt, cycleEndDate);
         });
@@ -936,6 +1029,7 @@ async function buildPublicTrace(
         target.link,
         cycle,
         cycleEndDate,
+        operationEntities,
     );
     const plantSort = findEntityById(plantSorts, target.link.plantSortId);
     const plantSortName = entityName(plantSort, 'Ubrana biljka');
@@ -1080,7 +1174,9 @@ async function buildPublicTrace(
             operationTimelineItem({
                 categoryName,
                 date: getOperationTimelineDate(operation),
-                fieldLevel: operation.raisedBedFieldId !== null,
+                fieldLevel:
+                    operation.raisedBedFieldId !== null ||
+                    operation.plantingId != null,
                 imageAlt: operationLabel,
                 images: operationImages,
                 imageUrl: entityImageUrl(operationEntity),
@@ -1193,7 +1289,12 @@ async function buildPublicTrace(
             ...(hasWaterLiters
                 ? {
                       totalWaterLiters: roundedTraceNumber(totalWaterLiters),
-                      plantWaterLiters: roundedTraceNumber(plantWaterLiters),
+                      ...(target.link.plantingId
+                          ? {}
+                          : {
+                                plantWaterLiters:
+                                    roundedTraceNumber(plantWaterLiters),
+                            }),
                   }
                 : {}),
             imageCount: statisticsImages.length,
@@ -1209,6 +1310,11 @@ async function buildPublicTrace(
 export async function createOrGetHarvestTraceLink(
     input: CreateOrGetHarvestTraceLinkInput,
 ) {
+    const operation = await getOperationById(input.harvestOperationId);
+    if (operation.plantingId)
+        throw new Error(
+            'Selected planting harvests require an explicit planting trace.',
+        );
     requirePositiveInteger(input.gardenId, 'gardenId');
     requirePositiveInteger(input.raisedBedId, 'raisedBedId');
     requirePositiveInteger(input.raisedBedFieldId, 'raisedBedFieldId');
@@ -1300,6 +1406,7 @@ export async function getHarvestTraceLinksForOperationIds(
                       harvestOperationId: link.harvestOperationId,
                       raisedBedFieldId: link.raisedBedFieldId,
                       plantPlaceEventId: link.plantPlaceEventId,
+                      plantingId: link.plantingId,
                       plantSortId: link.plantSortId,
                   },
               ]
@@ -1541,6 +1648,7 @@ export async function getHarvestTraceLinkAdminDetail(id: number) {
     return {
         ...summary,
         plantPlaceEventId: target.link.plantPlaceEventId,
+        plantingId: target.link.plantingId,
         plantSortId: target.link.plantSortId,
         fieldPositionIndex: target.link.fieldPositionIndex,
         timeline:
@@ -1619,6 +1727,15 @@ export async function getFarmUserPrintableHarvestTraceLinkIds(
                 eq(operations.isAccepted, true),
                 eq(operations.isDeleted, false),
                 eq(operations.raisedBedId, harvestTraceLinks.raisedBedId),
+                or(
+                    and(
+                        isNull(harvestTraceLinks.plantingId),
+                        isNull(operations.plantingId),
+                    ),
+                    eq(operations.plantingId, harvestTraceLinks.plantingId),
+                ),
+                eq(operations.accountId, harvestTraceLinks.accountId),
+                eq(operations.gardenId, harvestTraceLinks.gardenId),
                 or(
                     isNull(operations.raisedBedFieldId),
                     eq(
@@ -1839,6 +1956,25 @@ export async function backfillHarvestTraceLinksForCompletedHarvests({
             continue;
         }
 
+        if (row.operation.plantingId) {
+            const existing = existingLinks.find(
+                (link) =>
+                    link.harvestOperationId === row.operation.id &&
+                    link.plantingId === row.operation.plantingId,
+            );
+            result.targetLinks += 1;
+            if (!existing) {
+                if (dryRun) result.wouldCreateLinks += 1;
+                else {
+                    await createOrGetSelectedPlantingHarvestTraceLink({
+                        plantingId: row.operation.plantingId,
+                        harvestOperationId: row.operation.id,
+                    });
+                    result.createdLinks += 1;
+                }
+            }
+            continue;
+        }
         const accountId = row.operation.accountId ?? row.raisedBedAccountId;
         const gardenId = row.operation.gardenId ?? row.raisedBedGardenId;
         const raisedBedId = row.operation.raisedBedId;
@@ -1916,4 +2052,130 @@ export async function backfillHarvestTraceLinksForCompletedHarvests({
     }
 
     return result;
+}
+
+/** One QR identity per harvest operation and logical planting, including multi-field crops. */
+export async function createOrGetSelectedPlantingHarvestTraceLink(input: {
+    plantingId: number;
+    harvestOperationId: number;
+}) {
+    requirePositiveInteger(input.plantingId, 'plantingId');
+    requirePositiveInteger(input.harvestOperationId, 'harvestOperationId');
+    const definitions =
+        await getEntitiesFormatted<EntityStandardized>('operation');
+    return storage().transaction(async (tx) => {
+        await tx
+            .select({ id: operations.id })
+            .from(operations)
+            .where(eq(operations.id, input.harvestOperationId))
+            .for('update');
+        const operation = await getOperationById(input.harvestOperationId, tx);
+        const planting = await getRaisedBedPlanting(input.plantingId, tx);
+        const bed = planting
+            ? await tx.query.raisedBeds.findFirst({
+                  where: eq(raisedBeds.id, planting.raisedBedId),
+              })
+            : null;
+        const garden = bed?.gardenId
+            ? await tx.query.gardens.findFirst({
+                  where: eq(gardens.id, bed.gardenId),
+              })
+            : null;
+        if (
+            operation.plantingId !== input.plantingId ||
+            operation.raisedBedFieldId != null ||
+            !operation.isAccepted ||
+            operation.isDeleted ||
+            ['failed', 'canceled'].includes(operation.status) ||
+            !isHarvestOperationEntity(
+                findEntityById(definitions, operation.entityId),
+            ) ||
+            planting?.configurationSource !== 'selected' ||
+            planting.isDeleted ||
+            planting.selectedTask?.status !== 'completed' ||
+            !bed ||
+            bed.isDeleted ||
+            !garden ||
+            garden.isDeleted ||
+            garden.isSandbox ||
+            operation.accountId !== bed.accountId ||
+            operation.gardenId !== bed.gardenId ||
+            operation.raisedBedId !== bed.id ||
+            garden.accountId !== bed.accountId
+        )
+            throw new Error(
+                'Harvest trace requires the canonical planting and harvest operation.',
+            );
+        const memberships = planting.memberships.filter(
+            (member) => !member.isDeleted && !member.raisedBedField.isDeleted,
+        );
+        const anchor = memberships.find((member) => member.isAnchor);
+        if (!anchor)
+            throw new Error('Harvest planting has no valid anchor field.');
+        const existingWhere = and(
+            eq(harvestTraceLinks.harvestOperationId, operation.id),
+            eq(harvestTraceLinks.plantingId, planting.id),
+        );
+        const existing = await tx.query.harvestTraceLinks.findFirst({
+            where: existingWhere,
+        });
+        if (existing) return existing;
+        const physicalBeds = bed.physicalId
+            ? await tx
+                  .select({ id: raisedBeds.id })
+                  .from(raisedBeds)
+                  .where(
+                      and(
+                          eq(raisedBeds.physicalId, bed.physicalId),
+                          eq(raisedBeds.gardenId, garden.id),
+                          eq(raisedBeds.accountId, garden.accountId),
+                          eq(raisedBeds.isDeleted, false),
+                      ),
+                  )
+            : [bed];
+        const token = randomBytes(24).toString('base64url');
+        const [inserted] = await tx
+            .insert(harvestTraceLinks)
+            .values({
+                publicToken: token,
+                tracePath: buildHarvestTracePublicPath(token),
+                accountId: garden.accountId,
+                gardenId: garden.id,
+                raisedBedId: bed.id,
+                raisedBedFieldId: anchor.raisedBedFieldId,
+                fieldPositionIndex: anchor.raisedBedField.positionIndex,
+                fieldLabel: [
+                    ...new Set(
+                        memberships.map((member) =>
+                            getFieldPhysicalPositionIndex(
+                                member.raisedBedField,
+                                physicalBeds,
+                            ),
+                        ),
+                    ),
+                ]
+                    .sort((a, b) => a - b)
+                    .join(', '),
+                plantingId: planting.id,
+                plantPlaceEventId: null,
+                plantSortId: planting.plantSortId,
+                harvestOperationId: operation.id,
+            })
+            .onConflictDoNothing({
+                target: [
+                    harvestTraceLinks.harvestOperationId,
+                    harvestTraceLinks.plantingId,
+                ],
+            })
+            .returning();
+        if (inserted) return inserted;
+        const raced = await tx.query.harvestTraceLinks.findFirst({
+            where: existingWhere,
+        });
+        if (!raced)
+            throw new Error(
+                'Failed to create selected planting harvest trace.',
+            );
+        return raced;
+    });
 }

@@ -1,6 +1,6 @@
-import { animated } from '@react-spring/three';
 import { useMemo, useRef } from 'react';
 import type { MeshStandardMaterial } from 'three';
+import { animated } from '../scene/sceneSpring';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';

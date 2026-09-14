@@ -10,12 +10,12 @@ type OAuthProviderCase = {
 
 const oauthProviderCases: OAuthProviderCase[] = [
     {
-        buttonName: 'Google prijava',
+        buttonName: 'Nastavi sa Google',
         callbackPath: '/prijava/google-prijava/povratak',
         provider: 'google',
     },
     {
-        buttonName: 'Facebook prijava',
+        buttonName: 'Nastavi sa Facebook',
         callbackPath: '/prijava/facebook-prijava/povratak',
         provider: 'facebook',
     },
@@ -33,48 +33,48 @@ test('shows social login first and expands email login on request', async ({
 }) => {
     await mount(<InlineLoginDialogHarness />);
 
+    await expect(page.getByRole('tab', { name: 'Prijava' })).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: 'Registracija' })).toHaveCount(
+        0,
+    );
     await expect(
-        page.getByRole('button', { name: 'Google prijava' }),
+        page.getByRole('button', { name: 'Nastavi sa Google' }),
     ).toBeVisible();
     await expect(
-        page.getByRole('button', { name: 'Facebook prijava' }),
+        page.getByRole('button', { name: 'Nastavi sa Facebook' }),
     ).toBeVisible();
     await expect(
-        page.getByRole('button', { name: 'Email prijava' }),
+        page.getByRole('button', { name: 'Nastavi s emailom' }),
     ).toBeVisible();
     await expect(page.locator('#inline-login-email')).toBeHidden();
     await expect(page.locator('#inline-login-password')).toBeHidden();
 
-    await page.getByRole('button', { name: 'Email prijava' }).click();
+    await page.getByRole('button', { name: 'Nastavi s emailom' }).click();
 
+    await expect(page.getByRole('tab', { name: 'Prijava' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Registracija' })).toBeVisible();
     await expect(page.locator('#inline-login-email')).toBeVisible();
     await expect(page.locator('#inline-login-password')).toBeVisible();
     await expect(
         page.getByRole('button', { name: 'Prijavi se' }),
     ).toBeVisible();
+
+    await page
+        .getByRole('button', { name: 'Natrag na druge načine prijave' })
+        .click();
+    await expect(
+        page.getByRole('button', { name: 'Nastavi s emailom' }),
+    ).toBeFocused();
 });
 
-test('keeps registration email fields collapsed until email registration is selected', async ({
+test('offers registration only after the email option is selected', async ({
     mount,
     page,
 }) => {
     await mount(<InlineLoginDialogHarness />);
 
+    await page.getByRole('button', { name: 'Nastavi s emailom' }).click();
     await page.getByRole('tab', { name: 'Registracija' }).click();
-
-    await expect(
-        page.getByRole('button', { name: 'Google registracija' }),
-    ).toBeVisible();
-    await expect(
-        page.getByRole('button', { name: 'Facebook registracija' }),
-    ).toBeVisible();
-    await expect(
-        page.getByRole('button', { name: 'Email registracija' }),
-    ).toBeVisible();
-    await expect(page.locator('#inline-register-email')).toBeHidden();
-    await expect(page.locator('#inline-register-repeat-password')).toBeHidden();
-
-    await page.getByRole('button', { name: 'Email registracija' }).click();
 
     await expect(page.locator('#inline-register-email')).toBeVisible();
     await expect(

@@ -1,11 +1,29 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import {
     SunflowerPackagesPanelStory,
+    SunflowersHudLoadingStory,
     SunflowersHudStory,
     SunflowersPendingDetailsStory,
 } from './SunflowersHudStory';
 
 test.describe('Sunflowers HUD', () => {
+    test('keeps the HUD visible with an amount skeleton while the account loads', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<SunflowersHudLoadingStory />);
+
+        const hud = page.locator('[data-sunflowers-hud-target]');
+        await expect(hud).toBeVisible();
+        await expect(hud).toHaveAttribute('aria-busy', 'true');
+        await expect(
+            page.locator('[data-sunflowers-hud-amount-skeleton="true"]'),
+        ).toBeVisible();
+        await expect(hud).toHaveAccessibleName(
+            /Suncokret Učitavanje broja suncokreta/u,
+        );
+    });
+
     test('deducts sunflower cart total and shows the cart indicator', async ({
         mount,
         page,

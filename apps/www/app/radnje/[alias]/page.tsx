@@ -1,6 +1,5 @@
 import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
 import { decodeRouteParam } from '@gredice/js/uri';
-import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Euro } from '@gredice/ui/icons';
 import { Markdown } from '@gredice/ui/Markdown';
 import { OperationImage } from '@gredice/ui/OperationImage';
@@ -14,6 +13,7 @@ import { notFound } from 'next/navigation';
 import { PriceAttributeCard } from '../../../components/attributes/PriceAttributeCard';
 import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
+import { PublicBreadcrumbs } from '../../../components/shared/seo/PublicBreadcrumbs';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
 import { getOperationPriceAvailability } from '../../../lib/operationPricing';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
@@ -116,7 +116,7 @@ export default async function OperationPage(
                 }}
             />
             <Stack spacing={8}>
-                <Breadcrumbs
+                <PublicBreadcrumbs
                     items={[
                         { label: 'Radnje', href: KnownPages.Operations },
                         { label: operation.information.label },

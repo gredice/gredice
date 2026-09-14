@@ -11,7 +11,7 @@ const phoneViewports = [
 
 const longPlantName = 'Paprika žuta slatka vrlo dugog naziva';
 
-function greenhouseList() {
+function greenhouseList(positionNumber: number | string = 5) {
     return (
         <div className="p-4">
             <Card>
@@ -22,7 +22,17 @@ function greenhouseList() {
                             key: 'field-5',
                             plantName: longPlantName,
                             plantSort: undefined,
-                            positionNumber: 5,
+                            positionNumber,
+                            planting:
+                                typeof positionNumber === 'string'
+                                    ? {
+                                          plantCount: 1,
+                                          plantsPerAxis: 1,
+                                          spanRows: 2,
+                                          spanColumns: 2,
+                                          selectedSeedingDistanceCm: 60,
+                                      }
+                                    : undefined,
                             sowingDate: (
                                 <div className="space-y-0.5">
                                     <span>25. 06. 2026.</span>
@@ -32,7 +42,7 @@ function greenhouseList() {
                                 </div>
                             ),
                             statusColor: 'success',
-                            statusEmoji: '🌱',
+                            plantStatus: 'sprouted',
                             statusLabel: 'Proklijalo',
                         },
                     ]}
@@ -53,6 +63,16 @@ for (const viewport of phoneViewports) {
         await expect(component.getByText('Polje 5')).toBeVisible();
         await expect(component.getByText(longPlantName)).toBeVisible();
         await expect(component.getByText('Proklijalo')).toHaveCount(2);
+        const statusIcon = component.locator(
+            '[data-plant-status-icon="sprouted"]',
+        );
+        await expect(statusIcon).toBeVisible();
+        await expect(statusIcon).toHaveAttribute('aria-hidden', 'true');
+        await statusIcon.locator('image').evaluate(async (element) => {
+            const image = new Image();
+            image.src = element.getAttribute('href') ?? '';
+            await image.decode();
+        });
         await expect(component.getByText('Posijano')).toBeVisible();
         await expect(component.getByText('8 dana do klijanja')).toBeVisible();
 
@@ -81,4 +101,26 @@ test('hides the mobile list at the desktop table breakpoint', async ({
     await expect(
         component.locator('[data-greenhouse-mobile-list]'),
     ).toBeHidden();
+});
+
+test('shows all positions of a multi-field planting in one mobile row', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    const component = await mount(greenhouseList('1, 2, 4, 5'));
+    await expect(component.getByText('Polja 1, 2, 4, 5')).toBeVisible();
+    await expect(
+        component.getByText(/Broj biljaka: 1.*Zauzima: 2 × 2 polja/),
+    ).toBeVisible();
+    await expect(component.locator('[data-greenhouse-plant-name]')).toHaveCount(
+        1,
+    );
+    expect(
+        await page.evaluate(
+            () =>
+                document.documentElement.scrollWidth <=
+                document.documentElement.clientWidth,
+        ),
+    ).toBe(true);
 });

@@ -3,7 +3,7 @@
 import { IconButton } from '@gredice/ui/IconButton';
 import { Megaphone } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { GardenViewMode } from './gardenViewMode';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useCurrentUser } from './hooks/useCurrentUser';
@@ -13,6 +13,7 @@ import { AdventHud } from './hud/AdventHud';
 import { AudioHud } from './hud/AudioHud';
 import { CameraHud } from './hud/CameraHud';
 import { ControlsTooltipHud } from './hud/ControlsTooltipHud';
+import { HudListItemPresence } from './hud/components/HudListItemPresence';
 import { DebugHudDynamic } from './hud/DebugHudDynamic';
 import { GardenAvatarHud } from './hud/GardenAvatarHud';
 import { GardenTargetHighlightHud } from './hud/GardenTargetHighlightHud';
@@ -36,6 +37,9 @@ import { AdventModal } from './modals/advent/AdventModal';
 import { GiftBoxModal } from './modals/GiftBoxModal';
 import { OverviewModal } from './modals/OverviewModal';
 import { WoodenSignModal } from './modals/WoodenSignModal';
+import { GardenStructureVerticalSliceHudDynamic } from './structures/GardenStructureVerticalSliceHudDynamic';
+import type { GardenStructureProfileFixtureDescriptor } from './structures/gardenStructureProfileFixtureDescriptor';
+import type { GardenStructureSemanticPlan } from './structures/structurePlanTypes';
 import { useGameState } from './useGameState';
 
 export const gameHudBottomBarClassName =
@@ -63,11 +67,19 @@ export function getGameHudBottomCloseupClassName(isCloseup: boolean) {
 
 export function GameHud({
     debugHud,
+    gardenStructureBuildEnabled = false,
+    gardenStructureDebugFixture,
+    gardenStructureDebugPlan,
+    gardenStructureProfileFixture,
     noWeather,
     suppressOpeningHud,
     viewMode = '3d',
 }: {
     debugHud?: boolean;
+    gardenStructureBuildEnabled?: boolean;
+    gardenStructureDebugFixture?: boolean;
+    gardenStructureDebugPlan?: GardenStructureSemanticPlan;
+    gardenStructureProfileFixture?: GardenStructureProfileFixtureDescriptor;
     noWeather?: boolean;
     suppressOpeningHud?: boolean;
     viewMode?: GardenViewMode;
@@ -83,6 +95,28 @@ export function GameHud({
     }>({ confirmed: false, gardenId: null });
     const isCloseup = useGameState((state) => state.view) === 'closeup';
     const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
+    const structureBuildSession = useGameState(
+        (state) => state.structureBuildSession,
+    );
+    const restoreStructureEntryFocusRef = useRef(false);
+    useEffect(() => {
+        if (structureBuildSession) {
+            restoreStructureEntryFocusRef.current = true;
+            return;
+        }
+        if (!restoreStructureEntryFocusRef.current) {
+            return;
+        }
+        restoreStructureEntryFocusRef.current = false;
+        const frame = requestAnimationFrame(() =>
+            document
+                .querySelector<HTMLButtonElement>(
+                    '[data-testid="garden-structure-build-entry"]',
+                )
+                ?.focus(),
+        );
+        return () => cancelAnimationFrame(frame);
+    }, [structureBuildSession]);
     const { data: currentGarden } = useCurrentGarden();
     const { data: currentUser } = useCurrentUser();
     const markTutorialChecklistTaskReady = useMarkTutorialChecklistTaskReady();
@@ -92,6 +126,8 @@ export function GameHud({
     );
     const showAccountEconomy =
         !isLocalSandbox && (!isSandbox || Boolean(currentUser?.isTemporary));
+    const showLoadedAccountEconomy =
+        Boolean(currentGarden) && showAccountEconomy;
     const closeupHiddenHudClassName = cx(
         'empty:hidden',
         isCloseup && 'hidden md:block',
@@ -99,7 +135,7 @@ export function GameHud({
     const currentGardenId = currentGarden?.id ?? null;
     const openingWelcomeConfirmed =
         Boolean(currentUser?.isTemporary) || welcomeConfirmed;
-    const raisedBedOnboardingAvailable = !isSandbox;
+    const raisedBedOnboardingAvailable = Boolean(currentGarden) && !isSandbox;
     const raisedBedOnboardingChecklistResolved =
         raisedBedOnboardingConfirmation.confirmed &&
         raisedBedOnboardingConfirmation.gardenId === currentGardenId;
@@ -114,6 +150,20 @@ export function GameHud({
         (isSandbox || raisedBedOnboardingChecklistResolved);
     const whatsNewHudEnabled =
         !isLocalSandbox && !suppressOpeningHud && openingFlowComplete;
+
+    if (gardenStructureBuildEnabled && structureBuildSession) {
+        return (
+            <>
+                <GardenStructureVerticalSliceHudDynamic
+                    enabled
+                    fixture={gardenStructureDebugFixture}
+                    plan={gardenStructureDebugPlan}
+                    profileFixture={gardenStructureProfileFixture}
+                />
+                {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
+            </>
+        );
+    }
 
     if (gardenAvatarView !== 'overview') {
         // Interacting with a garden box or a sign while walking has to open its
@@ -162,22 +212,32 @@ export function GameHud({
                         }
                     />
                 )}
-                {!isLocalSandbox && !isSandbox && <TutorialChecklistHud />}
-                {showAccountEconomy && <ShoppingCartHud />}
-                {showAccountEconomy && (
+                {!isLocalSandbox && (
+                    <TutorialChecklistHud
+                        enabled={Boolean(currentGarden) && !isSandbox}
+                    />
+                )}
+                {!isLocalSandbox && (
+                    <ShoppingCartHud enabled={showLoadedAccountEconomy} />
+                )}
+                {showLoadedAccountEconomy && (
                     <div className={closeupHiddenHudClassName}>
                         <AdventHud />
                     </div>
                 )}
-                {showAccountEconomy && (
-                    <div className={closeupHiddenHudClassName}>
+                {!isLocalSandbox && (
+                    <HudListItemPresence
+                        className={closeupHiddenHudClassName}
+                        visible={showLoadedAccountEconomy}
+                    >
                         <InventoryHud />
-                    </div>
+                    </HudListItemPresence>
                 )}
-                {showAccountEconomy && (
-                    <div className={closeupHiddenHudClassName}>
-                        <OutletHud />
-                    </div>
+                {!isLocalSandbox && (
+                    <OutletHud
+                        className={closeupHiddenHudClassName}
+                        enabled={showLoadedAccountEconomy}
+                    />
                 )}
             </div>
             <div
@@ -197,7 +257,7 @@ export function GameHud({
                 </div>
                 {showAccountEconomy && <SunflowersHud />}
             </div>
-            {!isSandbox && !isLocalSandbox && (
+            {currentGarden && !isSandbox && !isLocalSandbox && (
                 <div
                     data-game-hud-bottom-right
                     className={cx(
@@ -276,6 +336,14 @@ export function GameHud({
                 </>
             )}
             {!isLocalSandbox && <PaymentSuccessfulMessage />}
+            {gardenStructureBuildEnabled ? (
+                <GardenStructureVerticalSliceHudDynamic
+                    enabled
+                    fixture={gardenStructureDebugFixture}
+                    plan={gardenStructureDebugPlan}
+                    profileFixture={gardenStructureProfileFixture}
+                />
+            ) : null}
             {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
         </SuncokretChatProvider>
     );

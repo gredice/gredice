@@ -1,3 +1,4 @@
+import { userAchievementExtras } from './userAchievementProgress';
 import 'server-only';
 import { createHash } from 'node:crypto';
 import {
@@ -2145,6 +2146,7 @@ export function listCommunityEditRequests(filters?: {
         where: conditions.length > 0 ? and(...conditions) : undefined,
         with: {
             submitter: {
+                extras: userAchievementExtras,
                 columns: {
                     id: true,
                     userName: true,

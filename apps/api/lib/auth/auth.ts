@@ -87,6 +87,23 @@ const rbac = initRbac(
 
 export const { withAuth, verifyJwt, auth } = rbac;
 
+export function createDeliveryMobileAccessJwt(input: {
+    userId: string;
+    accountId: string;
+    scope: string;
+    expiresInMs: number;
+}) {
+    return rbac.createJwtWithClaims(
+        input.userId,
+        {
+            account_id: input.accountId,
+            scope: input.scope,
+        },
+        input.expiresInMs,
+        { audience: 'delivery-android' },
+    );
+}
+
 type CreateJwtExpiration = Parameters<typeof rbac.createJwt>[1];
 type CreateJwtOverride = Parameters<typeof rbac.createJwt>[2];
 type AccountBoundJwtExpiration = '72h' | number | Date;

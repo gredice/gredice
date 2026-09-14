@@ -87,6 +87,13 @@ const mixedSlots = [...deliverySlots, ...pickupSlots].sort(
 const slotsWithoutCurrentWeekAvailability = mixedSlots.filter(
     (slot) => !new Date(slot.startAt).toISOString().startsWith('2026-07-11'),
 );
+const slotsWithClosedCurrentWeek = mixedSlots.map((slot) => {
+    const startAt = new Date(slot.startAt).toISOString();
+
+    return startAt >= '2026-07-06' && startAt < '2026-07-13'
+        ? { ...slot, disabled: true }
+        : slot;
+});
 const slotsWithEmptyWeek = mixedSlots.filter((slot) => {
     const startAt = new Date(slot.startAt).toISOString();
     return startAt < '2026-07-20' || startAt >= '2026-07-27';
@@ -137,6 +144,13 @@ export const NoSelection: Story = {
     args: {
         autoSelectFirstDeliverySlot: false,
         slots: slotsWithoutCurrentWeekAvailability,
+        value: undefined,
+    },
+};
+
+export const ClosedCurrentWeek: Story = {
+    args: {
+        slots: slotsWithClosedCurrentWeek,
         value: undefined,
     },
 };

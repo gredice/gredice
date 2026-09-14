@@ -1,4 +1,5 @@
 import 'server-only';
+import type { AnchorPrice } from '@gredice/js/pricing';
 import { and, desc, eq, gte, inArray } from 'drizzle-orm';
 import { storage } from '..';
 import {
@@ -6,6 +7,7 @@ import {
     entityRevisions,
     type SelectEntityRevision,
 } from '../schema';
+import { getEntityAnchorPrices } from './entityAnchorPricesRepo';
 
 const DEFAULT_HISTORY_DAYS = 30;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -22,6 +24,7 @@ export type EntityPriceHistoryRequest = {
 export type EntityPriceHistorySummary = {
     lowestPrice: number;
     lastChangedAt: Date | null;
+    anchorPrice?: AnchorPrice | null;
 };
 
 type PriceRevision = Pick<
@@ -97,7 +100,7 @@ export function summarizeEntityPriceHistory(
 
 export async function getEntityPriceHistory(
     requests: ReadonlyArray<EntityPriceHistoryRequest>,
-    options?: { now?: Date; historyDays?: number },
+    options?: { now?: Date; historyDays?: number; anchorDate?: string },
 ): Promise<Record<string, EntityPriceHistorySummary>> {
     if (requests.length === 0) {
         return {};
@@ -209,6 +212,10 @@ export async function getEntityPriceHistory(
         revisionsByPath.set(path, pathRevisions);
     }
 
+    const anchors = options?.anchorDate
+        ? await getEntityAnchorPrices(requests, options.anchorDate, now)
+        : undefined;
+
     return Object.fromEntries(
         requests.map((request) => {
             const definitionId = definitionIdsByPath.get(
@@ -227,11 +234,16 @@ export async function getEntityPriceHistory(
 
             return [
                 request.key,
-                summarizeEntityPriceHistory(
-                    request,
-                    definitionId,
-                    requestRevisions,
-                ),
+                {
+                    ...summarizeEntityPriceHistory(
+                        request,
+                        definitionId,
+                        requestRevisions,
+                    ),
+                    ...(anchors
+                        ? { anchorPrice: anchors[request.key] ?? null }
+                        : {}),
+                },
             ];
         }),
     );

@@ -1,3 +1,4 @@
+import { userAchievementCount } from './userAchievementProgress';
 import 'server-only';
 import { and, asc, count, eq, inArray } from 'drizzle-orm';
 import { storage } from '..';
@@ -133,6 +134,7 @@ export type AssignableFarmUser = {
     userName: string;
     displayName: string | null;
     avatarUrl: string | null;
+    achievementCount?: number;
     farmId: number;
 };
 
@@ -148,6 +150,7 @@ type FarmAssignableUserRow = {
     userName: string;
     displayName: string | null;
     avatarUrl: string | null;
+    achievementCount?: number;
 };
 
 // Parse assignment metadata carried on events without trusting arbitrary payload shapes.
@@ -180,6 +183,7 @@ async function getAssignableFarmUserRowsByFarmIds(farmIds: number[]) {
             userName: users.userName,
             displayName: users.displayName,
             avatarUrl: users.avatarUrl,
+            achievementCount: userAchievementCount(users.id),
         })
         .from(farmUsers)
         .innerJoin(users, eq(farmUsers.userId, users.id))
@@ -224,6 +228,7 @@ export async function getAssignableFarmUsersByGardenIds(gardenIds: number[]) {
             userName: row.userName,
             displayName: row.displayName,
             avatarUrl: row.avatarUrl,
+            achievementCount: row.achievementCount,
             farmId: row.farmId,
         });
         usersByFarmId[row.farmId] = existingUsers;
@@ -274,6 +279,7 @@ export async function getUniqueAssignableFarmUsersByGardenIds(
                     userName: row.userName,
                     displayName: row.displayName,
                     avatarUrl: row.avatarUrl,
+                    achievementCount: row.achievementCount,
                 },
             ]),
         ).values(),
@@ -302,6 +308,7 @@ export async function getAssignableFarmUsersByRaisedBedFieldIds(
             userName: users.userName,
             displayName: users.displayName,
             avatarUrl: users.avatarUrl,
+            achievementCount: userAchievementCount(users.id),
         })
         .from(raisedBedFields)
         .innerJoin(raisedBeds, eq(raisedBedFields.raisedBedId, raisedBeds.id))
@@ -331,6 +338,7 @@ export async function getAssignableFarmUsersByRaisedBedFieldIds(
             userName: row.userName,
             displayName: row.displayName,
             avatarUrl: row.avatarUrl,
+            achievementCount: row.achievementCount,
             farmId: row.farmId,
         });
         assignableFarmUsersByRaisedBedFieldId[row.raisedBedFieldId] =
@@ -1017,6 +1025,7 @@ function summarizePlantCycle(
             } else if (plantStatus === 'died') {
                 plantDeadDate = statusEventDate;
                 stoppedDate = statusEventDate;
+                toBeRemoved = true;
             } else if (plantStatus === 'firstFlowers') {
                 active = true;
                 toBeRemoved = false;
@@ -1046,6 +1055,7 @@ function summarizePlantCycle(
             } else if (plantStatus === 'harvested') {
                 plantHarvestedDate = statusEventDate;
                 stoppedDate = statusEventDate;
+                toBeRemoved = true;
             } else if (plantStatus === 'removed') {
                 plantRemovedDate = statusEventDate;
                 active = false;
@@ -1694,6 +1704,7 @@ function reduceRaisedBedFieldWithEvents(
             } else if (plantStatus === 'died') {
                 plantDeadDate = statusEventDate;
                 stoppedDate = statusEventDate;
+                toBeRemoved = true;
             } else if (plantStatus === 'firstFlowers') {
                 active = true;
                 toBeRemoved = false;
@@ -1723,6 +1734,7 @@ function reduceRaisedBedFieldWithEvents(
             } else if (plantStatus === 'harvested') {
                 plantHarvestedDate = statusEventDate;
                 stoppedDate = statusEventDate;
+                toBeRemoved = true;
             } else if (plantStatus === 'removed') {
                 plantRemovedDate = statusEventDate;
                 active = false;

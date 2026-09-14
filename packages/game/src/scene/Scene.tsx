@@ -11,6 +11,7 @@ import {
     type PropsWithChildren,
     useCallback,
     useEffect,
+    useMemo,
     useRef,
 } from 'react';
 import {
@@ -31,7 +32,11 @@ import {
     adaptiveHighQualityLevels,
 } from './adaptiveHighQuality';
 import { GardenLightProvider } from './GardenLightProvider';
-import { updateGameProfileMetadata } from './gameProfileMetadata';
+import {
+    createRuntimeFrameLoopProfileTelemetry,
+    readGameProfileMetadata,
+    updateGameProfileMetadata,
+} from './gameProfileMetadata';
 import {
     type GameQualityProfile,
     resolveGameQualityProfile,
@@ -47,6 +52,8 @@ export type SceneProps = HTMLAttributes<HTMLDivElement> &
         adaptiveHighInteractionActive?: boolean;
         adaptiveHighProfile?: AdaptiveHighQualityLevelProfile;
         adaptiveHighProfileControlEnabled?: boolean;
+        baseFramesPerSecond?: number;
+        animateSprings?: boolean;
         debugStats?: boolean;
         fixedTimeSeconds?: number;
         onAdaptiveHighProfileChange?: (
@@ -55,6 +62,7 @@ export type SceneProps = HTMLAttributes<HTMLDivElement> &
         onContextLost?: () => void;
         pixelRatio?: number;
         position: FiberVector3;
+        profileStats?: boolean;
         quality?: GameQualityProfile;
         rendererOptions?: WebGLRendererParameters;
         staticOpaqueCacheEnabled?: boolean;
@@ -207,6 +215,8 @@ export function Scene({
     adaptiveHighInteractionActive = false,
     adaptiveHighProfile = adaptiveHighQualityLevels.L0,
     adaptiveHighProfileControlEnabled = false,
+    baseFramesPerSecond,
+    animateSprings,
     children,
     debugStats,
     fixedTimeSeconds,
@@ -214,6 +224,7 @@ export function Scene({
     onContextLost,
     pixelRatio,
     position,
+    profileStats = false,
     quality,
     rendererOptions,
     staticOpaqueCacheEnabled = false,
@@ -253,9 +264,16 @@ export function Scene({
     const effectiveDprCap = adaptiveHighActive
         ? adaptiveHighProfile.dpr
         : qualityProfile.dpr;
-    const ambientFramesPerSecond = adaptiveHighActive
-        ? adaptiveHighProfile.ambientFramesPerSecond
-        : sceneFrameRates.ambient;
+    const ambientFramesPerSecond =
+        baseFramesPerSecond ??
+        (adaptiveHighActive
+            ? adaptiveHighProfile.ambientFramesPerSecond
+            : sceneFrameRates.ambient);
+    const runtimeFrameLoop = useMemo(
+        () =>
+            profileStats ? createRuntimeFrameLoopProfileTelemetry() : undefined,
+        [profileStats],
+    );
     const wireframeDebugVisible = useOptionalGameState(
         (state) => state.wireframeDebugVisible,
         false,
@@ -281,6 +299,21 @@ export function Scene({
         });
     }, [effectiveDprCap, qualityProfile]);
 
+    useEffect(() => {
+        if (!runtimeFrameLoop) {
+            return;
+        }
+
+        updateGameProfileMetadata({ runtimeFrameLoop });
+        return () => {
+            if (
+                readGameProfileMetadata()?.runtimeFrameLoop === runtimeFrameLoop
+            ) {
+                updateGameProfileMetadata({ runtimeFrameLoop: undefined });
+            }
+        };
+    }, [runtimeFrameLoop]);
+
     return (
         <Canvas
             orthographic
@@ -301,12 +334,14 @@ export function Scene({
                 near: 0.01,
             }}
             {...rest}
-            frameloop="demand"
+            frameloop="never"
             ref={handleCanvasRef}
         >
             <SceneTimeProvider
+                animateSprings={animateSprings}
                 baseFramesPerSecond={ambientFramesPerSecond}
                 fixedTimeSeconds={fixedTimeSeconds}
+                runtimeFrameLoop={runtimeFrameLoop}
                 suspendWhenOffscreen={suspendWhenOffscreen}
             >
                 <GardenLightProvider qualityTier={qualityProfile.tier}>
@@ -336,7 +371,9 @@ export function Scene({
                             >
                                 <HoverOutlineProvider>
                                     <SceneDebugName />
-                                    {debugStats && <RendererStatsReporter />}
+                                    {(debugStats || profileStats) && (
+                                        <RendererStatsReporter />
+                                    )}
                                     <SceneWireframeMode
                                         enabled={Boolean(
                                             debugStats && wireframeDebugVisible,

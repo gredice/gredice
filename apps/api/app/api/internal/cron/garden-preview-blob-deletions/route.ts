@@ -8,6 +8,7 @@ import type { NextRequest } from 'next/server';
 import {
     getGardenPreviewBlobDeletionRetryAt,
     processGardenPreviewBlobDeletions,
+    redactGardenPreviewBlobDeletionError,
 } from '../../../../../lib/garden/gardenPreviewBlobDeletion';
 
 export const dynamic = 'force-dynamic';
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
         });
         const result = await processGardenPreviewBlobDeletions({
             concurrency: DELETE_CONCURRENCY,
-            deleteBlob: async (imageUrl) => del(imageUrl),
+            deleteBlob: async (pathname) => del(pathname),
             deletions,
         });
 
@@ -60,6 +61,17 @@ export async function GET(request: NextRequest) {
             claimId,
             failures,
         });
+
+        if (failures.length > 0) {
+            console.warn('Garden preview Blob deletions will be retried', {
+                claimId,
+                failures: failures.map((failure) => ({
+                    attempts: (deletionById.get(failure.id)?.attempts ?? 0) + 1,
+                    error: redactGardenPreviewBlobDeletionError(failure.error),
+                    id: failure.id,
+                })),
+            });
+        }
 
         if (
             completed !== result.completedIds.length ||

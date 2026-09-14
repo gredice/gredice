@@ -1,6 +1,9 @@
 'use client';
 
-import { operationVisualRewardDebugProfile } from '@gredice/game';
+import {
+    faunaHeavyMockGardenProfile,
+    operationVisualRewardDebugProfile,
+} from '@gredice/game';
 import { useMemo, useState } from 'react';
 
 const MODE_OPTIONS = [
@@ -26,6 +29,11 @@ const PROFILE_OPTIONS = [
         value: 'plant-heavy',
         label: 'Plants',
         description: 'Dense planted raised beds',
+    },
+    {
+        value: faunaHeavyMockGardenProfile,
+        label: 'Fauna',
+        description: 'Deterministic daytime animal workload',
     },
     {
         value: operationVisualRewardDebugProfile,

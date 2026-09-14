@@ -24,3 +24,18 @@ test('combined entity changes keep shared revalidation paths unique', () => {
 
     assert.equal(new Set(pathKeys).size, pathKeys.length);
 });
+
+test('sort and delivery price changes invalidate the public price list', () => {
+    for (const type of ['plantSort', 'hqLocations'] as const) {
+        assert.ok(
+            collectRevalidationPaths([type]).some(
+                ({ path }) => path === '/cjenik',
+            ),
+        );
+    }
+    assert.ok(
+        collectRevalidationPaths(['hqLocations']).some(
+            ({ path }) => path === '/dostava',
+        ),
+    );
+});

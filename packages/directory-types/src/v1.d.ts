@@ -297,6 +297,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/entities/environmentAnimal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * /entities/environmentAnimal
+         * @description Get all entities of type environmentAnimal.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["entity-environmentAnimal"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/entities/plant": {
         parameters: {
             query?: never;
@@ -1143,6 +1182,73 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        "entity-environmentAnimal": {
+            id: number;
+            entityType: {
+                /** @default 24 */
+                id: number;
+                /** @default environmentAnimal */
+                name: string;
+                /** @default Životinje okoliša */
+                label: string;
+            };
+            slug: string;
+            information: {
+                name: string;
+                label: string;
+                shortDescription: string;
+                fullDescription: string;
+            };
+            habitat: {
+                spawnMode: string;
+                hosts: string;
+                minimumTemperature: number;
+                maximumTemperature: number;
+                timeOfDay: string;
+                persistence: string;
+                eligibility: string;
+                allowedTerrain: string;
+                maxWaterDepth: number;
+                minimumCells?: number;
+            };
+            spawn: {
+                maxPopulation: number;
+                maxPopulationPerHabitat: number;
+                cooldownMinSeconds: number;
+                cooldownMaxSeconds: number;
+                maxGroupsPerScene?: number;
+                maxGlobal?: number;
+            };
+            activity?: {
+                dawnEnd?: number;
+                duskStart?: number;
+            };
+            behavior: {
+                movement: string;
+                cropImpact: string;
+                purchasable: boolean;
+                animationStates: string;
+                avatarReaction: string;
+                placeable?: boolean;
+            };
+            weather?: {
+                maxFog?: number;
+                maxRain?: number;
+                maxSnow?: number;
+                maxThunder?: number;
+                maxWindSpeed?: number;
+            };
+            model?: {
+                assetName?: string;
+            };
+            image?: {
+                cover?: components["schemas"]["image"];
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
         "entity-plant": {
             id: number;
             entityType: {
@@ -1304,6 +1410,8 @@ export interface components {
                         }[];
                         /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
                         appliesToAllTargets?: boolean;
+                        /** @description When true, the operation can be offered for an empty raised-bed field without a planted crop. */
+                        appliesToEmptyFields?: boolean;
                     };
                     information: {
                         /** @description (puni opis operacije) */
@@ -1553,6 +1661,8 @@ export interface components {
                                 }[];
                                 /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
                                 appliesToAllTargets?: boolean;
+                                /** @description When true, the operation can be offered for an empty raised-bed field without a planted crop. */
+                                appliesToEmptyFields?: boolean;
                             };
                             information: {
                                 /** @description (puni opis operacije) */
@@ -1863,6 +1973,8 @@ export interface components {
                                 }[];
                                 /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
                                 appliesToAllTargets?: boolean;
+                                /** @description When true, the operation can be offered for an empty raised-bed field without a planted crop. */
+                                appliesToEmptyFields?: boolean;
                             };
                             information: {
                                 /** @description (puni opis operacije) */
@@ -2098,6 +2210,8 @@ export interface components {
                                         }[];
                                         /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
                                         appliesToAllTargets?: boolean;
+                                        /** @description When true, the operation can be offered for an empty raised-bed field without a planted crop. */
+                                        appliesToEmptyFields?: boolean;
                                     };
                                     information: {
                                         /** @description (puni opis operacije) */
@@ -2377,6 +2491,8 @@ export interface components {
                 }[];
                 /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
                 appliesToAllTargets?: boolean;
+                /** @description When true, the operation can be offered for an empty raised-bed field without a planted crop. */
+                appliesToEmptyFields?: boolean;
             };
             information: {
                 /** @description (puni opis operacije) */

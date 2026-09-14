@@ -1,56 +1,65 @@
 import type { OperationData, PlantSortData } from '@gredice/directory-types';
 import {
     addInventoryItem,
-    deleteGardenBlock,
     deleteGardenStack,
+    type GardenPlacementTransaction,
     getEntitiesFormatted,
-    getGarden,
-    getGardenBlock,
-    getGardenStacks,
+    getGardenMutationAuthorityForUpdate,
+    getGardenPlacementSnapshotForUpdate,
+    listGardenStructuresForUpdate,
+    softDeleteGardenBlockOnce,
     updateGardenStack,
+    withAccountDeletionFenceTransaction,
+    withGardenMutationOperation,
+    withGardenPlacementTransaction,
+    withInventoryAccountTransaction,
 } from '@gredice/storage';
+import { getBlockData } from '../blocks/blockDataService';
+import { validatePersistedStructuresAfterBlockMutation } from '../garden/gardenOccupancyService';
 import { isAdventSeasonOver } from './advent2025';
+import {
+    type AdventGiftBoxDependencies,
+    createAdventGiftBoxService,
+    type GiftBoxReward,
+    type GiftBoxRewardCatalog,
+} from './adventGiftBoxService';
 
-const GIFT_BOX_BLOCK_PREFIX = 'GiftBox_';
-
-type GiftBoxReward = {
-    kind: 'plant' | 'operation';
-    entityTypeName: 'plantSort' | 'operation';
-    entityId: string;
-    title: string;
-};
-
-type OpenGiftBoxResult = {
-    reward: GiftBoxReward;
-};
-
-type GiftBoxErrorResult = {
-    errorStatus: number;
-    errorMessage: string;
-};
-
-function pickRandomItem<T>(items: T[]): T {
+function pickRandomItem<T>(items: readonly T[]): T {
     if (!items.length) {
         throw new Error('Cannot pick a random item from an empty array.');
     }
     return items[Math.floor(Math.random() * items.length)];
 }
 
-function isValidGiftBoxName(name: string) {
-    return name.startsWith(GIFT_BOX_BLOCK_PREFIX);
-}
-
-async function pickGiftBoxReward(): Promise<GiftBoxReward> {
+async function loadGiftBoxRewardCatalog(): Promise<GiftBoxRewardCatalog> {
     const [plantSorts, operations] = await Promise.all([
         getEntitiesFormatted<PlantSortData>('plantSort'),
         getEntitiesFormatted<OperationData>('operation'),
     ]);
 
+    return {
+        plants: (plantSorts ?? []).map((plantSort) => ({
+            entityId: plantSort.id,
+            title: plantSort.information?.name ?? 'Nova biljka',
+        })),
+        operations: (operations ?? []).map((operation) => ({
+            entityId: operation.id,
+            title:
+                operation.information?.label ??
+                operation.information?.name ??
+                'Nova radnja',
+        })),
+    };
+}
+
+function pickGiftBoxReward(catalog: GiftBoxRewardCatalog): GiftBoxReward {
+    const { operations, plants } = catalog;
+
     const availableKinds: GiftBoxReward['kind'][] = [];
-    if (plantSorts?.length) {
+    if (plants.length) {
         availableKinds.push('plant');
     }
-    if (operations?.length) {
+    if (operations.length) {
         availableKinds.push('operation');
     }
 
@@ -60,108 +69,46 @@ async function pickGiftBoxReward(): Promise<GiftBoxReward> {
 
     const kind = pickRandomItem(availableKinds);
     if (kind === 'plant') {
-        const plantSort = pickRandomItem(plantSorts ?? []);
-        const plantSortId = plantSort?.id;
-        if (plantSortId === undefined || plantSortId === null) {
+        const plant = pickRandomItem(plants);
+        if (plant.entityId === undefined || plant.entityId === null) {
             throw new Error('Selected plant sort has no ID.');
         }
         return {
             kind: 'plant',
             entityTypeName: 'plantSort',
-            entityId: String(plantSortId),
-            title: plantSort.information?.name ?? 'Nova biljka',
+            entityId: String(plant.entityId),
+            title: plant.title,
         };
     }
 
-    const operation = pickRandomItem(operations ?? []);
-    const operationId = operation?.id;
-    if (operationId === undefined || operationId === null) {
+    const operation = pickRandomItem(operations);
+    if (operation.entityId === undefined || operation.entityId === null) {
         throw new Error('Selected operation has no ID.');
     }
     return {
         kind: 'operation',
         entityTypeName: 'operation',
-        entityId: String(operationId),
-        title:
-            operation.information?.label ??
-            operation.information?.name ??
-            'Nova radnja',
+        entityId: String(operation.entityId),
+        title: operation.title,
     };
 }
 
-export async function openAdventGiftBox({
-    accountId,
-    gardenId,
-    blockId,
-    timeZone,
-}: {
-    accountId: string;
-    gardenId: number;
-    blockId: string;
-    timeZone: string;
-}): Promise<OpenGiftBoxResult | GiftBoxErrorResult> {
-    if (!isAdventSeasonOver(timeZone)) {
-        return {
-            errorStatus: 400,
-            errorMessage: 'Advent još traje. Poklon kutije su dostupne 25.12.',
-        };
-    }
-
-    const [garden, block, stacks] = await Promise.all([
-        getGarden(gardenId),
-        getGardenBlock(gardenId, blockId),
-        getGardenStacks(gardenId),
-    ]);
-
-    if (!garden || garden.accountId !== accountId) {
-        return { errorStatus: 404, errorMessage: 'Vrt nije pronađen' };
-    }
-    if (!block || block.gardenId !== gardenId) {
-        return { errorStatus: 404, errorMessage: 'Blok nije pronađen' };
-    }
-    if (!isValidGiftBoxName(block.name)) {
-        return {
-            errorStatus: 400,
-            errorMessage: 'Odabrani blok nije poklon kutija.',
-        };
-    }
-
-    const stack = stacks.find((candidate) =>
-        candidate.blocks.includes(blockId),
-    );
-    if (!stack) {
-        return {
-            errorStatus: 404,
-            errorMessage: 'Stog nije pronađen za poklon kutiju.',
-        };
-    }
-
-    const reward = await pickGiftBoxReward();
-    await addInventoryItem(accountId, {
-        entityTypeName: reward.entityTypeName,
-        entityId: reward.entityId,
-        amount: 1,
-        source: `advent-gift-box:${blockId}`,
-    });
-
-    const updatedBlocks = stack.blocks.filter(
-        (blockIdInStack) => blockIdInStack !== blockId,
-    );
-
-    if (updatedBlocks.length === 0) {
-        await deleteGardenStack(gardenId, {
-            x: stack.positionX,
-            y: stack.positionY,
-        });
-    } else {
-        await updateGardenStack(gardenId, {
-            x: stack.positionX,
-            y: stack.positionY,
-            blocks: updatedBlocks,
-        });
-    }
-
-    await deleteGardenBlock(gardenId, blockId);
-
-    return { reward };
-}
+export const openAdventGiftBox = createAdventGiftBoxService({
+    addInventoryItem,
+    deleteGardenStack,
+    getGardenPlacementSnapshotForUpdate,
+    getGardenMutationAuthorityForUpdate,
+    getBlockData,
+    isAdventSeasonOver,
+    listGardenStructuresForUpdate,
+    loadGiftBoxRewardCatalog,
+    pickGiftBoxReward,
+    softDeleteGardenBlockOnce,
+    updateGardenStack,
+    validatePersistedStructuresAfterBlockMutation,
+    withAccountDeletionFenceTransaction,
+    withGardenMutationOperation: (input, callback, transaction) =>
+        withGardenMutationOperation(input, callback, transaction),
+    withGardenPlacementTransaction,
+    withInventoryAccountTransaction,
+} satisfies AdventGiftBoxDependencies<GardenPlacementTransaction>);

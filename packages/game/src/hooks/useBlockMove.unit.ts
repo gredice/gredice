@@ -1,7 +1,51 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { GardenStack } from '../types/Stack';
-import { moveBlockOptimistically } from './useBlockMove';
+import {
+    createMovePatchOperations,
+    moveBlockOptimistically,
+} from './useBlockMove';
+
+test('guards every sequential move with the expected source block', () => {
+    assert.deepEqual(
+        createMovePatchOperations({
+            sourcePosition: { x: 1, z: -2 },
+            destinationPosition: { x: 5, z: 8 },
+            blockIndex: 2,
+            sourceBlockId: 'primary',
+            additionalBlocks: [
+                {
+                    sourcePosition: { x: 1, z: -2 },
+                    destinationPosition: { x: 5, z: 8 },
+                    blockIndex: 2,
+                    sourceBlockId: 'next-after-primary',
+                },
+            ],
+        }),
+        [
+            {
+                op: 'test',
+                path: '/1/-2/2',
+                value: 'primary',
+            },
+            {
+                op: 'move',
+                from: '/1/-2/2',
+                path: '/5/8/-',
+            },
+            {
+                op: 'test',
+                path: '/1/-2/2',
+                value: 'next-after-primary',
+            },
+            {
+                op: 'move',
+                from: '/1/-2/2',
+                path: '/5/8/-',
+            },
+        ],
+    );
+});
 
 test('moving a Rabbit preserves its persisted coat variant', () => {
     const stacks: GardenStack[] = [

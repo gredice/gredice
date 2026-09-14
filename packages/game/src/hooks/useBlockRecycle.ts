@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { persistLocalSandboxGarden } from '../localSandboxGarden';
 import { useGameState } from '../useGameState';
+import { getGardenStackPatchError } from './gardenStackPatchError';
 import { currentAccountKeys } from './useCurrentAccount';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 import {
@@ -13,6 +14,40 @@ import {
 import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 const mutationKey = ['gardens', 'current', 'useBlockRecycle'];
+
+type RecycleBlockArgs = {
+    position: { x: number; z: number };
+    blockId: string;
+    blockIndex: number;
+    raisedBedId?: number;
+    onOptimisticUpdate?: () => void;
+};
+
+type RecyclePatchOperation =
+    | {
+          op: 'test';
+          path: string;
+          value: string;
+      }
+    | {
+          op: 'remove';
+          path: string;
+      };
+
+export function createRecyclePatchOperations({
+    blockId,
+    blockIndex,
+    position,
+}: Pick<
+    RecycleBlockArgs,
+    'blockId' | 'blockIndex' | 'position'
+>): RecyclePatchOperation[] {
+    const path = `/${position.x}/${position.z}/${blockIndex}`;
+    return [
+        { op: 'test', path, value: blockId },
+        { op: 'remove', path },
+    ];
+}
 
 async function removeShoppingCartItems(
     shoppingCart: ShoppingCartData,
@@ -56,14 +91,10 @@ export function useBlockRecycle() {
         mutationKey,
         mutationFn: async ({
             position,
+            blockId,
             blockIndex,
             raisedBedId,
-        }: {
-            position: { x: number; z: number };
-            blockIndex: number;
-            raisedBedId?: number;
-            onOptimisticUpdate?: () => void;
-        }) => {
+        }: RecycleBlockArgs) => {
             console.debug('Recycling block', position, blockIndex);
             if (!garden) {
                 throw new Error('No garden selected');
@@ -72,17 +103,21 @@ export function useBlockRecycle() {
                 return;
             }
             const gardenId = garden.id;
-            await clientAuthenticated().api.gardens[':gardenId'].stacks.$patch({
+            const response = await clientAuthenticated().api.gardens[
+                ':gardenId'
+            ].stacks.$patch({
                 param: {
                     gardenId: gardenId.toString(),
                 },
-                json: [
-                    {
-                        op: 'remove',
-                        path: `/${position.x}/${position.z}/${blockIndex}`,
-                    },
-                ],
+                json: createRecyclePatchOperations({
+                    blockId,
+                    blockIndex,
+                    position,
+                }),
             });
+            if (!response.ok) {
+                throw new Error(await getGardenStackPatchError(response));
+            }
 
             if (shoppingCart && raisedBedId) {
                 await removeShoppingCartItems(shoppingCart, raisedBedId);

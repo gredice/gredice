@@ -1,9 +1,15 @@
 import type { GardenPreviewPhase } from '@gredice/js/gardenPreviews';
+import type {
+    GardenStructureDocument,
+    GardenStructureRotation,
+    GardenStructureTemplateKey,
+} from '@gredice/js/gardenStructures';
 import { relations, sql } from 'drizzle-orm';
 import {
     boolean,
     check,
     doublePrecision,
+    foreignKey,
     index,
     integer,
     jsonb,
@@ -57,6 +63,318 @@ export const gardens = pgTable(
         index('garden_g_is_sandbox_idx').on(table.isSandbox),
     ],
 );
+
+export const gardenStructureOperationKinds = [
+    'create',
+    'replace',
+    'resize',
+    'placement',
+    'delete',
+] as const;
+export type GardenStructureOperationKind =
+    (typeof gardenStructureOperationKinds)[number];
+
+export type GardenStructureOperationJson =
+    | null
+    | boolean
+    | number
+    | string
+    | readonly GardenStructureOperationJson[]
+    | Readonly<{ [key: string]: GardenStructureOperationJson }>;
+
+export type GardenStructureOperationStoredResponse = Readonly<{
+    [key: string]: GardenStructureOperationJson;
+}>;
+
+export const gardenMutationOperationKinds = [
+    'block-purchase',
+    'garden-box-block-place',
+    'garden-box-block-store',
+    'gift-open',
+] as const;
+export type GardenMutationOperationKind =
+    (typeof gardenMutationOperationKinds)[number];
+
+export type GardenMutationOperationJson =
+    | null
+    | boolean
+    | number
+    | string
+    | readonly GardenMutationOperationJson[]
+    | Readonly<{ [key: string]: GardenMutationOperationJson }>;
+
+export type GardenMutationOperationStoredResponse = Readonly<{
+    [key: string]: GardenMutationOperationJson;
+}>;
+
+/**
+ * Garden-scoped idempotency receipts for mutations that do not belong to the
+ * structure aggregate itself. The garden/operation primary key deliberately
+ * spans operation kinds so one client command identity cannot be reused for a
+ * different economic effect.
+ */
+export const gardenMutationOperations = pgTable(
+    'garden_mutation_operations',
+    {
+        gardenId: integer('garden_id')
+            .notNull()
+            .references(() => gardens.id, { onDelete: 'cascade' }),
+        operationId: text('operation_id').notNull(),
+        kind: text('kind').$type<GardenMutationOperationKind>().notNull(),
+        payloadHash: text('payload_hash').notNull(),
+        response: jsonb('response')
+            .$type<GardenMutationOperationStoredResponse>()
+            .notNull(),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+    },
+    (table) => [
+        primaryKey({
+            columns: [table.gardenId, table.operationId],
+            name: 'garden_mutation_operations_garden_operation_pk',
+        }),
+        index('garden_mutation_operations_kind_idx').on(table.kind),
+        check(
+            'garden_mutation_operations_operation_id_length_check',
+            sql`char_length(${table.operationId}) between 1 and 96`,
+        ),
+        check(
+            'garden_mutation_operations_kind_check',
+            sql`${table.kind} in ('block-purchase', 'garden-box-block-place', 'garden-box-block-store', 'gift-open')`,
+        ),
+        check(
+            'garden_mutation_operations_payload_hash_check',
+            sql`${table.payloadHash} ~ '^[0-9a-f]{64}$'`,
+        ),
+        check(
+            'garden_mutation_operations_response_shape_check',
+            sql`jsonb_typeof(${table.response}) = 'object'`,
+        ),
+        check(
+            'garden_mutation_operations_response_size_check',
+            sql`octet_length(${table.response}::text) <= 262144`,
+        ),
+    ],
+);
+
+export const gardenStructures = pgTable(
+    'garden_structures',
+    {
+        id: text('id').primaryKey(),
+        gardenId: integer('garden_id')
+            .notNull()
+            .references(() => gardens.id),
+        anchorX: integer('anchor_x').notNull(),
+        anchorY: integer('anchor_y').notNull(),
+        rotation: integer('rotation')
+            .$type<GardenStructureRotation>()
+            .notNull()
+            .default(0),
+        revision: integer('revision').notNull().default(1),
+        templateKey: text('template_key')
+            .$type<GardenStructureTemplateKey>()
+            .notNull(),
+        kitKey: text('kit_key').notNull(),
+        kitVersion: text('kit_version').notNull(),
+        pricingVersion: integer('pricing_version').notNull().default(1),
+        sunflowerPricePerCell: integer('sunflower_price_per_cell')
+            .notNull()
+            .default(50),
+        refundableSunflowerPrincipal: integer('refundable_sunflower_principal')
+            .notNull()
+            .default(0),
+        document: jsonb('document').$type<GardenStructureDocument>().notNull(),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+        updatedAt: timestamp('updated_at')
+            .notNull()
+            .defaultNow()
+            .$onUpdate(() => new Date()),
+        isDeleted: boolean('is_deleted').notNull().default(false),
+    },
+    (table) => [
+        uniqueIndex('garden_structures_garden_id_id_uq').on(
+            table.gardenId,
+            table.id,
+        ),
+        index('garden_structures_active_garden_id_idx')
+            .on(table.gardenId, table.id)
+            .where(sql`${table.isDeleted} = false`),
+        index('garden_structures_is_deleted_idx').on(table.isDeleted),
+        check(
+            'garden_structures_id_length_check',
+            sql`char_length(${table.id}) between 1 and 96`,
+        ),
+        check(
+            'garden_structures_rotation_check',
+            sql`${table.rotation} between 0 and 3`,
+        ),
+        check('garden_structures_revision_check', sql`${table.revision} > 0`),
+        check(
+            'garden_structures_template_key_check',
+            sql`${table.templateKey} in ('barn', 'house', 'greenhouse', 'blank')`,
+        ),
+        check(
+            'garden_structures_kit_key_length_check',
+            sql`char_length(${table.kitKey}) between 1 and 96`,
+        ),
+        check(
+            'garden_structures_kit_version_length_check',
+            sql`char_length(${table.kitVersion}) between 1 and 96`,
+        ),
+        check(
+            'garden_structures_pricing_version_check',
+            sql`${table.pricingVersion} > 0`,
+        ),
+        check(
+            'garden_structures_unit_price_check',
+            sql`${table.sunflowerPricePerCell} >= 0`,
+        ),
+        check(
+            'garden_structures_refundable_principal_check',
+            sql`${table.refundableSunflowerPrincipal} >= 0`,
+        ),
+        check(
+            'garden_structures_document_shape_check',
+            sql`jsonb_typeof(${table.document}) = 'object' and ${table.document}->>'schemaVersion' = '1' and coalesce(jsonb_typeof(${table.document}->'footprint'->'cells'), '') = 'array'`,
+        ),
+        check(
+            'garden_structures_document_size_check',
+            // Application validation owns the compact 192 KiB contract. JSONB
+            // text adds whitespace and may expand exponent-form numbers, so
+            // this is only a defensive persistence ceiling.
+            sql`octet_length(${table.document}::text) <= 8388608`,
+        ),
+        check(
+            'garden_structures_principal_bound_check',
+            sql`${table.refundableSunflowerPrincipal} <= jsonb_array_length(${table.document}->'footprint'->'cells') * ${table.sunflowerPricePerCell}`,
+        ),
+        check(
+            'garden_structures_deleted_principal_check',
+            sql`${table.isDeleted} = false or ${table.refundableSunflowerPrincipal} = 0`,
+        ),
+    ],
+);
+
+export const gardenStructureOperations = pgTable(
+    'garden_structure_operations',
+    {
+        gardenId: integer('garden_id')
+            .notNull()
+            .references(() => gardens.id),
+        operationId: text('operation_id').notNull(),
+        structureId: text('structure_id').notNull(),
+        kind: text('kind').$type<GardenStructureOperationKind>().notNull(),
+        payloadHash: text('payload_hash').notNull(),
+        response: jsonb('response')
+            .$type<GardenStructureOperationStoredResponse>()
+            .notNull(),
+        resultRevision: integer('result_revision').notNull(),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+    },
+    (table) => [
+        primaryKey({
+            columns: [table.gardenId, table.operationId],
+            name: 'garden_structure_operations_garden_operation_pk',
+        }),
+        foreignKey({
+            columns: [table.gardenId, table.structureId],
+            foreignColumns: [gardenStructures.gardenId, gardenStructures.id],
+            name: 'garden_structure_operations_garden_structure_fk',
+        }),
+        index('garden_structure_operations_structure_id_idx').on(
+            table.structureId,
+        ),
+        check(
+            'garden_structure_operations_operation_id_length_check',
+            sql`char_length(${table.operationId}) between 1 and 96`,
+        ),
+        check(
+            'garden_structure_operations_kind_check',
+            sql`${table.kind} in ('create', 'replace', 'resize', 'placement', 'delete')`,
+        ),
+        check(
+            'garden_structure_operations_payload_hash_check',
+            sql`${table.payloadHash} ~ '^[0-9a-f]{64}$'`,
+        ),
+        check(
+            'garden_structure_operations_response_shape_check',
+            sql`jsonb_typeof(${table.response}) = 'object'`,
+        ),
+        check(
+            'garden_structure_operations_response_size_check',
+            // Canonical application responses remain capped at 192 KiB. This
+            // looser limit only guards unexpected direct/database writes after
+            // JSONB adds formatting whitespace to the accepted JSON text.
+            sql`octet_length(${table.response}::text) <= 8388608`,
+        ),
+        check(
+            'garden_structure_operations_result_revision_check',
+            sql`${table.resultRevision} > 0`,
+        ),
+    ],
+);
+
+export const gardenStructureRelations = relations(
+    gardenStructures,
+    ({ one, many }) => ({
+        garden: one(gardens, {
+            fields: [gardenStructures.gardenId],
+            references: [gardens.id],
+            relationName: 'gardenStructures',
+        }),
+        operations: many(gardenStructureOperations, {
+            relationName: 'gardenStructureOperations',
+        }),
+    }),
+);
+
+export const gardenStructureOperationRelations = relations(
+    gardenStructureOperations,
+    ({ one }) => ({
+        garden: one(gardens, {
+            fields: [gardenStructureOperations.gardenId],
+            references: [gardens.id],
+            relationName: 'gardenStructureGardenOperations',
+        }),
+        structure: one(gardenStructures, {
+            fields: [
+                gardenStructureOperations.gardenId,
+                gardenStructureOperations.structureId,
+            ],
+            references: [gardenStructures.gardenId, gardenStructures.id],
+            relationName: 'gardenStructureOperations',
+        }),
+    }),
+);
+
+export const gardenMutationOperationRelations = relations(
+    gardenMutationOperations,
+    ({ one }) => ({
+        garden: one(gardens, {
+            fields: [gardenMutationOperations.gardenId],
+            references: [gardens.id],
+            relationName: 'gardenMutationOperations',
+        }),
+    }),
+);
+
+export type InsertGardenMutationOperation =
+    typeof gardenMutationOperations.$inferInsert;
+export type SelectGardenMutationOperation =
+    typeof gardenMutationOperations.$inferSelect;
+
+export type InsertGardenStructure = typeof gardenStructures.$inferInsert;
+export type UpdateGardenStructure = Partial<
+    Omit<
+        typeof gardenStructures.$inferInsert,
+        'id' | 'gardenId' | 'createdAt' | 'updatedAt' | 'isDeleted'
+    >
+> &
+    Pick<typeof gardenStructures.$inferSelect, 'id' | 'gardenId'>;
+export type SelectGardenStructure = typeof gardenStructures.$inferSelect;
+export type InsertGardenStructureOperation =
+    typeof gardenStructureOperations.$inferInsert;
+export type SelectGardenStructureOperation =
+    typeof gardenStructureOperations.$inferSelect;
 
 export const gardenPreviews = pgTable(
     'garden_previews',
@@ -202,6 +520,15 @@ export const gardenRelations = relations(gardens, ({ one, many }) => ({
     }),
     previews: many(gardenPreviews, {
         relationName: 'gardenPreview',
+    }),
+    structures: many(gardenStructures, {
+        relationName: 'gardenStructures',
+    }),
+    structureOperations: many(gardenStructureOperations, {
+        relationName: 'gardenStructureGardenOperations',
+    }),
+    mutationOperations: many(gardenMutationOperations, {
+        relationName: 'gardenMutationOperations',
     }),
     previewCaptureLease: one(gardenPreviewCaptureLeases, {
         fields: [gardens.id],

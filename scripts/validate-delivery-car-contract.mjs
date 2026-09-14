@@ -32,8 +32,29 @@ const navigationUri = read(
 const navigationLaunchGate = read(
     "apps/delivery-android/app/src/main/java/com/gredice/dostava/navigation/NavigationLaunchGate.java",
 );
+const navigationHandoffController = read(
+    "apps/delivery-android/app/src/main/java/com/gredice/dostava/navigation/NavigationHandoffController.java",
+);
+const pendingNavigationHandoff = read(
+    "apps/delivery-android/app/src/main/java/com/gredice/dostava/navigation/PendingNavigationHandoff.java",
+);
+const navigationHandoffStore = read(
+    "apps/delivery-android/app/src/main/java/com/gredice/dostava/navigation/SharedPreferencesNavigationHandoffStore.java",
+);
 const stopsScreen = read(
     "apps/delivery-android/app/src/main/java/com/gredice/dostava/car/DeliveryStopsScreen.java",
+);
+const nativeApiClient = read(
+    "apps/delivery-android/app/src/main/java/com/gredice/dostava/auth/DeliveryNativeApiClient.java",
+);
+const mobileRoutes = read(
+    "apps/api/app/api/[...route]/deliveryMobileRoutes.ts",
+);
+const androidAutoFlag = read(
+    "apps/api/lib/delivery/deliveryAndroidAutoFlag.ts",
+);
+const nativeRouteRepository = read(
+    "apps/delivery-android/app/src/main/java/com/gredice/dostava/data/NativeDeliveryStopRepository.java",
 );
 
 const readStringResValue = (name) => {
@@ -68,11 +89,32 @@ const permissions = [...manifest.matchAll(/<uses-permission android:name="([^"]+
     .sort();
 assert.deepEqual(permissions, [
     "android.permission.INTERNET",
+    "android.permission.POST_NOTIFICATIONS",
     "androidx.car.app.MAP_TEMPLATES",
 ]);
 assert.match(manifest, /androidx\.car\.app\.category\.POI/);
 assert.doesNotMatch(manifest, /androidx\.car\.app\.category\.NAVIGATION/);
-assert.match(manifest, /<intent-filter android:autoVerify="true">/);
+const callbackActivity = manifest.match(
+    /<activity\b(?=[^>]*android:name="\.auth\.NativeAuthCallbackActivity")[\s\S]*?<\/activity>/,
+)?.[0];
+assert.ok(callbackActivity, "Native callback activity must be declared");
+const callbackFilters = [
+    ...callbackActivity.matchAll(
+        /<intent-filter\b[^>]*>[\s\S]*?<\/intent-filter>/g,
+    ),
+];
+assert.ok(
+    callbackFilters.some(
+        ([filter]) =>
+            /<intent-filter\b[^>]*android:autoVerify="true"/.test(filter) &&
+            /<data\b(?=[^>]*android:host="@string\/hostName")(?=[^>]*android:path="\/android\/auth\/callback")(?=[^>]*android:scheme="https")[^>]*\/>/.test(
+                filter,
+            ),
+    ),
+    "Native callback must use one exact auto-verified HTTPS intent filter",
+);
+assert.match(manifest, /android:allowBackup="false"/);
+assert.match(manifest, /android:dataExtractionRules="@xml\/data_extraction_rules"/);
 assert.match(manifest, /android:value="@string\/launchUrl"/);
 assert.match(manifest, /android:host="@string\/hostName"/);
 assert.match(
@@ -109,20 +151,73 @@ assert.ok(
 
 assert.match(stopsScreen, /CarContext\.ACTION_NAVIGATE/);
 assert.match(stopsScreen, /startCarApp\(intent\)/);
-assert.match(stopsScreen, /navigationLaunchGate\.launchIfAllowed\(/);
+assert.match(stopsScreen, /navigationHandoffController\.launch\(/);
 assert.match(stopsScreen, /SystemClock\.elapsedRealtime\(\)/);
 assert.match(stopsScreen, /void onStart\(/);
 assert.match(stopsScreen, /void onResume\(/);
-assert.match(stopsScreen, /HostException \| SecurityException/);
-assert.match(stopsScreen, /catch \(RuntimeException exception\)/);
-assert.doesNotMatch(stopsScreen, /setPackage\s*\(/);
-assert.doesNotMatch(stopsScreen, /setComponent\s*\(/);
-assert.doesNotMatch(stopsScreen, /com\.google\.android\.apps\.maps/);
+assert.match(stopsScreen, /ActivityNotFoundException/);
+assert.match(stopsScreen, /Result\.NO_HANDLER/);
+assert.match(stopsScreen, /Result\.HOST_FAILURE/);
+assert.match(stopsScreen, /Result\.SECURITY_FAILURE/);
+for (const source of [stopsScreen, navigationHandoffController]) {
+    assert.doesNotMatch(source, /setPackage\s*\(/);
+    assert.doesNotMatch(source, /setComponent\s*\(/);
+    assert.doesNotMatch(source, /com\.google\.android\.apps\.maps/);
+}
 assert.match(navigationLaunchGate, /DEFAULT_SUPPRESSION_WINDOW_MILLIS = 1_500L/);
 assert.match(navigationLaunchGate, /catch \(RuntimeException \| Error failure\)/);
+assert.match(navigationHandoffController, /launchGate\.launchIfAllowed\(/);
+assert.match(navigationHandoffController, /Result\.SUPPRESSED/);
+assert.match(navigationHandoffController, /recordNavigationHandoff\(/);
 assert.match(navigationUri, /"geo:%\.6f,%\.6f"/);
+assert.doesNotMatch(
+    pendingNavigationHandoff,
+    /private final (?:String|double) (?:latitude|longitude|address|label|token|customer)/i,
+);
+assert.doesNotMatch(
+    navigationHandoffStore,
+    /"(?:latitude|longitude|address|label|token|customer)(?:_|\")/i,
+);
+assert.match(navigationHandoffStore, /\.commit\(\)/);
+assert.doesNotMatch(navigationHandoffStore, /\.apply\(\)/);
 assert.match(strings, /<string name="navigation_action">Navigacija<\/string>/);
+assert.match(nativeApiClient, /setInstanceFollowRedirects\(false\)/);
+assert.match(androidAutoFlag, /DELIVERY_ANDROID_AUTO_ENABLED/);
+assert.match(androidAutoFlag, /=== 'true'/);
+assert.match(mobileRoutes, /code: 'ANDROID_AUTO_DISABLED'/);
+assert.match(mobileRoutes, /context\.req\.path\.endsWith\('\/auth\/revoke'\)/);
+assert.match(nativeRouteRepository, /"ANDROID_AUTO_DISABLED"\.equals\(errorCode\)/);
+assert.match(nativeRouteRepository, /routeCache\.clear\(\)/);
+
+const quickReturnSpec = read(
+    "apps/delivery-android/app/src/main/java/com/gredice/dostava/navigation/QuickReturnNotificationSpec.java",
+);
+const quickReturnNotifier = read(
+    "apps/delivery-android/app/src/main/java/com/gredice/dostava/navigation/CarActiveRouteReturnNotifier.java",
+);
+const quickReturnIntent = read(
+    "apps/delivery-android/app/src/main/java/com/gredice/dostava/navigation/QuickReturnIntent.java",
+);
+assert.match(quickReturnSpec, /CHANNEL_ID = "active-delivery-route"/);
+assert.match(quickReturnSpec, /CHANNEL_NAME = "Aktivna dostava"/);
+assert.match(quickReturnSpec, /TITLE = "Gredice Dostava"/);
+assert.match(quickReturnSpec, /TEXT = "Otvori aktivnu rutu"/);
+assert.match(quickReturnNotifier, /NotificationManagerCompat\.IMPORTANCE_LOW/);
+assert.match(quickReturnNotifier, /CarAppExtender\.Builder/);
+assert.match(quickReturnNotifier, /CarNotificationManager/);
+assert.match(quickReturnNotifier, /CarPendingIntent\.getCarApp/);
+assert.match(quickReturnNotifier, /setOnlyAlertOnce\(true\)/);
+assert.match(quickReturnNotifier, /setSilent\(true\)/);
+assert.match(quickReturnNotifier, /public synchronized PostResult postOrUpdate/);
+assert.match(quickReturnNotifier, /public synchronized boolean cancel/);
+assert.match(quickReturnIntent, /DeliveryCarAppService\.class/);
+for (const source of [quickReturnSpec, quickReturnNotifier, quickReturnIntent]) {
+    assert.doesNotMatch(
+        source,
+        /customer|address|latitude|longitude|coordinate|token|routeId|navigationId/i,
+    );
+}
 
 console.log(
-    "✅ Delivery Android contract is POI-only, permission-minimal, provider-neutral, and web-associated.",
+    "✅ Delivery Android contract is POI-only, provider-neutral, web-associated, exact-callback verified, and quick-return privacy-safe.",
 );

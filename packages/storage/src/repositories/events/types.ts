@@ -291,6 +291,8 @@ export type RaisedBedFieldPlantUpdatePayload =
 
 export type RaisedBedFieldPlantReplaceSortPayload = {
     plantSortId: string;
+    previousPlantSortId?: number;
+    correctedBy?: string;
 };
 export type RaisedBedFieldAiAnalysisPayload = {
     markdown: string;
@@ -368,6 +370,12 @@ export type RaisedBedPlantingLifecycleStatusChangedPayload =
         >;
     };
 
+export type RaisedBedPlantingTransplantedPayload =
+    RaisedBedPlantingCommandPayload & {
+        changedBy: string;
+        operationId: number;
+    };
+
 export type RaisedBedPlantingTaskScheduledPayload =
     RaisedBedPlantingCommandPayload & {
         scheduledBy: string;
@@ -407,9 +415,18 @@ export type RaisedBedPlantingTaskCancelledPayload =
         status: 'cancelled';
     };
 
+export type RaisedBedPlantingSortCorrectedPayload =
+    RaisedBedPlantingCommandPayload & {
+        previousPlantSortId: number;
+        plantSortId: number;
+        correctedBy: string;
+    };
+
 export type RaisedBedPlantingEventsPayload =
+    | RaisedBedPlantingSortCorrectedPayload
     | RaisedBedPlantingLifecycleStartedPayload
     | RaisedBedPlantingLifecycleStatusChangedPayload
+    | RaisedBedPlantingTransplantedPayload
     | RaisedBedPlantingTaskScheduledPayload
     | RaisedBedPlantingTaskAssignedPayload
     | RaisedBedPlantingTaskBlockedPayload
@@ -531,7 +548,25 @@ export type PlantStatusApprovalTarget = {
     effectiveAt?: string | null;
 };
 
-export type ApprovalRequestTarget = PlantStatusApprovalTarget;
+export type SelectedPlantStatusApprovalTarget = Omit<
+    PlantStatusApprovalTarget,
+    | 'kind'
+    | 'raisedBedFieldId'
+    | 'plantCycleEventId'
+    | 'plantCycleVersionEventId'
+    | 'plantSortId'
+    | 'currentStatus'
+> & {
+    kind: 'raisedBedPlanting.plantStatus';
+    plantingId: number;
+    lifecycleVersionEventId: number;
+    plantSortId: number;
+    currentStatus: string;
+};
+
+export type ApprovalRequestTarget =
+    | PlantStatusApprovalTarget
+    | SelectedPlantStatusApprovalTarget;
 
 export type ApprovalRequestCreatePayload = {
     target: ApprovalRequestTarget;

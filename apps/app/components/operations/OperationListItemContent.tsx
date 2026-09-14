@@ -4,6 +4,7 @@ import { Chip } from '@gredice/ui/Chip';
 import { Calendar } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { OperationImage } from '@gredice/ui/OperationImage';
+import { PaperNote } from '@gredice/ui/PaperNote';
 import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
@@ -129,6 +130,16 @@ export function OperationListItemContent({
                                 </span>
                             ) : null}
                         </div>
+                        {operation.kind === 'operation' &&
+                        operation.completionNotes ? (
+                            <PaperNote
+                                noteKey={operation.id}
+                                preview
+                                className="max-w-2xl"
+                            >
+                                {operation.completionNotes}
+                            </PaperNote>
+                        ) : null}
                     </Stack>
                 </div>
                 <div className="flex min-w-0 flex-wrap items-center justify-start gap-2 md:justify-end">

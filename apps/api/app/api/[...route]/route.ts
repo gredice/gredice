@@ -21,11 +21,14 @@ import newsRoutes from './newsRoutes';
 import notificationsRoutes from './notificationsRoutes';
 import occasionsRoutes from './occasionsRoutes';
 import outletRoutes from './outletRoutes';
+import pricingRoutes from './pricingRoutes';
 import shoppingCartRoutes from './shoppingCartRoutes';
 import surveysRoutes from './surveysRoutes';
 import usersRoutes from './usersRoutes';
+import wallpaperRoutes from './wallpaperRoutes';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 function docs<E extends Env, S extends Schema, P extends string>(
     routes: Hono<E, S, P>,
@@ -100,7 +103,9 @@ const app = new Hono()
     .route('/surveys', surveysRoutes)
     .route('/newsletter', newsletterRoutes)
     .route('/news', newsRoutes)
-    .route('/outlet', outletRoutes);
+    .route('/outlet', outletRoutes)
+    .route('/pricing', pricingRoutes)
+    .route('/wallpapers', wallpaperRoutes);
 
 app.get('/docs/auth', docs(authRoutes, 'Auth API', 'auth'))
     .get(
@@ -134,7 +139,12 @@ app.get('/docs/auth', docs(authRoutes, 'Auth API', 'auth'))
         docs(newsletterRoutes, 'Newsletter API', 'newsletter'),
     )
     .get('/docs/news', docs(newsRoutes, 'News API', 'news'))
-    .get('/docs/outlet', docs(outletRoutes, 'Outlet API', 'outlet'));
+    .get('/docs/outlet', docs(outletRoutes, 'Outlet API', 'outlet'))
+    .get('/docs/pricing', docs(pricingRoutes, 'Pricing API', 'pricing'))
+    .get(
+        '/docs/wallpapers',
+        docs(wallpaperRoutes, 'Wallpapers API', 'wallpapers'),
+    );
 
 export const GET = handle(app);
 export const POST = handle(app);

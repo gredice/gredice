@@ -1,5 +1,6 @@
 'use client';
 
+import { createAllAnimalDebugStacks } from '@gredice/game';
 import { Button } from '@gredice/ui/Button';
 import { Reset } from '@gredice/ui/icons';
 
@@ -7,7 +8,7 @@ type StoredSandboxBlock = {
     id: string;
     name: string;
     rotation: number;
-    variant?: number;
+    variant?: number | null;
 };
 
 type StoredSandboxStack = {
@@ -439,52 +440,27 @@ function createButterflyStacks() {
     return serializeStacks(stacks);
 }
 
-function createAllAnimalStacks() {
-    const stacks = createGroundStacks({
-        minX: -6,
-        maxX: 6,
-        minZ: -4,
-        maxZ: 4,
-    });
-
-    placeBlock(stacks, -5, 0, 'CatPillow');
-    placeBlock(stacks, -5, 2, 'DogHouse');
-    placeBlock(stacks, -5, -2, 'ChickenCoop');
-    placeBlock(stacks, -6, 1, 'PigletPen');
-    placeBlock(stacks, -4, -1, 'CowShelter', 0, 0);
-    placeBlock(stacks, 3, 1, 'CowShelter', 2, 1);
-    placeBlock(stacks, -4, 2, 'SheepFold');
-    placeBlock(stacks, 1, -3, 'SheepFold');
-    placeBlock(stacks, -1, 3, 'GoatShelter', 1);
-    placeBlock(stacks, -2, -3, 'RabbitHutch', 0, 0);
-    placeBlock(stacks, 2, -1, 'HorseStable', 0, 0);
-    placeBlock(stacks, 5, 0, 'Tree');
-    placeBlock(stacks, 5, 1, 'Pine');
-    placeBlock(stacks, 3, -2, 'Stool');
-    placeBlock(stacks, 5, 2, 'Bucket');
-    placeBlock(stacks, -6, 3, 'StoneMedium');
-    for (let z = -4; z <= 1; z += 1) {
-        placeBlock(stacks, 0, z, z % 2 === 0 ? 'GardenBox' : 'Composter');
-    }
-
-    placeBlock(stacks, -5, -3, 'BirdHouse');
-    placeBlock(stacks, 2, 2, 'Bush');
-    placeBlock(stacks, 3, 3, 'WaterWell');
-    placeBlock(stacks, -2, -2, 'Tulip');
-    placeBlock(stacks, 0, -3, 'Tulip');
-    placeBlock(stacks, 5, -3, 'Tulip');
-    placeBlock(stacks, -6, 2, 'CactusPricklyPear');
-    placeBlock(stacks, 5, -1, 'CactusBarrel');
-    replaceGround(stacks, 4, -1, 'Block_Dry_Ground');
-
-    return serializeStacks(stacks);
-}
-
 function persistAnimalDebugStacks(
     storageKey: string,
     stacks: StoredSandboxStack[],
 ) {
-    window.localStorage.setItem(storageKey, JSON.stringify({ stacks }));
+    window.localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+            stacks: stacks.map((stack) => ({
+                blocks: stack.blocks.map((block) => ({
+                    id: block.id,
+                    name: block.name,
+                    rotation: block.rotation,
+                    variant: block.variant,
+                })),
+                position: {
+                    x: stack.position.x,
+                    z: stack.position.z,
+                },
+            })),
+        }),
+    );
     window.location.reload();
 }
 
@@ -513,7 +489,7 @@ export function AnimalDebugActions({ storageKey }: { storageKey: string }) {
                 onClick={() =>
                     persistAnimalDebugStacks(
                         storageKey,
-                        createAllAnimalStacks(),
+                        createAllAnimalDebugStacks(),
                     )
                 }
                 size="sm"

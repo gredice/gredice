@@ -10,11 +10,13 @@ import {
     useQueryClient,
 } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
+import { createAllAnimalDebugStacks } from '../entities/animals/allAnimalDebugStacks';
 import type { GardenPreviewImage } from '../gardenPreview';
 import {
     loadLocalSandboxGarden,
     localSandboxGardenId,
 } from '../localSandboxGarden';
+import { faunaHeavyMockGardenProfile } from '../mockGardenProfilePolicy';
 import {
     highTargetOperationVisualOperationIds,
     isOperationVisualRewardDebugProfile,
@@ -72,10 +74,11 @@ export const currentGardenKeys = (
 type useCurrentGardenResponse = Omit<
     GardenResponse,
     | 'backgroundPalette'
-    | 'stacks'
     | 'farmId'
+    | 'gardenBuildingSystem'
     | 'latitude'
     | 'longitude'
+    | 'stacks'
     | 'createdAt'
     | 'updatedAt'
     | 'previewImage'
@@ -84,6 +87,7 @@ type useCurrentGardenResponse = Omit<
 > & {
     backgroundPalette: GameBackgroundPaletteKey;
     farmId?: number | null;
+    gardenBuildingSystem?: GardenResponse['gardenBuildingSystem'];
     previewImage?: GardenPreviewImage | null;
     previewImages?: GardenResponse['previewImages'];
     previewSourceRevision?: string | null;
@@ -772,6 +776,7 @@ function denseMockGarden(
         backgroundPalette: defaultGameBackgroundPaletteKey,
         homeCamera: null,
         stacks,
+        structures: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds,
     };
@@ -912,8 +917,24 @@ function highTargetMockGarden(
         backgroundPalette: defaultGameBackgroundPaletteKey,
         homeCamera: null,
         stacks,
+        structures: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds,
+    };
+}
+
+function faunaHeavyMockGarden(): useCurrentGardenResponse {
+    return {
+        id: 99995,
+        name: 'Profile fauna-heavy garden',
+        isSandbox: false,
+        isPublic: false,
+        backgroundPalette: defaultGameBackgroundPaletteKey,
+        homeCamera: null,
+        stacks: createAllAnimalDebugStacks(),
+        structures: [],
+        location: { lat: 45.739, lon: 16.572 },
+        raisedBeds: [],
     };
 }
 
@@ -962,18 +983,23 @@ function operationRewardDebugMockGarden(
         backgroundPalette: defaultGameBackgroundPaletteKey,
         homeCamera: null,
         stacks,
+        structures: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds,
     };
 }
 
-function mockGarden(
+export function createMockGarden(
     winterMode: WinterMode,
     profile: MockGardenProfile,
     highTargetOperationVisuals = false,
 ): useCurrentGardenResponse {
     if (isOperationVisualRewardDebugProfile(profile)) {
         return operationRewardDebugMockGarden(winterMode);
+    }
+
+    if (profile === faunaHeavyMockGardenProfile) {
+        return faunaHeavyMockGarden();
     }
 
     if (profile === 'dense' || profile === 'plant-heavy') {
@@ -999,21 +1025,6 @@ function mockGarden(
             blockId: '3',
             physicalId: '42',
             fields: mockRaisedBedFields(1, 0, now),
-            appliedOperations: [],
-            weedState: null,
-            status: 'new',
-            abandonReason: null,
-            updatedAt: now,
-            createdAt: now,
-            isValid: true,
-            orientation: 'vertical',
-        },
-        {
-            id: 2,
-            name: 'Raised Bed 2',
-            physicalId: '42',
-            blockId: '8',
-            fields: mockRaisedBedFields(2, 100, now),
             appliedOperations: [],
             weedState: null,
             status: 'new',
@@ -1140,11 +1151,6 @@ function mockGarden(
                         name: 'Block_Grass',
                         rotation: 0,
                     },
-                    {
-                        id: '8',
-                        name: 'Raised_Bed',
-                        rotation: 1,
-                    },
                 ],
             },
             {
@@ -1232,6 +1238,7 @@ function mockGarden(
                 ],
             },
         ],
+        structures: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds,
     };
@@ -1305,7 +1312,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
 
             if (isMock) {
                 console.debug('Using mock garden data');
-                return mockGarden(
+                return createMockGarden(
                     winterMode,
                     mockGardenProfile,
                     highTargetOperationVisuals,
@@ -1385,7 +1392,15 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                 ),
                 homeCamera: garden.homeCamera ?? null,
                 farmId: garden.farmId,
+                // Older API deployments do not publish rollout authority.
+                // Keep those rolling combinations closed on the client.
+                gardenBuildingSystem: garden.gardenBuildingSystem ?? {
+                    enabled: false,
+                },
                 stacks,
+                // Tolerate a rolling deployment where an older API response
+                // predates the additive structures collection.
+                structures: garden.structures ?? [],
                 location: {
                     lat: garden.latitude,
                     lon: garden.longitude,

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MathUtils, OrthographicCamera, Vector2, Vector3 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useSceneCurrentGarden } from '../hooks/useSceneCurrentGarden';
+import { updateGameProfileMetadata } from '../scene/gameProfileMetadata';
 import { sceneFrameRates, useSceneTimeInvalidation } from '../scene/SceneTime';
 import { useGameState } from '../useGameState';
 import {
@@ -19,7 +20,11 @@ import {
     getDragEdgeAutopanDelta,
     hasDragEdgeAutopanDelta,
 } from './dragEdgeAutopan';
-import type { GameCameraRigApi, GameCameraSnapshot } from './GameCameraRigApi';
+import type {
+    GameCameraFocusOptions,
+    GameCameraRigApi,
+    GameCameraSnapshot,
+} from './GameCameraRigApi';
 import { resolveGameCameraInitialView } from './gameCameraInitialView';
 
 const closeupZoom = 300;
@@ -103,6 +108,37 @@ function prefersReducedMotion() {
     );
 }
 
+export function shouldGameCameraOwnPointerGesture(
+    pointerCount: number,
+    singlePointerPanEnabled: boolean,
+) {
+    return pointerCount >= 2 || (pointerCount === 1 && singlePointerPanEnabled);
+}
+
+export function shouldReleaseGameCameraPointerCapture(
+    pointerCount: number,
+    singlePointerPanEnabled: boolean,
+) {
+    return !shouldGameCameraOwnPointerGesture(
+        pointerCount,
+        singlePointerPanEnabled,
+    );
+}
+
+export function getGameCameraKeyboardPan(
+    code: string,
+    keyboardPanEnabled: boolean,
+) {
+    return keyboardPanEnabled ? (panKeys[code] ?? null) : null;
+}
+
+export function shouldUseImmediateGameCameraTransition(
+    duration: number,
+    reducedMotion: boolean,
+) {
+    return duration <= 0 || reducedMotion;
+}
+
 function isEditableTarget(target: EventTarget | null) {
     if (!(target instanceof HTMLElement)) return false;
     if (target.isContentEditable) return true;
@@ -165,6 +201,60 @@ export function getPreservedAngleCameraPosition({
         .add(new Vector3().subVectors(cameraPosition, cameraTarget));
 }
 
+export function getScreenPositionAdjustedCameraTarget({
+    camera,
+    focusTarget,
+    screenPosition,
+    viewportHeight,
+    viewportWidth,
+    zoom,
+}: {
+    camera: OrthographicCamera;
+    focusTarget: Vector3;
+    screenPosition: Readonly<{ x: number; y: number }>;
+    viewportHeight: number;
+    viewportWidth: number;
+    zoom: number;
+}) {
+    if (
+        viewportWidth <= 0 ||
+        viewportHeight <= 0 ||
+        zoom <= 0 ||
+        !Number.isFinite(viewportWidth) ||
+        !Number.isFinite(viewportHeight) ||
+        !Number.isFinite(zoom)
+    ) {
+        return focusTarget.clone();
+    }
+
+    const normalizedX = MathUtils.clamp(screenPosition.x, 0, 1);
+    const normalizedY = MathUtils.clamp(screenPosition.y, 0, 1);
+    const horizontalWorldUnitsPerPixel =
+        (camera.right - camera.left) / zoom / viewportWidth;
+    const verticalWorldUnitsPerPixel =
+        (camera.top - camera.bottom) / zoom / viewportHeight;
+    const horizontalPixelOffset = (normalizedX - 0.5) * viewportWidth;
+    const verticalPixelOffset = (normalizedY - 0.5) * viewportHeight;
+    camera.updateMatrixWorld();
+    const cameraRight = new Vector3(1, 0, 0)
+        .applyQuaternion(camera.quaternion)
+        .normalize();
+    const cameraUp = new Vector3(0, 1, 0)
+        .applyQuaternion(camera.quaternion)
+        .normalize();
+
+    return focusTarget
+        .clone()
+        .addScaledVector(
+            cameraRight,
+            -horizontalPixelOffset * horizontalWorldUnitsPerPixel,
+        )
+        .addScaledVector(
+            cameraUp,
+            verticalPixelOffset * verticalWorldUnitsPerPixel,
+        );
+}
+
 export function resolvePreservedAngleCloseupZoom(
     currentZoom: number,
     requestedZoom: number,
@@ -202,21 +292,29 @@ function toSnapshot({
 export function GameCameraRig({
     closeupFocus,
     controlsEnabled,
+    gestureResetKey,
     initialPosition,
     initialSnapshot,
     initialTarget,
     initialViewKey,
     initialZoom,
+    keyboardPanEnabled = true,
     minZoom = defaultMinZoom,
+    singlePointerPanEnabled = true,
 }: {
     closeupFocus?: GameCameraCloseupFocus;
     controlsEnabled: boolean;
+    gestureResetKey?: string | number | boolean | null;
     initialPosition?: Vector3;
     initialSnapshot?: Pick<GameCameraSnapshot, 'position' | 'target' | 'zoom'>;
     initialTarget?: Vector3;
     initialViewKey?: string | number | null;
     initialZoom?: number;
+    /** Lets an active authoring mode reserve Arrow keys for placement. */
+    keyboardPanEnabled?: boolean;
     minZoom?: number;
+    /** Keeps pinch/pan available while another build tool owns one pointer. */
+    singlePointerPanEnabled?: boolean;
 }) {
     const { camera, gl, invalidate, size } = useThree();
     const isOrthographicCamera = camera instanceof OrthographicCamera;
@@ -510,7 +608,12 @@ export function GameCameraRig({
                 return;
             }
 
-            if (duration <= 0 || prefersReducedMotion()) {
+            if (
+                shouldUseImmediateGameCameraTransition(
+                    duration,
+                    prefersReducedMotion(),
+                )
+            ) {
                 animationRef.current = null;
                 setIsAnimating(false);
                 camera.position.copy(endPosition);
@@ -542,7 +645,7 @@ export function GameCameraRig({
     );
 
     const focusOnPosition = useCallback(
-        (position: Vector3, options?: { immediate?: boolean }) => {
+        (position: Vector3, options?: GameCameraFocusOptions) => {
             if (!isOrthographicCamera) {
                 return;
             }
@@ -551,8 +654,19 @@ export function GameCameraRig({
                 camera.position,
                 targetRef.current,
             );
-            const endTarget = position.clone();
-            const endPosition = position.clone().add(cameraOffset);
+            const endZoom = options?.zoom ?? camera.zoom;
+            const canvasBounds = gl.domElement.getBoundingClientRect();
+            const endTarget = options?.screenPosition
+                ? getScreenPositionAdjustedCameraTarget({
+                      camera,
+                      focusTarget: position,
+                      screenPosition: options.screenPosition,
+                      viewportHeight: canvasBounds.height,
+                      viewportWidth: canvasBounds.width,
+                      zoom: endZoom,
+                  })
+                : position.clone();
+            const endPosition = endTarget.clone().add(cameraOffset);
 
             startAnimation({
                 duration: options?.immediate
@@ -560,10 +674,29 @@ export function GameCameraRig({
                     : focusAnimationDurationSeconds,
                 endPosition,
                 endTarget,
-                endZoom: camera.zoom,
+                endZoom,
+                onComplete: options?.onComplete,
             });
         },
-        [camera, isOrthographicCamera, startAnimation],
+        [camera, gl.domElement, isOrthographicCamera, startAnimation],
+    );
+
+    const restoreSnapshot = useCallback(
+        (
+            snapshot: Pick<GameCameraSnapshot, 'position' | 'target' | 'zoom'>,
+            options?: GameCameraFocusOptions,
+        ) => {
+            startAnimation({
+                duration: options?.immediate
+                    ? 0
+                    : focusAnimationDurationSeconds,
+                endPosition: new Vector3(...snapshot.position),
+                endTarget: new Vector3(...snapshot.target),
+                endZoom: snapshot.zoom,
+                onComplete: options?.onComplete,
+            });
+        },
+        [startAnimation],
     );
 
     if (!apiRef.current) {
@@ -609,6 +742,7 @@ export function GameCameraRig({
                     y: rect.top + ((-projected.y + 1) / 2) * rect.height,
                 };
             },
+            restore: (snapshot, options) => restoreSnapshot(snapshot, options),
             subscribe: (listener) => {
                 cameraListenersRef.current.add(listener);
                 listener(
@@ -633,6 +767,10 @@ export function GameCameraRig({
             },
         };
     }
+    apiRef.current.focus = (position, options) =>
+        focusOnPosition(position, options);
+    apiRef.current.restore = (snapshot, options) =>
+        restoreSnapshot(snapshot, options);
 
     useEffect(() => {
         if (!isOrthographicCamera) {
@@ -689,6 +827,9 @@ export function GameCameraRig({
         setView,
     ]);
 
+    // gestureResetKey intentionally participates only in lifecycle identity:
+    // entering or leaving an exclusive mode must run this effect's cleanup.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: lifecycle reset key intentionally has no effect-body read.
     useEffect(() => {
         const element = gl.domElement;
         const previousTouchAction = element.style.touchAction;
@@ -704,10 +845,22 @@ export function GameCameraRig({
             setIsDragging(dragging);
         };
 
+        const publishActivePointerCount = () =>
+            updateGameProfileMetadata({
+                gardenStructureCameraActivePointerCount:
+                    activePointersRef.current.size,
+            });
+
         const clearPointers = () => {
+            for (const pointerId of activePointersRef.current.keys()) {
+                if (element.hasPointerCapture(pointerId)) {
+                    element.releasePointerCapture(pointerId);
+                }
+            }
             activePointersRef.current.clear();
             pointerStateRef.current = null;
             setCameraDragging(false);
+            publishActivePointerCount();
         };
 
         const updatePointerState = () => {
@@ -748,8 +901,20 @@ export function GameCameraRig({
                 event.pointerId,
                 new Vector2(event.clientX, event.clientY),
             );
+            publishActivePointerCount();
             updatePointerState();
-            element.setPointerCapture(event.pointerId);
+            if (
+                shouldGameCameraOwnPointerGesture(
+                    activePointersRef.current.size,
+                    singlePointerPanEnabled,
+                )
+            ) {
+                for (const pointerId of activePointersRef.current.keys()) {
+                    if (!element.hasPointerCapture(pointerId)) {
+                        element.setPointerCapture(pointerId);
+                    }
+                }
+            }
             if (activePointersRef.current.size >= 2) {
                 setCameraDragging(true);
             }
@@ -809,7 +974,14 @@ export function GameCameraRig({
                 return;
             }
 
-            if (pointers.length === 1 && pointerState.pointerCount === 1) {
+            if (
+                shouldGameCameraOwnPointerGesture(
+                    pointers.length,
+                    singlePointerPanEnabled,
+                ) &&
+                pointers.length === 1 &&
+                pointerState.pointerCount === 1
+            ) {
                 const nextMidpoint = new Vector2(event.clientX, event.clientY);
                 panByScreenPixels(
                     nextMidpoint.x - pointerState.midpoint.x,
@@ -835,9 +1007,30 @@ export function GameCameraRig({
         };
 
         const handlePointerUp = (event: PointerEvent) => {
+            const cameraOwnedGesture = shouldGameCameraOwnPointerGesture(
+                activePointersRef.current.size,
+                singlePointerPanEnabled,
+            );
             activePointersRef.current.delete(event.pointerId);
-            if (element.hasPointerCapture(event.pointerId)) {
+            publishActivePointerCount();
+            const releaseRemainingPointerCapture =
+                shouldReleaseGameCameraPointerCapture(
+                    activePointersRef.current.size,
+                    singlePointerPanEnabled,
+                );
+            if (
+                cameraOwnedGesture &&
+                element.hasPointerCapture(event.pointerId)
+            ) {
                 element.releasePointerCapture(event.pointerId);
+            }
+            if (releaseRemainingPointerCapture) {
+                for (const pointerId of activePointersRef.current.keys()) {
+                    if (element.hasPointerCapture(pointerId)) {
+                        element.releasePointerCapture(pointerId);
+                    }
+                }
+                setCameraDragging(false);
             }
             updatePointerState();
             if (activePointersRef.current.size === 0) {
@@ -895,11 +1088,13 @@ export function GameCameraRig({
         controlsDisabled,
         cursorAnchoredZoomScratch,
         gl.domElement,
+        gestureResetKey,
         panByScreenPixels,
         resolvedMinZoom,
         saveNormalCamera,
         setCameraZoom,
         setIsDragging,
+        singlePointerPanEnabled,
     ]);
 
     useEffect(() => {
@@ -921,7 +1116,10 @@ export function GameCameraRig({
                 return;
             }
 
-            const panValue = panKeys[event.code];
+            const panValue = getGameCameraKeyboardPan(
+                event.code,
+                keyboardPanEnabled,
+            );
             if (panValue) {
                 activePanDirectionRef.current = panValue;
                 setIsKeyboardPanning(true);
@@ -960,7 +1158,7 @@ export function GameCameraRig({
             window.removeEventListener('blur', clearKeyboardPan);
             clearKeyboardPan();
         };
-    }, [controlsDisabled, worldRotate]);
+    }, [controlsDisabled, keyboardPanEnabled, worldRotate]);
 
     useEffect(() => {
         if (!initializedRef.current || !isOrthographicCamera) {

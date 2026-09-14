@@ -1,5 +1,4 @@
 import { decodeRouteParam } from '@gredice/js/uri';
-import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { ExternalLink, Globe, MapPinHouse } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
@@ -9,6 +8,7 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { AttributeCard } from '../../../../components/attributes/DetailCard';
 import { PageFilterInput } from '../../../../components/shared/PageFilterInput';
+import { PublicBreadcrumbs } from '../../../../components/shared/seo/PublicBreadcrumbs';
 import { StructuredDataScript } from '../../../../components/shared/seo/StructuredDataScript';
 import { getSeedBrandsData } from '../../../../lib/seeds/getSeedBrandsData';
 import { getSeedsData } from '../../../../lib/seeds/getSeedsData';
@@ -162,34 +162,11 @@ export default async function SeedBrandPage(
                                 },
                             })),
                         },
-                        {
-                            '@type': 'BreadcrumbList',
-                            itemListElement: [
-                                {
-                                    '@type': 'ListItem',
-                                    position: 1,
-                                    name: 'Sjeme',
-                                    item: `https://www.gredice.com${KnownPages.Seeds}`,
-                                },
-                                {
-                                    '@type': 'ListItem',
-                                    position: 2,
-                                    name: 'Brendovi sjemena',
-                                    item: `https://www.gredice.com${KnownPages.SeedBrands}`,
-                                },
-                                {
-                                    '@type': 'ListItem',
-                                    position: 3,
-                                    name: brand.information.name,
-                                    item: canonicalUrl,
-                                },
-                            ],
-                        },
                     ],
                 }}
             />
             <Stack spacing={8}>
-                <Breadcrumbs
+                <PublicBreadcrumbs
                     items={[
                         { label: 'Sjeme', href: KnownPages.Seeds },
                         {

@@ -1,0 +1,21 @@
+{
+    "mode": "Built-in image_gen",
+    "useCase": "stylized-concept",
+    "file": "tutorial-task-list.png",
+    "prompt": "Create a new rendition of the FIRST image as a chunky 3D low-poly farming-game HUD icon. The first image supplies the tutorial clipboard-and-pencil concept. The SECOND and THIRD images are the exact rendering STYLE REFERENCES: match the backpack and shopping basket's thick beveled polygonal geometry, forest greens, warm golden-orange wood, dark contact shadows, matte material shading and soft upper-left highlights. Subject: one thick golden-orange wooden clipboard with a dark forest-green chunky top clip holding one cream sheet. Three large bold raised green checkmarks down the sheet, with short simple dark-green bars beside them rather than writing. One short orange-gold faceted pencil with dark graphite tip and a small red-orange eraser rests diagonally along the lower edge without hiding the checks. Slightly elevated three-quarter front view that clearly shows the board's right-edge thickness and the clip's physical depth. Compact centered silhouette readable at 36px, like an actual Blender toy-prop render. Rich coherent shadows, not flat vector art or a pale technical model screenshot. Keep this clearly a handheld clipboard, not a framed noticeboard with pushpins. Complete icon on a genuinely transparent background with a small transparent margin. No ground plane, backdrop graphics, shadows beyond the object, letters, numbers, words or extra props.",
+    "inputs": [
+        {
+            "role": "Clipboard concept",
+            "file": "Previous tutorial-task-list.png"
+        },
+        {
+            "role": "Style reference",
+            "file": "inventory-backpack.webp"
+        },
+        {
+            "role": "Style reference",
+            "file": "shopping-basket.webp"
+        }
+    ],
+    "processing": "Trim empty alpha margins, fit within 320x320 with transparent padding, add an 8px transparent border, save as a 336x336 lossless RGBA PNG."
+}

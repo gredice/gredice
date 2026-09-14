@@ -2,6 +2,7 @@ export {
     GameAnalyticsProvider,
     useGameAnalytics,
 } from './analytics/GameAnalyticsContext';
+export { createAllAnimalDebugStacks } from './entities/animals/allAnimalDebugStacks';
 export type {
     GardenAvatarPresenceState,
     GardenVisitorPresence,
@@ -22,6 +23,7 @@ export {
     PLANT_STAGES,
 } from './hud/raisedBed/featuredOperations';
 export { defaultLocalSandboxStorageKey } from './localSandboxGarden';
+export { faunaHeavyMockGardenProfile } from './mockGardenProfilePolicy';
 export type {
     OperationVisualRewardDebugBedState,
     OperationVisualRewardDebugScenario,
@@ -81,6 +83,19 @@ export type {
 } from './sprites/types';
 export { useSpriteAtlasManifest } from './sprites/useSpriteAtlasManifest';
 export { useSpriteAtlasTexture } from './sprites/useSpriteAtlasTexture';
+export type { GardenStructureAuthoringInspectorsProps } from './structures/editor/GardenStructureAuthoringInspectors';
+export { GardenStructureAuthoringInspectors } from './structures/editor/GardenStructureAuthoringInspectors';
+export { GardenStructureFootprintConfirmationDialog } from './structures/editor/GardenStructureFootprintConfirmationDialog';
+export type { GardenStructureFootprintInspectorProps } from './structures/editor/GardenStructureFootprintInspector';
+export { GardenStructureFootprintInspector } from './structures/editor/GardenStructureFootprintInspector';
+export type {
+    GardenStructurePartInspectorEdgeSelection,
+    GardenStructurePartInspectorPropSelection,
+    GardenStructurePartInspectorProps,
+    GardenStructurePartInspectorRoofSelection,
+    GardenStructurePartInspectorSection,
+} from './structures/editor/GardenStructurePartInspector';
+export { GardenStructurePartInspector } from './structures/editor/GardenStructurePartInspector';
 export type { TemporaryAccountLoginOpenChangedDetail } from './temporaryAccountAuth';
 export {
     isTemporaryAccountLoginOpen,

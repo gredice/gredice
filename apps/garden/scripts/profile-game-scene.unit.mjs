@@ -1,33 +1,269 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    applyGardenBuildingMatchedBaselineComparison,
+    beginGardenSwitchProfileSample,
+    beginInteractiveProfileSample,
     buildAdaptiveHighComparisons,
+    buildCrossTierMedians,
+    buildGardenBuildingMatchedBaselineComparison,
+    buildGardenSwitchSummary,
     buildHighTargetMedians,
+    buildLifecycleSummary,
     buildMarkdown,
     buildPlantCloseupAcceptance,
     buildPlantCloseupMedians,
     buildProfileSummary,
+    buildReportProvenance,
     buildScenarioRunQueue,
     buildStaticSceneCacheComparisons,
     buildStaticSceneCacheVisualComparisons,
     buildWeatherSurfaceComparisons,
     drainProfileSample,
     evaluateBudget,
+    evaluateCrossTierAcceptance,
+    evaluateFaunaHeavyAcceptance,
+    evaluateGardenBuildingAcceptance,
+    evaluateGardenSwitchAcceptance,
     evaluateHighTargetAcceptance,
+    evaluateLifecycleAcceptance,
     finalizeProfileSampleAtEndpoint,
     finishInteractiveProfileSample,
     getScenarioRequest,
     installBrowserMetrics,
+    installGardenSwitchContextTracker,
+    installLifecycleMilestoneTracker,
+    installProfileContextTracker,
+    isExpectedGardenBuildingProfileApiError,
+    isExpectedGardenBuildingProfileConsoleError,
     isIgnoredLocalProfilerConsoleError,
     isOutlineProfileTelemetryReady,
+    isProfileScreenshotWitnessValid,
     measureStaticSceneCacheImageParity,
+    mergeGardenStructureAssetNetworkRuntime,
     mergeProfileSampleDrain,
     normalizeRenderWork,
     parseArgs,
+    parseComparisonContractVersion,
+    primeGardenSwitchProfileSample,
     resolveChromiumGraphicsArgs,
     resolveChromiumGraphicsBackend,
     resolveScenarios,
+    shouldFailProfileRun,
+    summarizeGardenStructureAssetNetwork,
 } from './profile-game-scene.mjs';
+
+const provenanceCommitA = 'a'.repeat(40);
+const provenanceCommitB = 'b'.repeat(40);
+const cleanServedBuildMarker = {
+    commit: provenanceCommitA,
+    comparisonContractVersion: 1,
+    dirty: false,
+};
+
+function profileProvenance(overrides = {}) {
+    return buildReportProvenance({
+        harness: {
+            commit: provenanceCommitA,
+            dirty: false,
+        },
+        runtime: {
+            arch: 'arm64',
+            browserVersion: '140.0.0.0',
+            nodeVersion: 'v24.15.0',
+            platform: 'darwin',
+        },
+        scenarios: [
+            {
+                requested: { gardenProfile: 'high-target' },
+                servedBuildProvenance: cleanServedBuildMarker,
+            },
+            {
+                requested: { gardenSwitchProfile: true },
+                servedBuildProvenance: cleanServedBuildMarker,
+            },
+            {
+                requested: { lifecycleProfile: true },
+                servedBuildProvenance: cleanServedBuildMarker,
+            },
+        ],
+        server: {
+            buildPerformed: true,
+            mode: 'managed',
+        },
+        ...overrides,
+    });
+}
+
+test('report provenance validates regular, switch, and lifecycle served-build markers', () => {
+    assert.deepEqual(profileProvenance(), {
+        comparable: true,
+        reasons: [],
+        subject: {
+            commit: provenanceCommitA,
+            dirty: false,
+            source: 'served-build-marker',
+        },
+        harness: {
+            commit: provenanceCommitA,
+            dirty: false,
+        },
+        runtime: {
+            arch: 'arm64',
+            browserVersion: '140.0.0.0',
+            nodeVersion: 'v24.15.0',
+            platform: 'darwin',
+        },
+        server: {
+            buildPerformed: true,
+            mode: 'managed',
+        },
+    });
+});
+
+test('comparison contract markers require one complete canonical integer', () => {
+    assert.equal(parseComparisonContractVersion('1'), 1);
+    assert.equal(parseComparisonContractVersion('12'), 12);
+    for (const malformed of [
+        null,
+        '',
+        '0',
+        '01',
+        '1.0',
+        '1-invalid',
+        ' 1 ',
+        String(Number.MAX_SAFE_INTEGER + 1),
+    ]) {
+        assert.equal(parseComparisonContractVersion(malformed), null);
+    }
+});
+
+test('report provenance fails closed for unknown or dirty sources', () => {
+    const unknown = profileProvenance({
+        harness: { commit: 'unknown', dirty: null },
+        scenarios: [
+            {
+                servedBuildProvenance: {
+                    commit: 'unknown',
+                    comparisonContractVersion: null,
+                    dirty: null,
+                },
+            },
+        ],
+    });
+    assert.equal(unknown.comparable, false);
+    assert.deepEqual(unknown.subject, {
+        commit: null,
+        dirty: null,
+        source: 'served-build-marker',
+    });
+    assert.ok(unknown.reasons.includes('served-build-source-commit-unknown'));
+    assert.ok(unknown.reasons.includes('served-build-dirty-state-unknown'));
+    assert.ok(
+        unknown.reasons.includes('served-build-comparison-contract-unknown'),
+    );
+    assert.ok(unknown.reasons.includes('harness-source-commit-unknown'));
+    assert.ok(unknown.reasons.includes('harness-dirty-state-unknown'));
+
+    const dirty = profileProvenance({
+        harness: { commit: provenanceCommitA, dirty: true },
+        scenarios: [
+            {
+                servedBuildProvenance: {
+                    ...cleanServedBuildMarker,
+                    dirty: true,
+                },
+            },
+        ],
+    });
+    assert.equal(dirty.comparable, false);
+    assert.ok(dirty.reasons.includes('served-build-dirty'));
+    assert.ok(dirty.reasons.includes('harness-dirty'));
+});
+
+test('report provenance rejects served-build, harness, and contract mismatches', () => {
+    const provenance = profileProvenance({
+        scenarios: [
+            { servedBuildProvenance: cleanServedBuildMarker },
+            {
+                servedBuildProvenance: {
+                    ...cleanServedBuildMarker,
+                    commit: provenanceCommitB,
+                },
+            },
+            {
+                servedBuildProvenance: {
+                    ...cleanServedBuildMarker,
+                    comparisonContractVersion: 2,
+                },
+            },
+        ],
+    });
+
+    assert.equal(provenance.comparable, false);
+    assert.equal(provenance.subject.commit, null);
+    assert.ok(
+        provenance.reasons.includes('served-build-source-commit-inconsistent'),
+    );
+    assert.ok(
+        provenance.reasons.includes(
+            'served-build-comparison-contract-mismatch',
+        ),
+    );
+
+    const harnessMismatch = profileProvenance({
+        harness: { commit: provenanceCommitB, dirty: false },
+    });
+    assert.equal(harnessMismatch.comparable, false);
+    assert.ok(harnessMismatch.reasons.includes('source-commit-mismatch'));
+});
+
+test('budget-enforced profiling fails closed for incomparable provenance', () => {
+    const passingSummary = { failedScenarios: 0 };
+
+    assert.equal(
+        shouldFailProfileRun({
+            failOnBudget: true,
+            profileSummary: passingSummary,
+            provenance: profileProvenance(),
+        }),
+        false,
+    );
+    assert.equal(
+        shouldFailProfileRun({
+            failOnBudget: true,
+            profileSummary: passingSummary,
+            provenance: profileProvenance({
+                harness: { commit: provenanceCommitA, dirty: true },
+            }),
+        }),
+        true,
+    );
+    assert.equal(
+        shouldFailProfileRun({
+            failOnBudget: true,
+            profileSummary: { failedScenarios: 1 },
+            provenance: profileProvenance(),
+        }),
+        true,
+    );
+    assert.equal(
+        shouldFailProfileRun({
+            failOnBudget: false,
+            profileSummary: passingSummary,
+            provenance: { comparable: false },
+        }),
+        false,
+    );
+    assert.equal(
+        shouldFailProfileRun({
+            failOnBudget: true,
+            profileSummary: {},
+            provenance: profileProvenance(),
+        }),
+        true,
+    );
+});
 
 test('closeup acceptance rejects synchronous worker fallback', () => {
     const phase = (syncFallbackTaskCount) => ({
@@ -127,6 +363,1009 @@ test('plant closeup scenario set resolves deterministic desktop and mobile runs'
     }
 });
 
+test('building scenario set covers gated normal, editing, worst-case, weather, and lifecycle workloads', () => {
+    const scenarios = resolveScenarios('buildings');
+    assert.equal(scenarios.length, 14);
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.name),
+        [
+            'game-building-no-structure-network-baseline-mobile',
+            'game-building-no-structure-network-baseline-desktop',
+            'game-building-empty-shell-desktop',
+            'game-building-empty-shell-constrained-mobile',
+            'game-building-furnished-house-normal-constrained-mobile',
+            'game-building-dense-garden-house-mixed-production-mobile',
+            'game-building-shell-edit-constrained-mobile',
+            'game-building-interior-edit-cutaway-constrained-mobile',
+            'game-building-greenhouse-rain-constrained-mobile',
+            'game-building-worst-case-furnished-constrained-mobile',
+            'game-building-house-two-view-navigation-constrained-mobile',
+            'game-building-worst-case-furnished-cutaway-constrained-mobile',
+            'game-building-worst-case-edit-churn-constrained-mobile',
+            'game-building-enter-exit-lifecycle-constrained-mobile',
+        ],
+    );
+    const matchedDesktop = scenarios.filter((scenario) =>
+        [
+            'game-building-no-structure-network-baseline-desktop',
+            'game-building-empty-shell-desktop',
+        ].includes(scenario.name),
+    );
+    assert.deepEqual(
+        matchedDesktop.map((scenario) => ({
+            budget: scenario.budget,
+            dpr: scenario.dpr,
+            frameRateClass: scenario.buildingProfile.frameRateClass,
+            isMobile: scenario.isMobile,
+            viewport: scenario.viewport,
+        })),
+        [
+            {
+                budget: 'gardenBuildingHeadlessAmbientDesktop',
+                dpr: 1,
+                frameRateClass: 'ambient',
+                isMobile: false,
+                viewport: { height: 720, width: 1280 },
+            },
+            {
+                budget: 'gardenBuildingHeadlessAmbientDesktop',
+                dpr: 1,
+                frameRateClass: 'ambient',
+                isMobile: false,
+                viewport: { height: 720, width: 1280 },
+            },
+        ],
+    );
+    assert.equal(
+        matchedDesktop[0].path,
+        matchedDesktop[1].path.replace('&building=1&buildingFixture=blank', ''),
+    );
+    assert.ok(
+        [scenarios[0], ...matchedDesktop].every(
+            (scenario) =>
+                new URL(scenario.path, 'http://profile.local').searchParams.get(
+                    'cameraProfile',
+                ) === '1',
+        ),
+    );
+    assert.ok(
+        scenarios
+            .filter((scenario) => scenario.buildingProfile.fixture !== 'none')
+            .every(
+                (scenario) =>
+                    scenario.path.includes('building=1') &&
+                    scenario.path.includes('staticSceneCache=legacy') &&
+                    scenario.buildingProfile,
+            ),
+    );
+    const mobileBaseline = scenarios[0];
+    assert.equal(
+        mobileBaseline.name,
+        'game-building-no-structure-network-baseline-mobile',
+    );
+    assert.equal(mobileBaseline.isMobile, true);
+    assert.equal(mobileBaseline.buildingProfile.frameRateClass, 'ambient');
+    const worstCase = scenarios.find((scenario) =>
+        scenario.name.includes('worst-case-furnished'),
+    );
+    assert.deepEqual(worstCase?.buildingProfile.expected, {
+        edges: 301,
+        footprintCells: 100,
+        normalVisibleProps: 34,
+        props: 100,
+        roofs: 100,
+    });
+    assert.equal(worstCase?.isMobile, true);
+    assert.equal(worstCase?.navigatorMetrics.deviceMemory, 4);
+    assert.equal(worstCase?.navigatorMetrics.hardwareConcurrency, 4);
+    assert.match(worstCase?.path ?? '', /avatar=1/);
+    assert.equal(worstCase?.buildingProfile.motion, 'avatar-navigation');
+    assert.equal(
+        scenarios.find((scenario) => scenario.name.includes('greenhouse-rain'))
+            ?.buildingProfile.expected.normalVisibleProps,
+        2,
+    );
+    assert.equal(
+        scenarios.find((scenario) => scenario.name.includes('house-normal'))
+            ?.buildingProfile.expected.normalVisibleProps,
+        0,
+    );
+    const twoViewNavigation = scenarios.find((scenario) =>
+        scenario.name.includes('two-view-navigation'),
+    );
+    assert.deepEqual(
+        twoViewNavigation?.buildingProfile.avatarNavigation.legs.map(
+            (leg) => leg.view,
+        ),
+        ['third-person', 'first-person'],
+    );
+    assert.equal(
+        scenarios.find((scenario) =>
+            scenario.name.includes('furnished-cutaway'),
+        )?.buildingProfile.cutaway,
+        true,
+    );
+    assert.equal(scenarios[0].buildingProfile.fixture, 'none');
+    assert.equal(getScenarioRequest(scenarios[0].path).building, '0');
+    assert.equal(
+        scenarios.find((scenario) => scenario.name.includes('mixed-production'))
+            ?.buildingProfile.workload,
+        'mixed-production',
+    );
+});
+
+test('exact blank-shell selection automatically includes its matched desktop baseline', () => {
+    assert.deepEqual(
+        resolveScenarios('game-building-empty-shell-desktop').map(
+            (scenario) => scenario.name,
+        ),
+        [
+            'game-building-no-structure-network-baseline-desktop',
+            'game-building-empty-shell-desktop',
+        ],
+    );
+    assert.deepEqual(
+        resolveScenarios('ignored', [
+            'game-building-empty-shell-desktop',
+            'game-building-no-structure-network-baseline-desktop',
+        ]).map((scenario) => scenario.name),
+        [
+            'game-building-no-structure-network-baseline-desktop',
+            'game-building-empty-shell-desktop',
+        ],
+    );
+});
+
+test('building asset network summary preserves exact response and resource timing', () => {
+    const url =
+        'http://localhost:3001/assets/models/GardenStructureKitV1.glb?v=abc';
+    assert.deepEqual(
+        summarizeGardenStructureAssetNetwork(
+            [
+                {
+                    bodyBytes: 364_684,
+                    fromServiceWorker: false,
+                    status: 200,
+                    url,
+                },
+            ],
+            [
+                {
+                    decodedBodySize: 364_684,
+                    duration: 18.25,
+                    encodedBodySize: 364_684,
+                    name: url,
+                    responseEnd: 31.5,
+                    responseStart: 13.25,
+                    startTime: 10,
+                    transferSize: 364_984,
+                },
+            ],
+        ),
+        {
+            gardenStructureAssetNetworkBytesRequested: 364_684,
+            gardenStructureAssetRequestCount: 1,
+            gardenStructureAssetResponseBodyBytes: 364_684,
+            gardenStructureAssetResponseFromServiceWorker: false,
+            gardenStructureAssetResponseStatus: 200,
+            gardenStructureAssetResponseUrl: url,
+            gardenStructureAssetResourceDecodedBodyBytes: 364_684,
+            gardenStructureAssetResourceDurationMs: 18.25,
+            gardenStructureAssetResourceEncodedBodyBytes: 364_684,
+            gardenStructureAssetResourceResponseEndMs: 31.5,
+            gardenStructureAssetResourceResponseStartMs: 13.25,
+            gardenStructureAssetResourceStartMs: 10,
+            gardenStructureAssetResourceTransferBytes: 364_984,
+            gardenStructureAssetResourceUrl: url,
+        },
+    );
+    assert.equal(
+        summarizeGardenStructureAssetNetwork([], [])
+            .gardenStructureAssetRequestCount,
+        0,
+    );
+    const retried = summarizeGardenStructureAssetNetwork(
+        [
+            {
+                bodyBytes: 100,
+                fromServiceWorker: false,
+                status: 200,
+                url,
+            },
+            {
+                bodyBytes: 200,
+                fromServiceWorker: false,
+                status: 200,
+                url,
+            },
+        ],
+        [],
+    );
+    assert.equal(retried.gardenStructureAssetNetworkBytesRequested, 300);
+    assert.equal(retried.gardenStructureAssetResponseBodyBytes, 200);
+});
+
+test('building asset network merge leaves non-building runtime unchanged', () => {
+    const runtime = { qualityTier: 'medium' };
+    assert.equal(
+        mergeGardenStructureAssetNetworkRuntime({
+            buildingProfile: null,
+            resources: [],
+            responses: [],
+            runtime,
+        }),
+        runtime,
+    );
+    assert.deepEqual(
+        mergeGardenStructureAssetNetworkRuntime({
+            buildingProfile: { fixture: 'none' },
+            resources: [],
+            responses: [],
+            runtime,
+        }),
+        {
+            gardenStructureAssetNetworkBytesRequested: 0,
+            gardenStructureAssetRequestCount: 0,
+            gardenStructureAssetResponseBodyBytes: null,
+            gardenStructureAssetResponseFromServiceWorker: null,
+            gardenStructureAssetResponseStatus: null,
+            gardenStructureAssetResponseUrl: null,
+            gardenStructureAssetResourceDecodedBodyBytes: null,
+            gardenStructureAssetResourceDurationMs: null,
+            gardenStructureAssetResourceEncodedBodyBytes: null,
+            gardenStructureAssetResourceResponseEndMs: null,
+            gardenStructureAssetResourceResponseStartMs: null,
+            gardenStructureAssetResourceStartMs: null,
+            gardenStructureAssetResourceTransferBytes: null,
+            gardenStructureAssetResourceUrl: null,
+            qualityTier: 'medium',
+        },
+    );
+});
+
+test('building acceptance enforces bounded privacy-safe telemetry and editor budgets', () => {
+    const result = evaluateGardenBuildingAcceptance({
+        apiRequests: [{ method: 'GET', url: 'http://localhost/api/garden' }],
+        requested: {
+            building: '1',
+            buildingFixture: 'worst-case',
+            buildingProfile: {
+                expected: {
+                    edges: 301,
+                    footprintCells: 100,
+                    props: 100,
+                    roofs: 100,
+                },
+                fixture: 'worst-case',
+                mode: 'editing',
+                motion: 'edit-churn',
+                motionResult: { actionCount: 9, kind: 'edit-churn' },
+            },
+            staticSceneCache: 'legacy',
+        },
+        runtime: {
+            gardenStructureAssetBytesResident: 96_000,
+            gardenStructureAssetRequestCount: 1,
+            gardenStructureAssetResolutionIssueCount: 0,
+            gardenStructureAssetResolutionStatus: 'resolved',
+            gardenStructureAssetUnresolvedBatchCount: 0,
+            gardenStructureAssetUrl:
+                '/assets/models/GardenStructureKitV1.glb?v=abc',
+            gardenStructureAssetResponseBodyBytes: 364_684,
+            gardenStructureAssetResponseStatus: 200,
+            gardenStructureAssetResponseUrl:
+                'http://localhost/assets/models/GardenStructureKitV1.glb?v=abc',
+            gardenStructureAssetResourceDurationMs: 12,
+            gardenStructureAssetResourceUrl:
+                'http://localhost/assets/models/GardenStructureKitV1.glb?v=abc',
+            gardenStructureCompileCount: 4,
+            gardenStructureCompileDurationMs: 4.2,
+            gardenStructureCompileDurationMaxMs: 4.2,
+            gardenStructureDocumentPayloadBytes: 56_759,
+            gardenStructureEdgeCount: 301,
+            gardenStructureEditorActionCount: 12,
+            gardenStructureEditorActionDurationMaxMs: 42,
+            gardenStructureEditorActionDurationP95Ms: 24,
+            gardenStructureEditorActive: true,
+            gardenStructureEditorPointerResolutionCount: 1,
+            gardenStructureEditorPointerResolutionMaxMs: 3,
+            gardenStructureExteriorSuppressedPropCount: 0,
+            gardenStructureFootprintCellCount: 100,
+            gardenStructureNavigationCompileDurationMs: 2.1,
+            gardenStructureNavigationCompileDurationMaxMs: 2.1,
+            gardenStructurePlanCacheLookupDurationMs: 0.1,
+            gardenStructurePlanCacheLookupDurationMaxMs: 0.1,
+            gardenStructurePlanCacheEvictionCount: 0,
+            gardenStructureFallbackDrawCount: 0,
+            gardenStructurePreviewDrawCount: 1,
+            gardenStructureProductionAttributeBytes: 40_000,
+            gardenStructureProductionDrawCount: 12,
+            gardenStructureProductionIndexBytes: 8_000,
+            gardenStructureProductionInstanceBufferBytes: 48_000,
+            gardenStructureProductionOpaqueDrawCount: 9,
+            gardenStructureProductionTextureCount: 0,
+            gardenStructureProductionTextureEstimatedBytes: 0,
+            gardenStructureProductionTransparentDrawCount: 3,
+            gardenStructureProductionTriangleCount: 400_000,
+            gardenStructureProductionVertexCount: 600_000,
+            gardenStructurePropCount: 100,
+            gardenStructureRoofRegionCount: 100,
+            gardenStructureStructureCount: 1,
+            gardenStructureVisiblePropCount: 100,
+            gardenStructureVisibleStructureCount: 1,
+        },
+    });
+    assert.equal(result.pass, true);
+    assert.ok(result.checks.every((check) => check.pass));
+
+    const compileMaximumRegression = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        requested: {
+            building: '1',
+            buildingFixture: 'house',
+            buildingProfile: {
+                expected: {
+                    edges: 15,
+                    footprintCells: 12,
+                    props: 1,
+                    roofs: 2,
+                },
+                fixture: 'house',
+                mode: 'normal',
+            },
+        },
+        runtime: {
+            gardenStructureCompileDurationMs: 0,
+            gardenStructureCompileDurationMaxMs: 101,
+        },
+    });
+    assert.deepEqual(
+        compileMaximumRegression.checks.find(
+            (check) => check.name === 'buildingCompileDurationMs',
+        ),
+        {
+            actual: 101,
+            limit: 100,
+            name: 'buildingCompileDurationMs',
+            pass: false,
+        },
+    );
+
+    const lookupMaximumRegression = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        requested: {
+            building: '1',
+            buildingFixture: 'house',
+            buildingProfile: {
+                expected: {
+                    edges: 15,
+                    footprintCells: 12,
+                    props: 1,
+                    roofs: 2,
+                },
+                fixture: 'house',
+                mode: 'normal',
+            },
+        },
+        runtime: {
+            gardenStructurePlanCacheLookupDurationMs: 0,
+            gardenStructurePlanCacheLookupDurationMaxMs: 101,
+        },
+    });
+    assert.deepEqual(
+        lookupMaximumRegression.checks.find(
+            (check) => check.name === 'buildingPlanCacheLookupDurationMs',
+        ),
+        {
+            actual: 101,
+            limit: 100,
+            name: 'buildingPlanCacheLookupDurationMs',
+            pass: false,
+        },
+    );
+
+    const privateOrSlow = evaluateGardenBuildingAcceptance({
+        apiRequests: [{ method: 'POST', url: 'http://localhost/api/garden' }],
+        requested: {
+            building: '1',
+            buildingFixture: 'worst-case',
+            buildingProfile: {
+                expected: {
+                    edges: 301,
+                    footprintCells: 100,
+                    props: 100,
+                    roofs: 100,
+                },
+                fixture: 'worst-case',
+                mode: 'editing',
+            },
+            staticSceneCache: 'legacy',
+        },
+        runtime: {
+            gardenStructureDocument: { private: true },
+            gardenStructureEditorActionDurationMaxMs: 501,
+        },
+    });
+    assert.equal(privateOrSlow.pass, false);
+    assert.ok(
+        privateOrSlow.checks.some(
+            (check) =>
+                check.name === 'buildingProfileOmitsDocument' && !check.pass,
+        ),
+    );
+    assert.ok(
+        privateOrSlow.checks.some(
+            (check) =>
+                check.name === 'buildingNoMutationRequests' && !check.pass,
+        ),
+    );
+});
+
+test('building acceptance proves the no-structure baseline made no GLB request', () => {
+    const result = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        requested: {
+            building: '0',
+            buildingProfile: {
+                expected: {
+                    edges: 0,
+                    footprintCells: 0,
+                    props: 0,
+                    roofs: 0,
+                },
+                fixture: 'none',
+                mode: 'normal',
+            },
+            staticSceneCache: 'legacy',
+        },
+        runtime: {
+            gardenStructureAssetNetworkBytesRequested: 0,
+            gardenStructureAssetRequestCount: 0,
+        },
+    });
+    assert.equal(result.pass, true);
+    assert.ok(result.checks.every((check) => check.pass));
+});
+
+test('building acceptance rejects unexpected runtime failures while allowing exact signed-out fixture reads', () => {
+    const input = {
+        apiRequests: [],
+        requested: {
+            building: '0',
+            buildingProfile: {
+                expected: {
+                    edges: 0,
+                    footprintCells: 0,
+                    props: 0,
+                    roofs: 0,
+                },
+                fixture: 'none',
+                mode: 'normal',
+            },
+            staticSceneCache: 'legacy',
+        },
+        runtime: {
+            gardenStructureAssetNetworkBytesRequested: 0,
+            gardenStructureAssetRequestCount: 0,
+        },
+    };
+    const expectedSignedOutErrors = [
+        '/api/gredice/api/users/current',
+        '/api/gredice/api/accounts/current',
+        '/api/gredice/api/accounts/current/sunflowers',
+        '/api/gredice/api/accounts/current/tutorial-checklist',
+        '/api/gredice/api/gardens/99999/operations?cursor=0',
+    ].map((path) => ({
+        status: 401,
+        url: `http://localhost:3101${path}`,
+    }));
+    const expectedSignedOutConsoleErrors = expectedSignedOutErrors.map(
+        (error) => ({
+            type: 'error',
+            text: 'Failed to load resource: the server responded with a status of 401 (Unauthorized)',
+            url: error.url,
+        }),
+    );
+    const expectedNoise = evaluateGardenBuildingAcceptance({
+        ...input,
+        apiErrors: expectedSignedOutErrors,
+        consoleMessages: [
+            ...expectedSignedOutConsoleErrors,
+            {
+                type: 'error',
+                text: 'Failed to load resource: the server responded with a status of 404 (Not Found)',
+                url: 'http://127.0.0.1:3101/_vercel/insights/script.js',
+            },
+            {
+                type: 'warning',
+                text: 'THREE.Clock is deprecated',
+                url: 'http://localhost:3101/app.js',
+            },
+        ],
+        pageErrors: [],
+    });
+    assert.equal(expectedNoise.pass, true);
+    assert.deepEqual(
+        expectedNoise.checks
+            .filter((check) => check.name.startsWith('buildingUnexpected'))
+            .map(({ actual, name, pass }) => ({ actual, name, pass })),
+        [
+            {
+                actual: 0,
+                name: 'buildingUnexpectedApiErrors',
+                pass: true,
+            },
+            {
+                actual: 0,
+                name: 'buildingUnexpectedConsoleErrors',
+                pass: true,
+            },
+        ],
+    );
+
+    const unexpectedFailures = evaluateGardenBuildingAcceptance({
+        ...input,
+        apiRequests: [
+            {
+                method: 'POST',
+                url: expectedSignedOutErrors[0].url,
+            },
+        ],
+        apiErrors: [
+            ...expectedSignedOutErrors,
+            {
+                status: 500,
+                url: 'http://localhost:3101/api/gredice/api/directories/entities/plantSort',
+            },
+        ],
+        consoleMessages: [
+            ...expectedSignedOutConsoleErrors,
+            {
+                type: 'error',
+                text: 'THREE.WebGLProgram: Shader Error',
+                url: 'http://localhost:3101/app.js',
+            },
+        ],
+        pageErrors: ['render failed'],
+    });
+    assert.equal(unexpectedFailures.pass, false);
+    assert.ok(
+        unexpectedFailures.checks.some(
+            (check) =>
+                check.name === 'buildingNoMutationRequests' && !check.pass,
+        ),
+    );
+    assert.deepEqual(
+        unexpectedFailures.checks
+            .filter((check) =>
+                [
+                    'buildingUnexpectedApiErrors',
+                    'buildingUnexpectedConsoleErrors',
+                    'buildingPageErrors',
+                ].includes(check.name),
+            )
+            .map(({ actual, name, pass }) => ({ actual, name, pass })),
+        [
+            {
+                actual: 1,
+                name: 'buildingUnexpectedApiErrors',
+                pass: false,
+            },
+            {
+                actual: 1,
+                name: 'buildingUnexpectedConsoleErrors',
+                pass: false,
+            },
+            { actual: 1, name: 'buildingPageErrors', pass: false },
+        ],
+    );
+});
+
+test('building ambient acceptance proves a 30 FPS target with no interaction lease', () => {
+    const requested = {
+        building: '0',
+        buildingProfile: {
+            expected: {
+                edges: 0,
+                footprintCells: 0,
+                props: 0,
+                roofs: 0,
+            },
+            fixture: 'none',
+            frameRateClass: 'ambient',
+            mode: 'normal',
+        },
+        staticSceneCache: 'legacy',
+    };
+    const ambientSample = {
+        runtimeFrameLoopActiveLeaseCountAtEnd: 0,
+        runtimeFrameLoopActiveLeaseCountAtStart: 0,
+        runtimeFrameLoopActiveLeaseCountMax: 0,
+        runtimeFrameLoopObservationCount: 301,
+        runtimeFrameLoopTargetFramesPerSecondAtEnd: 30,
+        runtimeFrameLoopTargetFramesPerSecondAtStart: 30,
+        runtimeFrameLoopTargetFramesPerSecondMax: 30,
+    };
+    const passing = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        requested,
+        runtime: {
+            runtimeFrameLoop: {
+                activeLeaseCount: 0,
+                targetFramesPerSecond: 30,
+            },
+        },
+        sample: ambientSample,
+    });
+    assert.equal(passing.pass, true);
+
+    const failing = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        requested,
+        runtime: {
+            runtimeFrameLoop: {
+                activeLeaseCount: 0,
+                targetFramesPerSecond: 30,
+            },
+        },
+        sample: {
+            ...ambientSample,
+            runtimeFrameLoopActiveLeaseCountMax: 1,
+            runtimeFrameLoopTargetFramesPerSecondMax: 60,
+        },
+    });
+    assert.deepEqual(
+        failing.checks
+            .filter(
+                (check) =>
+                    check.name.startsWith('buildingAmbient') && !check.pass,
+            )
+            .map((check) => ({ name: check.name, pass: check.pass })),
+        [
+            {
+                name: 'buildingAmbientSampleMaximumTargetFramesPerSecond',
+                pass: false,
+            },
+            {
+                name: 'buildingAmbientSampleMaximumActiveLeaseCount',
+                pass: false,
+            },
+        ],
+    );
+});
+
+test('building matched baseline comparison tolerates bounded profiler noise', () => {
+    const scenarios = [
+        {
+            budget: { checks: [], pass: true },
+            name: 'game-building-no-structure-network-baseline-desktop',
+            sample: {
+                drawCallsPerRenderedFrame: 100,
+                gpu: { elapsedP95Ms: 2, valid: true },
+                p95FrameMs: 27,
+                renderedFps: 25,
+                trianglesPerRenderedFrame: 5_000,
+            },
+        },
+        {
+            budget: { checks: [], pass: true },
+            name: 'game-building-empty-shell-desktop',
+            sample: {
+                drawCallsPerRenderedFrame: 104,
+                gpu: { elapsedP95Ms: 4.9, valid: true },
+                p95FrameMs: 29.1,
+                renderedFps: 21,
+                trianglesPerRenderedFrame: 5_200,
+            },
+        },
+    ];
+    const comparison = buildGardenBuildingMatchedBaselineComparison(scenarios);
+    assert.equal(comparison?.pass, true);
+    assert.ok(comparison?.checks.every((check) => check.pass));
+
+    const applied = applyGardenBuildingMatchedBaselineComparison(scenarios);
+    assert.equal(applied?.pass, true);
+    assert.equal(scenarios[1].budget.pass, true);
+    assert.equal(scenarios[1].budget.checks.length, 5);
+});
+
+test('building matched baseline comparison fails material blank-shell regressions', () => {
+    const scenarios = [
+        {
+            budget: { checks: [], pass: true },
+            name: 'game-building-no-structure-network-baseline-desktop',
+            sample: {
+                drawCallsPerRenderedFrame: 100,
+                gpu: { elapsedP95Ms: 2, valid: true },
+                p95FrameMs: 20,
+                renderedFps: 25,
+                trianglesPerRenderedFrame: 5_000,
+            },
+        },
+        {
+            budget: { checks: [], pass: true },
+            name: 'game-building-empty-shell-desktop',
+            sample: {
+                drawCallsPerRenderedFrame: 106,
+                gpu: { elapsedP95Ms: 5.1, valid: true },
+                p95FrameMs: 23.1,
+                renderedFps: 19.9,
+                trianglesPerRenderedFrame: 5_300,
+            },
+        },
+    ];
+    const comparison = applyGardenBuildingMatchedBaselineComparison(scenarios);
+    assert.equal(comparison?.pass, false);
+    assert.ok(comparison?.checks.every((check) => !check.pass));
+    assert.equal(scenarios[1].budget.pass, false);
+    const summary = buildProfileSummary(scenarios, {});
+    assert.equal(summary.failedScenarios, 1);
+    assert.deepEqual(summary.failedScenarioNames, [
+        'game-building-empty-shell-desktop',
+    ]);
+    assert.equal(
+        shouldFailProfileRun({
+            failOnBudget: true,
+            profileSummary: summary,
+            provenance: { comparable: true },
+        }),
+        true,
+    );
+});
+
+test('building matched baseline comparison fails closed when its control is absent', () => {
+    const scenarios = [
+        {
+            budget: { checks: [], pass: true },
+            name: 'game-building-empty-shell-desktop',
+            sample: {},
+        },
+    ];
+    const comparison = applyGardenBuildingMatchedBaselineComparison(scenarios);
+    assert.equal(comparison?.pass, false);
+    assert.equal(
+        comparison?.checks[0]?.name,
+        'buildingEmptyShellMatchedBaselinePresent',
+    );
+    assert.equal(scenarios[0].budget.pass, false);
+});
+
+test('building matched baseline comparison skips unavailable GPU timing only', () => {
+    const baselineSample = {
+        drawCallsPerRenderedFrame: 100,
+        gpu: { elapsedP95Ms: 2, valid: true },
+        p95FrameMs: 27,
+        renderedFps: 25,
+        trianglesPerRenderedFrame: 5_000,
+    };
+    const candidateSample = {
+        ...baselineSample,
+        gpu: { elapsedP95Ms: null, valid: false },
+    };
+    const comparison = buildGardenBuildingMatchedBaselineComparison([
+        {
+            name: 'game-building-no-structure-network-baseline-desktop',
+            sample: baselineSample,
+        },
+        {
+            name: 'game-building-empty-shell-desktop',
+            sample: candidateSample,
+        },
+    ]);
+    const gpuCheck = comparison?.checks.find(
+        (check) => check.name === 'buildingEmptyShellGpuP95Regression',
+    );
+    assert.equal(comparison?.pass, true);
+    assert.equal(gpuCheck?.pass, true);
+    assert.equal(gpuCheck?.skipped, true);
+});
+
+test('building acceptance preserves baseline-visible greenhouse and outdoor props', () => {
+    for (const fixture of [
+        {
+            expected: {
+                edges: 14,
+                footprintCells: 12,
+                normalVisibleProps: 2,
+                props: 2,
+                roofs: 1,
+            },
+            key: 'greenhouse',
+            visibleProps: 2,
+        },
+        {
+            expected: {
+                edges: 301,
+                footprintCells: 100,
+                normalVisibleProps: 34,
+                props: 100,
+                roofs: 100,
+            },
+            key: 'worst-case',
+            visibleProps: 34,
+        },
+    ]) {
+        const result = evaluateGardenBuildingAcceptance({
+            apiRequests: [],
+            requested: {
+                building: '1',
+                buildingFixture: fixture.key,
+                buildingProfile: {
+                    expected: fixture.expected,
+                    fixture: fixture.key,
+                    mode: 'normal',
+                },
+            },
+            runtime: {
+                gardenStructureExteriorSuppressedPropCount:
+                    fixture.expected.props - fixture.visibleProps,
+                gardenStructureVisiblePropCount: fixture.visibleProps,
+            },
+        });
+
+        assert.ok(
+            result.checks
+                .filter((check) =>
+                    [
+                        'buildingVisibleAndSuppressedPropCoverage',
+                        'buildingVisiblePropCount',
+                        'buildingExteriorSuppressedPropCount',
+                    ].includes(check.name),
+                )
+                .every((check) => check.pass),
+        );
+    }
+});
+
+test('building acceptance gates measured avatar collision-step p95', () => {
+    const requested = {
+        avatar: '1',
+        building: '1',
+        buildingFixture: 'worst-case',
+        buildingProfile: {
+            avatarNavigation: {
+                legs: [
+                    {
+                        key: 's',
+                        maximumDistance: 0.25,
+                        view: 'third-person',
+                    },
+                ],
+            },
+            expected: {
+                edges: 301,
+                footprintCells: 100,
+                props: 100,
+                roofs: 100,
+            },
+            fixture: 'worst-case',
+            mode: 'normal',
+            motion: 'avatar-navigation',
+            motionResult: {
+                collisionStepCount: 42,
+                kind: 'avatar-navigation',
+                legs: [
+                    {
+                        distance: 0.12,
+                        key: 's',
+                        view: 'third-person',
+                    },
+                ],
+            },
+        },
+    };
+    const runtime = {
+        gardenStructureAvatarCollisionStepCount: 44,
+        gardenStructureAvatarCollisionStepDurationMaxMs: 1.8,
+        gardenStructureAvatarCollisionStepDurationP95Ms: 1.5,
+        gardenStructureAvatarCollisionStepDurationTotalMs: 12,
+        gardenStructureCollisionBoxCount: 290,
+        gardenStructureCollisionBucketCount: 220,
+    };
+    const passing = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        budget: { avatarCollisionStepP95Ms: 2 },
+        requested,
+        runtime,
+    });
+    assert.ok(
+        passing.checks
+            .filter((check) => check.name.startsWith('buildingAvatar'))
+            .every((check) => check.pass),
+    );
+
+    const failing = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        budget: { avatarCollisionStepP95Ms: 2 },
+        requested,
+        runtime: {
+            ...runtime,
+            gardenStructureAvatarCollisionStepDurationMaxMs: 2.4,
+            gardenStructureAvatarCollisionStepDurationP95Ms: 2.1,
+        },
+    });
+    assert.deepEqual(
+        failing.checks.find(
+            (check) => check.name === 'buildingAvatarCollisionStepP95Ms',
+        ),
+        {
+            actual: 2.1,
+            limit: 2,
+            name: 'buildingAvatarCollisionStepP95Ms',
+            pass: false,
+        },
+    );
+});
+
+test('building acceptance keeps an empty structure distinct from production GLB draws', () => {
+    const responseUrl =
+        'http://localhost/assets/models/GardenStructureKitV1.glb?v=abc';
+    const result = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        requested: {
+            building: '1',
+            buildingFixture: 'blank',
+            buildingProfile: {
+                expected: {
+                    edges: 0,
+                    footprintCells: 4,
+                    props: 0,
+                    roofs: 0,
+                },
+                fixture: 'blank',
+                mode: 'normal',
+            },
+            staticSceneCache: 'legacy',
+        },
+        runtime: {
+            gardenStructureAssetBytesResident: 96_000,
+            gardenStructureAssetRequestCount: 1,
+            gardenStructureAssetResolutionIssueCount: 0,
+            gardenStructureAssetResolutionStatus: 'resolved',
+            gardenStructureAssetUnresolvedBatchCount: 0,
+            gardenStructureAssetUrl:
+                '/assets/models/GardenStructureKitV1.glb?v=abc',
+            gardenStructureAssetResponseBodyBytes: 364_684,
+            gardenStructureAssetResponseStatus: 200,
+            gardenStructureAssetResponseUrl: responseUrl,
+            gardenStructureAssetResourceDurationMs: 4,
+            gardenStructureAssetResourceUrl: responseUrl,
+            gardenStructureCompileDurationMs: 1,
+            gardenStructureCompileDurationMaxMs: 1,
+            gardenStructureDocumentPayloadBytes: 242,
+            gardenStructureEdgeCount: 0,
+            gardenStructureEditorActive: false,
+            gardenStructureExteriorSuppressedPropCount: 0,
+            gardenStructureFallbackDrawCount: 0,
+            gardenStructureFootprintCellCount: 4,
+            gardenStructureNavigationCompileDurationMs: 0.1,
+            gardenStructureNavigationCompileDurationMaxMs: 0.1,
+            gardenStructurePlanCacheEvictionCount: 0,
+            gardenStructurePlanCacheLookupDurationMs: 0,
+            gardenStructurePlanCacheLookupDurationMaxMs: 0,
+            gardenStructurePreviewDrawCount: 0,
+            gardenStructureProductionAttributeBytes: 0,
+            gardenStructureProductionDrawCount: 0,
+            gardenStructureProductionIndexBytes: 0,
+            gardenStructureProductionInstanceBufferBytes: 0,
+            gardenStructureProductionOpaqueDrawCount: 0,
+            gardenStructureProductionTextureCount: 0,
+            gardenStructureProductionTextureEstimatedBytes: 0,
+            gardenStructureProductionTransparentDrawCount: 0,
+            gardenStructureProductionTriangleCount: 0,
+            gardenStructureProductionVertexCount: 0,
+            gardenStructurePropCount: 0,
+            gardenStructureRoofRegionCount: 0,
+            gardenStructureStructureCount: 1,
+            gardenStructureVisiblePropCount: 0,
+            gardenStructureVisibleStructureCount: 1,
+        },
+    });
+
+    assert.equal(result.pass, true);
+    assert.ok(result.checks.every((check) => check.pass));
+});
+
 test('profile request reads the deterministic closeup target', () => {
     const request = getScenarioRequest(
         '/debug/profile/game?profile=plant-heavy&quality=medium&closeupRaisedBedId=29',
@@ -176,6 +1415,183 @@ test('high target scenario set covers representative High DPR 2 phases', () => {
     assert.equal(getScenarioRequest(scenarios[3].path).placement, '1');
 });
 
+test('cross-tier scenario set replays one High-target garden across every tier and phase', () => {
+    const scenarios = resolveScenarios('cross-tier');
+
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.name),
+        [
+            'game-cross-tier-low-steady-desktop',
+            'game-cross-tier-low-camera-motion-desktop',
+            'game-cross-tier-medium-steady-desktop',
+            'game-cross-tier-medium-camera-motion-desktop',
+            'game-cross-tier-high-steady-desktop',
+            'game-cross-tier-high-camera-motion-desktop',
+            'game-cross-tier-auto-standard-steady-desktop',
+            'game-cross-tier-auto-standard-camera-motion-desktop',
+            'game-cross-tier-auto-constrained-steady-desktop',
+            'game-cross-tier-auto-constrained-camera-motion-desktop',
+        ],
+    );
+    const expectedProfiles = [
+        ['low', 'low', 1, 0, false, 0, null],
+        ['medium', 'medium', 1.5, 0.5, true, 2_048, null],
+        ['high', 'high', 2, 1, true, 4_096, null],
+        ['auto', 'medium', 1.5, 0.5, true, 2_048, 'standard'],
+        ['auto', 'auto-constrained', 1, 0.25, true, 1_024, 'constrained'],
+    ];
+
+    for (const [profileIndex, expected] of expectedProfiles.entries()) {
+        const [quality, tier, dprCap, density, shadows, shadowMapSize, device] =
+            expected;
+        const profileScenarios = scenarios.slice(
+            profileIndex * 2,
+            profileIndex * 2 + 2,
+        );
+
+        assert.deepEqual(
+            profileScenarios.map((scenario) => scenario.motion),
+            [undefined, 'bounded-zoom-rotate'],
+        );
+        assert.deepEqual(
+            profileScenarios.map(
+                (scenario) => getScenarioRequest(scenario.path).controls,
+            ),
+            ['0', '1'],
+        );
+        assert.deepEqual(
+            profileScenarios.map(
+                (scenario) =>
+                    new URL(
+                        scenario.path,
+                        'http://profile.local',
+                    ).searchParams.get('cameraProfile') ?? '0',
+            ),
+            ['0', '1'],
+        );
+        for (const scenario of profileScenarios) {
+            const request = getScenarioRequest(scenario.path);
+            assert.equal(scenario.autoQualityDeviceClass ?? null, device);
+            assert.equal(scenario.budget, 'gameHighTarget');
+            assert.equal(scenario.crossTierProfile, true);
+            assert.equal(scenario.dpr, 2);
+            assert.equal(scenario.expectedDprCap, dprCap);
+            assert.equal(scenario.expectedGroundDecorationDensity, density);
+            assert.equal(scenario.expectedQualityTier, tier);
+            assert.equal(scenario.expectedShadowMapSize, shadowMapSize);
+            assert.equal(scenario.expectedShadows, shadows);
+            assert.equal(scenario.isMobile, false);
+            assert.deepEqual(scenario.outlineProfile, {
+                action: 'show',
+                raisedBedId: 2,
+            });
+            assert.equal(scenario.repeat, 3);
+            assert.equal(scenario.screenshotWitness, true);
+            assert.deepEqual(scenario.viewport, { width: 1280, height: 720 });
+            assert.equal(request.debugHud, '0');
+            assert.equal(request.details, '1');
+            assert.equal(request.gardenProfile, 'high-target');
+            assert.equal(request.hud, '0');
+            assert.equal(request.mode, 'details');
+            assert.equal(request.outline, '1');
+            assert.equal(request.quality, quality);
+            assert.equal(request.staticSceneCache, 'legacy');
+        }
+    }
+
+    assert.deepEqual(scenarios[6].navigatorMetrics, {
+        deviceMemory: 8,
+        hardwareConcurrency: 8,
+    });
+    assert.deepEqual(scenarios[8].navigatorMetrics, {
+        deviceMemory: 4,
+        hardwareConcurrency: 4,
+    });
+});
+
+test('fauna scenario set isolates the deterministic daytime High workload', () => {
+    const scenarios = resolveScenarios('fauna');
+
+    assert.equal(scenarios.length, 1);
+    const [scenario] = scenarios;
+    const request = getScenarioRequest(scenario.path);
+    const url = new URL(scenario.path, 'http://profile.local');
+    assert.equal(scenario.name, 'game-fauna-heavy-day-interaction-desktop');
+    assert.equal(scenario.budget, 'gameHighTarget');
+    assert.equal(scenario.dpr, 2);
+    assert.equal(scenario.faunaProfile, true);
+    assert.equal(scenario.isMobile, false);
+    assert.equal(scenario.repeat, 3);
+    assert.equal(scenario.screenshotWitness, true);
+    assert.deepEqual(scenario.viewport, { height: 720, width: 1280 });
+    assert.deepEqual(scenario.animalProfileCommand, {
+        behavior: 'trot',
+        species: 'Cow',
+    });
+    assert.equal(request.controls, '0');
+    assert.equal(request.debugHud, '0');
+    assert.equal(request.details, '1');
+    assert.equal(request.gardenProfile, 'fauna-heavy');
+    assert.equal(request.hud, '0');
+    assert.equal(request.mode, 'details');
+    assert.equal(request.quality, 'high');
+    assert.equal(request.staticSceneCache, 'legacy');
+    assert.equal(url.searchParams.get('fixedTimeSeconds'), '43200');
+});
+
+test('garden-switch scenario keeps repeated High and fauna arrivals in one context', () => {
+    const scenarios = resolveScenarios('garden-switch');
+
+    assert.equal(scenarios.length, 1);
+    const [scenario] = scenarios;
+    const request = getScenarioRequest(scenario.path);
+    const url = new URL(scenario.path, 'http://profile.local');
+    assert.equal(
+        scenario.name,
+        'game-garden-switch-high-fauna-single-context-desktop',
+    );
+    assert.equal(scenario.gardenSwitchProfile, true);
+    assert.equal(scenario.repeat, 3);
+    assert.equal(scenario.dpr, 2);
+    assert.equal(scenario.isMobile, false);
+    assert.equal(scenario.screenshotWitness, true);
+    assert.deepEqual(scenario.viewport, { height: 720, width: 1280 });
+    assert.equal(request.gardenProfile, 'high-target');
+    assert.equal(request.mode, 'details');
+    assert.equal(request.outline, '1');
+    assert.equal(request.quality, 'high');
+    assert.equal(request.staticSceneCache, 'legacy');
+    assert.equal(url.searchParams.get('gardenSwitch'), '1');
+    assert.equal(url.searchParams.get('fixedTimeSeconds'), '43200');
+});
+
+test('lifecycle scenario repeats the exact High workload in fresh contexts', () => {
+    const scenarios = resolveScenarios('lifecycle');
+
+    assert.equal(scenarios.length, 1);
+    const [scenario] = scenarios;
+    const request = getScenarioRequest(scenario.path);
+    assert.equal(scenario.name, 'game-high-target-runtime-lifecycle-desktop');
+    assert.equal(scenario.lifecycleProfile, true);
+    assert.equal(scenario.repeat, 3);
+    assert.equal(scenario.dpr, 2);
+    assert.equal(scenario.isMobile, false);
+    assert.equal(scenario.screenshotWitness, true);
+    assert.deepEqual(scenario.viewport, { height: 720, width: 1280 });
+    const url = new URL(scenario.path, 'http://profile.local');
+    assert.equal(request.controls, '0');
+    assert.equal(request.debugHud, '0');
+    assert.equal(request.details, '1');
+    assert.equal(request.gardenProfile, 'high-target');
+    assert.equal(request.hud, '0');
+    assert.equal(request.lifecycle, '1');
+    assert.equal(request.mode, 'details');
+    assert.equal(request.outline, '1');
+    assert.equal(request.quality, 'high');
+    assert.equal(request.staticSceneCache, 'legacy');
+    assert.equal(url.searchParams.get('fixedTimeSeconds'), '43200');
+});
+
 test('operation-visual High scenario is isolated behind its own opt-in set', () => {
     const scenarios = resolveScenarios('high-target-operation-visuals');
 
@@ -188,6 +1604,8 @@ test('operation-visual High scenario is isolated behind its own opt-in set', () 
     assert.equal(scenario.repeat, 3);
     assert.deepEqual(getScenarioRequest(scenario.path), {
         adaptiveHigh: '0',
+        building: '0',
+        buildingFixture: 'house',
         closeupRaisedBedId: null,
         controls: '1',
         debugHud: '0',
@@ -694,6 +2112,8 @@ test('profile request parses the High target fixture contract', () => {
 
     assert.deepEqual(request, {
         adaptiveHigh: '0',
+        building: '0',
+        buildingFixture: 'house',
         closeupRaisedBedId: null,
         controls: '1',
         debugHud: '0',
@@ -717,6 +2137,94 @@ test('injected GPU timing yields to an existing elapsed-time query', () => {
         installBrowserMetrics.toString(),
         /getQuery\([\s\S]*TIME_ELAPSED_EXT[\s\S]*CURRENT_QUERY/,
     );
+});
+
+test('profile context tracking starts before Canvas discovery without handling loss itself', async () => {
+    const keys = [
+        'document',
+        'HTMLCanvasElement',
+        '__grediceGameProfileContextEvents',
+        '__grediceGardenSwitchContextEvents',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    const listeners = new Map();
+
+    try {
+        class ProfileCanvas {}
+        Object.defineProperties(globalThis, {
+            document: {
+                configurable: true,
+                value: {
+                    addEventListener(type, listener, capture) {
+                        assert.equal(capture, true);
+                        listeners.set(type, listener);
+                    },
+                },
+                writable: true,
+            },
+            HTMLCanvasElement: {
+                configurable: true,
+                value: ProfileCanvas,
+                writable: true,
+            },
+        });
+
+        installGardenSwitchContextTracker();
+        assert.equal(listeners.size, 2);
+        listeners.get('webglcontextlost')?.({
+            defaultPrevented: true,
+            target: new ProfileCanvas(),
+        });
+        listeners.get('webglcontextrestored')?.({
+            target: new ProfileCanvas(),
+        });
+        listeners.get('webglcontextlost')?.({
+            defaultPrevented: false,
+            target: {},
+        });
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        const tracker = globalThis.__grediceGardenSwitchContextEvents;
+        assert.equal(globalThis.__grediceGameProfileContextEvents, tracker);
+        assert.equal(tracker.lostCount, 1);
+        assert.equal(tracker.lostDefaultPreventedCount, 1);
+        assert.deepEqual(tracker.lostDefaultPreventedValues, [true]);
+        assert.equal(tracker.lostTimestamps.length, 1);
+        assert.equal(tracker.restoredCount, 1);
+        assert.equal(tracker.restoredTimestamps.length, 1);
+
+        installProfileContextTracker();
+        assert.equal(listeners.size, 2);
+    } finally {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    }
+});
+
+test('lifecycle cold milestones are captured at document start and first submitted draw', () => {
+    const milestoneSource = installLifecycleMilestoneTracker.toString();
+    const browserMetricSource = installBrowserMetrics.toString();
+
+    assert.match(
+        milestoneSource,
+        /performance\.getEntriesByType\('navigation'\)/,
+    );
+    assert.match(milestoneSource, /new MutationObserver/);
+    assert.match(milestoneSource, /new ResizeObserver/);
+    assert.match(milestoneSource, /canvasAttachedMs \?\?=/);
+    assert.match(milestoneSource, /canvasSizedMs/);
+    assert.match(browserMetricSource, /firstSubmittedFrameMs/);
 });
 
 test('runtime GPU-source scenario disables only the external profiler timer', () => {
@@ -856,6 +2364,125 @@ test('markdown reports per-rAF and per-render work in separate columns', () => {
         /\| Draw\/frame \| Draw\/render \| Triangles\/frame \| Triangles\/render \|/,
     );
     assert.match(markdown, /\| 2 \| 40 \| 15000 \| 300000 \|/);
+});
+
+test('markdown distinguishes ambient scheduler evidence and matched-pair failures', () => {
+    const scenario = (name, fixture, sample) => ({
+        budget: { checks: [], pass: true },
+        consoleMessages: [],
+        environment: null,
+        name,
+        pageErrors: [],
+        requested: {
+            buildingProfile: {
+                expected: {
+                    edges: 0,
+                    footprintCells: fixture === 'blank' ? 4 : 0,
+                    props: 0,
+                    roofs: 0,
+                },
+                fixture,
+                frameRateClass: 'ambient',
+                mode: 'normal',
+            },
+            controls: '0',
+            debugHud: '0',
+            details: '0',
+            gardenProfile: 'default',
+            hud: '0',
+            mode: 'baseline',
+            motion: 'none',
+        },
+        runtime: {
+            runtimeFrameLoop: {
+                activeLeaseCount: 0,
+                targetFramesPerSecond: 30,
+            },
+        },
+        sample: {
+            canvas: null,
+            drawCallsPerFrame: 1,
+            drawCallsPerRenderedFrame: 100,
+            fps: 80,
+            gpu: { elapsedP95Ms: 2, valid: true },
+            jsHeapMb: 50,
+            longTaskCount: 0,
+            maxFrameMs: 30,
+            p95FrameMs: sample.p95FrameMs,
+            rainUnmountMs: null,
+            renderedFps: sample.renderedFps,
+            runtimeFrameLoopActiveLeaseCountAtEnd: 0,
+            runtimeFrameLoopActiveLeaseCountAtStart: 0,
+            runtimeFrameLoopActiveLeaseCountMax: 0,
+            runtimeFrameLoopObservationCount: 300,
+            runtimeFrameLoopTargetFramesPerSecondAtEnd: 30,
+            runtimeFrameLoopTargetFramesPerSecondAtStart: 30,
+            runtimeFrameLoopTargetFramesPerSecondMax: 30,
+            trianglesPerFrame: 1,
+            trianglesPerRenderedFrame: 5_000,
+        },
+        screenshotPath: null,
+    });
+    const scenarios = [
+        scenario(
+            'game-building-no-structure-network-baseline-desktop',
+            'none',
+            { p95FrameMs: 20, renderedFps: 25 },
+        ),
+        scenario('game-building-empty-shell-desktop', 'blank', {
+            p95FrameMs: 23.1,
+            renderedFps: 25,
+        }),
+    ];
+    const comparison = applyGardenBuildingMatchedBaselineComparison(scenarios);
+    const report = {
+        baseUrl: 'http://profile.local',
+        gardenBuildingMatchedBaselineComparison: comparison,
+        generatedAt: '2026-09-01T00:00:00.000Z',
+        highTargetMedians: {},
+        options: {
+            build: true,
+            managedServer: true,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'buildings',
+            soakMs: 0,
+            warmupMs: 5_000,
+        },
+        plantCloseupMedians: {},
+        scenarios,
+        schemaVersion: 6,
+        sourceCommit: provenanceCommitA,
+        summary: { failedScenarios: 1 },
+    };
+    const markdown = buildMarkdown(report);
+
+    assert.match(markdown, /Sample target start\/max\/end/);
+    assert.match(markdown, /30\/30\/30 FPS \/ 0\/0\/0 \(300\)/);
+    assert.match(markdown, /Matched desktop blank-shell overhead/);
+    assert.match(markdown, /physical-device 16\.7 ms desktop target/);
+    assert.match(
+        markdown,
+        /buildingEmptyShellBrowserRafP95Regression .* exceeded both relative and absolute noise limits/,
+    );
+
+    const candidateOnly = [
+        scenario('game-building-empty-shell-desktop', 'blank', {
+            p95FrameMs: 23.1,
+            renderedFps: 25,
+        }),
+    ];
+    const missingComparison =
+        applyGardenBuildingMatchedBaselineComparison(candidateOnly);
+    const missingMarkdown = buildMarkdown({
+        ...report,
+        gardenBuildingMatchedBaselineComparison: missingComparison,
+        scenarios: candidateOnly,
+    });
+    assert.match(
+        missingMarkdown,
+        /buildingEmptyShellMatchedBaselinePresent \| missing \| present \| n\/a \| n\/a \| matched baseline required \| fail/,
+    );
 });
 
 test('markdown distinguishes controlled governor evidence and formats range failures', () => {
@@ -1076,6 +2703,95 @@ test('interactive sampling stops at the endpoint and drains bounded long tasks l
             }
         }
     }
+});
+
+test('garden-switch sampling primes the discarded RAF before switch work', async () => {
+    const keys = [
+        'document',
+        'requestAnimationFrame',
+        '__gameProfileGpuTimer',
+        '__gameProfileInteractiveSample',
+        '__gameProfileLongTasks',
+        '__gameProfileMetrics',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    const setGlobal = (key, value) => {
+        Object.defineProperty(globalThis, key, {
+            configurable: true,
+            value,
+            writable: true,
+        });
+    };
+    const frameCallbacks = [];
+    const evaluatedFunctions = [];
+
+    try {
+        setGlobal('document', { querySelector: () => null });
+        setGlobal('requestAnimationFrame', (callback) => {
+            frameCallbacks.push(callback);
+            return frameCallbacks.length;
+        });
+        setGlobal('__gameProfileMetrics', {
+            drawCalls: 0,
+            instancedDrawCalls: 0,
+            renderedFrames: 0,
+            submittedTriangles: 0,
+        });
+
+        const page = {
+            evaluate(evaluatedFunction) {
+                evaluatedFunctions.push(evaluatedFunction.name);
+                return evaluatedFunction();
+            },
+        };
+        const started = beginGardenSwitchProfileSample(page);
+        await Promise.resolve();
+
+        assert.deepEqual(evaluatedFunctions, [
+            beginInteractiveProfileSample.name,
+            primeGardenSwitchProfileSample.name,
+        ]);
+        assert.equal(frameCallbacks.length, 2);
+
+        const sampleStartedAt =
+            globalThis.__gameProfileInteractiveSample.startedAt;
+        frameCallbacks.shift()(sampleStartedAt + 16);
+        frameCallbacks.shift()(sampleStartedAt + 16);
+        await started;
+        assert.equal(
+            globalThis.__gameProfileInteractiveSample.intervals.length,
+            1,
+        );
+        assert.ok(
+            Math.abs(
+                globalThis.__gameProfileInteractiveSample.intervals[0] - 16,
+            ) < 1e-9,
+        );
+
+        frameCallbacks.shift()(sampleStartedAt + 216);
+        const sample = await finishInteractiveProfileSample();
+        assert.equal(sample.frames, 1);
+        assert.equal(Math.round(sample.maxFrameMs), 200);
+    } finally {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    }
+
+    await assert.rejects(
+        primeGardenSwitchProfileSample(),
+        /No active garden-switch profile sample to prime/,
+    );
 });
 
 test('profile finalization captures CDP before draining GPU queries', async () => {
@@ -1342,6 +3058,1464 @@ test('high target acceptance proves the intended workload rendered', () => {
     );
 });
 
+test('cross-tier acceptance verifies resolved quality and capped backing buffer', () => {
+    const input = {
+        apiErrors: [],
+        consoleMessages: [],
+        pageErrors: [],
+        requested: {
+            crossTierProfile: true,
+            expectedDprCap: 1,
+            expectedGroundDecorationDensity: 0,
+            expectedQualityTier: 'low',
+            expectedShadowMapSize: 0,
+            expectedShadows: false,
+            dpr: 2,
+            gardenProfile: 'high-target',
+            outline: '1',
+            outlineProfile: 'connected-raised-bed',
+            outlineRaisedBedId: 2,
+            quality: 'low',
+            staticSceneCache: 'legacy',
+            viewport: { height: 720, width: 1280 },
+        },
+        runtime: {
+            dprCap: 1,
+            generatedPlantExpectedInstanceCount: 537,
+            generatedPlantFieldCount: 54,
+            generatedPlantInstanceCount: 537,
+            generatedPlantVisibleFieldCount: 54,
+            generatedPlantVisibleInstanceCount: 537,
+            groundDecorationDensity: 0,
+            hoverOutlineActiveTargetCount: 2,
+            hoverOutlineProfileCommandAction: 'show',
+            hoverOutlineProfileTargetBlockId: 'profile-raised-bed:2:0',
+            hoverOutlineStyleGroupCount: 1,
+            qualityTier: 'low',
+            shadowMapSize: 0,
+            shadowsEnabled: false,
+            staticOpaqueSceneCacheEnabled: false,
+            weatherDisabled: false,
+        },
+        sample: {
+            canvas: {
+                clientHeight: 720,
+                clientWidth: 1280,
+                height: 720,
+                width: 1280,
+            },
+            drawCalls: 100,
+            elapsedMs: 5_000,
+            generatedPlantVisibleFieldCountMin: 54,
+            generatedPlantVisibleInstanceCountMin: 537,
+            outlineProfileDispatched: true,
+            outlineProfileTelemetryAvailable: true,
+            renderedFps: 12,
+            renderedFrames: 60,
+            reportedDpr: 2,
+            submittedTriangles: 1_000_000,
+        },
+        screenshotWitness: {
+            entropy: 1,
+            height: 1_440,
+            maximumChannelStandardDeviation: 10,
+            opaque: true,
+            sampledLumaRange: 40,
+            sampledUniqueColorCount: 32,
+            width: 2_560,
+        },
+    };
+
+    const result = evaluateCrossTierAcceptance(input);
+    assert.equal(result.pass, true);
+    assert.equal(
+        result.checks.every((check) => check.pass),
+        true,
+    );
+
+    assert.equal(
+        evaluateCrossTierAcceptance({
+            ...input,
+            runtime: { ...input.runtime, qualityTier: 'medium' },
+        }).pass,
+        false,
+    );
+    assert.equal(
+        evaluateCrossTierAcceptance({
+            ...input,
+            sample: {
+                ...input.sample,
+                canvas: { ...input.sample.canvas, width: 2_560 },
+            },
+        }).pass,
+        false,
+    );
+    assert.equal(
+        evaluateCrossTierAcceptance({
+            ...input,
+            sample: {
+                ...input.sample,
+                generatedPlantVisibleFieldCountMin: 0,
+                generatedPlantVisibleInstanceCountMin: 0,
+            },
+        }).pass,
+        false,
+    );
+
+    const cameraMotionInput = {
+        ...input,
+        requested: {
+            ...input.requested,
+            motion: 'bounded-zoom-rotate',
+        },
+        sample: {
+            ...input.sample,
+            gameCameraMotionObserved: true,
+            gameCameraSnapshotVersionDelta: 20,
+        },
+    };
+    assert.equal(evaluateCrossTierAcceptance(cameraMotionInput).pass, true);
+    const missingCameraMotion = evaluateCrossTierAcceptance({
+        ...cameraMotionInput,
+        sample: {
+            ...cameraMotionInput.sample,
+            gameCameraMotionObserved: false,
+            gameCameraSnapshotVersionDelta: 0,
+        },
+    });
+    assert.equal(missingCameraMotion.pass, false);
+    assert.equal(
+        missingCameraMotion.checks.find(
+            (check) => check.name === 'crossTierCameraMotionObserved',
+        )?.pass,
+        false,
+    );
+    assert.equal(
+        missingCameraMotion.checks.find(
+            (check) => check.name === 'crossTierCameraSnapshotVersionDelta',
+        )?.pass,
+        false,
+    );
+});
+
+test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
+    const input = {
+        apiErrors: [],
+        consoleMessages: [],
+        pageErrors: [],
+        requested: {
+            autoQualityDeviceClass: 'standard',
+            autoQualityMetrics: {
+                coarsePointer: false,
+                coreCount: 8,
+                dpr: 2,
+                memoryGb: 8,
+                narrowViewport: false,
+            },
+            crossTierProfile: true,
+            dpr: 2,
+            expectedAutoQualityMetrics: {
+                coarsePointer: false,
+                coreCount: 8,
+                dpr: 2,
+                memoryGb: 8,
+                narrowViewport: false,
+            },
+            expectedDprCap: 1.5,
+            expectedGroundDecorationDensity: 0.5,
+            expectedQualityTier: 'medium',
+            expectedShadowMapSize: 2_048,
+            expectedShadows: true,
+            gardenProfile: 'high-target',
+            outline: '1',
+            outlineProfile: 'connected-raised-bed',
+            outlineRaisedBedId: 2,
+            quality: 'auto',
+            staticSceneCache: 'legacy',
+            viewport: { height: 720, width: 1280 },
+        },
+        runtime: {
+            dprCap: 1.5,
+            generatedPlantExpectedInstanceCount: 537,
+            generatedPlantFieldCount: 54,
+            generatedPlantInstanceCount: 537,
+            generatedPlantVisibleFieldCount: 54,
+            generatedPlantVisibleInstanceCount: 537,
+            groundDecorationDensity: 0.5,
+            hoverOutlineActiveTargetCount: 2,
+            hoverOutlineProfileCommandAction: 'show',
+            hoverOutlineProfileTargetBlockId: 'profile-raised-bed:2:0',
+            hoverOutlineStyleGroupCount: 1,
+            qualityTier: 'medium',
+            shadowMapSize: 2_048,
+            shadowsEnabled: true,
+            staticOpaqueSceneCacheEnabled: false,
+        },
+        sample: {
+            canvas: {
+                clientHeight: 720,
+                clientWidth: 1280,
+                height: 1_080,
+                width: 1_920,
+            },
+            drawCalls: 100,
+            elapsedMs: 5_000,
+            generatedPlantVisibleFieldCountMin: 54,
+            generatedPlantVisibleInstanceCountMin: 537,
+            outlineProfileDispatched: true,
+            outlineProfileTelemetryAvailable: true,
+            renderedFps: 12,
+            renderedFrames: 60,
+            reportedDpr: 2,
+            submittedTriangles: 1_000_000,
+        },
+        screenshotWitness: {
+            entropy: 1,
+            height: 1_440,
+            maximumChannelStandardDeviation: 10,
+            opaque: true,
+            sampledLumaRange: 40,
+            sampledUniqueColorCount: 32,
+            width: 2_560,
+        },
+    };
+    const result = evaluateCrossTierAcceptance(input);
+
+    assert.equal(result.pass, true);
+    assert.equal(
+        result.checks.every((check) => check.pass),
+        true,
+    );
+    assert.equal(
+        evaluateCrossTierAcceptance({
+            ...input,
+            requested: {
+                ...input.requested,
+                autoQualityMetrics: {
+                    ...input.requested.autoQualityMetrics,
+                    coreCount: 12,
+                },
+            },
+        }).pass,
+        false,
+    );
+});
+
+test('fauna acceptance requires the exact fixture, census, command, network, and visual witnesses', () => {
+    const speciesCounts = {
+        bird: 1,
+        cat: 1,
+        chicken: 1,
+        cow: 2,
+        dog: 1,
+        goat: 1,
+        horse: 1,
+        piglet: 1,
+        rabbit: 1,
+        sheep: 2,
+    };
+    const cowIds = [
+        'cow:animal-debug:1:CowShelter:-6:-1:1',
+        'cow:animal-debug:1:CowShelter:3:2:1',
+    ];
+    const blockCountsByName = {
+        BirdHouse: 1,
+        Block_Dry_Ground: 1,
+        Block_Grass: 116,
+        Bucket: 1,
+        Bush: 1,
+        CactusBarrel: 1,
+        CactusPricklyPear: 1,
+        CatPillow: 1,
+        ChickenCoop: 1,
+        Composter: 3,
+        CowShelter: 2,
+        DogHouse: 1,
+        GardenBox: 3,
+        GoatShelter: 1,
+        HorseStable: 1,
+        PigletPen: 1,
+        Pine: 1,
+        RabbitHutch: 1,
+        SheepFold: 2,
+        StoneMedium: 1,
+        Stool: 1,
+        Tree: 1,
+        Tulip: 3,
+        WaterWell: 1,
+    };
+    const screenshotWitness = {
+        entropy: 5.2,
+        height: 1_440,
+        maximumChannelStandardDeviation: 42,
+        opaque: true,
+        sampledLumaRange: 180,
+        sampledUniqueColorCount: 2_000,
+        width: 2_560,
+    };
+    const input = {
+        apiErrors: [],
+        apiRequests: [],
+        consoleMessages: [],
+        pageErrors: [],
+        requested: {
+            animalProfileCommand: { behavior: 'trot', species: 'Cow' },
+            controls: '0',
+            debugHud: '0',
+            details: '1',
+            dpr: 2,
+            faunaProfile: true,
+            fixedTimeSeconds: 43_200,
+            gardenProfile: 'fauna-heavy',
+            hud: '0',
+            mode: 'details',
+            quality: 'high',
+            staticSceneCache: 'legacy',
+        },
+        runtime: {
+            actorGroundingShadowCount: 12,
+            actorGroundingShadowDroppedCount: 0,
+            actorGroundingShadowSpeciesCounts: speciesCounts,
+            actorGroundingShadowVisibleCount: 12,
+            groundDecorationDensity: 1,
+            profileAnimalCommandAcknowledgedIds: cowIds,
+            profileAnimalCommandAcknowledgementCount: 2,
+            profileAnimalCommandBehavior: 'trot',
+            profileAnimalCommandMovingAcknowledgedIds: cowIds,
+            profileAnimalCommandMovingAcknowledgementCount: 2,
+            profileAnimalCommandSequence: 1,
+            profileAnimalCommandSpecies: 'Cow',
+            profileGardenBlockCount: 147,
+            profileGardenBlockCountsByName: blockCountsByName,
+            profileGardenId: 99_995,
+            profileGardenRaisedBedCount: 0,
+            profileGardenStackCount: 117,
+            qualityTier: 'high',
+            shadowMapSize: 4_096,
+            shadowsEnabled: true,
+            staticOpaqueSceneCacheEnabled: false,
+        },
+        sample: {
+            actorGroundingShadowSpeciesCountsAtEnd: speciesCounts,
+            actorGroundingShadowSpeciesCountsAtStart: speciesCounts,
+            actorGroundingShadowSpeciesCountsMin: speciesCounts,
+            actorGroundingShadowUpdateCountDelta: 120,
+            animalProfileCommandDispatched: true,
+            animalProfileCommandSequenceAtStart: null,
+            canvas: {
+                clientHeight: 720,
+                clientWidth: 1_280,
+                height: 1_440,
+                width: 2_560,
+            },
+            drawCalls: 100,
+            elapsedMs: 5_000,
+            renderedFps: 30,
+            renderedFrames: 150,
+            reportedDpr: 2,
+            submittedTriangles: 100_000,
+        },
+        screenshotWitness,
+    };
+
+    const result = evaluateHighTargetAcceptance(input);
+    assert.equal(result.pass, true);
+    assert.ok(result.checks.length > 50);
+    assert.equal(evaluateFaunaHeavyAcceptance(input).pass, true);
+    assert.equal(isProfileScreenshotWitnessValid(screenshotWitness), true);
+
+    const reject = (override) =>
+        evaluateHighTargetAcceptance({ ...input, ...override }).pass;
+    assert.equal(
+        reject({
+            runtime: { ...input.runtime, profileGardenBlockCount: 146 },
+        }),
+        false,
+    );
+    assert.equal(
+        reject({
+            sample: {
+                ...input.sample,
+                actorGroundingShadowSpeciesCountsMin: {
+                    ...speciesCounts,
+                    cow: 1,
+                },
+            },
+        }),
+        false,
+    );
+    assert.equal(
+        reject({
+            runtime: { ...input.runtime, profileAnimalCommandSequence: 2 },
+        }),
+        false,
+    );
+    assert.equal(
+        reject({
+            runtime: { ...input.runtime, profileAnimalCommandSequence: 0 },
+            sample: {
+                ...input.sample,
+                animalProfileCommandSequenceAtStart: 0,
+            },
+        }),
+        false,
+    );
+    assert.equal(
+        reject({
+            runtime: {
+                ...input.runtime,
+                profileAnimalCommandAcknowledgedIds: [
+                    cowIds[0],
+                    'cow:wrong-actor',
+                ],
+            },
+        }),
+        false,
+    );
+    assert.equal(
+        reject({
+            apiRequests: [
+                {
+                    method: 'GET',
+                    url: 'http://profile.local/api/game/gardens',
+                },
+            ],
+        }),
+        false,
+    );
+    assert.equal(
+        reject({
+            screenshotWitness: { ...screenshotWitness, entropy: 0 },
+        }),
+        false,
+    );
+    assert.equal(
+        reject({
+            screenshotWitness: { ...screenshotWitness, width: 1_280 },
+        }),
+        false,
+    );
+
+    const scenarios = [1, 2, 3].map((profileRun) => ({
+        acceptance: { pass: true },
+        baseName: 'game-fauna-heavy-day-interaction-desktop',
+        budget: { pass: true },
+        budgetName: 'gameHighTarget',
+        name: `game-fauna-heavy-day-interaction-desktop-run-${profileRun}`,
+        performanceBudget: { pass: true },
+        profileRun,
+        requested: input.requested,
+        runtime: { qualityTier: 'high' },
+        sample: {
+            drawCallsPerFrame: 2,
+            drawCallsPerRenderedFrame: 100,
+            effectiveDprAtEnd: 2,
+            gpu: { elapsedP95Ms: null, valid: false },
+            jsHeapMb: 100,
+            longTaskCount: 0,
+            maxFrameMs: 20,
+            p95FrameMs: 16,
+            renderedFps: 30,
+            trianglesPerFrame: 2_000,
+            trianglesPerRenderedFrame: 100_000,
+        },
+    }));
+    const medians = buildHighTargetMedians(scenarios);
+    const faunaMedian = medians['game-fauna-heavy-day-interaction-desktop'];
+    assert.equal(faunaMedian?.faunaProfile, true);
+    assert.equal(faunaMedian?.runCount, 3);
+    assert.equal(faunaMedian?.pass, true);
+    assert.deepEqual(buildProfileSummary(scenarios, medians), {
+        failedScenarioNames: [],
+        failedScenarios: 0,
+        failedRuns: 0,
+        passedRuns: 3,
+        passedScenarios: 1,
+        totalRuns: 3,
+        totalScenarios: 1,
+    });
+
+    const markdown = buildMarkdown({
+        adaptiveHighComparisons: {},
+        baseUrl: 'http://profile.local',
+        crossTierMedians: {},
+        generatedAt: '2026-08-30T00:00:00.000Z',
+        highTargetMedians: medians,
+        options: {
+            build: true,
+            managedServer: true,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'fauna',
+            soakMs: 0,
+            warmupMs: 5_000,
+        },
+        plantCloseupMedians: {},
+        scenarios: [
+            {
+                acceptance: result,
+                apiErrors: [],
+                apiRequests: [],
+                budget: { checks: result.checks, pass: true },
+                consoleMessages: [],
+                environment: null,
+                name: 'game-fauna-heavy-day-interaction-desktop',
+                pageErrors: [],
+                profileRun: 1,
+                requested: input.requested,
+                runtime: input.runtime,
+                sample: {
+                    ...input.sample,
+                    drawCallsPerFrame: 2,
+                    drawCallsPerRenderedFrame: 100,
+                    fps: 60,
+                    jsHeapMb: 100,
+                    longTaskCount: 0,
+                    maxFrameMs: 20,
+                    p95FrameMs: 16,
+                    rainUnmountMs: null,
+                    trianglesPerFrame: 2_000,
+                    trianglesPerRenderedFrame: 100_000,
+                },
+                screenshotPath: '/tmp/fauna.png',
+                screenshotWitness,
+            },
+        ],
+        schemaVersion: 3,
+        sourceCommit: 'test-sha',
+        staticSceneCacheComparisons: {},
+        summary: { failedScenarios: 0 },
+        weatherSurfaceComparisons: {},
+    });
+    assert.match(markdown, /## Fauna daytime evidence/);
+    assert.match(markdown, /cow:2\/2/);
+    assert.match(markdown, /CowShelter:-6:-1:1/);
+    assert.match(markdown, /entropy 5\.2/);
+});
+
+test('garden-switch acceptance fails closed across fixtures, interaction, visuals, identity, timing, and resources', () => {
+    const speciesCounts = {
+        bee: 1,
+        bird: 1,
+        butterfly: 3,
+        cat: 1,
+        chicken: 1,
+        cow: 2,
+        dog: 1,
+        goat: 1,
+        horse: 1,
+        ladybug: 5,
+        piglet: 1,
+        rabbit: 1,
+        sheep: 2,
+        squirrel: 1,
+    };
+    const cowIds = [
+        'cow:animal-debug:1:CowShelter:-6:-1:1',
+        'cow:animal-debug:1:CowShelter:3:2:1',
+    ];
+    const screenshotWitness = {
+        entropy: 5.2,
+        height: 1_440,
+        maximumChannelStandardDeviation: 42,
+        opaque: true,
+        sampledLumaRange: 180,
+        sampledUniqueColorCount: 2_000,
+        width: 2_560,
+    };
+    let faunaVisit = 0;
+    const profiles = [
+        'high-target',
+        'fauna-heavy',
+        'high-target',
+        'fauna-heavy',
+        'high-target',
+        'fauna-heavy',
+        'high-target',
+    ];
+    const arrivals = profiles.map((profile, index) => {
+        const highTarget = profile === 'high-target';
+        if (!highTarget) {
+            faunaVisit += 1;
+        }
+        const resources = [
+            [258, 24, 7],
+            [490, 26, 9],
+            [523, 32, 9],
+            [492, 30, 9],
+            [525, 32, 9],
+            [492, 30, 9],
+            [525, 32, 9],
+        ][index];
+        return {
+            arrivalIndex: index + 1,
+            canvas: {
+                canvasCount: 1,
+                clientHeight: 720,
+                clientWidth: 1_280,
+                contextLost: false,
+                contextLostEventCount: 0,
+                contextRestoredEventCount: 0,
+                gardenId: highTarget ? 99_996 : 99_995,
+                height: 1_440,
+                sameCanvas: true,
+                sameContext: true,
+                sceneVisible: true,
+                width: 2_560,
+            },
+            fixture: highTarget
+                ? {
+                      blockCount: 297,
+                      generatedPlantExpectedInstanceCount: 537,
+                      generatedPlantFieldCount: 54,
+                      generatedPlantInstanceCount: 537,
+                      generatedPlantVisibleFieldCount: 54,
+                      generatedPlantVisibleInstanceCount: 537,
+                      raisedBedCount: 3,
+                      stackCount: 270,
+                  }
+                : {
+                      actorGroundingShadowDroppedCount: 0,
+                      blockCount: 147,
+                      raisedBedCount: 0,
+                      speciesCounts,
+                      stackCount: 117,
+                  },
+            gardenId: highTarget ? 99_996 : 99_995,
+            interaction: highTarget
+                ? {
+                      activeTargetCount: 2,
+                      dispatched: true,
+                      kind: 'outline',
+                      styleGroupCount: 1,
+                      targetBlockId: 'profile-raised-bed:2:0',
+                      targetRaisedBedId: 2,
+                  }
+                : {
+                      acknowledgementCount: 2,
+                      acknowledgedIds: cowIds,
+                      behavior: 'trot',
+                      dispatched: true,
+                      kind: 'animal',
+                      movingAcknowledgementCount: 2,
+                      movingAcknowledgedIds: cowIds,
+                      sequence: faunaVisit,
+                      species: 'Cow',
+                  },
+            profile,
+            resources: {
+                rendererGeometries: resources[0],
+                rendererShaders: resources[1],
+                rendererTextures: resources[2],
+                staticOpaqueSceneCacheEnabled: false,
+            },
+            sample: {
+                maxFrameMs: 100,
+            },
+            screenshotPath: `/tmp/garden-switch-${index + 1}.png`,
+            screenshotWitness,
+            timing:
+                index === 0
+                    ? { initial: true }
+                    : {
+                          dispatched: true,
+                          displayedMs: 280,
+                          hiddenObserved: true,
+                          settleTargetMs: 500,
+                          settledMs: 800,
+                          visibleMs: 300,
+                      },
+        };
+    });
+    const input = {
+        apiErrors: [],
+        apiRequests: [],
+        arrivals,
+        consoleMessages: [],
+        pageErrors: [],
+        requested: {
+            dpr: 2,
+            gardenSwitch: '1',
+            quality: 'high',
+            staticSceneCache: 'legacy',
+        },
+    };
+    const result = evaluateGardenSwitchAcceptance(input);
+    assert.equal(result.pass, true);
+    assert.ok(result.checks.length > 100);
+    assert.equal(
+        result.checks.filter((check) =>
+            check.name.startsWith(
+                'gardenSwitchResourceWarmPlateau:fauna-heavy:F2-to-F3:',
+            ),
+        ).length,
+        3,
+    );
+    assert.equal(
+        result.checks.filter((check) =>
+            check.name.startsWith(
+                'gardenSwitchResourceWarmPlateau:high-target:H3-to-H4:',
+            ),
+        ).length,
+        3,
+    );
+
+    const rejectArrival = (index, update) => {
+        const changed = arrivals.map((arrival, arrivalIndex) =>
+            arrivalIndex === index
+                ? {
+                      ...arrival,
+                      ...update(arrival),
+                  }
+                : arrival,
+        );
+        return evaluateGardenSwitchAcceptance({
+            ...input,
+            arrivals: changed,
+        }).pass;
+    };
+    assert.equal(
+        rejectArrival(1, (arrival) => ({
+            canvas: { ...arrival.canvas, sameContext: false },
+        })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(1, (arrival) => ({
+            canvas: {
+                ...arrival.canvas,
+                contextLostEventCount: 1,
+                contextRestoredEventCount: 1,
+            },
+        })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(2, () => ({ gardenId: 99_995 })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(3, (arrival) => ({
+            interaction: {
+                ...arrival.interaction,
+                movingAcknowledgedIds: [cowIds[0], 'cow:wrong'],
+            },
+        })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(6, (arrival) => ({
+            screenshotWitness: {
+                ...arrival.screenshotWitness,
+                entropy: 0,
+            },
+        })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(6, (arrival) => ({
+            timing: { ...arrival.timing, settledMs: 2_000 },
+        })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(5, (arrival) => ({
+            resources: {
+                ...arrival.resources,
+                rendererTextures: 10,
+            },
+        })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(2, (arrival) => ({
+            fixture: {
+                ...arrival.fixture,
+                generatedPlantVisibleFieldCount: 53,
+            },
+        })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(4, (arrival) => ({
+            fixture: {
+                ...arrival.fixture,
+                generatedPlantVisibleInstanceCount: 536,
+            },
+        })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(1, (arrival) => ({
+            resources: {
+                ...arrival.resources,
+                staticOpaqueSceneCacheEnabled: true,
+            },
+        })),
+        false,
+    );
+    assert.equal(
+        evaluateGardenSwitchAcceptance({
+            ...input,
+            apiRequests: [{ method: 'GET', url: '/api/gredice' }],
+        }).pass,
+        false,
+    );
+    assert.equal(
+        evaluateGardenSwitchAcceptance({
+            ...input,
+            requested: {
+                ...input.requested,
+                staticSceneCache: 'cache',
+            },
+        }).pass,
+        false,
+    );
+
+    const scenario = {
+        acceptance: result,
+        apiErrors: [],
+        apiRequests: [],
+        budget: { checks: result.checks, pass: true },
+        consoleMessages: [],
+        environment: null,
+        gardenSwitch: { arrivals },
+        name: 'game-garden-switch-high-fauna-single-context-desktop',
+        pageErrors: [],
+        requested: {
+            controls: '0',
+            debugHud: '0',
+            details: '1',
+            dpr: 2,
+            gardenProfile: 'garden-switch',
+            gardenSwitch: '1',
+            gardenSwitchProfile: true,
+            hud: '0',
+            mode: 'details',
+            motion: 'high-fauna-single-context-switch',
+            operationVisuals: '0',
+            quality: 'high',
+            staticSceneCache: 'legacy',
+        },
+        runtime: { qualityTier: 'high', shadowsEnabled: true },
+        sample: {
+            canvas: arrivals.at(-1).canvas,
+            drawCallsPerFrame: 2,
+            drawCallsPerRenderedFrame: 100,
+            fps: 60,
+            jsHeapMb: 100,
+            longTaskCount: 0,
+            maxFrameMs: 100,
+            p95FrameMs: 20,
+            rainUnmountMs: null,
+            renderedFps: 30,
+            trianglesPerFrame: 2_000,
+            trianglesPerRenderedFrame: 100_000,
+        },
+        screenshotPath: arrivals.at(-1).screenshotPath,
+        screenshotWitness,
+    };
+    assert.deepEqual(buildGardenSwitchSummary([scenario]), {
+        arrivalCount: 7,
+        canvasPersistentArrivalCount: 7,
+        contextPersistentArrivalCount: 7,
+        maximumDisplayedMs: 280,
+        maximumFrameMs: 100,
+        maximumSettledMs: 800,
+        passedScenarioCount: 1,
+        resourceWarmPlateauPass: true,
+        scenarioCount: 1,
+        transitionCount: 6,
+    });
+    const repeatedScenarios = [1, 2, 3].map((profileRun) => ({
+        ...scenario,
+        baseName: scenario.name,
+        name: `${scenario.name}-run-${profileRun}`,
+        profileRun,
+    }));
+    const repeatedSummary = buildGardenSwitchSummary(repeatedScenarios);
+    assert.equal(repeatedSummary.scenarioCount, 3);
+    assert.equal(repeatedSummary.passedScenarioCount, 3);
+    assert.equal(repeatedSummary.arrivalCount, 21);
+    assert.equal(repeatedSummary.transitionCount, 18);
+    assert.deepEqual(buildProfileSummary(repeatedScenarios, {}), {
+        failedScenarioNames: [],
+        failedScenarios: 0,
+        failedRuns: 0,
+        passedRuns: 3,
+        passedScenarios: 1,
+        totalRuns: 3,
+        totalScenarios: 1,
+    });
+    const failedRepeatedScenarios = repeatedScenarios.map(
+        (repeatedScenario, index) => ({
+            ...repeatedScenario,
+            budget: {
+                ...repeatedScenario.budget,
+                pass: index !== 1,
+            },
+        }),
+    );
+    assert.deepEqual(buildProfileSummary(failedRepeatedScenarios, {}), {
+        failedScenarioNames: [scenario.name],
+        failedScenarios: 1,
+        failedRuns: 1,
+        passedRuns: 2,
+        passedScenarios: 0,
+        totalRuns: 3,
+        totalScenarios: 1,
+    });
+    const faunaScenarios = [1, 2, 3].map((profileRun) => ({
+        acceptance: { pass: true },
+        baseName: 'game-fauna-heavy-day-interaction-desktop',
+        budget: { pass: true },
+        budgetName: 'gameHighTarget',
+        name: `game-fauna-heavy-day-interaction-desktop-run-${profileRun}`,
+        performanceBudget: { pass: true },
+        profileRun,
+        requested: {
+            faunaProfile: true,
+            gardenProfile: 'fauna-heavy',
+        },
+        runtime: { qualityTier: 'high' },
+        sample: {
+            drawCallsPerFrame: 2,
+            drawCallsPerRenderedFrame: 100,
+            effectiveDprAtEnd: 2,
+            gpu: { elapsedP95Ms: null, valid: false },
+            jsHeapMb: 100,
+            longTaskCount: 0,
+            maxFrameMs: 20,
+            p95FrameMs: 16,
+            renderedFps: 30,
+            trianglesPerFrame: 2_000,
+            trianglesPerRenderedFrame: 100_000,
+        },
+    }));
+    const combinedScenarios = [...faunaScenarios, ...repeatedScenarios];
+    assert.deepEqual(
+        buildProfileSummary(
+            combinedScenarios,
+            buildHighTargetMedians(combinedScenarios),
+        ),
+        {
+            failedScenarioNames: [],
+            failedScenarios: 0,
+            failedRuns: 0,
+            passedRuns: 6,
+            passedScenarios: 2,
+            totalRuns: 6,
+            totalScenarios: 2,
+        },
+    );
+    const markdown = buildMarkdown({
+        adaptiveHighComparisons: {},
+        baseUrl: 'http://profile.local',
+        crossTierMedians: {},
+        gardenSwitchSummary: buildGardenSwitchSummary([scenario]),
+        generatedAt: '2026-08-30T00:00:00.000Z',
+        highTargetMedians: {},
+        options: {
+            build: true,
+            managedServer: true,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'garden-switch',
+            soakMs: 0,
+            warmupMs: 5_000,
+        },
+        plantCloseupMedians: {},
+        scenarios: [scenario],
+        schemaVersion: 4,
+        sourceCommit: 'test-sha',
+        staticSceneCacheComparisons: {},
+        summary: { failedScenarios: 0 },
+        weatherSurfaceComparisons: {},
+    });
+    assert.match(markdown, /## Persistent-Canvas garden switching/);
+    assert.match(
+        markdown,
+        /warm resource plateau \(fauna F2→F3, High H3→H4\): pass/,
+    );
+    assert.match(markdown, /cache off/);
+    assert.match(markdown, /fauna-heavy \/ 99995/);
+    assert.match(markdown, /Cow trot #3/);
+    assert.match(markdown, /dynamic bee:1 butterfly:3 ladybug:5 squirrel:1/);
+});
+
+test('lifecycle acceptance gates scheduler suspension while keeping residual GL and CDP informational', () => {
+    const residual = (renderedFrames, drawCalls, submittedTriangles) => ({
+        cdp: {
+            layoutDuration: 0,
+            scriptDuration: 0.02,
+            taskDuration: 0.03,
+        },
+        sample: {
+            drawCalls,
+            elapsedMs: 5_000,
+            renderedFrames,
+            submittedTriangles,
+        },
+    });
+    const residualDeltas = {
+        cancelledCallbackCount: 0,
+        ownedInvalidationCount: 0,
+        resumeCount: 0,
+        scheduledCallbackCount: 0,
+        suspendCount: 0,
+        wakeupCount: 0,
+    };
+    const result = evaluateLifecycleAcceptance({
+        active: {},
+        cold: {},
+        context: {},
+        fixture: {},
+        hidden: {
+            residual: residual(3, 9, 27),
+            residualDeltas,
+        },
+        offscreen: {
+            residual: residual(2, 8, 24),
+            residualDeltas,
+        },
+        requested: { sampleMs: 5_000 },
+    });
+    const byName = Object.fromEntries(
+        result.checks.map((check) => [check.name, check]),
+    );
+
+    assert.equal(
+        byName.lifecycleOffscreenResidualRenderedFramesFinite.pass,
+        true,
+    );
+    assert.equal(byName.lifecycleOffscreenResidualWakeupDelta.pass, true);
+    assert.equal(
+        byName.lifecycleOffscreenResidualOwnedInvalidationDelta.pass,
+        true,
+    );
+    assert.equal(byName.lifecycleHiddenResidualDrawCallsFinite.pass, true);
+    assert.deepEqual(result.residualWorkPolicy, {
+        rendererAndCdpGated: false,
+        runtimeSchedulerGated: true,
+        reason: 'Offscreen and synthetic-hidden draw, frame, and script work are baseline observations until the runtime scheduler optimization lands.',
+    });
+});
+
+test('lifecycle acceptance passes one complete contract and rejects focused evidence mutations', () => {
+    const input = createPassingLifecycleAcceptanceInput();
+    const passing = evaluateLifecycleAcceptance(input);
+    assert.equal(
+        passing.pass,
+        true,
+        passing.checks
+            .filter((check) => !check.pass)
+            .map((check) => check.name)
+            .join(', '),
+    );
+
+    const underRendered = structuredClone(input);
+    underRendered.active.sample.renderedFrames = 1;
+    underRendered.active.sample.renderedFps = 0.2;
+    assert.equal(
+        lifecycleAcceptanceCheck(underRendered, 'lifecycleActiveRenderedFrames')
+            .pass,
+        false,
+    );
+
+    const schedulerWakeup = structuredClone(input);
+    schedulerWakeup.offscreen.residualDeltas.wakeupCount = 1;
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            schedulerWakeup,
+            'lifecycleOffscreenResidualWakeupDelta',
+        ).pass,
+        false,
+    );
+
+    const unhandledContextLoss = structuredClone(input);
+    unhandledContextLoss.context.lost.lostDefaultPreventedCount = 0;
+    unhandledContextLoss.context.lost.lostDefaultPreventedValues = [false];
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            unhandledContextLoss,
+            'lifecycleContextLossHandledByRuntime',
+        ).pass,
+        false,
+    );
+
+    const reversedContextEvents = structuredClone(input);
+    reversedContextEvents.context.restoreDurationMs = -1;
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            reversedContextEvents,
+            'lifecycleContextRestoreDurationMs',
+        ).pass,
+        false,
+    );
+
+    const replacedColdCanvas = structuredClone(input);
+    replacedColdCanvas.cold.firstCanvasPersistent = false;
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            replacedColdCanvas,
+            'lifecycleColdFirstCanvasPersistent',
+        ).pass,
+        false,
+    );
+
+    const invalidRestoredScreenshot = structuredClone(input);
+    invalidRestoredScreenshot.context.restoredControl.screenshotWitness.width = 1_280;
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            invalidRestoredScreenshot,
+            'lifecycleContextRestoredScreenshotWidth',
+        ).pass,
+        false,
+    );
+});
+
+function lifecycleAcceptanceCheck(input, name) {
+    return evaluateLifecycleAcceptance(input).checks.find(
+        (check) => check.name === name,
+    );
+}
+
+function createPassingLifecycleAcceptanceInput() {
+    const screenshotWitness = {
+        entropy: 1,
+        height: 1_440,
+        maximumChannelStandardDeviation: 6,
+        opaque: true,
+        sampledLumaRange: 21,
+        sampledUniqueColorCount: 16,
+        width: 2_560,
+    };
+    const outline = {
+        activeTargetCount: 2,
+        dispatched: true,
+        kind: 'outline',
+        styleGroupCount: 1,
+        targetBlockId: 'profile-raised-bed:2:0',
+        targetRaisedBedId: 2,
+    };
+    const arrival = (lostEventCount = 0, restoredEventCount = 0) => ({
+        canvas: {
+            canvasCount: 1,
+            clientHeight: 720,
+            clientWidth: 1_280,
+            contextLost: false,
+            contextLostEventCount: lostEventCount,
+            contextRestoredEventCount: restoredEventCount,
+            gardenId: 99_996,
+            height: 1_440,
+            sameCanvas: true,
+            sameContext: true,
+            sceneVisible: true,
+            width: 2_560,
+        },
+        fixture: {
+            blockCount: 297,
+            generatedPlantFieldCount: 54,
+            generatedPlantInstanceCount: 537,
+            generatedPlantVisibleFieldCount: 54,
+            generatedPlantVisibleInstanceCount: 537,
+            raisedBedCount: 3,
+            stackCount: 270,
+        },
+        gardenId: 99_996,
+        resources: { staticOpaqueSceneCacheEnabled: false },
+    });
+    const activeSample = () => ({
+        drawCalls: 1_000,
+        elapsedMs: 5_000,
+        renderedFps: 30,
+        renderedFrames: 150,
+        submittedTriangles: 10_000,
+    });
+    const residual = () => ({
+        cdp: {
+            layoutDuration: 0,
+            scriptDuration: 0.01,
+            taskDuration: 0.02,
+        },
+        sample: {
+            drawCalls: 0,
+            elapsedMs: 5_000,
+            renderedFrames: 0,
+            submittedTriangles: 0,
+        },
+    });
+    const residualDeltas = () => ({
+        cancelledCallbackCount: 0,
+        ownedInvalidationCount: 0,
+        resumeCount: 0,
+        scheduledCallbackCount: 0,
+        suspendCount: 0,
+        wakeupCount: 0,
+    });
+    const control = (lostEventCount = 0, restoredEventCount = 0) => ({
+        fixture: arrival(lostEventCount, restoredEventCount),
+        interaction: { ...outline },
+        postCommandRender: {
+            drawCalls: 10,
+            renderedFrames: 1,
+            submittedTriangles: 100,
+        },
+        screenshotWitness: { ...screenshotWitness },
+    });
+    const activeRuntimeFrameLoop = {
+        activeLeaseCount: 0,
+        cancelledCallbackCount: 0,
+        canvasVisible: true,
+        documentVisible: true,
+        effectiveVisible: true,
+        loopActive: true,
+        ownedInvalidationCount: 10,
+        resumeCount: 0,
+        scheduledCallbackCount: 20,
+        suspendCount: 0,
+        targetFramesPerSecond: 30,
+        wakeupCount: 19,
+    };
+    const offscreenControl = control();
+    const hiddenControl = control();
+    const restoredControl = control(1, 1);
+
+    return {
+        active: {
+            runtimeFrameLoop: activeRuntimeFrameLoop,
+            sample: activeSample(),
+        },
+        cold: {
+            canvasAttachmentCount: 1,
+            canvasAttachedMs: 20,
+            canvasSize: { height: 1_440, width: 2_560 },
+            canvasSizedMs: 30,
+            contextPageCount: 1,
+            domContentLoadedMs: 10,
+            firstCanvasPersistent: true,
+            firstSubmittedFrameMs: 40,
+            fixture: arrival(),
+            fixtureReadyMs: 50,
+            interaction: { ...outline },
+            interactionReadyMs: 60,
+            screenshotWitness: { ...screenshotWitness },
+        },
+        context: {
+            lost: {
+                contextLost: true,
+                lostDefaultPreventedCount: 1,
+                lostDefaultPreventedValues: [true],
+                lostEventCount: 1,
+                lostTimestamps: [100],
+                sameCanvas: true,
+                sameContext: true,
+            },
+            lostWindow: residual(),
+            precondition: {
+                contextLost: false,
+                lostEventCount: 0,
+                restoredEventCount: 0,
+                sameCanvas: true,
+                sameContext: true,
+            },
+            restoreDurationMs: 20,
+            restored: {
+                canvasCount: 1,
+                contextLost: false,
+                restoredEventCount: 1,
+                restoredTimestamps: [120],
+                sameCanvas: true,
+                sameContext: true,
+            },
+            restoredControl,
+            restoredWindow: {
+                cdp: { scriptDuration: 0.2, taskDuration: 0.3 },
+                sample: activeSample(),
+            },
+            restoreRequested: true,
+            supported: true,
+        },
+        fixture: arrival(1, 1),
+        hidden: {
+            before: activeRuntimeFrameLoop,
+            residual: residual(),
+            residualDeltas: residualDeltas(),
+            resumeDeltas: { resumeCount: 1, suspendCount: 0 },
+            resumed: {
+                canvasVisible: true,
+                documentVisible: true,
+                effectiveVisible: true,
+                loopActive: true,
+            },
+            resumedControl: hiddenControl,
+            resumedDocument: { hidden: false, visibilityState: 'visible' },
+            signal: 'synthetic-document-hidden',
+            suspended: {
+                canvasVisible: true,
+                documentVisible: false,
+                effectiveVisible: false,
+                loopActive: false,
+            },
+            suspendedDocument: { hidden: true, visibilityState: 'hidden' },
+            transitionDeltas: { resumeCount: 0, suspendCount: 1 },
+        },
+        offscreen: {
+            before: activeRuntimeFrameLoop,
+            residual: residual(),
+            residualDeltas: residualDeltas(),
+            resumeDeltas: { resumeCount: 1, suspendCount: 0 },
+            resumed: {
+                canvasVisible: true,
+                effectiveVisible: true,
+                loopActive: true,
+            },
+            resumedControl: offscreenControl,
+            resumedIntersection: {
+                boundingRect: { top: 0 },
+                entry: { height: 720, isIntersecting: true, width: 1_280 },
+            },
+            signal: 'intersection-observer',
+            suspended: {
+                canvasVisible: false,
+                documentVisible: true,
+                effectiveVisible: false,
+                loopActive: false,
+            },
+            suspendedIntersection: {
+                boundingRect: { top: 800 },
+                entry: { height: 0, isIntersecting: false, width: 0 },
+            },
+            transitionDeltas: { resumeCount: 0, suspendCount: 1 },
+        },
+        requested: {
+            controls: '0',
+            debugHud: '0',
+            details: '1',
+            dpr: 2,
+            fixedTimeSeconds: 43_200,
+            freshContext: true,
+            gardenProfile: 'high-target',
+            hud: '0',
+            lifecycle: '1',
+            lifecycleProfile: true,
+            lifecycleRequest: '1',
+            mode: 'details',
+            outline: '1',
+            quality: 'high',
+            sampleMs: 5_000,
+            staticSceneCache: 'legacy',
+            viewport: { height: 720, width: 1_280 },
+        },
+        resolved: {
+            browserDpr: 2,
+            dprCap: 2,
+            qualityTier: 'high',
+            shadowMapSize: 4_096,
+            shadowsEnabled: true,
+        },
+        restoredInteraction: { ...outline },
+        restoredScreenshotWitness: { ...screenshotWitness },
+    };
+}
+
+test('lifecycle summary groups three fresh-context repeats as one scenario outside High medians', () => {
+    const runs = [1, 2, 3].map((profileRun) => ({
+        acceptance: { pass: true },
+        baseName: 'game-high-target-runtime-lifecycle-desktop',
+        budget: { pass: true },
+        name: `game-high-target-runtime-lifecycle-desktop-run-${profileRun}`,
+        lifecycle: {
+            cold: {
+                canvasAttachedMs: 100 + profileRun,
+                canvasSizedMs: 120 + profileRun,
+                domContentLoadedMs: 80 + profileRun,
+                firstSubmittedFrameMs: 140 + profileRun,
+                fixtureReadyMs: 160 + profileRun,
+                interactionReadyMs: 180 + profileRun,
+            },
+            context: {
+                restored: {
+                    contextLost: false,
+                    restoredEventCount: 1,
+                    sameCanvas: true,
+                    sameContext: true,
+                },
+            },
+            hidden: {
+                residual: residualLifecycleFixture(profileRun),
+                runtimeSchedulerZeroObserved: true,
+                zeroWorkObserved: true,
+            },
+            offscreen: {
+                residual: residualLifecycleFixture(profileRun),
+                runtimeSchedulerZeroObserved: true,
+                zeroWorkObserved: true,
+            },
+        },
+        profileRun,
+        requested: {
+            gardenProfile: 'high-target',
+            lifecycleProfile: true,
+        },
+    }));
+    const summary = buildLifecycleSummary(runs);
+
+    assert.equal(summary.baseScenarioCount, 1);
+    assert.equal(summary.runCount, 3);
+    assert.equal(summary.passedRunCount, 3);
+    assert.equal(summary.contextPersistentRunCount, 3);
+    assert.equal(summary.offscreen.runtimeSchedulerZeroObservedRunCount, 3);
+    assert.equal(summary.offscreen.zeroWorkObservedRunCount, 3);
+    assert.deepEqual(buildHighTargetMedians(runs), {});
+    assert.deepEqual(buildProfileSummary(runs, {}), {
+        failedScenarioNames: [],
+        failedScenarios: 0,
+        failedRuns: 0,
+        passedRuns: 3,
+        passedScenarios: 1,
+        totalRuns: 3,
+        totalScenarios: 1,
+    });
+    const switchRuns = [1, 2, 3].map((profileRun) => ({
+        baseName: 'game-garden-switch-high-fauna-single-context-desktop',
+        budget: { pass: true },
+        name: `game-garden-switch-high-fauna-single-context-desktop-run-${profileRun}`,
+        requested: { gardenSwitchProfile: true },
+    }));
+    const faunaRuns = [1, 2, 3].map((profileRun) => ({
+        baseName: 'game-fauna-heavy-day-interaction-desktop',
+        budget: { pass: true },
+        name: `game-fauna-heavy-day-interaction-desktop-run-${profileRun}`,
+        requested: { faunaProfile: true, gardenProfile: 'fauna-heavy' },
+    }));
+    assert.deepEqual(
+        buildProfileSummary([...faunaRuns, ...switchRuns, ...runs], {
+            fauna: { pass: true },
+        }),
+        {
+            failedScenarioNames: [],
+            failedScenarios: 0,
+            failedRuns: 0,
+            passedRuns: 9,
+            passedScenarios: 3,
+            totalRuns: 9,
+            totalScenarios: 3,
+        },
+    );
+});
+
+function residualLifecycleFixture(value) {
+    return {
+        cdp: { scriptDuration: value },
+        sample: {
+            drawCalls: value,
+            renderedFrames: value,
+            submittedTriangles: value,
+        },
+    };
+}
+
 test('local profiler console filtering only ignores the known missing analytics asset', () => {
     const knownLocalAnalyticsError = {
         type: 'error',
@@ -1365,6 +4539,58 @@ test('local profiler console filtering only ignores the known missing analytics 
         },
     ]) {
         assert.equal(isIgnoredLocalProfilerConsoleError(message), false);
+    }
+});
+
+test('building profile signed-out filtering is local, status-bound, and path-exact', () => {
+    const expectedError = {
+        status: 401,
+        url: 'http://localhost:3101/api/gredice/api/gardens/99999/operations?cursor=0',
+    };
+    assert.equal(isExpectedGardenBuildingProfileApiError(expectedError), true);
+    assert.equal(
+        isExpectedGardenBuildingProfileApiError({
+            ...expectedError,
+            url: 'http://[::1]:3101/api/gredice/api/accounts/current',
+        }),
+        true,
+    );
+
+    for (const error of [
+        { ...expectedError, status: 500 },
+        {
+            ...expectedError,
+            url: 'http://localhost:3101/api/gredice/api/gardens/99998/operations',
+        },
+        {
+            ...expectedError,
+            url: 'https://garden.example.com/api/gredice/api/gardens/99999/operations',
+        },
+    ]) {
+        assert.equal(isExpectedGardenBuildingProfileApiError(error), false);
+    }
+
+    const expectedConsoleError = {
+        type: 'error',
+        text: 'Failed to load resource: the server responded with a status of 401 (Unauthorized)',
+        url: expectedError.url,
+    };
+    assert.equal(
+        isExpectedGardenBuildingProfileConsoleError(expectedConsoleError),
+        true,
+    );
+    for (const message of [
+        { ...expectedConsoleError, type: 'warning' },
+        { ...expectedConsoleError, text: 'THREE.WebGLProgram: Shader Error' },
+        {
+            ...expectedConsoleError,
+            url: 'https://garden.example.com/api/gredice/api/gardens/99999/operations',
+        },
+    ]) {
+        assert.equal(
+            isExpectedGardenBuildingProfileConsoleError(message),
+            false,
+        );
     }
 });
 
@@ -3561,6 +6787,159 @@ test('high target aggregate fails when the median exceeds a performance budget',
     assert.equal(aggregate.medianSample.p95FrameMs, 40);
     assert.equal(aggregate.performanceBudget.pass, false);
     assert.equal(aggregate.pass, false);
+});
+
+test('cross-tier medians retain tier identity and render in a separate report section', () => {
+    const crossTierRuns = [10, 20, 30].map((value, index) => {
+        const run = highTargetRun(value, index);
+        const baseName = 'game-cross-tier-low-steady-desktop';
+        return {
+            ...run,
+            baseName,
+            name: `${baseName}-run-${index + 1}`,
+            requested: {
+                ...run.requested,
+                crossTierProfile: true,
+                quality: 'low',
+            },
+            runtime: { qualityTier: 'low' },
+            sample: {
+                ...run.sample,
+                generatedPlantVisibleFieldCountMin: 54,
+                generatedPlantVisibleInstanceCountMin: 537,
+            },
+        };
+    });
+    const regularRuns = [10, 20, 30].map((value, index) => {
+        const run = highTargetRun(value, index);
+        const baseName = 'game-high-target-clear-idle-desktop';
+        return {
+            ...run,
+            baseName,
+            name: `${baseName}-run-${index + 1}`,
+            requested: { ...run.requested, quality: 'high' },
+            runtime: { qualityTier: 'high' },
+        };
+    });
+    const highTargetMedians = buildHighTargetMedians([
+        ...crossTierRuns,
+        ...regularRuns,
+    ]);
+    const crossTierMedians = buildCrossTierMedians(highTargetMedians);
+    const crossTier = crossTierMedians['game-cross-tier-low-steady-desktop'];
+
+    assert.deepEqual(Object.keys(crossTierMedians), [
+        'game-cross-tier-low-steady-desktop',
+    ]);
+    assert.equal(crossTier.crossTierProfile, true);
+    assert.equal(crossTier.requestedQuality, 'low');
+    assert.equal(crossTier.resolvedQualityTier, 'low');
+    assert.equal(crossTier.generatedPlantVisibleFieldCountMin.min, 54);
+    assert.equal(crossTier.generatedPlantVisibleInstanceCountMin.min, 537);
+
+    const markdown = buildMarkdown({
+        adaptiveHighComparisons: {},
+        baseUrl: 'http://profile.local',
+        crossTierMedians,
+        generatedAt: '2026-08-30T00:00:00.000Z',
+        highTargetMedians,
+        options: {
+            build: false,
+            managedServer: false,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'cross-tier',
+            soakMs: 0,
+            warmupMs: 0,
+        },
+        plantCloseupMedians: {},
+        scenarios: [],
+        schemaVersion: 2,
+        sourceCommit: null,
+        staticSceneCacheComparisons: {},
+        summary: { failedScenarios: 0 },
+        weatherSurfaceComparisons: {},
+    });
+    const section = (heading) => {
+        const start = markdown.indexOf(`## ${heading}`);
+        const end = markdown.indexOf('\n## ', start + 3);
+        return markdown.slice(start, end === -1 ? undefined : end);
+    };
+    const highTargetSection = section('High-target repeated-run summary');
+    const crossTierSection = section('Cross-tier repeated-run summary');
+
+    assert.match(highTargetSection, /game-high-target-clear-idle-desktop/);
+    assert.doesNotMatch(
+        highTargetSection,
+        /game-cross-tier-low-steady-desktop/,
+    );
+    assert.match(crossTierSection, /Requested → resolved/);
+    assert.match(
+        crossTierSection,
+        /game-cross-tier-low-steady-desktop.*low → low.*54\/537/,
+    );
+    assert.doesNotMatch(
+        crossTierSection,
+        /game-high-target-clear-idle-desktop/,
+    );
+
+    crossTier.acceptancePass = false;
+    crossTier.failedAcceptanceRuns = [
+        'game-cross-tier-low-steady-desktop-run-2',
+    ];
+    crossTier.performanceBudget = {
+        pass: false,
+        checks: [
+            {
+                actual: 25,
+                limit: 20,
+                name: 'p95 frame time',
+                pass: false,
+            },
+        ],
+    };
+    const failureMarkdown = buildMarkdown({
+        adaptiveHighComparisons: {},
+        baseUrl: 'http://profile.local',
+        crossTierMedians,
+        generatedAt: '2026-08-30T00:00:00.000Z',
+        highTargetMedians,
+        options: {
+            build: false,
+            managedServer: false,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'cross-tier',
+            soakMs: 0,
+            warmupMs: 0,
+        },
+        plantCloseupMedians: {},
+        scenarios: [],
+        schemaVersion: 3,
+        sourceCommit: null,
+        staticSceneCacheComparisons: {},
+        summary: { failedScenarios: 1 },
+        weatherSurfaceComparisons: {},
+    });
+    const failureSectionStart = failureMarkdown.indexOf(
+        '## High-target Aggregate Failures',
+    );
+    const failureSectionEnd = failureMarkdown.indexOf(
+        '\n## ',
+        failureSectionStart + 3,
+    );
+    const failureSection = failureMarkdown.slice(
+        failureSectionStart,
+        failureSectionEnd,
+    );
+    assert.match(
+        failureSection,
+        /game-cross-tier-low-steady-desktop: acceptance failed for game-cross-tier-low-steady-desktop-run-2/,
+    );
+    assert.match(
+        failureSection,
+        /game-cross-tier-low-steady-desktop median: p95 frame time 25 > 20/,
+    );
 });
 
 test('adaptive High comparison reports paired pass rates and frame/GPU deltas', () => {

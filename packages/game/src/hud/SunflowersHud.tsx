@@ -165,10 +165,6 @@ function SunflowersAmount() {
             ? sunflowerCount - pendingSunflowers
             : undefined;
 
-    if (isLoading) {
-        return null;
-    }
-
     return (
         <Popper
             className="overflow-hidden border-tertiary border-b-4"
@@ -176,6 +172,7 @@ function SunflowersAmount() {
             sideOffset={12}
             trigger={
                 <Button
+                    aria-busy={isLoading}
                     variant="plain"
                     title="Suncokreti"
                     data-sunflowers-hud-target
@@ -190,10 +187,23 @@ function SunflowersAmount() {
                     }
                     className="relative rounded-full px-2 md:min-w-20 justify-between pr-4"
                 >
-                    <Typography level="body2" className="text-base pl-0.5">
-                        {typeof displayedSunflowerCount === 'number'
-                            ? formatSunflowers(displayedSunflowerCount)
-                            : sunflowerCount}
+                    <Typography
+                        component="span"
+                        level="body2"
+                        className="inline-flex min-w-10 items-center pl-0.5 text-base"
+                    >
+                        {isLoading ? (
+                            <span
+                                aria-label="Učitavanje broja suncokreta"
+                                className="h-5 w-10 animate-pulse rounded-md bg-muted"
+                                data-sunflowers-hud-amount-skeleton="true"
+                                role="status"
+                            />
+                        ) : typeof displayedSunflowerCount === 'number' ? (
+                            formatSunflowers(displayedSunflowerCount)
+                        ) : (
+                            '—'
+                        )}
                     </Typography>
                     {pendingSunflowers > 0 && (
                         <span

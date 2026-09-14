@@ -134,7 +134,11 @@ export type FieldConfig = {
         | 'pendingVerification'
         | 'sowed'
         | 'sprouted'
+        | 'firstFlowers'
+        | 'firstFruitSet'
         | 'ready'
+        | 'harvested'
+        | 'notSprouted'
         | 'died'
         | 'deleted'
         | 'canceled';
@@ -330,6 +334,7 @@ export function buildCartItem({
 
 export function buildOperation({
     appliesToAllTargets = false,
+    appliesToEmptyFields = false,
     id,
     name,
     label,
@@ -338,6 +343,7 @@ export function buildOperation({
     relativeDays,
 }: {
     appliesToAllTargets?: boolean;
+    appliesToEmptyFields?: boolean;
     id: number;
     name: string;
     label: string;
@@ -351,6 +357,7 @@ export function buildOperation({
         slug: `mock-${name}`,
         attributes: {
             appliesToAllTargets,
+            appliesToEmptyFields,
             frequency: 'once',
             stage: {
                 id,

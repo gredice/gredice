@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     getInventoryItemState,
+    isInventoryItemOrphaned,
+    normalizeInventoryLinkFilter,
     normalizeInventoryStateFilter,
 } from './inventoryStatus.ts';
 
@@ -44,4 +46,38 @@ test('normalizeInventoryStateFilter accepts supported state aliases', () => {
     assert.equal(normalizeInventoryStateFilter('critical'), 'critical');
     assert.equal(normalizeInventoryStateFilter('error'), 'critical');
     assert.equal(normalizeInventoryStateFilter('unknown'), '');
+});
+
+test('isInventoryItemOrphaned ignores items without an entity reference', () => {
+    assert.equal(
+        isInventoryItemOrphaned({ entityId: null, entity: null }),
+        false,
+    );
+});
+
+test('isInventoryItemOrphaned marks references to deleted entities', () => {
+    assert.equal(
+        isInventoryItemOrphaned({ entityId: 317, entity: { isDeleted: true } }),
+        true,
+    );
+});
+
+test('isInventoryItemOrphaned marks references to missing entities', () => {
+    assert.equal(
+        isInventoryItemOrphaned({ entityId: 317, entity: null }),
+        true,
+    );
+});
+
+test('isInventoryItemOrphaned keeps live references linked', () => {
+    assert.equal(
+        isInventoryItemOrphaned({ entityId: 520, entity: { isDeleted: false } }),
+        false,
+    );
+});
+
+test('normalizeInventoryLinkFilter accepts only the orphaned filter', () => {
+    assert.equal(normalizeInventoryLinkFilter('orphaned'), 'orphaned');
+    assert.equal(normalizeInventoryLinkFilter(''), '');
+    assert.equal(normalizeInventoryLinkFilter('linked'), '');
 });
