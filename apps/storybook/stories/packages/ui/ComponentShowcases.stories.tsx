@@ -1358,6 +1358,14 @@ function PublicContentShowcase() {
                         ]}
                         features={[
                             {
+                                tagline: 'FooterUtility',
+                                asset: (
+                                    <div className="rounded-full border px-3 py-1.5 text-xs text-muted-foreground">
+                                        Footer utility
+                                    </div>
+                                ),
+                            },
+                            {
                                 header: 'Sadrzaj',
                                 ctas: [
                                     { label: 'Biljke', href: '/' },
