@@ -59,7 +59,8 @@ the repair worktree and `/Users/aleks/Documents/GitHub/gredice` so removing the
 worktree does not discard them. The strict comparison JSON SHA-256 is
 `d35946f03ac2cd7c26e83b859066dab4aaac815b27a3604399e96e644da97bcb`.
 The directory date follows the UTC capture date; this acceptance note uses the
-local date. Later changes in this PR only record evidence.
+local date. Later changes in this PR record evidence and freeze the browser
+test clock during exact cadence measurements; the measured runtime is unchanged.
 
 This new integration satisfies the release gate that blocked #4777 and #4802.
 It does not establish a native-driver explanation for the old measurements.

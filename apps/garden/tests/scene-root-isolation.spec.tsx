@@ -166,16 +166,24 @@ for (const fps of [30, 60]) {
                 window.sceneRootWitness?.a?.visible() &&
                 window.sceneRootWitness.b?.visible(),
         );
+        // Stop host time from adding frames between runFor and witness reads.
+        // Settle after pausing so the jump itself is outside the sample.
+        await page.clock.pauseAt(
+            await page.evaluate(() => Date.now() + 60_000),
+        );
         await page.clock.runFor(2000);
         const before = await page.evaluate(() => ({
             a: window.sceneRootWitness?.a?.snapshot(),
             b: window.sceneRootWitness?.b?.snapshot(),
+            time: performance.now(),
         }));
         await page.clock.runFor(960);
         const after = await page.evaluate(() => ({
             a: window.sceneRootWitness?.a?.snapshot(),
             b: window.sceneRootWitness?.b?.snapshot(),
+            time: performance.now(),
         }));
+        expect(after.time - before.time).toBeCloseTo(1000, 8);
         expect((after.a?.frames ?? 0) - (before.a?.frames ?? 0)).toBe(fps);
         const measuredDeltas = (after.a?.deltas ?? []).slice(
             before.a?.deltas.length ?? 0,
