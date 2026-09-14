@@ -7,21 +7,53 @@ import {
     entityTypes,
     events,
     getAttributeDefinitions,
+    getPublicPriceCatalog,
     getPublishedPriceList,
     getPublishedPriceLists,
     publishPublicPriceList,
     storage,
 } from '@gredice/storage';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { createTestDb } from './testDb';
 
 test('publication supports parentless sorts, deduplicates prices and preserves older downloads after changes', async (t) => {
     createTestDb();
     const entityTypeName = 'plantSort';
+    const incompleteTypes = [
+        'plant',
+        'plantSort',
+        'operation',
+        'hqLocations',
+    ];
     await storage()
         .insert(entityTypes)
-        .values({ name: entityTypeName, label: 'Plant sort' })
+        .values(incompleteTypes.map((name) => ({ name, label: name })))
         .onConflictDoNothing();
+    const incomplete = await storage()
+        .insert(entities)
+        .values(
+            incompleteTypes.map((name) => ({
+                entityTypeName: name,
+                state: 'published',
+            })),
+        )
+        .returning();
+    t.after(async () => {
+        await storage()
+            .delete(entities)
+            .where(
+                inArray(
+                    entities.id,
+                    incomplete.map((entry) => entry.id),
+                ),
+            );
+    });
+    const catalog = await getPublicPriceCatalog();
+    assert.ok(
+        incomplete.every(
+            (entry) => !catalog.some((price) => price.entityId === entry.id),
+        ),
+    );
     const existingDefinitions = await getAttributeDefinitions(entityTypeName);
     const definitions = [];
     for (const definition of [

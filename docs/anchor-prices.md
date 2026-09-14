@@ -29,7 +29,9 @@ dated unchanged entity state or a state-bearing revision. An undated current
 
 Directory price attributes are the regular price source; outlet reductions
 remain separate checkout discounts. Reference prices never use those
-discounts. The public delivery calculator has a separate fixed rate; its
+discounts. Generic directory entries without a public name or numeric price
+are omitted from the export; a sort can use its own name without a parent link.
+The public delivery calculator has a separate fixed rate; its
 €0.20/km baseline is recorded independently from the current rate, with the
 source Git commit beside the constant.
 

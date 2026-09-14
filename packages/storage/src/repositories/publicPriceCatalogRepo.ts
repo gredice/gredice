@@ -34,7 +34,9 @@ export async function getPublicPriceCatalog() {
         ...plants.map((plant) => ({
             entityId: plant.id,
             entityTypeName: 'plant',
-            name: `Uzgoj: ${plant.information.name}`,
+            name: plant.information?.name
+                ? `Uzgoj: ${plant.information.name}`
+                : '',
             price: plant.prices?.perPlant,
             attributeCategory: 'prices',
             attributeName: 'perPlant',
@@ -43,12 +45,14 @@ export async function getPublicPriceCatalog() {
         ...sorts.map((sort) => ({
             entityId: sort.id,
             entityTypeName: 'plantSort',
-            name: `Uzgoj: ${[
-                sort.information.plant?.information?.name,
-                sort.information.name,
-            ]
-                .filter(Boolean)
-                .join(' – ')}`,
+            name: sort.information?.name
+                ? `Uzgoj: ${[
+                      sort.information.plant?.information?.name,
+                      sort.information.name,
+                  ]
+                      .filter(Boolean)
+                      .join(' – ')}`
+                : '',
             price: sort.prices?.perPlant,
             attributeCategory: 'prices',
             attributeName: 'perPlant',
@@ -59,7 +63,8 @@ export async function getPublicPriceCatalog() {
             .map((operation) => ({
                 entityId: operation.id,
                 entityTypeName: 'operation',
-                name: operation.information.label,
+                name:
+                    operation.information?.label ?? operation.information?.name,
                 price: operation.prices?.perOperation,
                 attributeCategory: 'prices',
                 attributeName: 'perOperation',
@@ -68,7 +73,9 @@ export async function getPublicPriceCatalog() {
         ...locations.map((location) => ({
             entityId: location.id,
             entityTypeName: 'hqLocations',
-            name: `Dostava: ${location.information.label}`,
+            name: location.information?.label
+                ? `Dostava: ${location.information.label}`
+                : '',
             price: location.prices?.pricePerKilometer,
             attributeCategory: 'prices',
             attributeName: 'pricePerKilometer',
@@ -85,12 +92,15 @@ export async function getPublicPriceCatalog() {
             unit: 'paket',
         })),
     ].flatMap((entry) =>
+        typeof entry.name === 'string' &&
+        entry.name.trim().length > 0 &&
         typeof entry.price === 'number' &&
         Number.isFinite(entry.price) &&
         entry.price >= 0
             ? [
                   {
                       ...entry,
+                      name: entry.name,
                       price: entry.price,
                       key: `${entry.entityTypeName}:${'packageCode' in entry ? entry.packageCode : entry.entityId}`,
                   },
