@@ -39,7 +39,9 @@ export async function getLandingFeaturedGardens(): Promise<
         return playwrightFeaturedGardensFixture;
     }
 
+    const startedAt = Date.now();
     try {
+        // The list, detail requests, and response bodies share one total budget.
         const signal = AbortSignal.timeout(landingFeaturedGardensTimeoutMs);
         const response = await clientPublic().api.gardens.public.$get(
             undefined,
@@ -48,43 +50,68 @@ export async function getLandingFeaturedGardens(): Promise<
         if (!response.ok) {
             console.error('Failed to fetch featured gardens for landing', {
                 status: response.status,
+                elapsedMs: Date.now() - startedAt,
             });
             return [];
         }
 
         const publicGardens = await response.json();
+        const listDurationMs = Date.now() - startedAt;
         const featuredGardenSummaries = publicGardens.items
             .toSorted(comparePublicGardensByPopularity)
             .slice(0, landingFeaturedGardenLimit);
         const featuredGardens = await Promise.all(
             featuredGardenSummaries.map(async (garden) => {
-                const gardenResponse = await clientPublic().api.gardens[
-                    ':gardenId'
-                ].public.$get(
-                    {
-                        param: { gardenId: garden.id.toString() },
-                    },
-                    { init: { signal } },
-                );
+                const detailStartedAt = Date.now();
+                try {
+                    const gardenResponse = await clientPublic().api.gardens[
+                        ':gardenId'
+                    ].public.$get(
+                        {
+                            param: { gardenId: garden.id.toString() },
+                        },
+                        { init: { signal } },
+                    );
 
-                if (!gardenResponse.ok) {
-                    console.error('Failed to fetch featured garden details', {
+                    if (!gardenResponse.ok) {
+                        console.warn(
+                            'Failed to fetch featured garden details',
+                            {
+                                gardenId: garden.id,
+                                status: gardenResponse.status,
+                                listDurationMs,
+                                detailDurationMs: Date.now() - detailStartedAt,
+                            },
+                        );
+                        return null;
+                    }
+
+                    return {
+                        garden: await gardenResponse.json(),
+                        owner: garden.owner ?? null,
+                    };
+                } catch (error) {
+                    // A failed fetch or body read must not discard gardens
+                    // that completed within the shared deadline.
+                    console.warn('Failed to prepare featured garden details', {
                         gardenId: garden.id,
-                        status: gardenResponse.status,
+                        error,
+                        listDurationMs,
+                        detailDurationMs: Date.now() - detailStartedAt,
+                        elapsedMs: Date.now() - startedAt,
+                        timedOut: signal.aborted,
                     });
                     return null;
                 }
-
-                return {
-                    garden: await gardenResponse.json(),
-                    owner: garden.owner ?? null,
-                };
             }),
         );
 
         return featuredGardens.filter((garden) => garden !== null);
     } catch (error) {
-        console.error('Failed to prepare featured gardens for landing', error);
+        console.error('Failed to prepare featured gardens for landing', {
+            error,
+            elapsedMs: Date.now() - startedAt,
+        });
         return [];
     }
 }
