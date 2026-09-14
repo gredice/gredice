@@ -55,3 +55,17 @@ status values and localized labels owned by each workflow. Render icons with
 `aria-hidden` beside visible status text, and use 20px in compact controls, 24px
 in menus and 32px in timeline badges. Plain-text notification messages may still
 use emoji because they cannot embed UI components.
+
+## Account menu
+
+`GameGardenIcon`, `GameGardenPlanIcon`, `GameProfileIcon`, `GameSettingsIcon`,
+`GameContactIcon` and `GameLogoutIcon` cover the garden account menu. The garden
+island is shared by sandbox gardens and the return to 3D view; the parchment
+plan represents the 2D view. Both desktop submenus and mobile inline garden
+sections use the same artwork. Use 24px with `shrink-0` and `aria-hidden` beside
+visible menu labels, including the existing mailbox and seedling icons.
+
+Review `packages/ui/Icons/GameAccountMenu` for the menu composition in light and
+dark themes, and `packages/ui/Icons/GameIcons` for the 16–64px comparisons.
+The Garden workspace showcase includes the same menu preview. Menu navigation,
+account selection and sign-out behavior remain owned by `@gredice/game`.

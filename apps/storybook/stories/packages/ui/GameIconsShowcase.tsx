@@ -3,6 +3,7 @@ import Image from 'next/image';
 import backpackReference from '../../../../garden/public/assets/hud/inventory-backpack.webp?url';
 import basketReference from '../../../../garden/public/assets/hud/shopping-basket.webp?url';
 import { GameIconGroups } from '../game/icons/GameIconGroups';
+import { GameAccountMenuPreview } from './GameAccountMenuPreview';
 import { gameIconComparisons } from './gameIconComparisons';
 import { PlantCareHudPreview } from './PlantCareHudPreview';
 
@@ -56,6 +57,7 @@ export function GameIconsShowcase({ dark = false }: { dark?: boolean }) {
                         </figcaption>
                     </figure>
                 </section>
+                <GameAccountMenuPreview />
                 <GameIconGroups />
                 <PlantCareHudPreview />
                 <div className="space-y-3">
