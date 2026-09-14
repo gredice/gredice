@@ -1,6 +1,6 @@
 import { getAchievementProgress } from '@gredice/js/achievements';
 import { initials } from '@gredice/js/initials';
-import { Avatar, type AvatarProps } from '../Avatar';
+import { Avatar, type AvatarProps, resolveAvatarSource } from '../Avatar';
 import { cx } from '../utils';
 import { UserLevelBadge } from './UserLevelBadge';
 
@@ -33,7 +33,7 @@ export function UserAvatar({
                 {avatarUrl ? (
                     // biome-ignore lint/performance/noImgElement: User-provided avatar URLs do not require Next image configuration.
                     <img
-                        src={avatarUrl}
+                        src={resolveAvatarSource(avatarUrl)}
                         alt={displayName}
                         className="size-full object-cover"
                     />

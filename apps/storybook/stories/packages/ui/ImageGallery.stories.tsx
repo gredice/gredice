@@ -1,3 +1,4 @@
+import { resolveAvatarSource } from '@gredice/ui/Avatar';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
@@ -17,11 +18,15 @@ const sampleImages = [
         alt: 'Suncokret',
     },
     {
-        src: 'https://cdn.gredice.com/avatars/farmer-male.png',
+        src: resolveAvatarSource(
+            'https://cdn.gredice.com/avatars/farmer-male.png',
+        ),
         alt: 'Farmer',
     },
     {
-        src: 'https://cdn.gredice.com/avatars/farmer-female.png',
+        src: resolveAvatarSource(
+            'https://cdn.gredice.com/avatars/farmer-female.png',
+        ),
         alt: 'Farmerka',
     },
 ];
