@@ -141,28 +141,49 @@ for (const fps of [30, 60]) {
         mount,
         page,
     }) => {
-        await mount(<SceneRootIsolationFixture framesPerSecond={fps} />);
         await page.evaluate(() => {
             const requestFrame = window.requestAnimationFrame;
-            // Map Playwright's 16 ms RAF ticks to exact 60 Hz timestamps.
+            const now = performance.now.bind(performance);
+            const setTimer = window.setTimeout.bind(window);
+            // Use one exact 60 Hz clock for RAF, semantic deadlines, and receipts.
+            // Scaling RAF alone makes a second elapse in 960 ms for the renderer
+            // while the deadline scheduler still sees only 960 ms.
             window.requestAnimationFrame = (callback) =>
                 requestFrame((timestamp) => callback((timestamp * 25) / 24));
+            performance.now = () => (now() * 25) / 24;
+            Object.defineProperty(window, 'setTimeout', {
+                configurable: true,
+                value: (
+                    handler: TimerHandler,
+                    timeout = 0,
+                    ...args: unknown[]
+                ) => setTimer(handler, (timeout * 24) / 25, ...args),
+            });
         });
+        await mount(<SceneRootIsolationFixture framesPerSecond={fps} />);
         await page.waitForFunction(
             () =>
                 window.sceneRootWitness?.a?.visible() &&
                 window.sceneRootWitness.b?.visible(),
         );
+        // Stop host time from adding frames between runFor and witness reads.
+        // Settle after pausing so the jump itself is outside the sample.
+        await page.clock.pauseAt(
+            await page.evaluate(() => Date.now() + 60_000),
+        );
         await page.clock.runFor(2000);
         const before = await page.evaluate(() => ({
             a: window.sceneRootWitness?.a?.snapshot(),
             b: window.sceneRootWitness?.b?.snapshot(),
+            time: performance.now(),
         }));
         await page.clock.runFor(960);
         const after = await page.evaluate(() => ({
             a: window.sceneRootWitness?.a?.snapshot(),
             b: window.sceneRootWitness?.b?.snapshot(),
+            time: performance.now(),
         }));
+        expect(after.time - before.time).toBeCloseTo(1000, 8);
         expect((after.a?.frames ?? 0) - (before.a?.frames ?? 0)).toBe(fps);
         const measuredDeltas = (after.a?.deltas ?? []).slice(
             before.a?.deltas.length ?? 0,

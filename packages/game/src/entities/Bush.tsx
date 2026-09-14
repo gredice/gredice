@@ -5,12 +5,17 @@ import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import {
+    resolveTimeDrivenMaterialSpeed,
+    useTimeDrivenMaterialAnimation,
+} from './helpers/timeDrivenMaterialAnimation';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function Bush({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials } = useGameGLTF('Bush');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const materialAnimationActive = useTimeDrivenMaterialAnimation();
 
     return (
         <animated.group
@@ -22,7 +27,10 @@ export function Bush({ stack, block, rotation }: EntityInstanceProps) {
                 <MeshDistortMaterial
                     {...materials['Material.ColorPaletteMain']}
                     distort={0.1}
-                    speed={2}
+                    speed={resolveTimeDrivenMaterialSpeed(
+                        2,
+                        materialAnimationActive,
+                    )}
                 />
                 <SnowOverlay
                     geometry={nodes.Bush_1_1.geometry}
@@ -33,7 +41,10 @@ export function Bush({ stack, block, rotation }: EntityInstanceProps) {
                 <MeshWobbleMaterial
                     {...materials['Material.GrassPart']}
                     factor={0.02}
-                    speed={3}
+                    speed={resolveTimeDrivenMaterialSpeed(
+                        3,
+                        materialAnimationActive,
+                    )}
                 />
                 <SnowOverlay
                     geometry={nodes.Bush_1_2.geometry}

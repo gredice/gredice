@@ -6,6 +6,7 @@ import { useBlockVariant } from '../hooks/useBlockVariant';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
+import { useSceneRenderRequest } from '../scene/SceneTime';
 import { animated, useSpring } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
@@ -82,7 +83,7 @@ export function FenceGate({ stack, block, rotation }: EntityInstanceProps) {
     const config = getFenceGateConfig(block.name);
     const { nodes } = useGameGLTF(config.assetName);
     const gl = useThree((state) => state.gl);
-    const invalidate = useThree((state) => state.invalidate);
+    const requestRender = useSceneRenderRequest();
     const { data: garden } = useCurrentGarden();
     const { isPending, mutate: updateVariant } = useBlockVariant();
     const hasActiveDragPreview = useGameState((state) =>
@@ -96,8 +97,8 @@ export function FenceGate({ stack, block, rotation }: EntityInstanceProps) {
             return;
         }
         gl.shadowMap.needsUpdate = true;
-        invalidate();
-    }, [gl, invalidate]);
+        requestRender('fence-gate-shadow');
+    }, [gl, requestRender]);
     const { rotation: leafRotation } = useSpring({
         initial: { rotation: [0, open ? -Math.PI / 2 : 0, 0] },
         config: {

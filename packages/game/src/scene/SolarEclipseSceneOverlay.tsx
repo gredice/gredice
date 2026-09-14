@@ -1,7 +1,6 @@
 'use client';
 
 import { ScreenQuad } from '@react-three/drei';
-import { useThree } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo } from 'react';
 import {
     AddEquation,
@@ -13,6 +12,7 @@ import {
     SrcAlphaFactor,
     ZeroFactor,
 } from 'three';
+import { useSceneRenderRequest } from './SceneTime';
 import { getSolarEclipseVisualScales } from './solarEclipse';
 
 const overlayVertexShader = /* glsl */ `
@@ -36,7 +36,7 @@ export function SolarEclipseSceneOverlay({
 }: {
     obscuration: number;
 }) {
-    const invalidate = useThree((state) => state.invalidate);
+    const requestRender = useSceneRenderRequest();
     const sceneScale = getSolarEclipseVisualScales(obscuration).scene;
     const opacity = 1 - sceneScale;
     const material = useMemo(
@@ -65,8 +65,8 @@ export function SolarEclipseSceneOverlay({
 
     useLayoutEffect(() => {
         material.uniforms.uOpacity.value = opacity;
-        invalidate();
-    }, [invalidate, material, opacity]);
+        requestRender('solar-eclipse-overlay');
+    }, [material, opacity, requestRender]);
 
     useEffect(() => () => material.dispose(), [material]);
 

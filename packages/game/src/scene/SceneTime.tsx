@@ -10,48 +10,111 @@ import {
     useLayoutEffect,
     useMemo,
     useRef,
+    useState,
+    useSyncExternalStore,
 } from 'react';
-import type { IUniform } from 'three';
+import type { IUniform, WebGLRenderer } from 'three';
+import {
+    type GameRuntimeDeadline,
+    type GameRuntimeFixedStep,
+    type GameRuntimeFixedStepLeaseOptions,
+    GameRuntimeScheduler,
+} from './GameRuntimeScheduler';
 import type { RuntimeFrameLoopProfileTelemetry } from './gameProfileMetadata';
+import { bindRuntimeFrameLoopProfileTelemetry } from './gameProfileMetadata';
 import { SceneSpringAnimationContext } from './SceneSpringContext';
 import {
-    normalizeSceneFramesPerSecond,
-    resolveSceneFramesPerSecond,
-    resolveSceneFrameTick,
-    resolveSceneVisibility,
-} from './sceneFrameScheduler';
+    createScenePostRenderDispatcher,
+    type ScenePostRenderListener,
+} from './scenePostRenderDispatcher';
 import { getSceneRootRuntime } from './sceneRootRuntime';
+import { registerGameSceneRuntimeActivity } from './sceneRuntimeActivity';
+import { useSceneAfterFrame } from './useSceneAfterFrame';
 
 export const sceneFrameRates = {
     ambient: 30,
     interactive: 60,
 } as const;
 
+const sceneTimeFramePriority = -1_000;
+
 type SceneTimeContextValue = {
-    acquireContinuousRender: (framesPerSecond?: number) => () => void;
+    acquireContinuousRender: (
+        owner: string,
+        framesPerSecond?: number,
+    ) => () => void;
+    acquireFixedStepWork: (
+        owner: string,
+        options: GameRuntimeFixedStepLeaseOptions,
+    ) => () => void;
+    continuousRenderLeasesEnabled: boolean;
     fixedTimeSeconds: number | undefined;
+    requestRender: (reason: string, frames?: number) => boolean;
+    scheduleDeadline: (
+        owner: string,
+        absoluteTimeMs: number,
+        callback: (deadline: GameRuntimeDeadline) => void,
+    ) => () => void;
+    scheduleDeadlineAfter: (
+        owner: string,
+        delayMs: number,
+        callback: (deadline: GameRuntimeDeadline) => void,
+    ) => () => void;
+    getRuntimeVisible: () => boolean;
+    subscribeRuntimeVisibility: (
+        listener: (visible: boolean) => void,
+    ) => () => void;
+    subscribeSceneAfterRender: (
+        listener: ScenePostRenderListener,
+    ) => () => void;
+    subscribeSceneFrameReceipt: (
+        listener: ScenePostRenderListener,
+    ) => () => void;
     subscribeSceneResume: (listener: () => void) => () => void;
+    flushScenePostRender: (timestampMs: number) => boolean;
     timeUniform: IUniform<number>;
 };
 
 const SceneTimeContext = createContext<SceneTimeContextValue | null>(null);
 
+function readRendererContextAvailable(gl: WebGLRenderer) {
+    return !gl.getContext().isContextLost();
+}
+
+function readCanvasViewportVisible(canvas: HTMLCanvasElement) {
+    const bounds = canvas.getBoundingClientRect();
+    return (
+        bounds.width > 0 &&
+        bounds.height > 0 &&
+        bounds.bottom > 0 &&
+        bounds.right > 0 &&
+        bounds.top < window.innerHeight &&
+        bounds.left < window.innerWidth
+    );
+}
+
 export function SceneTimeProvider({
+    ambientFramesPerSecond,
     animateSprings = true,
-    baseFramesPerSecond = sceneFrameRates.ambient,
+    baseFramesPerSecond = 0,
     children,
+    continuousRenderLeasesEnabled = true,
     fixedTimeSeconds,
+    manualFrameloop = false,
     runtimeFrameLoop,
     suspendWhenOffscreen = true,
 }: PropsWithChildren<{
+    ambientFramesPerSecond?: number;
     animateSprings?: boolean;
     baseFramesPerSecond?: number;
+    continuousRenderLeasesEnabled?: boolean;
     fixedTimeSeconds?: number;
+    manualFrameloop?: boolean;
     runtimeFrameLoop?: RuntimeFrameLoopProfileTelemetry;
     suspendWhenOffscreen?: boolean;
 }>) {
-    const rootRuntime = getSceneRootRuntime(useStore());
-    useLayoutEffect(() => rootRuntime.connect(), [rootRuntime]);
+    const resolvedAmbientFramesPerSecond =
+        ambientFramesPerSecond ?? baseFramesPerSecond;
     const fixedTime = Number.isFinite(fixedTimeSeconds)
         ? Math.max(0, fixedTimeSeconds ?? 0)
         : undefined;
@@ -59,312 +122,187 @@ export function SceneTimeProvider({
         () => ({ value: fixedTime ?? 0 }),
         [fixedTime],
     );
-    const invalidate = rootRuntime.invalidate;
-    const clock = useThree((state) => state.clock);
+    const rootStore = useStore();
+    const rootRuntime = getSceneRootRuntime(rootStore);
     const gl = useThree((state) => state.gl);
-    const animationFrameRef = useRef<number | null>(null);
-    const baseFramesPerSecondRef = useRef(
-        normalizeSceneFramesPerSecond(baseFramesPerSecond),
-    );
-    const canvasVisibleRef = useRef(true);
-    const continuousRenderLeasesRef = useRef(
-        new Map<symbol, number | undefined>(),
-    );
-    const disposedRef = useRef(false);
-    const documentVisibleRef = useRef(
-        typeof document !== 'undefined' ? !document.hidden : false,
-    );
-    const lastFrameTimestampRef = useRef<number | null>(null);
-    const sceneResumeListenersRef = useRef(new Set<() => void>());
-    const sceneVisibleRef = useRef(
-        typeof document !== 'undefined' ? !document.hidden : false,
-    );
-    const runtimeFrameLoopRef = useRef(runtimeFrameLoop);
-
-    const getTargetFramesPerSecond = useCallback(
+    const visibilityReadyRef = useRef(false);
+    const frameStartRef = useRef<number | null>(null);
+    const [scheduler] = useState(
         () =>
-            resolveSceneFramesPerSecond(
-                baseFramesPerSecondRef.current,
-                continuousRenderLeasesRef.current.values(),
-            ),
-        [],
+            new GameRuntimeScheduler({
+                ambientFramesPerSecond: resolvedAmbientFramesPerSecond,
+                baseFramesPerSecond,
+                cancelFrame: (handle) => {
+                    if (typeof handle === 'number') {
+                        window.cancelAnimationFrame(handle);
+                    }
+                },
+                clearTimeout: (handle) => {
+                    if (typeof handle === 'number') {
+                        window.clearTimeout(handle);
+                    }
+                },
+                initialVisibility: {
+                    canvasVisible: false,
+                    contextAvailable: false,
+                    documentVisible: false,
+                    requireCanvasVisible: suspendWhenOffscreen,
+                },
+                invalidate: rootRuntime.requestFrame,
+                now: () => globalThis.performance.now(),
+                requestFrame: (callback) =>
+                    window.requestAnimationFrame(callback),
+                setTimeout: (callback, delayMs) =>
+                    window.setTimeout(callback, delayMs),
+            }),
     );
-
-    const syncRuntimeFrameLoop = useCallback(() => {
-        const telemetry = runtimeFrameLoopRef.current;
-        if (!telemetry) {
-            return;
-        }
-
-        telemetry.activeLeaseCount = continuousRenderLeasesRef.current.size;
-        telemetry.canvasVisible = canvasVisibleRef.current;
-        telemetry.documentVisible = documentVisibleRef.current;
-        telemetry.effectiveVisible = sceneVisibleRef.current;
-        telemetry.loopActive = animationFrameRef.current !== null;
-        telemetry.targetFramesPerSecond = getTargetFramesPerSecond();
-    }, [getTargetFramesPerSecond]);
-
-    const stopContinuousRenderLoop = useCallback(() => {
-        if (animationFrameRef.current === null) {
-            syncRuntimeFrameLoop();
-            return;
-        }
-
-        window.cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-        const telemetry = runtimeFrameLoopRef.current;
-        if (telemetry) {
-            telemetry.cancelledCallbackCount += 1;
-        }
-        syncRuntimeFrameLoop();
-    }, [syncRuntimeFrameLoop]);
-
-    const invalidateOwnedFrame = useCallback(() => {
-        const telemetry = runtimeFrameLoopRef.current;
-        if (telemetry) {
-            telemetry.ownedInvalidationCount += 1;
-        }
-        invalidate();
-    }, [invalidate]);
-
-    const subscribeSceneResume = useCallback((listener: () => void) => {
-        sceneResumeListenersRef.current.add(listener);
-        return () => {
-            sceneResumeListenersRef.current.delete(listener);
-        };
-    }, []);
-
-    const startContinuousRenderLoop = useCallback(() => {
-        if (
-            disposedRef.current ||
-            !sceneVisibleRef.current ||
-            animationFrameRef.current !== null ||
-            getTargetFramesPerSecond() === 0
-        ) {
-            return;
-        }
-
-        const requestFrame = (timestamp: number) => {
-            animationFrameRef.current = null;
-            const telemetry = runtimeFrameLoopRef.current;
-            if (telemetry) {
-                telemetry.wakeupCount += 1;
+    const [postRenderDispatcher] = useState(() =>
+        createScenePostRenderDispatcher({
+            recordFrameReceipt: (timestampMs) => {
+                if (!visibilityReadyRef.current) {
+                    return false;
+                }
+                scheduler.recordFrameCallback(timestampMs);
+                return true;
+            },
+        }),
+    );
+    const lifecycleGenerationRef = useRef(0);
+    useLayoutEffect(() => {
+        const disconnect = rootRuntime.connect((frames) => {
+            if (!manualFrameloop) {
+                scheduler.requestCoalescedRender('r3f-root-update', frames);
             }
-            syncRuntimeFrameLoop();
-            if (disposedRef.current || !sceneVisibleRef.current) {
-                return;
-            }
-
-            const framesPerSecond = getTargetFramesPerSecond();
-            if (framesPerSecond === 0) {
-                return;
-            }
-
-            const frameTick = resolveSceneFrameTick({
-                framesPerSecond,
-                lastFrameTimestamp: lastFrameTimestampRef.current,
-                timestamp,
-            });
-            lastFrameTimestampRef.current = frameTick.lastFrameTimestamp;
-            if (frameTick.shouldRender) {
-                invalidateOwnedFrame();
-            }
-
-            animationFrameRef.current =
-                window.requestAnimationFrame(requestFrame);
-            const nextTelemetry = runtimeFrameLoopRef.current;
-            if (nextTelemetry) {
-                nextTelemetry.scheduledCallbackCount += 1;
-            }
-            syncRuntimeFrameLoop();
-        };
-
-        animationFrameRef.current = window.requestAnimationFrame(requestFrame);
-        const telemetry = runtimeFrameLoopRef.current;
-        if (telemetry) {
-            telemetry.scheduledCallbackCount += 1;
-        }
-        syncRuntimeFrameLoop();
-    }, [getTargetFramesPerSecond, invalidateOwnedFrame, syncRuntimeFrameLoop]);
-
-    const syncSceneVisibility = useCallback(() => {
-        const sceneVisible = resolveSceneVisibility({
-            canvasVisible: canvasVisibleRef.current,
-            documentVisible: documentVisibleRef.current,
-            suspendWhenOffscreen,
         });
-        rootRuntime.setVisible(sceneVisible);
-        const telemetry = runtimeFrameLoopRef.current;
-        if (telemetry) {
-            telemetry.canvasVisible = canvasVisibleRef.current;
-            telemetry.documentVisible = documentVisibleRef.current;
-            telemetry.effectiveVisible = sceneVisible;
-        }
-        if (sceneVisibleRef.current === sceneVisible) {
-            syncRuntimeFrameLoop();
-            return;
-        }
+        const unsubscribe = scheduler.subscribeVisibility(
+            rootRuntime.setVisible,
+        );
+        return () => {
+            unsubscribe();
+            rootRuntime.setVisible(false);
+            disconnect();
+        };
+    }, [manualFrameloop, rootRuntime, scheduler]);
 
-        sceneVisibleRef.current = sceneVisible;
-        lastFrameTimestampRef.current = null;
-        if (sceneVisible) {
-            if (telemetry) {
-                telemetry.resumeCount += 1;
-            }
-            clock.getDelta();
-            for (const listener of sceneResumeListenersRef.current) {
-                listener();
-            }
-            invalidateOwnedFrame();
-            startContinuousRenderLoop();
-            syncRuntimeFrameLoop();
-            return;
-        }
-
-        if (telemetry) {
-            telemetry.suspendCount += 1;
-        }
-        stopContinuousRenderLoop();
-    }, [
-        clock,
-        rootRuntime,
-        invalidateOwnedFrame,
-        startContinuousRenderLoop,
-        stopContinuousRenderLoop,
-        suspendWhenOffscreen,
-        syncRuntimeFrameLoop,
-    ]);
-
-    const acquireContinuousRender = useCallback(
-        (framesPerSecond?: number) => {
-            const normalizedFramesPerSecond =
-                framesPerSecond === undefined
-                    ? undefined
-                    : normalizeSceneFramesPerSecond(framesPerSecond);
-            if (normalizedFramesPerSecond === 0) {
-                return () => undefined;
-            }
-
-            const previousFramesPerSecond = getTargetFramesPerSecond();
-            const lease = Symbol('scene-render-lease');
-            continuousRenderLeasesRef.current.set(
-                lease,
-                normalizedFramesPerSecond,
-            );
-            syncRuntimeFrameLoop();
-            const nextFramesPerSecond = getTargetFramesPerSecond();
-            if (nextFramesPerSecond > previousFramesPerSecond) {
-                lastFrameTimestampRef.current = null;
-            }
-            if (sceneVisibleRef.current) {
-                invalidateOwnedFrame();
-                startContinuousRenderLoop();
-            }
-
-            let released = false;
-            return () => {
-                if (released) {
-                    return;
-                }
-
-                released = true;
-                continuousRenderLeasesRef.current.delete(lease);
-                syncRuntimeFrameLoop();
-                if (disposedRef.current) {
-                    return;
-                }
-
-                if (getTargetFramesPerSecond() === 0) {
-                    stopContinuousRenderLoop();
-                }
-            };
-        },
-        [
-            getTargetFramesPerSecond,
-            invalidateOwnedFrame,
-            startContinuousRenderLoop,
-            stopContinuousRenderLoop,
-            syncRuntimeFrameLoop,
-        ],
+    useSceneAfterFrame(
+        useCallback(() => {
+            postRenderDispatcher.flushRenderedFrame(performance.now());
+        }, [postRenderDispatcher]),
+        !manualFrameloop,
     );
 
     useEffect(() => {
-        disposedRef.current = false;
-        return () => {
-            disposedRef.current = true;
-            stopContinuousRenderLoop();
-            continuousRenderLeasesRef.current.clear();
-            sceneResumeListenersRef.current.clear();
-            syncRuntimeFrameLoop();
-        };
-    }, [stopContinuousRenderLoop, syncRuntimeFrameLoop]);
+        scheduler.setBaseFramesPerSecond(baseFramesPerSecond);
+        scheduler.setAmbientFramesPerSecond(resolvedAmbientFramesPerSecond);
+    }, [baseFramesPerSecond, resolvedAmbientFramesPerSecond, scheduler]);
 
     useEffect(() => {
-        runtimeFrameLoopRef.current = runtimeFrameLoop;
-        syncRuntimeFrameLoop();
-    }, [runtimeFrameLoop, syncRuntimeFrameLoop]);
-
-    useEffect(() => {
-        const previousFramesPerSecond = getTargetFramesPerSecond();
-        baseFramesPerSecondRef.current =
-            normalizeSceneFramesPerSecond(baseFramesPerSecond);
-        syncRuntimeFrameLoop();
-        const nextFramesPerSecond = getTargetFramesPerSecond();
-        if (nextFramesPerSecond > previousFramesPerSecond) {
-            lastFrameTimestampRef.current = null;
-        }
-
-        if (nextFramesPerSecond === 0) {
-            stopContinuousRenderLoop();
+        if (!runtimeFrameLoop) {
             return;
         }
 
-        startContinuousRenderLoop();
-    }, [
-        baseFramesPerSecond,
-        getTargetFramesPerSecond,
-        startContinuousRenderLoop,
-        stopContinuousRenderLoop,
-        syncRuntimeFrameLoop,
-    ]);
+        return bindRuntimeFrameLoopProfileTelemetry(
+            runtimeFrameLoop,
+            () => ({
+                ...scheduler.getSnapshot(),
+                sceneTimeSeconds: timeUniform.value,
+            }),
+            undefined,
+            () => scheduler.getFrequentProfileSnapshot(),
+        );
+    }, [runtimeFrameLoop, scheduler, timeUniform]);
 
     useEffect(() => {
+        const generation = lifecycleGenerationRef.current + 1;
+        lifecycleGenerationRef.current = generation;
+
+        return () => {
+            const disposalGeneration = lifecycleGenerationRef.current + 1;
+            lifecycleGenerationRef.current = disposalGeneration;
+            // React StrictMode immediately sets the effect up again. Deferring
+            // disposal lets that setup retain the same scheduler while a real
+            // unmount still cancels every pending callback before the next task.
+            globalThis.queueMicrotask(() => {
+                if (lifecycleGenerationRef.current === disposalGeneration) {
+                    scheduler.dispose();
+                }
+            });
+        };
+    }, [scheduler]);
+
+    useEffect(() => {
+        const registration = registerGameSceneRuntimeActivity(
+            scheduler.getEffectiveVisibility(),
+        );
+        const unsubscribe = scheduler.subscribeVisibility(
+            registration.setActive,
+        );
+        return () => {
+            unsubscribe();
+            registration.unregister();
+        };
+    }, [scheduler]);
+
+    useEffect(() => {
+        let active = true;
+        visibilityReadyRef.current = false;
+        const canvas = gl.domElement;
+        const updateVisibility = (
+            visibility: Parameters<typeof scheduler.setVisibility>[0],
+        ) => {
+            if (active) {
+                scheduler.setVisibility(visibility);
+            }
+        };
         const handleDocumentVisibility = () => {
-            documentVisibleRef.current = !document.hidden;
-            syncSceneVisibility();
+            updateVisibility({ documentVisible: !document.hidden });
         };
         const handlePageHide = () => {
-            documentVisibleRef.current = false;
-            syncSceneVisibility();
+            updateVisibility({ documentVisible: false });
         };
         const handlePageShow = () => {
-            documentVisibleRef.current = !document.hidden;
-            syncSceneVisibility();
+            updateVisibility({ documentVisible: !document.hidden });
         };
-
-        documentVisibleRef.current = !document.hidden;
-        document.addEventListener('visibilitychange', handleDocumentVisibility);
-        window.addEventListener('pagehide', handlePageHide);
-        window.addEventListener('pageshow', handlePageShow);
-
-        canvasVisibleRef.current = true;
-        const observer =
-            !suspendWhenOffscreen || typeof IntersectionObserver === 'undefined'
-                ? null
-                : new IntersectionObserver(([entry]) => {
-                      canvasVisibleRef.current = Boolean(
+        const handleContextLost = () => {
+            updateVisibility({ contextAvailable: false });
+        };
+        const handleContextRestored = () => {
+            updateVisibility({
+                contextAvailable: readRendererContextAvailable(gl),
+            });
+        };
+        const canObserveCanvas =
+            suspendWhenOffscreen && typeof IntersectionObserver !== 'undefined';
+        const observer = canObserveCanvas
+            ? new IntersectionObserver(([entry]) => {
+                  updateVisibility({
+                      canvasVisible: Boolean(
                           entry?.isIntersecting &&
                               entry.intersectionRect.width > 0 &&
                               entry.intersectionRect.height > 0,
-                      );
-                      syncSceneVisibility();
+                      ),
                   });
-        // Wait for the initial intersection result before admitting any frame.
-        canvasVisibleRef.current = observer === null;
-        observer?.observe(gl.domElement);
-        syncSceneVisibility();
+              })
+            : null;
+
+        document.addEventListener('visibilitychange', handleDocumentVisibility);
+        window.addEventListener('pagehide', handlePageHide);
+        window.addEventListener('pageshow', handlePageShow);
+        canvas.addEventListener('webglcontextlost', handleContextLost);
+        canvas.addEventListener('webglcontextrestored', handleContextRestored);
+        observer?.observe(canvas);
+        updateVisibility({
+            canvasVisible:
+                !canObserveCanvas || readCanvasViewportVisible(canvas),
+            contextAvailable: readRendererContextAvailable(gl),
+            documentVisible: !document.hidden,
+            requireCanvasVisible: suspendWhenOffscreen,
+        });
+        visibilityReadyRef.current = true;
 
         return () => {
+            active = false;
+            visibilityReadyRef.current = false;
             observer?.disconnect();
             document.removeEventListener(
                 'visibilitychange',
@@ -372,76 +310,210 @@ export function SceneTimeProvider({
             );
             window.removeEventListener('pagehide', handlePageHide);
             window.removeEventListener('pageshow', handlePageShow);
+            canvas.removeEventListener('webglcontextlost', handleContextLost);
+            canvas.removeEventListener(
+                'webglcontextrestored',
+                handleContextRestored,
+            );
         };
-    }, [gl.domElement, suspendWhenOffscreen, syncSceneVisibility]);
+    }, [gl, scheduler, suspendWhenOffscreen]);
 
-    useFrame(({ clock }) => {
-        timeUniform.value = fixedTime ?? clock.elapsedTime;
-    });
+    useFrame(({ clock: sceneClock }) => {
+        frameStartRef.current = gl.info.render.frame;
+        timeUniform.value = fixedTime ?? sceneClock.elapsedTime;
+        postRenderDispatcher.markRenderedFrame();
+    }, sceneTimeFramePriority);
 
-    const contextValue = useMemo(
+    const contextValue = useMemo<SceneTimeContextValue>(
         () => ({
-            acquireContinuousRender,
+            acquireContinuousRender: (owner, framesPerSecond) =>
+                scheduler.acquireSharedRenderLease(owner, framesPerSecond),
+            acquireFixedStepWork: (owner, options) =>
+                scheduler.acquireFixedStepLease(owner, options),
+            continuousRenderLeasesEnabled,
             fixedTimeSeconds: fixedTime,
-            subscribeSceneResume,
+            flushScenePostRender: (timestampMs) => {
+                if (
+                    frameStartRef.current === null ||
+                    gl.info.render.frame <= frameStartRef.current ||
+                    !postRenderDispatcher.hasRenderedFramePending()
+                ) {
+                    return false;
+                }
+                rootRuntime.flushAfterFrame();
+                // A nonmanual root may have delivered its receipt via the
+                // root callback above. Manual captures deliver it here.
+                if (postRenderDispatcher.hasRenderedFramePending()) {
+                    postRenderDispatcher.flushRenderedFrame(timestampMs);
+                }
+                return true;
+            },
+            getRuntimeVisible: () => scheduler.getEffectiveVisibility(),
+            requestRender: (reason, frames) =>
+                scheduler.requestRender(reason, frames),
+            scheduleDeadline: (owner, absoluteTimeMs, callback) =>
+                scheduler.scheduleDeadline(owner, absoluteTimeMs, callback),
+            scheduleDeadlineAfter: (owner, delayMs, callback) =>
+                scheduler.scheduleDeadlineAfter(owner, delayMs, callback),
+            subscribeSceneResume: (listener) =>
+                scheduler.subscribeResume(listener),
+            subscribeSceneAfterRender:
+                postRenderDispatcher.subscribeAfterRender,
+            subscribeSceneFrameReceipt:
+                postRenderDispatcher.subscribeFrameReceipt,
+            subscribeRuntimeVisibility: (listener) =>
+                scheduler.subscribeVisibility(listener),
             timeUniform,
         }),
-        [acquireContinuousRender, fixedTime, subscribeSceneResume, timeUniform],
+        [
+            continuousRenderLeasesEnabled,
+            fixedTime,
+            gl,
+            postRenderDispatcher,
+            rootRuntime,
+            scheduler,
+            timeUniform,
+        ],
     );
 
     return (
         <SceneTimeContext.Provider value={contextValue}>
-            <SceneSpringAnimationContext.Provider value={animateSprings}>
+            <SceneSpringAnimationContext.Provider
+                value={animateSprings && !manualFrameloop}
+            >
                 {children}
             </SceneSpringAnimationContext.Provider>
         </SceneTimeContext.Provider>
     );
 }
 
-export function useSceneTimeUniform() {
+function useSceneTimeContext() {
     const sceneTime = useContext(SceneTimeContext);
     if (!sceneTime) {
         throw new Error('Missing SceneTimeProvider in the scene tree');
     }
+    return sceneTime;
+}
 
-    return sceneTime.timeUniform;
+export function useSceneTimeUniform() {
+    return useSceneTimeContext().timeUniform;
 }
 
 export function useSceneFixedTimeSeconds() {
-    const sceneTime = useContext(SceneTimeContext);
-    if (!sceneTime) {
-        throw new Error('Missing SceneTimeProvider in the scene tree');
-    }
+    return useSceneTimeContext().fixedTimeSeconds;
+}
 
-    return sceneTime.fixedTimeSeconds;
+export function useSceneRuntimeVisible() {
+    const sceneTime = useSceneTimeContext();
+    return useSyncExternalStore(
+        sceneTime.subscribeRuntimeVisibility,
+        sceneTime.getRuntimeVisible,
+        () => false,
+    );
 }
 
 export function useSceneTimeInvalidation(
+    owner: string,
     enabled = true,
     framesPerSecond?: number,
 ) {
-    const sceneTime = useContext(SceneTimeContext);
-    if (!sceneTime) {
-        throw new Error('Missing SceneTimeProvider in the scene tree');
-    }
+    const sceneTime = useSceneTimeContext();
+
+    useEffect(() => {
+        if (!enabled || !sceneTime.continuousRenderLeasesEnabled) {
+            return;
+        }
+
+        return sceneTime.acquireContinuousRender(owner, framesPerSecond);
+    }, [enabled, framesPerSecond, owner, sceneTime]);
+}
+
+export function useSceneFixedStepWork({
+    callback,
+    enabled = true,
+    maxDeltaMs,
+    owner,
+    stepsPerSecond,
+}: {
+    callback: (step: GameRuntimeFixedStep) => void;
+    enabled?: boolean;
+    maxDeltaMs?: number;
+    owner: string;
+    stepsPerSecond: number;
+}) {
+    const sceneTime = useSceneTimeContext();
+    const callbackRef = useRef(callback);
+    callbackRef.current = callback;
 
     useEffect(() => {
         if (!enabled) {
             return;
         }
 
-        return sceneTime.acquireContinuousRender(framesPerSecond);
-    }, [enabled, framesPerSecond, sceneTime]);
+        return sceneTime.acquireFixedStepWork(owner, {
+            callback: (step) => callbackRef.current(step),
+            maxDeltaMs,
+            stepsPerSecond,
+        });
+    }, [enabled, maxDeltaMs, owner, sceneTime, stepsPerSecond]);
+}
+
+export function useSceneDeadline({
+    callback,
+    deadlineMs,
+    enabled = true,
+    owner,
+}: {
+    callback: (deadline: GameRuntimeDeadline) => void;
+    deadlineMs: number | null;
+    enabled?: boolean;
+    owner: string;
+}) {
+    const sceneTime = useSceneTimeContext();
+    const callbackRef = useRef(callback);
+    callbackRef.current = callback;
+
+    useEffect(() => {
+        if (!enabled || deadlineMs === null) {
+            return;
+        }
+
+        return sceneTime.scheduleDeadline(owner, deadlineMs, (deadline) =>
+            callbackRef.current(deadline),
+        );
+    }, [deadlineMs, enabled, owner, sceneTime]);
+}
+
+export function useSceneRenderRequest() {
+    const sceneTime = useContext(SceneTimeContext);
+    const invalidate = useThree((state) => state.invalidate);
+    return useCallback(
+        (reason: string, frames?: number) => {
+            if (sceneTime) return sceneTime.requestRender(reason, frames);
+            invalidate(frames);
+            return true;
+        },
+        [invalidate, sceneTime],
+    );
+}
+
+export function useScenePostRenderFlush() {
+    return useSceneTimeContext().flushScenePostRender;
+}
+
+export function useSceneAfterRenderSubscription() {
+    return useSceneTimeContext().subscribeSceneAfterRender;
+}
+
+export function useSceneFrameReceiptSubscription() {
+    return useSceneTimeContext().subscribeSceneFrameReceipt;
 }
 
 export function useSceneResume(listener: () => void) {
     const sceneTime = useContext(SceneTimeContext);
-    if (!sceneTime) {
-        throw new Error('Missing SceneTimeProvider in the scene tree');
-    }
 
     useEffect(
-        () => sceneTime.subscribeSceneResume(listener),
+        () => sceneTime?.subscribeSceneResume(listener),
         [listener, sceneTime],
     );
 }

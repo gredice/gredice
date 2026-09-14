@@ -14,6 +14,7 @@ import {
 import type { IUniform } from 'three';
 import { useOptionalGameState } from '../useGameState';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
+import { useSceneRenderRequest, useSceneTimeInvalidation } from './SceneTime';
 import {
     type RainSurfaceUniformOptions,
     type SnowSurfaceUniformOptions,
@@ -62,6 +63,21 @@ export function WeatherSurfaceUniformProvider({ children }: PropsWithChildren) {
         0,
     );
     const snowCoverage = useOptionalGameState((state) => state.snowCoverage, 0);
+    const activity = useSyncExternalStore(
+        registry.subscribeActivity,
+        registry.getActivitySnapshot,
+        registry.getActivitySnapshot,
+    );
+    const requestRender = useSceneRenderRequest();
+    useSceneTimeInvalidation(
+        'weather-surface-transition',
+        activity.rainSettling || activity.snowSettling,
+    );
+
+    useEffect(() => {
+        registry.advance({ rainAmount, snowCoverage }, 0);
+        requestRender('weather-surface-target-change');
+    }, [rainAmount, registry, requestRender, snowCoverage]);
 
     useEffect(() => {
         registry.publishStats();

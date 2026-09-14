@@ -9,6 +9,7 @@ import {
     Vector3,
 } from 'three';
 import { useBlockData } from '../hooks/useBlockData';
+import { sceneFrameRates, useSceneTimeInvalidation } from '../scene/SceneTime';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState, useGameStateStore } from '../useGameState';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -386,6 +387,7 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
         primaryCasterCount: model.primaryCasterCount,
         species: 'cow',
     });
+    useSceneTimeInvalidation('fauna:cows', true, sceneFrameRates.ambient);
 
     useEffect(() => {
         randomRef.current = createCowRandom(habitat.seed);

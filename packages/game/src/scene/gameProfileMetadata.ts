@@ -2,6 +2,10 @@
 
 import type { GameCameraSnapshot } from '../controls/GameCameraRigApi';
 import type { PlantInstanceBufferMetricsSnapshot } from '../generators/plant/lib/plantInstanceBufferMetrics';
+import type {
+    GameRuntimeSchedulerFrequentProfileSnapshot,
+    GameRuntimeSchedulerSnapshot,
+} from './GameRuntimeScheduler';
 import type { GameQualityProfileTier } from './gameQuality';
 
 export type GeneratedPlantProfilePartCounts = {
@@ -190,35 +194,153 @@ export type StaticOpaqueSceneCacheOcclusionFixtureState =
     | 'passed'
     | 'verifying';
 
-export type RuntimeFrameLoopProfileTelemetry = {
-    activeLeaseCount: number;
-    cancelledCallbackCount: number;
-    canvasVisible: boolean;
-    documentVisible: boolean;
-    effectiveVisible: boolean;
-    loopActive: boolean;
-    ownedInvalidationCount: number;
-    resumeCount: number;
-    scheduledCallbackCount: number;
-    suspendCount: number;
-    targetFramesPerSecond: number;
-    wakeupCount: number;
+export type RuntimeFrameLoopProfileTelemetry = GameRuntimeSchedulerSnapshot & {
+    sceneTimeSeconds: number;
 };
 
 export function createRuntimeFrameLoopProfileTelemetry(): RuntimeFrameLoopProfileTelemetry {
     return {
+        activeDeadlineCount: 0,
+        activeFixedStepLeaseCount: 0,
         activeLeaseCount: 0,
+        activeRenderLeaseCount: 0,
+        awaitingFrameReceipt: false,
+        callbackPending: false,
         cancelledCallbackCount: 0,
         canvasVisible: false,
+        coalescedRenderRequestReasons: [],
+        contextAvailable: false,
+        deadlineCount: 0,
+        deadlineOwners: [],
+        deferredWorkCount: 0,
+        displayFrameCalibrationCount: 0,
+        displayFrameIntervalMs: null,
+        disposed: false,
         documentVisible: false,
         effectiveVisible: false,
+        fixedStepCount: 0,
+        fixedStepFailureCount: 0,
+        fixedStepOwners: [],
+        hiddenCoalescedRenderRequestCount: 0,
+        hiddenDeferredCoalescedRenderRequestCount: 0,
+        hiddenDeferredRenderRequestCount: 0,
+        invalidationCount: 0,
+        invalidationFailureCount: 0,
+        leaseAcquiredCount: 0,
+        leaseReleasedCount: 0,
         loopActive: false,
+        maxDeliveredDeltaMs: 0,
+        missedFrameReceiptCount: 0,
+        nonessentialHiddenWorkCount: 0,
         ownedInvalidationCount: 0,
+        pendingCallbackDueAt: null,
+        pendingCallbackKind: 'none',
+        pendingFrameReceiptReconciliationWakeupCount: 0,
+        postCalibrationFrameWakeupCount: 0,
+        productiveWakeupCount: 0,
+        renderLeaseOwners: [],
+        renderLeaseSummaries: [],
+        renderRequestReasons: [],
+        requireCanvasVisible: true,
         resumeCount: 0,
+        r3fFrameCallbackCount: 0,
+        sceneTimeSeconds: 0,
         scheduledCallbackCount: 0,
         suspendCount: 0,
         targetFramesPerSecond: 0,
+        retainedTimeoutReconciliationWakeupCount: 0,
+        unexpectedNoWorkWakeupCount: 0,
         wakeupCount: 0,
+    };
+}
+
+/**
+ * Exposes an exact scheduler snapshot to profiling readers without copying a
+ * deep telemetry object on every frame and scheduler wakeup. A synchronous
+ * property-read or structured-clone burst shares one snapshot. The cache stays
+ * valid until its queued reset runs, so later sampling observes current state.
+ */
+export function bindRuntimeFrameLoopProfileTelemetry(
+    telemetry: RuntimeFrameLoopProfileTelemetry,
+    readSnapshot: () => RuntimeFrameLoopProfileTelemetry,
+    scheduleCacheReset: (callback: () => void) => void = (callback) =>
+        globalThis.queueMicrotask(callback),
+    readFrequentSnapshot?: () => GameRuntimeSchedulerFrequentProfileSnapshot,
+) {
+    const fields = Object.keys(
+        telemetry,
+    ) as (keyof RuntimeFrameLoopProfileTelemetry)[];
+    let bound = true;
+    let cachedSnapshot: RuntimeFrameLoopProfileTelemetry | null = null;
+    let cachedFrequentSnapshot: GameRuntimeSchedulerFrequentProfileSnapshot | null =
+        null;
+    let cacheResetScheduled = false;
+    const scheduleReset = () => {
+        if (cacheResetScheduled) {
+            return;
+        }
+        cacheResetScheduled = true;
+        scheduleCacheReset(() => {
+            cachedFrequentSnapshot = null;
+            cachedSnapshot = null;
+            cacheResetScheduled = false;
+        });
+    };
+    const readCachedSnapshot = () => {
+        if (cachedSnapshot === null) {
+            cachedSnapshot = readSnapshot();
+        }
+        scheduleReset();
+        return cachedSnapshot;
+    };
+    const readCachedFrequentSnapshot = () => {
+        if (cachedSnapshot !== null) {
+            return cachedSnapshot;
+        }
+        if (cachedFrequentSnapshot === null) {
+            cachedFrequentSnapshot =
+                readFrequentSnapshot?.() ?? readCachedSnapshot();
+        }
+        scheduleReset();
+        return cachedFrequentSnapshot;
+    };
+    const readTelemetryField = (
+        field: keyof RuntimeFrameLoopProfileTelemetry,
+    ) => {
+        switch (field) {
+            case 'activeLeaseCount':
+            case 'activeRenderLeaseCount':
+            case 'targetFramesPerSecond':
+                return readCachedFrequentSnapshot()[field];
+            default:
+                return readCachedSnapshot()[field];
+        }
+    };
+
+    for (const field of fields) {
+        Object.defineProperty(telemetry, field, {
+            configurable: true,
+            enumerable: true,
+            get: () => readTelemetryField(field),
+        });
+    }
+
+    return () => {
+        if (!bound) {
+            return;
+        }
+        bound = false;
+        const finalSnapshot = readSnapshot();
+        cachedFrequentSnapshot = null;
+        cachedSnapshot = null;
+        for (const field of fields) {
+            Object.defineProperty(telemetry, field, {
+                configurable: true,
+                enumerable: true,
+                value: finalSnapshot[field],
+                writable: true,
+            });
+        }
     };
 }
 
@@ -282,6 +404,10 @@ export type GameProfileMetadata = {
     hoverOutlineHorizontalPassCount?: number;
     hoverOutlineKernelSampleCount?: number;
     hoverOutlineMaskPassCount?: number;
+    hoverOutlineMaskCacheBypassCount?: number;
+    hoverOutlineMaskCacheEligibleTargetCount?: number;
+    hoverOutlineMaskCacheHitCount?: number;
+    hoverOutlineMaskCacheMissCount?: number;
     hoverOutlineMaxKernelSampleCount?: number;
     hoverOutlinePipeline?: string;
     hoverOutlineProfileCommandAction?: 'hide' | 'show';
@@ -484,6 +610,10 @@ export type GameProfileMetadata = {
     rendererPoints?: number;
     rendererRenderCalls?: number;
     rendererShaders?: number;
+    rendererStatsMeasurementMode?: string;
+    rendererStatsPublishedAt?: number;
+    rendererStatsReceiptCount?: number;
+    rendererStatsRenderFrame?: number;
     rendererTextures?: number;
     rendererTriangles?: number;
     runtimeFrameLoop?: RuntimeFrameLoopProfileTelemetry;

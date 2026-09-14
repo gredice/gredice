@@ -54,7 +54,11 @@ export function GardenVisitorAvatar({
     targetHeadPitchRef.current = presence.headPitch;
     targetGroundedRef.current = presence.grounded;
 
-    useSceneTimeInvalidation(true, sceneFrameRates.interactive);
+    useSceneTimeInvalidation(
+        'visitor-avatar',
+        true,
+        sceneFrameRates.interactive,
+    );
 
     useLayoutEffect(() => {
         const actor = actorRef.current;

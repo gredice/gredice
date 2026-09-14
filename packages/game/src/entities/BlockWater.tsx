@@ -1,7 +1,11 @@
 import { useEffect, useMemo } from 'react';
 import { Color, DoubleSide, ShaderMaterial, Vector4 } from 'three';
 import { useBlockData } from '../hooks/useBlockData';
-import { useSceneTimeUniform } from '../scene/SceneTime';
+import {
+    useSceneFixedTimeSeconds,
+    useSceneTimeInvalidation,
+    useSceneTimeUniform,
+} from '../scene/SceneTime';
 import { animated } from '../scene/sceneSpring';
 import { defaultWaterColors } from '../scene/waterColors';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
@@ -330,7 +334,12 @@ export function useWaterBlockMaterial(
     options: WaterBlockMaterialOptions = {},
 ) {
     const waterColors = useGameState((state) => state.waterColors);
+    const fixedTimeSeconds = useSceneFixedTimeSeconds();
     const timeUniform = useSceneTimeUniform();
+    useSceneTimeInvalidation(
+        'water-surface-animation',
+        fixedTimeSeconds === undefined,
+    );
     const useFoamAttributes = options.useFoamAttributes === true;
     const useLocalPositionAttribute =
         options.useLocalPositionAttribute === true;

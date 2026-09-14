@@ -3,7 +3,7 @@
 import { IconButton } from '@gredice/ui/IconButton';
 import { Megaphone } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import type { GardenViewMode } from './gardenViewMode';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useCurrentUser } from './hooks/useCurrentUser';
@@ -98,25 +98,6 @@ export function GameHud({
     const structureBuildSession = useGameState(
         (state) => state.structureBuildSession,
     );
-    const restoreStructureEntryFocusRef = useRef(false);
-    useEffect(() => {
-        if (structureBuildSession) {
-            restoreStructureEntryFocusRef.current = true;
-            return;
-        }
-        if (!restoreStructureEntryFocusRef.current) {
-            return;
-        }
-        restoreStructureEntryFocusRef.current = false;
-        const frame = requestAnimationFrame(() =>
-            document
-                .querySelector<HTMLButtonElement>(
-                    '[data-testid="garden-structure-build-entry"]',
-                )
-                ?.focus(),
-        );
-        return () => cancelAnimationFrame(frame);
-    }, [structureBuildSession]);
     const { data: currentGarden } = useCurrentGarden();
     const { data: currentUser } = useCurrentUser();
     const markTutorialChecklistTaskReady = useMarkTutorialChecklistTaskReady();
@@ -153,15 +134,16 @@ export function GameHud({
 
     if (gardenStructureBuildEnabled && structureBuildSession) {
         return (
-            <>
+            <SuncokretChatProvider>
                 <GardenStructureVerticalSliceHudDynamic
+                    key="structure-build-hud"
                     enabled
                     fixture={gardenStructureDebugFixture}
                     plan={gardenStructureDebugPlan}
                     profileFixture={gardenStructureProfileFixture}
                 />
                 {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
-            </>
+            </SuncokretChatProvider>
         );
     }
 
@@ -338,6 +320,7 @@ export function GameHud({
             {!isLocalSandbox && <PaymentSuccessfulMessage />}
             {gardenStructureBuildEnabled ? (
                 <GardenStructureVerticalSliceHudDynamic
+                    key="structure-build-hud"
                     enabled
                     fixture={gardenStructureDebugFixture}
                     plan={gardenStructureDebugPlan}

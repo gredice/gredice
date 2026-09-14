@@ -1,5 +1,21 @@
 import assert from 'node:assert/strict';
+import {
+    access,
+    mkdir,
+    mkdtemp,
+    readFile,
+    rm,
+    symlink,
+} from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, resolve } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import {
+    bindRuntimeFrameLoopProfileTelemetry,
+    createRuntimeFrameLoopProfileTelemetry,
+} from '../../../packages/game/src/scene/gameProfileMetadata.ts';
+import { assertSafeGameProfileOutputDirectory } from './game-profile-output.mjs';
 import {
     applyGardenBuildingMatchedBaselineComparison,
     beginGardenSwitchProfileSample,
@@ -7,18 +23,27 @@ import {
     buildAdaptiveHighComparisons,
     buildCrossTierMedians,
     buildGardenBuildingMatchedBaselineComparison,
+    buildGardenSwitchBudgets,
+    buildGardenSwitchLifetimeResources,
     buildGardenSwitchSummary,
     buildHighTargetMedians,
+    buildLifecycleResumeTransitionEvidence,
+    buildLifecycleResumeWindowEvidence,
     buildLifecycleSummary,
+    buildLifecycleSuspendTransitionEvidence,
     buildMarkdown,
     buildPlantCloseupAcceptance,
     buildPlantCloseupMedians,
     buildProfileSummary,
     buildReportProvenance,
     buildScenarioRunQueue,
+    buildStaticIdleEvidence,
     buildStaticSceneCacheComparisons,
     buildStaticSceneCacheVisualComparisons,
     buildWeatherSurfaceComparisons,
+    collectScenarioMemoryEvidence,
+    crossTierColdMilestoneMeasurementMode,
+    crossTierResourceSnapshotMeasurementMode,
     drainProfileSample,
     evaluateBudget,
     evaluateCrossTierAcceptance,
@@ -27,37 +52,307 @@ import {
     evaluateGardenSwitchAcceptance,
     evaluateHighTargetAcceptance,
     evaluateLifecycleAcceptance,
+    evaluateRuntimeOwnersAcceptance,
+    evaluateStaticIdleAcceptance,
     finalizeProfileSampleAtEndpoint,
+    finishCrossTierColdMilestoneTracking,
     finishInteractiveProfileSample,
+    fullRuntimeFrameLoopCounterFields,
+    gameCameraSnapshotMaximumDelta,
     getScenarioRequest,
     installBrowserMetrics,
     installGardenSwitchContextTracker,
     installLifecycleMilestoneTracker,
+    installLifecycleSuspensionBoundaryTracker,
     installProfileContextTracker,
     isExpectedGardenBuildingProfileApiError,
     isExpectedGardenBuildingProfileConsoleError,
     isIgnoredLocalProfilerConsoleError,
+    isLifecycleRendererStatsBarrierReady,
+    isLifecycleRendererStatsMeasurementValid,
+    isNonNegativeIntegerRecord,
     isOutlineProfileTelemetryReady,
     isProfileScreenshotWitnessValid,
+    lifecycleOwnedSchedulingZeroObserved,
+    lifecycleRendererStatsCanonicalMode,
+    lifecycleRendererStatsLegacyMode,
+    lifecycleSuspensionBoundaryMeasurementMode,
+    lifecycleZeroWorkObserved,
     measureStaticSceneCacheImageParity,
     mergeGardenStructureAssetNetworkRuntime,
     mergeProfileSampleDrain,
+    normalizeRenderLeaseSummaryRates,
     normalizeRenderWork,
+    numberRecordsEqual,
     parseArgs,
     parseComparisonContractVersion,
+    populationExposureCovers,
+    populationExposureSignature,
     primeGardenSwitchProfileSample,
+    readCrossTierResourceSnapshotState,
+    resolveBoundedCameraMotionCycle,
     resolveChromiumGraphicsArgs,
     resolveChromiumGraphicsBackend,
+    resolveLifecycleRendererStatsCaptureMode,
     resolveScenarios,
     shouldFailProfileRun,
+    shouldObserveRuntimeFrameLoopDuringRaf,
+    shouldReadRuntimeOwnerLeaseRafSnapshot,
     summarizeGardenStructureAssetNetwork,
+    writeReports,
 } from './profile-game-scene.mjs';
+
+const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+test('profiler output defaults to durable evidence outside Playwright cleanup', (t) => {
+    const previous = process.env.GAME_PROFILE_OUT_DIR;
+    delete process.env.GAME_PROFILE_OUT_DIR;
+    t.after(() => {
+        if (previous === undefined) {
+            delete process.env.GAME_PROFILE_OUT_DIR;
+        } else {
+            process.env.GAME_PROFILE_OUT_DIR = previous;
+        }
+    });
+
+    assert.equal(
+        parseArgs([]).outDir,
+        resolve(appRoot, '.game-profile-results'),
+    );
+    process.env.GAME_PROFILE_OUT_DIR = 'test-results/game-profile';
+    assert.throws(() => parseArgs([]), /Unsafe game-profile output directory/);
+    assert.equal(
+        parseArgs(['--out-dir', 'safe-custom-evidence']).outDir,
+        resolve(appRoot, 'safe-custom-evidence'),
+    );
+    process.env.GAME_PROFILE_OUT_DIR = '.game-profile-results/custom';
+    assert.equal(
+        parseArgs([]).outDir,
+        resolve(appRoot, '.game-profile-results/custom'),
+    );
+});
+
+test('profiler rejects resettable app output trees after path normalization', () => {
+    for (const outDir of [
+        'test-results',
+        'test-results/game-profile',
+        'TEST-RESULTS/profile',
+        'playwright-report',
+        'playwright-report/profile',
+        'blob-report',
+        'blob-report/profile',
+        'playwright/.cache',
+        'playwright/.cache/profile',
+        'Playwright/.CACHE/profile',
+        resolve(appRoot, '../../APPS/garden/test-results/profile'),
+        '.game-profile-results/../test-results/profile',
+        'playwright/safe/../.cache/profile',
+        '../www/test-results/profile',
+    ]) {
+        for (const path of [outDir, resolve(appRoot, outDir)]) {
+            assert.throws(
+                () => parseArgs(['--out-dir', path]),
+                /Unsafe game-profile output directory/,
+                path,
+            );
+        }
+    }
+});
+
+test('profiler preserves safe custom output paths and similarly named siblings', () => {
+    for (const outDir of [
+        '.game-profile-results/custom',
+        'test-results-archive',
+        'playwright-report-archive',
+        'blob-report-archive',
+        'playwright/.cache-extra',
+        '../www/.game-profile-results',
+        'test-results/../.game-profile-results',
+        resolve(tmpdir(), 'test-results', 'game-profile'),
+    ]) {
+        assert.equal(
+            parseArgs(['--out-dir', outDir]).outDir,
+            resolve(appRoot, outDir),
+        );
+    }
+});
+
+test('output validation rejects symlink aliases before missing descendants are created', async () => {
+    const directory = await mkdtemp(resolve(tmpdir(), 'game-profile-output-'));
+    try {
+        const otherAppRoot = resolve(directory, 'other-checkout/apps/garden');
+        const resettable = resolve(otherAppRoot, 'test-results');
+        const alias = resolve(directory, 'evidence-alias');
+        const appAlias = resolve(directory, 'app-alias');
+        await mkdir(resettable, { recursive: true });
+        await symlink(resettable, alias, 'dir');
+        await symlink(otherAppRoot, appAlias, 'dir');
+        for (const outDir of [
+            resolve(alias, 'not-created/nested'),
+            resolve(appAlias, 'blob-report/not-created'),
+        ]) {
+            assert.throws(
+                () => parseArgs(['--out-dir', outDir]),
+                /Unsafe game-profile output directory/,
+            );
+            await assert.rejects(access(outDir), { code: 'ENOENT' });
+        }
+        const safeAlias = resolve(appAlias, '.game-profile-results/custom');
+        assert.equal(
+            assertSafeGameProfileOutputDirectory(safeAlias),
+            safeAlias,
+        );
+    } finally {
+        await rm(directory, { recursive: true, force: true });
+    }
+});
+
+test('profiler writer rejects unsafe output before serialization or filesystem writes', async () => {
+    const directory = await mkdtemp(resolve(tmpdir(), 'game-profile-writer-'));
+    try {
+        const outDir = resolve(directory, 'apps/garden/test-results/profile');
+        await assert.rejects(
+            writeReports(null, outDir),
+            /Unsafe game-profile output directory/,
+        );
+        await assert.rejects(access(resolve(directory, 'apps')), {
+            code: 'ENOENT',
+        });
+    } finally {
+        await rm(directory, { recursive: true, force: true });
+    }
+});
+
+test('profiler writer uses its validated normalized path for symlink traversal', async () => {
+    const directory = await mkdtemp(
+        resolve(tmpdir(), 'game-profile-normalized-'),
+    );
+    try {
+        const resettable = resolve(directory, 'apps/garden/test-results');
+        const linkTarget = resolve(resettable, 'existing');
+        const alias = resolve(directory, 'alias');
+        await mkdir(linkTarget, { recursive: true });
+        await symlink(linkTarget, alias, 'dir');
+        const report = {
+            generatedAt: '2026-09-02T00:00:00.000Z',
+            options: { scenarios: [] },
+            plantCloseupMedians: {},
+            scenarios: [],
+            schemaVersion: 6,
+            summary: { failedScenarios: 0 },
+        };
+        await writeReports(report, `${alias}/../evidence`);
+        assert.deepEqual(
+            JSON.parse(
+                await readFile(
+                    resolve(directory, 'evidence/latest.json'),
+                    'utf8',
+                ),
+            ),
+            report,
+        );
+        await assert.rejects(access(resolve(resettable, 'evidence')), {
+            code: 'ENOENT',
+        });
+    } finally {
+        await rm(directory, { recursive: true, force: true });
+    }
+});
+
+function crossTierLeaseTopology() {
+    return {
+        activeLeaseCount: 10,
+        activeRenderLeaseCount: 10,
+        renderLeaseOwners: ['scene-ambient'],
+        renderLeaseSummaries: [
+            {
+                framesPerSecond: 30,
+                leaseCount: 10,
+                owner: 'scene-ambient',
+            },
+        ],
+        targetFramesPerSecond: 30,
+    };
+}
+
+test('full scheduler snapshots are sampled per RAF only for runtime-owner acceptance', () => {
+    const countRafSnapshotReads = (runtimeOwnerLeaseExpectations) => {
+        let readCount = 0;
+        const readFullSnapshot = () => {
+            readCount += 1;
+            return { renderLeaseSummaries: [] };
+        };
+        for (let frame = 0; frame < 120; frame += 1) {
+            if (
+                shouldReadRuntimeOwnerLeaseRafSnapshot(
+                    runtimeOwnerLeaseExpectations,
+                )
+            ) {
+                readFullSnapshot();
+            }
+        }
+        return readCount;
+    };
+
+    assert.equal(countRafSnapshotReads(null), 0);
+    assert.equal(countRafSnapshotReads(undefined), 0);
+    assert.equal(
+        countRafSnapshotReads({
+            'camera-interaction': 60,
+            'plant-sway': 30,
+        }),
+        120,
+    );
+});
+
+test('scheduler scalar telemetry is observed per RAF when acceptance needs extrema', () => {
+    assert.equal(
+        shouldObserveRuntimeFrameLoopDuringRaf({
+            buildingProfile: undefined,
+            crossTierProfile: false,
+            runtimeOwnersProfile: false,
+        }),
+        false,
+    );
+    assert.equal(
+        shouldObserveRuntimeFrameLoopDuringRaf({
+            buildingProfile: { frameRateClass: 'ambient' },
+            crossTierProfile: false,
+            runtimeOwnersProfile: false,
+        }),
+        true,
+    );
+    assert.equal(
+        shouldObserveRuntimeFrameLoopDuringRaf({
+            buildingProfile: { frameRateClass: 'interactive' },
+            crossTierProfile: false,
+            runtimeOwnersProfile: false,
+        }),
+        false,
+    );
+    assert.equal(
+        shouldObserveRuntimeFrameLoopDuringRaf({
+            buildingProfile: undefined,
+            crossTierProfile: false,
+            runtimeOwnersProfile: true,
+        }),
+        true,
+    );
+    assert.equal(
+        shouldObserveRuntimeFrameLoopDuringRaf({
+            buildingProfile: undefined,
+            crossTierProfile: true,
+            runtimeOwnersProfile: false,
+        }),
+        true,
+    );
+});
 
 const provenanceCommitA = 'a'.repeat(40);
 const provenanceCommitB = 'b'.repeat(40);
 const cleanServedBuildMarker = {
     commit: provenanceCommitA,
-    comparisonContractVersion: 1,
+    comparisonContractVersion: 6,
     dirty: false,
 };
 
@@ -121,6 +416,25 @@ test('report provenance validates regular, switch, and lifecycle served-build ma
     });
 });
 
+test('report provenance allows a clean external subject to differ from its clean harness', () => {
+    const provenance = profileProvenance({
+        harness: { commit: provenanceCommitB, dirty: false },
+        server: {
+            buildPerformed: false,
+            mode: 'external',
+        },
+    });
+
+    assert.equal(provenance.comparable, true);
+    assert.deepEqual(provenance.reasons, []);
+    assert.equal(provenance.subject.commit, provenanceCommitA);
+    assert.equal(provenance.harness.commit, provenanceCommitB);
+    assert.deepEqual(provenance.server, {
+        buildPerformed: false,
+        mode: 'external',
+    });
+});
+
 test('comparison contract markers require one complete canonical integer', () => {
     assert.equal(parseComparisonContractVersion('1'), 1);
     assert.equal(parseComparisonContractVersion('12'), 12);
@@ -181,7 +495,7 @@ test('report provenance fails closed for unknown or dirty sources', () => {
     assert.ok(dirty.reasons.includes('harness-dirty'));
 });
 
-test('report provenance rejects served-build, harness, and contract mismatches', () => {
+test('report provenance rejects served-build, managed harness, and contract mismatches', () => {
     const provenance = profileProvenance({
         scenarios: [
             { servedBuildProvenance: cleanServedBuildMarker },
@@ -194,7 +508,7 @@ test('report provenance rejects served-build, harness, and contract mismatches',
             {
                 servedBuildProvenance: {
                     ...cleanServedBuildMarker,
-                    comparisonContractVersion: 2,
+                    comparisonContractVersion: 7,
                 },
             },
         ],
@@ -216,6 +530,59 @@ test('report provenance rejects served-build, harness, and contract mismatches',
     });
     assert.equal(harnessMismatch.comparable, false);
     assert.ok(harnessMismatch.reasons.includes('source-commit-mismatch'));
+});
+
+test('external report provenance still rejects served-build and contract mismatches', () => {
+    const externalServer = {
+        buildPerformed: false,
+        mode: 'external',
+    };
+    const servedBuildMismatch = profileProvenance({
+        harness: { commit: provenanceCommitB, dirty: false },
+        scenarios: [
+            { servedBuildProvenance: cleanServedBuildMarker },
+            {
+                servedBuildProvenance: {
+                    ...cleanServedBuildMarker,
+                    commit: provenanceCommitB,
+                },
+            },
+        ],
+        server: externalServer,
+    });
+    assert.equal(servedBuildMismatch.comparable, false);
+    assert.ok(
+        servedBuildMismatch.reasons.includes(
+            'served-build-source-commit-inconsistent',
+        ),
+    );
+    assert.equal(
+        servedBuildMismatch.reasons.includes('source-commit-mismatch'),
+        false,
+    );
+
+    const contractMismatch = profileProvenance({
+        harness: { commit: provenanceCommitB, dirty: false },
+        scenarios: [
+            {
+                servedBuildProvenance: {
+                    ...cleanServedBuildMarker,
+                    comparisonContractVersion: 7,
+                },
+            },
+        ],
+        server: externalServer,
+    });
+    assert.equal(contractMismatch.comparable, false);
+    assert.ok(
+        contractMismatch.reasons.includes(
+            'served-build-comparison-contract-mismatch',
+        ),
+    );
+    assert.equal(
+        contractMismatch.reasons.includes('source-commit-mismatch'),
+        false,
+    );
 });
 
 test('budget-enforced profiling fails closed for incomparable provenance', () => {
@@ -961,7 +1328,7 @@ test('building acceptance rejects unexpected runtime failures while allowing exa
     );
 });
 
-test('building ambient acceptance proves a 30 FPS target with no interaction lease', () => {
+test('building ambient acceptance proves stable semantic 30 FPS ownership', () => {
     const requested = {
         building: '0',
         buildingProfile: {
@@ -977,60 +1344,192 @@ test('building ambient acceptance proves a 30 FPS target with no interaction lea
         },
         staticSceneCache: 'legacy',
     };
-    const ambientSample = {
-        runtimeFrameLoopActiveLeaseCountAtEnd: 0,
-        runtimeFrameLoopActiveLeaseCountAtStart: 0,
-        runtimeFrameLoopActiveLeaseCountMax: 0,
-        runtimeFrameLoopObservationCount: 301,
-        runtimeFrameLoopTargetFramesPerSecondAtEnd: 30,
-        runtimeFrameLoopTargetFramesPerSecondAtStart: 30,
-        runtimeFrameLoopTargetFramesPerSecondMax: 30,
-    };
-    const passing = evaluateGardenBuildingAcceptance({
-        apiRequests: [],
-        requested,
-        runtime: {
-            runtimeFrameLoop: {
-                activeLeaseCount: 0,
-                targetFramesPerSecond: 30,
-            },
-        },
-        sample: ambientSample,
+    const ambientSchedulerSnapshot = () => ({
+        activeLeaseCount: 3,
+        activeRenderLeaseCount: 3,
+        coalescedRenderRequestReasons: [],
+        effectiveVisible: true,
+        renderLeaseOwners: ['cloud-layer', 'plant-sway'],
+        renderLeaseSummaries: [
+            { framesPerSecond: 30, leaseCount: 1, owner: 'cloud-layer' },
+            { framesPerSecond: 30, leaseCount: 2, owner: 'plant-sway' },
+        ],
+        renderRequestReasons: [],
+        targetFramesPerSecond: 30,
     });
-    assert.equal(passing.pass, true);
-
-    const failing = evaluateGardenBuildingAcceptance({
+    const buildInput = () => ({
         apiRequests: [],
         requested,
         runtime: {
             runtimeFrameLoop: {
-                activeLeaseCount: 0,
+                activeLeaseCount: 3,
                 targetFramesPerSecond: 30,
             },
         },
         sample: {
-            ...ambientSample,
-            runtimeFrameLoopActiveLeaseCountMax: 1,
-            runtimeFrameLoopTargetFramesPerSecondMax: 60,
+            runtimeFrameLoopActiveLeaseCountAtEnd: 3,
+            runtimeFrameLoopActiveLeaseCountAtStart: 3,
+            runtimeFrameLoopActiveLeaseCountMax: 3,
+            runtimeFrameLoopAtEnd: ambientSchedulerSnapshot(),
+            runtimeFrameLoopAtStart: ambientSchedulerSnapshot(),
+            runtimeFrameLoopCounterDeltas: {
+                hiddenDeferredCoalescedRenderRequestCount: 0,
+                hiddenCoalescedRenderRequestCount: 0,
+            },
+            runtimeFrameLoopObservationCount: 301,
+            runtimeFrameLoopTargetFramesPerSecondAtEnd: 30,
+            runtimeFrameLoopTargetFramesPerSecondAtStart: 30,
+            runtimeFrameLoopTargetFramesPerSecondMax: 30,
         },
     });
-    assert.deepEqual(
-        failing.checks
-            .filter(
-                (check) =>
-                    check.name.startsWith('buildingAmbient') && !check.pass,
-            )
-            .map((check) => ({ name: check.name, pass: check.pass })),
+    const failedAmbientChecks = (input) =>
+        new Set(
+            evaluateGardenBuildingAcceptance(input)
+                .checks.filter(
+                    (check) =>
+                        check.name.startsWith('buildingAmbient') && !check.pass,
+                )
+                .map((check) => check.name),
+        );
+    const expectFailedChecks = (mutate, expectedNames) => {
+        const input = buildInput();
+        mutate(input);
+        const failures = failedAmbientChecks(input);
+        for (const name of expectedNames) {
+            assert.equal(failures.has(name), true, `${name} must fail`);
+        }
+    };
+
+    const passing = evaluateGardenBuildingAcceptance(buildInput());
+    assert.equal(passing.pass, true);
+
+    const allowedCoalescedRequest = buildInput();
+    for (const snapshot of [
+        allowedCoalescedRequest.sample.runtimeFrameLoopAtStart,
+        allowedCoalescedRequest.sample.runtimeFrameLoopAtEnd,
+    ]) {
+        snapshot.coalescedRenderRequestReasons = ['r3f-root-update'];
+    }
+    assert.equal(
+        evaluateGardenBuildingAcceptance(allowedCoalescedRequest).pass,
+        true,
+    );
+    expectFailedChecks(
+        (input) => {
+            input.sample.runtimeFrameLoopCounterDeltas.hiddenDeferredCoalescedRenderRequestCount = 1;
+        },
+        ['buildingAmbientHiddenDeferredCoalescedRenderRequestCountDelta'],
+    );
+    expectFailedChecks(
+        (input) => {
+            input.sample.runtimeFrameLoopCounterDeltas.hiddenCoalescedRenderRequestCount = 1;
+        },
+        ['buildingAmbientHiddenCoalescedRenderRequestCountDelta'],
+    );
+
+    expectFailedChecks(
+        (input) => {
+            input.sample.runtimeFrameLoopTargetFramesPerSecondMax = 60;
+        },
+        ['buildingAmbientSampleMaximumTargetFramesPerSecond'],
+    );
+    expectFailedChecks(
+        (input) => {
+            input.sample.runtimeFrameLoopAtEnd.effectiveVisible = false;
+        },
         [
-            {
-                name: 'buildingAmbientSampleMaximumTargetFramesPerSecond',
-                pass: false,
-            },
-            {
-                name: 'buildingAmbientSampleMaximumActiveLeaseCount',
-                pass: false,
-            },
+            'buildingAmbientSampleEndVisible',
+            'buildingAmbientSampleEndSchedulerSettled',
         ],
+    );
+    expectFailedChecks(
+        (input) => {
+            input.sample.runtimeFrameLoopAtEnd.coalescedRenderRequestReasons = [
+                'unexpected-root-update',
+            ];
+        },
+        [
+            'buildingAmbientSampleEndCoalescedRenderRequestReasonsBounded',
+            'buildingAmbientSampleEndSchedulerSettled',
+        ],
+    );
+    expectFailedChecks(
+        (input) => {
+            input.sample.runtimeFrameLoopAtStart.coalescedRenderRequestReasons =
+                ['r3f-root-update', 'r3f-root-update'];
+        },
+        [
+            'buildingAmbientSampleStartCoalescedRenderRequestReasonsBounded',
+            'buildingAmbientSampleStartSchedulerSettled',
+        ],
+    );
+    expectFailedChecks(
+        (input) => {
+            input.sample.runtimeFrameLoopAtEnd.renderRequestReasons = [
+                'profile-outline-command',
+            ];
+        },
+        [
+            'buildingAmbientSampleEndRenderRequestsDrained',
+            'buildingAmbientSampleEndSchedulerSettled',
+        ],
+    );
+    expectFailedChecks(
+        (input) => {
+            const snapshots = [
+                input.sample.runtimeFrameLoopAtStart,
+                input.sample.runtimeFrameLoopAtEnd,
+            ];
+            for (const snapshot of snapshots) {
+                snapshot.activeLeaseCount = 4;
+                snapshot.activeRenderLeaseCount = 4;
+                snapshot.renderLeaseOwners.push('camera-interaction');
+                snapshot.renderLeaseOwners.sort();
+                snapshot.renderLeaseSummaries.push({
+                    framesPerSecond: 60,
+                    leaseCount: 1,
+                    owner: 'camera-interaction',
+                });
+                snapshot.renderLeaseSummaries.sort((left, right) =>
+                    left.owner.localeCompare(right.owner),
+                );
+            }
+            input.sample.runtimeFrameLoopActiveLeaseCountAtStart = 4;
+            input.sample.runtimeFrameLoopActiveLeaseCountMax = 4;
+            input.sample.runtimeFrameLoopActiveLeaseCountAtEnd = 4;
+        },
+        [
+            'buildingAmbientSampleStartMaximumLeaseFramesPerSecond',
+            'buildingAmbientSampleStartInteractiveOwnerCount',
+            'buildingAmbientSampleEndMaximumLeaseFramesPerSecond',
+            'buildingAmbientSampleEndInteractiveOwnerCount',
+        ],
+    );
+    expectFailedChecks(
+        (input) => {
+            input.sample.runtimeFrameLoopAtEnd.activeLeaseCount = 4;
+        },
+        ['buildingAmbientSampleEndLeaseCountsReconciled'],
+    );
+    expectFailedChecks(
+        (input) => {
+            input.sample.runtimeFrameLoopActiveLeaseCountMax = 4;
+        },
+        [
+            'buildingAmbientSampleMaximumActiveLeaseCount',
+            'buildingAmbientSemanticLeaseCountStable',
+        ],
+    );
+    expectFailedChecks(
+        (input) => {
+            input.sample.runtimeFrameLoopAtEnd.renderLeaseOwners = [
+                'plant-sway',
+                'weather-animation',
+            ];
+            input.sample.runtimeFrameLoopAtEnd.renderLeaseSummaries[0].owner =
+                'weather-animation';
+        },
+        ['buildingAmbientLeaseSummariesStable'],
     );
 });
 
@@ -1474,6 +1973,12 @@ test('cross-tier scenario set replays one High-target garden across every tier a
             assert.equal(scenario.autoQualityDeviceClass ?? null, device);
             assert.equal(scenario.budget, 'gameHighTarget');
             assert.equal(scenario.crossTierProfile, true);
+            assert.deepEqual(scenario.displayCadenceControl, {
+                callbackTimestampMode: 'scheduled-phase-v1',
+                framesPerSecond: 30,
+                mode: 'profiler-owned-raf-v1',
+                observedRateClock: 'native-wall-time-v1',
+            });
             assert.equal(scenario.dpr, 2);
             assert.equal(scenario.expectedDprCap, dprCap);
             assert.equal(scenario.expectedGroundDecorationDensity, density);
@@ -1590,6 +2095,168 @@ test('lifecycle scenario repeats the exact High workload in fresh contexts', () 
     assert.equal(request.quality, 'high');
     assert.equal(request.staticSceneCache, 'legacy');
     assert.equal(url.searchParams.get('fixedTimeSeconds'), '43200');
+});
+
+test('live lifecycle scenario measures unpinned SceneTime only in its candidate set', () => {
+    const scenarios = resolveScenarios('lifecycle-live');
+
+    assert.equal(scenarios.length, 1);
+    const [scenario] = scenarios;
+    const request = getScenarioRequest(scenario.path);
+    const url = new URL(scenario.path, 'http://profile.local');
+    assert.equal(
+        scenario.name,
+        'game-high-target-runtime-lifecycle-live-desktop',
+    );
+    assert.equal(scenario.lifecycleLiveProfile, true);
+    assert.equal(scenario.lifecycleProfile, true);
+    assert.equal(scenario.repeat, 3);
+    assert.equal(request.lifecycle, '1');
+    assert.equal(request.gardenProfile, 'high-target');
+    assert.equal(request.outline, '1');
+    assert.equal(request.staticSceneCache, 'legacy');
+    assert.equal(url.searchParams.has('fixedTimeSeconds'), false);
+    assert.equal(
+        resolveScenarios('lifecycle')[0].lifecycleLiveProfile,
+        undefined,
+    );
+});
+
+test('runtime-owner scenarios cover every tier with rain, camera, outline, and no fixed clock', () => {
+    const scenarios = resolveScenarios('runtime-owners');
+    const expected = [
+        ['game-runtime-owners-low-desktop', 'low', 'low'],
+        ['game-runtime-owners-medium-desktop', 'medium', 'medium'],
+        ['game-runtime-owners-high-desktop', 'high', 'high'],
+        ['game-runtime-owners-auto-standard-desktop', 'auto', 'medium'],
+        [
+            'game-runtime-owners-auto-constrained-desktop',
+            'auto',
+            'auto-constrained',
+        ],
+    ];
+
+    assert.equal(scenarios.length, expected.length);
+    for (const [index, scenario] of scenarios.entries()) {
+        const [name, quality, tier] = expected[index];
+        const request = getScenarioRequest(scenario.path);
+        const url = new URL(scenario.path, 'http://profile.local');
+        assert.equal(scenario.name, name);
+        assert.equal(scenario.runtimeOwnersProfile, true);
+        assert.equal(scenario.expectedQualityTier, tier);
+        assert.equal(scenario.motion, 'runtime-owner-bounded-zoom-rotate');
+        assert.equal(scenario.motionWarmupMs, 900);
+        assert.equal(scenario.repeat, 3);
+        assert.equal(scenario.screenshotWitness, true);
+        assert.equal(request.controls, '1');
+        assert.equal(request.gardenProfile, 'high-target');
+        assert.equal(request.mode, 'rain');
+        assert.equal(request.outline, '1');
+        assert.equal(request.quality, quality);
+        assert.equal(request.staticSceneCache, 'legacy');
+        assert.equal(url.searchParams.get('cameraProfile'), '1');
+        assert.equal(url.searchParams.has('fixedTimeSeconds'), false);
+    }
+});
+
+test('bounded camera motion cycles are closed and alternate their leading direction', () => {
+    const first = resolveBoundedCameraMotionCycle(0);
+    const second = resolveBoundedCameraMotionCycle(1);
+
+    assert.deepEqual(first, {
+        panKeys: ['ArrowLeft', 'ArrowRight'],
+        wheelDeltas: [-20, 20],
+    });
+    assert.deepEqual(second, {
+        panKeys: ['ArrowRight', 'ArrowLeft'],
+        wheelDeltas: [20, -20],
+    });
+    for (const cycle of [first, second]) {
+        assert.deepEqual([...cycle.panKeys].sort(), [
+            'ArrowLeft',
+            'ArrowRight',
+        ]);
+        assert.equal(
+            cycle.wheelDeltas.reduce((sum, delta) => sum + delta, 0),
+            0,
+        );
+    }
+});
+
+test('camera snapshot endpoint drift fails closed for invalid snapshots', () => {
+    const start = {
+        position: [-10, 10, -10],
+        target: [0, 0, 0],
+        zoom: 100,
+    };
+
+    assert.equal(gameCameraSnapshotMaximumDelta(start, { ...start }), 0);
+    assert.equal(
+        gameCameraSnapshotMaximumDelta(start, {
+            ...start,
+            target: [0.25, 0, 0],
+        }),
+        0.25,
+    );
+    assert.equal(
+        gameCameraSnapshotMaximumDelta(start, {
+            ...start,
+            position: [-9.5, 10, -10],
+        }),
+        0.5,
+    );
+    assert.equal(
+        gameCameraSnapshotMaximumDelta(start, { ...start, zoom: 101 }),
+        1,
+    );
+    assert.equal(gameCameraSnapshotMaximumDelta(start, null), null);
+    assert.equal(gameCameraSnapshotMaximumDelta(null, start), null);
+    assert.equal(
+        gameCameraSnapshotMaximumDelta(start, {
+            ...start,
+            position: [Number.NaN, 10, -10],
+        }),
+        null,
+    );
+    assert.equal(
+        gameCameraSnapshotMaximumDelta(start, {
+            ...start,
+            target: [0, Number.POSITIVE_INFINITY, 0],
+        }),
+        null,
+    );
+    assert.equal(
+        gameCameraSnapshotMaximumDelta(start, {
+            ...start,
+            zoom: Number.NaN,
+        }),
+        null,
+    );
+});
+
+test('static-idle scenario isolates one visible fixed-time zero-work fixture', () => {
+    const scenarios = resolveScenarios('static-idle');
+
+    assert.equal(scenarios.length, 1);
+    const [scenario] = scenarios;
+    const request = getScenarioRequest(scenario.path);
+    assert.equal(scenario.name, 'game-fixed-time-static-idle-desktop');
+    assert.equal(scenario.staticIdleProfile, true);
+    assert.equal(scenario.repeat, 3);
+    assert.equal(scenario.dpr, 2);
+    assert.equal(scenario.isMobile, false);
+    assert.equal(scenario.screenshotWitness, true);
+    assert.deepEqual(scenario.viewport, { height: 720, width: 1280 });
+    assert.equal(request.controls, '0');
+    assert.equal(request.debugHud, '0');
+    assert.equal(request.details, '0');
+    assert.equal(request.gardenProfile, 'default');
+    assert.equal(request.hud, '0');
+    assert.equal(request.mode, 'baseline');
+    assert.equal(request.quality, 'high');
+    assert.equal(request.staticIdle, '1');
+    assert.equal(request.staticSceneCache, 'legacy');
+    assert.equal(scenario.fixedTimeSeconds, 43_200);
 });
 
 test('operation-visual High scenario is isolated behind its own opt-in set', () => {
@@ -1996,6 +2663,210 @@ test('outline telemetry readiness requires the connected target and one style gr
     );
 });
 
+test('lifecycle renderer stats barrier requires a post-barrier root and submitted-render receipt', () => {
+    const start = {
+        capturedAt: 100,
+        drawCalls: 10,
+        renderedFrames: 2,
+        rendererStatsMeasurementMode: 'post-render-microtask-v1',
+        rendererStatsPublishedAt: 90,
+        rendererStatsReceiptCount: 3,
+        rendererStatsRenderFrame: 8,
+        r3fFrameCallbackCount: 4,
+        submittedTriangles: 20,
+    };
+    const ready = {
+        ...start,
+        capturedAt: 130,
+        drawCalls: 11,
+        renderedFrames: 3,
+        rendererStatsPublishedAt: 120,
+        rendererStatsReceiptCount: 4,
+        // A restored Three renderer may restart its local render-frame count.
+        rendererStatsRenderFrame: 1,
+        r3fFrameCallbackCount: 5,
+        submittedTriangles: 21,
+    };
+
+    assert.equal(
+        isLifecycleRendererStatsBarrierReady(
+            start,
+            ready,
+            lifecycleRendererStatsCanonicalMode,
+        ),
+        true,
+    );
+    for (const mutation of [
+        { drawCalls: 10 },
+        { renderedFrames: 2 },
+        { submittedTriangles: 20 },
+        { r3fFrameCallbackCount: 4 },
+        { rendererStatsReceiptCount: 3 },
+        { rendererStatsPublishedAt: 100 },
+        { rendererStatsMeasurementMode: null },
+        { rendererStatsRenderFrame: 0 },
+    ]) {
+        assert.equal(
+            isLifecycleRendererStatsBarrierReady(
+                start,
+                { ...ready, ...mutation },
+                lifecycleRendererStatsCanonicalMode,
+            ),
+            false,
+        );
+    }
+
+    const legacy = {
+        ...ready,
+        rendererStatsMeasurementMode: null,
+        rendererStatsPublishedAt: null,
+        rendererStatsReceiptCount: null,
+        rendererStatsRenderFrame: null,
+        r3fFrameCallbackCount: null,
+    };
+    assert.equal(
+        isLifecycleRendererStatsBarrierReady(
+            { ...start, r3fFrameCallbackCount: null },
+            legacy,
+            lifecycleRendererStatsLegacyMode,
+        ),
+        true,
+    );
+});
+
+test('lifecycle renderer stats resource measurements fail closed for canonical and legacy evidence', () => {
+    const resources = {
+        rendererGeometries: 193,
+        rendererShaders: 15,
+        rendererStatsMeasurement: {
+            completedAt: 130,
+            drawCallsDelta: 1,
+            legacySettleMs: null,
+            measurementMode: lifecycleRendererStatsCanonicalMode,
+            renderedFramesDelta: 1,
+            rendererStatsPublishedAt: 120,
+            rendererStatsReceiptCount: 4,
+            rendererStatsReceiptDelta: 1,
+            rendererStatsRenderFrame: 8,
+            r3fFrameCallbackCountDelta: 1,
+            runtimeMeasurementMode: 'post-render-microtask-v1',
+            startedAt: 100,
+            submittedTrianglesDelta: 2,
+        },
+        rendererTextures: 5,
+    };
+    assert.equal(
+        isLifecycleRendererStatsMeasurementValid(
+            resources,
+            lifecycleRendererStatsCanonicalMode,
+        ),
+        true,
+    );
+    for (const mutation of [
+        { rendererGeometries: 0 },
+        {
+            rendererStatsMeasurement: {
+                ...resources.rendererStatsMeasurement,
+                completedAt: 99,
+            },
+        },
+        {
+            rendererStatsMeasurement: {
+                ...resources.rendererStatsMeasurement,
+                rendererStatsReceiptDelta: 0,
+            },
+        },
+    ]) {
+        assert.equal(
+            isLifecycleRendererStatsMeasurementValid(
+                { ...resources, ...mutation },
+                lifecycleRendererStatsCanonicalMode,
+            ),
+            false,
+        );
+    }
+
+    const legacyResources = {
+        ...resources,
+        rendererStatsMeasurement: {
+            ...resources.rendererStatsMeasurement,
+            legacySettleMs: 600,
+            measurementMode: lifecycleRendererStatsLegacyMode,
+            rendererStatsPublishedAt: null,
+            rendererStatsReceiptCount: null,
+            rendererStatsReceiptDelta: null,
+            rendererStatsRenderFrame: null,
+            r3fFrameCallbackCountDelta: null,
+            runtimeMeasurementMode: null,
+        },
+    };
+    assert.equal(
+        isLifecycleRendererStatsMeasurementValid(
+            legacyResources,
+            lifecycleRendererStatsLegacyMode,
+        ),
+        true,
+    );
+    assert.equal(
+        isLifecycleRendererStatsMeasurementValid(
+            {
+                ...legacyResources,
+                rendererStatsMeasurement: {
+                    ...legacyResources.rendererStatsMeasurement,
+                    rendererStatsReceiptCount: 1,
+                },
+            },
+            lifecycleRendererStatsLegacyMode,
+        ),
+        false,
+    );
+});
+
+test('legacy lifecycle renderer stats mode is limited to an explicit clean external old subject', () => {
+    const cleanHarness = {
+        commit: 'a'.repeat(40),
+        dirty: false,
+    };
+    const cleanSubject = {
+        commit: 'b'.repeat(40),
+        comparisonContractVersion: 6,
+        dirty: false,
+    };
+    assert.equal(
+        resolveLifecycleRendererStatsCaptureMode({
+            harness: cleanHarness,
+            requestedMode: lifecycleRendererStatsLegacyMode,
+            servedBuild: cleanSubject,
+            serverMode: 'external',
+        }),
+        lifecycleRendererStatsLegacyMode,
+    );
+    for (const input of [
+        { serverMode: 'managed' },
+        { harness: { ...cleanHarness, dirty: true } },
+        { servedBuild: { ...cleanSubject, dirty: true } },
+        { servedBuild: { ...cleanSubject, commit: cleanHarness.commit } },
+        {
+            servedBuild: {
+                ...cleanSubject,
+                comparisonContractVersion: 7,
+            },
+        },
+    ]) {
+        assert.throws(
+            () =>
+                resolveLifecycleRendererStatsCaptureMode({
+                    harness: cleanHarness,
+                    requestedMode: lifecycleRendererStatsLegacyMode,
+                    servedBuild: cleanSubject,
+                    serverMode: 'external',
+                    ...input,
+                }),
+            /requires an explicit clean external subject/,
+        );
+    }
+});
+
 test('graphics backend auto-selects macOS Metal with an explicit portable override', () => {
     assert.equal(resolveChromiumGraphicsBackend('darwin'), 'angle-metal');
     assert.equal(resolveChromiumGraphicsBackend('linux'), 'default');
@@ -2040,6 +2911,14 @@ test('legacy operation visual profiling bypass is explicit', () => {
     assert.equal(
         parseArgs(['--allow-legacy-operation-visuals'])
             .allowLegacyOperationVisuals,
+        true,
+    );
+});
+
+test('legacy outline pipeline profiling is explicit', () => {
+    assert.equal(parseArgs([]).legacyOutlinePipeline, false);
+    assert.equal(
+        parseArgs(['--legacy-outline-pipeline']).legacyOutlinePipeline,
         true,
     );
 });
@@ -2139,6 +3018,409 @@ test('injected GPU timing yields to an existing elapsed-time query', () => {
     );
 });
 
+test('profiler display cadence control owns app RAF while preserving native profiler RAF and cancellation', () => {
+    const keys = [
+        'cancelAnimationFrame',
+        'performance',
+        'requestAnimationFrame',
+        '__gameProfileCancelNativeAnimationFrame',
+        '__gameProfileDisplayCadenceControl',
+        '__gameProfileMetrics',
+        '__gameProfileRequestNativeAnimationFrame',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    const setGlobal = (key, value) => {
+        Object.defineProperty(globalThis, key, {
+            configurable: true,
+            value,
+            writable: true,
+        });
+    };
+    const nativeCallbacks = new Map();
+    const cancelledNativeHandles = [];
+    const adjacentNumber = (value, direction) => {
+        const view = new DataView(new ArrayBuffer(8));
+        view.setFloat64(0, value);
+        view.setBigUint64(
+            0,
+            view.getBigUint64(0) + (direction === 'up' ? 1n : -1n),
+        );
+        return view.getFloat64(0);
+    };
+    let currentWallTime = 0;
+    let nextNativeHandle = 100;
+    const nativeRequestAnimationFrame = (callback) => {
+        nextNativeHandle += 1;
+        nativeCallbacks.set(nextNativeHandle, callback);
+        return nextNativeHandle;
+    };
+    const nativeCancelAnimationFrame = (handle) => {
+        cancelledNativeHandles.push(handle);
+        nativeCallbacks.delete(handle);
+    };
+    const deliverNextNativeFrame = (timestamp) => {
+        const entry = nativeCallbacks.entries().next().value;
+        assert.ok(entry, `expected a native RAF callback at ${timestamp}`);
+        const [handle, callback] = entry;
+        nativeCallbacks.delete(handle);
+        currentWallTime = timestamp;
+        callback(timestamp);
+    };
+
+    try {
+        setGlobal('performance', {
+            now: () => currentWallTime,
+        });
+        setGlobal('requestAnimationFrame', nativeRequestAnimationFrame);
+        setGlobal('cancelAnimationFrame', nativeCancelAnimationFrame);
+        setGlobal('__gameProfileMetrics', {});
+
+        installBrowserMetrics({
+            displayCadenceControl: {
+                callbackTimestampMode: 'scheduled-phase-v1',
+                framesPerSecond: 30,
+                mode: 'profiler-owned-raf-v1',
+                observedRateClock: 'native-wall-time-v1',
+            },
+            externalGpuTimer: false,
+        });
+
+        assert.notEqual(
+            globalThis.requestAnimationFrame,
+            nativeRequestAnimationFrame,
+        );
+        assert.notEqual(
+            globalThis.__gameProfileRequestNativeAnimationFrame,
+            globalThis.requestAnimationFrame,
+        );
+        let nativeProfilerTimestamp = null;
+        globalThis.__gameProfileRequestNativeAnimationFrame((timestamp) => {
+            nativeProfilerTimestamp = timestamp;
+        });
+        deliverNextNativeFrame(-10);
+        assert.equal(nativeProfilerTimestamp, -10);
+        assert.equal(
+            globalThis.__gameProfileDisplayCadenceControl.snapshot()
+                .nativeFrameCount,
+            0,
+        );
+
+        const deliveries = [];
+        let finalHandle = null;
+        let lateHandle = null;
+        let nestedHandle = null;
+        const firstHandle = globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['first', timestamp]);
+            nestedHandle = globalThis.requestAnimationFrame(
+                (nestedTimestamp) => {
+                    deliveries.push(['nested', nestedTimestamp]);
+                    lateHandle = globalThis.requestAnimationFrame(
+                        (lateTimestamp) => {
+                            deliveries.push(['late', lateTimestamp]);
+                            finalHandle = globalThis.requestAnimationFrame(
+                                (finalTimestamp) => {
+                                    deliveries.push(['final', finalTimestamp]);
+                                },
+                            );
+                        },
+                    );
+                },
+            );
+        });
+        const cancelledHandle = globalThis.requestAnimationFrame(
+            (timestamp) => {
+                deliveries.push(['cancelled', timestamp]);
+            },
+        );
+        const batchedHandle = globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['batched', timestamp]);
+        });
+        assert.notEqual(firstHandle, cancelledHandle);
+        assert.notEqual(cancelledHandle, batchedHandle);
+        assert.equal(nativeCallbacks.size, 1);
+        globalThis.cancelAnimationFrame(String(cancelledHandle));
+
+        deliverNextNativeFrame(0);
+        assert.deepEqual(deliveries, [
+            ['first', 0],
+            ['batched', 0],
+        ]);
+        assert.equal(typeof nestedHandle, 'number');
+        assert.equal(nativeCallbacks.size, 1);
+
+        deliverNextNativeFrame(16.7);
+        assert.deepEqual(deliveries, [
+            ['first', 0],
+            ['batched', 0],
+        ]);
+        assert.equal(nativeCallbacks.size, 1);
+
+        deliverNextNativeFrame(33.3);
+        assert.deepEqual(deliveries, [
+            ['first', 0],
+            ['batched', 0],
+        ]);
+        assert.equal(nativeCallbacks.size, 1);
+
+        deliverNextNativeFrame(33.4);
+        assert.deepEqual(deliveries, [
+            ['first', 0],
+            ['batched', 0],
+            ['nested', 1_000 / 30],
+        ]);
+        assert.ok(deliveries[2][1] <= 33.4);
+        assert.equal(deliveries[2][1] - deliveries[0][1], 1_000 / 30);
+        assert.equal(typeof lateHandle, 'number');
+        assert.equal(nativeCallbacks.size, 1);
+        assert.ok(
+            Math.abs(
+                globalThis.__gameProfileDisplayCadenceControl.snapshot()
+                    .observedFramesPerSecond - 29.94,
+            ) < 0.01,
+        );
+        assert.equal(
+            globalThis.__gameProfileDisplayCadenceControl.snapshot()
+                .skippedPhaseCount,
+            0,
+        );
+
+        deliverNextNativeFrame(140);
+        assert.deepEqual(deliveries, [
+            ['first', 0],
+            ['batched', 0],
+            ['nested', 1_000 / 30],
+            ['late', (4 * 1_000) / 30],
+        ]);
+        assert.ok(deliveries[3][1] <= 140);
+        assert.equal(deliveries[3][1] - deliveries[2][1], (3 * 1_000) / 30);
+        assert.equal(typeof finalHandle, 'number');
+        assert.equal(nativeCallbacks.size, 1);
+        assert.equal(
+            globalThis.__gameProfileDisplayCadenceControl.snapshot()
+                .skippedPhaseCount,
+            2,
+        );
+
+        deliverNextNativeFrame(150);
+        assert.equal(deliveries.length, 4);
+        assert.equal(nativeCallbacks.size, 1);
+        assert.equal(
+            globalThis.__gameProfileDisplayCadenceControl.snapshot()
+                .skippedPhaseCount,
+            2,
+        );
+
+        deliverNextNativeFrame(166.8);
+        assert.deepEqual(deliveries, [
+            ['first', 0],
+            ['batched', 0],
+            ['nested', 1_000 / 30],
+            ['late', (4 * 1_000) / 30],
+            ['final', 5 * (1_000 / 30)],
+        ]);
+        assert.ok(deliveries[4][1] <= 166.8);
+        assert.ok(
+            Math.abs(deliveries[4][1] - deliveries[3][1] - 1_000 / 30) < 1e-9,
+        );
+        assert.equal(
+            globalThis.__gameProfileDisplayCadenceControl.snapshot()
+                .skippedPhaseCount,
+            2,
+        );
+        assert.equal(nativeCallbacks.size, 0);
+        const deliveredTimestamps = deliveries.map(([, timestamp]) =>
+            Number(timestamp),
+        );
+        for (let index = 1; index < deliveredTimestamps.length; index += 1) {
+            assert.ok(
+                deliveredTimestamps[index] >= deliveredTimestamps[index - 1],
+            );
+        }
+
+        let boundaryFollowupHandle = null;
+        let sameBatchSiblingHandle = null;
+        globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['exact-boundary', timestamp]);
+            globalThis.cancelAnimationFrame(sameBatchSiblingHandle);
+            currentWallTime = 240;
+            boundaryFollowupHandle = globalThis.requestAnimationFrame(
+                (followupTimestamp) => {
+                    deliveries.push(['boundary-followup', followupTimestamp]);
+                },
+            );
+        });
+        sameBatchSiblingHandle = globalThis.requestAnimationFrame(
+            (timestamp) => {
+                deliveries.push(['same-batch-cancelled', timestamp]);
+            },
+        );
+        deliverNextNativeFrame(200);
+        assert.deepEqual(deliveries.slice(-1), [['exact-boundary', 200]]);
+        assert.equal(typeof boundaryFollowupHandle, 'number');
+        assert.equal(nativeCallbacks.size, 1);
+
+        deliverNextNativeFrame(250);
+        assert.deepEqual(deliveries.slice(-2), [
+            ['exact-boundary', 200],
+            ['boundary-followup', (7 * 1_000) / 30],
+        ]);
+        assert.equal(nativeCallbacks.size, 0);
+
+        globalThis.cancelAnimationFrame(999_999);
+        const cancelledAloneHandle = globalThis.requestAnimationFrame(() => {
+            deliveries.push(['cancelled-alone', 100]);
+        });
+        assert.equal(nativeCallbacks.size, 1);
+        globalThis.cancelAnimationFrame(cancelledAloneHandle);
+        assert.equal(nativeCallbacks.size, 0);
+        assert.equal(cancelledNativeHandles.length, 1);
+
+        currentWallTime = 310;
+        globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['idle-resume', timestamp]);
+        });
+        deliverNextNativeFrame(316.7);
+        assert.notEqual(deliveries.at(-1)?.[0], 'idle-resume');
+        assert.equal(nativeCallbacks.size, 1);
+        const pendingPhaseSnapshot =
+            globalThis.__gameProfileDisplayCadenceControl.snapshot();
+        assert.equal(pendingPhaseSnapshot.skippedPhaseCount, 2);
+        assert.ok(
+            Math.abs(
+                pendingPhaseSnapshot.lastDeliveredPhaseAt -
+                    pendingPhaseSnapshot.firstDeliveredPhaseAt -
+                    (pendingPhaseSnapshot.deliveredFrameCount +
+                        pendingPhaseSnapshot.skippedPhaseCount -
+                        1) *
+                        pendingPhaseSnapshot.intervalMs,
+            ) < 1e-9,
+        );
+        deliverNextNativeFrame(333.4);
+        assert.deepEqual(deliveries.at(-1), ['idle-resume', 10 * (1_000 / 30)]);
+        assert.ok(deliveries.at(-1)[1] >= 310);
+        assert.equal(nativeCallbacks.size, 0);
+
+        const exactLaterBoundary = 12 * (1_000 / 30);
+        currentWallTime = exactLaterBoundary;
+        globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['idle-exact-boundary', timestamp]);
+        });
+        deliverNextNativeFrame(exactLaterBoundary);
+        assert.deepEqual(deliveries.at(-1), [
+            'idle-exact-boundary',
+            exactLaterBoundary,
+        ]);
+
+        const laterBoundary = 14 * (1_000 / 30);
+        currentWallTime = adjacentNumber(laterBoundary, 'down');
+        globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['idle-before-boundary', timestamp]);
+        });
+        deliverNextNativeFrame(laterBoundary);
+        assert.deepEqual(deliveries.at(-1), [
+            'idle-before-boundary',
+            laterBoundary,
+        ]);
+
+        const passedBoundary = 16 * (1_000 / 30);
+        const afterPassedBoundary = adjacentNumber(passedBoundary, 'up');
+        currentWallTime = afterPassedBoundary;
+        globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['idle-after-boundary', timestamp]);
+        });
+        deliverNextNativeFrame(afterPassedBoundary + 16.7);
+        assert.notEqual(deliveries.at(-1)?.[0], 'idle-after-boundary');
+        assert.equal(nativeCallbacks.size, 1);
+        deliverNextNativeFrame(17 * (1_000 / 30));
+        assert.deepEqual(deliveries.at(-1), [
+            'idle-after-boundary',
+            17 * (1_000 / 30),
+        ]);
+        assert.ok(deliveries.at(-1)[1] >= afterPassedBoundary);
+        assert.equal(nativeCallbacks.size, 0);
+
+        let speculativeHandle = null;
+        currentWallTime = 590;
+        globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['scheduler-frame', timestamp]);
+            speculativeHandle = globalThis.requestAnimationFrame(
+                (speculativeTimestamp) => {
+                    deliveries.push([
+                        'scheduler-speculative',
+                        speculativeTimestamp,
+                    ]);
+                },
+            );
+            globalThis.cancelAnimationFrame(speculativeHandle);
+        });
+        deliverNextNativeFrame(600);
+        assert.deepEqual(deliveries.at(-1), ['scheduler-frame', 600]);
+        assert.equal(typeof speculativeHandle, 'number');
+        assert.equal(nativeCallbacks.size, 0);
+
+        currentWallTime = 19 * (1_000 / 30) + 0.1;
+        globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['scheduler-rearm', timestamp]);
+        });
+        deliverNextNativeFrame(650);
+        assert.deepEqual(deliveries.at(-1), [
+            'scheduler-rearm',
+            19 * (1_000 / 30),
+        ]);
+        assert.equal(nativeCallbacks.size, 0);
+
+        currentWallTime = 690;
+        globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['scheduler-late-host-frame', timestamp]);
+        });
+        deliverNextNativeFrame(710);
+        assert.deepEqual(deliveries.at(-1), [
+            'scheduler-late-host-frame',
+            21 * (1_000 / 30),
+        ]);
+        assert.equal(nativeCallbacks.size, 0);
+
+        const telemetry =
+            globalThis.__gameProfileDisplayCadenceControl.snapshot();
+        assert.equal(telemetry.installed, true);
+        assert.equal(telemetry.callbackTimestampMode, 'scheduled-phase-v1');
+        assert.equal(telemetry.mode, 'profiler-owned-raf-v1');
+        assert.equal(telemetry.observedRateClock, 'native-wall-time-v1');
+        assert.equal(telemetry.requestedFramesPerSecond, 30);
+        assert.equal(telemetry.requestCount, 18);
+        assert.equal(telemetry.cancelRequestCount, 5);
+        assert.equal(telemetry.cancelledBeforeDeliveryCount, 4);
+        assert.equal(telemetry.deliveredCallbackCount, 14);
+        assert.equal(telemetry.deliveredFrameCount, 13);
+        assert.equal(telemetry.firstDeliveredPhaseAt, 0);
+        assert.equal(telemetry.lastDeliveredPhaseAt, 21 * (1_000 / 30));
+        assert.equal(telemetry.nativeFrameCount, 18);
+        assert.equal(telemetry.nativeFrameCancellationCount, 2);
+        assert.equal(telemetry.pendingCallbackCount, 0);
+        assert.equal(telemetry.nativeFramePending, false);
+        assert.equal(telemetry.skippedPhaseCount, 9);
+        assert.ok(Math.abs(telemetry.observedFramesPerSecond - 16.9) < 0.01);
+        assert.throws(
+            () => globalThis.requestAnimationFrame(null),
+            /callback must be a function/,
+        );
+    } finally {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    }
+});
+
 test('profile context tracking starts before Canvas discovery without handling loss itself', async () => {
     const keys = [
         'document',
@@ -2222,9 +3504,247 @@ test('lifecycle cold milestones are captured at document start and first submitt
     );
     assert.match(milestoneSource, /new MutationObserver/);
     assert.match(milestoneSource, /new ResizeObserver/);
+    assert.match(milestoneSource, /expectedDpr/);
     assert.match(milestoneSource, /canvasAttachedMs \?\?=/);
     assert.match(milestoneSource, /canvasSizedMs/);
+    assert.match(milestoneSource, /mutationObserver\.disconnect\(\)/);
     assert.match(browserMetricSource, /firstSubmittedFrameMs/);
+    assert.match(browserMetricSource, /actorGroundingShadowSpeciesCountMax/);
+    assert.match(
+        browserMetricSource,
+        /recordActorGroundingShadowSpeciesExposure/,
+    );
+});
+
+test('population exposure helpers canonicalize and fail closed on invalid census data', () => {
+    const endpoint = { bird: 2, butterfly: 3 };
+    const exposure = { butterfly: 4, bird: 2 };
+
+    assert.equal(isNonNegativeIntegerRecord(endpoint), true);
+    assert.equal(isNonNegativeIntegerRecord({}), true);
+    assert.equal(isNonNegativeIntegerRecord({ '': 1 }), false);
+    assert.equal(isNonNegativeIntegerRecord({ butterfly: 3.5 }), false);
+    assert.equal(numberRecordsEqual(endpoint, { butterfly: 3, bird: 2 }), true);
+    assert.equal(numberRecordsEqual(endpoint, exposure), false);
+    assert.equal(populationExposureCovers(exposure, endpoint), true);
+    assert.equal(
+        populationExposureCovers({ bird: 2, butterfly: 2 }, endpoint),
+        false,
+    );
+    assert.equal(
+        populationExposureSignature(exposure),
+        '{"bird":2,"butterfly":4}',
+    );
+    assert.equal(populationExposureSignature(null), null);
+});
+
+test('cross-tier resource snapshot state rejects malformed raw population telemetry', async () => {
+    const hadProfile = Object.hasOwn(globalThis, '__grediceGameProfile');
+    const hadMetrics = Object.hasOwn(globalThis, '__gameProfileMetrics');
+    const previousProfile = globalThis.__grediceGameProfile;
+    const previousMetrics = globalThis.__gameProfileMetrics;
+    const page = {
+        evaluate: async (callback, argument) => callback(argument),
+    };
+
+    try {
+        globalThis.__grediceGameProfile = {
+            actorGroundingShadowSpeciesCounts: {
+                bird: 2,
+                butterfly: 3.5,
+            },
+            rendererGeometries: 255,
+            rendererShaders: 24,
+            rendererTextures: 8,
+        };
+        globalThis.__gameProfileMetrics = {
+            actorGroundingShadowSpeciesCountMax: { bird: 2, butterfly: 4 },
+        };
+
+        const malformedCount = await readCrossTierResourceSnapshotState(page);
+        assert.equal(malformedCount.population, null);
+
+        globalThis.__grediceGameProfile.actorGroundingShadowSpeciesCounts = {
+            '': 1,
+            bird: 2,
+        };
+        const emptySpecies = await readCrossTierResourceSnapshotState(page);
+        assert.equal(emptySpecies.population, null);
+
+        globalThis.__grediceGameProfile.actorGroundingShadowSpeciesCounts = {
+            bird: 2,
+            butterfly: 3,
+        };
+        const valid = await readCrossTierResourceSnapshotState(page);
+        assert.deepEqual(valid.population, { bird: 2, butterfly: 3 });
+
+        delete globalThis.__grediceGameProfile
+            .actorGroundingShadowSpeciesCounts;
+        const missing = await readCrossTierResourceSnapshotState(page);
+        assert.equal(missing.population, null);
+        const allowedEmpty = await readCrossTierResourceSnapshotState(page, {
+            allowMissingPopulation: true,
+        });
+        assert.deepEqual(allowedEmpty.population, {});
+    } finally {
+        if (hadProfile) {
+            globalThis.__grediceGameProfile = previousProfile;
+        } else {
+            delete globalThis.__grediceGameProfile;
+        }
+        if (hadMetrics) {
+            globalThis.__gameProfileMetrics = previousMetrics;
+        } else {
+            delete globalThis.__gameProfileMetrics;
+        }
+    }
+});
+
+test('document-start cold milestones honor 1x, 1.5x, and 2x backing DPR', () => {
+    const keys = [
+        'HTMLCanvasElement',
+        'MutationObserver',
+        'ResizeObserver',
+        '__grediceLifecycleFirstCanvas',
+        '__grediceLifecycleMilestones',
+        '__grediceLifecycleRecordCanvas',
+        '__grediceLifecycleStopMilestoneTracker',
+        'devicePixelRatio',
+        'document',
+        'performance',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    const setGlobal = (key, value) => {
+        Object.defineProperty(globalThis, key, {
+            configurable: true,
+            value,
+            writable: true,
+        });
+    };
+    let clock = 10;
+    let canvas;
+    let mutationObserverDisconnectCount = 0;
+    let resizeObserverDisconnectCount = 0;
+
+    class ProfileCanvas {}
+    class ProfileMutationObserver {
+        disconnect() {
+            mutationObserverDisconnectCount += 1;
+        }
+
+        observe() {}
+    }
+    class ProfileResizeObserver {
+        disconnect() {
+            resizeObserverDisconnectCount += 1;
+        }
+
+        observe() {}
+    }
+
+    try {
+        setGlobal('HTMLCanvasElement', ProfileCanvas);
+        setGlobal('MutationObserver', ProfileMutationObserver);
+        setGlobal('ResizeObserver', ProfileResizeObserver);
+        setGlobal('devicePixelRatio', 2);
+        setGlobal('document', {
+            addEventListener() {},
+            querySelector(selector) {
+                assert.equal(selector, '[data-scene-garden-id] canvas');
+                return canvas;
+            },
+            readyState: 'complete',
+        });
+        setGlobal('performance', {
+            getEntriesByType(type) {
+                return type === 'navigation'
+                    ? [{ domContentLoadedEventEnd: 5 }]
+                    : [];
+            },
+            now() {
+                clock += 1;
+                return clock;
+            },
+        });
+
+        for (const [expectedDpr, hostCanvasReadyDiagnosticMs] of [
+            [1, 381],
+            [1.5, 565],
+            [2, 587],
+        ]) {
+            for (const key of keys.filter((key) =>
+                key.startsWith('__grediceLifecycle'),
+            )) {
+                Reflect.deleteProperty(globalThis, key);
+            }
+            canvas = Object.assign(new ProfileCanvas(), {
+                clientHeight: 150,
+                clientWidth: 300,
+                height: Math.round(150 * expectedDpr),
+                width: Math.round(300 * expectedDpr),
+            });
+
+            installLifecycleMilestoneTracker({
+                expectedClientHeight: 720,
+                expectedClientWidth: 1_280,
+                expectedDpr,
+            });
+            assert.equal(
+                globalThis.__grediceLifecycleMilestones.expectedDpr,
+                expectedDpr,
+            );
+            assert.equal(
+                globalThis.__grediceLifecycleMilestones.canvasSizedMs,
+                null,
+            );
+
+            canvas.clientHeight = 720;
+            canvas.clientWidth = 1_280;
+            canvas.height = Math.round(canvas.clientHeight * expectedDpr);
+            canvas.width = Math.round(canvas.clientWidth * expectedDpr);
+            globalThis.__grediceLifecycleRecordCanvas();
+            globalThis.__grediceLifecycleMilestones.firstSubmittedFrameMs =
+                performance.now();
+            const cold = finishCrossTierColdMilestoneTracking({
+                hostCanvasReadyDiagnosticMs,
+                measurementMode: crossTierColdMilestoneMeasurementMode,
+            });
+
+            assert.equal(cold.canvasAttachmentCount, 1);
+            assert.equal(cold.canvasSize.height, canvas.height);
+            assert.equal(cold.canvasSize.width, canvas.width);
+            assert.equal(cold.expectedDpr, expectedDpr);
+            assert.equal(cold.firstCanvasPersistent, true);
+            assert.equal(
+                cold.hostCanvasReadyDiagnosticMs,
+                hostCanvasReadyDiagnosticMs,
+            );
+            assert.equal(
+                cold.measurementMode,
+                crossTierColdMilestoneMeasurementMode,
+            );
+            assert.equal(cold.mutationObserverStopped, true);
+            assert.ok(cold.observationStoppedMs >= cold.fixtureReadyMs);
+            assert.equal(cold.trackerInstalled, true);
+        }
+
+        assert.equal(mutationObserverDisconnectCount, 3);
+        assert.equal(resizeObserverDisconnectCount, 3);
+    } finally {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    }
 });
 
 test('runtime GPU-source scenario disables only the external profiler timer', () => {
@@ -2241,7 +3761,113 @@ test('runtime GPU-source scenario disables only the external profiler timer', ()
     assert.match(source, /patchedCreateTexture/);
     assert.match(source, /patchedDeleteTexture/);
     assert.match(source, /rendererShaders: 0/);
+    assert.match(source, /rendererShadersPeak: 0/);
     assert.match(source, /rendererTextures: 0/);
+    assert.match(source, /rendererTexturesPeak: 0/);
+    assert.match(source, /rendererShadersPeak = Math\.max/);
+    assert.match(source, /rendererTexturesPeak = Math\.max/);
+});
+
+test('browser metrics retain live and lifetime WebGL resource counts', () => {
+    const keys = [
+        'cancelAnimationFrame',
+        'requestAnimationFrame',
+        'WebGLRenderingContext',
+        'WebGL2RenderingContext',
+        '__gameProfileCancelNativeAnimationFrame',
+        '__gameProfileDisplayCadenceControl',
+        '__gameProfileLongTasks',
+        '__gameProfileMetrics',
+        '__gameProfileReadLongTasks',
+        '__gameProfileRequestNativeAnimationFrame',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    const setGlobal = (key, value) => {
+        Object.defineProperty(globalThis, key, {
+            configurable: true,
+            value,
+            writable: true,
+        });
+    };
+    const createContextClass = () =>
+        class {
+            failNextProgram = false;
+
+            createProgram() {
+                if (this.failNextProgram) {
+                    this.failNextProgram = false;
+                    return null;
+                }
+                return {};
+            }
+
+            createTexture() {
+                return {};
+            }
+
+            deleteProgram() {
+                return undefined;
+            }
+
+            deleteTexture() {
+                return undefined;
+            }
+        };
+    const ProfileWebGLContext = createContextClass();
+    const ProfileWebGL2Context = createContextClass();
+
+    try {
+        setGlobal('requestAnimationFrame', () => 1);
+        setGlobal('cancelAnimationFrame', () => {});
+        setGlobal('WebGLRenderingContext', ProfileWebGLContext);
+        setGlobal('WebGL2RenderingContext', ProfileWebGL2Context);
+        for (const key of keys.filter((key) =>
+            key.startsWith('__gameProfile'),
+        )) {
+            Reflect.deleteProperty(globalThis, key);
+        }
+
+        installBrowserMetrics({ externalGpuTimer: false });
+        const gl = new ProfileWebGLContext();
+        const gl2 = new ProfileWebGL2Context();
+        const firstProgram = gl.createProgram();
+        const secondProgram = gl2.createProgram();
+        gl2.failNextProgram = true;
+        assert.equal(gl2.createProgram(), null);
+        gl.deleteProgram(firstProgram);
+        gl.deleteProgram(firstProgram);
+        gl.deleteProgram({});
+        gl.deleteProgram(null);
+        const firstTexture = gl.createTexture();
+        const secondTexture = gl2.createTexture();
+        gl.deleteTexture(firstTexture);
+        gl.deleteTexture(firstTexture);
+        gl.deleteTexture({});
+        gl.deleteTexture(null);
+        gl2.deleteTexture(secondTexture);
+
+        assert.equal(globalThis.__gameProfileMetrics.rendererShaders, 1);
+        assert.equal(globalThis.__gameProfileMetrics.rendererShadersPeak, 2);
+        assert.equal(globalThis.__gameProfileMetrics.rendererTextures, 0);
+        assert.equal(globalThis.__gameProfileMetrics.rendererTexturesPeak, 2);
+        gl2.deleteProgram(secondProgram);
+        assert.equal(globalThis.__gameProfileMetrics.rendererShaders, 0);
+        assert.equal(globalThis.__gameProfileMetrics.rendererShadersPeak, 2);
+    } finally {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    }
 });
 
 test('render budgets gate calls and triangles per rendered frame', () => {
@@ -2266,7 +3892,9 @@ test('render budgets gate calls and triangles per rendered frame', () => {
         trianglesPerRenderedFrame: 3_000_000,
     };
 
-    const result = evaluateBudget(sample, budget);
+    const result = evaluateBudget(sample, budget, {
+        retainedJsHeapMb: 200,
+    });
     const callsCheck = result.checks.find(
         (check) => check.name === 'drawCallsPerRenderedFrame',
     );
@@ -2287,6 +3915,51 @@ test('render budgets gate calls and triangles per rendered frame', () => {
         pass: true,
         skipped: true,
     });
+});
+
+test('render budgets gate retained heap and keep window heap diagnostic', () => {
+    const sample = {
+        drawCallsPerRenderedFrame: 100,
+        gpu: { elapsedP95Ms: null, supported: false },
+        jsHeapMb: 10_000,
+        longTaskCount: 0,
+        maxFrameMs: 20,
+        p95FrameMs: 16,
+        trianglesPerRenderedFrame: 1_000_000,
+    };
+    const budget = {
+        drawCallsPerRenderedFrame: 600,
+        gpuElapsedP95Ms: 33.3,
+        jsHeapMb: 320,
+        longTaskCount: 2,
+        maxFrameMs: 180,
+        p95FrameMs: 33.3,
+        trianglesPerRenderedFrame: 3_000_000,
+    };
+
+    const passing = evaluateBudget(sample, budget, {
+        retainedJsHeapMb: 200,
+    });
+    const failing = evaluateBudget(sample, budget, {
+        retainedJsHeapMb: 321,
+    });
+
+    assert.equal(passing.pass, true);
+    assert.equal(
+        passing.checks.some((check) => check.name === 'jsHeapMb'),
+        false,
+    );
+    assert.deepEqual(
+        passing.checks.find((check) => check.name === 'retainedJsHeapMb'),
+        {
+            actual: 200,
+            limit: 320,
+            name: 'retainedJsHeapMb',
+            pass: true,
+        },
+    );
+    assert.equal(failing.pass, false);
+    assert.equal(evaluateBudget(sample, budget).pass, false);
 });
 
 test('render work normalization separates rendered work from rAF responsiveness', () => {
@@ -2364,6 +4037,96 @@ test('markdown reports per-rAF and per-render work in separate columns', () => {
         /\| Draw\/frame \| Draw\/render \| Triangles\/frame \| Triangles\/render \|/,
     );
     assert.match(markdown, /\| 2 \| 40 \| 15000 \| 300000 \|/);
+});
+
+test('markdown reports the visible static-idle zero-work witness', () => {
+    const markdown = buildMarkdown({
+        baseUrl: 'http://profile.local',
+        generatedAt: '2026-09-01T00:00:00.000Z',
+        highTargetMedians: {},
+        options: {
+            build: false,
+            managedServer: false,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'static-idle',
+            soakMs: 0,
+            warmupMs: 5_000,
+        },
+        plantCloseupMedians: {},
+        scenarios: [
+            {
+                budget: { checks: [], pass: true },
+                consoleMessages: [],
+                environment: null,
+                name: 'game-fixed-time-static-idle-desktop-run-1',
+                pageErrors: [],
+                profileRun: 1,
+                requested: {
+                    controls: '0',
+                    debugHud: '0',
+                    details: '0',
+                    gardenProfile: 'default',
+                    hud: '0',
+                    mode: 'baseline',
+                    motion: 'none',
+                    staticIdleProfile: true,
+                },
+                runtime: null,
+                sample: {
+                    canvas: null,
+                    drawCalls: 0,
+                    drawCallsPerFrame: 0,
+                    drawCallsPerRenderedFrame: 0,
+                    fps: 60,
+                    jsHeapMb: 100,
+                    longTaskCount: 0,
+                    maxFrameMs: 20,
+                    p95FrameMs: 16,
+                    rainUnmountMs: null,
+                    renderedFps: 0,
+                    renderedFrames: 0,
+                    runtimeFrameLoopAtEnd: { effectiveVisible: true },
+                    runtimeFrameLoopAtStart: { effectiveVisible: true },
+                    submittedTriangles: 0,
+                    trianglesPerFrame: 0,
+                    trianglesPerRenderedFrame: 0,
+                },
+                screenshotPath: 'static-idle.png',
+                screenshotWitness: {
+                    entropy: 1,
+                    height: 1_440,
+                    maximumChannelStandardDeviation: 10,
+                    opaque: true,
+                    sampledLumaRange: 40,
+                    sampledUniqueColorCount: 32,
+                    width: 2_560,
+                },
+                staticIdle: {
+                    counterDeltas: {
+                        deadlineCount: 0,
+                        fixedStepCount: 0,
+                        nonessentialHiddenWorkCount: 0,
+                        ownedInvalidationCount: 0,
+                        r3fFrameCallbackCount: 0,
+                        wakeupCount: 0,
+                    },
+                    schedulerSettledAtEnd: true,
+                    schedulerSettledAtStart: true,
+                    zeroWorkObserved: true,
+                },
+            },
+        ],
+        schemaVersion: 5,
+        sourceCommit: null,
+        summary: { failedScenarios: 0 },
+    });
+
+    assert.match(markdown, /## Fixed-time visible static-idle witness/);
+    assert.match(
+        markdown,
+        /wake 0, invalidate 0, fixed 0, deadline 0, hidden 0 \| 0 \| 0 \/ 0 \/ 0 \| yes \| yes \| pass/,
+    );
 });
 
 test('markdown distinguishes ambient scheduler evidence and matched-pair failures', () => {
@@ -2705,6 +4468,396 @@ test('interactive sampling stops at the endpoint and drains bounded long tasks l
     }
 });
 
+test('interactive sampling stays on native profiler RAF and reports controlled delivery telemetry', async () => {
+    const keys = [
+        'document',
+        'requestAnimationFrame',
+        '__gameProfileDisplayCadenceControl',
+        '__gameProfileInteractiveSample',
+        '__gameProfileLongTasks',
+        '__gameProfileMetrics',
+        '__gameProfileRequestNativeAnimationFrame',
+        '__grediceGameProfile',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    const setGlobal = (key, value) => {
+        Object.defineProperty(globalThis, key, {
+            configurable: true,
+            value,
+            writable: true,
+        });
+    };
+    let controlledRequestCount = 0;
+    let deliveredFrameCount = 100;
+    let lastDeliveredPhaseAt = 2_000;
+    let skippedPhaseCount = 4;
+    const nativeCallbacks = [];
+
+    try {
+        setGlobal('document', { querySelector: () => null });
+        setGlobal('requestAnimationFrame', () => {
+            controlledRequestCount += 1;
+            return 99;
+        });
+        setGlobal('__gameProfileRequestNativeAnimationFrame', (callback) => {
+            nativeCallbacks.push(callback);
+            return nativeCallbacks.length;
+        });
+        setGlobal('__gameProfileDisplayCadenceControl', {
+            snapshot: () => ({
+                callbackTimestampMode: 'scheduled-phase-v1',
+                cancelRequestCount: 2,
+                cancelledBeforeDeliveryCount: 1,
+                deliveredCallbackCount: deliveredFrameCount * 2,
+                deliveredFrameCount,
+                installed: true,
+                intervalMs: 1_000 / 30,
+                lastDeliveredPhaseAt,
+                mode: 'profiler-owned-raf-v1',
+                nativeFrameCount: deliveredFrameCount * 3,
+                observedRateClock: 'native-wall-time-v1',
+                requestedFramesPerSecond: 30,
+                skippedPhaseCount,
+            }),
+        });
+        setGlobal('__gameProfileMetrics', {
+            drawCalls: 0,
+            instancedDrawCalls: 0,
+            renderedFrames: 0,
+            submittedTriangles: 0,
+        });
+        setGlobal('__grediceGameProfile', {});
+
+        beginInteractiveProfileSample();
+        assert.equal(controlledRequestCount, 0);
+        assert.equal(nativeCallbacks.length, 1);
+        globalThis.__gameProfileInteractiveSample.startedAt =
+            performance.now() - 1_000;
+        deliveredFrameCount = 130;
+        lastDeliveredPhaseAt = 3_100;
+        skippedPhaseCount = 7;
+
+        const sample = await finishInteractiveProfileSample();
+        assert.equal(controlledRequestCount, 0);
+        assert.equal(sample.displayCadenceControl.installedAtStart, true);
+        assert.equal(sample.displayCadenceControl.installedAtEnd, true);
+        assert.equal(
+            sample.displayCadenceControl.callbackTimestampMode,
+            'scheduled-phase-v1',
+        );
+        assert.equal(sample.displayCadenceControl.intervalMs, 1_000 / 30);
+        assert.equal(
+            sample.displayCadenceControl.mode,
+            'profiler-owned-raf-v1',
+        );
+        assert.equal(
+            sample.displayCadenceControl.observedRateClock,
+            'native-wall-time-v1',
+        );
+        assert.equal(sample.displayCadenceControl.requestedFramesPerSecond, 30);
+        assert.equal(sample.displayCadenceControl.deliveredFrameCountDelta, 30);
+        assert.equal(
+            sample.displayCadenceControl.deliveredCallbackCountDelta,
+            60,
+        );
+        assert.equal(sample.displayCadenceControl.nativeFrameCountDelta, 90);
+        assert.equal(sample.displayCadenceControl.skippedPhaseCountDelta, 3);
+        assert.ok(
+            sample.displayCadenceControl.observedFramesPerSecond >= 29.5 &&
+                sample.displayCadenceControl.observedFramesPerSecond <= 30.5,
+        );
+    } finally {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    }
+});
+
+test('interactive sampling deep-clones scheduler owners and reports exact counter deltas', async () => {
+    const keys = [
+        'document',
+        'requestAnimationFrame',
+        '__gameProfileInteractiveSample',
+        '__gameProfileLongTasks',
+        '__grediceGameProfile',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    const setGlobal = (key, value) => {
+        Object.defineProperty(globalThis, key, {
+            configurable: true,
+            value,
+            writable: true,
+        });
+    };
+    const runtimeFrameLoop = {
+        awaitingFrameReceipt: true,
+        cancelledCallbackCount: 1,
+        deadlineOwners: ['spawn'],
+        displayFrameCalibrationCount: 1,
+        displayFrameIntervalMs: 1000 / 60,
+        fixedStepFailureCount: 0,
+        fixedStepOwners: ['game-time'],
+        hiddenDeferredCoalescedRenderRequestCount: 1,
+        hiddenCoalescedRenderRequestCount: 2,
+        hiddenDeferredRenderRequestCount: 1,
+        invalidationFailureCount: 0,
+        missedFrameReceiptCount: 0,
+        nonessentialHiddenWorkCount: 0,
+        ownedInvalidationCount: 30,
+        pendingFrameReceiptReconciliationWakeupCount: 1,
+        postCalibrationFrameWakeupCount: 0,
+        productiveWakeupCount: 19,
+        r3fFrameCallbackCount: 40,
+        renderLeaseOwners: ['camera'],
+        renderLeaseSummaries: [
+            { framesPerSecond: 30, leaseCount: 1, owner: 'camera' },
+        ],
+        resumeCount: 0,
+        scheduledCallbackCount: 10,
+        suspendCount: 0,
+        retainedTimeoutReconciliationWakeupCount: 1,
+        unexpectedNoWorkWakeupCount: 0,
+        wakeupCount: 20,
+    };
+    const gameProfile = {
+        hoverOutlineCompositePassCount: 8,
+        hoverOutlineHorizontalPassCount: 2,
+        hoverOutlineMaskCacheBypassCount: 0,
+        hoverOutlineMaskCacheHitCount: 6,
+        hoverOutlineMaskCacheMissCount: 2,
+        hoverOutlineMaskPassCount: 2,
+        runtimeFrameLoop,
+    };
+
+    try {
+        setGlobal('document', { querySelector: () => null });
+        setGlobal('requestAnimationFrame', () => 1);
+        setGlobal('__grediceGameProfile', gameProfile);
+
+        beginInteractiveProfileSample();
+
+        runtimeFrameLoop.cancelledCallbackCount = 2;
+        runtimeFrameLoop.deadlineOwners.push('weather-transition');
+        runtimeFrameLoop.displayFrameCalibrationCount = 2;
+        runtimeFrameLoop.displayFrameIntervalMs = 1000 / 120;
+        runtimeFrameLoop.fixedStepOwners.push('weather');
+        runtimeFrameLoop.fixedStepFailureCount = 1;
+        runtimeFrameLoop.hiddenDeferredCoalescedRenderRequestCount = 4;
+        runtimeFrameLoop.hiddenCoalescedRenderRequestCount = 7;
+        runtimeFrameLoop.hiddenDeferredRenderRequestCount = 3;
+        runtimeFrameLoop.invalidationFailureCount = 2;
+        runtimeFrameLoop.missedFrameReceiptCount = 1;
+        runtimeFrameLoop.ownedInvalidationCount = 34;
+        runtimeFrameLoop.pendingFrameReceiptReconciliationWakeupCount = 3;
+        runtimeFrameLoop.productiveWakeupCount = 22;
+        runtimeFrameLoop.r3fFrameCallbackCount = 46;
+        runtimeFrameLoop.renderLeaseOwners.push('weather');
+        runtimeFrameLoop.renderLeaseSummaries[0].leaseCount = 2;
+        runtimeFrameLoop.resumeCount = 1;
+        runtimeFrameLoop.scheduledCallbackCount = 15;
+        runtimeFrameLoop.suspendCount = 1;
+        runtimeFrameLoop.awaitingFrameReceipt = false;
+        runtimeFrameLoop.wakeupCount = 23;
+        gameProfile.hoverOutlineCompositePassCount = 18;
+        gameProfile.hoverOutlineHorizontalPassCount = 5;
+        gameProfile.hoverOutlineMaskCacheHitCount = 13;
+        gameProfile.hoverOutlineMaskCacheMissCount = 5;
+        gameProfile.hoverOutlineMaskPassCount = 5;
+
+        const sampleAtEndpoint = await finishInteractiveProfileSample();
+        const sample = mergeProfileSampleDrain(sampleAtEndpoint, {
+            gpu: null,
+            longTasks: [],
+        });
+
+        assert.deepEqual(sample.runtimeFrameLoopAtStart.renderLeaseOwners, [
+            'camera',
+        ]);
+        assert.deepEqual(sample.runtimeFrameLoopAtEnd.renderLeaseOwners, [
+            'camera',
+            'weather',
+        ]);
+        assert.notEqual(
+            sample.runtimeFrameLoopAtStart.renderLeaseOwners,
+            sample.runtimeFrameLoopAtEnd.renderLeaseOwners,
+        );
+        assert.equal(sample.hoverOutlineCompositePassCountDelta, 10);
+        assert.equal(sample.hoverOutlineHorizontalPassCountDelta, 3);
+        assert.equal(sample.hoverOutlineMaskCacheBypassCountDelta, 0);
+        assert.equal(sample.hoverOutlineMaskCacheHitCountDelta, 7);
+        assert.equal(sample.hoverOutlineMaskCacheMissCountDelta, 3);
+        assert.equal(sample.hoverOutlineMaskPassCountDelta, 3);
+        assert.deepEqual(sample.runtimeFrameLoopAtStart.fixedStepOwners, [
+            'game-time',
+        ]);
+        assert.deepEqual(sample.runtimeFrameLoopAtStart.deadlineOwners, [
+            'spawn',
+        ]);
+        assert.equal(
+            sample.runtimeFrameLoopAtStart.renderLeaseSummaries[0].leaseCount,
+            1,
+        );
+        assert.equal(
+            sample.runtimeFrameLoopAtEnd.renderLeaseSummaries[0].leaseCount,
+            2,
+        );
+        assert.equal(
+            sample.runtimeFrameLoopAtStart.displayFrameIntervalMs,
+            1000 / 60,
+        );
+        assert.equal(
+            sample.runtimeFrameLoopAtEnd.displayFrameIntervalMs,
+            1000 / 120,
+        );
+        assert.equal(sample.runtimeFrameLoopAtStart.awaitingFrameReceipt, true);
+        assert.equal(sample.runtimeFrameLoopAtEnd.awaitingFrameReceipt, false);
+        assert.deepEqual(sample.runtimeFrameLoopCounterDeltas, {
+            cancelledCallbackCount: 1,
+            displayFrameCalibrationCount: 1,
+            fixedStepFailureCount: 1,
+            hiddenDeferredCoalescedRenderRequestCount: 3,
+            hiddenCoalescedRenderRequestCount: 5,
+            hiddenDeferredRenderRequestCount: 2,
+            invalidationFailureCount: 2,
+            missedFrameReceiptCount: 1,
+            nonessentialHiddenWorkCount: 0,
+            ownedInvalidationCount: 4,
+            pendingFrameReceiptReconciliationWakeupCount: 2,
+            postCalibrationFrameWakeupCount: 0,
+            productiveWakeupCount: 3,
+            r3fFrameCallbackCount: 6,
+            retainedTimeoutReconciliationWakeupCount: 0,
+            resumeCount: 1,
+            scheduledCallbackCount: 5,
+            suspendCount: 1,
+            unexpectedNoWorkWakeupCount: 0,
+            wakeupCount: 3,
+        });
+    } finally {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    }
+});
+
+test('interactive sampling preserves absent scheduler telemetry without changing legacy samples', async () => {
+    const keys = [
+        'document',
+        'requestAnimationFrame',
+        '__gameProfileInteractiveSample',
+        '__gameProfileLongTasks',
+        '__grediceGameProfile',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    const setGlobal = (key, value) => {
+        Object.defineProperty(globalThis, key, {
+            configurable: true,
+            value,
+            writable: true,
+        });
+    };
+
+    try {
+        setGlobal('document', { querySelector: () => null });
+        setGlobal('requestAnimationFrame', () => 1);
+        setGlobal('__grediceGameProfile', {});
+
+        beginInteractiveProfileSample();
+        const sampleAtEndpoint = await finishInteractiveProfileSample();
+        const sample = mergeProfileSampleDrain(sampleAtEndpoint, {
+            gpu: null,
+            longTasks: [],
+        });
+
+        assert.equal(sample.runtimeFrameLoopAtStart, null);
+        assert.equal(sample.runtimeFrameLoopAtEnd, null);
+        assert.deepEqual(sample.runtimeFrameLoopCounterDeltas, {
+            cancelledCallbackCount: null,
+            displayFrameCalibrationCount: null,
+            fixedStepFailureCount: null,
+            hiddenDeferredCoalescedRenderRequestCount: null,
+            hiddenCoalescedRenderRequestCount: null,
+            hiddenDeferredRenderRequestCount: null,
+            invalidationFailureCount: null,
+            missedFrameReceiptCount: null,
+            nonessentialHiddenWorkCount: null,
+            ownedInvalidationCount: null,
+            pendingFrameReceiptReconciliationWakeupCount: null,
+            postCalibrationFrameWakeupCount: null,
+            productiveWakeupCount: null,
+            r3fFrameCallbackCount: null,
+            retainedTimeoutReconciliationWakeupCount: null,
+            resumeCount: null,
+            scheduledCallbackCount: null,
+            suspendCount: null,
+            unexpectedNoWorkWakeupCount: null,
+            wakeupCount: null,
+        });
+
+        const legacySample = mergeProfileSampleDrain(
+            {
+                drawCalls: 0,
+                sampleWindow: { endedAt: 2, startedAt: 1 },
+            },
+            { gpu: null, longTasks: [] },
+        );
+        assert.equal('runtimeFrameLoopCounterDeltas' in legacySample, false);
+
+        const legacySchedulerSample = mergeProfileSampleDrain(
+            {
+                runtimeFrameLoopAtEnd: { wakeupCount: 2 },
+                runtimeFrameLoopAtStart: { wakeupCount: 1 },
+                sampleWindow: { endedAt: 2, startedAt: 1 },
+            },
+            { gpu: null, longTasks: [] },
+        );
+        assert.equal(
+            legacySchedulerSample.runtimeFrameLoopCounterDeltas
+                .hiddenDeferredCoalescedRenderRequestCount,
+            0,
+        );
+        assert.equal(
+            legacySchedulerSample.runtimeFrameLoopCounterDeltas
+                .hiddenCoalescedRenderRequestCount,
+            0,
+        );
+    } finally {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    }
+});
+
 test('garden-switch sampling primes the discarded RAF before switch work', async () => {
     const keys = [
         'document',
@@ -2794,10 +4947,11 @@ test('garden-switch sampling primes the discarded RAF before switch work', async
     );
 });
 
-test('profile finalization captures CDP before draining GPU queries', async () => {
+test('profile finalization captures timed CDP counters before draining GPU queries', async () => {
     const calls = [];
     const sampleAtEndpoint = {
         drawCalls: 12,
+        jsHeapMb: 48,
         sampleWindow: {
             endedAt: 200,
             startedAt: 100,
@@ -2807,7 +4961,9 @@ test('profile finalization captures CDP before draining GPU queries', async () =
         cdp: {
             async send(command) {
                 calls.push(`cdp:${command}`);
-                return { metrics: [{ name: 'TaskDuration', value: 1 }] };
+                return {
+                    metrics: [{ name: 'TaskDuration', value: 1 }],
+                };
             },
         },
         page: {
@@ -2829,8 +4985,77 @@ test('profile finalization captures CDP before draining GPU queries', async () =
         metrics: [{ name: 'TaskDuration', value: 1 }],
     });
     assert.equal(result.sample.drawCalls, 12);
+    assert.equal(result.sample.jsHeapMb, 48);
     assert.equal(result.sample.longTaskCount, 1);
     assert.equal(result.sample.sampleWindow, undefined);
+});
+
+test('scenario memory evidence collects once and preserves both heap readings', async () => {
+    const calls = [];
+    const mebibyte = 1024 * 1024;
+    let performanceMetricReadCount = 0;
+    const memory = await collectScenarioMemoryEvidence({
+        async send(command) {
+            calls.push(command);
+            if (command === 'HeapProfiler.collectGarbage') {
+                return {};
+            }
+            performanceMetricReadCount += 1;
+            return {
+                metrics: [
+                    {
+                        name: 'JSHeapUsedSize',
+                        value:
+                            (performanceMetricReadCount === 1 ? 42 : 30) *
+                            mebibyte,
+                    },
+                ],
+            };
+        },
+    });
+
+    assert.deepEqual(calls, [
+        'Performance.getMetrics',
+        'HeapProfiler.collectGarbage',
+        'Performance.getMetrics',
+    ]);
+    assert.deepEqual(memory, {
+        jsHeapBeforeCollectionMb: 42,
+        measurementMode: 'post-scenario-forced-gc-v1',
+        retainedJsHeapMb: 30,
+    });
+});
+
+test('scenario memory evidence fails closed without both CDP heap readings', async () => {
+    for (const missingRead of ['before', 'after']) {
+        let performanceMetricReadCount = 0;
+        await assert.rejects(
+            collectScenarioMemoryEvidence({
+                async send(command) {
+                    if (command === 'HeapProfiler.collectGarbage') {
+                        return {};
+                    }
+                    performanceMetricReadCount += 1;
+                    const reading =
+                        performanceMetricReadCount === 1 ? 'before' : 'after';
+                    return {
+                        metrics:
+                            reading === missingRead
+                                ? []
+                                : [
+                                      {
+                                          name: 'JSHeapUsedSize',
+                                          value: 30 * 1024 * 1024,
+                                      },
+                                  ],
+                    };
+                },
+            }),
+            new RegExp(
+                `CDP did not report JSHeapUsedSize ${missingRead} scenario-end garbage collection`,
+            ),
+        );
+    }
 });
 
 test('render budgets enforce GPU p95 when timer queries are supported', () => {
@@ -2853,6 +5078,7 @@ test('render budgets enforce GPU p95 when timer queries are supported', () => {
             p95FrameMs: 33.3,
             trianglesPerRenderedFrame: 3_000_000,
         },
+        { retainedJsHeapMb: 200 },
     );
     const gpuCheck = result.checks.find(
         (check) => check.name === 'gpuElapsedP95Ms',
@@ -2904,6 +5130,7 @@ test('render budgets skip incomplete or disjoint GPU timer results', () => {
                 p95FrameMs: 33.3,
                 trianglesPerRenderedFrame: 3_000_000,
             },
+            { retainedJsHeapMb: 200 },
         );
 
         assert.equal(result.pass, true);
@@ -3062,9 +5289,70 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
     const input = {
         apiErrors: [],
         consoleMessages: [],
+        crossTierCold: {
+            canvasAttachmentCount: 1,
+            canvasAttachedMs: 310,
+            canvasSize: {
+                clientHeight: 720,
+                clientWidth: 1_280,
+                height: 720,
+                width: 1_280,
+            },
+            canvasSizedMs: 383,
+            domContentLoadedMs: 16,
+            expectedDpr: 1,
+            firstCanvasPersistent: true,
+            firstSubmittedFrameMs: 488,
+            fixtureReadyMs: 580,
+            hostCanvasReadyDiagnosticMs: 386,
+            installedMs: 0,
+            measurementMode: crossTierColdMilestoneMeasurementMode,
+            mutationObserverStopped: true,
+            observationStoppedMs: 581,
+            trackerInstalled: true,
+        },
+        crossTierResourceSnapshot: {
+            attemptCount: 1,
+            capturedAt: 700,
+            measurementMode: crossTierResourceSnapshotMeasurementMode,
+            populationAtEnd: {},
+            populationAtStart: {},
+            populationExposure: {},
+            populationExposureAtEnd: {},
+            populationExposureAtStart: {},
+            populationExposureAvailable: false,
+            populationExposureSignature: '{}',
+            rendererStatsMode: lifecycleRendererStatsCanonicalMode,
+            resources: {
+                rendererGeometries: 250,
+                rendererShaders: 22,
+                rendererStatsMeasurement: {
+                    completedAt: 650,
+                    drawCallsDelta: 10,
+                    legacySettleMs: null,
+                    measurementMode: lifecycleRendererStatsCanonicalMode,
+                    renderedFramesDelta: 1,
+                    rendererStatsPublishedAt: 640,
+                    rendererStatsReceiptCount: 2,
+                    rendererStatsReceiptDelta: 1,
+                    rendererStatsRenderFrame: 2,
+                    r3fFrameCallbackCountDelta: 1,
+                    runtimeMeasurementMode: 'post-render-microtask-v1',
+                    startedAt: 600,
+                    submittedTrianglesDelta: 100,
+                },
+                rendererTextures: 8,
+            },
+        },
         pageErrors: [],
         requested: {
             crossTierProfile: true,
+            displayCadenceControl: {
+                callbackTimestampMode: 'scheduled-phase-v1',
+                framesPerSecond: 30,
+                mode: 'profiler-owned-raf-v1',
+                observedRateClock: 'native-wall-time-v1',
+            },
             expectedDprCap: 1,
             expectedGroundDecorationDensity: 0,
             expectedQualityTier: 'low',
@@ -3080,6 +5368,7 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
             viewport: { height: 720, width: 1280 },
         },
         runtime: {
+            actorGroundingShadowSpeciesCounts: {},
             dprCap: 1,
             generatedPlantExpectedInstanceCount: 537,
             generatedPlantFieldCount: 54,
@@ -3088,10 +5377,25 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
             generatedPlantVisibleInstanceCount: 537,
             groundDecorationDensity: 0,
             hoverOutlineActiveTargetCount: 2,
+            hoverOutlineCompositePassCount: 150,
+            hoverOutlineHorizontalPassCount: 50,
+            hoverOutlineMaskCacheBypassCount: 0,
+            hoverOutlineMaskCacheEligibleTargetCount: 2,
+            hoverOutlineMaskCacheHitCount: 100,
+            hoverOutlineMaskCacheMissCount: 50,
+            hoverOutlineMaskPassCount: 50,
+            hoverOutlinePipeline: 'cropped-bounded-separable-r8-content-cache',
             hoverOutlineProfileCommandAction: 'show',
             hoverOutlineProfileTargetBlockId: 'profile-raised-bed:2:0',
             hoverOutlineStyleGroupCount: 1,
             qualityTier: 'low',
+            rendererGeometries: 250,
+            rendererShaders: 22,
+            rendererTextures: 8,
+            runtimeFrameLoop: {
+                activeLeaseCount: 10,
+                targetFramesPerSecond: 30,
+            },
             shadowMapSize: 0,
             shadowsEnabled: false,
             staticOpaqueSceneCacheEnabled: false,
@@ -3105,14 +5409,74 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
                 width: 1280,
             },
             drawCalls: 100,
+            displayCadenceControl: {
+                atEnd: {
+                    lastDeliveredPhaseAt: 6_000,
+                },
+                atStart: {
+                    lastDeliveredPhaseAt: 1_000,
+                },
+                callbackTimestampMode: 'scheduled-phase-v1',
+                deliveredCallbackCountDelta: 300,
+                deliveredFrameCountDelta: 150,
+                installedAtEnd: true,
+                installedAtStart: true,
+                intervalMs: 1_000 / 30,
+                mode: 'profiler-owned-raf-v1',
+                nativeFrameCountDelta: 300,
+                observedFramesPerSecond: 30,
+                observedRateClock: 'native-wall-time-v1',
+                requestedFramesPerSecond: 30,
+                skippedPhaseCountDelta: 0,
+            },
             elapsedMs: 5_000,
+            frames: 300,
+            performanceMeasurementMode: 'separate-observer-free-window-v1',
             generatedPlantVisibleFieldCountMin: 54,
             generatedPlantVisibleInstanceCountMin: 537,
+            hoverOutlineCompositePassCountDelta: 10,
+            hoverOutlineHorizontalPassCountDelta: 0,
+            hoverOutlineMaskCacheBypassCountDelta: 0,
+            hoverOutlineMaskCacheHitCountDelta: 10,
+            hoverOutlineMaskCacheMissCountDelta: 0,
+            hoverOutlineMaskPassCountDelta: 0,
+            hoverOutlineSemanticCompositePassCountDelta: 10,
+            hoverOutlineSemanticHorizontalPassCountDelta: 0,
+            hoverOutlineSemanticMaskCacheBypassCountDelta: 0,
+            hoverOutlineSemanticMaskCacheHitCountDelta: 10,
+            hoverOutlineSemanticMaskCacheMissCountDelta: 0,
+            hoverOutlineSemanticMaskPassCountDelta: 0,
             outlineProfileDispatched: true,
             outlineProfileTelemetryAvailable: true,
-            renderedFps: 12,
-            renderedFrames: 60,
+            renderedFps: 30,
+            renderedFrames: 150,
             reportedDpr: 2,
+            runtimeFrameLoopActiveLeaseCountAtEnd: 10,
+            runtimeFrameLoopActiveLeaseCountAtStart: 10,
+            runtimeFrameLoopActiveLeaseCountMax: 10,
+            runtimeFrameLoopActiveLeaseCountMin: 10,
+            runtimeFrameLoopAtEnd: {
+                ...crossTierLeaseTopology(),
+                effectiveVisible: true,
+            },
+            runtimeFrameLoopAtStart: {
+                ...crossTierLeaseTopology(),
+                effectiveVisible: true,
+            },
+            runtimeFrameLoopCounterDeltas: {
+                r3fFrameCallbackCount: 150,
+            },
+            runtimeFrameLoopObservationCount: 303,
+            runtimeFrameLoopObservationMode: 'separate-semantic-raf-window-v1',
+            runtimeFrameLoopObservationRafFrameCount: 300,
+            runtimeFrameLoopSemanticLeaseTopologyAtEnd:
+                crossTierLeaseTopology(),
+            runtimeFrameLoopSemanticLeaseTopologyAtStart:
+                crossTierLeaseTopology(),
+            runtimeFrameLoopTargetFramesPerSecondAtEnd: 30,
+            runtimeFrameLoopTargetFramesPerSecondAtStart: 30,
+            runtimeFrameLoopTargetFramesPerSecondMax: 30,
+            runtimeFrameLoopTargetFramesPerSecondMin: 30,
             submittedTriangles: 1_000_000,
         },
         screenshotWitness: {
@@ -3132,6 +5496,397 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
         result.checks.every((check) => check.pass),
         true,
     );
+    assert.deepEqual(
+        result.checks
+            .filter((check) =>
+                check.name.startsWith('crossTierDisplayCadenceControl'),
+            )
+            .map((check) => check.name),
+        [
+            'crossTierDisplayCadenceControlMode',
+            'crossTierDisplayCadenceControlTargetFramesPerSecond',
+            'crossTierDisplayCadenceControlInstalledAtStart',
+            'crossTierDisplayCadenceControlInstalledAtEnd',
+            'crossTierDisplayCadenceControlObservedMode',
+            'crossTierDisplayCadenceControlObservedTargetFramesPerSecond',
+            'crossTierDisplayCadenceControlObservedFramesPerSecond',
+            'crossTierDisplayCadenceControlRequestedCallbackTimestampMode',
+            'crossTierDisplayCadenceControlRequestedObservedRateClock',
+            'crossTierDisplayCadenceControlObservedCallbackTimestampMode',
+            'crossTierDisplayCadenceControlObservedRateClock',
+            'crossTierDisplayCadenceControlIntervalMs',
+            'crossTierDisplayCadenceControlStartPhaseTimestamp',
+            'crossTierDisplayCadenceControlEndPhaseTimestamp',
+            'crossTierDisplayCadenceControlDeliveredFrameCount',
+            'crossTierDisplayCadenceControlSkippedPhaseCount',
+            'crossTierDisplayCadenceControlPhaseAdvanceConservation',
+        ],
+    );
+
+    const legacyOutlineInput = structuredClone(input);
+    legacyOutlineInput.requested.legacyOutlinePipeline = true;
+    legacyOutlineInput.runtime.hoverOutlinePipeline =
+        'cropped-bounded-separable-r8';
+    legacyOutlineInput.runtime.hoverOutlineCompositePassCount = 50;
+    delete legacyOutlineInput.runtime.hoverOutlineMaskCacheBypassCount;
+    delete legacyOutlineInput.runtime.hoverOutlineMaskCacheEligibleTargetCount;
+    delete legacyOutlineInput.runtime.hoverOutlineMaskCacheHitCount;
+    delete legacyOutlineInput.runtime.hoverOutlineMaskCacheMissCount;
+    assert.equal(evaluateCrossTierAcceptance(legacyOutlineInput).pass, true);
+
+    const expectFailedChecks = (mutate, expectedNames) => {
+        const candidate = structuredClone(input);
+        mutate(candidate);
+        const failedNames = new Set(
+            evaluateCrossTierAcceptance(candidate)
+                .checks.filter((check) => !check.pass)
+                .map((check) => check.name),
+        );
+        for (const name of expectedNames) {
+            assert.equal(failedNames.has(name), true, `${name} must fail`);
+        }
+    };
+    for (const hostCanvasReadyDiagnosticMs of [381, 394, 565, 587]) {
+        const candidate = structuredClone(input);
+        candidate.crossTierCold.hostCanvasReadyDiagnosticMs =
+            hostCanvasReadyDiagnosticMs;
+        assert.equal(
+            evaluateCrossTierAcceptance(candidate).pass,
+            true,
+            `host canvas boundary ${hostCanvasReadyDiagnosticMs} ms must remain diagnostic`,
+        );
+    }
+    expectFailedChecks(
+        (candidate) => {
+            candidate.crossTierCold = null;
+        },
+        [
+            'crossTierColdMeasurementMode',
+            'crossTierColdTrackerInstalled',
+            'crossTierColdCanvasSizedMs',
+            'crossTierColdMilestoneOrder',
+        ],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.crossTierCold.firstSubmittedFrameMs = 382;
+        },
+        ['crossTierColdMilestoneOrder'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.crossTierCold.installedMs = 17;
+        },
+        ['crossTierColdInstalledBeforeDomContentLoaded'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.crossTierCold.mutationObserverStopped = false;
+        },
+        ['crossTierColdMutationObserverStopped'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.crossTierResourceSnapshot = null;
+        },
+        [
+            'crossTierResourceSnapshotMeasurementMode',
+            'crossTierResourcePopulationStable',
+            'crossTierResourceRendererStatsMeasurementValid',
+        ],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.crossTierResourceSnapshot.populationExposureAtStart = {
+                butterfly: 3,
+            };
+        },
+        ['crossTierResourcePopulationExposureStable'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.crossTierResourceSnapshot.resources.rendererStatsMeasurement.rendererStatsReceiptDelta = 0;
+        },
+        ['crossTierResourceRendererStatsMeasurementValid'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.crossTierResourceSnapshot.populationExposureAvailable = true;
+        },
+        ['crossTierResourcePopulationExposureAvailable'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.crossTierResourceSnapshot.resources.rendererGeometries = 251;
+        },
+        ['crossTierResourceSnapshotMatchesRuntime:rendererGeometries'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.hoverOutlineMaskCacheHitCountDelta = null;
+        },
+        ['crossTierOutlinePerformanceWindowHits'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.hoverOutlineSemanticCompositePassCountDelta = 9;
+        },
+        ['crossTierOutlineSemanticWindowCompositeConservation'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            delete candidate.runtime.runtimeFrameLoop.targetFramesPerSecond;
+        },
+        ['crossTierRuntimeTargetFramesPerSecond'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            delete candidate.sample.runtimeFrameLoopTargetFramesPerSecondMax;
+        },
+        ['crossTierSampleMaximumTargetFramesPerSecond'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            delete candidate.sample.runtimeFrameLoopTargetFramesPerSecondMin;
+        },
+        ['crossTierSampleMinimumTargetFramesPerSecond'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopTargetFramesPerSecondMin = 15;
+        },
+        ['crossTierSampleMinimumTargetFramesPerSecond'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopTargetFramesPerSecondAtEnd = 60;
+        },
+        ['crossTierSampleEndTargetFramesPerSecond'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopAtStart = null;
+        },
+        [
+            'crossTierSampleStartSnapshotTargetFramesPerSecond',
+            'crossTierSampleStartVisible',
+        ],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopAtEnd.targetFramesPerSecond = 60;
+            candidate.sample.runtimeFrameLoopAtEnd.effectiveVisible = false;
+        },
+        [
+            'crossTierSampleEndSnapshotTargetFramesPerSecond',
+            'crossTierSampleEndVisible',
+        ],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopActiveLeaseCountMax = 11;
+        },
+        ['crossTierSampleMaximumActiveLeaseCount'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            delete candidate.sample.runtimeFrameLoopActiveLeaseCountMin;
+        },
+        ['crossTierSampleMinimumActiveLeaseCount'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopActiveLeaseCountMin = 9;
+        },
+        ['crossTierSampleMinimumActiveLeaseCount'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopAtEnd.renderLeaseSummaries[0].framesPerSecond = 60;
+        },
+        ['crossTierControlEndLeaseTopology'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopSemanticLeaseTopologyAtEnd.renderLeaseOwners =
+                ['different-owner'];
+            candidate.sample.runtimeFrameLoopSemanticLeaseTopologyAtEnd.renderLeaseSummaries[0].owner =
+                'different-owner';
+        },
+        ['crossTierSemanticEndLeaseTopology'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopObservationRafFrameCount = 0;
+            candidate.sample.runtimeFrameLoopObservationCount = 3;
+        },
+        ['crossTierSemanticRafFrames'],
+    );
+    for (const observationCountDelta of [2, 4]) {
+        expectFailedChecks(
+            (candidate) => {
+                candidate.sample.runtimeFrameLoopObservationCount =
+                    candidate.sample.runtimeFrameLoopObservationRafFrameCount +
+                    observationCountDelta;
+            },
+            ['crossTierRuntimeFrameLoopObservationCount'],
+        );
+    }
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount =
+                candidate.sample.renderedFrames - 1;
+        },
+        ['crossTierRenderedFramesMatchR3fFrameCallbackDelta'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.displayCadenceControl = null;
+        },
+        [
+            'crossTierDisplayCadenceControlInstalledAtStart',
+            'crossTierDisplayCadenceControlInstalledAtEnd',
+            'crossTierDisplayCadenceControlObservedFramesPerSecond',
+        ],
+    );
+    for (const [field, value, checkName] of [
+        [
+            'callbackTimestampMode',
+            'native-timestamp-v1',
+            'crossTierDisplayCadenceControlRequestedCallbackTimestampMode',
+        ],
+        [
+            'observedRateClock',
+            'scheduled-phase-v1',
+            'crossTierDisplayCadenceControlRequestedObservedRateClock',
+        ],
+    ]) {
+        expectFailedChecks(
+            (candidate) => {
+                candidate.requested.displayCadenceControl[field] = value;
+            },
+            [checkName],
+        );
+    }
+    for (const [field, value, checkName] of [
+        [
+            'callbackTimestampMode',
+            'native-timestamp-v1',
+            'crossTierDisplayCadenceControlObservedCallbackTimestampMode',
+        ],
+        [
+            'observedRateClock',
+            'scheduled-phase-v1',
+            'crossTierDisplayCadenceControlObservedRateClock',
+        ],
+    ]) {
+        expectFailedChecks(
+            (candidate) => {
+                candidate.sample.displayCadenceControl[field] = value;
+            },
+            [checkName],
+        );
+    }
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.displayCadenceControl.intervalMs = 33.33;
+        },
+        [
+            'crossTierDisplayCadenceControlIntervalMs',
+            'crossTierDisplayCadenceControlPhaseAdvanceConservation',
+        ],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.displayCadenceControl.atStart.lastDeliveredPhaseAt =
+                null;
+        },
+        [
+            'crossTierDisplayCadenceControlStartPhaseTimestamp',
+            'crossTierDisplayCadenceControlPhaseAdvanceConservation',
+        ],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.displayCadenceControl.atEnd.lastDeliveredPhaseAt =
+                -1;
+        },
+        [
+            'crossTierDisplayCadenceControlEndPhaseTimestamp',
+            'crossTierDisplayCadenceControlPhaseAdvanceConservation',
+        ],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.displayCadenceControl.deliveredFrameCountDelta = 0;
+        },
+        [
+            'crossTierDisplayCadenceControlDeliveredFrameCount',
+            'crossTierDisplayCadenceControlPhaseAdvanceConservation',
+        ],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.displayCadenceControl.skippedPhaseCountDelta = -1;
+        },
+        [
+            'crossTierDisplayCadenceControlSkippedPhaseCount',
+            'crossTierDisplayCadenceControlPhaseAdvanceConservation',
+        ],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.displayCadenceControl.atEnd.lastDeliveredPhaseAt += 0.001_1;
+        },
+        ['crossTierDisplayCadenceControlPhaseAdvanceConservation'],
+    );
+    const withinPhaseAdvanceTolerance = structuredClone(input);
+    withinPhaseAdvanceTolerance.sample.displayCadenceControl.atEnd.lastDeliveredPhaseAt += 0.000_9;
+    assert.equal(
+        evaluateCrossTierAcceptance(withinPhaseAdvanceTolerance).pass,
+        true,
+    );
+    for (const observedFramesPerSecond of [27.99, 32.01]) {
+        expectFailedChecks(
+            (candidate) => {
+                candidate.sample.displayCadenceControl.observedFramesPerSecond =
+                    observedFramesPerSecond;
+            },
+            ['crossTierDisplayCadenceControlObservedFramesPerSecond'],
+        );
+    }
+    for (const observedFramesPerSecond of [28, 32]) {
+        assert.equal(
+            evaluateCrossTierAcceptance({
+                ...input,
+                sample: {
+                    ...input.sample,
+                    displayCadenceControl: {
+                        ...input.sample.displayCadenceControl,
+                        observedFramesPerSecond,
+                    },
+                },
+            }).pass,
+            true,
+        );
+    }
+    for (const renderedFps of [27.99, 32.01]) {
+        expectFailedChecks(
+            (candidate) => {
+                candidate.sample.renderedFps = renderedFps;
+            },
+            ['crossTierRenderedFps'],
+        );
+    }
+    for (const renderedFps of [28, 32]) {
+        assert.equal(
+            evaluateCrossTierAcceptance({
+                ...input,
+                sample: { ...input.sample, renderedFps },
+            }).pass,
+            true,
+        );
+    }
 
     assert.equal(
         evaluateCrossTierAcceptance({
@@ -3171,7 +5926,29 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
         sample: {
             ...input.sample,
             gameCameraMotionObserved: true,
+            gameCameraSnapshotAtEnd: {
+                position: [-10, 10, -10],
+                target: [0, 0, 0],
+                version: 21,
+                zoom: 100,
+            },
+            gameCameraSnapshotAtStart: {
+                position: [-10, 10, -10],
+                target: [0, 0, 0],
+                version: 1,
+                zoom: 100,
+            },
             gameCameraSnapshotVersionDelta: 20,
+            hoverOutlineCompositePassCountDelta: 11,
+            hoverOutlineHorizontalPassCountDelta: 1,
+            hoverOutlineMaskCacheHitCountDelta: 10,
+            hoverOutlineMaskCacheMissCountDelta: 1,
+            hoverOutlineMaskPassCountDelta: 1,
+            hoverOutlineSemanticCompositePassCountDelta: 11,
+            hoverOutlineSemanticHorizontalPassCountDelta: 1,
+            hoverOutlineSemanticMaskCacheHitCountDelta: 10,
+            hoverOutlineSemanticMaskCacheMissCountDelta: 1,
+            hoverOutlineSemanticMaskPassCountDelta: 1,
         },
     };
     assert.equal(evaluateCrossTierAcceptance(cameraMotionInput).pass, true);
@@ -3196,12 +5973,90 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
         )?.pass,
         false,
     );
+
+    const canonicalEndpointChange = structuredClone(cameraMotionInput);
+    canonicalEndpointChange.sample.gameCameraSnapshotAtEnd.position[0] += 0.5;
+    const canonicalEndpointAcceptance = evaluateCrossTierAcceptance(
+        canonicalEndpointChange,
+    );
+    assert.equal(canonicalEndpointAcceptance.pass, true);
+    assert.equal(
+        canonicalEndpointAcceptance.checks.some(
+            (check) => check.name === 'crossTierCameraEndpointMaximumDelta',
+        ),
+        false,
+    );
 });
 
 test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
+    const population = {
+        bee: 1,
+        bird: 2,
+        butterfly: 3,
+        cat: 1,
+        dog: 1,
+        ladybug: 5,
+        squirrel: 1,
+    };
     const input = {
         apiErrors: [],
         consoleMessages: [],
+        crossTierCold: {
+            canvasAttachmentCount: 1,
+            canvasAttachedMs: 310,
+            canvasSize: {
+                clientHeight: 720,
+                clientWidth: 1_280,
+                height: 1_080,
+                width: 1_920,
+            },
+            canvasSizedMs: 383,
+            domContentLoadedMs: 16,
+            expectedDpr: 1.5,
+            firstCanvasPersistent: true,
+            firstSubmittedFrameMs: 488,
+            fixtureReadyMs: 580,
+            hostCanvasReadyDiagnosticMs: 565,
+            installedMs: 0,
+            measurementMode: crossTierColdMilestoneMeasurementMode,
+            mutationObserverStopped: true,
+            observationStoppedMs: 581,
+            trackerInstalled: true,
+        },
+        crossTierResourceSnapshot: {
+            attemptCount: 1,
+            capturedAt: 700,
+            measurementMode: crossTierResourceSnapshotMeasurementMode,
+            populationAtEnd: structuredClone(population),
+            populationAtStart: structuredClone(population),
+            populationExposure: structuredClone(population),
+            populationExposureAtEnd: structuredClone(population),
+            populationExposureAtStart: structuredClone(population),
+            populationExposureAvailable: true,
+            populationExposureSignature:
+                populationExposureSignature(population),
+            rendererStatsMode: lifecycleRendererStatsCanonicalMode,
+            resources: {
+                rendererGeometries: 255,
+                rendererShaders: 24,
+                rendererStatsMeasurement: {
+                    completedAt: 650,
+                    drawCallsDelta: 10,
+                    legacySettleMs: null,
+                    measurementMode: lifecycleRendererStatsCanonicalMode,
+                    renderedFramesDelta: 1,
+                    rendererStatsPublishedAt: 640,
+                    rendererStatsReceiptCount: 2,
+                    rendererStatsReceiptDelta: 1,
+                    rendererStatsRenderFrame: 2,
+                    r3fFrameCallbackCountDelta: 1,
+                    runtimeMeasurementMode: 'post-render-microtask-v1',
+                    startedAt: 600,
+                    submittedTrianglesDelta: 100,
+                },
+                rendererTextures: 8,
+            },
+        },
         pageErrors: [],
         requested: {
             autoQualityDeviceClass: 'standard',
@@ -3213,6 +6068,12 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
                 narrowViewport: false,
             },
             crossTierProfile: true,
+            displayCadenceControl: {
+                callbackTimestampMode: 'scheduled-phase-v1',
+                framesPerSecond: 30,
+                mode: 'profiler-owned-raf-v1',
+                observedRateClock: 'native-wall-time-v1',
+            },
             dpr: 2,
             expectedAutoQualityMetrics: {
                 coarsePointer: false,
@@ -3235,6 +6096,7 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
             viewport: { height: 720, width: 1280 },
         },
         runtime: {
+            actorGroundingShadowSpeciesCounts: structuredClone(population),
             dprCap: 1.5,
             generatedPlantExpectedInstanceCount: 537,
             generatedPlantFieldCount: 54,
@@ -3243,10 +6105,25 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
             generatedPlantVisibleInstanceCount: 537,
             groundDecorationDensity: 0.5,
             hoverOutlineActiveTargetCount: 2,
+            hoverOutlineCompositePassCount: 150,
+            hoverOutlineHorizontalPassCount: 50,
+            hoverOutlineMaskCacheBypassCount: 0,
+            hoverOutlineMaskCacheEligibleTargetCount: 2,
+            hoverOutlineMaskCacheHitCount: 100,
+            hoverOutlineMaskCacheMissCount: 50,
+            hoverOutlineMaskPassCount: 50,
+            hoverOutlinePipeline: 'cropped-bounded-separable-r8-content-cache',
             hoverOutlineProfileCommandAction: 'show',
             hoverOutlineProfileTargetBlockId: 'profile-raised-bed:2:0',
             hoverOutlineStyleGroupCount: 1,
             qualityTier: 'medium',
+            rendererGeometries: 255,
+            rendererShaders: 24,
+            rendererTextures: 8,
+            runtimeFrameLoop: {
+                activeLeaseCount: 10,
+                targetFramesPerSecond: 30,
+            },
             shadowMapSize: 2_048,
             shadowsEnabled: true,
             staticOpaqueSceneCacheEnabled: false,
@@ -3259,14 +6136,74 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
                 width: 1_920,
             },
             drawCalls: 100,
+            displayCadenceControl: {
+                atEnd: {
+                    lastDeliveredPhaseAt: 6_000,
+                },
+                atStart: {
+                    lastDeliveredPhaseAt: 1_000,
+                },
+                callbackTimestampMode: 'scheduled-phase-v1',
+                deliveredCallbackCountDelta: 300,
+                deliveredFrameCountDelta: 150,
+                installedAtEnd: true,
+                installedAtStart: true,
+                intervalMs: 1_000 / 30,
+                mode: 'profiler-owned-raf-v1',
+                nativeFrameCountDelta: 300,
+                observedFramesPerSecond: 30,
+                observedRateClock: 'native-wall-time-v1',
+                requestedFramesPerSecond: 30,
+                skippedPhaseCountDelta: 0,
+            },
             elapsedMs: 5_000,
+            frames: 300,
+            performanceMeasurementMode: 'separate-observer-free-window-v1',
             generatedPlantVisibleFieldCountMin: 54,
             generatedPlantVisibleInstanceCountMin: 537,
+            hoverOutlineCompositePassCountDelta: 10,
+            hoverOutlineHorizontalPassCountDelta: 0,
+            hoverOutlineMaskCacheBypassCountDelta: 0,
+            hoverOutlineMaskCacheHitCountDelta: 10,
+            hoverOutlineMaskCacheMissCountDelta: 0,
+            hoverOutlineMaskPassCountDelta: 0,
+            hoverOutlineSemanticCompositePassCountDelta: 10,
+            hoverOutlineSemanticHorizontalPassCountDelta: 0,
+            hoverOutlineSemanticMaskCacheBypassCountDelta: 0,
+            hoverOutlineSemanticMaskCacheHitCountDelta: 10,
+            hoverOutlineSemanticMaskCacheMissCountDelta: 0,
+            hoverOutlineSemanticMaskPassCountDelta: 0,
             outlineProfileDispatched: true,
             outlineProfileTelemetryAvailable: true,
-            renderedFps: 12,
-            renderedFrames: 60,
+            renderedFps: 30,
+            renderedFrames: 150,
             reportedDpr: 2,
+            runtimeFrameLoopActiveLeaseCountAtEnd: 10,
+            runtimeFrameLoopActiveLeaseCountAtStart: 10,
+            runtimeFrameLoopActiveLeaseCountMax: 10,
+            runtimeFrameLoopActiveLeaseCountMin: 10,
+            runtimeFrameLoopAtEnd: {
+                ...crossTierLeaseTopology(),
+                effectiveVisible: true,
+            },
+            runtimeFrameLoopAtStart: {
+                ...crossTierLeaseTopology(),
+                effectiveVisible: true,
+            },
+            runtimeFrameLoopCounterDeltas: {
+                r3fFrameCallbackCount: 150,
+            },
+            runtimeFrameLoopObservationCount: 303,
+            runtimeFrameLoopObservationMode: 'separate-semantic-raf-window-v1',
+            runtimeFrameLoopObservationRafFrameCount: 300,
+            runtimeFrameLoopSemanticLeaseTopologyAtEnd:
+                crossTierLeaseTopology(),
+            runtimeFrameLoopSemanticLeaseTopologyAtStart:
+                crossTierLeaseTopology(),
+            runtimeFrameLoopTargetFramesPerSecondAtEnd: 30,
+            runtimeFrameLoopTargetFramesPerSecondAtStart: 30,
+            runtimeFrameLoopTargetFramesPerSecondMax: 30,
+            runtimeFrameLoopTargetFramesPerSecondMin: 30,
             submittedTriangles: 1_000_000,
         },
         screenshotWitness: {
@@ -3297,6 +6234,33 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
                 },
             },
         }).pass,
+        false,
+    );
+    const mismatchedRuntimePopulation = structuredClone(input);
+    mismatchedRuntimePopulation.runtime.actorGroundingShadowSpeciesCounts = {
+        ...population,
+        butterfly: 2,
+    };
+    assert.equal(
+        evaluateCrossTierAcceptance(mismatchedRuntimePopulation).checks.find(
+            (check) =>
+                check.name ===
+                'crossTierResourceSnapshotPopulationMatchesRuntime',
+        )?.pass,
+        false,
+    );
+
+    const malformedRuntimePopulation = structuredClone(input);
+    malformedRuntimePopulation.runtime.actorGroundingShadowSpeciesCounts = {
+        ...population,
+        '': 1,
+    };
+    assert.equal(
+        evaluateCrossTierAcceptance(malformedRuntimePopulation).checks.find(
+            (check) =>
+                check.name ===
+                'crossTierResourceSnapshotPopulationMatchesRuntime',
+        )?.pass,
         false,
     );
 });
@@ -3501,6 +6465,7 @@ test('fauna acceptance requires the exact fixture, census, command, network, and
         baseName: 'game-fauna-heavy-day-interaction-desktop',
         budget: { pass: true },
         budgetName: 'gameHighTarget',
+        memory: { retainedJsHeapMb: 100 },
         name: `game-fauna-heavy-day-interaction-desktop-run-${profileRun}`,
         performanceBudget: { pass: true },
         profileRun,
@@ -3591,6 +6556,40 @@ test('fauna acceptance requires the exact fixture, census, command, network, and
     assert.match(markdown, /cow:2\/2/);
     assert.match(markdown, /CowShelter:-6:-1:1/);
     assert.match(markdown, /entropy 5\.2/);
+});
+
+test('garden-switch budgets apply the absolute retained-heap ceiling', () => {
+    const acceptance = {
+        checks: [
+            { name: 'gardenSwitchMaximumFrameStallWithinMs', pass: true },
+            { name: 'gardenSwitchFixture', pass: true },
+        ],
+        pass: true,
+    };
+    const passing = buildGardenSwitchBudgets({
+        acceptance,
+        memory: { retainedJsHeapMb: 319 },
+    });
+    const failing = buildGardenSwitchBudgets({
+        acceptance,
+        memory: { retainedJsHeapMb: 321 },
+    });
+
+    assert.equal(passing.budget.pass, true);
+    assert.equal(passing.performanceBudget.pass, true);
+    assert.deepEqual(
+        passing.budget.checks.find(
+            (check) => check.name === 'retainedJsHeapMb',
+        ),
+        {
+            actual: 319,
+            limit: 320,
+            name: 'retainedJsHeapMb',
+            pass: true,
+        },
+    );
+    assert.equal(failing.budget.pass, false);
+    assert.equal(failing.performanceBudget.pass, false);
 });
 
 test('garden-switch acceptance fails closed across fixtures, interaction, visuals, identity, timing, and resources', () => {
@@ -3710,7 +6709,10 @@ test('garden-switch acceptance fails closed across fixtures, interaction, visual
                 staticOpaqueSceneCacheEnabled: false,
             },
             sample: {
+                elapsedMs: index === 0 ? 5_000 : 550,
                 maxFrameMs: 100,
+                rendererShaders: resources[1],
+                rendererTextures: [11, 13, 13, 13, 13, 13, 13][index],
             },
             screenshotPath: `/tmp/garden-switch-${index + 1}.png`,
             screenshotWitness,
@@ -3727,16 +6729,29 @@ test('garden-switch acceptance fails closed across fixtures, interaction, visual
                       },
         };
     });
+    const lifetimeResources = buildGardenSwitchLifetimeResources(arrivals, {
+        rendererShadersPeak: 32,
+        rendererTexturesPeak: 13,
+    });
+    assert.deepEqual(lifetimeResources, {
+        measurementMode:
+            'page-lifetime-webgl-program-texture-and-arrival-snapshot-geometry-v1',
+        rendererGeometries: 525,
+        rendererShaders: 32,
+        rendererTextures: 13,
+    });
     const input = {
         apiErrors: [],
         apiRequests: [],
         arrivals,
         consoleMessages: [],
+        lifetimeResources,
         pageErrors: [],
         requested: {
             dpr: 2,
             gardenSwitch: '1',
             quality: 'high',
+            sampleMs: 5_000,
             staticSceneCache: 'legacy',
         },
     };
@@ -3774,6 +6789,18 @@ test('garden-switch acceptance fails closed across fixtures, interaction, visual
             arrivals: changed,
         }).pass;
     };
+    assert.equal(
+        rejectArrival(0, (arrival) => ({
+            sample: { ...arrival.sample, elapsedMs: 4_899 },
+        })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(1, (arrival) => ({
+            sample: { ...arrival.sample, elapsedMs: 100 },
+        })),
+        true,
+    );
     assert.equal(
         rejectArrival(1, (arrival) => ({
             canvas: { ...arrival.canvas, sameContext: false },
@@ -3866,7 +6893,57 @@ test('garden-switch acceptance fails closed across fixtures, interaction, visual
             ...input,
             requested: {
                 ...input.requested,
+                sampleMs: undefined,
+            },
+        }).pass,
+        false,
+    );
+    assert.equal(
+        evaluateGardenSwitchAcceptance({
+            ...input,
+            requested: {
+                ...input.requested,
                 staticSceneCache: 'cache',
+            },
+        }).pass,
+        false,
+    );
+    assert.equal(
+        evaluateGardenSwitchAcceptance({
+            ...input,
+            lifetimeResources: {
+                ...lifetimeResources,
+                rendererShaders: 31,
+            },
+        }).pass,
+        false,
+    );
+    assert.equal(
+        evaluateGardenSwitchAcceptance({
+            ...input,
+            lifetimeResources: {
+                ...lifetimeResources,
+                rendererGeometries: 524,
+            },
+        }).pass,
+        false,
+    );
+    assert.equal(
+        evaluateGardenSwitchAcceptance({
+            ...input,
+            lifetimeResources: {
+                ...lifetimeResources,
+                rendererTextures: 13.5,
+            },
+        }).pass,
+        false,
+    );
+    assert.equal(
+        evaluateGardenSwitchAcceptance({
+            ...input,
+            lifetimeResources: {
+                ...lifetimeResources,
+                measurementMode: 'arrival-snapshots-only-v0',
             },
         }).pass,
         false,
@@ -3879,7 +6956,7 @@ test('garden-switch acceptance fails closed across fixtures, interaction, visual
         budget: { checks: result.checks, pass: true },
         consoleMessages: [],
         environment: null,
-        gardenSwitch: { arrivals },
+        gardenSwitch: { arrivals, lifetimeResources },
         name: 'game-garden-switch-high-fauna-single-context-desktop',
         pageErrors: [],
         requested: {
@@ -3970,6 +7047,7 @@ test('garden-switch acceptance fails closed across fixtures, interaction, visual
         baseName: 'game-fauna-heavy-day-interaction-desktop',
         budget: { pass: true },
         budgetName: 'gameHighTarget',
+        memory: { retainedJsHeapMb: 100 },
         name: `game-fauna-heavy-day-interaction-desktop-run-${profileRun}`,
         performanceBudget: { pass: true },
         profileRun,
@@ -4037,13 +7115,19 @@ test('garden-switch acceptance fails closed across fixtures, interaction, visual
         markdown,
         /warm resource plateau \(fauna F2→F3, High H3→H4\): pass/,
     );
+    assert.match(markdown, /Workflow lifetime resource evidence:/);
+    assert.match(markdown, /\| 525 \| 32 \| 13 \|/);
+    assert.match(
+        markdown,
+        /page-lifetime-webgl-program-texture-and-arrival-snapshot-geometry-v1/,
+    );
     assert.match(markdown, /cache off/);
     assert.match(markdown, /fauna-heavy \/ 99995/);
     assert.match(markdown, /Cow trot #3/);
     assert.match(markdown, /dynamic bee:1 butterfly:3 ladybug:5 squirrel:1/);
 });
 
-test('lifecycle acceptance gates scheduler suspension while keeping residual GL and CDP informational', () => {
+test('lifecycle acceptance gates owned scheduling while keeping full residual and CDP evidence diagnostic', () => {
     const residual = (renderedFrames, drawCalls, submittedTriangles) => ({
         cdp: {
             layoutDuration: 0,
@@ -4095,10 +7179,251 @@ test('lifecycle acceptance gates scheduler suspension while keeping residual GL 
     );
     assert.equal(byName.lifecycleHiddenResidualDrawCallsFinite.pass, true);
     assert.deepEqual(result.residualWorkPolicy, {
+        fullResidualZeroWorkGated: false,
+        ownedSchedulingGated: true,
         rendererAndCdpGated: false,
         runtimeSchedulerGated: true,
-        reason: 'Offscreen and synthetic-hidden draw, frame, and script work are baseline observations until the runtime scheduler optimization lands.',
+        reason: 'The canonical comparison lifecycle preserves its compatibility gate for owned scheduling counters. Full residual runtime, renderer, and CDP evidence remains diagnostic so before-system baseline capture stays valid.',
     });
+});
+
+test('lifecycle zero-work separates owned scheduling from full render and runtime residuals', () => {
+    const ownedDeltas = {
+        cancelledCallbackCount: 0,
+        ownedInvalidationCount: 0,
+        resumeCount: 0,
+        scheduledCallbackCount: 0,
+        suspendCount: 0,
+        wakeupCount: 0,
+    };
+    const fullDeltas = Object.fromEntries(
+        fullRuntimeFrameLoopCounterFields.map((field) => [field, 0]),
+    );
+    const residual = {
+        sample: {
+            drawCalls: 0,
+            renderedFrames: 0,
+            runtimeFrameLoopCounterDeltas: fullDeltas,
+            submittedTriangles: 0,
+        },
+    };
+
+    assert.equal(lifecycleOwnedSchedulingZeroObserved(ownedDeltas), true);
+    assert.equal(lifecycleZeroWorkObserved(residual, fullDeltas), true);
+
+    for (const field of fullRuntimeFrameLoopCounterFields) {
+        const withResidualDeltas = { ...fullDeltas, [field]: 1 };
+        assert.equal(
+            lifecycleZeroWorkObserved(residual, withResidualDeltas),
+            false,
+            field,
+        );
+        assert.equal(
+            lifecycleOwnedSchedulingZeroObserved(ownedDeltas),
+            true,
+            field,
+        );
+    }
+
+    for (const field of ['drawCalls', 'renderedFrames', 'submittedTriangles']) {
+        const withRendererWork = structuredClone(residual);
+        withRendererWork.sample[field] = 1;
+        assert.equal(
+            lifecycleZeroWorkObserved(withRendererWork, fullDeltas),
+            false,
+            field,
+        );
+    }
+});
+
+test('static-idle evidence and acceptance require a visible settled zero-work window', () => {
+    const schedulerSnapshot = (overrides = {}) => ({
+        activeDeadlineCount: 0,
+        activeFixedStepLeaseCount: 0,
+        activeLeaseCount: 0,
+        activeRenderLeaseCount: 0,
+        awaitingFrameReceipt: false,
+        callbackPending: false,
+        cancelledCallbackCount: 2,
+        canvasVisible: true,
+        coalescedRenderRequestReasons: [],
+        deadlineCount: 3,
+        deadlineOwners: [],
+        deferredWorkCount: 0,
+        displayFrameCalibrationCount: 7,
+        documentVisible: true,
+        effectiveVisible: true,
+        fixedStepCount: 4,
+        fixedStepFailureCount: 0,
+        fixedStepOwners: [],
+        hiddenDeferredRenderRequestCount: 0,
+        invalidationCount: 12,
+        invalidationFailureCount: 0,
+        leaseAcquiredCount: 5,
+        leaseReleasedCount: 5,
+        loopActive: false,
+        missedFrameReceiptCount: 0,
+        nonessentialHiddenWorkCount: 0,
+        ownedInvalidationCount: 8,
+        pendingCallbackDueAt: null,
+        pendingCallbackKind: 'none',
+        pendingFrameReceiptReconciliationWakeupCount: 0,
+        postCalibrationFrameWakeupCount: 0,
+        productiveWakeupCount: 10,
+        r3fFrameCallbackCount: 6,
+        renderLeaseOwners: [],
+        renderRequestReasons: [],
+        resumeCount: 0,
+        scheduledCallbackCount: 10,
+        suspendCount: 0,
+        targetFramesPerSecond: 0,
+        retainedTimeoutReconciliationWakeupCount: 0,
+        unexpectedNoWorkWakeupCount: 0,
+        wakeupCount: 10,
+        ...overrides,
+    });
+    const sample = {
+        canvas: {
+            clientHeight: 720,
+            clientWidth: 1_280,
+            height: 1_440,
+            width: 2_560,
+        },
+        drawCalls: 0,
+        elapsedMs: 5_000,
+        frames: 300,
+        renderedFps: 0,
+        renderedFrames: 0,
+        reportedDpr: 2,
+        runtimeFrameLoopAtEnd: schedulerSnapshot(),
+        runtimeFrameLoopAtStart: schedulerSnapshot(),
+        submittedTriangles: 0,
+    };
+    const staticIdle = buildStaticIdleEvidence(sample);
+    const screenshotWitness = {
+        entropy: 1,
+        height: 1_440,
+        maximumChannelStandardDeviation: 10,
+        opaque: true,
+        sampledLumaRange: 40,
+        sampledUniqueColorCount: 32,
+        width: 2_560,
+    };
+    const input = {
+        apiErrors: [],
+        consoleMessages: [],
+        pageErrors: [],
+        requested: {
+            continuousRenderLeases: '1',
+            controls: '0',
+            debugHud: '0',
+            details: '0',
+            fixedTimeSeconds: 43_200,
+            gardenProfile: 'default',
+            hud: '0',
+            mode: 'baseline',
+            quality: 'high',
+            sampleMs: 5_000,
+            staticIdle: '1',
+            staticIdleProfile: true,
+            staticSceneCache: 'legacy',
+        },
+        runtime: {
+            dprCap: 2,
+            profileGardenBlockCount: 15,
+            profileGardenId: 99_999,
+            profileGardenRaisedBedCount: 1,
+            profileGardenStackCount: 12,
+            qualityTier: 'high',
+            shadowMapSize: 4_096,
+            shadowsEnabled: true,
+            staticOpaqueSceneCacheEnabled: false,
+        },
+        sample,
+        screenshotWitness,
+        staticIdle,
+    };
+
+    assert.equal(staticIdle.schedulerSettledAtStart, true);
+    assert.equal(staticIdle.schedulerSettledAtEnd, true);
+    assert.equal(staticIdle.schedulerZeroObserved, true);
+    assert.equal(
+        staticIdle.counterDeltas.hiddenDeferredCoalescedRenderRequestCount,
+        0,
+    );
+    assert.equal(staticIdle.counterDeltas.hiddenCoalescedRenderRequestCount, 0);
+    assert.equal(staticIdle.rendererZeroObserved, true);
+    assert.equal(staticIdle.zeroWorkObserved, true);
+    const passing = evaluateStaticIdleAcceptance(input);
+    assert.equal(
+        passing.pass,
+        true,
+        passing.checks
+            .filter((check) => !check.pass)
+            .map((check) => check.name)
+            .join(', '),
+    );
+
+    const withoutContinuousRenderLeases = structuredClone(input);
+    withoutContinuousRenderLeases.requested.continuousRenderLeases = '0';
+    assert.equal(
+        evaluateStaticIdleAcceptance(withoutContinuousRenderLeases).checks.find(
+            (check) => check.name === 'staticIdleContinuousRenderLeases',
+        )?.pass,
+        false,
+    );
+
+    const withR3fWork = structuredClone(sample);
+    withR3fWork.runtimeFrameLoopAtEnd.r3fFrameCallbackCount += 1;
+    const r3fEvidence = buildStaticIdleEvidence(withR3fWork);
+    assert.equal(r3fEvidence.zeroWorkObserved, false);
+    assert.equal(
+        evaluateStaticIdleAcceptance({
+            ...input,
+            sample: withR3fWork,
+            staticIdle: r3fEvidence,
+        }).pass,
+        false,
+    );
+
+    const withCoalescedRequest = structuredClone(sample);
+    withCoalescedRequest.runtimeFrameLoopAtEnd.coalescedRenderRequestReasons = [
+        'r3f-root-update',
+    ];
+    const coalescedEvidence = buildStaticIdleEvidence(withCoalescedRequest);
+    assert.equal(coalescedEvidence.schedulerSettledAtEnd, false);
+    assert.equal(
+        evaluateStaticIdleAcceptance({
+            ...input,
+            sample: withCoalescedRequest,
+            staticIdle: coalescedEvidence,
+        }).pass,
+        false,
+    );
+
+    const withHiddenCoalescedCall = structuredClone(sample);
+    withHiddenCoalescedCall.runtimeFrameLoopAtEnd.hiddenCoalescedRenderRequestCount = 1;
+    const hiddenCoalescedEvidence = buildStaticIdleEvidence(
+        withHiddenCoalescedCall,
+    );
+    assert.equal(hiddenCoalescedEvidence.zeroWorkObserved, false);
+    assert.equal(
+        evaluateStaticIdleAcceptance({
+            ...input,
+            sample: withHiddenCoalescedCall,
+            staticIdle: hiddenCoalescedEvidence,
+        }).checks.find(
+            (check) =>
+                check.name ===
+                'staticIdleHiddenCoalescedRenderRequestCountDelta',
+        )?.pass,
+        false,
+    );
+
+    const withSubmittedFrame = { ...sample, drawCalls: 1, renderedFrames: 1 };
+    const rendererEvidence = buildStaticIdleEvidence(withSubmittedFrame);
+    assert.equal(rendererEvidence.rendererZeroObserved, false);
+    assert.equal(rendererEvidence.zeroWorkObserved, false);
 });
 
 test('lifecycle acceptance passes one complete contract and rejects focused evidence mutations', () => {
@@ -4172,11 +7497,120 @@ test('lifecycle acceptance passes one complete contract and rejects focused evid
         ).pass,
         false,
     );
+
+    const staleColdReceipt = structuredClone(input);
+    staleColdReceipt.cold.fixture.resources.rendererStatsMeasurement.rendererStatsReceiptDelta = 0;
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            staleColdReceipt,
+            'lifecycleColdRendererStatsMeasurementValid',
+        ).pass,
+        false,
+    );
+
+    const zeroColdGeometry = structuredClone(input);
+    zeroColdGeometry.cold.fixture.resources.rendererGeometries = 0;
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            zeroColdGeometry,
+            'lifecycleColdRendererGeometries',
+        ).pass,
+        false,
+    );
+
+    const zeroRestoredTexture = structuredClone(input);
+    zeroRestoredTexture.context.restoredControl.fixture.resources.rendererTextures = 0;
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            zeroRestoredTexture,
+            'lifecycleContextRestoredRendererTextures',
+        ).pass,
+        false,
+    );
+});
+
+test('legacy lifecycle acceptance explicitly requires pre-receipt telemetry while canonical mode fails closed', () => {
+    const input = createPassingLifecycleAcceptanceInput();
+    delete input.active.runtimeFrameLoop.awaitingFrameReceipt;
+    for (const resources of [
+        input.cold.fixture.resources,
+        input.offscreen.resumedControl.fixture.resources,
+        input.hidden.resumedControl.fixture.resources,
+        input.context.restoredControl.fixture.resources,
+    ]) {
+        Object.assign(resources.rendererStatsMeasurement, {
+            legacySettleMs: 600,
+            measurementMode: lifecycleRendererStatsLegacyMode,
+            rendererStatsPublishedAt: null,
+            rendererStatsReceiptCount: null,
+            rendererStatsReceiptDelta: null,
+            rendererStatsRenderFrame: null,
+            r3fFrameCallbackCountDelta: null,
+            runtimeMeasurementMode: null,
+        });
+    }
+
+    const legacy = evaluateLifecycleAcceptance({
+        ...input,
+        rendererStatsMode: lifecycleRendererStatsLegacyMode,
+    });
+    assert.equal(
+        legacy.pass,
+        true,
+        legacy.checks
+            .filter((check) => !check.pass)
+            .map((check) => check.name)
+            .join(', '),
+    );
+    assert.equal(
+        legacy.checks.find(
+            (check) =>
+                check.name ===
+                'lifecycleActiveAwaitingFrameReceiptLegacyOmitted',
+        )?.pass,
+        true,
+    );
+    assert.equal(
+        legacy.checks.some(
+            (check) => check.name === 'lifecycleActiveAwaitingFrameReceiptType',
+        ),
+        false,
+    );
+
+    const canonicalInput = createPassingLifecycleAcceptanceInput();
+    delete canonicalInput.active.runtimeFrameLoop.awaitingFrameReceipt;
+    const canonical = evaluateLifecycleAcceptance(canonicalInput);
+    assert.equal(
+        canonical.checks.find(
+            (check) => check.name === 'lifecycleActiveAwaitingFrameReceiptType',
+        )?.pass,
+        false,
+    );
+
+    input.active.runtimeFrameLoop.awaitingFrameReceipt = false;
+    const legacyWithCanonicalTelemetry = evaluateLifecycleAcceptance({
+        ...input,
+        rendererStatsMode: lifecycleRendererStatsLegacyMode,
+    });
+    assert.equal(
+        legacyWithCanonicalTelemetry.checks.find(
+            (check) =>
+                check.name ===
+                'lifecycleActiveAwaitingFrameReceiptLegacyOmitted',
+        )?.pass,
+        false,
+    );
 });
 
 function lifecycleAcceptanceCheck(input, name) {
     return evaluateLifecycleAcceptance(input).checks.find(
         (check) => check.name === name,
+    );
+}
+
+function fullRuntimeCounterValues(value = 0) {
+    return Object.fromEntries(
+        fullRuntimeFrameLoopCounterFields.map((field) => [field, value]),
     );
 }
 
@@ -4223,7 +7657,27 @@ function createPassingLifecycleAcceptanceInput() {
             stackCount: 270,
         },
         gardenId: 99_996,
-        resources: { staticOpaqueSceneCacheEnabled: false },
+        resources: {
+            rendererGeometries: 258,
+            rendererShaders: 24,
+            rendererStatsMeasurement: {
+                completedAt: 120,
+                drawCallsDelta: 10,
+                legacySettleMs: null,
+                measurementMode: lifecycleRendererStatsCanonicalMode,
+                renderedFramesDelta: 1,
+                rendererStatsPublishedAt: 110,
+                rendererStatsReceiptCount: 2,
+                rendererStatsReceiptDelta: 1,
+                rendererStatsRenderFrame: 1,
+                r3fFrameCallbackCountDelta: 1,
+                runtimeMeasurementMode: 'post-render-microtask-v1',
+                startedAt: 100,
+                submittedTrianglesDelta: 100,
+            },
+            rendererTextures: 7,
+            staticOpaqueSceneCacheEnabled: false,
+        },
     });
     const activeSample = () => ({
         drawCalls: 1_000,
@@ -4265,6 +7719,7 @@ function createPassingLifecycleAcceptanceInput() {
     });
     const activeRuntimeFrameLoop = {
         activeLeaseCount: 0,
+        awaitingFrameReceipt: false,
         cancelledCallbackCount: 0,
         canvasVisible: true,
         documentVisible: true,
@@ -4419,6 +7874,2255 @@ function createPassingLifecycleAcceptanceInput() {
     };
 }
 
+function createPassingLifecycleLiveAcceptanceInput() {
+    const input = createPassingLifecycleAcceptanceInput();
+    const persistentLeaseSummaries = [
+        { framesPerSecond: 30, leaseCount: 1, owner: 'fauna:birds' },
+        { framesPerSecond: 30, leaseCount: 1, owner: 'fauna:cats' },
+        { framesPerSecond: 30, leaseCount: 1, owner: 'fauna:dogs' },
+        { framesPerSecond: 30, leaseCount: 2, owner: 'plant-sway' },
+    ];
+    const resumeWindow = (sceneTimeSeconds) => {
+        const startCounters = fullRuntimeCounterValues(10);
+        const endCounters = {
+            ...startCounters,
+            ownedInvalidationCount: startCounters.ownedInvalidationCount + 60,
+            r3fFrameCallbackCount: startCounters.r3fFrameCallbackCount + 60,
+            wakeupCount: startCounters.wakeupCount + 60,
+        };
+        for (const field of [
+            'fixedStepFailureCount',
+            'hiddenDeferredCoalescedRenderRequestCount',
+            'hiddenCoalescedRenderRequestCount',
+            'hiddenDeferredRenderRequestCount',
+            'invalidationFailureCount',
+            'missedFrameReceiptCount',
+            'nonessentialHiddenWorkCount',
+        ]) {
+            startCounters[field] = 0;
+            endCounters[field] = 0;
+        }
+        startCounters.renderRequestReasons = [];
+        endCounters.renderRequestReasons = [];
+        startCounters.coalescedRenderRequestReasons = ['r3f-root-update'];
+        endCounters.coalescedRenderRequestReasons = ['r3f-root-update'];
+        return buildLifecycleResumeWindowEvidence({
+            cdp: {
+                layoutDuration: 0.001,
+                scriptDuration: 0.01,
+                taskDuration: 0.02,
+            },
+            sample: {
+                drawCalls: 600,
+                elapsedMs: 2_000,
+                renderedFps: 30,
+                renderedFrames: 60,
+                runtimeFrameLoopAtEnd: {
+                    ...endCounters,
+                    sceneTimeSeconds: sceneTimeSeconds + 2,
+                    targetFramesPerSecond: 30,
+                },
+                runtimeFrameLoopAtStart: {
+                    ...startCounters,
+                    sceneTimeSeconds,
+                    targetFramesPerSecond: 30,
+                },
+                submittedTriangles: 6_000,
+            },
+        });
+    };
+    const resumeTransition = (sceneTimeSeconds) => {
+        const startCounters = fullRuntimeCounterValues(10);
+        const endCounters = {
+            ...startCounters,
+            ownedInvalidationCount: startCounters.ownedInvalidationCount + 27,
+            r3fFrameCallbackCount: startCounters.r3fFrameCallbackCount + 33,
+            resumeCount: startCounters.resumeCount + 1,
+            wakeupCount: startCounters.wakeupCount + 27,
+        };
+        for (const field of [
+            'fixedStepFailureCount',
+            'hiddenDeferredCoalescedRenderRequestCount',
+            'hiddenCoalescedRenderRequestCount',
+            'hiddenDeferredRenderRequestCount',
+            'invalidationFailureCount',
+            'missedFrameReceiptCount',
+            'nonessentialHiddenWorkCount',
+        ]) {
+            startCounters[field] = 0;
+            endCounters[field] = 0;
+        }
+        startCounters.renderRequestReasons = ['deferred-shadow-refresh'];
+        endCounters.renderRequestReasons = [];
+        startCounters.coalescedRenderRequestReasons = ['r3f-root-update'];
+        endCounters.coalescedRenderRequestReasons = ['r3f-root-update'];
+        return buildLifecycleResumeTransitionEvidence({
+            cdp: {
+                layoutDuration: 0.001,
+                scriptDuration: 0.01,
+                taskDuration: 0.02,
+            },
+            sample: {
+                drawCalls: 330,
+                elapsedMs: 900,
+                frames: 54,
+                renderedFps: 36.7,
+                renderedFrames: 33,
+                runtimeFrameLoopAtEnd: {
+                    ...endCounters,
+                    sceneTimeSeconds: sceneTimeSeconds + 0.9,
+                    targetFramesPerSecond: 30,
+                },
+                runtimeFrameLoopAtStart: {
+                    ...startCounters,
+                    sceneTimeSeconds,
+                    targetFramesPerSecond: 30,
+                },
+                submittedTriangles: 3_300,
+            },
+        });
+    };
+    const suspendTransition = (sceneTimeSeconds, lateFrameCount, phaseName) => {
+        const startCounters = fullRuntimeCounterValues(10);
+        const endCounters = {
+            ...startCounters,
+            cancelledCallbackCount: startCounters.cancelledCallbackCount + 1,
+            deferredWorkCount: startCounters.deferredWorkCount + 1,
+            r3fFrameCallbackCount:
+                startCounters.r3fFrameCallbackCount + lateFrameCount,
+            suspendCount: startCounters.suspendCount + 1,
+        };
+        startCounters.hiddenDeferredCoalescedRenderRequestCount = 0;
+        endCounters.hiddenDeferredCoalescedRenderRequestCount = 1;
+        startCounters.hiddenCoalescedRenderRequestCount = 0;
+        endCounters.hiddenCoalescedRenderRequestCount = 3;
+        startCounters.coalescedRenderRequestReasons = [];
+        endCounters.coalescedRenderRequestReasons = ['r3f-root-update'];
+        const startSnapshot = {
+            ...startCounters,
+            callbackPending: true,
+            canvasVisible: true,
+            documentVisible: true,
+            effectiveVisible: true,
+            loopActive: true,
+            pendingCallbackKind: 'timeout',
+            sceneTimeSeconds,
+            targetFramesPerSecond: 30,
+        };
+        const endSnapshot = {
+            ...endCounters,
+            callbackPending: false,
+            canvasVisible: phaseName !== 'offscreen',
+            documentVisible: phaseName !== 'hidden',
+            effectiveVisible: false,
+            loopActive: false,
+            pendingCallbackDueAt: null,
+            pendingCallbackKind: 'none',
+            sceneTimeSeconds: sceneTimeSeconds + lateFrameCount * 0.03,
+            targetFramesPerSecond: 0,
+        };
+        const rendererAtEnd = {
+            drawCalls: lateFrameCount * 10,
+            instancedDrawCalls: 0,
+            renderedFrames: lateFrameCount,
+            submittedTriangles: lateFrameCount * 100,
+        };
+        return buildLifecycleSuspendTransitionEvidence({
+            cdp: {
+                layoutDuration: 0,
+                scriptDuration: lateFrameCount * 0.001,
+                taskDuration: lateFrameCount * 0.002,
+            },
+            sample: {
+                ...rendererAtEnd,
+                elapsedMs: 250,
+                frames: 15,
+                lifecycleSuspensionBoundary: {
+                    afterAcknowledgement: {
+                        recordedAt: 1_011,
+                        renderer: { ...rendererAtEnd },
+                        runtimeFrameLoop: { ...endSnapshot },
+                    },
+                    beforeSignal: {
+                        recordedAt: 1_010,
+                        renderer: { ...rendererAtEnd },
+                        runtimeFrameLoop: {
+                            ...startSnapshot,
+                            r3fFrameCallbackCount:
+                                endSnapshot.r3fFrameCallbackCount,
+                            sceneTimeSeconds: endSnapshot.sceneTimeSeconds,
+                        },
+                    },
+                    callbackReturnedAt: 1_011,
+                    intersection:
+                        phaseName === 'offscreen'
+                            ? {
+                                  height: 0,
+                                  isIntersecting: false,
+                                  time: 1_009,
+                                  width: 0,
+                              }
+                            : null,
+                    measurementMode: lifecycleSuspensionBoundaryMeasurementMode,
+                    requestedAt: 1_001,
+                    sampleEndedAt: 1_250,
+                    sampleStartedAt: 1_000,
+                    signal:
+                        phaseName === 'offscreen'
+                            ? 'intersection-observer'
+                            : 'synthetic-document-hidden',
+                },
+                renderedFps: lateFrameCount * 4,
+                runtimeFrameLoopAtEnd: endSnapshot,
+                runtimeFrameLoopAtStart: startSnapshot,
+            },
+        });
+    };
+    const activeRuntimeFrameLoop = {
+        ...input.active.runtimeFrameLoop,
+        activeLeaseCount: 5,
+        coalescedRenderRequestReasons: ['r3f-root-update'],
+        renderLeaseSummaries: [
+            ...persistentLeaseSummaries,
+            {
+                framesPerSecond: 30,
+                leaseCount: 1,
+                owner: 'sprite-wobble',
+            },
+        ],
+        sceneTimeSeconds: 100,
+        targetFramesPerSecond: 30,
+    };
+    input.active.runtimeFrameLoop = activeRuntimeFrameLoop;
+    input.active.sample.runtimeFrameLoopAtStart = {
+        coalescedRenderRequestReasons: ['r3f-root-update'],
+        hiddenDeferredCoalescedRenderRequestCount: 0,
+        hiddenCoalescedRenderRequestCount: 0,
+    };
+    input.active.sample.runtimeFrameLoopAtEnd = {
+        coalescedRenderRequestReasons: ['r3f-root-update'],
+        hiddenDeferredCoalescedRenderRequestCount: 0,
+        hiddenCoalescedRenderRequestCount: 0,
+    };
+    input.active.sample.runtimeFrameLoopCounterDeltas = {
+        hiddenDeferredCoalescedRenderRequestCount: 0,
+        hiddenCoalescedRenderRequestCount: 0,
+    };
+    input.requested.fixedTimeSeconds = null;
+    input.requested.lifecycleLiveProfile = true;
+    input.requested.lifecycleSuspensionBoundaryMeasurementMode =
+        lifecycleSuspensionBoundaryMeasurementMode;
+
+    for (const [index, phaseName] of ['offscreen', 'hidden'].entries()) {
+        const phase = input[phaseName];
+        phase.residualDeltas = fullRuntimeCounterValues();
+        phase.residualSceneTimeDeltaSeconds = 0;
+        const residualRuntimeFrameLoop = {
+            ...fullRuntimeCounterValues(10),
+            coalescedRenderRequestReasons: ['r3f-root-update'],
+        };
+        phase.residual.sample.runtimeFrameLoopAtStart = {
+            ...residualRuntimeFrameLoop,
+        };
+        phase.residual.sample.runtimeFrameLoopAtEnd = {
+            ...residualRuntimeFrameLoop,
+        };
+        phase.resumeTransition = resumeTransition(100 + index);
+        phase.resumeWindow = resumeWindow(101 + index);
+        phase.suspendTransition = suspendTransition(
+            99 + index,
+            phaseName === 'hidden' ? 1 : 0,
+            phaseName,
+        );
+        phase.resumed = {
+            ...phase.resumed,
+            renderLeaseSummaries: [
+                ...persistentLeaseSummaries,
+                {
+                    framesPerSecond: 60,
+                    leaseCount: 1,
+                    owner:
+                        phaseName === 'offscreen'
+                            ? 'particle-bursts'
+                            : 'sprite-wobble',
+                },
+            ],
+            sceneTimeSeconds: 102 + index,
+            targetFramesPerSecond: 30,
+        };
+        phase.zeroWorkObserved = true;
+    }
+
+    return input;
+}
+
+test('lifecycle suspension tracker observes only the actual Canvas callback and preserves native semantics', (t) => {
+    const keys = [
+        'document',
+        'IntersectionObserver',
+        'performance',
+        'queueMicrotask',
+        '__grediceGameProfile',
+        '__gameProfileMetrics',
+        '__gameProfileLifecycleSuspensionBoundary',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    t.after(() => {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    });
+    const canvas = {};
+    let now = 1_000;
+    const microtasks = [];
+    const drainMicrotasks = () => {
+        while (microtasks.length > 0) {
+            microtasks.shift()();
+        }
+    };
+    const start = structuredClone(
+        createPassingLifecycleLiveAcceptanceInput().offscreen.suspendTransition
+            .sample.runtimeFrameLoopAtStart,
+    );
+    class NativeIntersectionObserver {
+        constructor(callback, options) {
+            if (typeof callback !== 'function') {
+                throw new TypeError('Callback must be a function.');
+            }
+            this.callback = callback;
+            this.options = options;
+        }
+        deliver(entries) {
+            return this.callback.call(this, entries, this);
+        }
+    }
+    const globals = {
+        document: { querySelector: () => canvas },
+        IntersectionObserver: NativeIntersectionObserver,
+        performance: { now: () => now },
+        queueMicrotask: (callback) => microtasks.push(callback),
+        __grediceGameProfile: {
+            runtimeFrameLoop: createRuntimeFrameLoopProfileTelemetry(),
+        },
+        __gameProfileMetrics: {
+            drawCalls: 0,
+            instancedDrawCalls: 0,
+            renderedFrames: 0,
+            submittedTriangles: 0,
+        },
+    };
+    for (const [key, value] of Object.entries(globals)) {
+        Object.defineProperty(globalThis, key, {
+            configurable: true,
+            value,
+            writable: true,
+        });
+    }
+    const unbind = bindRuntimeFrameLoopProfileTelemetry(
+        globals.__grediceGameProfile.runtimeFrameLoop,
+        () => ({ ...createRuntimeFrameLoopProfileTelemetry(), ...start }),
+        (callback) => microtasks.push(callback),
+    );
+    t.after(unbind);
+    installLifecycleSuspensionBoundaryTracker({
+        measurementMode: lifecycleSuspensionBoundaryMeasurementMode,
+    });
+    const tracker = globalThis.__gameProfileLifecycleSuspensionBoundary;
+    tracker.beginSample(now);
+    now += 1;
+    tracker.arm('intersection-observer');
+    const options = { root: {}, rootMargin: '8px', threshold: [0, 0.5] };
+    const entry = {
+        intersectionRect: { height: 0, width: 0 },
+        isIntersecting: false,
+        target: canvas,
+        time: 1_050,
+    };
+    const entries = [entry];
+    let unrelatedCalls = 0;
+    const unrelated = new globalThis.IntersectionObserver(() => {
+        unrelatedCalls += 1;
+    });
+    class GameObserver extends globalThis.IntersectionObserver {}
+    const observer = new GameObserver(function (
+        receivedEntries,
+        receivedObserver,
+    ) {
+        assert.equal(this, observer);
+        assert.equal(receivedEntries, entries);
+        assert.equal(receivedObserver, observer);
+        Object.assign(start, {
+            callbackPending: false,
+            cancelledCallbackCount: start.cancelledCallbackCount + 1,
+            canvasVisible: false,
+            deferredWorkCount: start.deferredWorkCount + 1,
+            effectiveVisible: false,
+            loopActive: false,
+            pendingCallbackDueAt: null,
+            pendingCallbackKind: 'none',
+            suspendCount: start.suspendCount + 1,
+        });
+        now += 1;
+        return 'native-callback-result';
+    }, options);
+    assert.ok(observer instanceof NativeIntersectionObserver);
+    assert.ok(observer instanceof GameObserver);
+    assert.equal(observer.options, options);
+    assert.throws(() => new globalThis.IntersectionObserver(null), TypeError);
+
+    // A timer legitimately fires while the offscreen entry awaits delivery.
+    now = 1_050;
+    start.productiveWakeupCount += 1;
+    unrelated.deliver(entries);
+    drainMicrotasks();
+    assert.equal(tracker.finishSample(1_051).afterAcknowledgement, null);
+    assert.equal(observer.deliver(entries), 'native-callback-result');
+    // The actual bound telemetry is stale until its scheduled reset runs.
+    assert.equal(
+        globals.__grediceGameProfile.runtimeFrameLoop.effectiveVisible,
+        true,
+    );
+    drainMicrotasks();
+    const observed = tracker.finishSample(1_250);
+    assert.equal(
+        observed.beforeSignal.runtimeFrameLoop.productiveWakeupCount,
+        11,
+    );
+    assert.equal(observed.beforeSignal.runtimeFrameLoop.effectiveVisible, true);
+    assert.equal(
+        observed.afterAcknowledgement.runtimeFrameLoop.effectiveVisible,
+        false,
+    );
+    assert.deepEqual(observed.intersection, {
+        height: 0,
+        isIntersecting: false,
+        time: 1_050,
+        width: 0,
+    });
+    unrelated.deliver(entries);
+    drainMicrotasks();
+    assert.equal(unrelatedCalls, 2);
+    assert.deepEqual(tracker.finishSample(1_250), observed);
+
+    // Synthetic visibility delivery uses the same synchronous boundary.
+    Object.assign(start, { effectiveVisible: true, documentVisible: true });
+    tracker.beginSample(2_000);
+    now = 2_001;
+    tracker.arm('synthetic-document-hidden');
+    const result = tracker.capture('synthetic-document-hidden', () => {
+        start.documentVisible = false;
+        start.effectiveVisible = false;
+        return 42;
+    });
+    assert.equal(result, 42);
+    drainMicrotasks();
+    assert.equal(
+        tracker.finishSample(2_250).afterAcknowledgement.runtimeFrameLoop
+            .documentVisible,
+        false,
+    );
+    tracker.beginSample(3_000);
+    now = 3_001;
+    tracker.arm('intersection-observer');
+    const callbackError = new Error('native callback failure');
+    const throwing = new globalThis.IntersectionObserver(() => {
+        throw callbackError;
+    });
+    assert.throws(
+        () => throwing.deliver(entries),
+        (error) => error === callbackError,
+    );
+    drainMicrotasks();
+
+    // A hostile microtask queued by a visibility handler must be captured by
+    // the fresh acknowledgement and fail, not disappear behind cached getters.
+    const input = createPassingLifecycleLiveAcceptanceInput();
+    const transition = input.offscreen.suspendTransition;
+    Object.assign(start, transition.sample.runtimeFrameLoopAtStart);
+    tracker.beginSample(4_000);
+    now = 4_001;
+    tracker.arm('intersection-observer');
+    const hostileEntries = [{ ...entry, time: 4_010 }];
+    const hostile = new globalThis.IntersectionObserver(() => {
+        Object.assign(start, {
+            callbackPending: false,
+            cancelledCallbackCount: start.cancelledCallbackCount + 1,
+            canvasVisible: false,
+            deferredWorkCount: start.deferredWorkCount + 1,
+            effectiveVisible: false,
+            loopActive: false,
+            pendingCallbackDueAt: null,
+            pendingCallbackKind: 'none',
+            suspendCount: start.suspendCount + 1,
+        });
+        queueMicrotask(() => {
+            start.productiveWakeupCount += 1;
+            start.wakeupCount += 1;
+        });
+    });
+    now = 4_010;
+    hostile.deliver(hostileEntries);
+    drainMicrotasks();
+    transition.sample.lifecycleSuspensionBoundary = tracker.finishSample(4_250);
+    transition.sample.runtimeFrameLoopAtEnd = structuredClone(start);
+    input.offscreen.suspendTransition =
+        buildLifecycleSuspendTransitionEvidence(transition);
+    assert.equal(
+        input.offscreen.suspendTransition.suspensionBoundary.valid,
+        true,
+    );
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            input,
+            'lifecycleLiveOffscreenSuspendTransitionProductiveWakeupCountDelta',
+        ).pass,
+        false,
+    );
+    assert.equal(
+        input.offscreen.suspendTransition.suspensionBoundary.signalWindow
+            .counterDeltas.productiveWakeupCount,
+        1,
+    );
+});
+
+test('delayed lifecycle signal delivery retains productive pre-signal work without failing suspension', () => {
+    for (const phaseName of ['offscreen', 'hidden']) {
+        const input = createPassingLifecycleLiveAcceptanceInput();
+        const transition = input[phaseName].suspendTransition;
+        const sample = transition.sample;
+        const raw = sample.lifecycleSuspensionBoundary;
+        for (const snapshot of [
+            raw.beforeSignal.runtimeFrameLoop,
+            raw.afterAcknowledgement.runtimeFrameLoop,
+            sample.runtimeFrameLoopAtEnd,
+        ]) {
+            for (const field of [
+                'scheduledCallbackCount',
+                'wakeupCount',
+                'productiveWakeupCount',
+                'invalidationCount',
+                'ownedInvalidationCount',
+                'r3fFrameCallbackCount',
+            ]) {
+                snapshot[field] += 4;
+            }
+            snapshot.sceneTimeSeconds += 0.133;
+        }
+        for (const renderer of [
+            raw.beforeSignal.renderer,
+            raw.afterAcknowledgement.renderer,
+            sample,
+        ]) {
+            renderer.drawCalls += 40;
+            renderer.renderedFrames += 4;
+            renderer.submittedTriangles += 400;
+        }
+        raw.beforeSignal.recordedAt = 1_140;
+        raw.callbackReturnedAt = 1_141;
+        raw.afterAcknowledgement.recordedAt = 1_141;
+        if (raw.intersection) {
+            raw.intersection.time = 1_139;
+        }
+        input[phaseName].suspendTransition =
+            buildLifecycleSuspendTransitionEvidence(transition);
+        const evidence = input[phaseName].suspendTransition;
+        assert.equal(evidence.counterDeltas.productiveWakeupCount, 4);
+        assert.equal(
+            evidence.suspensionBoundary.preSignal.counterDeltas
+                .productiveWakeupCount,
+            4,
+        );
+        assert.equal(
+            evidence.suspensionBoundary.signalWindow.counterDeltas
+                .productiveWakeupCount,
+            0,
+        );
+        assert.equal(
+            evidence.suspensionBoundary.postAcknowledgement.counterDeltas
+                .productiveWakeupCount,
+            0,
+        );
+        assert.deepEqual(
+            evaluateLifecycleAcceptance(input).checks.filter(
+                (check) => !check.pass,
+            ),
+            [],
+            phaseName,
+        );
+    }
+});
+
+test('live lifecycle boundary fails closed on missing or malformed acknowledgement and raw evidence tampering', () => {
+    const cases = [
+        (raw) => {
+            raw.beforeSignal = null;
+        },
+        (raw) => {
+            raw.afterAcknowledgement = null;
+        },
+        (raw) => {
+            raw.measurementMode = 'unknown';
+        },
+        (raw) => {
+            raw.beforeSignal.recordedAt = raw.requestedAt - 1;
+        },
+        (raw) => {
+            raw.afterAcknowledgement.recordedAt = raw.sampleEndedAt + 1;
+        },
+        (raw) => {
+            raw.afterAcknowledgement.runtimeFrameLoop.loopActive = true;
+        },
+        (raw) => {
+            raw.afterAcknowledgement.runtimeFrameLoop.callbackPending = true;
+        },
+        (raw) => {
+            raw.afterAcknowledgement.runtimeFrameLoop.pendingCallbackDueAt = 1_500;
+        },
+        (raw) => {
+            delete raw.beforeSignal.runtimeFrameLoop.productiveWakeupCount;
+        },
+        (raw) => {
+            raw.afterAcknowledgement.runtimeFrameLoop.productiveWakeupCount -= 1;
+        },
+        (raw) => {
+            raw.afterAcknowledgement.renderer.drawCalls = -1;
+        },
+        (raw) => {
+            raw.sampleEndedAt += 1;
+        },
+    ];
+    for (const phaseName of ['offscreen', 'hidden']) {
+        const phaseLabel = phaseName[0].toUpperCase() + phaseName.slice(1);
+        const prefix = `lifecycleLive${phaseLabel}SuspendTransition`;
+        for (const [index, mutate] of cases.entries()) {
+            const input = createPassingLifecycleLiveAcceptanceInput();
+            const transition = input[phaseName].suspendTransition;
+            mutate(transition.sample.lifecycleSuspensionBoundary);
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    input,
+                    `${prefix}BoundaryMatchesRawEvidence`,
+                ).pass,
+                false,
+                `${phaseName}:tampering:${index}`,
+            );
+            input[phaseName].suspendTransition =
+                buildLifecycleSuspendTransitionEvidence(transition);
+            assert.equal(
+                lifecycleAcceptanceCheck(input, `${prefix}BoundaryValid`).pass,
+                false,
+                `${phaseName}:invalid:${index}`,
+            );
+        }
+        const missing = createPassingLifecycleLiveAcceptanceInput();
+        delete missing[phaseName].suspendTransition.sample
+            .lifecycleSuspensionBoundary;
+        missing[phaseName].suspendTransition =
+            buildLifecycleSuspendTransitionEvidence(
+                missing[phaseName].suspendTransition,
+            );
+        assert.equal(
+            lifecycleAcceptanceCheck(missing, `${prefix}BoundaryValid`).pass,
+            false,
+        );
+    }
+});
+
+test('live lifecycle suspension requires cancellation at signal delivery and exact-zero work after acknowledgement', () => {
+    for (const phaseName of ['offscreen', 'hidden']) {
+        const phaseLabel = phaseName[0].toUpperCase() + phaseName.slice(1);
+        const prefix = `lifecycleLive${phaseLabel}SuspendTransition`;
+        for (const field of fullRuntimeFrameLoopCounterFields) {
+            const input = createPassingLifecycleLiveAcceptanceInput();
+            const transition = input[phaseName].suspendTransition;
+            transition.sample.runtimeFrameLoopAtEnd[field] += 1;
+            input[phaseName].suspendTransition =
+                buildLifecycleSuspendTransitionEvidence(transition);
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    input,
+                    `${prefix}PostAcknowledgement${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                ).pass,
+                false,
+                `${phaseName}:${field}`,
+            );
+        }
+        for (const field of [
+            'drawCalls',
+            'instancedDrawCalls',
+            'renderedFrames',
+            'submittedTriangles',
+        ]) {
+            const input = createPassingLifecycleLiveAcceptanceInput();
+            const transition = input[phaseName].suspendTransition;
+            transition.sample[field] += 1;
+            input[phaseName].suspendTransition =
+                buildLifecycleSuspendTransitionEvidence(transition);
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    input,
+                    `${prefix}PostAcknowledgement${field[0].toUpperCase()}${field.slice(1)}`,
+                ).pass,
+                false,
+                `${phaseName}:${field}`,
+            );
+        }
+        for (const [field, suffix] of [
+            ['cancelledCallbackCount', 'CancelledCallbackCountDelta'],
+            ['suspendCount', 'SuspendCountDelta'],
+            ['deferredWorkCount', 'DeferredWorkCountDelta'],
+        ]) {
+            const input = createPassingLifecycleLiveAcceptanceInput();
+            const transition = input[phaseName].suspendTransition;
+            transition.sample.lifecycleSuspensionBoundary.afterAcknowledgement.runtimeFrameLoop[
+                field
+            ] -= 1;
+            transition.sample.runtimeFrameLoopAtEnd[field] -= 1;
+            input[phaseName].suspendTransition =
+                buildLifecycleSuspendTransitionEvidence(transition);
+            assert.equal(
+                lifecycleAcceptanceCheck(input, `${prefix}${suffix}`).pass,
+                false,
+            );
+        }
+    }
+});
+
+test('lifecycle suspension evidence requires a settled endpoint and causal frame drain', () => {
+    const start = {
+        ...fullRuntimeCounterValues(10),
+        callbackPending: true,
+        effectiveVisible: true,
+        loopActive: true,
+        pendingCallbackKind: 'frame',
+        sceneTimeSeconds: 10,
+    };
+    const end = {
+        ...start,
+        callbackPending: false,
+        deferredWorkCount: start.deferredWorkCount + 1,
+        effectiveVisible: false,
+        hiddenDeferredCoalescedRenderRequestCount:
+            start.hiddenDeferredCoalescedRenderRequestCount + 1,
+        loopActive: false,
+        nonessentialHiddenWorkCount: start.nonessentialHiddenWorkCount + 3,
+        pendingCallbackKind: 'none',
+        r3fFrameCallbackCount: start.r3fFrameCallbackCount + 3,
+        sceneTimeSeconds: 10.05,
+        suspendCount: start.suspendCount + 1,
+    };
+    const buildEvidence = (runtimeFrameLoopAtEnd) =>
+        buildLifecycleSuspendTransitionEvidence({
+            cdp: {},
+            sample: {
+                elapsedMs: 250,
+                frames: 15,
+                renderedFrames: 3,
+                runtimeFrameLoopAtEnd,
+                runtimeFrameLoopAtStart: start,
+            },
+        });
+    const evidence = buildEvidence(end);
+
+    assert.equal(evidence.maximumExpectedRenderedFrames, 16);
+    assert.equal(evidence.maximumExpectedR3fFrameCallbacks, 16);
+    assert.equal(evidence.causalHiddenWorkBoundary, 3);
+    assert.equal(evidence.settledAtEnd, true);
+
+    for (const mutation of [
+        { effectiveVisible: true },
+        { loopActive: true },
+        { callbackPending: true },
+        { pendingCallbackKind: 'frame' },
+    ]) {
+        assert.equal(
+            buildEvidence({ ...end, ...mutation }).settledAtEnd,
+            false,
+        );
+    }
+});
+
+test('live lifecycle suspension bounds action drain and requires exact-zero settled work', () => {
+    const input = createPassingLifecycleLiveAcceptanceInput();
+
+    for (const phaseName of ['offscreen', 'hidden']) {
+        const phaseLabel = phaseName[0].toUpperCase() + phaseName.slice(1);
+        const prefix = `lifecycleLive${phaseLabel}SuspendTransition`;
+        const boundedDrain = structuredClone(input);
+        const boundedTransition = boundedDrain[phaseName].suspendTransition;
+        boundedTransition.sample.renderedFrames = 3;
+        boundedTransition.counterDeltas.r3fFrameCallbackCount = 3;
+        boundedTransition.counterDeltas.nonessentialHiddenWorkCount = 3;
+        boundedTransition.causalHiddenWorkBoundary = 3;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                boundedDrain,
+                `${prefix}RenderedFramesBrowserBound`,
+            ).pass,
+            true,
+            `${phaseName}:bounded-render-drain`,
+        );
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                boundedDrain,
+                `${prefix}R3fFrameCallbackBrowserBound`,
+            ).pass,
+            true,
+            `${phaseName}:bounded-r3f-drain`,
+        );
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                boundedDrain,
+                `${prefix}NonessentialHiddenWorkCausalBound`,
+            ).pass,
+            true,
+            `${phaseName}:causal-hidden-work`,
+        );
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                boundedDrain,
+                `${prefix}RendererAndR3fFrameCountMatch`,
+            ).pass,
+            true,
+            `${phaseName}:renderer-r3f-match`,
+        );
+        assert.equal(
+            lifecycleAcceptanceCheck(boundedDrain, `${prefix}SettledAtEnd`)
+                .pass,
+            true,
+            `${phaseName}:settled-endpoint`,
+        );
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                boundedDrain,
+                `${prefix}HiddenDeferredCoalescedRenderRequestCountDelta`,
+            ).pass,
+            true,
+            `${phaseName}:one-coalesced-hidden-request`,
+        );
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                boundedDrain,
+                `${prefix}HiddenCoalescedRenderRequestCountDelta`,
+            ).pass,
+            true,
+            `${phaseName}:three-persistent-fauna-hidden-requests`,
+        );
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                boundedDrain,
+                `${prefix}EndCoalescedRenderRequestReasonsBounded`,
+            ).pass,
+            true,
+            `${phaseName}:allowed-coalesced-reason`,
+        );
+
+        const excessiveCoalescedHiddenWork = structuredClone(input);
+        excessiveCoalescedHiddenWork[
+            phaseName
+        ].suspendTransition.suspensionBoundary.signalWindow.counterDeltas.hiddenDeferredCoalescedRenderRequestCount =
+            2;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                excessiveCoalescedHiddenWork,
+                `${prefix}HiddenDeferredCoalescedRenderRequestCountDelta`,
+            ).pass,
+            false,
+            `${phaseName}:coalesced-hidden-request-burst`,
+        );
+
+        const excessiveTotalCoalescedHiddenWork = structuredClone(input);
+        excessiveTotalCoalescedHiddenWork[
+            phaseName
+        ].suspendTransition.suspensionBoundary.signalWindow.counterDeltas.hiddenCoalescedRenderRequestCount =
+            4;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                excessiveTotalCoalescedHiddenWork,
+                `${prefix}HiddenCoalescedRenderRequestCountDelta`,
+            ).pass,
+            false,
+            `${phaseName}:total-coalesced-hidden-request-burst`,
+        );
+
+        const missingTotalCoalescedHiddenWork = structuredClone(input);
+        missingTotalCoalescedHiddenWork[
+            phaseName
+        ].suspendTransition.suspensionBoundary.signalWindow.counterDeltas.hiddenCoalescedRenderRequestCount =
+            0;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                missingTotalCoalescedHiddenWork,
+                `${prefix}HiddenCoalescedRenderRequestCountIncludesDeferredDelta`,
+            ).pass,
+            false,
+            `${phaseName}:total-must-include-deferred-coalesced-work`,
+        );
+
+        const unexpectedCoalescedReason = structuredClone(input);
+        unexpectedCoalescedReason[
+            phaseName
+        ].suspendTransition.sample.runtimeFrameLoopAtEnd.coalescedRenderRequestReasons =
+            ['unexpected-root-update'];
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                unexpectedCoalescedReason,
+                `${prefix}EndCoalescedRenderRequestReasonsBounded`,
+            ).pass,
+            false,
+            `${phaseName}:unexpected-coalesced-reason`,
+        );
+
+        const excessiveCoalescedReasons = structuredClone(input);
+        excessiveCoalescedReasons[
+            phaseName
+        ].suspendTransition.sample.runtimeFrameLoopAtEnd.coalescedRenderRequestReasons =
+            ['r3f-root-update', 'r3f-root-update'];
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                excessiveCoalescedReasons,
+                `${prefix}EndCoalescedRenderRequestReasonsBounded`,
+            ).pass,
+            false,
+            `${phaseName}:too-many-coalesced-reasons`,
+        );
+
+        const rendererBurst = structuredClone(input);
+        rendererBurst[phaseName].suspendTransition.sample.renderedFrames =
+            rendererBurst[phaseName].suspendTransition
+                .maximumExpectedRenderedFrames + 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                rendererBurst,
+                `${prefix}RenderedFramesBrowserBound`,
+            ).pass,
+            false,
+            `${phaseName}:renderer-browser-bound`,
+        );
+
+        const r3fBurst = structuredClone(input);
+        r3fBurst[
+            phaseName
+        ].suspendTransition.counterDeltas.r3fFrameCallbackCount =
+            r3fBurst[phaseName].suspendTransition
+                .maximumExpectedR3fFrameCallbacks + 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                r3fBurst,
+                `${prefix}R3fFrameCallbackBrowserBound`,
+            ).pass,
+            false,
+            `${phaseName}:r3f-browser-bound`,
+        );
+
+        const unexplainedHiddenWork = structuredClone(input);
+        unexplainedHiddenWork[
+            phaseName
+        ].suspendTransition.counterDeltas.nonessentialHiddenWorkCount =
+            unexplainedHiddenWork[phaseName].suspendTransition
+                .causalHiddenWorkBoundary + 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                unexplainedHiddenWork,
+                `${prefix}NonessentialHiddenWorkCausalBound`,
+            ).pass,
+            false,
+            `${phaseName}:unexplained-hidden-work`,
+        );
+
+        const rendererMismatch = structuredClone(input);
+        rendererMismatch[phaseName].suspendTransition.sample.renderedFrames +=
+            1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                rendererMismatch,
+                `${prefix}RendererAndR3fFrameCountMatch`,
+            ).pass,
+            false,
+            `${phaseName}:renderer-r3f-mismatch`,
+        );
+
+        const unsettled = structuredClone(input);
+        unsettled[phaseName].suspendTransition.settledAtEnd = false;
+        assert.equal(
+            lifecycleAcceptanceCheck(unsettled, `${prefix}SettledAtEnd`).pass,
+            false,
+            `${phaseName}:unsettled-endpoint`,
+        );
+
+        for (const field of [
+            'scheduledCallbackCount',
+            'wakeupCount',
+            'invalidationCount',
+            'ownedInvalidationCount',
+        ]) {
+            const oneInFlightCallback = structuredClone(input);
+            oneInFlightCallback[
+                phaseName
+            ].suspendTransition.suspensionBoundary.signalWindow.counterDeltas[
+                field
+            ] = 1;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    oneInFlightCallback,
+                    `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                ).pass,
+                false,
+                `${phaseName}:work-during-signal:${field}`,
+            );
+
+            const callbackBurst = structuredClone(input);
+            callbackBurst[
+                phaseName
+            ].suspendTransition.suspensionBoundary.signalWindow.counterDeltas[
+                field
+            ] = 2;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    callbackBurst,
+                    `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                ).pass,
+                false,
+                `${phaseName}:callback-burst:${field}`,
+            );
+        }
+
+        for (const [field, value, suffix] of [
+            ['suspendCount', 0, 'SuspendCountDelta'],
+            ['deferredWorkCount', 0, 'DeferredWorkCountDelta'],
+            ['cancelledCallbackCount', 2, 'CancelledCallbackCountDelta'],
+        ]) {
+            const invalidTransition = structuredClone(input);
+            invalidTransition[
+                phaseName
+            ].suspendTransition.suspensionBoundary.signalWindow.counterDeltas[
+                field
+            ] = value;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    invalidTransition,
+                    `${prefix}${suffix}`,
+                ).pass,
+                false,
+                `${phaseName}:transition:${field}`,
+            );
+        }
+
+        const tooLong = structuredClone(input);
+        tooLong[phaseName].suspendTransition.sample.elapsedMs = 401;
+        assert.equal(
+            lifecycleAcceptanceCheck(tooLong, `${prefix}ElapsedMsMaximum`).pass,
+            false,
+            `${phaseName}:elapsed-maximum`,
+        );
+
+        const sceneTimeAdvanced = structuredClone(input);
+        sceneTimeAdvanced[
+            phaseName
+        ].suspendTransition.suspensionBoundary.signalWindow.sceneTimeDeltaSeconds =
+            0.100_001;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                sceneTimeAdvanced,
+                `${prefix}SceneTimeDeltaBounded`,
+            ).pass,
+            false,
+            `${phaseName}:scene-time-bound`,
+        );
+
+        const residualRenderedFrame = structuredClone(input);
+        residualRenderedFrame[phaseName].residual.sample.renderedFrames = 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                residualRenderedFrame,
+                `lifecycle${phaseLabel}ResidualRenderedFrames`,
+            ).pass,
+            false,
+            `${phaseName}:residual-rendered-frame`,
+        );
+
+        const residualR3fFrame = structuredClone(input);
+        residualR3fFrame[phaseName].residualDeltas.r3fFrameCallbackCount = 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                residualR3fFrame,
+                `lifecycle${phaseLabel}ResidualR3fFrameCallbackCountDelta`,
+            ).pass,
+            false,
+            `${phaseName}:residual-r3f-frame`,
+        );
+
+        const residualSceneTime = structuredClone(input);
+        residualSceneTime[phaseName].residualSceneTimeDeltaSeconds = 0.000_001;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                residualSceneTime,
+                `lifecycleLive${phaseLabel}ResidualSceneTimeDelta`,
+            ).pass,
+            false,
+            `${phaseName}:residual-scene-time`,
+        );
+    }
+});
+
+test('live lifecycle resume transition bounds owned cadence, browser frames, requests, and failures', () => {
+    const input = createPassingLifecycleLiveAcceptanceInput();
+
+    for (const phaseName of ['offscreen', 'hidden']) {
+        const phaseLabel = phaseName[0].toUpperCase() + phaseName.slice(1);
+        const prefix = `lifecycleLive${phaseLabel}ResumeTransition`;
+
+        const ownedCatchUp = structuredClone(input);
+        ownedCatchUp[
+            phaseName
+        ].resumeTransition.counterDeltas.ownedInvalidationCount =
+            ownedCatchUp[phaseName].resumeTransition
+                .maximumExpectedOwnedInvalidations + 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                ownedCatchUp,
+                `${prefix}OwnedInvalidationCadenceBound`,
+            ).pass,
+            false,
+            `${phaseName}:owned-cadence`,
+        );
+
+        const rendererBurst = structuredClone(input);
+        rendererBurst[phaseName].resumeTransition.sample.renderedFrames =
+            rendererBurst[phaseName].resumeTransition
+                .maximumExpectedRenderedFrames + 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                rendererBurst,
+                `${prefix}RenderedFramesBrowserBound`,
+            ).pass,
+            false,
+            `${phaseName}:renderer-browser-bound`,
+        );
+
+        const r3fBurst = structuredClone(input);
+        r3fBurst[
+            phaseName
+        ].resumeTransition.counterDeltas.r3fFrameCallbackCount =
+            r3fBurst[phaseName].resumeTransition
+                .maximumExpectedR3fFrameCallbacks + 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                r3fBurst,
+                `${prefix}R3fFrameCallbackBrowserBound`,
+            ).pass,
+            false,
+            `${phaseName}:r3f-browser-bound`,
+        );
+
+        const semanticSurplus = structuredClone(input);
+        semanticSurplus[
+            phaseName
+        ].resumeTransition.r3fOwnedInvalidationSurplus =
+            semanticSurplus[phaseName].resumeTransition
+                .maximumExpectedR3fOwnedInvalidationSurplus + 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                semanticSurplus,
+                `${prefix}R3fOwnedInvalidationSurplusBound`,
+            ).pass,
+            false,
+            `${phaseName}:semantic-surplus`,
+        );
+
+        const rendererMismatch = structuredClone(input);
+        rendererMismatch[phaseName].resumeTransition.sample.renderedFrames -= 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                rendererMismatch,
+                `${prefix}RendererAndR3fFrameCountMatch`,
+            ).pass,
+            false,
+            `${phaseName}:renderer-r3f-match`,
+        );
+
+        const missingResume = structuredClone(input);
+        missingResume[phaseName].resumeTransition.counterDeltas.resumeCount = 0;
+        assert.equal(
+            lifecycleAcceptanceCheck(missingResume, `${prefix}ResumeCountDelta`)
+                .pass,
+            false,
+            `${phaseName}:resume-count`,
+        );
+
+        const sceneTimeFastForward = structuredClone(input);
+        const elapsedSeconds =
+            sceneTimeFastForward[phaseName].resumeTransition.sample.elapsedMs /
+            1_000;
+        sceneTimeFastForward[phaseName].resumeTransition.sceneTimeDeltaSeconds =
+            elapsedSeconds + 0.150_001;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                sceneTimeFastForward,
+                `${prefix}SceneTimeDeltaBounded`,
+            ).pass,
+            false,
+            `${phaseName}:scene-time-bound`,
+        );
+
+        const pendingRequest = structuredClone(input);
+        pendingRequest[
+            phaseName
+        ].resumeTransition.sample.runtimeFrameLoopAtEnd.renderRequestReasons = [
+            'still-pending',
+        ];
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                pendingRequest,
+                `${prefix}RenderRequestsDrained`,
+            ).pass,
+            false,
+            `${phaseName}:request-drain`,
+        );
+
+        for (const field of [
+            'fixedStepFailureCount',
+            'hiddenDeferredCoalescedRenderRequestCount',
+            'hiddenCoalescedRenderRequestCount',
+            'hiddenDeferredRenderRequestCount',
+            'invalidationFailureCount',
+            'missedFrameReceiptCount',
+            'nonessentialHiddenWorkCount',
+        ]) {
+            const failedRuntime = structuredClone(input);
+            failedRuntime[phaseName].resumeTransition.counterDeltas[field] = 1;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    failedRuntime,
+                    `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                ).pass,
+                false,
+                `${phaseName}:runtime-failure:${field}`,
+            );
+        }
+    }
+});
+
+test('live lifecycle steady resume keeps owned and R3F cadence strict with no pending requests', () => {
+    const input = createPassingLifecycleLiveAcceptanceInput();
+
+    for (const phaseName of ['offscreen', 'hidden']) {
+        const phaseLabel = phaseName[0].toUpperCase() + phaseName.slice(1);
+        const prefix = `lifecycleLive${phaseLabel}Resume`;
+
+        const ownedCatchUp = structuredClone(input);
+        ownedCatchUp[
+            phaseName
+        ].resumeWindow.counterDeltas.ownedInvalidationCount =
+            ownedCatchUp[phaseName].resumeWindow
+                .maximumExpectedOwnedInvalidations + 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                ownedCatchUp,
+                `${prefix}OwnedInvalidationCadenceBound`,
+            ).pass,
+            false,
+            `${phaseName}:owned-cadence`,
+        );
+
+        const r3fCatchUp = structuredClone(input);
+        r3fCatchUp[phaseName].resumeWindow.counterDeltas.r3fFrameCallbackCount =
+            r3fCatchUp[phaseName].resumeWindow
+                .maximumExpectedR3fFrameCallbacks + 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                r3fCatchUp,
+                `${prefix}R3fFrameCallbackCadenceBound`,
+            ).pass,
+            false,
+            `${phaseName}:r3f-cadence`,
+        );
+
+        for (const [endpoint, checkSuffix] of [
+            ['runtimeFrameLoopAtStart', 'RenderRequestsEmptyAtStart'],
+            ['runtimeFrameLoopAtEnd', 'RenderRequestsEmptyAtEnd'],
+        ]) {
+            const pendingRequest = structuredClone(input);
+            pendingRequest[phaseName].resumeWindow.sample[
+                endpoint
+            ].renderRequestReasons = ['still-pending'];
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    pendingRequest,
+                    `${prefix}${checkSuffix}`,
+                ).pass,
+                false,
+                `${phaseName}:${endpoint}`,
+            );
+        }
+
+        const coalescedHiddenWork = structuredClone(input);
+        coalescedHiddenWork[
+            phaseName
+        ].resumeWindow.counterDeltas.hiddenDeferredCoalescedRenderRequestCount =
+            1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                coalescedHiddenWork,
+                `${prefix}HiddenDeferredCoalescedRenderRequestCountDelta`,
+            ).pass,
+            false,
+            `${phaseName}:coalesced-hidden-work`,
+        );
+
+        const totalCoalescedHiddenWork = structuredClone(input);
+        totalCoalescedHiddenWork[
+            phaseName
+        ].resumeWindow.counterDeltas.hiddenCoalescedRenderRequestCount = 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                totalCoalescedHiddenWork,
+                `${prefix}HiddenCoalescedRenderRequestCountDelta`,
+            ).pass,
+            false,
+            `${phaseName}:total-coalesced-hidden-work`,
+        );
+    }
+});
+
+test('live lifecycle acceptance gates exhaustive zero work, bounded resume health, and persistent cadence', () => {
+    const input = createPassingLifecycleLiveAcceptanceInput();
+    const passing = evaluateLifecycleAcceptance(input);
+    assert.equal(
+        passing.pass,
+        true,
+        passing.checks
+            .filter((check) => !check.pass)
+            .map((check) => check.name)
+            .join(', '),
+    );
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            input,
+            'lifecycleLiveActiveCoalescedRenderRequestReasonsBounded',
+        ).pass,
+        true,
+    );
+    const unexpectedActiveCoalescedReason = structuredClone(input);
+    unexpectedActiveCoalescedReason.active.runtimeFrameLoop.coalescedRenderRequestReasons =
+        ['unexpected-root-update'];
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            unexpectedActiveCoalescedReason,
+            'lifecycleLiveActiveCoalescedRenderRequestReasonsBounded',
+        ).pass,
+        false,
+    );
+    const activeCoalescedHiddenWork = structuredClone(input);
+    activeCoalescedHiddenWork.active.sample.runtimeFrameLoopCounterDeltas.hiddenDeferredCoalescedRenderRequestCount = 1;
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            activeCoalescedHiddenWork,
+            'lifecycleLiveActiveHiddenDeferredCoalescedRenderRequestCountDelta',
+        ).pass,
+        false,
+    );
+    const activeTotalCoalescedHiddenWork = structuredClone(input);
+    activeTotalCoalescedHiddenWork.active.sample.runtimeFrameLoopCounterDeltas.hiddenCoalescedRenderRequestCount = 1;
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            activeTotalCoalescedHiddenWork,
+            'lifecycleLiveActiveHiddenCoalescedRenderRequestCountDelta',
+        ).pass,
+        false,
+    );
+    assert.deepEqual(passing.residualWorkPolicy, {
+        cdpFiniteDiagnostic: true,
+        fullResidualZeroWorkGated: true,
+        ownedSchedulingGated: true,
+        rendererGated: true,
+        runtimeSchedulerGated: true,
+        reason: 'The candidate-only live lifecycle gates every offscreen and synthetic-hidden runtime counter, R3F callback, rendered frame, draw call, and submitted triangle at exact zero. CDP script, task, and layout durations remain finite diagnostics rather than zero-work gates.',
+    });
+    assert.deepEqual(
+        normalizeRenderLeaseSummaryRates(
+            input.offscreen.resumed.renderLeaseSummaries,
+            {
+                'fauna:birds': 30,
+                'fauna:cats': 30,
+                'fauna:dogs': 30,
+                'plant-sway': 30,
+            },
+        ),
+        {
+            'fauna:birds': 30,
+            'fauna:cats': 30,
+            'fauna:dogs': 30,
+            'plant-sway': 30,
+        },
+    );
+
+    for (const phaseName of ['offscreen', 'hidden']) {
+        const phaseLabel = phaseName[0].toUpperCase() + phaseName.slice(1);
+        for (const field of fullRuntimeFrameLoopCounterFields) {
+            const mutation = structuredClone(input);
+            mutation[phaseName].residualDeltas[field] = 1;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    mutation,
+                    `lifecycle${phaseLabel}Residual${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                ).pass,
+                false,
+                `${phaseName}:${field}`,
+            );
+            assert.equal(evaluateLifecycleAcceptance(mutation).pass, false);
+        }
+        for (const [field, checkSuffix] of [
+            ['renderedFrames', 'RenderedFrames'],
+            ['drawCalls', 'DrawCalls'],
+            ['submittedTriangles', 'SubmittedTriangles'],
+        ]) {
+            const mutation = structuredClone(input);
+            mutation[phaseName].residual.sample[field] = 1;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    mutation,
+                    `lifecycle${phaseLabel}Residual${checkSuffix}`,
+                ).pass,
+                false,
+                `${phaseName}:${field}`,
+            );
+        }
+        const withoutZeroWitness = structuredClone(input);
+        withoutZeroWitness[phaseName].zeroWorkObserved = false;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                withoutZeroWitness,
+                `lifecycle${phaseLabel}ResidualZeroWorkObserved`,
+            ).pass,
+            false,
+        );
+        for (const [field, suffix] of [
+            ['scriptDuration', 'ScriptDuration'],
+            ['taskDuration', 'TaskDuration'],
+            ['layoutDuration', 'LayoutDuration'],
+        ]) {
+            const mutation = structuredClone(input);
+            mutation[phaseName].residual.cdp[field] = Number.NaN;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    mutation,
+                    `lifecycle${phaseLabel}ResidualCdp${suffix}`,
+                ).pass,
+                false,
+            );
+        }
+        const sceneTimeAdvanced = structuredClone(input);
+        sceneTimeAdvanced[phaseName].residualSceneTimeDeltaSeconds = 0.001;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                sceneTimeAdvanced,
+                `lifecycleLive${phaseLabel}ResidualSceneTimeDelta`,
+            ).pass,
+            false,
+        );
+
+        for (const owner of [
+            'fauna:birds',
+            'fauna:cats',
+            'fauna:dogs',
+            'plant-sway',
+        ]) {
+            const missingOwner = structuredClone(input);
+            missingOwner[phaseName].resumed.renderLeaseSummaries = missingOwner[
+                phaseName
+            ].resumed.renderLeaseSummaries.filter(
+                (summary) => summary.owner !== owner,
+            );
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    missingOwner,
+                    `lifecycleLive${phaseLabel}RenderLeaseRatesRestored`,
+                ).pass,
+                false,
+                `${phaseName}:missing:${owner}`,
+            );
+
+            const wrongRate = structuredClone(input);
+            wrongRate[phaseName].resumed.renderLeaseSummaries.find(
+                (summary) => summary.owner === owner,
+            ).framesPerSecond = 29;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    wrongRate,
+                    `lifecycleLive${phaseLabel}RenderLeaseRatesRestored`,
+                ).pass,
+                false,
+                `${phaseName}:rate:${owner}`,
+            );
+        }
+
+        const wrongTarget = structuredClone(input);
+        wrongTarget[phaseName].resumed.targetFramesPerSecond = 29;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                wrongTarget,
+                `lifecycleLive${phaseLabel}TargetFramesPerSecondRestored`,
+            ).pass,
+            false,
+        );
+
+        for (const [path, value, checkSuffix] of [
+            ['sample.elapsedMs', 1_849, 'ElapsedMs'],
+            ['sample.elapsedMs', 2_101, 'ElapsedMsMaximum'],
+            ['sceneTimeDeltaSeconds', 0, 'SceneTimeDeltaSeconds'],
+            ['sceneTimeDeltaSeconds', 2.151, 'SceneTimeDeltaBounded'],
+            ['targetFramesPerSecond', 0, 'TargetFramesPerSecond'],
+            ['sample.renderedFrames', 0, 'RenderedFrames'],
+            ['sample.drawCalls', 0, 'DrawCalls'],
+            ['sample.submittedTriangles', 0, 'SubmittedTriangles'],
+            ['counterDeltas.wakeupCount', 0, 'WakeupDelta'],
+            [
+                'counterDeltas.ownedInvalidationCount',
+                0,
+                'OwnedInvalidationDelta',
+            ],
+            ['counterDeltas.r3fFrameCallbackCount', 0, 'R3fFrameCallbackDelta'],
+        ]) {
+            const mutation = structuredClone(input);
+            const segments = path.split('.');
+            let target = mutation[phaseName].resumeWindow;
+            while (segments.length > 1) {
+                target = target[segments.shift()];
+            }
+            target[segments[0]] = value;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    mutation,
+                    `lifecycleLive${phaseLabel}Resume${checkSuffix}`,
+                ).pass,
+                false,
+                `${phaseName}:${path}`,
+            );
+        }
+        const catchUpBurst = structuredClone(input);
+        catchUpBurst[phaseName].resumeWindow.sample.renderedFrames =
+            catchUpBurst[phaseName].resumeWindow.maximumExpectedRenderedFrames +
+            1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                catchUpBurst,
+                `lifecycleLive${phaseLabel}ResumeRenderedFramesCatchUpBound`,
+            ).pass,
+            false,
+        );
+        for (const field of [
+            'fixedStepFailureCount',
+            'hiddenDeferredCoalescedRenderRequestCount',
+            'hiddenCoalescedRenderRequestCount',
+            'hiddenDeferredRenderRequestCount',
+            'invalidationFailureCount',
+            'missedFrameReceiptCount',
+            'nonessentialHiddenWorkCount',
+        ]) {
+            const mutation = structuredClone(input);
+            mutation[phaseName].resumeWindow.counterDeltas[field] = 1;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    mutation,
+                    `lifecycleLive${phaseLabel}Resume${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                ).pass,
+                false,
+                `${phaseName}:${field}`,
+            );
+        }
+    }
+});
+
+function createPassingRuntimeOwnersAcceptanceInput({
+    autoQualityDeviceClass = 'unspecified',
+    dprCap = 2,
+    groundDecorationDensity = 1,
+    quality = 'high',
+    shadowMapSize = 4_096,
+    shadowsEnabled = true,
+    tier = 'high',
+} = {}) {
+    const autoQualityMetrics =
+        autoQualityDeviceClass === 'standard'
+            ? {
+                  coarsePointer: false,
+                  coreCount: 8,
+                  dpr: 2,
+                  memoryGb: 8,
+                  narrowViewport: false,
+              }
+            : autoQualityDeviceClass === 'constrained'
+              ? {
+                    coarsePointer: false,
+                    coreCount: 4,
+                    dpr: 2,
+                    memoryGb: 4,
+                    narrowViewport: false,
+                }
+              : null;
+    const persistentOwners = Object.fromEntries(
+        [
+            'fauna:birds',
+            'fauna:cats',
+            'fauna:dogs',
+            'plant-sway',
+            'rain-particles',
+            'weather-animation',
+        ].map((owner) => [
+            owner,
+            {
+                coverageRatio: 0.95,
+                endpointObserved: true,
+                expectedFramesPerSecond: 30,
+                framesPerSecond: [30],
+                matchingObservationCount: 97,
+                matchingRafObservationCount: 95,
+                maximumLeaseCount: owner === 'plant-sway' ? 2 : 1,
+                observedFrameCount: 95,
+                observedObservationCount: 97,
+                startObserved: true,
+            },
+        ]),
+    );
+
+    return {
+        apiErrors: [],
+        consoleMessages: [],
+        pageErrors: [],
+        requested: {
+            autoQualityDeviceClass,
+            autoQualityMetrics,
+            controls: '1',
+            debugHud: '0',
+            details: '1',
+            dpr: 2,
+            expectedAutoQualityMetrics: autoQualityMetrics,
+            expectedDprCap: dprCap,
+            expectedGroundDecorationDensity: groundDecorationDensity,
+            expectedQualityTier: tier,
+            expectedShadowMapSize: shadowMapSize,
+            expectedShadows: shadowsEnabled,
+            fixedTimeSeconds: null,
+            gardenProfile: 'high-target',
+            hud: '0',
+            mode: 'rain',
+            motion: 'runtime-owner-bounded-zoom-rotate',
+            motionWarmupMs: 900,
+            outline: '1',
+            quality,
+            runtimeOwnersProfile: true,
+            staticSceneCache: 'legacy',
+            viewport: { height: 720, width: 1_280 },
+        },
+        runtime: {
+            dprCap,
+            groundDecorationDensity,
+            qualityTier: tier,
+            shadowMapSize,
+            shadowsEnabled,
+            staticOpaqueSceneCacheEnabled: false,
+        },
+        sample: {
+            drawCalls: 1_000,
+            elapsedMs: 5_000,
+            gameCameraMotionObserved: true,
+            gameCameraSnapshotAtEnd: {
+                position: [-10, 10, -10],
+                target: [0, 0, 0],
+                version: 6,
+                zoom: 100,
+            },
+            gameCameraSnapshotAtStart: {
+                position: [-10, 10, -10],
+                target: [0, 0, 0],
+                version: 1,
+                zoom: 100,
+            },
+            gameCameraSnapshotVersionDelta: 5,
+            motionWarmupCameraSnapshotAtEnd: {
+                position: [-10, 10, -10],
+                target: [0, 0, 0],
+                version: 5,
+                zoom: 100,
+            },
+            motionWarmupCameraSnapshotAtStart: {
+                position: [-10, 10, -10],
+                target: [0, 0, 0],
+                version: 1,
+                zoom: 100,
+            },
+            motionWarmupCameraSnapshotVersionDelta: 4,
+            renderedFrames: 180,
+            runtimeFrameLoopCounterDeltas: {
+                hiddenDeferredCoalescedRenderRequestCount: 0,
+                hiddenCoalescedRenderRequestCount: 0,
+                ownedInvalidationCount: 150,
+                r3fFrameCallbackCount: 180,
+            },
+            runtimeOwnerLeaseEvidence: {
+                deliveryByTargetFramesPerSecond: {
+                    30: {
+                        actualRenderedFrames: 120,
+                        deliveryRatio: 1,
+                        durationMs: 4_000,
+                        expectedFrameBudget: 120,
+                        framesPerSecond: 30,
+                    },
+                    60: {
+                        actualRenderedFrames: 60,
+                        deliveryRatio: 1,
+                        durationMs: 1_000,
+                        expectedFrameBudget: 60,
+                        framesPerSecond: 60,
+                    },
+                },
+                endpointObserved: true,
+                frameCount: 100,
+                observationCount: 102,
+                owners: {
+                    'camera-interaction': {
+                        coverageRatio: 0.05,
+                        endpointObserved: false,
+                        expectedFramesPerSecond: 60,
+                        framesPerSecond: [60],
+                        matchingObservationCount: 5,
+                        matchingRafObservationCount: 5,
+                        maximumLeaseCount: 1,
+                        observedFrameCount: 5,
+                        observedObservationCount: 5,
+                        startObserved: false,
+                    },
+                    ...persistentOwners,
+                },
+                rafObservationCount: 100,
+                sceneTimeDeltaSeconds: 5,
+                startObserved: true,
+                targetFramesPerSecondMax: 60,
+                targetFramesPerSecondMin: 30,
+            },
+            submittedTriangles: 10_000,
+        },
+        screenshotWitness: {
+            entropy: 1,
+            height: 1_440,
+            maximumChannelStandardDeviation: 10,
+            opaque: true,
+            sampledLumaRange: 40,
+            sampledUniqueColorCount: 32,
+            width: 2_560,
+        },
+    };
+}
+
+function runtimeOwnersAcceptanceCheck(input, name) {
+    return evaluateRuntimeOwnersAcceptance(input).checks.find(
+        (check) => check.name === name,
+    );
+}
+
+test('runtime-owner acceptance proves exact camera, weather, plant, and fauna cadence across tiers', () => {
+    const profiles = [
+        {
+            dprCap: 1,
+            groundDecorationDensity: 0,
+            quality: 'low',
+            shadowMapSize: 0,
+            shadowsEnabled: false,
+            tier: 'low',
+        },
+        {
+            dprCap: 1.5,
+            groundDecorationDensity: 0.5,
+            quality: 'medium',
+            shadowMapSize: 2_048,
+            tier: 'medium',
+        },
+        {},
+        {
+            autoQualityDeviceClass: 'standard',
+            dprCap: 1.5,
+            groundDecorationDensity: 0.5,
+            quality: 'auto',
+            shadowMapSize: 2_048,
+            tier: 'medium',
+        },
+        {
+            autoQualityDeviceClass: 'constrained',
+            dprCap: 1,
+            groundDecorationDensity: 0.25,
+            quality: 'auto',
+            shadowMapSize: 1_024,
+            tier: 'auto-constrained',
+        },
+    ];
+
+    for (const profile of profiles) {
+        const input = createPassingRuntimeOwnersAcceptanceInput(profile);
+        const result = evaluateRuntimeOwnersAcceptance(input);
+        assert.equal(
+            result.pass,
+            true,
+            result.checks
+                .filter((check) => !check.pass)
+                .map((check) => check.name)
+                .join(', '),
+        );
+        assert.equal(evaluateHighTargetAcceptance(input).pass, true);
+    }
+});
+
+test('runtime-owner acceptance gates delivered 30 and 60 FPS cadence', () => {
+    const setDeliveredFrames = (input, rate, actualRenderedFrames) => {
+        const delivery =
+            input.sample.runtimeOwnerLeaseEvidence
+                .deliveryByTargetFramesPerSecond[rate];
+        delivery.actualRenderedFrames = actualRenderedFrames;
+        delivery.deliveryRatio =
+            actualRenderedFrames / delivery.expectedFrameBudget;
+        const attributedRenderedFrames = Object.values(
+            input.sample.runtimeOwnerLeaseEvidence
+                .deliveryByTargetFramesPerSecond,
+        ).reduce(
+            (total, candidate) => total + candidate.actualRenderedFrames,
+            0,
+        );
+        input.sample.renderedFrames = attributedRenderedFrames;
+        input.sample.runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount =
+            attributedRenderedFrames;
+    };
+    const passing = createPassingRuntimeOwnersAcceptanceInput();
+    assert.equal(evaluateRuntimeOwnersAcceptance(passing).pass, true);
+
+    const underdelivered = structuredClone(passing);
+    setDeliveredFrames(underdelivered, 30, 100);
+    assert.equal(
+        runtimeOwnersAcceptanceCheck(
+            underdelivered,
+            'runtimeOwners30FpsDeliveryRatioMinimum',
+        ).pass,
+        false,
+    );
+
+    const overdelivered = structuredClone(passing);
+    setDeliveredFrames(overdelivered, 60, 70);
+    assert.equal(
+        runtimeOwnersAcceptanceCheck(
+            overdelivered,
+            'runtimeOwners60FpsDeliveryRatioMaximum',
+        ).pass,
+        false,
+    );
+
+    const missingSixtyFpsExposure = structuredClone(passing);
+    Object.assign(
+        missingSixtyFpsExposure.sample.runtimeOwnerLeaseEvidence
+            .deliveryByTargetFramesPerSecond[60],
+        {
+            actualRenderedFrames: 0,
+            deliveryRatio: null,
+            durationMs: 0,
+            expectedFrameBudget: 0,
+        },
+    );
+    missingSixtyFpsExposure.sample.renderedFrames = 120;
+    missingSixtyFpsExposure.sample.runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount = 120;
+    assert.equal(
+        runtimeOwnersAcceptanceCheck(
+            missingSixtyFpsExposure,
+            'runtimeOwners60FpsDeliveryDurationMs',
+        ).pass,
+        false,
+    );
+
+    for (const [sceneTimeDeltaSeconds, checkName] of [
+        [4.7, 'runtimeOwnersSceneTimeDeltaSecondsMinimum'],
+        [5.3, 'runtimeOwnersSceneTimeDeltaSecondsMaximum'],
+    ]) {
+        const sceneTimeDrift = structuredClone(passing);
+        sceneTimeDrift.sample.runtimeOwnerLeaseEvidence.sceneTimeDeltaSeconds =
+            sceneTimeDeltaSeconds;
+        assert.equal(
+            runtimeOwnersAcceptanceCheck(sceneTimeDrift, checkName).pass,
+            false,
+        );
+    }
+
+    const r3fMismatch = structuredClone(passing);
+    r3fMismatch.sample.runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount += 1;
+    assert.equal(
+        runtimeOwnersAcceptanceCheck(
+            r3fMismatch,
+            'runtimeOwnersRenderedFramesMatchR3fFrameCallbackDelta',
+        ).pass,
+        false,
+    );
+
+    const attributionMismatch = structuredClone(passing);
+    attributionMismatch.sample.runtimeOwnerLeaseEvidence.deliveryByTargetFramesPerSecond[60].actualRenderedFrames += 1;
+    attributionMismatch.sample.runtimeOwnerLeaseEvidence.deliveryByTargetFramesPerSecond[60].deliveryRatio =
+        61 / 60;
+    assert.equal(
+        runtimeOwnersAcceptanceCheck(
+            attributionMismatch,
+            'runtimeOwnersAttributedRenderedFramesMatchRenderedFrames',
+        ).pass,
+        false,
+    );
+});
+
+test('runtime-owner acceptance rejects missing, intermittent, or wrong-rate owner evidence', () => {
+    const input = createPassingRuntimeOwnersAcceptanceInput();
+    const owners = Object.keys(input.sample.runtimeOwnerLeaseEvidence.owners);
+    const ownerLabel = (owner) =>
+        owner
+            .split(/[:-]/u)
+            .map((part) => `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`)
+            .join('');
+
+    for (const owner of owners) {
+        const missing = structuredClone(input);
+        delete missing.sample.runtimeOwnerLeaseEvidence.owners[owner];
+        assert.equal(
+            runtimeOwnersAcceptanceCheck(missing, 'runtimeOwnersOwnerSet').pass,
+            false,
+            `missing:${owner}`,
+        );
+
+        const wrongExpectedRate = structuredClone(input);
+        wrongExpectedRate.sample.runtimeOwnerLeaseEvidence.owners[
+            owner
+        ].expectedFramesPerSecond = 29;
+        const prefix =
+            owner === 'camera-interaction'
+                ? 'runtimeOwnersCamera'
+                : `runtimeOwners${ownerLabel(owner)}`;
+        assert.equal(
+            runtimeOwnersAcceptanceCheck(
+                wrongExpectedRate,
+                `${prefix}ExpectedFramesPerSecond`,
+            ).pass,
+            false,
+            `expected-rate:${owner}`,
+        );
+
+        const wrongObservedRate = structuredClone(input);
+        wrongObservedRate.sample.runtimeOwnerLeaseEvidence.owners[
+            owner
+        ].framesPerSecond = [29];
+        assert.equal(
+            runtimeOwnersAcceptanceCheck(
+                wrongObservedRate,
+                `${prefix}FramesPerSecond`,
+            ).pass,
+            false,
+            `observed-rate:${owner}`,
+        );
+    }
+
+    for (const owner of owners.filter(
+        (owner) => owner !== 'camera-interaction',
+    )) {
+        const prefix = `runtimeOwners${ownerLabel(owner)}`;
+        for (const [field, value, suffix] of [
+            ['coverageRatio', 0.8999, 'CoverageRatio'],
+            ['maximumLeaseCount', 0, 'MaximumLeaseCount'],
+            ['startObserved', false, 'StartObserved'],
+            ['endpointObserved', false, 'EndpointObserved'],
+        ]) {
+            const mutation = structuredClone(input);
+            mutation.sample.runtimeOwnerLeaseEvidence.owners[owner][field] =
+                value;
+            assert.equal(
+                runtimeOwnersAcceptanceCheck(mutation, `${prefix}${suffix}`)
+                    .pass,
+                false,
+                `${owner}:${field}`,
+            );
+        }
+    }
+
+    for (const [field, value, check] of [
+        [
+            'matchingRafObservationCount',
+            1,
+            'runtimeOwnersCameraMatchingFrameCount',
+        ],
+        ['observedFrameCount', 1, 'runtimeOwnersCameraObservedFrameCount'],
+        ['maximumLeaseCount', 0, 'runtimeOwnersCameraMaximumLeaseCount'],
+    ]) {
+        const mutation = structuredClone(input);
+        mutation.sample.runtimeOwnerLeaseEvidence.owners['camera-interaction'][
+            field
+        ] = value;
+        assert.equal(runtimeOwnersAcceptanceCheck(mutation, check).pass, false);
+    }
+});
+
+test('runtime-owner acceptance fails closed on sample, target, visual, and error witnesses', () => {
+    const input = createPassingRuntimeOwnersAcceptanceInput();
+    const mutations = [
+        [
+            'sample.runtimeOwnerLeaseEvidence.startObserved',
+            false,
+            'runtimeOwnersStartObserved',
+        ],
+        [
+            'sample.runtimeOwnerLeaseEvidence.endpointObserved',
+            false,
+            'runtimeOwnersEndpointObserved',
+        ],
+        [
+            'sample.runtimeOwnerLeaseEvidence.frameCount',
+            1,
+            'runtimeOwnersFrameCount',
+        ],
+        [
+            'sample.runtimeOwnerLeaseEvidence.rafObservationCount',
+            1,
+            'runtimeOwnersRafObservationCount',
+        ],
+        [
+            'sample.runtimeOwnerLeaseEvidence.targetFramesPerSecondMin',
+            29,
+            'runtimeOwnersTargetFramesPerSecondMin',
+        ],
+        [
+            'sample.runtimeOwnerLeaseEvidence.targetFramesPerSecondMax',
+            59,
+            'runtimeOwnersTargetFramesPerSecondMax',
+        ],
+        [
+            'sample.runtimeFrameLoopCounterDeltas.ownedInvalidationCount',
+            0,
+            'runtimeOwnersOwnedInvalidationDelta',
+        ],
+        [
+            'sample.runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount',
+            0,
+            'runtimeOwnersR3fFrameCallbackDelta',
+        ],
+        [
+            'sample.runtimeFrameLoopCounterDeltas.hiddenDeferredCoalescedRenderRequestCount',
+            1,
+            'runtimeOwnersHiddenDeferredCoalescedRenderRequestCountDelta',
+        ],
+        [
+            'sample.runtimeFrameLoopCounterDeltas.hiddenCoalescedRenderRequestCount',
+            1,
+            'runtimeOwnersHiddenCoalescedRenderRequestCountDelta',
+        ],
+        ['sample.renderedFrames', 0, 'runtimeOwnersRenderedFrames'],
+        ['sample.drawCalls', 0, 'runtimeOwnersDrawCalls'],
+        ['sample.submittedTriangles', 0, 'runtimeOwnersSubmittedTriangles'],
+        [
+            'sample.gameCameraMotionObserved',
+            false,
+            'runtimeOwnersCameraMotionObserved',
+        ],
+        [
+            'sample.gameCameraSnapshotVersionDelta',
+            0,
+            'runtimeOwnersCameraSnapshotVersionDelta',
+        ],
+        [
+            'sample.motionWarmupCameraSnapshotVersionDelta',
+            0,
+            'runtimeOwnersMotionWarmupCameraVersionDelta',
+        ],
+        [
+            'sample.motionWarmupCameraSnapshotAtEnd.target.0',
+            0.02,
+            'runtimeOwnersMotionWarmupCameraEndpointMaximumDelta',
+        ],
+        [
+            'sample.gameCameraSnapshotAtEnd.target.0',
+            1,
+            'runtimeOwnersCameraEndpointMaximumDelta',
+        ],
+        ['screenshotWitness.entropy', 0, 'runtimeOwnersScreenshotWitnessValid'],
+    ];
+
+    for (const [path, value, check] of mutations) {
+        const mutation = structuredClone(input);
+        const segments = path.split('.');
+        let target = mutation;
+        while (segments.length > 1) {
+            target = target[segments.shift()];
+        }
+        target[segments[0]] = value;
+        assert.equal(
+            runtimeOwnersAcceptanceCheck(mutation, check).pass,
+            false,
+            path,
+        );
+        assert.equal(evaluateRuntimeOwnersAcceptance(mutation).pass, false);
+    }
+
+    for (const [field, error, check] of [
+        ['apiErrors', { status: 500 }, 'runtimeOwnersApiErrors'],
+        [
+            'consoleMessages',
+            { text: 'runtime failure', type: 'error', url: 'http://profile' },
+            'runtimeOwnersConsoleErrors',
+        ],
+        ['pageErrors', 'runtime failure', 'runtimeOwnersPageErrors'],
+    ]) {
+        const mutation = structuredClone(input);
+        mutation[field].push(error);
+        assert.equal(
+            runtimeOwnersAcceptanceCheck(mutation, check).pass,
+            false,
+            field,
+        );
+    }
+});
+
+test('runtime-owner acceptance rejects position, target, and zoom endpoint drift', () => {
+    const input = createPassingRuntimeOwnersAcceptanceInput();
+
+    for (const [label, mutateEndpoint] of [
+        [
+            'position',
+            (snapshot) => {
+                snapshot.position[0] += 0.02;
+            },
+        ],
+        [
+            'target',
+            (snapshot) => {
+                snapshot.target[0] += 0.02;
+            },
+        ],
+        [
+            'zoom',
+            (snapshot) => {
+                snapshot.zoom += 0.02;
+            },
+        ],
+    ]) {
+        const cameraDrift = structuredClone(input);
+        mutateEndpoint(cameraDrift.sample.gameCameraSnapshotAtEnd);
+        const cameraDriftAcceptance =
+            evaluateRuntimeOwnersAcceptance(cameraDrift);
+        assert.equal(cameraDriftAcceptance.pass, false, label);
+        assert.equal(
+            cameraDriftAcceptance.checks.find(
+                (check) =>
+                    check.name === 'runtimeOwnersCameraEndpointMaximumDelta',
+            )?.pass,
+            false,
+            label,
+        );
+    }
+});
+
+test('candidate runtime-owner repeats stay outside canonical High and cross-tier medians', () => {
+    const runs = [1, 2, 3].map((profileRun) => ({
+        acceptance: { pass: true },
+        baseName: 'game-runtime-owners-low-desktop',
+        budget: { pass: true },
+        name: `game-runtime-owners-low-desktop-run-${profileRun}`,
+        performanceBudget: { pass: true },
+        profileRun,
+        requested: {
+            gardenProfile: 'high-target',
+            runtimeOwnersProfile: true,
+        },
+        sample: {},
+    }));
+
+    const highTargetMedians = buildHighTargetMedians(runs);
+    assert.deepEqual(highTargetMedians, {});
+    assert.deepEqual(buildCrossTierMedians(highTargetMedians), {});
+    assert.deepEqual(buildProfileSummary(runs, highTargetMedians), {
+        failedScenarioNames: [],
+        failedScenarios: 0,
+        failedRuns: 0,
+        passedRuns: 3,
+        passedScenarios: 1,
+        totalRuns: 3,
+        totalScenarios: 1,
+    });
+});
+
+test('runtime-owner markdown reports cadence, owned work, and screenshot evidence', () => {
+    const input = createPassingRuntimeOwnersAcceptanceInput();
+    const scenario = {
+        acceptance: { pass: true },
+        baseName: 'game-runtime-owners-high-desktop',
+        budget: { checks: [], pass: true },
+        consoleMessages: [],
+        environment: null,
+        name: 'game-runtime-owners-high-desktop-run-1',
+        pageErrors: [],
+        profileRun: 1,
+        requested: input.requested,
+        runtime: input.runtime,
+        runtimeOwners: input.sample.runtimeOwnerLeaseEvidence,
+        sample: {
+            ...input.sample,
+            canvas: null,
+            drawCallsPerFrame: 1,
+            drawCallsPerRenderedFrame: 1,
+            fps: 60,
+            jsHeapMb: 1,
+            longTaskCount: 0,
+            maxFrameMs: 17,
+            p95FrameMs: 17,
+            rainUnmountMs: null,
+            renderedFps: 30,
+            trianglesPerFrame: 1,
+            trianglesPerRenderedFrame: 1,
+        },
+        screenshotPath: '/tmp/runtime-owner.png',
+        screenshotWitness: input.screenshotWitness,
+    };
+    const markdown = buildMarkdown({
+        baseUrl: 'http://profile.local',
+        generatedAt: '2026-09-01T00:00:00.000Z',
+        highTargetMedians: {},
+        options: {
+            build: false,
+            managedServer: false,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'runtime-owners',
+            soakMs: 0,
+            warmupMs: 0,
+        },
+        plantCloseupMedians: {},
+        scenarios: [scenario],
+        schemaVersion: 5,
+        sourceCommit: 'test-sha',
+        summary: { failedScenarios: 0 },
+    });
+
+    assert.match(markdown, /## Cross-tier runtime-owner cadence witness/);
+    assert.match(markdown, /30 \/ 60/);
+    assert.match(markdown, /\| 5 s \| 30: 4000 ms; 120/);
+    assert.match(
+        markdown,
+        /30: 4000 ms; 120 \/ 120 \(1\) \/ 60: 1000 ms; 60 \/ 60 \(1\)/,
+    );
+    assert.match(markdown, /60 FPS across 5 frames/);
+    assert.match(markdown, /weather-animation 30 FPS @ 95%/);
+    assert.match(markdown, /900 ms \/ Δv4 \/ drift 0/);
+    assert.match(markdown, /Δv5 \/ drift 0/);
+    assert.match(markdown, /150 \/ 180 \/ 180/);
+    assert.match(markdown, /\| yes \| pass \|/);
+});
+
 test('lifecycle summary groups three fresh-context repeats as one scenario outside High medians', () => {
     const runs = [1, 2, 3].map((profileRun) => ({
         acceptance: { pass: true },
@@ -4443,13 +10147,21 @@ test('lifecycle summary groups three fresh-context repeats as one scenario outsi
                 },
             },
             hidden: {
+                ownedSchedulingZeroObserved: true,
                 residual: residualLifecycleFixture(profileRun),
+                resumeTransition: lifecycleTransitionFixture(profileRun),
+                resumeWindow: lifecycleTransitionFixture(profileRun),
                 runtimeSchedulerZeroObserved: true,
+                suspendTransition: lifecycleTransitionFixture(profileRun),
                 zeroWorkObserved: true,
             },
             offscreen: {
+                ownedSchedulingZeroObserved: true,
                 residual: residualLifecycleFixture(profileRun),
+                resumeTransition: lifecycleTransitionFixture(profileRun),
+                resumeWindow: lifecycleTransitionFixture(profileRun),
                 runtimeSchedulerZeroObserved: true,
+                suspendTransition: lifecycleTransitionFixture(profileRun),
                 zeroWorkObserved: true,
             },
         },
@@ -4465,8 +10177,29 @@ test('lifecycle summary groups three fresh-context repeats as one scenario outsi
     assert.equal(summary.runCount, 3);
     assert.equal(summary.passedRunCount, 3);
     assert.equal(summary.contextPersistentRunCount, 3);
+    assert.equal(summary.offscreen.ownedSchedulingZeroObservedRunCount, 3);
     assert.equal(summary.offscreen.runtimeSchedulerZeroObservedRunCount, 3);
     assert.equal(summary.offscreen.zeroWorkObservedRunCount, 3);
+    assert.deepEqual(summary.offscreen.resumeTransition.renderedFrames, {
+        max: 3,
+        median: 2,
+        min: 1,
+    });
+    assert.deepEqual(summary.hidden.resumeWindow.sceneTimeDeltaSeconds, {
+        max: 3,
+        median: 2,
+        min: 1,
+    });
+    const legacyCompatibleRuns = structuredClone(runs);
+    for (const run of legacyCompatibleRuns) {
+        delete run.lifecycle.hidden.ownedSchedulingZeroObserved;
+        delete run.lifecycle.offscreen.ownedSchedulingZeroObserved;
+    }
+    assert.equal(
+        buildLifecycleSummary(legacyCompatibleRuns).offscreen
+            .ownedSchedulingZeroObservedRunCount,
+        3,
+    );
     assert.deepEqual(buildHighTargetMedians(runs), {});
     assert.deepEqual(buildProfileSummary(runs, {}), {
         failedScenarioNames: [],
@@ -4505,6 +10238,166 @@ test('lifecycle summary groups three fresh-context repeats as one scenario outsi
     );
 });
 
+test('lifecycle markdown separates owned scheduling from full zero-work witnesses', () => {
+    const lifecyclePhase = (zeroWorkObserved) => ({
+        ownedSchedulingZeroObserved: true,
+        residual: {
+            cdp: { scriptDuration: 0.01 },
+            sample: {
+                drawCalls: zeroWorkObserved ? 0 : 1,
+                renderedFrames: zeroWorkObserved ? 0 : 1,
+                submittedTriangles: zeroWorkObserved ? 0 : 1,
+            },
+        },
+        runtimeSchedulerZeroObserved: true,
+        zeroWorkObserved,
+    });
+    const markdown = buildMarkdown({
+        baseUrl: 'http://profile.local',
+        generatedAt: '2026-08-30T00:00:00.000Z',
+        highTargetMedians: {},
+        options: {
+            build: false,
+            managedServer: false,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'runtime-lifecycle',
+            soakMs: 0,
+            warmupMs: 0,
+        },
+        plantCloseupMedians: {},
+        scenarios: [
+            {
+                baseName: 'game-high-target-runtime-lifecycle-desktop',
+                budget: { checks: [], pass: true },
+                consoleMessages: [],
+                environment: null,
+                lifecycle: {
+                    active: { sample: { drawCalls: 10, renderedFrames: 2 } },
+                    cold: {},
+                    context: { restored: {} },
+                    hidden: lifecyclePhase(false),
+                    offscreen: lifecyclePhase(true),
+                },
+                name: 'game-high-target-runtime-lifecycle-desktop-run-1',
+                profileRun: 1,
+                requested: {
+                    controls: '0',
+                    debugHud: '0',
+                    details: '1',
+                    gardenProfile: 'high-target',
+                    hud: '0',
+                    lifecycleProfile: true,
+                    mode: 'details',
+                    motion: 'none',
+                },
+                runtime: null,
+                sample: {
+                    canvas: null,
+                    drawCallsPerFrame: 1,
+                    drawCallsPerRenderedFrame: 5,
+                    fps: 60,
+                    longTaskCount: 0,
+                    maxFrameMs: 20,
+                    p95FrameMs: 16,
+                    rainUnmountMs: null,
+                    renderedFps: 2,
+                    trianglesPerFrame: 1,
+                    trianglesPerRenderedFrame: 5,
+                },
+                pageErrors: [],
+                screenshotPath: null,
+            },
+        ],
+        schemaVersion: 5,
+        sourceCommit: 'test-sha',
+        summary: { failedScenarios: 0 },
+    });
+
+    assert.match(
+        markdown,
+        /Owned-scheduling zero witnesses — offscreen 1\/1, synthetic hidden 1\/1\./,
+    );
+    assert.match(
+        markdown,
+        /Full render\/runtime zero-work witnesses — offscreen 1\/1, synthetic hidden 0\/1\./,
+    );
+    assert.match(markdown, /owned scheduling zero\/full zero/);
+    assert.match(markdown, /0\/0\/0\/0\.01 s; yes\/yes/);
+    assert.match(markdown, /1\/1\/1\/0\.01 s; yes\/no/);
+    assert.match(markdown, /Canonical compatibility runs \(1\)/);
+    assert.doesNotMatch(markdown, /Candidate-only live runs/);
+});
+
+test('live lifecycle markdown exposes suspension, resume transition, and steady cadence evidence', () => {
+    const input = createPassingLifecycleLiveAcceptanceInput();
+    const markdown = buildMarkdown({
+        baseUrl: 'http://profile.local',
+        generatedAt: '2026-09-01T00:00:00.000Z',
+        highTargetMedians: {},
+        options: {
+            build: false,
+            managedServer: false,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'runtime-lifecycle-live',
+            soakMs: 0,
+            warmupMs: 0,
+        },
+        plantCloseupMedians: {},
+        scenarios: [
+            {
+                baseName: 'game-high-target-runtime-lifecycle-live-desktop',
+                budget: { checks: [], pass: true },
+                consoleMessages: [],
+                environment: null,
+                lifecycle: input,
+                name: 'game-high-target-runtime-lifecycle-live-desktop-run-1',
+                pageErrors: [],
+                profileRun: 1,
+                requested: input.requested,
+                runtime: null,
+                sample: {
+                    canvas: null,
+                    drawCallsPerFrame: 1,
+                    drawCallsPerRenderedFrame: 5,
+                    fps: 60,
+                    longTaskCount: 0,
+                    maxFrameMs: 20,
+                    p95FrameMs: 16,
+                    rainUnmountMs: null,
+                    renderedFps: 30,
+                    trianglesPerFrame: 1,
+                    trianglesPerRenderedFrame: 5,
+                },
+                screenshotPath: null,
+            },
+        ],
+        schemaVersion: 5,
+        sourceCommit: 'test-sha',
+        summary: { failedScenarios: 0 },
+    });
+
+    assert.match(markdown, /pre-signal work as diagnostics/);
+    assert.match(markdown, /microtask-fresh acknowledgement/);
+    assert.match(markdown, /exact-zero work after acknowledgement/);
+    assert.match(
+        markdown,
+        /action-plus-R3F drain remains bounded by observed browser frames/,
+    );
+    assert.match(markdown, /Candidate-live visibility transition evidence/);
+    assert.match(
+        markdown,
+        /offscreen \| 250 ms; 0\/0\/0; 1\/1\/1; 0 s; yes \| 0\/0\/0 s; yes/,
+    );
+    assert.match(
+        markdown,
+        /hidden \| 250 ms; 1\/1\/0; 1\/1\/1; 0\.03 s; yes \| 0\/0\/0 s; yes/,
+    );
+    assert.match(markdown, /900 ms; 33\/33\/27\/6; 0\.9 s; 0/);
+    assert.match(markdown, /2000 ms; 60\/60\/60; 2 s; 0\/0/);
+});
+
 function residualLifecycleFixture(value) {
     return {
         cdp: { scriptDuration: value },
@@ -4513,6 +10406,21 @@ function residualLifecycleFixture(value) {
             renderedFrames: value,
             submittedTriangles: value,
         },
+    };
+}
+
+function lifecycleTransitionFixture(value) {
+    return {
+        counterDeltas: {
+            ownedInvalidationCount: value,
+            r3fFrameCallbackCount: value,
+        },
+        r3fOwnedInvalidationSurplus: 0,
+        sample: {
+            elapsedMs: value * 100,
+            renderedFrames: value,
+        },
+        sceneTimeDeltaSeconds: value,
     };
 }
 
@@ -5298,7 +11206,7 @@ test('outline acceptance gates deterministic dispatch and telemetry when availab
         hoverOutlineAllocatedPixelCount: 131_072,
         hoverOutlineAllocatedWidth: 512,
         hoverOutlineAllocationEstimatedBytes: 262_144,
-        hoverOutlineCompositePassCount: 2,
+        hoverOutlineCompositePassCount: 7,
         hoverOutlineCropClippedCount: 0,
         hoverOutlineCropPixelCount: 100_000,
         hoverOutlineDrawingBufferPixelCount: 3_686_400,
@@ -5306,8 +11214,12 @@ test('outline acceptance gates deterministic dispatch and telemetry when availab
         hoverOutlineHorizontalPassCount: 2,
         hoverOutlineKernelSampleCount: 23,
         hoverOutlineMaskPassCount: 2,
+        hoverOutlineMaskCacheBypassCount: 0,
+        hoverOutlineMaskCacheEligibleTargetCount: 2,
+        hoverOutlineMaskCacheHitCount: 5,
+        hoverOutlineMaskCacheMissCount: 2,
         hoverOutlineMaxKernelSampleCount: 51,
-        hoverOutlinePipeline: 'cropped-bounded-separable-r8',
+        hoverOutlinePipeline: 'cropped-bounded-separable-r8-content-cache',
         hoverOutlineProfileCommandAction: 'show',
         hoverOutlineProfileTargetBlockId: 'profile-raised-bed:2:0',
         hoverOutlineProfileTargetRaisedBedId: 2,
@@ -5315,6 +11227,14 @@ test('outline acceptance gates deterministic dispatch and telemetry when availab
         hoverOutlineRoiRatio: 0.04,
         hoverOutlineStyleGroupCount: 1,
         hoverOutlineThickness: 5,
+    };
+    const validOutlineSample = {
+        hoverOutlineCompositePassCountDelta: 5,
+        hoverOutlineHorizontalPassCountDelta: 0,
+        hoverOutlineMaskCacheBypassCountDelta: 0,
+        hoverOutlineMaskCacheHitCountDelta: 5,
+        hoverOutlineMaskCacheMissCountDelta: 0,
+        hoverOutlineMaskPassCountDelta: 0,
     };
     const createInput = ({
         environment,
@@ -5334,6 +11254,7 @@ test('outline acceptance gates deterministic dispatch and telemetry when availab
         },
         runtime,
         sample: {
+            ...validOutlineSample,
             outlineProfileDispatched: true,
             outlineProfileTelemetryAvailable: false,
             ...sample,
@@ -5363,6 +11284,86 @@ test('outline acceptance gates deterministic dispatch and telemetry when availab
     );
     assert.equal(
         withTelemetry.checks
+            .filter((check) => check.name.startsWith('highTargetOutline'))
+            .every((check) => check.pass),
+        true,
+    );
+
+    for (const [field, invalidValue, checkName] of [
+        [
+            'hoverOutlineMaskCacheBypassCountDelta',
+            1,
+            'highTargetOutlineSampleWindowBypasses',
+        ],
+        [
+            'hoverOutlineMaskCacheHitCountDelta',
+            0,
+            'highTargetOutlineSampleWindowHits',
+        ],
+        [
+            'hoverOutlineMaskPassCountDelta',
+            1,
+            'highTargetOutlineSampleWindowMaskConservation',
+        ],
+        [
+            'hoverOutlineHorizontalPassCountDelta',
+            1,
+            'highTargetOutlineSampleWindowHorizontalAlignment',
+        ],
+        [
+            'hoverOutlineCompositePassCountDelta',
+            4,
+            'highTargetOutlineSampleWindowCompositeConservation',
+        ],
+    ]) {
+        const result = evaluateHighTargetAcceptance(
+            createInput({
+                runtime: validOutlineRuntime,
+                sample: {
+                    [field]: invalidValue,
+                    outlineProfileTelemetryAvailable: true,
+                },
+            }),
+        );
+        assert.equal(
+            result.checks.find((check) => check.name === checkName)?.pass,
+            false,
+            `${checkName} should reject ${field}=${invalidValue}`,
+        );
+    }
+
+    const motionWithoutMeasuredMiss = evaluateHighTargetAcceptance(
+        createInput({
+            requested: { motion: 'pan-zoom-rotate' },
+            runtime: validOutlineRuntime,
+            sample: { outlineProfileTelemetryAvailable: true },
+        }),
+    );
+    assert.equal(
+        motionWithoutMeasuredMiss.checks.find(
+            (check) => check.name === 'highTargetOutlineSampleWindowMisses',
+        )?.pass,
+        false,
+    );
+
+    const legacyOutlineRuntime = {
+        ...validOutlineRuntime,
+        hoverOutlineCompositePassCount: 2,
+        hoverOutlinePipeline: 'cropped-bounded-separable-r8',
+    };
+    delete legacyOutlineRuntime.hoverOutlineMaskCacheBypassCount;
+    delete legacyOutlineRuntime.hoverOutlineMaskCacheEligibleTargetCount;
+    delete legacyOutlineRuntime.hoverOutlineMaskCacheHitCount;
+    delete legacyOutlineRuntime.hoverOutlineMaskCacheMissCount;
+    const legacyOutline = evaluateHighTargetAcceptance(
+        createInput({
+            requested: { legacyOutlinePipeline: true },
+            runtime: legacyOutlineRuntime,
+            sample: { outlineProfileTelemetryAvailable: true },
+        }),
+    );
+    assert.equal(
+        legacyOutline.checks
             .filter((check) => check.name.startsWith('highTargetOutline'))
             .every((check) => check.pass),
         true,
@@ -5539,6 +11540,18 @@ test('outline acceptance gates deterministic dispatch and telemetry when availab
         ],
         ['hoverOutlineMaskPassCount', 0, 'highTargetOutlineMaskPasses'],
         [
+            'hoverOutlineMaskCacheBypassCount',
+            1,
+            'highTargetOutlineCacheBypasses',
+        ],
+        [
+            'hoverOutlineMaskCacheEligibleTargetCount',
+            1,
+            'highTargetOutlineCacheEligibleTargets',
+        ],
+        ['hoverOutlineMaskCacheHitCount', 0, 'highTargetOutlineCacheHits'],
+        ['hoverOutlineMaskCacheMissCount', 0, 'highTargetOutlineCacheMisses'],
+        [
             'hoverOutlineHorizontalPassCount',
             1,
             'highTargetOutlineHorizontalPassAlignment',
@@ -5546,7 +11559,7 @@ test('outline acceptance gates deterministic dispatch and telemetry when availab
         [
             'hoverOutlineCompositePassCount',
             1,
-            'highTargetOutlineCompositePassAlignment',
+            'highTargetOutlineCacheConservation',
         ],
         [
             'hoverOutlineAllocationEstimatedBytes',
@@ -6706,6 +12719,7 @@ function highTargetRun(value, index, acceptancePass = true) {
         acceptance: { pass: acceptancePass },
         budget: { pass: acceptancePass && performancePass },
         budgetName: 'gameHighTarget',
+        memory: { retainedJsHeapMb: 200 },
         name: `game-high-target-clear-idle-desktop-run-${index + 1}`,
         performanceBudget: { pass: performancePass },
         profileRun: index + 1,
@@ -6795,13 +12809,43 @@ test('cross-tier medians retain tier identity and render in a separate report se
         const baseName = 'game-cross-tier-low-steady-desktop';
         return {
             ...run,
+            apiErrors: [],
             baseName,
+            budget: { ...run.budget, checks: [] },
+            consoleMessages: [],
             name: `${baseName}-run-${index + 1}`,
             requested: {
                 ...run.requested,
                 crossTierProfile: true,
                 quality: 'low',
             },
+            crossTierCold: {
+                canvasAttachedMs: 310,
+                canvasSize: {
+                    clientHeight: 720,
+                    clientWidth: 1_280,
+                    height: 720,
+                    width: 1_280,
+                },
+                canvasSizedMs: 383,
+                domContentLoadedMs: 16,
+                expectedDpr: 1,
+                firstSubmittedFrameMs: 488,
+                fixtureReadyMs: 580,
+                hostCanvasReadyDiagnosticMs: 572,
+            },
+            crossTierResourceSnapshot: {
+                attemptCount: 1,
+                populationAtEnd: {},
+                populationExposureSignature: '{}',
+                rendererStatsMode: lifecycleRendererStatsCanonicalMode,
+                resources: {
+                    rendererGeometries: 250,
+                    rendererShaders: 22,
+                    rendererTextures: 8,
+                },
+            },
+            pageErrors: [],
             runtime: { qualityTier: 'low' },
             sample: {
                 ...run.sample,
@@ -6853,7 +12897,7 @@ test('cross-tier medians retain tier identity and render in a separate report se
             warmupMs: 0,
         },
         plantCloseupMedians: {},
-        scenarios: [],
+        scenarios: crossTierRuns,
         schemaVersion: 2,
         sourceCommit: null,
         staticSceneCacheComparisons: {},
@@ -6866,6 +12910,7 @@ test('cross-tier medians retain tier identity and render in a separate report se
         return markdown.slice(start, end === -1 ? undefined : end);
     };
     const highTargetSection = section('High-target repeated-run summary');
+    const witnessSection = section('Cross-tier cold and resource witnesses');
     const crossTierSection = section('Cross-tier repeated-run summary');
 
     assert.match(highTargetSection, /game-high-target-clear-idle-desktop/);
@@ -6881,6 +12926,14 @@ test('cross-tier medians retain tier identity and render in a separate report se
     assert.doesNotMatch(
         crossTierSection,
         /game-high-target-clear-idle-desktop/,
+    );
+    assert.match(
+        witnessSection,
+        /Host double-RAF readiness remains diagnostic/,
+    );
+    assert.match(
+        witnessSection,
+        /16\/310\/383\/488\/580 ms.*572 ms.*1 \/ 1280x720 CSS \/ 1280x720 backing.*\{\} \/ \{\}.*250 \/ 22 \/ 8.*post-render-receipt-v1 \/ 1/,
     );
 
     crossTier.acceptancePass = false;

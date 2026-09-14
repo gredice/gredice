@@ -3,7 +3,7 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useLayoutEffect, useRef } from 'react';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
-import { useSceneResume } from './SceneTime';
+import { useSceneRenderRequest, useSceneResume } from './SceneTime';
 import {
     consumeDeferredShadowRefresh,
     createDeferredShadowRefreshState,
@@ -23,7 +23,7 @@ export function ShadowMapController({
     invalidationKey: string;
 }) {
     const gl = useThree((state) => state.gl);
-    const invalidate = useThree((state) => state.invalidate);
+    const requestRender = useSceneRenderRequest();
     const activePlacementCountRef = useRef(activePlacementCount);
     activePlacementCountRef.current = activePlacementCount;
     const deferredRefreshRef = useRef(
@@ -62,11 +62,11 @@ export function ShadowMapController({
                 refreshCountRef.current,
             );
             if (invalidateFrame) {
-                invalidate();
+                requestRender('primary-shadow-refresh');
             }
             reportShadowMapState();
         },
-        [enabled, gl, invalidate, reportShadowMapState],
+        [enabled, gl, reportShadowMapState, requestRender],
     );
 
     const queueDeferredRefresh = useCallback(
@@ -91,11 +91,11 @@ export function ShadowMapController({
             deferredChangeCountRef.current +=
                 transition.deferredChangeCountDelta;
             if (enabled && transition.shouldInvalidate) {
-                invalidate();
+                requestRender('deferred-shadow-refresh');
             }
             reportShadowMapState();
         },
-        [enabled, invalidate, reportShadowMapState],
+        [enabled, reportShadowMapState, requestRender],
     );
 
     const queueResumeRefresh = useCallback(() => {

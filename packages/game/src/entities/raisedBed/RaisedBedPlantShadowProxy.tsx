@@ -3,6 +3,7 @@
 import { useThree } from '@react-three/fiber';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { useSceneRenderRequest } from '../../scene/SceneTime';
 import {
     buildRaisedBedPlantShadowProxyMatrices,
     createRaisedBedPlantShadowProxyGeometry,
@@ -21,7 +22,7 @@ export function RaisedBedPlantShadowProxy({
 }) {
     const meshRef = useRef<THREE.InstancedMesh | null>(null);
     const gl = useThree((state) => state.gl);
-    const invalidate = useThree((state) => state.invalidate);
+    const requestRender = useSceneRenderRequest();
     const matrices = useMemo(
         () => buildRaisedBedPlantShadowProxyMatrices(plants),
         [plants],
@@ -45,13 +46,13 @@ export function RaisedBedPlantShadowProxy({
         mesh.computeBoundingBox();
         mesh.computeBoundingSphere();
         gl.shadowMap.needsUpdate = true;
-        invalidate();
+        requestRender('raised-bed-plant-shadow-proxy');
 
         return () => {
             gl.shadowMap.needsUpdate = true;
-            invalidate();
+            requestRender('raised-bed-plant-shadow-proxy-cleanup');
         };
-    }, [gl, invalidate, matrices]);
+    }, [gl, matrices, requestRender]);
 
     if (matrices.length === 0) {
         return null;

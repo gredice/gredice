@@ -6,7 +6,11 @@ import { MathUtils, OrthographicCamera, Vector2, Vector3 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useSceneCurrentGarden } from '../hooks/useSceneCurrentGarden';
 import { updateGameProfileMetadata } from '../scene/gameProfileMetadata';
-import { sceneFrameRates, useSceneTimeInvalidation } from '../scene/SceneTime';
+import {
+    sceneFrameRates,
+    useSceneRenderRequest,
+    useSceneTimeInvalidation,
+} from '../scene/SceneTime';
 import { useGameState } from '../useGameState';
 import {
     findRaisedBedByBlockId,
@@ -316,7 +320,8 @@ export function GameCameraRig({
     /** Keeps pinch/pan available while another build tool owns one pointer. */
     singlePointerPanEnabled?: boolean;
 }) {
-    const { camera, gl, invalidate, size } = useThree();
+    const { camera, gl, size } = useThree();
+    const requestRender = useSceneRenderRequest();
     const isOrthographicCamera = camera instanceof OrthographicCamera;
     const setGameCamera = useGameState((state) => state.setGameCamera);
     const setGameCameraSnapshot = useGameState(
@@ -345,6 +350,7 @@ export function GameCameraRig({
     const garden = useSceneCurrentGarden(gardenData);
     const resolvedMinZoom = MathUtils.clamp(minZoom, 1, maxZoom);
     useSceneTimeInvalidation(
+        'camera-interaction',
         isAnimating || isDragging || isKeyboardPanning,
         sceneFrameRates.interactive,
     );
@@ -498,8 +504,8 @@ export function GameCameraRig({
         camera.updateProjectionMatrix();
         camera.updateMatrixWorld();
         publishSnapshot();
-        invalidate();
-    }, [camera, invalidate, isOrthographicCamera, publishSnapshot]);
+        requestRender('camera-change');
+    }, [camera, isOrthographicCamera, publishSnapshot, requestRender]);
 
     const saveNormalCamera = useCallback(() => {
         if (!isOrthographicCamera || view !== 'normal') {
