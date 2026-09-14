@@ -11,6 +11,7 @@ function publicDirectoryEntityType(
     switch (value) {
         case 'block':
         case 'brand':
+        case 'hqLocations':
         case 'plant':
         case 'plantDisease':
         case 'plantPest':

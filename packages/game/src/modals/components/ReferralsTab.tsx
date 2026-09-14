@@ -370,6 +370,10 @@ export function ReferralsTab() {
                                 </Stack>
                                 <div className="flex items-center gap-3 rounded-md border bg-muted/40 p-3">
                                     <UserAvatar
+                                        achievementCount={
+                                            usedReferral.account
+                                                ?.achievementCount
+                                        }
                                         avatarUrl={
                                             usedReferral.account?.avatarUrl
                                         }
@@ -500,6 +504,9 @@ export function ReferralsTab() {
                                     >
                                         <UserAvatar
                                             avatarUrl={u.account?.avatarUrl}
+                                            achievementCount={
+                                                u.account?.achievementCount
+                                            }
                                             displayName={
                                                 u.account?.displayName ??
                                                 'Nepoznat račun'

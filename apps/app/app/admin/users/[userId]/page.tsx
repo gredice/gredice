@@ -80,6 +80,7 @@ export default async function UserPage({
             value: (
                 <SelectUserAvatar
                     userId={id}
+                    achievementCount={user.achievementCount}
                     avatarUrl={avatarUrl}
                     displayName={displayName ?? userName}
                 />

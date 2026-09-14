@@ -21,6 +21,7 @@ import newsRoutes from './newsRoutes';
 import notificationsRoutes from './notificationsRoutes';
 import occasionsRoutes from './occasionsRoutes';
 import outletRoutes from './outletRoutes';
+import pricingRoutes from './pricingRoutes';
 import shoppingCartRoutes from './shoppingCartRoutes';
 import surveysRoutes from './surveysRoutes';
 import usersRoutes from './usersRoutes';
@@ -103,6 +104,7 @@ const app = new Hono()
     .route('/newsletter', newsletterRoutes)
     .route('/news', newsRoutes)
     .route('/outlet', outletRoutes)
+    .route('/pricing', pricingRoutes)
     .route('/wallpapers', wallpaperRoutes);
 
 app.get('/docs/auth', docs(authRoutes, 'Auth API', 'auth'))
@@ -138,6 +140,7 @@ app.get('/docs/auth', docs(authRoutes, 'Auth API', 'auth'))
     )
     .get('/docs/news', docs(newsRoutes, 'News API', 'news'))
     .get('/docs/outlet', docs(outletRoutes, 'Outlet API', 'outlet'))
+    .get('/docs/pricing', docs(pricingRoutes, 'Pricing API', 'pricing'))
     .get(
         '/docs/wallpapers',
         docs(wallpaperRoutes, 'Wallpapers API', 'wallpapers'),

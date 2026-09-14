@@ -39,13 +39,18 @@ function approvedPlantStatusNotificationCopy({
     positionIndex,
     raisedBedName,
     status,
+    selectedPlanting,
 }: {
     plantName: string;
     positionIndex: number;
     raisedBedName: string;
     status: string;
+    selectedPlanting: boolean;
 }) {
     const location = `U gredici **${raisedBedName}** na poziciji **${positionIndex + 1}**`;
+    const stoppedFieldMessage = selectedPlanting
+        ? 'Biljka ostaje u gredici do uklanjanja.'
+        : 'Polje je spremno za nove biljke.';
     switch (status) {
         case 'planned':
             return {
@@ -65,12 +70,12 @@ function approvedPlantStatusNotificationCopy({
         case 'notSprouted':
             return {
                 header: `😢 Biljka ${plantName} nije proklijala!`,
-                content: `${location} biljka **${plantName}** nije proklijala. Polje je spremno za nove biljke.`,
+                content: `${location} biljka **${plantName}** nije proklijala. ${stoppedFieldMessage}`,
             };
         case 'died':
             return {
                 header: `😢 Biljka ${plantName} nije uspjela!`,
-                content: `${location} biljka **${plantName}** nije uspjela. Polje je spremno za nove biljke.`,
+                content: `${location} biljka **${plantName}** nije uspjela. ${stoppedFieldMessage}`,
             };
         case 'firstFlowers':
             return {
@@ -90,7 +95,7 @@ function approvedPlantStatusNotificationCopy({
         case 'harvested':
             return {
                 header: `🌾 Biljka ${plantName} je ubrana!`,
-                content: `${location} biljka **${plantName}** je ubrana. Polje je spremno za nove biljke.`,
+                content: `${location} biljka **${plantName}** je ubrana. ${stoppedFieldMessage}`,
             };
         case 'removed':
             return {
@@ -122,6 +127,7 @@ async function notifyApprovedPlantStatus(
         positionIndex: target.positionIndex,
         raisedBedName: raisedBed.name,
         status: target.requestedStatus,
+        selectedPlanting: target.kind === 'raisedBedPlanting.plantStatus',
     });
     if (!copy) {
         return;
@@ -168,12 +174,13 @@ export async function approveScheduleOperationTaskAction(
     expectedEntityId: number,
     expectedTaskVersionEventId: number,
 ) {
-    await completeOperation(
+    const result = await completeOperation(
         operationId,
         expectedEntityId,
         expectedTaskVersionEventId,
     );
     revalidateApprovalQueues();
+    return result;
 }
 
 export async function approveSchedulePlantingTaskAction(
@@ -183,7 +190,7 @@ export async function approveSchedulePlantingTaskAction(
     expectedPlantSortId: number,
     expectedPlantCycleVersionEventId: number,
 ) {
-    await verifyRaisedBedPlantingAction(
+    const result = await verifyRaisedBedPlantingAction(
         raisedBedId,
         positionIndex,
         expectedPlantCycleEventId,
@@ -191,4 +198,5 @@ export async function approveSchedulePlantingTaskAction(
         expectedPlantCycleVersionEventId,
     );
     revalidateApprovalQueues();
+    return result;
 }

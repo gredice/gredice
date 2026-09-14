@@ -53,6 +53,7 @@ export type SceneProps = HTMLAttributes<HTMLDivElement> &
         adaptiveHighProfile?: AdaptiveHighQualityLevelProfile;
         adaptiveHighProfileControlEnabled?: boolean;
         baseFramesPerSecond?: number;
+        animateSprings?: boolean;
         debugStats?: boolean;
         fixedTimeSeconds?: number;
         onAdaptiveHighProfileChange?: (
@@ -215,6 +216,7 @@ export function Scene({
     adaptiveHighProfile = adaptiveHighQualityLevels.L0,
     adaptiveHighProfileControlEnabled = false,
     baseFramesPerSecond,
+    animateSprings,
     children,
     debugStats,
     fixedTimeSeconds,
@@ -332,10 +334,11 @@ export function Scene({
                 near: 0.01,
             }}
             {...rest}
-            frameloop="demand"
+            frameloop="never"
             ref={handleCanvasRef}
         >
             <SceneTimeProvider
+                animateSprings={animateSprings}
                 baseFramesPerSecond={ambientFramesPerSecond}
                 fixedTimeSeconds={fixedTimeSeconds}
                 runtimeFrameLoop={runtimeFrameLoop}

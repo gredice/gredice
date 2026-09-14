@@ -1,6 +1,5 @@
 'use client';
 
-import { animated, useSpring } from '@react-spring/three';
 import { Billboard, useTexture } from '@react-three/drei';
 import { type ThreeEvent, useThree } from '@react-three/fiber';
 import {
@@ -37,6 +36,7 @@ import {
     resolveBlockParticleType,
     useParticles,
 } from '../particles/ParticleSystem';
+import { animated, useSpring } from '../scene/sceneSpring';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import {
     type ActiveDragPreview,
@@ -1276,6 +1276,10 @@ export function PickableGroup({
         isPreviewTarget && (activeDragPreview?.isBlocked ?? false);
     const showBlockedIndicator = isBlocked || isGroupedPreviewBlocked;
     const blockedScaleSprings = useSpring({
+        initial: {
+            scale: showBlockedIndicator ? 1 : 0,
+            opacity: showBlockedIndicator ? 1 : 0,
+        },
         scale: showBlockedIndicator ? 1 : 0,
         opacity: showBlockedIndicator ? 1 : 0,
         config: {

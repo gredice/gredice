@@ -1,15 +1,7 @@
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
-import {
-    Check,
-    Down,
-    Droplet,
-    Droplets,
-    ShoppingCart,
-    Thermometer,
-    Up,
-    Warning,
-} from '@gredice/ui/icons';
+import { GameThermometerIcon, GameWaterIcon } from '@gredice/ui/GameIcons';
+import { Check, Down, ShoppingCart, Up, Warning } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Skeleton } from '@gredice/ui/Skeleton';
 import { Spinner } from '@gredice/ui/Spinner';
@@ -666,7 +658,10 @@ export function RaisedBedSensorInfo({
             <div className="flex flex-col w-full md:flex-row gap-2 md:gap-1">
                 <SensorInfoModal
                     icon={
-                        <Droplets className="size-7 shrink-0 stroke-blue-500" />
+                        <GameWaterIcon
+                            className="size-7 shrink-0"
+                            aria-hidden
+                        />
                     }
                     header="Vlažnost tla"
                     unit="%"
@@ -719,12 +714,11 @@ export function RaisedBedSensorInfo({
                             fullWidth
                         >
                             <Row spacing={1}>
-                                <Droplet
-                                    className={cx(
-                                        'size-5 shrink-0 stroke-blue-400',
-                                        Number(0) >= 20 && 'fill-blue-300',
-                                    )}
+                                <GameWaterIcon
+                                    className="size-5 shrink-0"
+                                    aria-hidden
                                 />
+                                <span className="sr-only">Vlažnost tla: </span>
                                 {isLoading && <Skeleton className="w-6 h-4" />}
                                 {!isLoading && error && (
                                     <Warning className="size-5 shrink-0 text-red-500" />
@@ -745,7 +739,10 @@ export function RaisedBedSensorInfo({
                 />
                 <SensorInfoModal
                     icon={
-                        <Thermometer className="size-7 shrink-0 stroke-red-500" />
+                        <GameThermometerIcon
+                            className="size-7 shrink-0"
+                            aria-hidden
+                        />
                     }
                     header="Temperatura tla"
                     unit="°C"
@@ -763,12 +760,13 @@ export function RaisedBedSensorInfo({
                             fullWidth
                         >
                             <Row spacing={1}>
-                                <Thermometer
-                                    className={cx(
-                                        'size-5 shrink-0 stroke-red-400',
-                                        Number(0) >= 20 && 'fill-red-300',
-                                    )}
+                                <GameThermometerIcon
+                                    className="size-5 shrink-0"
+                                    aria-hidden
                                 />
+                                <span className="sr-only">
+                                    Temperatura tla:{' '}
+                                </span>
                                 {isLoading && <Skeleton className="w-6 h-4" />}
                                 {!isLoading && error && (
                                     <Warning className="size-5 shrink-0 text-red-500" />
@@ -805,7 +803,10 @@ export function RaisedBedSensorInfo({
                     >
                         <SensorInfoModal
                             icon={
-                                <Droplets className="size-7 shrink-0 stroke-blue-500" />
+                                <GameWaterIcon
+                                    className="size-7 shrink-0"
+                                    aria-hidden
+                                />
                             }
                             header="Vlažnost tla"
                             unit="%"
@@ -854,20 +855,13 @@ export function RaisedBedSensorInfo({
                             trigger={
                                 <ButtonGreen size="sm" className="rounded-full">
                                     <Row spacing={1}>
-                                        <Droplet
-                                            className={cx(
-                                                'size-5 shrink-0 stroke-blue-400',
-                                                !isSensorDataStale(
-                                                    group.soilMoisture
-                                                        ?.updatedAt,
-                                                ) &&
-                                                    Number(
-                                                        group.soilMoisture
-                                                            ?.value ?? '0',
-                                                    ) >= 20 &&
-                                                    'fill-blue-300',
-                                            )}
+                                        <GameWaterIcon
+                                            className="size-5 shrink-0"
+                                            aria-hidden
                                         />
+                                        <span className="sr-only">
+                                            Vlažnost tla:{' '}
+                                        </span>
                                         {isLoading && (
                                             <Skeleton className="w-6 h-4" />
                                         )}
@@ -897,7 +891,10 @@ export function RaisedBedSensorInfo({
                         />
                         <SensorInfoModal
                             icon={
-                                <Thermometer className="size-7 shrink-0 stroke-red-500" />
+                                <GameThermometerIcon
+                                    className="size-7 shrink-0"
+                                    aria-hidden
+                                />
                             }
                             header="Temperatura tla"
                             unit="°C"
@@ -911,20 +908,13 @@ export function RaisedBedSensorInfo({
                             trigger={
                                 <ButtonGreen size="sm" className="rounded-full">
                                     <Row spacing={1}>
-                                        <Thermometer
-                                            className={cx(
-                                                'size-5 shrink-0 stroke-red-400',
-                                                !isSensorDataStale(
-                                                    group.soilTemperature
-                                                        ?.updatedAt,
-                                                ) &&
-                                                    Number(
-                                                        group.soilTemperature
-                                                            ?.value ?? '0',
-                                                    ) >= 20 &&
-                                                    'fill-red-300',
-                                            )}
+                                        <GameThermometerIcon
+                                            className="size-5 shrink-0"
+                                            aria-hidden
                                         />
+                                        <span className="sr-only">
+                                            Temperatura tla:{' '}
+                                        </span>
                                         {isLoading && (
                                             <Skeleton className="w-6 h-4" />
                                         )}

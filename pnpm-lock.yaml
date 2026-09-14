@@ -1307,6 +1307,15 @@ importers:
       '@gredice/ui':
         specifier: workspace:*
         version: link:../ui
+      '@react-spring/animated':
+        specifier: 10.1.2
+        version: 10.1.2(react@19.2.8)
+      '@react-spring/core':
+        specifier: 10.1.2
+        version: 10.1.2(react@19.2.8)
+      '@react-spring/shared':
+        specifier: 10.1.2
+        version: 10.1.2(react@19.2.8)
       '@react-spring/three':
         specifier: 10.1.2
         version: 10.1.2(@react-three/fiber@9.6.1(@types/react@19.2.18)(immer@11.1.11)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.185.1))(react@19.2.8)(three@0.185.1)

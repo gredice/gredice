@@ -16,7 +16,7 @@ import {
 
 type AssignableOperationUser = Pick<
     OperationAssignableFarmUser,
-    'avatarUrl' | 'displayName' | 'id' | 'userName'
+    'avatarUrl' | 'displayName' | 'id' | 'userName' | 'achievementCount'
 >;
 
 export function parseScheduledDateInput(value: string) {
@@ -44,6 +44,7 @@ export function createOperationAssignedUsers(
             userName: farmUser.userName,
             displayName: farmUser.displayName,
             avatarUrl: farmUser.avatarUrl,
+            achievementCount: farmUser.achievementCount,
         });
     }
 
@@ -105,7 +106,6 @@ export function isDayBulkOperationAssignmentTargetVisible(
         !patch?.assignedUserId &&
         !isOperationBlocked(patch?.status) &&
         !isOperationCompleted(patch?.status) &&
-        !isOperationPendingVerification(patch?.status) &&
         !isOperationCancelled(patch?.status)
     );
 }

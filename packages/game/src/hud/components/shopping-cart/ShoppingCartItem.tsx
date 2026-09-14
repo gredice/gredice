@@ -1,12 +1,15 @@
-import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
 import { Chip } from '@gredice/ui/Chip';
+import {
+    GameBackpackIcon as BackpackIcon,
+    GameRaisedBedIcon as RaisedBedIcon,
+    GameSeedlingIcon as Sprout,
+} from '@gredice/ui/GameIcons';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Close, Delete, Navigate, Sprout, Timer } from '@gredice/ui/icons';
+import { Close, Delete, Navigate, Timer } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -23,6 +26,7 @@ import {
     type ShoppingCartItemData,
     useShoppingCartQueryKey,
 } from '../../../hooks/useShoppingCart';
+import { EntityAnchorPrice } from '../../../shared-ui/EntityAnchorPrice';
 import { RaisedBedWateringCalendar } from '../../raisedBed/RaisedBedWateringCalendar';
 import { OutletBadge } from '../OutletBadge';
 import { ButtonPricePickPaymentMethod } from './ButtonPricePickPaymentMethod';
@@ -619,6 +623,26 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                         )}
                     </Row>
                 </div>
+                {!usesInventory && item.status !== 'paid' && (
+                    <EntityAnchorPrice
+                        entityTypeName={
+                            item.entityTypeName === 'plantSort' &&
+                            item.entityData.prices?.perPlant == null
+                                ? 'plant'
+                                : item.entityTypeName
+                        }
+                        entityId={
+                            item.entityTypeName === 'plantSort' &&
+                            item.entityData.prices?.perPlant == null
+                                ? (item.entityData.information?.plant?.id ??
+                                  item.entityId)
+                                : item.entityId
+                        }
+                        currentPrice={
+                            item.shopData.discountPrice ?? item.shopData.price
+                        }
+                    />
+                )}
                 {hasDiscount &&
                     typeof item.shopData.discountPrice === 'number' &&
                     typeof item.shopData.price === 'number' && (

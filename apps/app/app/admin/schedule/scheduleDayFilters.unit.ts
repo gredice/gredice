@@ -459,7 +459,7 @@ test('day operation bulk actions honor optimistic terminal statuses', () => {
         );
         assert.equal(
             isDayBulkOperationAssignmentTargetVisible({ status }),
-            false,
+            status === 'pendingVerification',
         );
     }
 

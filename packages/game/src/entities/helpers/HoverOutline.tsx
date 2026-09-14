@@ -1,7 +1,8 @@
-import { addAfterEffect, type RootState, useThree } from '@react-three/fiber';
+import { type RootState, useThree } from '@react-three/fiber';
 import {
     createContext,
     type PropsWithChildren,
+    useCallback,
     useContext,
     useEffect,
     useLayoutEffect,
@@ -33,6 +34,7 @@ import {
     WebGLRenderTarget,
 } from 'three';
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
+import { useSceneAfterFrame } from '../../scene/useSceneAfterFrame';
 import {
     type HoverOutlineNormalizedBounds,
     type HoverOutlineRegion,
@@ -677,12 +679,12 @@ export function HoverOutlineEffect() {
 
     useEffect(() => () => maskMaterial.dispose(), [maskMaterial]);
 
-    useEffect(() => {
-        if (!registry || !hasActiveTargets) {
-            return;
-        }
+    useSceneAfterFrame(
+        useCallback(() => {
+            if (!registry || !hasActiveTargets) {
+                return;
+            }
 
-        const renderOutline = () => {
             const targets = registry.getActiveTargets();
             if (targets.length === 0) {
                 return;
@@ -907,26 +909,25 @@ export function HoverOutlineEffect() {
                     hoverOutlineThickness: maximumThickness,
                 });
             }
-        };
-
-        return addAfterEffect(renderOutline);
-    }, [
-        camera,
-        drawingBufferSize,
-        gl,
+        }, [
+            camera,
+            drawingBufferSize,
+            gl,
+            hasActiveTargets,
+            horizontalDistanceMaterial,
+            maskMaterial,
+            outlineCamera,
+            outlineMaterial,
+            outlineMesh,
+            outlineScene,
+            publishProfileMetadata,
+            renderTargets,
+            registry,
+            scene,
+            screenBoundsScratch,
+        ]),
         hasActiveTargets,
-        horizontalDistanceMaterial,
-        maskMaterial,
-        outlineCamera,
-        outlineMaterial,
-        outlineMesh,
-        outlineScene,
-        publishProfileMetadata,
-        renderTargets,
-        registry,
-        scene,
-        screenBoundsScratch,
-    ]);
+    );
 
     useEffect(() => {
         void registryVersion;

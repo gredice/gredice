@@ -1,7 +1,4 @@
-import {
-    plantFieldStatusEmoji,
-    plantFieldStatusLabel,
-} from '@gredice/js/plants';
+import { plantFieldStatusLabel } from '@gredice/js/plants';
 import {
     type EntityStandardized,
     getEntitiesFormatted,
@@ -19,9 +16,11 @@ import {
     CardTitle,
 } from '@gredice/ui/Card';
 import { Chip, type ColorPaletteProp } from '@gredice/ui/Chip';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIdentifierIcon } from '@gredice/ui/RaisedBedIdentifierIcon';
 import { Row } from '@gredice/ui/Row';
+import { RaisedBedPlantingFacts } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
@@ -315,6 +314,7 @@ async function GreenhousePageContent() {
                                     );
 
                                     return {
+                                        planting: field.planting ?? undefined,
                                         germinationDate: formatDate(
                                             field.plantGrowthDate,
                                         ),
@@ -334,9 +334,7 @@ async function GreenhousePageContent() {
                                         statusColor: getStatusColor(
                                             field.plantStatus,
                                         ),
-                                        statusEmoji: plantFieldStatusEmoji(
-                                            field.plantStatus ?? undefined,
-                                        ),
+                                        plantStatus: field.plantStatus,
                                         statusLabel: getStatusLabel(
                                             field.plantStatus,
                                         ),
@@ -390,24 +388,29 @@ async function GreenhousePageContent() {
                                                                     className="size-10 object-cover"
                                                                 />
                                                             </div>
-                                                            <span className="min-w-0 font-medium [overflow-wrap:anywhere]">
+                                                            <div className="min-w-0 font-medium [overflow-wrap:anywhere]">
                                                                 {plantName}
-                                                            </span>
+                                                                <RaisedBedPlantingFacts
+                                                                    {...field.planting}
+                                                                />
+                                                            </div>
                                                         </div>
                                                     </Table.Cell>
                                                     <Table.Cell>
                                                         <Chip
+                                                            variant="outlined"
                                                             color={getStatusColor(
                                                                 field.plantStatus,
                                                             )}
                                                             size="sm"
                                                             startDecorator={
-                                                                <span aria-hidden="true">
-                                                                    {plantFieldStatusEmoji(
-                                                                        field.plantStatus ??
-                                                                            undefined,
-                                                                    )}
-                                                                </span>
+                                                                <GamePlantStatusIcon
+                                                                    status={
+                                                                        field.plantStatus
+                                                                    }
+                                                                    className="size-5! shrink-0"
+                                                                    aria-hidden
+                                                                />
                                                             }
                                                         >
                                                             {getStatusLabel(

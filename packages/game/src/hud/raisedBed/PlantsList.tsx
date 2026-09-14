@@ -18,6 +18,7 @@ import { sortFavoritesFirst, useFavoriteIds } from '../../hooks/useFavorites';
 import type { OutletOfferData } from '../../hooks/useOutletOffers';
 import { usePlants } from '../../hooks/usePlants';
 import { KnownPages } from '../../knownPages';
+import { EntityAnchorPrice } from '../../shared-ui/EntityAnchorPrice';
 import { OutletBadge } from '../components/OutletBadge';
 import { FavoriteToggleButton } from './FavoriteToggleButton';
 import { PlantListItemSkeleton } from './PlantListItemSkeleton';
@@ -256,6 +257,13 @@ export function PlantsList({
                                         </Typography>
                                         <Typography level="body1" semiBold>
                                             {price} €
+                                            <EntityAnchorPrice
+                                                entityTypeName="plant"
+                                                entityId={plant.id}
+                                                currentPrice={
+                                                    plant.prices?.perPlant
+                                                }
+                                            />
                                         </Typography>
                                     </Row>
                                     <Typography

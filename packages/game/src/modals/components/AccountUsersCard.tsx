@@ -85,6 +85,9 @@ export function AccountUsersCard() {
                                         className="items-center"
                                     >
                                         <UserAvatar
+                                            achievementCount={
+                                                user.achievementCount
+                                            }
                                             avatarUrl={user.avatarUrl}
                                             displayName={user.displayName}
                                             className="size-8"

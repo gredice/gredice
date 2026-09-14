@@ -85,6 +85,10 @@
         {
             "path": "/api/internal/cron/temp-accounts",
             "schedule": "0 * * * *"
+        },
+        {
+            "path": "/api/internal/cron/publish-price-list",
+            "schedule": "0 5 * * *"
         }
     ]
 }

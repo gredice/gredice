@@ -1,5 +1,5 @@
+import { GameRaisedBedIcon as RaisedBedIcon } from '@gredice/ui/GameIcons';
 import { Check, Navigate } from '@gredice/ui/icons';
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';

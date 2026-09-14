@@ -1,23 +1,26 @@
 'use client';
 
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFrame, useStore, useThree } from '@react-three/fiber';
 import {
     createContext,
     type PropsWithChildren,
     useCallback,
     useContext,
     useEffect,
+    useLayoutEffect,
     useMemo,
     useRef,
 } from 'react';
 import type { IUniform } from 'three';
 import type { RuntimeFrameLoopProfileTelemetry } from './gameProfileMetadata';
+import { SceneSpringAnimationContext } from './SceneSpringContext';
 import {
     normalizeSceneFramesPerSecond,
     resolveSceneFramesPerSecond,
     resolveSceneFrameTick,
     resolveSceneVisibility,
 } from './sceneFrameScheduler';
+import { getSceneRootRuntime } from './sceneRootRuntime';
 
 export const sceneFrameRates = {
     ambient: 30,
@@ -34,17 +37,21 @@ type SceneTimeContextValue = {
 const SceneTimeContext = createContext<SceneTimeContextValue | null>(null);
 
 export function SceneTimeProvider({
+    animateSprings = true,
     baseFramesPerSecond = sceneFrameRates.ambient,
     children,
     fixedTimeSeconds,
     runtimeFrameLoop,
     suspendWhenOffscreen = true,
 }: PropsWithChildren<{
+    animateSprings?: boolean;
     baseFramesPerSecond?: number;
     fixedTimeSeconds?: number;
     runtimeFrameLoop?: RuntimeFrameLoopProfileTelemetry;
     suspendWhenOffscreen?: boolean;
 }>) {
+    const rootRuntime = getSceneRootRuntime(useStore());
+    useLayoutEffect(() => rootRuntime.connect(), [rootRuntime]);
     const fixedTime = Number.isFinite(fixedTimeSeconds)
         ? Math.max(0, fixedTimeSeconds ?? 0)
         : undefined;
@@ -52,7 +59,7 @@ export function SceneTimeProvider({
         () => ({ value: fixedTime ?? 0 }),
         [fixedTime],
     );
-    const invalidate = useThree((state) => state.invalidate);
+    const invalidate = rootRuntime.invalidate;
     const clock = useThree((state) => state.clock);
     const gl = useThree((state) => state.gl);
     const animationFrameRef = useRef<number | null>(null);
@@ -186,6 +193,7 @@ export function SceneTimeProvider({
             documentVisible: documentVisibleRef.current,
             suspendWhenOffscreen,
         });
+        rootRuntime.setVisible(sceneVisible);
         const telemetry = runtimeFrameLoopRef.current;
         if (telemetry) {
             telemetry.canvasVisible = canvasVisibleRef.current;
@@ -219,6 +227,7 @@ export function SceneTimeProvider({
         stopContinuousRenderLoop();
     }, [
         clock,
+        rootRuntime,
         invalidateOwnedFrame,
         startContinuousRenderLoop,
         stopContinuousRenderLoop,
@@ -350,6 +359,8 @@ export function SceneTimeProvider({
                       );
                       syncSceneVisibility();
                   });
+        // Wait for the initial intersection result before admitting any frame.
+        canvasVisibleRef.current = observer === null;
         observer?.observe(gl.domElement);
         syncSceneVisibility();
 
@@ -380,7 +391,9 @@ export function SceneTimeProvider({
 
     return (
         <SceneTimeContext.Provider value={contextValue}>
-            {children}
+            <SceneSpringAnimationContext.Provider value={animateSprings}>
+                {children}
+            </SceneSpringAnimationContext.Provider>
         </SceneTimeContext.Provider>
     );
 }

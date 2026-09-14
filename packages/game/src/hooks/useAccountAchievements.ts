@@ -9,6 +9,8 @@ export function useAccountAchievements() {
         queryFn: async () => {
             const response =
                 await clientAuthenticated().api.accounts.current.achievements.$get();
+            if (!response.ok)
+                throw new Error('Postignuća trenutno nisu dostupna.');
             const data = await response.json();
             return data.achievements ?? [];
         },

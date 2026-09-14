@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     assignUserToFarm,
+    correctLegacyRaisedBedPlantSort,
     createAccount,
     createEntity,
     createEvent,
@@ -27,10 +28,11 @@ import {
     upsertEntityType,
     upsertOrRemoveCartItem,
     upsertRaisedBedField,
+    users,
     withPlantingScheduleTaskFootprintTransaction,
 } from '@gredice/storage';
 import { eq } from 'drizzle-orm';
-import { events } from '../src/schema';
+import { entities, events, raisedBeds } from '../src/schema';
 import {
     createTestBlock,
     createTestGarden,
@@ -1480,7 +1482,14 @@ test('terminal active statuses preserve stopped dates and corrections clear them
 
     let fields = await getRaisedBedFieldsWithEvents(raisedBedId);
     for (const field of fields) {
+        assert.equal(field.active, true);
+        assert.equal(field.toBeRemoved, true, field.plantStatus);
         assert.equal(field.plantCycles[0]?.active, true);
+        assert.equal(
+            field.plantCycles[0]?.toBeRemoved,
+            true,
+            field.plantStatus,
+        );
         assert.equal(
             field.plantCycles[0]?.stoppedDate?.toISOString(),
             stoppedAt,
@@ -1497,10 +1506,125 @@ test('terminal active statuses preserve stopped dates and corrections clear them
     }
     fields = await getRaisedBedFieldsWithEvents(raisedBedId);
     for (const field of fields) {
+        assert.equal(field.toBeRemoved, false);
         assert.equal(field.plantCycles[0]?.active, true);
         assert.equal(field.plantCycles[0]?.stoppedDate, undefined);
+        assert.equal(field.plantCycles[0]?.toBeRemoved, false);
     }
 });
+
+for (const terminalStatus of ['harvested', 'died']) {
+    test(`ready plants can become ${terminalStatus}, be removed and leave a reusable field`, async () => {
+        createTestDb();
+        const accountId = await createAccount();
+        const farmId = await ensureFarmId();
+        const gardenId = await createTestGarden({ accountId, farmId });
+        const blockId = await createTestBlock(
+            gardenId,
+            `block-${terminalStatus}-removal`,
+        );
+        const raisedBedId = await createTestRaisedBed(
+            gardenId,
+            accountId,
+            blockId,
+        );
+        const aggregateId = `${raisedBedId.toString()}|0`;
+        await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+        const placement = await createEvent(
+            knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+                plantSortId: '101',
+                scheduledDate: null,
+            }),
+        );
+        for (const status of [
+            'sowed',
+            'sprouted',
+            'firstFlowers',
+            'firstFruitSet',
+            'ready',
+        ]) {
+            await createEvent(
+                knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+                    status,
+                }),
+            );
+        }
+        const [readyField] = await getRaisedBedFieldsWithEvents(raisedBedId);
+        assert.equal(readyField?.toBeRemoved, false);
+
+        const terminalEvent = await createEvent(
+            knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+                status: terminalStatus,
+            }),
+        );
+        const [terminalField] = await getRaisedBedFieldsWithEvents(raisedBedId);
+        const [terminalCycle] = await getRaisedBedFieldPlantCycles(raisedBedId);
+        assert.ok(terminalField);
+        assert.ok(terminalCycle);
+        // These projections drive both the Garden removal control and the
+        // PATCH endpoint's removal and active-cycle identity checks.
+        for (const projection of [terminalField, terminalCycle]) {
+            assert.equal(projection.plantStatus, terminalStatus);
+            assert.equal(projection.active, true);
+            assert.equal(projection.toBeRemoved, true);
+            assert.equal(
+                projection.stoppedDate?.getTime(),
+                terminalEvent.createdAt.getTime(),
+            );
+            const terminalDate =
+                terminalStatus === 'harvested'
+                    ? projection.plantHarvestedDate
+                    : projection.plantDeadDate;
+            assert.equal(
+                terminalDate?.getTime(),
+                terminalEvent.createdAt.getTime(),
+            );
+        }
+        assert.equal(terminalCycle.plantPlaceEventId, placement.id);
+        assert.equal(terminalCycle.endedEventId, terminalEvent.id);
+
+        const removal = await createEvent(
+            knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+                status: 'removed',
+            }),
+        );
+        const [removedField] = await getRaisedBedFieldsWithEvents(raisedBedId);
+        const [removedCycle] = await getRaisedBedFieldPlantCycles(raisedBedId);
+        assert.equal(removedField?.active, false);
+        assert.equal(removedCycle?.active, false);
+        assert.equal(
+            removedCycle?.plantRemovedDate?.getTime(),
+            removal.createdAt.getTime(),
+        );
+        assert.equal(removedCycle?.plantPlaceEventId, placement.id);
+
+        const replacement = await createEvent(
+            knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+                plantSortId: '202',
+                scheduledDate: null,
+            }),
+        );
+        const [replantedField] =
+            await getRaisedBedFieldsWithEvents(raisedBedId);
+        assert.ok(replantedField);
+        assert.equal(replantedField.active, true);
+        assert.equal(replantedField.plantSortId, 202);
+        assert.equal(replantedField.toBeRemoved, false);
+        assert.equal(replantedField.plantHarvestedDate, undefined);
+        assert.equal(replantedField.plantDeadDate, undefined);
+        assert.equal(replantedField.plantRemovedDate, undefined);
+        assert.deepEqual(
+            replantedField.plantCycles.map((cycle) => ({
+                active: cycle.active,
+                plantPlaceEventId: cycle.plantPlaceEventId,
+            })),
+            [
+                { active: false, plantPlaceEventId: placement.id },
+                { active: true, plantPlaceEventId: replacement.id },
+            ],
+        );
+    });
+}
 
 test('live status correction clears stale terminal plant dates', async () => {
     createTestDb();
@@ -1815,4 +1939,144 @@ test('upsertRaisedBedField reuses the same row after a field is deleted and plan
     assert.strictEqual(field?.id, initialField.id);
     assert.strictEqual(field?.active, true);
     assert.strictEqual(field?.plantSortId, 303);
+});
+
+test('admin sort correction retains the active legacy cycle and refuses stale or unauthorized edits', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(
+        gardenId,
+        `correction-${randomUUID()}`,
+    );
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await upsertEntityType({ name: 'plantSort', label: 'Plant sort' });
+    const plantSortId = await createEntity('plantSort');
+    const nextPlantSortId = await createEntity('plantSort');
+    const adminId = randomUUID();
+    await storage()
+        .insert(users)
+        .values({
+            id: adminId,
+            userName: `${adminId}@example.com`,
+            role: 'admin',
+        });
+    const aggregateId = `${raisedBedId}|0`;
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+            plantSortId: String(plantSortId),
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'sowed',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+            status: 'firstFruitSet',
+        }),
+    );
+    const [before] = await getRaisedBedFieldsWithEvents(raisedBedId);
+    const cycle = before?.plantCycles.find((cycle) => cycle.active);
+    assert.ok(before && cycle);
+    const identity: import('@gredice/storage').LegacyPlantSortCorrectionIdentity =
+        {
+            kind: 'legacy',
+            raisedBedId,
+            positionIndex: 0,
+            expectedPlantCycleEventId: cycle.plantPlaceEventId,
+            expectedPlantCycleVersionEventId: cycle.endedEventId,
+            expectedPlantSortId: plantSortId,
+        };
+    const actor: { role: 'admin'; userId: string } = {
+        role: 'admin',
+        userId: adminId,
+    };
+    await assert.rejects(
+        correctLegacyRaisedBedPlantSort({
+            ...identity,
+            actor: { role: 'farmer', userId: adminId },
+            plantSortId: nextPlantSortId,
+        }),
+    );
+    await assert.rejects(
+        correctLegacyRaisedBedPlantSort({
+            ...identity,
+            actor,
+            plantSortId: -1,
+        }),
+    );
+    await storage()
+        .update(raisedBeds)
+        .set({ status: 'abandoned' })
+        .where(eq(raisedBeds.id, raisedBedId));
+    await assert.rejects(
+        correctLegacyRaisedBedPlantSort({
+            ...identity,
+            actor,
+            plantSortId: nextPlantSortId,
+        }),
+        { code: 'invalid_status' },
+    );
+    await storage()
+        .update(raisedBeds)
+        .set({ status: 'active', isDeleted: true })
+        .where(eq(raisedBeds.id, raisedBedId));
+    await assert.rejects(
+        correctLegacyRaisedBedPlantSort({
+            ...identity,
+            actor,
+            plantSortId: nextPlantSortId,
+        }),
+        { code: 'not_found' },
+    );
+    await storage()
+        .update(raisedBeds)
+        .set({ isDeleted: false })
+        .where(eq(raisedBeds.id, raisedBedId));
+    await storage()
+        .update(entities)
+        .set({ isDeleted: true })
+        .where(eq(entities.id, nextPlantSortId));
+    await assert.rejects(
+        correctLegacyRaisedBedPlantSort({
+            ...identity,
+            actor,
+            plantSortId: nextPlantSortId,
+        }),
+        { code: 'invalid_input' },
+    );
+    await storage()
+        .update(entities)
+        .set({ isDeleted: false })
+        .where(eq(entities.id, nextPlantSortId));
+    await correctLegacyRaisedBedPlantSort({
+        ...identity,
+        actor,
+        plantSortId: nextPlantSortId,
+    });
+    const [after] = await getRaisedBedFieldsWithEvents(raisedBedId);
+    assert.ok(after);
+    assert.equal(after.plantSortId, nextPlantSortId);
+    assert.equal(after.plantStatus, 'firstFruitSet');
+    assert.equal(after.plantStatusEventId, before.plantStatusEventId);
+    assert.deepEqual(after.plantSowDate, before.plantSowDate);
+    assert.equal(after.plantCycles.length, before.plantCycles.length);
+    assert.equal(
+        after.plantCycles.find((cycle) => cycle.active)?.plantPlaceEventId,
+        cycle.plantPlaceEventId,
+    );
+    await assert.rejects(
+        correctLegacyRaisedBedPlantSort({ ...identity, actor, plantSortId }),
+    );
+    const audit = (await getPlantEventsForAggregate(aggregateId)).at(-1);
+    assert.equal(audit?.type, knownEventTypes.raisedBedFields.plantReplaceSort);
+    assert.deepEqual(audit?.data, {
+        plantSortId: String(nextPlantSortId),
+        previousPlantSortId: plantSortId,
+        correctedBy: adminId,
+    });
 });

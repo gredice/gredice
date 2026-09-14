@@ -1,8 +1,8 @@
 import type { OperationData } from '@gredice/client';
 import { formatPrice } from '@gredice/js/currency';
 import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
-import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { Button } from '@gredice/ui/Button';
+import { GameBackpackIcon as BackpackIcon } from '@gredice/ui/GameIcons';
 import { Calendar, ShoppingCart } from '@gredice/ui/icons';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Row } from '@gredice/ui/Row';
@@ -15,6 +15,7 @@ import {
     useAnimateFlyToShoppingCart,
 } from '../../../indicators/AnimateFlyTo';
 import { KnownPages } from '../../../knownPages';
+import { EntityAnchorPrice } from '../../../shared-ui/EntityAnchorPrice';
 import { FavoriteToggleButton } from '../FavoriteToggleButton';
 import { OperationScheduleModal } from './OperationScheduleModal';
 
@@ -134,6 +135,11 @@ export function OperationsListItem({
                     </Stack>
                     <Typography level="body1" semiBold>
                         {price}
+                        <EntityAnchorPrice
+                            entityTypeName="operation"
+                            entityId={operation.id}
+                            currentPrice={operation.prices?.perOperation}
+                        />
                     </Typography>
                 </div>
                 {operation.information.shortDescription && (

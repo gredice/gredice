@@ -147,7 +147,6 @@ export async function ScheduleDayOperationsSection({
                 !operation.assignedUserId &&
                 !isOperationBlocked(operation.status) &&
                 !isOperationCompleted(operation.status) &&
-                !isOperationPendingVerification(operation.status) &&
                 !isOperationCancelled(operation.status),
         )
         .map((operation) => ({

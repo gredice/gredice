@@ -318,6 +318,10 @@ export default async function CommunityEditsPage({
                                                     className="flex min-w-0 items-center gap-2 xl:w-64"
                                                 >
                                                     <UserAvatar
+                                                        achievementCount={
+                                                            request.submitter
+                                                                ?.achievementCount
+                                                        }
                                                         avatarUrl={
                                                             request.submitter
                                                                 ?.avatarUrl

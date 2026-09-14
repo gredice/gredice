@@ -34,6 +34,7 @@ type OperationsDurationPoint = {
         userId: string;
         userName: string;
         userAvatarUrl: string | null;
+        achievementCount?: number;
         operationsMinutes: number;
         plannedMinutes: number;
     }[];
@@ -48,6 +49,7 @@ type OperationsDurationData = {
         userId: string;
         userName: string;
         userAvatarUrl: string | null;
+        achievementCount?: number;
         operationsMinutes: number;
         plannedMinutes: number;
         operationsCount: number;
@@ -60,6 +62,7 @@ type OperationUserStats = {
     userId: string;
     userName: string;
     userAvatarUrl: string | null;
+    achievementCount?: number;
     operationsMinutes: number;
     plannedMinutes: number;
     operationsCount: number;
@@ -70,6 +73,7 @@ type DailyOperationUserStats = {
     userId: string;
     userName: string;
     userAvatarUrl: string | null;
+    achievementCount?: number;
     operationsMinutes: number;
     plannedMinutes: number;
 };
@@ -94,6 +98,7 @@ const UNASSIGNED_USER = {
     userId: 'unassigned',
     userName: 'Nedodijeljeno',
     userAvatarUrl: null,
+    achievementCount: undefined,
 };
 
 function cacheKeyPart(value: string | number | undefined) {
@@ -135,6 +140,7 @@ function addDurationToUsers({
     userId,
     userName,
     userAvatarUrl,
+    achievementCount,
     operationsByUser,
     dailyOperationsByUser,
     includeInDailyTotals = true,
@@ -145,6 +151,7 @@ function addDurationToUsers({
     userId: string;
     userName: string;
     userAvatarUrl: string | null;
+    achievementCount?: number;
     operationsByUser: Map<string, OperationUserStats>;
     dailyOperationsByUser: Map<string, Map<string, DailyOperationUserStats>>;
     includeInDailyTotals?: boolean;
@@ -158,6 +165,7 @@ function addDurationToUsers({
                 userId,
                 userName,
                 userAvatarUrl,
+                achievementCount,
                 operationsMinutes: kind === 'completed' ? durationMinutes : 0,
                 plannedMinutes: kind === 'planned' ? durationMinutes : 0,
             });
@@ -177,6 +185,7 @@ function addDurationToUsers({
             userId,
             userName,
             userAvatarUrl,
+            achievementCount,
             operationsMinutes: kind === 'completed' ? durationMinutes : 0,
             plannedMinutes: kind === 'planned' ? durationMinutes : 0,
             operationsCount: kind === 'completed' ? 1 : 0,
@@ -259,6 +268,7 @@ function getOperationUser(operation: {
         userName: string;
         displayName: string | null;
         avatarUrl: string | null;
+        achievementCount?: number;
     } | null;
 }) {
     if (!operation.assignedUser) {
@@ -271,6 +281,7 @@ function getOperationUser(operation: {
             operation.assignedUser.displayName ??
             operation.assignedUser.userName,
         userAvatarUrl: operation.assignedUser.avatarUrl,
+        achievementCount: operation.assignedUser.achievementCount,
     };
 }
 
@@ -347,6 +358,7 @@ function buildOperationsDurationData({
             userId: user.userId,
             userName: user.userName,
             userAvatarUrl: user.userAvatarUrl,
+            achievementCount: user.achievementCount,
             operationsByUser,
             dailyOperationsByUser,
         });
@@ -379,6 +391,7 @@ function buildOperationsDurationData({
             userId: user.userId,
             userName: user.userName,
             userAvatarUrl: user.userAvatarUrl,
+            achievementCount: user.achievementCount,
             operationsByUser,
             dailyOperationsByUser,
             kind: 'planned',

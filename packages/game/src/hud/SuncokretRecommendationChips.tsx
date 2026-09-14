@@ -1,7 +1,6 @@
 'use client';
-
 import { Chip } from '@gredice/ui/Chip';
-import { Sprout } from '@gredice/ui/icons';
+import { GameSeedlingIcon as Sprout } from '@gredice/ui/GameIcons';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useOperations } from '../hooks/useOperations';
 import { useAllSorts } from '../hooks/usePlantSorts';

@@ -63,3 +63,31 @@ The Checkly account has API checks tagged with `gredice-status` for:
 Keep these as API checks on a 30-minute schedule. With 6 API checks this uses about 8,640 runs per 30-day month, which stays below the 10,000 included API checks. Browser checks are not used, so the status page uses 0 of the 1,000 included browser checks.
 
 The public JSON feed is available at `/api/status`.
+
+## Live database disconnects
+
+The read and ingest connections use separate lazy `pg` pools with the same
+error handling. Each background disconnect emits one bounded metadata record
+with event `status.live.pool.error`, pool role (`read` or `ingest`), safe
+SQLSTATE/transport code when available, and total/idle/waiting counts. Raw
+errors, clients, connection configuration, names, messages, and stacks are
+omitted. `pg` removes the failed idle client and opens a replacement on demand;
+the handler does not restart the pool or retry work.
+
+Ingest transactions also handle connection errors while a client is checked
+out. Query and commit failures still reject; rollback failure preserves the
+original error and discards the client. The route returns 503 on failure.
+Delivery markers and event updates remain in one transaction, so redelivery
+after rollback is retryable and a committed delivery is accepted without
+counting it again.
+
+Run `pnpm --filter status test:node` for the database-free tests. Run
+`pnpm --filter status test:disconnect` for real disconnect regressions: it
+requires Docker, starts a disposable `postgres:16-alpine` container bound only
+to localhost, applies the existing live activity migration, and removes the
+container afterward. It ignores configured database URLs. The suite exercises
+both production pool call sites with the installed `pg` driver, repeated idle
+disconnects (including abrupt TCP closure), active query/transaction termination,
+failed rollback and commit, concurrent delivery deduplication, and signed ingest
+failure/retry responses.
+Only Next's cache is bypassed; database operations use real PostgreSQL.

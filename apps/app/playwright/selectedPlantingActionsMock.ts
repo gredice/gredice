@@ -7,3 +7,11 @@ export async function updateSelectedPlantingLifecycleStatusAction(
         JSON.stringify(args);
     return { success: true };
 }
+
+export async function createSelectedPlantingOperationAction(
+    ...args: unknown[]
+) {
+    document.documentElement.dataset.selectedPlantingOperation =
+        JSON.stringify(args);
+    return { operationId: 101, created: true };
+}

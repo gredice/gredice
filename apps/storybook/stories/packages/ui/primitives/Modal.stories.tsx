@@ -47,7 +47,15 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+export const Default: Story = {
+    parameters: {
+        docs: {
+            description: {
+                story: 'The desktop close icon has a transparent background, a 44px click target, opacity feedback on hover, and a visible keyboard focus ring.',
+            },
+        },
+    },
+};
 
 export const WithoutClose: Story = {
     args: {

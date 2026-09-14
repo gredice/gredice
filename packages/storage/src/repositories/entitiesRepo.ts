@@ -1,3 +1,5 @@
+import { users } from '../schema/usersSchema';
+import { userAchievementExtras } from './userAchievementProgress';
 import 'server-only';
 import { slugify } from '@gredice/js/slug';
 import { and, count, desc, eq, inArray } from 'drizzle-orm';
@@ -395,7 +397,10 @@ export async function getEntityDisplayLabels(
             .from(attributeValues)
             .innerJoin(
                 attributeDefinitions,
-                eq(attributeDefinitions.id, attributeValues.attributeDefinitionId),
+                eq(
+                    attributeDefinitions.id,
+                    attributeValues.attributeDefinitionId,
+                ),
             )
             .where(
                 and(
@@ -445,7 +450,8 @@ export async function getEntityDisplayLabels(
     return entityRows.map((entity) => {
         const namedAttributes = namedAttributesByEntityId.get(entity.id);
         const entityTypeLabel =
-            entityTypeLabels.get(entity.entityTypeName) ?? entity.entityTypeName;
+            entityTypeLabels.get(entity.entityTypeName) ??
+            entity.entityTypeName;
 
         return {
             id: entity.id,
@@ -1409,13 +1415,36 @@ export async function deleteEntity(
 }
 
 export async function getEntityRevisions(entityId: number) {
-    return storage().query.entityRevisions.findMany({
+    const revisions = await storage().query.entityRevisions.findMany({
         where: eq(entityRevisions.entityId, entityId),
         orderBy: (revisions, { desc }) => [
             desc(revisions.createdAt),
             desc(revisions.id),
         ],
     });
+    const actorIds = [
+        ...new Set(
+            revisions.flatMap((revision) =>
+                revision.actorId ? [revision.actorId] : [],
+            ),
+        ),
+    ];
+    const actors = actorIds.length
+        ? await storage().query.users.findMany({
+              columns: { id: true },
+              extras: userAchievementExtras,
+              where: inArray(users.id, actorIds),
+          })
+        : [];
+    const counts = new Map(
+        actors.map((actor) => [actor.id, actor.achievementCount]),
+    );
+    return revisions.map((revision) => ({
+        ...revision,
+        actorAchievementCount: revision.actorId
+            ? counts.get(revision.actorId)
+            : undefined,
+    }));
 }
 
 export async function getLatestEntityRevisions(

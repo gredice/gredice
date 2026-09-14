@@ -1,4 +1,8 @@
-import { UserAvatar } from '@gredice/ui/UserAvatar';
+import {
+    UserAchievementProgress,
+    UserAvatar,
+    UserLevelBadge,
+} from '@gredice/ui/UserAvatar';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
 const meta = {
@@ -23,6 +27,47 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Initials: Story = {};
+
+export const Levels: Story = {
+    render: () => (
+        <div className="flex flex-wrap gap-8 p-4">
+            {[0, 1, 3, 10, 21, 34].map((count) => (
+                <div key={count} className="space-y-3">
+                    <UserAvatar
+                        displayName="Ana Kovač"
+                        achievementCount={count}
+                        size="lg"
+                    />
+                    <UserAchievementProgress achievementCount={count} />
+                </div>
+            ))}
+        </div>
+    ),
+};
+
+export const CompactLevels: Story = {
+    render: () => (
+        <div className="flex items-center gap-8 p-4">
+            <UserAvatar
+                displayName="Ana Kovač"
+                achievementCount={0}
+                size="sm"
+            />
+            <UserAvatar
+                displayName="Marko Marić"
+                achievementCount={10}
+                size="md"
+            />
+            <UserAvatar
+                displayName="Veseli vrtlar"
+                avatarUrl="https://cdn.gredice.com/avatars/farmer-female.png"
+                achievementCount={21}
+                size="lg"
+            />
+            <UserLevelBadge level={12} />
+        </div>
+    ),
+};
 
 export const WithAvatar: Story = {
     args: {

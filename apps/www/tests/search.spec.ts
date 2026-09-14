@@ -383,7 +383,9 @@ test.describe('public search filters', () => {
         ).toHaveAttribute('href', '/novosti');
     });
 
-    test('navbar shows current user avatar image', async ({ page }) => {
+    test('navbar links the current user avatar to their public profile', async ({
+        page,
+    }) => {
         await page.unroute('**/api/gredice/api/auth/current-claims**');
         await page.route(
             '**/api/gredice/api/auth/current-claims**',
@@ -392,6 +394,7 @@ test.describe('public search filters', () => {
                     contentType: 'application/json',
                     json: {
                         id: 'test-user',
+                        publicId: 'u_test-user',
                         userName: 'ana@example.com',
                         displayName: 'Ana Kovač',
                         avatarUrl: '/icon.svg',
@@ -408,6 +411,9 @@ test.describe('public search filters', () => {
             navbar.getByRole('img', { name: 'Ana Kovač' }),
         ).toBeVisible();
         await expect(navbar.getByText('AK', { exact: true })).toHaveCount(0);
+        await expect(
+            navbar.getByRole('link', { name: 'Otvori profil: Ana Kovač' }),
+        ).toHaveAttribute('href', '/korisnici/u_test-user');
     });
 
     test('navbar search uses compact mobile button', async ({ page }) => {

@@ -119,6 +119,7 @@ const scheduleInvalidatingEventTypes = new Set<string>([
     knownEventTypes.raisedBedFields.plantBlock,
     knownEventTypes.raisedBedFields.plantReplaceSort,
     knownEventTypes.raisedBedPlantings.lifecycleStarted,
+    knownEventTypes.raisedBedPlantings.sortCorrected,
     knownEventTypes.raisedBedPlantings.lifecycleStatusChanged,
     knownEventTypes.raisedBedPlantings.taskScheduled,
     knownEventTypes.raisedBedPlantings.taskAssigned,

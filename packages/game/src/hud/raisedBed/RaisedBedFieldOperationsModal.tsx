@@ -1,4 +1,4 @@
-import { Hammer } from '@gredice/ui/icons';
+import { GameToolsIcon as Hammer } from '@gredice/ui/GameIcons';
 import { GameModal } from '../../shared-ui/game-modal';
 import { RaisedBedFieldOperationsTab } from './RaisedBedFieldOperationsTab';
 

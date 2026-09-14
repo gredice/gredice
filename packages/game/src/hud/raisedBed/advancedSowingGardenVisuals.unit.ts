@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { getRaisedBedFieldActivePlantIdentity } from '../../utils/raisedBedFields';
 import {
     type AdvancedSowingGardenPlantingInput,
     buildAdvancedSowingGardenPlantingVisuals,
     groupAdvancedSowingGardenPlantingsByFootprint,
     indexAdvancedSowingPlantingsByPosition,
 } from './advancedSowingGardenVisuals';
+import { plantLifecycleMilestones } from './plantLifecycleMilestones';
+import { selectedPlantingField } from './selectedPlantingField';
 
 function selectedPlanting(
     overrides: Partial<AdvancedSowingGardenPlantingInput> = {},
@@ -164,5 +167,58 @@ describe('persisted Advanced Sowing Garden visuals', () => {
             )[0]?.lifecycleStatus,
             'sprouted',
         );
+    });
+});
+
+describe('selected planting in the existing field HUD', () => {
+    it('does not turn lifecycle creation into a sowing date or a legacy mutation identity', () => {
+        const [planting] = buildAdvancedSowingGardenPlantingVisuals(
+            [selectedPlanting()],
+            18,
+        );
+        assert.ok(planting);
+        const field = selectedPlantingField(planting, 17);
+        assert.equal(field.plantSowDate, null);
+        assert.equal(field.plantGrowthDate, undefined);
+        assert.equal(getRaisedBedFieldActivePlantIdentity(field), null);
+        assert.deepEqual(plantLifecycleMilestones(field), {
+            sowed: false,
+            sprouted: false,
+            ready: false,
+            harvested: false,
+        });
+    });
+
+    it('uses recorded sowing completion and keeps undated later milestones honest', () => {
+        const [planting] = buildAdvancedSowingGardenPlantingVisuals(
+            [
+                selectedPlanting({
+                    lifecycleStatus: 'ready',
+                    selectedTask: {
+                        scheduledDate: '2026-08-12',
+                        sowingLocation: 'direct',
+                        status: 'completed',
+                        completion: {
+                            completedAt: '2026-08-13T10:00:00Z',
+                            status: 'pendingVerification',
+                        },
+                        verification: { verifiedAt: '2026-08-14T10:00:00Z' },
+                    },
+                }),
+            ],
+            18,
+        );
+        assert.ok(planting);
+        const field = selectedPlantingField(planting, 17);
+        assert.equal(field.plantSowDate, '2026-08-13T10:00:00.000Z');
+        assert.equal(field.plantGrowthDate, undefined);
+        assert.equal(field.plantReadyDate, undefined);
+        assert.deepEqual(plantLifecycleMilestones(field), {
+            sowed: true,
+            sprouted: true,
+            ready: true,
+            harvested: false,
+        });
+        assert.equal(getRaisedBedFieldActivePlantIdentity(field), null);
     });
 });
