@@ -1,6 +1,7 @@
 import {
     type AdvancedSowingCartAuthorizationV1,
     advancedSowingSelectionRequestKind,
+    readSelectedPlantingOperationTarget,
 } from '@gredice/js/plants';
 import {
     isRaisedBedAbandoned,
@@ -10,6 +11,7 @@ import {
 import {
     AdvancedSowingCartAuthorizationPersistenceError,
     AdvancedSowingCartItemExplicitIdentityRequiredError,
+    assertSelectedPlantingOperationPurchase,
     CheckoutCartItemFulfillmentStartedError,
     cartContainsDeliverableItems,
     deleteShoppingCart,
@@ -649,6 +651,56 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         );
                     }
                     throw error;
+                }
+            }
+            if (amount > 0) {
+                try {
+                    const plantingTarget = readSelectedPlantingOperationTarget(
+                        additionalData === undefined
+                            ? existingItem?.additionalData
+                            : additionalData,
+                    );
+                    if (plantingTarget) {
+                        const targetGardenId =
+                            gardenId === undefined
+                                ? existingItem?.gardenId
+                                : gardenId;
+                        const targetBedId =
+                            raisedBedId === undefined
+                                ? existingItem?.raisedBedId
+                                : raisedBedId;
+                        const targetPositionIndex =
+                            positionIndex === undefined
+                                ? existingItem?.positionIndex
+                                : positionIndex;
+                        if (
+                            entityTypeName !== 'operation' ||
+                            !targetGardenId ||
+                            !targetBedId ||
+                            targetPositionIndex != null ||
+                            amount !== 1 ||
+                            outletOfferId ||
+                            advancedSowingSelection
+                        )
+                            return context.json(
+                                { error: 'Neispravna radnja za sadnju.' },
+                                400,
+                            );
+                        await assertSelectedPlantingOperationPurchase({
+                            target: plantingTarget,
+                            accountId,
+                            gardenId: targetGardenId,
+                            raisedBedId: targetBedId,
+                            entityId: Number(entityId),
+                        });
+                    }
+                } catch {
+                    return context.json(
+                        {
+                            error: 'Odabrana sadnja ili radnja više nije dostupna. Osvježi vrt i pokušaj ponovno.',
+                        },
+                        409,
+                    );
                 }
             }
             let appliedCurrency = outletMutationCurrency ?? undefined;

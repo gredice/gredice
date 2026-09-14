@@ -1,5 +1,6 @@
 import type { OperationData } from '@gredice/client';
 import { isOperationApplicableToPlant } from '@gredice/js/operations';
+import type { SelectedPlantingOperationTarget } from '@gredice/js/plants';
 import { Alert } from '@gredice/ui/Alert';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Close, Search } from '@gredice/ui/icons';
@@ -27,6 +28,7 @@ const OperationsListContent = memo(function OperationsListContent({
     gardenId,
     raisedBedId,
     positionIndex,
+    plantingTarget,
     shoppingCartOperationIds,
     scheduledOperationIds,
 }: {
@@ -36,6 +38,7 @@ const OperationsListContent = memo(function OperationsListContent({
     gardenId: number;
     raisedBedId?: number;
     positionIndex?: number;
+    plantingTarget?: SelectedPlantingOperationTarget;
     shoppingCartOperationIds: Set<number>;
     scheduledOperationIds: Set<number>;
 }) {
@@ -68,6 +71,7 @@ const OperationsListContent = memo(function OperationsListContent({
                         gardenId={gardenId}
                         raisedBedId={raisedBedId}
                         positionIndex={positionIndex}
+                        plantingTarget={plantingTarget}
                     />
                 ))}
             </List>
@@ -79,12 +83,14 @@ export function OperationsList({
     gardenId,
     raisedBedId,
     positionIndex,
+    plantingTarget,
     plantSortId,
     filterFunc,
 }: {
     gardenId: number;
     raisedBedId?: number;
     positionIndex?: number;
+    plantingTarget?: SelectedPlantingOperationTarget;
     plantSortId?: number;
     filterFunc: (operation: OperationData) => boolean;
 }) {
@@ -112,6 +118,7 @@ export function OperationsList({
             gardenId,
             raisedBedId,
             positionIndex,
+            plantingId: plantingTarget?.plantingId,
         });
 
     const filteredOperations = operations
@@ -172,6 +179,7 @@ export function OperationsList({
                 gardenId={gardenId}
                 raisedBedId={raisedBedId}
                 positionIndex={positionIndex}
+                plantingTarget={plantingTarget}
                 shoppingCartOperationIds={shoppingCartOperationIds}
                 scheduledOperationIds={scheduledOperationIds}
             />

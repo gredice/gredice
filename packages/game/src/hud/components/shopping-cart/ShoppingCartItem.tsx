@@ -1,3 +1,4 @@
+import { readSelectedPlantingOperationTarget } from '@gredice/js/plants';
 import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
 import { Chip } from '@gredice/ui/Chip';
 import {
@@ -27,6 +28,7 @@ import {
     useShoppingCartQueryKey,
 } from '../../../hooks/useShoppingCart';
 import { EntityAnchorPrice } from '../../../shared-ui/EntityAnchorPrice';
+import { findAdvancedSowingGardenPlanting } from '../../raisedBed/advancedSowingGardenVisuals';
 import { RaisedBedWateringCalendar } from '../../raisedBed/RaisedBedWateringCalendar';
 import { OutletBadge } from '../OutletBadge';
 import { ButtonPricePickPaymentMethod } from './ButtonPricePickPaymentMethod';
@@ -164,12 +166,28 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const raisedBed = hasRaisedBed
         ? garden?.raisedBeds.find((rb) => rb.id === item.raisedBedId)
         : null;
+    let plantingTarget: ReturnType<typeof readSelectedPlantingOperationTarget>;
+    try {
+        plantingTarget = readSelectedPlantingOperationTarget(
+            item.additionalData,
+        );
+    } catch {
+        plantingTarget = null;
+    }
+    const targetPlanting = findAdvancedSowingGardenPlanting(
+        raisedBed,
+        plantingTarget?.plantingId,
+    );
+    const plantingFieldLabels = targetPlanting?.memberships
+        .map((membership) => membership.positionIndex + 1)
+        .sort((a, b) => a - b);
     const targetPlantSortId =
-        item.entityTypeName === 'operation' && hasPosition
+        plantingTarget?.expectedPlantSortId ??
+        (item.entityTypeName === 'operation' && hasPosition
             ? raisedBed?.fields.find(
                   (field) => field.positionIndex === item.positionIndex,
               )?.plantSortId
-            : null;
+            : null);
     const { data: targetPlantSort } = usePlantSort(targetPlantSortId);
     const additionalData = parseAdditionalData(item.additionalData);
     const scheduledDateInfo = getCartItemScheduledDateInfo(item);
@@ -683,6 +701,12 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                 )}
                                 {hasRaisedBed && hasPosition && (
                                     <Navigate className="size-3 shrink-0" />
+                                )}
+                                {plantingFieldLabels && (
+                                    <Typography
+                                        level="body3"
+                                        secondary
+                                    >{`${plantingFieldLabels.length === 1 ? 'Polje' : 'Polja'} ${plantingFieldLabels.join(', ')}`}</Typography>
                                 )}
                                 {hasPosition && (
                                     <Typography level="body3" secondary>

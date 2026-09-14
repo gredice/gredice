@@ -6,6 +6,7 @@ import {
     approveApprovalRequestAction,
     approveScheduleOperationTaskAction,
     approveSchedulePlantingTaskAction,
+    approveSelectedPlantingTaskAction,
     rejectApprovalRequestAction,
 } from '../../(actions)/approvalActions';
 import { ApprovalTaskList } from './ApprovalTaskList';
@@ -37,6 +38,14 @@ export default async function AdminApprovalsPage() {
                         task.operationId,
                         task.expectedEntityId,
                         task.expectedTaskVersionEventId,
+                    ),
+                };
+            case 'selectedPlantingVerification':
+                return {
+                    task,
+                    approveAction: approveSelectedPlantingTaskAction.bind(
+                        null,
+                        task.identity,
                     ),
                 };
             case 'schedulePlantingVerification':

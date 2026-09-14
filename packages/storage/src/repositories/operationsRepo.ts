@@ -1,3 +1,4 @@
+import type { SelectedPlantingOperationTarget } from '@gredice/js/plants';
 import {
     and,
     asc,
@@ -52,6 +53,7 @@ import type {
     OperationEventsAnyPayload,
 } from './events/types';
 import { getRaisedBedPlanting } from './raisedBedPlantingsRepo';
+import { assertSelectedPlantingOperationPurchase } from './selectedPlantingOperationPurchase';
 import {
     userAchievementCount,
     userAchievementExtras,
@@ -150,6 +152,7 @@ export type OperationAssignableFarmUser = OperationAssignedUser & {
 };
 
 type GetOperationsInput = {
+    plantingId?: number;
     accountId: string;
     gardenId?: number;
     raisedBedId?: number;
@@ -507,6 +510,9 @@ async function fillOperationAggregates(
 function getOperationsWhere(input: GetOperationsInput) {
     return and(
         eq(operations.accountId, input.accountId),
+        input.plantingId
+            ? eq(operations.plantingId, input.plantingId)
+            : undefined,
         eq(operations.isDeleted, false),
         input.gardenId ? eq(operations.gardenId, input.gardenId) : undefined,
         input.raisedBedId
@@ -518,8 +524,11 @@ function getOperationsWhere(input: GetOperationsInput) {
     );
 }
 
-async function getOperationRows(input: GetOperationsInput) {
-    return storage().query.operations.findMany({
+async function getOperationRows(
+    input: GetOperationsInput,
+    db: DatabaseClient = storage(),
+) {
+    return db.query.operations.findMany({
         where: getOperationsWhere(input),
         orderBy: desc(operations.timestamp),
     });
@@ -1219,15 +1228,19 @@ export async function getOperations(
     gardenId?: number,
     raisedBedId?: number,
     raisedBedFieldIds?: number[],
+    db: DatabaseClient = storage(),
 ) {
-    const query = await getOperationRows({
-        accountId,
-        gardenId,
-        raisedBedId,
-        raisedBedFieldIds,
-    });
+    const query = await getOperationRows(
+        {
+            accountId,
+            gardenId,
+            raisedBedId,
+            raisedBedFieldIds,
+        },
+        db,
+    );
 
-    return await fillOperationAggregates(query);
+    return await fillOperationAggregates(query, db);
 }
 
 export async function getOperationsPage(
@@ -2199,6 +2212,7 @@ export async function createScheduledOperation(
 }
 
 type CheckoutOperationOptions = {
+    plantingTarget?: SelectedPlantingOperationTarget;
     accept?: boolean;
     delivery: CheckoutOperationCreatedPayload['delivery'];
     paymentCurrency: CheckoutOperationCreatedPayload['paymentCurrency'];
@@ -2229,6 +2243,9 @@ function checkoutOperationFingerprint(
         gardenId: operation.gardenId ?? null,
         raisedBedId: operation.raisedBedId ?? null,
         raisedBedFieldId: operation.raisedBedFieldId ?? null,
+        ...(operation.plantingId != null
+            ? { plantingId: operation.plantingId }
+            : {}),
         operationTimestamp,
         paymentCurrency: options.paymentCurrency,
         delivery: options.delivery,
@@ -2298,6 +2315,15 @@ function parseCheckoutOperationCreatedPayload(
         );
     };
 
+    if (
+        data.plantingId !== undefined &&
+        data.plantingId !== null &&
+        (typeof data.plantingId !== 'number' ||
+            !Number.isSafeInteger(data.plantingId) ||
+            data.plantingId <= 0 ||
+            data.raisedBedFieldId != null)
+    )
+        return null;
     const parsedDelivery = delivery(data.delivery);
     if (
         typeof data.operationId !== 'number' ||
@@ -2324,6 +2350,9 @@ function parseCheckoutOperationCreatedPayload(
 
     return {
         operationId: data.operationId,
+        ...(typeof data.plantingId === 'number'
+            ? { plantingId: data.plantingId }
+            : {}),
         accountId: data.accountId,
         entityId: data.entityId,
         entityTypeName: data.entityTypeName,
@@ -2463,6 +2492,10 @@ function assertCheckoutOperationFingerprint(
     stored: CheckoutOperationCreatedPayload,
     expected: Omit<CheckoutOperationCreatedPayload, 'operationId'>,
 ) {
+    if ((stored.plantingId ?? null) !== (expected.plantingId ?? null))
+        throw new CheckoutOperationConflictError(
+            'Checkout planting target changed.',
+        );
     const fingerprintFields = [
         'accountId',
         'entityId',
@@ -2508,10 +2541,6 @@ async function ensureCheckoutOperation(
     options: CheckoutOperationOptions,
     db: DatabaseClient,
 ) {
-    if (operation.plantingId != null)
-        throw new CheckoutOperationConflictError(
-            'Planting-targeted checkout operations require a dedicated purchase contract.',
-        );
     const fingerprint = checkoutOperationFingerprint(operation, options);
     const stored = await getCheckoutOperationMapping(cartItemId, db);
     if (stored) {
@@ -2527,6 +2556,7 @@ async function ensureCheckoutOperation(
                 gardenId: true,
                 raisedBedId: true,
                 raisedBedFieldId: true,
+                plantingId: true,
                 timestamp: true,
             },
             where: and(
@@ -2552,6 +2582,8 @@ async function ensureCheckoutOperation(
         ).find((field) => mappedOperation[field] !== fingerprint[field]);
         if (
             operationMismatch ||
+            (mappedOperation.plantingId ?? null) !==
+                (fingerprint.plantingId ?? null) ||
             (fingerprint.operationTimestamp !== null &&
                 mappedOperation.timestamp.toISOString() !==
                     fingerprint.operationTimestamp)
@@ -2563,6 +2595,28 @@ async function ensureCheckoutOperation(
         return { operationId: stored.operationId, created: false } as const;
     }
 
+    if (operation.plantingId != null) {
+        if (
+            !options.plantingTarget ||
+            options.plantingTarget.plantingId !== operation.plantingId ||
+            !operation.accountId ||
+            !operation.gardenId ||
+            !operation.raisedBedId
+        )
+            throw new CheckoutOperationConflictError(
+                'Selected planting purchase target is missing.',
+            );
+        await assertSelectedPlantingOperationPurchase(
+            {
+                target: options.plantingTarget,
+                accountId: operation.accountId,
+                gardenId: operation.gardenId,
+                raisedBedId: operation.raisedBedId,
+                entityId: operation.entityId,
+            },
+            db,
+        );
+    }
     const operationId = await createOperation(operation, db);
     await createEvent(
         knownEvents.operations.scheduledV1(operationId.toString(), {
@@ -2626,7 +2680,9 @@ export async function getOrCreateCheckoutOperation(
               runInTransaction,
           )
         : await runInTransaction();
-    if (result.created) {
+    // A direct debit may have created the selected operation in its own transaction.
+    // Invalidate on the fulfillment replay too, after that transaction has committed.
+    if (result.created || operation.plantingId) {
         await bustScheduleCache();
     }
     return result;

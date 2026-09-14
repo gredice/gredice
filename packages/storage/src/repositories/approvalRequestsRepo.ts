@@ -2,7 +2,7 @@ import 'server-only';
 import { asc, eq, inArray } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { isSelectedRaisedBedPlantingStatusTransitionAllowed } from '../helpers/selectedRaisedBedPlantingLifecycle';
-import { events, raisedBeds } from '../schema';
+import { events, gardens, raisedBeds } from '../schema';
 import { storage } from '../storage';
 import type {
     ApprovalRequestCreatePayload,
@@ -240,26 +240,69 @@ function selectedPlantStatusRequestTarget(
         );
 }
 
-export async function createSelectedPlantStatusApprovalRequest(
-    input: SelectedRaisedBedPlantingTaskCommandIdentity & {
-        actor: ScheduleTaskActor;
+type SelectedPlantStatusRequestInput =
+    SelectedRaisedBedPlantingTaskCommandIdentity & {
         raisedBedId: number;
         requestedStatus: string;
+        effectiveAt?: Date;
+        note?: string;
+    };
+
+type PlantStatusAutomationRequester =
+    | 'automation:raised-bed-image-status-review'
+    | 'automation:harvest-operation-status-review';
+
+export async function createSelectedPlantStatusApprovalRequest(
+    input: SelectedPlantStatusRequestInput & { actor: ScheduleTaskActor },
+) {
+    return createSelectedPlantStatusRequest(input);
+}
+
+/** Internal automation proposals still require an administrator to apply the change. */
+export async function createSelectedPlantStatusAutomationApprovalRequest(
+    input: SelectedPlantStatusRequestInput & {
+        requestedBy: PlantStatusAutomationRequester;
     },
+) {
+    if (
+        ![
+            'automation:raised-bed-image-status-review',
+            'automation:harvest-operation-status-review',
+        ].includes(input.requestedBy)
+    )
+        throw new Error('Unsupported automation requester.');
+    return createSelectedPlantStatusRequest(input);
+}
+
+async function createSelectedPlantStatusRequest(
+    input: SelectedPlantStatusRequestInput &
+        (
+            | { actor: ScheduleTaskActor }
+            | { requestedBy: PlantStatusAutomationRequester }
+        ),
 ) {
     return withSelectedRaisedBedPlantingScheduleTaskTransaction(
         input.plantingId,
         async (transaction) => {
-            const task = await getSelectedRaisedBedPlantingTaskForActor(
-                input,
-                transaction,
-            );
+            const task =
+                'actor' in input
+                    ? await getSelectedRaisedBedPlantingTaskForActor(
+                          input,
+                          transaction,
+                      )
+                    : (
+                          await getRaisedBedPlanting(
+                              input.plantingId,
+                              transaction,
+                          )
+                      )?.selectedTask;
             const planting = await getRaisedBedPlanting(
                 input.plantingId,
                 transaction,
             );
             if (
                 !planting ||
+                !task ||
                 planting.raisedBedId !== input.raisedBedId ||
                 task.identity.expectedLifecycleVersionEventId !==
                     input.expectedLifecycleVersionEventId ||
@@ -305,12 +348,40 @@ export async function createSelectedPlantStatusApprovalRequest(
                 })
                 .from(raisedBeds)
                 .where(eq(raisedBeds.id, planting.raisedBedId));
+            const garden = bed?.gardenId
+                ? await transaction.query.gardens.findFirst({
+                      where: eq(gardens.id, bed.gardenId),
+                  })
+                : null;
+            const fullBed = await transaction.query.raisedBeds.findFirst({
+                where: eq(raisedBeds.id, planting.raisedBedId),
+            });
+            if (
+                !bed?.accountId ||
+                !garden ||
+                garden.isDeleted ||
+                garden.isSandbox ||
+                !fullBed ||
+                fullBed.isDeleted ||
+                fullBed.status === 'abandoned'
+            )
+                throw new Error('Raised bed is unavailable.');
             const requestId = uuidV4();
             const requestedAt = new Date().toISOString();
+            const effectiveAt = input.effectiveAt ?? new Date(requestedAt);
+            if (
+                !Number.isFinite(effectiveAt.getTime()) ||
+                effectiveAt.getTime() > Date.now()
+            )
+                throw new Error('Invalid observation date.');
             await createEvent(
                 knownEvents.approvalRequests.createdV1(requestId, {
-                    requestedBy: input.actor.userId,
+                    requestedBy:
+                        'actor' in input
+                            ? input.actor.userId
+                            : input.requestedBy,
                     requestedAt,
+                    note: input.note,
                     target: {
                         kind: 'raisedBedPlanting.plantStatus',
                         raisedBedId: planting.raisedBedId,
@@ -321,7 +392,7 @@ export async function createSelectedPlantStatusApprovalRequest(
                         plantSortId: planting.plantSortId,
                         currentStatus: planting.lifecycleStatus,
                         requestedStatus: input.requestedStatus,
-                        effectiveAt: requestedAt,
+                        effectiveAt: effectiveAt.toISOString(),
                         accountId: bed?.accountId,
                         gardenId: bed?.gardenId,
                     },

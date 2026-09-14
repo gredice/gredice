@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import type { AdvancedSowingGardenPlantingInput } from '../../../packages/game/src/hud/raisedBed/advancedSowingGardenVisuals';
 import { AdvancedSowingPersistedStory } from './AdvancedSowingPersistedStory';
+import { buildOperation } from './raisedBedFieldHudScenarios';
 
 const plantSortCoverUrl = null;
 
@@ -630,6 +631,20 @@ test('advanced greenhouse planting reuses the seedling HUD without legacy action
     mount,
     page,
 }) => {
+    await page.route('**/plantings/901/diary-entries', (route) =>
+        route.fulfill({
+            json: [
+                {
+                    id: 601,
+                    name: 'Biljka je posijana',
+                    description: '',
+                    timestamp: '2026-08-12T08:00:00Z',
+                    status: null,
+                    imageUrls: [],
+                },
+            ],
+        }),
+    );
     await mount(
         <AdvancedSowingPersistedStory
             plantSorts={[plantSort(42, 'Bosiljak')]}
@@ -667,7 +682,9 @@ test('advanced greenhouse planting reuses the seedling HUD without legacy action
         dialog.getByRole('button', { name: /Promijeni stanje|Presadi/u }),
     ).toHaveCount(0);
     await dialog.getByRole('tab', { name: 'Dnevnik', exact: true }).click();
-    await expect(dialog.locator('[data-garden-operation-card]')).toHaveCount(1);
+    await expect(
+        dialog.getByText('Biljka je posijana', { exact: true }),
+    ).toBeVisible();
     await expect(
         dialog.getByRole('button', { name: 'Otkaži', exact: true }),
     ).toHaveCount(0);
@@ -734,3 +751,124 @@ test.describe('advanced planting on mobile', () => {
         await expect(tomatoDialog).toBeVisible();
     });
 });
+
+for (const width of [390, 1024]) {
+    test(`selected planting operations and diary preserve crop identity at ${width}px`, async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize({ width, height: 900 });
+        let cartPayload: Record<string, unknown> | undefined;
+        const diaryPlantingIds: string[] = [];
+        let purchaseAttempts = 0;
+        await page.route('**/*', async (route) => {
+            const request = route.request();
+            const url = new URL(request.url());
+            if (url.pathname.endsWith('/diary-entries')) {
+                diaryPlantingIds.push(url.pathname);
+                return route.fulfill({
+                    json: [
+                        {
+                            id: 601,
+                            name: 'Biljka je posijana',
+                            description: 'Potvrđeno sijanje',
+                            timestamp: '2026-09-01T08:00:00Z',
+                            status: null,
+                            imageUrls: [],
+                        },
+                        {
+                            id: -602,
+                            name: 'Okopavanje',
+                            description: '',
+                            status: 'Dovršeno',
+                            timestamp: '2026-09-02T08:00:00Z',
+                            imageUrls: [],
+                        },
+                    ],
+                });
+            }
+            if (
+                url.pathname.includes('/shopping-cart') &&
+                request.method() === 'POST'
+            ) {
+                purchaseAttempts += 1;
+                if (purchaseAttempts === 1)
+                    return route.fulfill({
+                        status: 503,
+                        json: { error: 'Privremena pogreška.' },
+                    });
+                cartPayload = request.postDataJSON();
+                return route.fulfill({ json: { id: 501 } });
+            }
+            if (
+                url.pathname.endsWith('/operations') &&
+                request.method() === 'GET'
+            )
+                return route.fulfill({
+                    json: { items: [], nextCursor: null, total: 0 },
+                });
+            return route.continue();
+        });
+        const operation = buildOperation({
+            id: 201,
+            name: 'mock-hoeing',
+            label: 'Okopavanje',
+            stageName: 'maintenance',
+            stageLabel: 'Održavanje',
+            appliesToAllTargets: true,
+        });
+        await mount(
+            <AdvancedSowingPersistedStory
+                operations={[operation]}
+                plantSorts={[plantSort(42, 'Bosiljak')]}
+                plantings={[
+                    selectedPlanting({
+                        lifecycleStatus: 'sprouted',
+                        selectedTask: {
+                            status: 'completed',
+                            scheduledDate: '2026-09-01T00:00:00Z',
+                            sowingLocation: 'direct',
+                            verification: {
+                                verifiedAt: '2026-09-01T08:00:00Z',
+                            },
+                        },
+                    }),
+                ]}
+            />,
+        );
+        await page.getByRole('button', { name: /Bosiljak/ }).click();
+        await page.getByRole('tab', { name: 'Radnje', exact: true }).click();
+        await expect(
+            page.getByText('Okopavanje', { exact: true }),
+        ).toBeVisible();
+        await page.getByText('Okopavanje', { exact: true }).click();
+        await page
+            .getByRole('button', { name: 'Potvrdi', exact: true })
+            .click();
+        await expect(
+            page.getByText('Zakazivanje nije uspjelo. Pokušaj ponovno.'),
+        ).toBeVisible();
+        await page
+            .getByRole('button', { name: 'Potvrdi', exact: true })
+            .click();
+        await expect.poll(() => cartPayload).toBeTruthy();
+        expect(cartPayload?.positionIndex).toBeUndefined();
+        expect(
+            JSON.parse(String(cartPayload?.additionalData)).plantingTarget,
+        ).toEqual({
+            plantingId: 901,
+            expectedPlantSortId: 42,
+            expectedLifecycleVersionEventId: 109,
+        });
+        await page.getByRole('tab', { name: 'Dnevnik', exact: true }).click();
+        await expect(
+            page.getByText('Biljka je posijana', { exact: true }),
+        ).toBeVisible();
+        expect(diaryPlantingIds).toEqual([
+            '/api/gredice/api/gardens/1/raised-beds/1/plantings/901/diary-entries',
+        ]);
+        await page.screenshot({
+            path: test.info().outputPath(`selected-diary-${width}.png`),
+        });
+    });
+}

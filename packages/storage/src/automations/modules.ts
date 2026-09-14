@@ -1,6 +1,10 @@
 import type { EntityStandardized } from '../@types/EntityStandardized';
+import { getRaisedBedPlantOccupancy } from '../helpers/raisedBedPlantOccupancy';
+import { isCanonicalSelectedPlantingSowedEvent } from '../helpers/selectedPlantingSowedEvent';
+import { isSelectedRaisedBedPlantingStatusTransitionAllowed } from '../helpers/selectedRaisedBedPlantingLifecycle';
 import {
     createPlantStatusApprovalRequest,
+    createSelectedPlantStatusAutomationApprovalRequest,
     getApprovalRequests,
     PendingPlantStatusApprovalRequestConflictError,
 } from '../repositories/approvalRequestsRepo';
@@ -10,6 +14,7 @@ import {
     knownEvents,
     knownEventTypes,
     type RaisedBedFieldSowingLocation,
+    raisedBedPlantingLifecycleStatuses,
 } from '../repositories/events';
 import { getFarms } from '../repositories/farmsRepo';
 import {
@@ -28,6 +33,10 @@ import {
 } from '../repositories/operationsRepo';
 import { getOutletOffers } from '../repositories/outletOffersRepo';
 import { getRaisedBedFieldsWithEvents } from '../repositories/raisedBedFieldsRepo';
+import {
+    getRaisedBedPlanting,
+    getRaisedBedPlantingByEventAggregateId,
+} from '../repositories/raisedBedPlantingsRepo';
 import {
     withOperationScheduleTaskTransaction,
     withPlantingScheduleTaskTransaction,
@@ -911,7 +920,18 @@ function raisedBedOperationKey({
     )}`;
 }
 
-function isCurrentlyGreenhouseSeedling(field: RaisedBedFieldForGreenhouseCare) {
+function isCurrentlyGreenhouseSeedling(
+    field: Pick<
+        RaisedBedFieldForGreenhouseCare,
+        | 'active'
+        | 'sowingLocation'
+        | 'plantSortId'
+        | 'plantStatus'
+        | 'plantDeadDate'
+        | 'plantHarvestedDate'
+        | 'plantRemovedDate'
+    >,
+) {
     return Boolean(
         field.active &&
             field.sowingLocation === 'greenhouse' &&
@@ -948,8 +968,10 @@ async function getGreenhouseFieldCountsByFarmId(): Promise<GreenhouseFieldCounts
             continue;
         }
 
-        const greenhouseFieldCount = raisedBed.fields.filter(
-            isCurrentlyGreenhouseSeedling,
+        const greenhouseFieldCount = getRaisedBedPlantOccupancy(
+            raisedBed,
+        ).filter((plant) =>
+            isCurrentlyGreenhouseSeedling({ ...plant, active: true }),
         ).length;
         if (greenhouseFieldCount === 0) {
             continue;
@@ -1766,19 +1788,27 @@ const queueSeasonalSowingOfferOperationsActionModule: AutomationModule = {
             return skip('No source event is available.');
         }
 
+        const selected = isCanonicalSelectedPlantingSowedEvent(context.event)
+            ? await getRaisedBedPlantingByEventAggregateId(
+                  context.event.aggregateId,
+              )
+            : null;
         const parsed = parseRaisedBedFieldAggregateId(
             context.event.aggregateId,
         );
-        if (!parsed) {
-            return skip(
-                'Source event aggregate is not a raised-bed field aggregate.',
-            );
+        const raisedBedId = selected?.raisedBedId ?? parsed?.raisedBedId;
+        if (
+            !raisedBedId ||
+            (selected &&
+                (selected.configurationSource !== 'selected' ||
+                    selected.selectedTask?.status !== 'completed'))
+        ) {
+            return skip('Source event is not a verified sowing.');
         }
-
-        const raisedBed = await getRaisedBed(parsed.raisedBedId);
+        const raisedBed = await getRaisedBed(raisedBedId);
         if (!raisedBed?.accountId) {
             return skip('Raised bed or account was not found.', {
-                raisedBedId: parsed.raisedBedId,
+                raisedBedId,
             });
         }
 
@@ -3094,6 +3124,82 @@ const createPlantStatusApprovalRequestsActionModule: AutomationModule = {
                 'Plant-status approval action is missing targetStatus or requestedBy.',
                 'invalid_config',
             );
+        }
+
+        const operationId = Number(context.event?.aggregateId);
+        const operation =
+            Number.isSafeInteger(operationId) && operationId > 0
+                ? await getOperationById(operationId)
+                : null;
+        if (operation?.plantingId) {
+            const planting = await getRaisedBedPlanting(operation.plantingId);
+            const task = planting?.selectedTask;
+            if (
+                !planting ||
+                !task ||
+                task.status !== 'completed' ||
+                !planting.isActive ||
+                !planting.lifecycleStatus ||
+                planting.lifecycleStatus === targetStatus
+            )
+                return skip(
+                    'Selected planting does not need a status proposal.',
+                );
+            // Delayed operation events must never propose changes to a newer lifecycle version.
+            if (
+                !context.event?.createdAt ||
+                planting.updatedAt > context.event.createdAt
+            )
+                return skip(
+                    'Selected planting changed after the operation event.',
+                );
+            const selectedTargetStatus =
+                raisedBedPlantingLifecycleStatuses.find(
+                    (status) => status === targetStatus,
+                );
+            if (
+                !selectedTargetStatus ||
+                !isSelectedRaisedBedPlantingStatusTransitionAllowed(
+                    planting.lifecycleStatus,
+                    selectedTargetStatus,
+                )
+            )
+                return skip(
+                    'Selected planting transition is no longer allowed.',
+                );
+            if (context.dryRun)
+                return success({
+                    dryRun: true,
+                    plantingId: planting.id,
+                    targetStatus,
+                    eligibleCount: 1,
+                });
+            try {
+                const request =
+                    await createSelectedPlantStatusAutomationApprovalRequest({
+                        ...task.identity,
+                        raisedBedId: planting.raisedBedId,
+                        requestedStatus: targetStatus,
+                        requestedBy:
+                            'automation:harvest-operation-status-review',
+                        effectiveAt: context.event.createdAt,
+                        note: `Prijedlog nakon završene radnje #${operationId}.`,
+                    });
+                return success({
+                    plantingId: planting.id,
+                    requestIds: [request.id],
+                    requestCount: 1,
+                });
+            } catch (error) {
+                if (
+                    error instanceof
+                    PendingPlantStatusApprovalRequestConflictError
+                )
+                    return skip(
+                        'Selected planting already has a different pending proposal.',
+                    );
+                throw error;
+            }
         }
 
         const resolved = await resolveOperationRaisedBedFieldTargets(

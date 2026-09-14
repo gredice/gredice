@@ -1,5 +1,6 @@
 import type { OperationData } from '@gredice/client';
 import { formatPrice } from '@gredice/js/currency';
+import type { SelectedPlantingOperationTarget } from '@gredice/js/plants';
 import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
 import { Button } from '@gredice/ui/Button';
 import { GameBackpackIcon as BackpackIcon } from '@gredice/ui/GameIcons';
@@ -24,6 +25,7 @@ export function OperationsListItem({
     gardenId,
     raisedBedId,
     positionIndex,
+    plantingTarget,
     inShoppingCart,
     isScheduled,
     onOperationPicked,
@@ -31,6 +33,7 @@ export function OperationsListItem({
     gardenId: number;
     raisedBedId?: number;
     positionIndex?: number;
+    plantingTarget?: SelectedPlantingOperationTarget;
     operation: OperationData;
     inShoppingCart?: boolean;
     isScheduled?: boolean;
@@ -62,18 +65,22 @@ export function OperationsListItem({
         useInventoryItem?: boolean,
     ) {
         onOperationPicked?.(operation);
-        setShoppingCartItem.mutate({
+        await setShoppingCartItem.mutateAsync({
             amount: 1,
             entityId: operation.id.toString(),
             entityTypeName: operation.entityType.name,
             gardenId,
             raisedBedId,
             positionIndex,
-            additionalData: scheduledDate
-                ? JSON.stringify({
-                      scheduledDate: scheduledDate.toISOString(),
-                  })
-                : null,
+            additionalData:
+                scheduledDate || plantingTarget
+                    ? JSON.stringify({
+                          ...(scheduledDate
+                              ? { scheduledDate: scheduledDate.toISOString() }
+                              : {}),
+                          ...(plantingTarget ? { plantingTarget } : {}),
+                      })
+                    : null,
             currency: useInventoryItem ? 'inventory' : undefined,
         });
         animateFlyToShoppingCart.run();

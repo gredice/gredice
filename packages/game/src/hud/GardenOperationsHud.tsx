@@ -1,3 +1,4 @@
+import { readSelectedPlantingOperationTarget } from '@gredice/js/plants';
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
 import { DotIndicator } from '@gredice/ui/DotIndicator';
@@ -68,6 +69,7 @@ import { GameModal } from '../shared-ui/game-modal';
 import { useShoppingCartOpenParam } from '../useUrlState';
 import { buildGardenOperationDiaryTarget } from './gardenOperationDiaryTargets';
 import { sortOperationTasksNewestFirst } from './gardenOperationOrdering';
+import { findAdvancedSowingGardenPlanting } from './raisedBed/advancedSowingGardenVisuals';
 import { RaisedBedDiaryCancelAction } from './raisedBed/RaisedBedDiaryCancelAction';
 import { RaisedBedDiaryRescheduleAction } from './raisedBed/RaisedBedDiaryRescheduleAction';
 
@@ -557,10 +559,16 @@ function getOperationTargetDetails(
         };
     }
 
-    const fieldLabel = getRaisedBedFieldLabel(
+    const planting = findAdvancedSowingGardenPlanting(
         raisedBed,
-        operation.raisedBedFieldId,
+        operation.plantingId,
     );
+    const labels = planting?.memberships
+        .map((membership) => membership.positionIndex + 1)
+        .sort((a, b) => a - b);
+    const fieldLabel = labels?.length
+        ? `${labels.length === 1 ? 'Polje' : 'Polja'} ${labels.join(', ')}`
+        : getRaisedBedFieldLabel(raisedBed, operation.raisedBedFieldId);
 
     return {
         type: 'raisedBed',
@@ -859,10 +867,26 @@ function getCartOperationTargetDetails(
         };
     }
 
-    const fieldLabel =
-        typeof item.positionIndex === 'number'
-            ? `Polje ${item.positionIndex + 1}`
-            : null;
+    let plantingTarget: ReturnType<typeof readSelectedPlantingOperationTarget>;
+    try {
+        plantingTarget = readSelectedPlantingOperationTarget(
+            item.additionalData,
+        );
+    } catch {
+        plantingTarget = null;
+    }
+    const planting = findAdvancedSowingGardenPlanting(
+        raisedBed,
+        plantingTarget?.plantingId,
+    );
+    const labels = planting?.memberships
+        .map((membership) => membership.positionIndex + 1)
+        .sort((a, b) => a - b);
+    const fieldLabel = labels?.length
+        ? `${labels.length === 1 ? 'Polje' : 'Polja'} ${labels.join(', ')}`
+        : typeof item.positionIndex === 'number'
+          ? `Polje ${item.positionIndex + 1}`
+          : null;
 
     return {
         type: 'raisedBed',

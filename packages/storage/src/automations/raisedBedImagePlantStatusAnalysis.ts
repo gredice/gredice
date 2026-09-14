@@ -9,7 +9,11 @@ import { validateHostedImageUrl } from '@gredice/js/urls';
 import { generateText, NoObjectGeneratedError, Output } from 'ai';
 import { z } from 'zod';
 import type { EntityStandardized } from '../@types/EntityStandardized';
-import { createPlantStatusApprovalRequest } from '../repositories/approvalRequestsRepo';
+import { getRaisedBedPlantOccupancy } from '../helpers/raisedBedPlantOccupancy';
+import {
+    createPlantStatusApprovalRequest,
+    createSelectedPlantStatusAutomationApprovalRequest,
+} from '../repositories/approvalRequestsRepo';
 import { getEntitiesFormatted } from '../repositories/entitiesRepo';
 import {
     knownEventTypes,
@@ -46,13 +50,14 @@ const plantStatusReviewOutputSchema = z.object({
         .array(
             z.object({
                 positionLabel: z.number().int().min(1).max(18),
+                plantingId: z.number().int().positive().nullable().optional(),
                 requestedStatus: z.enum(imageObservablePlantFieldStatuses),
                 confidence: z.number().min(0).max(1),
                 evidence: z.string(),
                 observedPlantCount: z.number().int().min(0).nullable(),
             }),
         )
-        .max(18),
+        .max(108),
     weedProposals: z
         .array(
             z.object({
@@ -94,6 +99,15 @@ type ReviewInput =
 
 type ReviewProposal = PlantStatusReviewOutput['proposals'][number];
 type WeedReviewProposal = PlantStatusReviewOutput['weedProposals'][number];
+
+type AcceptedSelectedReviewProposal = ReviewProposal & {
+    positionIndex: number;
+    currentStatus: string;
+    plantingId: number;
+    identity: NonNullable<
+        RaisedBedForReview['plantings'][number]['selectedTask']
+    >['identity'];
+};
 
 type AcceptedReviewProposal = ReviewProposal & {
     positionIndex: number;
@@ -429,6 +443,7 @@ async function buildReviewContext(input: ReviewInput & { ok: true }) {
     const totalFields = raisedBed.fields.length || 18;
     const rows = Math.max(1, Math.ceil(totalFields / RAISED_BED_COLUMNS));
 
+    const occupancy = getRaisedBedPlantOccupancy(raisedBed);
     const fields = raisedBed.fields
         .filter((field) => field.active)
         .map((field) => {
@@ -532,6 +547,31 @@ async function buildReviewContext(input: ReviewInput & { ok: true }) {
                       }
                     : null,
             fields,
+            plantings: occupancy
+                .filter(
+                    (plant) =>
+                        plant.planting?.selectedTask?.status === 'completed',
+                )
+                .map((plant) => ({
+                    plantingId: plant.planting?.id ?? null,
+                    positionLabels: plant.positionNumbers,
+                    plantName: plantSortName(
+                        plantSortsById.get(plant.plantSortId),
+                        `Sorta #${plant.plantSortId}`,
+                    ),
+                    currentStatus: plant.plantStatus ?? null,
+                    allowedTargetStatuses: getImageObservablePlantStatusTargets(
+                        plant.plantStatus ?? null,
+                    ),
+                    expectedPlantCount: plant.planting?.plantCount ?? null,
+                    seedingDistanceCm:
+                        plant.planting?.selectedSeedingDistanceCm ?? null,
+                    currentLocation:
+                        plant.sowingLocation === 'greenhouse'
+                            ? 'greenhouse'
+                            : 'raisedBed',
+                    sowedAt: plant.plantSowDate?.toISOString() ?? null,
+                })),
         },
     };
 }
@@ -547,6 +587,7 @@ function buildReviewPrompt({
         system: [
             'Ti si stručni agronom koji pregledava fotografije Gredice i predlaže ISKLJUČIVO sigurne promjene stanja biljaka.',
             'Vrati strukturirani rezultat prema shemi. Ne vraćaj markdown.',
+            'Popis `plantings` opisuje napredne sadnje: za njih obavezno navedi točan `plantingId` i jedno od njihovih `positionLabels`. Jedna sadnja može zauzimati više polja; predloži najviše jednu promjenu za cijelu sadnju. Za starije biljke iz `fields` postavi `plantingId` na null. Polje s naprednom sadnjom nije prazno čak i kada `fields` nema biljku. Ako se različite biljke u istom polju ne mogu jasno razlikovati, preskoči prijedlog; nikad ne prenosi opažanje jedne sorte na drugu.',
             'U poljima `summary` i `evidence` piši normalne hrvatske rečenice. Ne spominji interne nazive ili JSON ključeve kao `positionIndex`, `needsRemoval`, `plantStatus`, `plantSortId`, `currentLocation` ili `sowingLocation`.',
             'Predloži promjenu samo kada je vizualni dokaz jasan i gotovo siguran; ne pogađaj na temelju kalendara, očekivanih dana rasta ili mutne/zaklonjene fotografije.',
             'Za svako polje smiješ predložiti plant-status samo iz `allowedTargetStatuses`; ako nema odgovarajućeg statusa, preskoči plant-status prijedlog za to polje.',
@@ -616,24 +657,104 @@ function weedProposalSkip(
     };
 }
 
-function filterAcceptedProposals({
+export function filterAcceptedProposals({
     output,
     raisedBed,
     minConfidence,
+    referenceDate,
 }: {
     output: PlantStatusReviewOutput;
     raisedBed: RaisedBedForReview;
     minConfidence: number;
+    referenceDate?: Date;
 }) {
     const fieldsByPositionIndex = new Map(
         raisedBed.fields.map((field) => [field.positionIndex, field]),
     );
-    const accepted: AcceptedReviewProposal[] = [];
+    const accepted: (
+        | AcceptedReviewProposal
+        | AcceptedSelectedReviewProposal
+    )[] = [];
+    const selectedTargets = new Set<number>();
     const skipped: AutomationJsonObject[] = [];
 
     for (const proposal of output.proposals) {
         const positionIndex = proposal.positionLabel - 1;
+        if (proposal.plantingId != null) {
+            const planting = raisedBed.plantings.find(
+                (plant) => plant.id === proposal.plantingId,
+            );
+            const task = planting?.selectedTask;
+            if (
+                planting?.configurationSource !== 'selected' ||
+                !planting.isActive ||
+                planting.isDeleted ||
+                task?.status !== 'completed' ||
+                !planting.lifecycleStatus ||
+                !planting.memberships.some(
+                    (m) =>
+                        !m.isDeleted &&
+                        !m.raisedBedField.isDeleted &&
+                        m.raisedBedField.positionIndex === positionIndex,
+                ) ||
+                (referenceDate && planting.updatedAt > referenceDate)
+            ) {
+                skipped.push(
+                    proposalSkip(
+                        proposal,
+                        'Selected planting is unavailable or changed after the image.',
+                    ),
+                );
+                continue;
+            }
+            if (
+                selectedTargets.has(planting.id) ||
+                proposal.confidence < minConfidence ||
+                !getImageObservablePlantStatusTargets(
+                    planting.lifecycleStatus,
+                ).includes(proposal.requestedStatus)
+            ) {
+                skipped.push(
+                    proposalSkip(
+                        proposal,
+                        'Selected planting proposal is duplicate, uncertain or invalid.',
+                    ),
+                );
+                continue;
+            }
+            selectedTargets.add(planting.id);
+            accepted.push({
+                ...proposal,
+                plantingId: planting.id,
+                identity: task.identity,
+                positionIndex,
+                currentStatus: planting.lifecycleStatus,
+            });
+            continue;
+        }
         const field = fieldsByPositionIndex.get(positionIndex);
+        if (
+            raisedBed.plantings.some(
+                (plant) =>
+                    plant.configurationSource === 'selected' &&
+                    plant.isActive &&
+                    !plant.isDeleted &&
+                    plant.memberships.some(
+                        (m) =>
+                            !m.isDeleted &&
+                            !m.raisedBedField.isDeleted &&
+                            m.raisedBedField.positionIndex === positionIndex,
+                    ),
+            )
+        ) {
+            skipped.push(
+                proposalSkip(
+                    proposal,
+                    'Field contains a selected planting; an explicit planting target is required.',
+                ),
+            );
+            continue;
+        }
         if (!field?.active || !field.plantSortId) {
             skipped.push(
                 proposalSkip(proposal, 'Field is not actively planted.'),
@@ -985,6 +1106,7 @@ export async function runRaisedBedImagePlantStatusReview({
         output,
         raisedBed: context.raisedBed,
         minConfidence,
+        referenceDate: input.referenceDate,
     });
     const { accepted: acceptedWeeds, skipped: skippedWeeds } =
         filterAcceptedWeedProposals({
@@ -997,6 +1119,19 @@ export async function runRaisedBedImagePlantStatusReview({
     const requestErrors: AutomationJsonObject[] = [];
     for (const proposal of accepted) {
         try {
+            if ('identity' in proposal) {
+                const request =
+                    await createSelectedPlantStatusAutomationApprovalRequest({
+                        ...proposal.identity,
+                        raisedBedId: input.raisedBedId,
+                        requestedStatus: proposal.requestedStatus,
+                        requestedBy: REVIEW_REQUESTER,
+                        effectiveAt: input.referenceDate,
+                        note: proposal.evidence,
+                    });
+                requestIds.push(request.id);
+                continue;
+            }
             const request = await createPlantStatusApprovalRequest({
                 raisedBedId: input.raisedBedId,
                 positionIndex: proposal.positionIndex,

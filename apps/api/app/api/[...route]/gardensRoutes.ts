@@ -72,6 +72,7 @@ import {
     getRaisedBedSensors,
     getRaisedBedsForGardens,
     getSandboxGardenDeletionCandidate,
+    getSelectedPlantingDiaryEntries,
     getUnreadNotificationsByType,
     getUnreadRaisedBedImageNotificationIdsForGarden,
     getUnreadRaisedBedNotificationsForGarden,
@@ -625,6 +626,7 @@ function serializeGardenOperation(
         taskVersionEventId: operation.taskVersionEventId,
         raisedBedId: operation.raisedBedId,
         raisedBedFieldId: operation.raisedBedFieldId,
+        ...(operation.plantingId ? { plantingId: operation.plantingId } : {}),
         status: timelineStatus,
         createdAt: operation.createdAt.toISOString(),
         scheduledDate: operation.scheduledDate?.toISOString() ?? null,
@@ -1255,6 +1257,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 raisedBedId: z.coerce.number().int().min(1).optional(),
                 raisedBedFieldId: z.coerce.number().int().min(1).optional(),
                 positionIndex: z.coerce.number().int().min(0).optional(),
+                plantingId: z.coerce.number().int().positive().optional(),
             }),
         ),
         authValidator(['user', 'admin']),
@@ -1267,6 +1270,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 raisedBedId,
                 raisedBedFieldId,
                 positionIndex,
+                plantingId,
             } = context.req.valid('query');
             const gardenIdNumber = Number.parseInt(gardenId, 10);
 
@@ -1326,6 +1330,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 gardenId: gardenIdNumber,
                 raisedBedId,
                 raisedBedFieldIds,
+                plantingId,
                 cursor,
                 limit,
                 includeCompleted,
@@ -3330,6 +3335,50 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 type,
                 values: history.data?.values || [],
             });
+        },
+    )
+    .get(
+        '/:gardenId/raised-beds/:raisedBedId/plantings/:plantingId/diary-entries',
+        describeRoute({
+            description:
+                'Get customer-safe lifecycle and operation history for one selected planting owned by the current account',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.coerce.number().int().positive(),
+                raisedBedId: z.coerce.number().int().positive(),
+                plantingId: z.coerce.number().int().positive(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId, userId } = context.get('authContext');
+            const { gardenId, raisedBedId, plantingId } =
+                context.req.valid('param');
+            if (
+                !(await selectedPlantingMatchesGardenRoute({
+                    accountId,
+                    gardenId,
+                    raisedBedId,
+                    plantingId,
+                }))
+            )
+                return context.json({ error: 'Planting not found' }, 404);
+            try {
+                return context.json(
+                    await getSelectedPlantingDiaryEntries({
+                        plantingId,
+                        raisedBedId,
+                        owner: { accountId, userId },
+                    }),
+                );
+            } catch (error) {
+                if (error instanceof ScheduleTaskSubmissionError)
+                    return selectedPlantingOwnerErrorResponse(context, error);
+                throw error;
+            }
         },
     )
     .post(
