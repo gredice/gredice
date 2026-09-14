@@ -727,7 +727,10 @@ export function HoverOutlineEffect() {
         return () => {
             invalidateMaskCache();
             canvas.removeEventListener('webglcontextlost', invalidateMaskCache);
-            canvas.removeEventListener('webglcontextrestored');
+            canvas.removeEventListener(
+                'webglcontextrestored',
+                invalidateMaskCache,
+            );
         };
     }, [gl, invalidateMaskCache]);
 
