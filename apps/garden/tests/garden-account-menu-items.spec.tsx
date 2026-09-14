@@ -130,7 +130,9 @@ test.describe('Garden account menu items', () => {
 
         await page.getByRole('button', { name: 'Otvori izbornik' }).click();
 
-        await expect(page.getByText('Vrtovi za igru')).toBeVisible();
+        await expect(
+            page.getByText('Vrtovi za igru').filter({ visible: true }),
+        ).toBeVisible();
         await expect(page.getByText('Vrt za igru 1')).toBeVisible();
         await expect(
             page.getByRole('menuitem', { name: /Računi/ }),

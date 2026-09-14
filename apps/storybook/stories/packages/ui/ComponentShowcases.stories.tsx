@@ -199,6 +199,7 @@ import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import { AchievementCollectionShowcase } from '../../../../../packages/game/src/shared-ui/achievements/AchievementCollection.fixture';
 import { RaisedBedFieldsGridFixture } from '../../../../../packages/ui/src/raisedBeds/RaisedBedFieldsGrid.fixture';
+import { GameAccountMenuPreview } from './GameAccountMenuPreview';
 import { PlantCareHudPreview } from './PlantCareHudPreview';
 
 const sampleImages = [
@@ -1416,6 +1417,7 @@ function GardenWorkspaceShowcase() {
                     </Card>
                 </PageHeader>
 
+                <GameAccountMenuPreview />
                 <PlantCareHudPreview />
                 <AchievementCollectionShowcase state="starter" />
                 <Row spacing={3} className="flex-wrap">
