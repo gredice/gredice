@@ -92,7 +92,10 @@ export function HoverOutlineCacheFixture({
                     }}
                 >
                     <color attach="background" args={['#171b24']} />
-                    <SceneTimeProvider suspendWhenOffscreen={false}>
+                    <SceneTimeProvider
+                        baseFramesPerSecond={60}
+                        suspendWhenOffscreen={false}
+                    >
                         <HoverOutlineProvider>
                             <group
                                 ref={(targetRoot) => {
@@ -170,7 +173,10 @@ export function HoverOutlineVisualFixture() {
                 }}
             >
                 <color attach="background" args={['#171b24']} />
-                <SceneTimeProvider suspendWhenOffscreen={false}>
+                <SceneTimeProvider
+                    baseFramesPerSecond={60}
+                    suspendWhenOffscreen={false}
+                >
                     <HoverOutlineProvider>
                         <HoverOutline
                             color="#f8fafc"

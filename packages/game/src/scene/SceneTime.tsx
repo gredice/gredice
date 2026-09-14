@@ -126,6 +126,7 @@ export function SceneTimeProvider({
     const rootRuntime = getSceneRootRuntime(rootStore);
     const gl = useThree((state) => state.gl);
     const visibilityReadyRef = useRef(false);
+    const frameStartRef = useRef<number | null>(null);
     const [scheduler] = useState(
         () =>
             new GameRuntimeScheduler({
@@ -318,6 +319,7 @@ export function SceneTimeProvider({
     }, [gl, scheduler, suspendWhenOffscreen]);
 
     useFrame(({ clock: sceneClock }) => {
+        frameStartRef.current = gl.info.render.frame;
         timeUniform.value = fixedTime ?? sceneClock.elapsedTime;
         postRenderDispatcher.markRenderedFrame();
     }, sceneTimeFramePriority);
@@ -331,8 +333,20 @@ export function SceneTimeProvider({
             continuousRenderLeasesEnabled,
             fixedTimeSeconds: fixedTime,
             flushScenePostRender: (timestampMs) => {
+                if (
+                    frameStartRef.current === null ||
+                    gl.info.render.frame <= frameStartRef.current ||
+                    !postRenderDispatcher.hasRenderedFramePending()
+                ) {
+                    return false;
+                }
                 rootRuntime.flushAfterFrame();
-                return postRenderDispatcher.flushRenderedFrame(timestampMs);
+                // A nonmanual root may have delivered its receipt via the
+                // root callback above. Manual captures deliver it here.
+                if (postRenderDispatcher.hasRenderedFramePending()) {
+                    postRenderDispatcher.flushRenderedFrame(timestampMs);
+                }
+                return true;
             },
             getRuntimeVisible: () => scheduler.getEffectiveVisibility(),
             requestRender: (reason, frames) =>
@@ -354,6 +368,7 @@ export function SceneTimeProvider({
         [
             continuousRenderLeasesEnabled,
             fixedTime,
+            gl,
             postRenderDispatcher,
             rootRuntime,
             scheduler,

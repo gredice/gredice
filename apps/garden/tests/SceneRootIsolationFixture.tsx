@@ -43,6 +43,7 @@ export function SceneRootIsolationFixture({
                     pixelRatio={1}
                     suspendWhenOffscreen={!capture}
                     animateSprings={!capture}
+                    frameloop={capture ? 'never' : 'demand'}
                     rendererOptions={{ preserveDrawingBuffer: true }}
                 >
                     <SceneRootIsolationProbe
