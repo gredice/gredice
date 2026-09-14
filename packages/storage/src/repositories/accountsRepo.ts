@@ -1,3 +1,4 @@
+import { userAchievementExtras } from './userAchievementProgress';
 import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
@@ -235,7 +236,7 @@ export function getAccounts() {
         with: {
             accountUsers: {
                 with: {
-                    user: true,
+                    user: { extras: userAchievementExtras },
                 },
             },
         },
@@ -249,7 +250,7 @@ export function getAccount(accountId: string) {
         with: {
             accountUsers: {
                 with: {
-                    user: true,
+                    user: { extras: userAchievementExtras },
                 },
             },
         },
@@ -260,7 +261,7 @@ export function getAccountUsers(accountId: string) {
     return storage().query.accountUsers.findMany({
         where: eq(accountUsers.accountId, accountId),
         with: {
-            user: true,
+            user: { extras: userAchievementExtras },
         },
         orderBy: asc(accountUsers.createdAt),
     });

@@ -1,25 +1,14 @@
 import 'server-only';
 
 import { createHash } from 'node:crypto';
-import pg from 'pg';
+import type pg from 'pg';
+import { createLiveActivityPool } from './createLiveActivityPool';
 import type { SystemActivityInput } from './ingestParsers';
 import { privateDeliveryId } from './ingestParsers';
-
-const { Pool } = pg;
 
 type StoreSystemActivityResult = 'stored' | 'duplicate' | 'unavailable';
 
 let pool: pg.Pool | undefined;
-
-function normalizeConnectionString(connectionString: string) {
-    const url = new URL(connectionString);
-
-    if (url.searchParams.get('sslmode') === 'require') {
-        url.searchParams.set('sslmode', 'verify-full');
-    }
-
-    return url.toString();
-}
 
 function getPool() {
     const connectionString =
@@ -28,12 +17,7 @@ function getPool() {
         return null;
     }
 
-    pool ??= new Pool({
-        connectionString: normalizeConnectionString(connectionString),
-        max: 2,
-        idleTimeoutMillis: 10_000,
-        connectionTimeoutMillis: 5_000,
-    });
+    pool ??= createLiveActivityPool(connectionString, 'ingest');
 
     return pool;
 }
@@ -58,6 +42,13 @@ export async function storeSystemActivity(
     }
 
     const client = await database.connect();
+    let discardClient = false;
+    // Checked-out clients have no pool error listener. pg still rejects pending
+    // queries on disconnect; this listener prevents a second, uncaught error.
+    const onConnectionError = () => {
+        discardClient = true;
+    };
+    client.on('error', onConnectionError);
     try {
         await client.query('begin');
         const delivery = await client.query(
@@ -115,9 +106,15 @@ export async function storeSystemActivity(
         await client.query('commit');
         return 'stored';
     } catch (error) {
-        await client.query('rollback');
+        try {
+            await client.query('rollback');
+        } catch {
+            // Preserve the operation's error if rollback also loses the connection.
+            discardClient = true;
+        }
         throw error;
     } finally {
-        client.release();
+        client.release(discardClient);
+        client.removeListener('error', onConnectionError);
     }
 }

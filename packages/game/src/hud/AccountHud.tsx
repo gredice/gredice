@@ -1,6 +1,10 @@
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
 import { DotIndicator } from '@gredice/ui/DotIndicator';
+import {
+    GameMailboxIcon as Inbox,
+    GameSeedlingIcon as Sprout,
+} from '@gredice/ui/GameIcons';
 import { useSearchParam } from '@gredice/ui/hooks';
 import { IconButton } from '@gredice/ui/IconButton';
 import {
@@ -8,12 +12,10 @@ import {
     Comment,
     Configuration,
     ExternalLink,
-    Inbox,
     Joystick,
     LayoutGrid,
     LogOut,
     Save,
-    Sprout,
     User,
 } from '@gredice/ui/icons';
 import {
@@ -379,7 +381,7 @@ export function AccountHud({ viewMode = '3d' }: { viewMode?: GardenViewMode }) {
                                         <DotIndicator color={'success'} />
                                     </div>
                                 )}
-                                <Inbox className="size-5" />
+                                <Inbox className="size-8" />
                             </Button>
                         }
                     >

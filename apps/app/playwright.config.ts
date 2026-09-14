@@ -38,11 +38,27 @@ export const config: PlaywrightTestConfig = {
                     resolveId(source, importer) {
                         if (
                             source.endsWith(
-                                '/selectedRaisedBedPlantingActions',
+                                '/raisedBedPlantCorrectionActions',
                             ) &&
                             importer?.endsWith(
-                                '/SelectedPlantingStatusControl.tsx',
+                                '/RaisedBedPlantSortCorrection.tsx',
                             )
+                        ) {
+                            return fileURLToPath(
+                                new URL(
+                                    './playwright/plantSortCorrectionActionsMock.ts',
+                                    import.meta.url,
+                                ),
+                            );
+                        }
+                        if (
+                            source.endsWith(
+                                '/selectedRaisedBedPlantingActions',
+                            ) &&
+                            [
+                                '/SelectedPlantingStatusControl.tsx',
+                                '/SelectedPlantingOperationControl.tsx',
+                            ].some((name) => importer?.endsWith(name))
                         ) {
                             return fileURLToPath(
                                 new URL(

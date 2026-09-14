@@ -1,9 +1,9 @@
 'use client';
-
 import { plantFieldStatusLabel } from '@gredice/js/plants';
 import { Button } from '@gredice/ui/Button';
+import { GameSeedlingIcon as Sprout } from '@gredice/ui/GameIcons';
 import { IconButton } from '@gredice/ui/IconButton';
-import { ArrowLeft, Close, Reset, Sprout } from '@gredice/ui/icons';
+import { ArrowLeft, Close, Reset } from '@gredice/ui/icons';
 import { Spinner } from '@gredice/ui/Spinner';
 import { cx } from '@gredice/ui/utils';
 import type { Route } from 'next';

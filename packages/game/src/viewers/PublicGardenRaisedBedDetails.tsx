@@ -1,11 +1,13 @@
 'use client';
-
 import { plantFieldStatusLabel } from '@gredice/js/plants';
 import { Chip } from '@gredice/ui/Chip';
+import {
+    GameRaisedBedSimpleIcon as RaisedBedSimpleIcon,
+    GameSeedlingIcon as Sprout,
+} from '@gredice/ui/GameIcons';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Calendar, Close, Sprout } from '@gredice/ui/icons';
+import { Calendar, Close } from '@gredice/ui/icons';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { RaisedBedSimpleIcon } from '@gredice/ui/RaisedBedSimpleIcon';
 import { Typography } from '@gredice/ui/Typography';
 import { useEffect, useMemo, useRef } from 'react';
 import { useAllSorts } from '../hooks/usePlantSorts';

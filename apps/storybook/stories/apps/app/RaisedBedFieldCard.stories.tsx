@@ -5,6 +5,7 @@ import {
     raisedBedFieldCardChipClassName,
     raisedBedFieldCardSelectClassName,
 } from '@apps/app/components/raised-beds/RaisedBedFieldCard';
+import { raisedBedFieldPlantStatusItems as statusItems } from '@apps/app/src/raisedBedFieldPlantStatusItems';
 import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
@@ -93,16 +94,6 @@ const plantItems = mockFields.map((field) => ({
     value: field.id,
     label: field.plant,
 }));
-
-const statusItems = [
-    { value: 'new', label: 'Novo', icon: '🆕' },
-    { value: 'planned', label: 'Planirano', icon: '🗓️' },
-    { value: 'pendingVerification', label: 'Čeka verifikaciju', icon: '🔍' },
-    { value: 'sprouted', label: 'Proklijalo', icon: '🌱' },
-    { value: 'firstFlowers', label: 'Prvi cvjetovi', icon: '🌸' },
-    { value: 'firstFruitSet', label: 'Prvi plodovi', icon: '🍅' },
-    { value: 'ready', label: 'Spremno', icon: '🥕' },
-];
 
 function FieldBadge({ number }: { number: number }) {
     return (
@@ -273,6 +264,7 @@ const meta = {
         plantSortControl: <PlantSortSelect field={mockFields[0]} />,
     },
     parameters: {
+        layout: 'fullscreen',
         docs: {
             description: {
                 component:

@@ -803,6 +803,7 @@ function PublicGardenScene({
         >
             {blockDataLoaded ? (
                 <Scene
+                    animateSprings={!capture}
                     baseFramesPerSecond={capture ? 0 : undefined}
                     fixedTimeSeconds={
                         capture

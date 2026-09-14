@@ -12,8 +12,9 @@ import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Left, Navigate, Pause, Play } from '@gredice/ui/icons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
+import { publicUserProfileHref } from '@gredice/ui/PublicChrome';
 import { Typography } from '@gredice/ui/Typography';
-import { UserAvatar } from '@gredice/ui/UserAvatar';
+import { UserAvatarLink } from '@gredice/ui/UserAvatar';
 import { cx } from '@gredice/ui/utils';
 import { useQuery } from '@tanstack/react-query';
 import type { FocusEvent, PointerEvent } from 'react';
@@ -104,7 +105,9 @@ export function LandingFeaturedGardens({
     const gardens = useMemo(() => {
         const ownedGardenOwner = user
             ? {
+                  publicId: user.publicId,
                   avatarUrl: user.avatarUrl ?? null,
+                  achievementCount: user.achievementCount,
                   displayName: user.displayName ?? 'Korisnik Gredica',
               }
             : null;
@@ -405,7 +408,19 @@ export function LandingFeaturedGardens({
                                 </Typography>
                                 <div className="mt-1 flex min-w-0 items-center gap-2 md:mt-3 md:flex-wrap md:gap-2.5">
                                     {displayedGarden.owner ? (
-                                        <UserAvatar
+                                        <UserAvatarLink
+                                            achievementCount={
+                                                displayedGarden.owner
+                                                    .achievementCount
+                                            }
+                                            href={
+                                                displayedGarden.owner.publicId
+                                                    ? publicUserProfileHref(
+                                                          displayedGarden.owner
+                                                              .publicId,
+                                                      )
+                                                    : undefined
+                                            }
                                             avatarUrl={
                                                 displayedGarden.owner.avatarUrl
                                             }

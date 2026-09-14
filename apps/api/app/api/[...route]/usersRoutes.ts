@@ -1,15 +1,17 @@
-import { publicIdToUserId, userIdToPublicId } from '@gredice/js/publicId';
+import { publicIdToUserId } from '@gredice/js/publicId';
 import {
     getAccountAchievements,
     getAccountGardens,
     getLastBirthdayRewardEvent,
     getUser,
+    getUserAchievementLeaderboard,
     getUserWithLogins,
     updateUser,
 } from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import { publicSecurity } from '../../../lib/docs/security';
 import {
     type AuthVariables,
     authValidator,
@@ -26,6 +28,7 @@ import {
     MIN_BIRTH_YEAR,
     startOfUtcDay,
 } from '../../../lib/users/birthdayUtils';
+import { publicProfileUser } from '../../../lib/users/publicProfileUser';
 
 const currentYear = new Date().getUTCFullYear();
 const birthdaySchema = z
@@ -106,9 +109,23 @@ function getUpdatedProfileFields(input: {
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
+        '/public/leaderboard',
+        describeRoute({
+            description:
+                'Get the top 10 non-temporary users by approved achievements on their primary account. Equal scores use registration date, then user ID. Each achievement earns 100 XP. Only public profile fields are returned.',
+            security: publicSecurity,
+        }),
+        async (context) => {
+            const users = await getUserAchievementLeaderboard();
+            context.header('Cache-Control', 'no-store');
+            return context.json({ items: users.map(publicProfileUser) });
+        },
+    )
+    .get(
         '/public/:publicId/profile',
         describeRoute({
-            description: 'Get public user profile information by public ID.',
+            description:
+                'Get a public user profile by public ID, excluding login names and email addresses.',
             security: [{}, { bearerAuth: [] }, { cookieAuth: [] }],
         }),
         zValidator(
@@ -141,14 +158,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const visibleGardens = gardens.filter((garden) => garden.isPublic);
 
             return context.json({
-                user: {
-                    id: dbUser.id,
-                    publicId: userIdToPublicId(dbUser.id),
-                    userName: dbUser.userName,
-                    displayName: dbUser.displayName ?? dbUser.userName,
-                    avatarUrl: dbUser.avatarUrl,
-                    createdAt: dbUser.createdAt,
-                },
+                user: publicProfileUser(dbUser),
                 gardens: visibleGardens.map((garden) => ({
                     id: garden.id,
                     name: garden.name,
@@ -195,6 +205,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 userName: dbUser.userName,
                 displayName: dbUser.displayName ?? dbUser.userName,
                 avatarUrl: dbUser.avatarUrl,
+                achievementCount: dbUser.achievementCount,
                 isTemporary: dbUser.isTemporary,
                 birthday:
                     dbUser.birthdayMonth && dbUser.birthdayDay

@@ -18,6 +18,7 @@ type DetailedInspectionOperation = {
     verifiedAt?: Date | null;
     assignedUser?: {
         avatarUrl: string | null;
+        achievementCount?: number;
         displayName: string | null;
         userName: string;
     } | null;
@@ -90,6 +91,12 @@ export function buildDetailedRaisedBedInspectionReports({
         const assignedFarmer = operation.assignedUser
             ? {
                   avatarUrl: operation.assignedUser.avatarUrl,
+                  ...(operation.assignedUser.achievementCount === undefined
+                      ? {}
+                      : {
+                            achievementCount:
+                                operation.assignedUser.achievementCount,
+                        }),
                   displayName:
                       operation.assignedUser.displayName?.trim() ||
                       operation.assignedUser.userName,

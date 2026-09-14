@@ -58,8 +58,10 @@ export const knownEventTypes = {
         weedStateSet: 'raisedBedField.weedState.set',
     },
     raisedBedPlantings: {
+        sortCorrected: 'raisedBedPlanting.sort.corrected',
         lifecycleStarted: 'raisedBedPlanting.lifecycle.started',
         lifecycleStatusChanged: 'raisedBedPlanting.lifecycle.statusChanged',
+        transplanted: 'raisedBedPlanting.transplanted',
         taskScheduled: 'raisedBedPlanting.task.scheduled',
         taskAssigned: 'raisedBedPlanting.task.assigned',
         taskBlocked: 'raisedBedPlanting.task.blocked',

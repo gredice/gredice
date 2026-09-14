@@ -2,6 +2,7 @@
 
 import { plantFieldStatusLabel } from '@gredice/js/plants';
 import { Button } from '@gredice/ui/Button';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { Input } from '@gredice/ui/Input';
 import { Popper } from '@gredice/ui/Popper';
 import { SelectItems } from '@gredice/ui/SelectItems';
@@ -20,10 +21,12 @@ export function SelectedPlantingStatusControl({
     control,
     initialStatus,
     label,
+    compact = false,
 }: {
     control: SelectedPlantingStatusControlModel;
     initialStatus?: SelectedPlantingStatusControlModel['options'][number]['value'];
     label?: string;
+    compact?: boolean;
 }) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
@@ -96,7 +99,20 @@ export function SelectedPlantingStatusControl({
                     type="button"
                     size="sm"
                     variant="plain"
-                    className="h-auto max-w-full whitespace-normal px-1 text-left"
+                    className={
+                        compact
+                            ? 'h-8 max-w-full border border-input bg-background px-2 text-left shadow-xs'
+                            : 'h-auto max-w-full whitespace-normal px-1 text-left'
+                    }
+                    startDecorator={
+                        label ? undefined : (
+                            <GamePlantStatusIcon
+                                status={control.status}
+                                className="size-5 shrink-0"
+                                aria-hidden
+                            />
+                        )
+                    }
                     aria-label={label ?? 'Promijeni stanje biljke'}
                 >
                     {label ?? plantFieldStatusLabel(control.status).shortLabel}
@@ -105,7 +121,16 @@ export function SelectedPlantingStatusControl({
         >
             <SelectItems
                 label="Stanje biljke"
-                items={control.options}
+                items={control.options.map((item) => ({
+                    ...item,
+                    icon: (
+                        <GamePlantStatusIcon
+                            status={item.value}
+                            className="size-5 shrink-0"
+                            aria-hidden
+                        />
+                    ),
+                }))}
                 value={status}
                 onValueChange={(nextStatus) => {
                     setStatus(nextStatus);

@@ -4,9 +4,11 @@ import { useQuery } from '@tanstack/react-query';
 
 export type CurrentUser = {
     id: string;
+    publicId?: string;
     userName: string;
     displayName?: string;
     avatarUrl?: string | null;
+    achievementCount?: number;
 };
 
 async function fetchCurrentUser(

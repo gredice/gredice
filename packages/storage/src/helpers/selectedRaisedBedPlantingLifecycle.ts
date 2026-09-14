@@ -18,7 +18,9 @@ import {
 
 export const selectedRaisedBedPlantingEventTypes = [
     knownEventTypes.raisedBedPlantings.lifecycleStarted,
+    knownEventTypes.raisedBedPlantings.sortCorrected,
     knownEventTypes.raisedBedPlantings.lifecycleStatusChanged,
+    knownEventTypes.raisedBedPlantings.transplanted,
     knownEventTypes.raisedBedPlantings.taskScheduled,
     knownEventTypes.raisedBedPlantings.taskAssigned,
     knownEventTypes.raisedBedPlantings.taskBlocked,
@@ -91,6 +93,7 @@ export type SelectedRaisedBedPlantingTaskReadModel = {
     purchase?: RaisedBedFieldPlantPurchase;
     startedBy: string;
     initialCommandId: string;
+    initialPlantSortId?: number;
     initialScheduledDate: string | null;
     initialSowingLocation: RaisedBedFieldSowingLocation;
     assignedUserIds: string[];
@@ -462,8 +465,7 @@ export function projectSelectedRaisedBedPlantingLifecycle(
     if (
         expectedIdentity &&
         (startEvent.aggregateId !== expectedIdentity.aggregateId ||
-            initial.plantingId !== expectedIdentity.plantingId ||
-            initial.plantSortId !== expectedIdentity.plantSortId)
+            initial.plantingId !== expectedIdentity.plantingId)
     ) {
         projectionError('identity_mismatch', startEvent.id);
     }
@@ -499,6 +501,7 @@ export function projectSelectedRaisedBedPlantingLifecycle(
             ...(initial.purchase ? { purchase: initial.purchase } : {}),
             startedBy: initial.startedBy,
             initialCommandId: initial.commandId,
+            initialPlantSortId: initial.plantSortId,
             initialScheduledDate: initial.scheduledDate,
             initialSowingLocation: initial.sowingLocation,
             assignedUserIds: [],
@@ -524,7 +527,22 @@ export function projectSelectedRaisedBedPlantingLifecycle(
             projection.versionEventId,
         );
 
-        if (event.type === knownEventTypes.raisedBedPlantings.taskScheduled) {
+        if (event.type === knownEventTypes.raisedBedPlantings.sortCorrected) {
+            if (
+                !projection.isActive ||
+                data.previousPlantSortId !== projection.plantSortId
+            ) {
+                projectionError('invalid_transition', event.id);
+            }
+            requiredString(data.correctedBy, event.id);
+            projection = {
+                ...projection,
+                plantSortId: positiveSafeInteger(data.plantSortId, event.id),
+                versionEventId: event.id,
+            };
+        } else if (
+            event.type === knownEventTypes.raisedBedPlantings.taskScheduled
+        ) {
             assertCanSchedule(projection.task.status, event.id);
             projection = {
                 ...projection,
@@ -671,6 +689,30 @@ export function projectSelectedRaisedBedPlantingLifecycle(
                 },
             };
         } else if (
+            event.type === knownEventTypes.raisedBedPlantings.transplanted
+        ) {
+            requiredString(data.changedBy, event.id);
+            positiveSafeInteger(data.operationId, event.id);
+            if (
+                projection.task.status !== 'completed' ||
+                !projection.isActive ||
+                projection.stoppedAt ||
+                projection.task.sowingLocation !== 'greenhouse' ||
+                ![
+                    'sprouted',
+                    'firstFlowers',
+                    'firstFruitSet',
+                    'ready',
+                ].includes(projection.status)
+            ) {
+                projectionError('invalid_transition', event.id);
+            }
+            projection = {
+                ...projection,
+                versionEventId: event.id,
+                task: { ...projection.task, sowingLocation: 'direct' },
+            };
+        } else if (
             event.type ===
             knownEventTypes.raisedBedPlantings.lifecycleStatusChanged
         ) {
@@ -793,5 +835,11 @@ export function projectSelectedRaisedBedPlantingLifecycle(
         };
     }
 
+    if (
+        expectedIdentity &&
+        projection.plantSortId !== expectedIdentity.plantSortId
+    ) {
+        projectionError('identity_mismatch', projection.versionEventId);
+    }
     return projection;
 }

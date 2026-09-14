@@ -1,5 +1,5 @@
 import { ADVANCED_SOWING_MAX_PLANTINGS_PER_FIELD } from '@gredice/js/plants';
-import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
+import { GameSeedPacketIcon as PlantingSeedIcon } from '@gredice/ui/GameIcons';
 import { useEffect } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import type { ShoppingCartItemData } from '../../hooks/useShoppingCart';

@@ -8,6 +8,7 @@ type OperationLocation = {
     gardenId?: number | null;
     raisedBedId?: number | null;
     raisedBedFieldId?: number | null;
+    plantingId?: number | null;
 };
 
 type OperationDefinition = {
@@ -55,7 +56,7 @@ export function isAdvancedSowingPlantOperationTargetBlocked(input: {
 export function operationTargetScope(
     operation: OperationLocation,
 ): OperationTargetScope | undefined {
-    if (operation.raisedBedFieldId) {
+    if (operation.plantingId || operation.raisedBedFieldId) {
         return 'plant';
     }
 

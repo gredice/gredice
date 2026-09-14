@@ -11,6 +11,13 @@ export type SelectedPlantingOwnerActionTarget = {
     plantingId: number;
 };
 
+export type SelectedPlantingDiaryTarget = SelectedPlantingOwnerActionTarget & {
+    type: 'selectedPlanting';
+    raisedBedId: number;
+    scheduledDate: string | null;
+    sowingLocation: 'direct' | 'greenhouse';
+};
+
 export type SelectedPlantingOwnerAction =
     | {
           type: 'reschedule';

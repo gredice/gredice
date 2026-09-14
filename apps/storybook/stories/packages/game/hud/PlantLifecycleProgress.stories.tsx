@@ -1,4 +1,8 @@
-import { plantFieldStatusEmoji } from '@packages/game/hud/raisedBed/PlantFieldStatusEmoji';
+import {
+    plantFieldStatusLabel,
+    userAllowedPlantStatusTransitions,
+} from '@gredice/js/plants';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import {
     getPlantLifecycleProgressData,
     type PlantLifecycleAttributes,
@@ -255,9 +259,11 @@ function StatusTrigger({ field }: { field: RaisedBedFieldPlantHistoryEntry }) {
     const status = field.plantStatus as PlantStatus | undefined;
     return (
         <div className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex flex-col gap-1 items-center justify-center">
-            <span className="text-2xl leading-none" aria-hidden="true">
-                {plantFieldStatusEmoji(status)}
-            </span>
+            <GamePlantStatusIcon
+                status={status}
+                className="size-7"
+                aria-hidden
+            />
             <span className="px-3 text-center text-sm font-semibold leading-tight text-primary">
                 {status ? statusLabels[status] : 'Nepoznato'}
             </span>
@@ -266,6 +272,9 @@ function StatusTrigger({ field }: { field: RaisedBedFieldPlantHistoryEntry }) {
 }
 
 function LifecyclePanel({ example }: { example: LifecycleExample }) {
+    const statusChanges = example.field.plantStatus
+        ? (userAllowedPlantStatusTransitions[example.field.plantStatus] ?? [])
+        : [];
     const lifecycleData = getPlantLifecycleProgressData({
         field: example.field,
         plantAttributes,
@@ -294,6 +303,17 @@ function LifecyclePanel({ example }: { example: LifecycleExample }) {
                 plantDetailsUrl={plantDetailsUrl}
                 statusTrigger={<StatusTrigger field={example.field} />}
             />
+            <p className="mt-3 text-xs text-secondary-foreground">
+                Dostupne promjene stanja u vrtu:{' '}
+                {statusChanges.length > 0
+                    ? statusChanges
+                          .map(
+                              (status) =>
+                                  plantFieldStatusLabel(status).shortLabel,
+                          )
+                          .join(', ')
+                    : 'Nema promjena kroz izbornik stanja.'}
+            </p>
         </section>
     );
 }
