@@ -1,4 +1,10 @@
 export const deliveryPricePerKilometre = 0.2;
+// Rate in force on 10 September 2026, recorded in commit
+// 7eee3f66113cef549ea8c0c63c2d2c277be6db28. Keep independent of today's rate.
+export const deliveryAnchorPricePerKilometre = {
+    price: 0.2,
+    date: '2026-09-10',
+};
 export const maximumDeliveryDistanceKilometres = 100;
 
 type Position = {

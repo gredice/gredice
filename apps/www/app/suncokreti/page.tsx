@@ -1,3 +1,5 @@
+import type { EntityPriceHistorySummary } from '@gredice/storage';
+import { AnchorPrice } from '@gredice/ui/AnchorPrice';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
@@ -14,6 +16,10 @@ import {
     type PublicSunflowerPackage,
 } from '../../lib/sunflowerPackages';
 import { KnownPages } from '../../src/KnownPages';
+import {
+    getPricingCatalogHistory,
+    pricingHistoryKey,
+} from '../cjenik/pricingHistory';
 
 export const metadata = createPublicMetadata({
     title: 'Suncokreti i Gredice saldo',
@@ -39,7 +45,10 @@ function packageCtaUrl() {
     return `${KnownPages.GardenApp}/?pregled=suncokreti`;
 }
 
-function packageCard(pkg: PublicSunflowerPackage) {
+function packageCard(
+    pkg: PublicSunflowerPackage,
+    history: EntityPriceHistorySummary | undefined,
+) {
     return (
         <Card key={pkg.code} className="h-full border-tertiary border-b-4">
             <CardHeader>
@@ -54,6 +63,10 @@ function packageCard(pkg: PublicSunflowerPackage) {
                     </Stack>
                     <Typography level="body1" bold className="tabular-nums">
                         {packagePrice(pkg)}
+                        <AnchorPrice
+                            currentPrice={pkg.priceEur}
+                            anchor={history?.anchorPrice}
+                        />
                     </Typography>
                 </div>
             </CardHeader>
@@ -99,6 +112,17 @@ function packageCard(pkg: PublicSunflowerPackage) {
 
 export default async function SunflowersPage() {
     const packages = await getPublicSunflowerPackages();
+    const history = await getPricingCatalogHistory({
+        sunflowerPackages: packages,
+        plantRows: [],
+        operationRows: [],
+        deliveryRows: [],
+    });
+    const renderPackage = (pkg: PublicSunflowerPackage) =>
+        packageCard(
+            pkg,
+            history[pricingHistoryKey('sunflowerPackage', pkg.entityId)],
+        );
     const initialOffer = packages.filter(
         (pkg) => pkg.role === 'initial_one_time',
     );
@@ -219,7 +243,7 @@ export default async function SunflowersPage() {
                                 Početna ponuda
                             </Typography>
                             <div className="grid gap-4 md:grid-cols-2">
-                                {initialOffer.map(packageCard)}
+                                {initialOffer.map(renderPackage)}
                             </div>
                         </Stack>
                     ) : null}
@@ -230,7 +254,7 @@ export default async function SunflowersPage() {
                                 Glavni paketi
                             </Typography>
                             <div className="grid gap-4 md:grid-cols-3">
-                                {mainPackages.map(packageCard)}
+                                {mainPackages.map(renderPackage)}
                             </div>
                         </Stack>
                     ) : null}
@@ -241,7 +265,7 @@ export default async function SunflowersPage() {
                                 Najveći paket
                             </Typography>
                             <div className="grid gap-4 md:grid-cols-2">
-                                {upsellPackages.map(packageCard)}
+                                {upsellPackages.map(renderPackage)}
                             </div>
                         </Stack>
                     ) : null}
