@@ -105,8 +105,14 @@ test.describe('Garden operations HUD', () => {
         await expect(
             page.locator('[data-operation-media="plant"]').first(),
         ).toBeVisible();
-        await expect(page.getByText('Sadnja', { exact: true })).toBeVisible();
-        await expect(page.getByText('Sadnja: Klasični bosiljak')).toBeVisible();
+        await expect(
+            reschedulableOperationCard.getByText('Sadnja', { exact: true }),
+        ).toBeVisible();
+        await expect(
+            page
+                .locator('[data-garden-operation-card]')
+                .getByText('Sadnja: Klasični bosiljak'),
+        ).toBeVisible();
         await expect(
             page.getByLabel('Raised Bed 1 › Polje 6').first(),
         ).toBeVisible();
@@ -148,10 +154,17 @@ test.describe('Garden operations HUD', () => {
         const dialog = page
             .getByRole('dialog')
             .filter({ hasText: 'Povijest radnji' });
+        const internalOperationCard = dialog
+            .locator('[data-garden-operation-card]')
+            .filter({ hasText: 'Detaljan pregled gredice' });
+        await expect(internalOperationCard).toHaveCount(0);
+        await dialog
+            .getByRole('button', { name: /^utorak, 19\. svibnja/ })
+            .click();
+        await expect(internalOperationCard).toBeVisible();
         await expect(
-            dialog.getByText('Detaljan pregled gredice'),
-        ).toBeVisible();
-        await expect(dialog.getByText('Radnja #611')).toHaveCount(0);
+            internalOperationCard.getByText('Radnja #611'),
+        ).toHaveCount(0);
     });
 
     test('shows completed sowing tasks in operation history', async ({
@@ -172,6 +185,13 @@ test.describe('Garden operations HUD', () => {
         const historyDateButton = reschedulableHistoryCard.getByRole('button', {
             name: '20. svibnja 2026.',
         });
+        const historyDay = dialog.getByRole('button', {
+            name: /^srijeda, 20\. svibnja/,
+        });
+        await expect(historyDay).toHaveAttribute('aria-expanded', 'false');
+        await expect(reschedulableHistoryCard).toHaveCount(0);
+        await historyDay.click();
+        await expect(historyDay).toHaveAttribute('aria-expanded', 'true');
         await expect(historyDateButton).toBeVisible();
         await expectSameControlRow(
             historyDateButton,
@@ -330,8 +350,19 @@ test.describe('Garden operations HUD', () => {
         const dialog = page
             .getByRole('dialog')
             .filter({ hasText: 'Povijest radnji' });
+        for (const day of await dialog
+            .locator('button[aria-controls^="garden-operations-day-"]')
+            .all()) {
+            if ((await day.getAttribute('aria-expanded')) === 'false') {
+                await day.click();
+            }
+        }
+
         const scrollArea = dialog.locator('[data-scroll-area]').first();
         const viewport = scrollArea.locator('[data-scroll-area-viewport]');
+        await viewport.evaluate((element) => {
+            element.scrollTop = 0;
+        });
         await expect(scrollArea).toBeVisible();
         await expect(viewport).toHaveClass(/scroll-fade-y/);
         await expect.poll(() => scrollFadeSize(viewport, 't')).toBe(0);
