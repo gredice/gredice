@@ -1,7 +1,9 @@
+import { serviceAnchorDate } from '@gredice/js/pricing';
 import {
     type EntityPriceHistorySummary,
     getEntityPriceHistory,
 } from '@gredice/storage';
+import { AnchorPrice } from '@gredice/ui/AnchorPrice';
 import { Chip } from '@gredice/ui/Chip';
 import type { ReactNode } from 'react';
 import { formatPrice } from '../../lib/formatPrice';
@@ -42,16 +44,19 @@ async function getPriceHistory({
     }
 
     try {
-        const history = await getEntityPriceHistory([
-            {
-                key,
-                entityId,
-                entityTypeName,
-                attributeCategory: 'prices',
-                attributeName: priceAttributeName(entityTypeName),
-                currentPrice,
-            },
-        ]);
+        const history = await getEntityPriceHistory(
+            [
+                {
+                    key,
+                    entityId,
+                    entityTypeName,
+                    attributeCategory: 'prices',
+                    attributeName: priceAttributeName(entityTypeName),
+                    currentPrice,
+                },
+            ],
+            { anchorDate: serviceAnchorDate },
+        );
 
         return history[key] ?? fallback;
     } catch (error) {
@@ -134,9 +139,14 @@ export async function PriceAttributeCard({
                     <span className="block font-semibold">
                         {formatPrice(currentPrice)}
                     </span>
+                    <AnchorPrice
+                        currentPrice={currentPrice}
+                        anchor={history.anchorPrice}
+                    />
                     {shouldShowThirtyDayLowestPrice(
                         currentPrice,
                         history.lowestPrice,
+                        history.anchorPrice?.price,
                     ) && (
                         <span className="mt-1 block text-xs font-normal text-muted-foreground">
                             Najniža cijena u 30 dana:{' '}

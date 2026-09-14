@@ -1,5 +1,6 @@
 import { Accordion } from '@gredice/ui/Accordion';
 import { Alert } from '@gredice/ui/Alert';
+import { AnchorPrice } from '@gredice/ui/AnchorPrice';
 import { ArchiveIcon } from '@gredice/ui/ArchiveIcon';
 import { Avatar } from '@gredice/ui/Avatar';
 import { AvatarSelectionMenu } from '@gredice/ui/AvatarSelectionMenu';
@@ -1016,6 +1017,15 @@ function PublicContentShowcase() {
                         description="Public content composition with CMS sections, media, text rendering, and navigation controls."
                     />
 
+                    <div className="rounded-lg border p-4">
+                        <Typography level="body1" semiBold>
+                            Uzgoj rajčice · 5,00 €
+                        </Typography>
+                        <AnchorPrice
+                            currentPrice={5}
+                            anchor={{ price: 5, date: '2026-09-10' }}
+                        />
+                    </div>
                     <PublicReleaseTimeline />
 
                     <Heading1

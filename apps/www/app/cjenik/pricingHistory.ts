@@ -1,3 +1,4 @@
+import { serviceAnchorDate } from '@gredice/js/pricing';
 import {
     type EntityPriceHistoryRequest,
     type EntityPriceHistorySummary,
@@ -117,7 +118,9 @@ export async function getPricingCatalogHistory({
     );
 
     try {
-        return await getEntityPriceHistory(requests);
+        return await getEntityPriceHistory(requests, {
+            anchorDate: serviceAnchorDate,
+        });
     } catch (error) {
         console.error('Failed to load pricing catalog history', error);
         return currentPriceFallbacks(requests);
