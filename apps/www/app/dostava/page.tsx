@@ -1,5 +1,9 @@
-import { deliveryPricePerKilometre } from '@gredice/js/delivery';
+import {
+    deliveryAnchorPricePerKilometre,
+    deliveryPricePerKilometre,
+} from '@gredice/js/delivery';
 import { Alert } from '@gredice/ui/Alert';
+import { AnchorPrice } from '@gredice/ui/AnchorPrice';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Container } from '@gredice/ui/Container';
@@ -113,6 +117,10 @@ export default function DeliveryPage() {
                         </strong>
                         .
                     </p>
+                    <AnchorPrice
+                        currentPrice={deliveryPricePerKilometre}
+                        anchor={deliveryAnchorPricePerKilometre}
+                    />
                     <DeliveryAvailabilityChecker />
                     <p>Vidi mapu zona dostave i tablicu s cijenama ispod:</p>
                     <figure className="not-prose mb-4 w-full">
@@ -197,6 +205,15 @@ export default function DeliveryPage() {
                                             <strong>
                                                 {formatPrice(distanceFee)}
                                             </strong>
+                                            <AnchorPrice
+                                                currentPrice={distanceFee}
+                                                anchor={{
+                                                    ...deliveryAnchorPricePerKilometre,
+                                                    price:
+                                                        location.distance *
+                                                        deliveryAnchorPricePerKilometre.price,
+                                                }}
+                                            />
                                         </td>
                                         <td className="border-border border-t px-2 py-2">
                                             <strong>

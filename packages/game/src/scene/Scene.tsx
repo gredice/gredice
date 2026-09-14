@@ -61,6 +61,7 @@ export type SceneProps = HTMLAttributes<HTMLDivElement> &
         adaptiveHighProfileControlEnabled?: boolean;
         baseFramesPerSecond?: number;
         continuousRenderLeasesEnabled?: boolean;
+        animateSprings?: boolean;
         debugStats?: boolean;
         fixedTimeSeconds?: number;
         frameloop?: Frameloop;
@@ -248,6 +249,7 @@ export function Scene({
     adaptiveHighProfile = adaptiveHighQualityLevels.L0,
     adaptiveHighProfileControlEnabled = false,
     baseFramesPerSecond,
+    animateSprings,
     children,
     continuousRenderLeasesEnabled,
     debugStats,
@@ -367,10 +369,11 @@ export function Scene({
                 near: 0.01,
             }}
             {...rest}
-            frameloop={frameloop}
+            frameloop="never"
             ref={handleCanvasRef}
         >
             <SceneTimeProvider
+                animateSprings={animateSprings}
                 ambientFramesPerSecond={ambientFramesPerSecond}
                 // An explicit override retains the compatibility heartbeat for
                 // isolated consumers. Normal scenes are semantic-owner only.

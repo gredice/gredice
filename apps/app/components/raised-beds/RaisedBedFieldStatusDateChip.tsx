@@ -1,6 +1,8 @@
 'use client';
 
+import { plantFieldStatusLabel } from '@gredice/js/plants';
 import { Button } from '@gredice/ui/Button';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { Input } from '@gredice/ui/Input';
 import { Calendar } from '@gredice/ui/icons';
 import { Popper } from '@gredice/ui/Popper';
@@ -11,8 +13,8 @@ import { cx } from '@gredice/ui/utils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { raisedBedFieldUpdatePlant } from '../../app/(actions)/raisedBedFieldsActions';
-import { raisedBedFieldPlantStatusItems } from '../../app/admin/raised-beds/[raisedBedId]/RaisedBedFieldPlantStatusSelector';
 import { canUpdatePlantingTaskStatus } from '../../app/admin/schedule/scheduleShared';
+import { raisedBedFieldPlantStatusItems } from '../../src/raisedBedFieldPlantStatusItems';
 import type { RaisedBedFieldDateItem } from './RaisedBedFieldDatesPopover';
 
 type RaisedBedFieldStatusDateChipProps = {
@@ -26,6 +28,7 @@ type RaisedBedFieldStatusDateChipProps = {
     date: string | null;
     dateItems?: RaisedBedFieldDateItem[];
     className?: string;
+    compact?: boolean;
 };
 
 function parseDate(value: string | null) {
@@ -99,6 +102,7 @@ export function RaisedBedFieldStatusDateChip({
     date,
     dateItems = [],
     className,
+    compact = false,
 }: RaisedBedFieldStatusDateChipProps) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
@@ -112,7 +116,7 @@ export function RaisedBedFieldStatusDateChip({
         () =>
             raisedBedFieldPlantStatusItems.find(
                 (item) => item.value === status,
-            ) ?? { value: status, label: status, icon: '' },
+            ) ?? { value: status, label: status },
         [status],
     );
 
@@ -192,20 +196,33 @@ export function RaisedBedFieldStatusDateChip({
                     title="Promijeni stanje i datum biljke"
                     variant="plain"
                     className={cx(
-                        'h-8 w-full justify-start px-2 text-foreground',
+                        'h-8 justify-start px-2 text-foreground',
+                        !compact && 'w-full',
                         className,
                     )}
                     startDecorator={
-                        <span aria-hidden="true">{statusItem.icon}</span>
+                        compact ? undefined : (
+                            <GamePlantStatusIcon
+                                status={status}
+                                className="size-5 shrink-0"
+                                aria-hidden
+                            />
+                        )
                     }
                     endDecorator={
-                        <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-muted-foreground">
-                            <Calendar className="size-3.5 shrink-0" />
-                            <span>{dateLabel}</span>
-                        </span>
+                        compact ? undefined : (
+                            <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-muted-foreground">
+                                <Calendar className="size-3.5 shrink-0" />
+                                <span>{dateLabel}</span>
+                            </span>
+                        )
                     }
                 >
-                    <span className="min-w-0 truncate">{statusItem.label}</span>
+                    <span className="min-w-0 truncate">
+                        {compact
+                            ? plantFieldStatusLabel(status).shortLabel
+                            : statusItem.label}
+                    </span>
                 </Button>
             }
         >

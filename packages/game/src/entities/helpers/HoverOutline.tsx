@@ -34,11 +34,8 @@ import {
     WebGLRenderTarget,
 } from 'three';
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
-import {
-    useSceneAfterRenderSubscription,
-    useSceneRenderRequest,
-    useSceneResume,
-} from '../../scene/SceneTime';
+import { useSceneRenderRequest, useSceneResume } from '../../scene/SceneTime';
+import { useSceneAfterFrame } from '../../scene/useSceneAfterFrame';
 import {
     captureHoverOutlineMaskCacheSnapshot,
     type HoverOutlineMaskCacheSnapshot,
@@ -703,7 +700,6 @@ export function HoverOutlineEffect() {
         zeroSnapshot,
     );
     const hasActiveTargets = (registry?.getActiveTargets().length ?? 0) > 0;
-    const subscribeAfterRender = useSceneAfterRenderSubscription();
     const passCountsRef = useRef({
         cacheBypass: 0,
         cacheHit: 0,
@@ -731,21 +727,22 @@ export function HoverOutlineEffect() {
         return () => {
             invalidateMaskCache();
             canvas.removeEventListener('webglcontextlost', invalidateMaskCache);
-            canvas.removeEventListener(
-                'webglcontextrestored',
-                invalidateMaskCache,
-            );
+            canvas.removeEventListener('webglcontextrestored');
         };
     }, [gl, invalidateMaskCache]);
 
     useSceneResume(invalidateMaskCache);
 
     useEffect(() => {
-        if (!registry || !hasActiveTargets) {
-            return;
-        }
+        if (!registry) invalidateMaskCache();
+        return invalidateMaskCache;
+    }, [invalidateMaskCache, registry]);
 
-        const renderOutline = () => {
+    useSceneAfterFrame(
+        useCallback(() => {
+            if (!registry || !hasActiveTargets) {
+                return;
+            }
             const targets = registry.getActiveTargets();
             if (targets.length === 0) {
                 maskCacheRef.current = null;
@@ -1044,33 +1041,26 @@ export function HoverOutlineEffect() {
                     hoverOutlineThickness: maximumThickness,
                 });
             }
-        };
-
-        const unsubscribe = subscribeAfterRender(renderOutline);
-        return () => {
-            invalidateMaskCache();
-            unsubscribe();
-        };
-    }, [
-        camera,
-        drawingBufferSize,
-        gl,
-        hasActiveTargets,
-        horizontalDistanceMaterial,
-        invalidateMaskCache,
-        maskMaterial,
-        outlineCamera,
-        outlineMaterial,
-        outlineMesh,
-        outlineScene,
-        publishProfileMetadata,
-        registryVersion,
-        renderTargets,
-        registry,
-        scene,
-        screenBoundsScratch,
-        subscribeAfterRender,
-    ]);
+        }, [
+            camera,
+            drawingBufferSize,
+            gl,
+            hasActiveTargets,
+            horizontalDistanceMaterial,
+            maskMaterial,
+            outlineCamera,
+            outlineMaterial,
+            outlineMesh,
+            outlineScene,
+            publishProfileMetadata,
+            registryVersion,
+            renderTargets,
+            registry,
+            scene,
+            screenBoundsScratch,
+        ]),
+        Boolean(registry && hasActiveTargets),
+    );
 
     useEffect(() => {
         void registryVersion;

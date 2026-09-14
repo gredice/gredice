@@ -4,16 +4,25 @@
  * Each key is a current plant field status, and the value is an array of
  * statuses the user can transition to from that state.
  *
- * Allowed transitions:
- * - sowed ↔ sprouted
- * - sprouted ↔ notSprouted, died, ready
+ * Growth progresses through sprouting, optional flowering/fruiting, harvest
+ * readiness and harvest. Failures and existing correction paths remain
+ * available. Sowing verification and plant removal use separate workflows.
  */
 export const userAllowedPlantStatusTransitions: Record<string, string[]> = {
-    sowed: ['sprouted'],
-    sprouted: ['sowed', 'notSprouted', 'died', 'ready'],
+    sowed: ['sprouted', 'notSprouted'],
+    sprouted: [
+        'sowed',
+        'notSprouted',
+        'died',
+        'firstFlowers',
+        'firstFruitSet',
+        'ready',
+    ],
+    firstFlowers: ['firstFruitSet', 'ready', 'died'],
+    firstFruitSet: ['ready', 'died'],
     notSprouted: ['sprouted'],
     died: ['sprouted'],
-    ready: ['sprouted'],
+    ready: ['sprouted', 'harvested', 'died'],
 };
 
 export const imageObservablePlantFieldStatuses = [

@@ -1,4 +1,3 @@
-import { animated } from '@react-spring/three';
 import { type ThreeEvent, useFrame } from '@react-three/fiber';
 import { type ReactNode, useMemo, useRef } from 'react';
 import { DoubleSide, type Group } from 'three';
@@ -7,6 +6,7 @@ import {
     useSceneFixedTimeSeconds,
     useSceneTimeInvalidation,
 } from '../scene/SceneTime';
+import { animated } from '../scene/sceneSpring';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
 import { useStackHeight } from '../utils/getStackHeight';

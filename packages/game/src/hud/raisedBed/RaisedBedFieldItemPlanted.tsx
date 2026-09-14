@@ -3,14 +3,15 @@ import {
     userAllowedPlantStatusTransitions,
 } from '@gredice/js/plants';
 import {
-    Book,
+    GamePlantStatusIcon,
+    GameHistoryIcon as History,
+    GameSeedlingIcon as Sprout,
+} from '@gredice/ui/GameIcons';
+import {
     Check,
     ExternalLink,
-    Hammer,
-    History,
     Home,
     MoreHorizontal,
-    Sprout,
     Warning,
 } from '@gredice/ui/icons';
 import { Link } from '@gredice/ui/Link';
@@ -19,7 +20,7 @@ import { Row } from '@gredice/ui/Row';
 import { ScrollArea } from '@gredice/ui/ScrollArea';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
 import { Stack } from '@gredice/ui/Stack';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
+import { Tabs, TabsContent } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import { type ReactElement, useEffect, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
@@ -36,6 +37,7 @@ import {
 } from '../../utils/raisedBedFields';
 import { SuncokretChatTrigger } from '../SuncokretChatTrigger';
 import { suncokretContextConversationLabel } from '../suncokretChatContext';
+import type { AdvancedSowingGardenPlantingVisual } from './advancedSowingGardenVisuals';
 import { GreenhouseSeedlingPlantVisual } from './GreenhouseSeedlingPlantVisual';
 import { GreenhouseSeedlingProgress } from './GreenhouseSeedlingProgress';
 import { GreenhouseSeedlingTransplantAction } from './GreenhouseSeedlingTransplantAction';
@@ -43,7 +45,8 @@ import {
     isGreenhouseSeedlingField,
     useGreenhouseSeedlingProgressData,
 } from './greenhouseSeedlings';
-import { plantFieldStatusEmoji } from './PlantFieldStatusEmoji';
+import { RaisedBedAdvancedSowingPlantingDetails } from './RaisedBedAdvancedSowingPlantingDetails';
+import { RaisedBedDetailsTabsList } from './RaisedBedDetailsTabsList';
 import { RaisedBedFieldIconStack } from './RaisedBedFieldIconStack';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import {
@@ -59,16 +62,20 @@ import {
     type RaisedBedPlantTab,
     RaisedBedPlantTabsList,
 } from './RaisedBedPlantTabsList';
+import { RaisedBedSelectedPlantingOwnerControls } from './RaisedBedSelectedPlantingOwnerControls';
 import { RecommendationsCard } from './RecommendationsCard';
 import {
     parseScheduledSowingDateValue,
     ScheduledSowingDateBadge,
 } from './ScheduledSowingDateBadge';
+import { selectedPlantingField } from './selectedPlantingField';
 
 export function RaisedBedFieldItemPlanted({
     raisedBedId,
     positionIndex,
-    fieldOverride,
+    fieldOverride: providedFieldOverride,
+    selectedPlanting,
+    interactionDisabled = false,
     onOpenChange,
     open: openProp,
     requestedTab,
@@ -81,6 +88,8 @@ export function RaisedBedFieldItemPlanted({
     raisedBedId: number;
     positionIndex: number;
     fieldOverride?: RaisedBedFieldPlantHistoryEntry;
+    selectedPlanting?: AdvancedSowingGardenPlantingVisual;
+    interactionDisabled?: boolean;
     onOpenChange?: (open: boolean) => void;
     open?: boolean;
     requestedTab?: RaisedBedFieldTabValue;
@@ -97,6 +106,9 @@ export function RaisedBedFieldItemPlanted({
     const { data: garden, isLoading: isGardenLoading } = useCurrentGarden();
     const { track } = useGameAnalytics();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
+    const fieldOverride = selectedPlanting
+        ? selectedPlantingField(selectedPlanting, positionIndex)
+        : providedFieldOverride;
     const field =
         fieldOverride ??
         (isHistorical
@@ -295,7 +307,9 @@ export function RaisedBedFieldItemPlanted({
     const localizedStatus = plantFieldStatusLabel(
         field.plantStatus ?? undefined,
     );
-    const currentPlantIdentity = getRaisedBedFieldActivePlantIdentity(field);
+    const currentPlantIdentity = selectedPlanting
+        ? undefined
+        : getRaisedBedFieldActivePlantIdentity(field);
     const canChangeStatus = Boolean(
         currentPlantIdentity &&
             field.plantStatus &&
@@ -303,9 +317,11 @@ export function RaisedBedFieldItemPlanted({
     );
     const statusContent = (
         <>
-            <span className="text-2xl leading-none" aria-hidden="true">
-                {plantFieldStatusEmoji(field.plantStatus ?? undefined)}
-            </span>
+            <GamePlantStatusIcon
+                status={field.plantStatus ?? undefined}
+                className="size-7 shrink-0"
+                aria-hidden="true"
+            />
             <Typography level="body1" className="text-center" semiBold>
                 {localizedStatus.shortLabel}
             </Typography>
@@ -371,7 +387,29 @@ export function RaisedBedFieldItemPlanted({
         },
     ];
     const fieldTrigger = (
-        <RaisedBedFieldItemButton positionIndex={positionIndex}>
+        <RaisedBedFieldItemButton
+            positionIndex={positionIndex}
+            disabled={interactionDisabled}
+            className={
+                interactionDisabled
+                    ? 'pointer-events-none'
+                    : 'pointer-events-auto'
+            }
+            aria-label={
+                selectedPlanting
+                    ? `Otvori detalje biljke ${plantSort.information.name} na polju ${positionIndex + 1}`
+                    : undefined
+            }
+            data-advanced-sowing-details-trigger={
+                selectedPlanting ? `advanced:${selectedPlanting.id}` : undefined
+            }
+            data-advanced-sowing-field-plant={
+                selectedPlanting ? `advanced:${selectedPlanting.id}` : undefined
+            }
+            data-advanced-sowing-field-segment={
+                selectedPlanting ? `advanced:${selectedPlanting.id}` : undefined
+            }
+        >
             <SegmentedCircularProgress
                 size={70}
                 strokeWidth={4}
@@ -577,38 +615,26 @@ export function RaisedBedFieldItemPlanted({
                         }}
                         className="flex flex-col"
                     >
-                        <TabsList className="border w-fit self-center">
-                            <TabsTrigger value="lifecycle">
-                                <Row spacing={2}>
-                                    <Sprout className="size-4 shrink-0" />
-                                    <Typography>Biljka</Typography>
-                                </Row>
-                            </TabsTrigger>
-                            <TabsTrigger value="diary">
-                                <Row spacing={2}>
-                                    <Book className="size-4 shrink-0" />
-                                    <Typography>Dnevnik</Typography>
-                                </Row>
-                            </TabsTrigger>
-                            {!isHistorical && (
-                                <TabsTrigger value="operations">
-                                    <Row spacing={2}>
-                                        <Hammer className="size-4 shrink-0" />
-                                        <Typography>Radnje</Typography>
-                                    </Row>
-                                </TabsTrigger>
-                            )}
-                        </TabsList>
+                        <RaisedBedDetailsTabsList
+                            view="plant"
+                            showOperations={!isHistorical}
+                        />
                         {!isHistorical && (
                             <TabsContent value="operations">
-                                {garden && (
+                                {garden && selectedPlanting ? (
+                                    <RaisedBedSelectedPlantingOwnerControls
+                                        gardenId={garden.id}
+                                        raisedBedId={raisedBedId}
+                                        planting={selectedPlanting}
+                                    />
+                                ) : garden ? (
                                     <RaisedBedFieldOperationsTab
                                         gardenId={garden.id}
                                         raisedBedId={raisedBedId}
                                         positionIndex={positionIndex}
                                         plantSortId={field.plantSortId}
                                     />
-                                )}
+                                ) : null}
                             </TabsContent>
                         )}
                         <TabsContent value="diary">
@@ -618,11 +644,20 @@ export function RaisedBedFieldItemPlanted({
                                     viewportClassName="max-h-96"
                                     contentClassName="pl-4 pr-2 md:pl-6 md:pr-2"
                                 >
-                                    <RaisedBedOperationHistoryList
-                                        raisedBedId={raisedBed.id}
-                                        positionIndex={positionIndex}
-                                        disableActions={isHistorical}
-                                    />
+                                    {selectedPlanting ? (
+                                        <RaisedBedSelectedPlantingOwnerControls
+                                            gardenId={garden.id}
+                                            raisedBedId={raisedBedId}
+                                            planting={selectedPlanting}
+                                            readOnly
+                                        />
+                                    ) : (
+                                        <RaisedBedOperationHistoryList
+                                            raisedBedId={raisedBed.id}
+                                            positionIndex={positionIndex}
+                                            disableActions={isHistorical}
+                                        />
+                                    )}
                                 </ScrollArea>
                             )}
                         </TabsContent>
@@ -670,19 +705,25 @@ export function RaisedBedFieldItemPlanted({
                                         positionIndex={positionIndex}
                                         fieldOverride={fieldOverride}
                                         includeInactive={isHistorical}
+                                        disableFieldActions={Boolean(
+                                            selectedPlanting,
+                                        )}
                                         onShowOperations={() =>
                                             setActiveTab('operations')
                                         }
                                     />
                                 )}
-                                {isGreenhouseSeedling && garden && (
-                                    <GreenhouseSeedlingTransplantAction
-                                        gardenId={garden.id}
-                                        raisedBedId={raisedBedId}
-                                        positionIndex={positionIndex}
-                                    />
-                                )}
                                 {isGreenhouseSeedling &&
+                                    garden &&
+                                    !selectedPlanting && (
+                                        <GreenhouseSeedlingTransplantAction
+                                            gardenId={garden.id}
+                                            raisedBedId={raisedBedId}
+                                            positionIndex={positionIndex}
+                                        />
+                                    )}
+                                {isGreenhouseSeedling &&
+                                    !selectedPlanting &&
                                     garden &&
                                     greenhouseRecommendationStatus &&
                                     typeof field.plantSortId === 'number' && (
@@ -699,6 +740,11 @@ export function RaisedBedFieldItemPlanted({
                                             plantSortId={field.plantSortId}
                                         />
                                     )}
+                                {selectedPlanting && (
+                                    <RaisedBedAdvancedSowingPlantingDetails
+                                        planting={selectedPlanting}
+                                    />
+                                )}
                             </Stack>
                         </TabsContent>
                     </Tabs>
@@ -723,7 +769,7 @@ export function RaisedBedFieldItemPlanted({
         return (
             <div className="relative size-full">
                 {modal}
-                {indicatorStack}
+                {!interactionDisabled && indicatorStack}
             </div>
         );
     }

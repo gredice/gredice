@@ -9,8 +9,12 @@ import {
     useSensors,
 } from '@dnd-kit/core';
 import { rectSwappingStrategy, SortableContext } from '@dnd-kit/sortable';
-import { Heart, History, Lightning } from '@gredice/ui/icons';
-import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
+import {
+    GameHeartIcon,
+    GameLightningIcon,
+    GameHistoryIcon as History,
+    GameSeedPacketIcon as PlantingSeedIcon,
+} from '@gredice/ui/GameIcons';
 import { cx } from '@gredice/ui/utils';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
@@ -566,16 +570,14 @@ export function RaisedBedField({
                     }
                     storageName="relationships"
                 >
-                    <span className="flex items-center justify-center gap-0.5">
-                        <Heart
+                    <span className="flex items-center justify-center -space-x-1">
+                        <GameHeartIcon
                             aria-hidden
-                            className="size-3.5 shrink-0 fill-current"
-                            strokeWidth={3}
+                            className="size-5 shrink-0"
                         />
-                        <Lightning
+                        <GameLightningIcon
                             aria-hidden
-                            className="size-4 shrink-0 fill-current"
-                            strokeWidth={3}
+                            className="size-5 shrink-0"
                         />
                     </span>
                 </RaisedBedFieldLayerToggle>
@@ -583,8 +585,8 @@ export function RaisedBedField({
             {advancedSowingPlantings.length > 0 ? (
                 <RaisedBedAdvancedSowingOverlay
                     bedFieldCount={totalRows * totalColumns}
-                    gardenId={gardenId}
                     plantings={advancedSowingPlantings}
+                    pendingPositionIndices={[...cartItemsByPosition.keys()]}
                     plantingMode={isPlantingMode}
                     plantSorts={advancedSowingPlantSorts}
                     raisedBedId={raisedBedId}

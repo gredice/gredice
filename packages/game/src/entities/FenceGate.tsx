@@ -1,4 +1,3 @@
-import { animated, useSpring } from '@react-spring/three';
 import { useThree } from '@react-three/fiber';
 import { useCallback } from 'react';
 import { useDeferredSingleClick } from '../controls/useDeferredSingleClick';
@@ -8,6 +7,7 @@ import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { useSceneRenderRequest } from '../scene/SceneTime';
+import { animated, useSpring } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
@@ -100,6 +100,7 @@ export function FenceGate({ stack, block, rotation }: EntityInstanceProps) {
         requestRender('fence-gate-shadow');
     }, [gl, requestRender]);
     const { rotation: leafRotation } = useSpring({
+        initial: { rotation: [0, open ? -Math.PI / 2 : 0, 0] },
         config: {
             friction: 22,
             mass: 0.34,

@@ -1,9 +1,9 @@
-import { animated } from '@react-spring/three';
 import type { ThreeEvent } from '@react-three/fiber';
 import { type ReactNode, useState } from 'react';
 import { useCycleGardenBackgroundPalette } from '../hooks/useCycleGardenBackgroundPalette';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
+import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';

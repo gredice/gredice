@@ -4,6 +4,7 @@ import {
     assignSelectedRaisedBedPlantingTask,
     blockSelectedRaisedBedPlantingTask,
     cancelSelectedRaisedBedPlantingTask,
+    createSelectedPlantingOperation,
     getRaisedBed,
     getRaisedBedPlanting,
     type RaisedBedFieldSowingLocation,
@@ -34,6 +35,8 @@ async function revalidateSelectedPlantingPaths(plantingId: number) {
     }
     const raisedBed = await getRaisedBed(planting.raisedBedId);
     revalidatePath(KnownPages.Schedule);
+    revalidatePath(KnownPages.Greenhouse);
+    revalidatePath(KnownPages.RaisedBeds);
     revalidatePath(KnownPages.RaisedBed(planting.raisedBedId));
     if (raisedBed?.accountId) {
         revalidatePath(KnownPages.Account(raisedBed.accountId));
@@ -153,4 +156,18 @@ export async function updateSelectedPlantingLifecycleStatusAction(
     });
     await revalidateSelectedPlantingPaths(identity.plantingId);
     return { result, success: true as const };
+}
+
+export async function createSelectedPlantingOperationAction(
+    identity: SelectedRaisedBedPlantingTaskCommandIdentity,
+    entityId: number,
+) {
+    const result = await createSelectedPlantingOperation({
+        ...identity,
+        entityId,
+        actor: await getAdminActor(),
+    });
+    await revalidateSelectedPlantingPaths(identity.plantingId);
+    revalidatePath(KnownPages.Operations);
+    return result;
 }

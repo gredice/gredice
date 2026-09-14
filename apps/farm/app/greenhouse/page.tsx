@@ -1,11 +1,11 @@
-import {
-    plantFieldStatusEmoji,
-    plantFieldStatusLabel,
-} from '@gredice/js/plants';
+import { plantFieldStatusLabel } from '@gredice/js/plants';
 import {
     type EntityStandardized,
     getEntitiesFormatted,
     getFarmUserRaisedBeds,
+    getRaisedBedPlantOccupancy,
+    isRaisedBedPlantInGreenhouse,
+    type RaisedBedPlantOccupancy,
 } from '@gredice/storage';
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
 import {
@@ -16,9 +16,11 @@ import {
     CardTitle,
 } from '@gredice/ui/Card';
 import { Chip, type ColorPaletteProp } from '@gredice/ui/Chip';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIdentifierIcon } from '@gredice/ui/RaisedBedIdentifierIcon';
 import { Row } from '@gredice/ui/Row';
+import { RaisedBedPlantingFacts } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
@@ -30,34 +32,10 @@ import { GreenhouseMobilePlantList } from './GreenhouseMobilePlantList';
 
 export const dynamic = 'force-dynamic';
 
-const GREENHOUSE_PLANT_STATUSES = new Set([
-    'new',
-    'planned',
-    'pendingVerification',
-    'sowed',
-    'sprouted',
-]);
-
 type FarmRaisedBed = Awaited<ReturnType<typeof getFarmUserRaisedBeds>>[number];
-type FarmRaisedBedField = FarmRaisedBed['fields'][number];
-type GreenhouseRaisedBedField = FarmRaisedBedField & { plantSortId: number };
 type GreenhouseRaisedBed = Omit<FarmRaisedBed, 'fields'> & {
-    fields: GreenhouseRaisedBedField[];
+    fields: RaisedBedPlantOccupancy[];
 };
-
-function canFieldCurrentlyBeInGreenhouse(
-    field: FarmRaisedBedField,
-): field is GreenhouseRaisedBedField {
-    return (
-        field.active &&
-        field.sowingLocation === 'greenhouse' &&
-        typeof field.plantSortId === 'number' &&
-        GREENHOUSE_PLANT_STATUSES.has(field.plantStatus ?? '') &&
-        !field.plantDeadDate &&
-        !field.plantHarvestedDate &&
-        !field.plantRemovedDate
-    );
-}
 
 function comparePhysicalIdsDescending(
     left: string | null,
@@ -85,7 +63,10 @@ function comparePhysicalIdsDescending(
     return 0;
 }
 
-function compareRaisedBeds(left: FarmRaisedBed, right: FarmRaisedBed) {
+function compareRaisedBeds(
+    left: GreenhouseRaisedBed,
+    right: GreenhouseRaisedBed,
+) {
     const physicalIdComparison = comparePhysicalIdsDescending(
         left.physicalId,
         right.physicalId,
@@ -111,8 +92,8 @@ function getGreenhouseRaisedBeds(
     return raisedBeds
         .map((raisedBed) => ({
             ...raisedBed,
-            fields: raisedBed.fields
-                .filter(canFieldCurrentlyBeInGreenhouse)
+            fields: getRaisedBedPlantOccupancy(raisedBed)
+                .filter(isRaisedBedPlantInGreenhouse)
                 .sort(
                     (left, right) => left.positionIndex - right.positionIndex,
                 ),
@@ -274,7 +255,7 @@ async function GreenhousePageContent() {
                                 Gredice: {greenhouseRaisedBeds.length}
                             </Chip>
                             <Chip color="success">
-                                Biljaka: {greenhouseFieldCount}
+                                Sadnji: {greenhouseFieldCount}
                             </Chip>
                         </Row>
                     </Row>
@@ -322,7 +303,7 @@ async function GreenhousePageContent() {
                                         </CardTitle>
                                     </Link>
                                     <Chip size="sm">
-                                        Biljaka: {raisedBed.fields.length}
+                                        Sadnji: {raisedBed.fields.length}
                                     </Chip>
                                 </Row>
                             </CardHeader>
@@ -333,16 +314,18 @@ async function GreenhousePageContent() {
                                     );
 
                                     return {
+                                        planting: field.planting ?? undefined,
                                         germinationDate: formatDate(
                                             field.plantGrowthDate,
                                         ),
-                                        key: `${raisedBed.id}-${field.id}`,
+                                        key: `${raisedBed.id}-${field.key}`,
                                         plantName: getPlantName(
                                             plantSort,
                                             field.plantSortId,
                                         ),
                                         plantSort,
-                                        positionNumber: field.positionIndex + 1,
+                                        positionNumber:
+                                            field.positionNumbers.join(', '),
                                         sowingDate: sowingDateCell(
                                             field.plantSowDate,
                                             field.plantGrowthDate,
@@ -351,9 +334,7 @@ async function GreenhousePageContent() {
                                         statusColor: getStatusColor(
                                             field.plantStatus,
                                         ),
-                                        statusEmoji: plantFieldStatusEmoji(
-                                            field.plantStatus ?? undefined,
-                                        ),
+                                        plantStatus: field.plantStatus,
                                         statusLabel: getStatusLabel(
                                             field.plantStatus,
                                         ),
@@ -385,11 +366,12 @@ async function GreenhousePageContent() {
 
                                             return (
                                                 <Table.Row
-                                                    key={`${raisedBed.id}-${field.id}`}
+                                                    key={`${raisedBed.id}-${field.key}`}
                                                 >
                                                     <Table.Cell className="font-medium">
-                                                        {field.positionIndex +
-                                                            1}
+                                                        {field.positionNumbers.join(
+                                                            ', ',
+                                                        )}
                                                     </Table.Cell>
                                                     <Table.Cell>
                                                         <div className="flex min-w-0 items-center gap-3">
@@ -406,24 +388,29 @@ async function GreenhousePageContent() {
                                                                     className="size-10 object-cover"
                                                                 />
                                                             </div>
-                                                            <span className="min-w-0 font-medium [overflow-wrap:anywhere]">
+                                                            <div className="min-w-0 font-medium [overflow-wrap:anywhere]">
                                                                 {plantName}
-                                                            </span>
+                                                                <RaisedBedPlantingFacts
+                                                                    {...field.planting}
+                                                                />
+                                                            </div>
                                                         </div>
                                                     </Table.Cell>
                                                     <Table.Cell>
                                                         <Chip
+                                                            variant="outlined"
                                                             color={getStatusColor(
                                                                 field.plantStatus,
                                                             )}
                                                             size="sm"
                                                             startDecorator={
-                                                                <span aria-hidden="true">
-                                                                    {plantFieldStatusEmoji(
-                                                                        field.plantStatus ??
-                                                                            undefined,
-                                                                    )}
-                                                                </span>
+                                                                <GamePlantStatusIcon
+                                                                    status={
+                                                                        field.plantStatus
+                                                                    }
+                                                                    className="size-5! shrink-0"
+                                                                    aria-hidden
+                                                                />
                                                             }
                                                         >
                                                             {getStatusLabel(

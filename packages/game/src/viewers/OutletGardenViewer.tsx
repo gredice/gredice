@@ -1,6 +1,5 @@
 'use client';
-
-import { Sprout } from '@gredice/ui/icons';
+import { GameSeedlingIcon as Sprout } from '@gredice/ui/GameIcons';
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { parseAsInteger, useQueryState } from 'nuqs';

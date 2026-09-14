@@ -47,6 +47,6 @@ export function useCurrentUser(enabled = true) {
         queryFn: getCurrentUser,
         enabled,
         retry: false,
-        staleTime: 1000 * 60 * 60, // 1 hour
+        staleTime: 1000 * 60, // Refresh profile levels after returning to the garden.
     });
 }

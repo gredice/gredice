@@ -1,25 +1,28 @@
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
 import { DotIndicator } from '@gredice/ui/DotIndicator';
+import {
+    GameHistoryIcon as History,
+    GameMailboxIcon as Inbox,
+    GameTasksIcon as ListTodo,
+    GameRaisedBedIcon as RaisedBedIcon,
+} from '@gredice/ui/GameIcons';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
 import {
     Approved,
     Calendar,
     Error as ErrorIcon,
-    History,
     Hourglass,
-    Inbox,
     Info,
-    ListTodo,
     MailCheck,
     Navigate,
     ShoppingCart,
 } from '@gredice/ui/icons';
 import { Markdown } from '@gredice/ui/Markdown';
 import { OperationImage } from '@gredice/ui/OperationImage';
+import { PaperNote } from '@gredice/ui/PaperNote';
 import { Popper } from '@gredice/ui/Popper';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { ScrollArea } from '@gredice/ui/ScrollArea';
 import { Stack } from '@gredice/ui/Stack';
@@ -1110,9 +1113,13 @@ function OperationStatusTooltipContent({
 function OperationTerminalReasonTooltipContent({
     title,
     reason,
+    note,
+    noteKey,
 }: {
     title: string;
-    reason: string;
+    reason?: string | null;
+    note?: string;
+    noteKey: string | number;
 }) {
     return (
         <Stack spacing={0.75} className="max-w-64">
@@ -1131,6 +1138,7 @@ function OperationTerminalReasonTooltipContent({
             >
                 {reason}
             </Typography>
+            {note ? <PaperNote noteKey={noteKey}>{note}</PaperNote> : null}
         </Stack>
     );
 }
@@ -1151,14 +1159,13 @@ function OperationStatusSummary({
         status === 'canceled'
             ? operation.cancellationReason?.trim()
             : status === 'blocked'
-              ? [operation.blockReasonLabel, operation.blockNote]
-                    .map((value) => value?.trim())
-                    .filter(Boolean)
-                    .join(': ')
+              ? operation.blockReasonLabel?.trim()
               : undefined;
+    const terminalNote =
+        status === 'blocked' ? operation.blockNote?.trim() : undefined;
     const terminalReasonTitle =
         status === 'blocked' ? 'Razlog prepreke' : 'Razlog otkazivanja';
-    const hasTerminalReason = Boolean(terminalReason);
+    const hasTerminalReason = Boolean(terminalReason || terminalNote);
     const isTerminalFailureStatus =
         status !== 'scheduled' && terminalFailureStatuses.has(status);
     const showProgressIndicator =
@@ -1253,10 +1260,12 @@ function OperationStatusSummary({
                 </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" align="end" className="max-w-72 p-2">
-                {hasTerminalReason && terminalReason ? (
+                {hasTerminalReason ? (
                     <OperationTerminalReasonTooltipContent
                         reason={terminalReason}
                         title={terminalReasonTitle}
+                        note={terminalNote}
+                        noteKey={operation.id}
                     />
                 ) : (
                     <OperationStatusTooltipContent steps={steps} />
@@ -1374,12 +1383,11 @@ function OperationEvidence({ operation }: { operation: GardenOperationItem }) {
                 </div>
             )}
             {completionNotes && (
-                <Markdown
-                    className="min-w-0 break-words text-sm prose-headings:my-1 prose-headings:text-sm prose-li:my-0 prose-ol:my-1 prose-p:my-1 prose-p:whitespace-pre-line prose-ul:my-1"
-                    data-operation-notes
-                >
-                    {completionNotes}
-                </Markdown>
+                <PaperNote noteKey={operation.id} data-operation-notes>
+                    <Markdown className="min-w-0 whitespace-normal text-inherit leading-inherit prose-headings:my-1 prose-headings:text-sm prose-headings:text-inherit prose-a:text-inherit prose-strong:text-inherit! [&_li::marker]:text-[#927a4e] prose-li:my-0 prose-ol:my-1 prose-p:my-1 prose-p:whitespace-pre-line prose-ul:my-1">
+                        {completionNotes}
+                    </Markdown>
+                </PaperNote>
             )}
         </Stack>
     );
@@ -1993,7 +2001,7 @@ export function GardenOperationsHud() {
                             <DotIndicator color={'success'} />
                         </div>
                     )}
-                    <ListTodo className="size-5" />
+                    <ListTodo className="size-8" />
                 </Button>
             }
         >

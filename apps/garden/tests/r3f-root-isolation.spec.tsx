@@ -69,7 +69,7 @@ test('isolates spring demand and submitted work between two Canvas roots', async
         .toBe(true);
     await expect
         .poll(async () => (await readSnapshot()).secondary.frameloop)
-        .toBe('demand');
+        .toBe('never');
     const resumeStart = await readSnapshot();
     await page.waitForTimeout(500);
     const resumeEnd = await readSnapshot();

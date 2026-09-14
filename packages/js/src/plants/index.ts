@@ -7,3 +7,4 @@ export * from './plantFieldStatusEmoji';
 export * from './plantFieldStatusLabel';
 export * from './plantFieldStatusTransitions';
 export * from './plantStages';
+export * from './raisedBedFieldGroups';

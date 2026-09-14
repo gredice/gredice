@@ -3,6 +3,7 @@ import {
     userAllowedPlantStatusTransitions,
 } from '@gredice/js/plants';
 import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { Calendar, Navigate } from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';
 import { ListItem } from '@gredice/ui/ListItem';
@@ -13,7 +14,6 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { type ReactNode, useCallback, useState } from 'react';
 import { useRaisedBedFieldUpdateStatus } from '../../hooks/useRaisedBedFieldUpdateStatus';
-import { plantFieldStatusEmoji } from './PlantFieldStatusEmoji';
 import { formatLocalDate } from './RaisedBedPlantPicker';
 
 function formatStatusChangeDate(date: string) {
@@ -51,9 +51,18 @@ export function RaisedBedFieldStatusChange({
     const [statusToConfirm, setStatusToConfirm] = useState<string | null>(null);
     const [datePickerContainer, setDatePickerContainer] =
         useState<HTMLElement>();
+    const [statusChangeBoundary, setStatusChangeBoundary] = useState<Element>();
     const handleDatePickerContainerRef = useCallback(
         (node: HTMLDivElement | null) => {
             setDatePickerContainer(node ?? undefined);
+            // The popover is portaled inside the plant modal. Its menu must
+            // fit that modal's clipping boundary, including the mobile drawer.
+            const popover = node?.closest('[role="dialog"]');
+            setStatusChangeBoundary(
+                popover?.parentElement?.closest(
+                    '[role="dialog"], [role="alertdialog"]',
+                ) ?? undefined,
+            );
         },
         [],
     );
@@ -101,10 +110,12 @@ export function RaisedBedFieldStatusChange({
             trigger={trigger}
             side="bottom"
             sideOffset={12}
-            className="w-80 border-tertiary border-b-4 p-4"
+            collisionBoundary={statusChangeBoundary}
+            className="flex max-h-(--available-height) w-80 flex-col border-tertiary border-b-4 p-4"
         >
-            <Stack spacing={4} className="relative">
+            <Stack spacing={4} className="relative min-h-0">
                 <Row
+                    className="shrink-0"
                     spacing={2}
                     justifyContent="space-between"
                     alignItems="center"
@@ -146,7 +157,7 @@ export function RaisedBedFieldStatusChange({
                 {hasAllowedNextStatuses ? (
                     <List
                         variant="outlined"
-                        className="bg-card overflow-hidden"
+                        className="min-h-0 overflow-y-auto overscroll-contain bg-card"
                     >
                         {allowedNextStatuses?.map((nextStatus) => {
                             const statusInfo =
@@ -165,12 +176,11 @@ export function RaisedBedFieldStatusChange({
                                     }}
                                     className="py-3 pr-4"
                                     startDecorator={
-                                        <span
-                                            className="w-8 text-center text-lg leading-none"
+                                        <GamePlantStatusIcon
+                                            status={nextStatus}
+                                            className="size-7 shrink-0"
                                             aria-hidden="true"
-                                        >
-                                            {plantFieldStatusEmoji(nextStatus)}
-                                        </span>
+                                        />
                                     }
                                     endDecorator={
                                         <Navigate
@@ -194,12 +204,11 @@ export function RaisedBedFieldStatusChange({
                 ) : (
                     <Stack spacing={2}>
                         <Row spacing={2} alignItems="center">
-                            <span
-                                className="text-xl leading-none"
+                            <GamePlantStatusIcon
+                                status={currentStatus}
+                                className="size-7 shrink-0"
                                 aria-hidden="true"
-                            >
-                                {plantFieldStatusEmoji(currentStatus)}
-                            </span>
+                            />
                             <Typography level="body1" semiBold>
                                 {currentStatusInfo.shortLabel}
                             </Typography>

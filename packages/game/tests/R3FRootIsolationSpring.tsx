@@ -1,10 +1,10 @@
-import { animated, useSpring } from '@react-spring/three';
 import { useThree } from '@react-three/fiber';
 import { useEffect } from 'react';
 import {
     useSceneAfterRenderSubscription,
     useSceneTimeInvalidation,
 } from '../src/scene/SceneTime';
+import { animated, useSpring } from '../src/scene/sceneSpring';
 
 export type R3FRootIsolationCounters = {
     frameloop: string;

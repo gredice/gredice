@@ -17,7 +17,6 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
@@ -29,17 +28,18 @@ import { getPlantsData } from '../../lib/plants/getPlantsData';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { getPublicSunflowerPackages } from '../../lib/sunflowerPackages';
 import { KnownPages } from '../../src/KnownPages';
+import { CatalogRow } from './CatalogRow';
 import {
     type PricingCatalogItem,
     PricingCatalogList,
 } from './PricingCatalogList';
+import { PricingHistoryReference } from './PricingHistoryReference';
 import { getPricingCatalogHistory, pricingHistoryKey } from './pricingHistory';
 import {
     buildDeliveryPricingRows,
     buildOperationPricingRows,
     buildPlantPricingRows,
 } from './pricingRows';
-import { ThirtyDayMinimumPrice } from './ThirtyDayMinimumPrice';
 
 export const metadata = createPublicMetadata({
     title: 'Cjenik',
@@ -96,73 +96,12 @@ function CatalogColumnHeader({ itemLabel }: { itemLabel: string }) {
     return (
         <div
             aria-hidden="true"
-            className="hidden grid-cols-[minmax(0,1fr)_20rem_1.25rem] gap-3 border-b bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground md:grid"
+            className="hidden grid-cols-[minmax(0,1fr)_17rem_1.25rem] gap-3 border-b bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground md:grid"
         >
             <span>{itemLabel}</span>
-            <span className="grid grid-cols-2 gap-6 text-right">
-                <span>Cijena</span>
-                <span>Najniža u 30 dana</span>
-            </span>
+            <span className="text-right">Cijena</span>
             <span />
         </div>
-    );
-}
-
-function CatalogRow({
-    badge,
-    currentValue,
-    href,
-    minimumValue,
-    subtitle,
-    title,
-    visual,
-}: {
-    badge?: ReactNode;
-    currentValue: ReactNode;
-    href: Route;
-    minimumValue?: ReactNode;
-    subtitle: string;
-    title: string;
-    visual: ReactNode;
-}) {
-    return (
-        <Link
-            className="group grid grid-cols-[minmax(0,1fr)_minmax(7rem,auto)] items-center gap-3 bg-card p-3 transition-colors hover:bg-primary/5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:grid-cols-[minmax(0,1fr)_20rem_1.25rem]"
-            href={href}
-        >
-            <span className="flex min-w-0 items-center gap-3">
-                <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted text-muted-foreground">
-                    {visual}
-                </span>
-                <span className="min-w-0">
-                    <span className="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
-                        <span className="line-clamp-2 min-w-0 font-medium group-hover:underline group-hover:underline-offset-2 md:truncate">
-                            {title}
-                        </span>
-                        {badge}
-                    </span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                        {subtitle}
-                    </span>
-                </span>
-            </span>
-            <span className="grid min-w-0 gap-1 text-right md:grid-cols-2 md:items-center md:gap-6">
-                <span className="font-medium tabular-nums">{currentValue}</span>
-                {minimumValue ? (
-                    <span>
-                        <span className="block text-[11px] font-normal text-muted-foreground md:hidden">
-                            Najniža u 30 dana
-                        </span>
-                        {minimumValue}
-                    </span>
-                ) : (
-                    <span className="hidden text-muted-foreground md:block">
-                        —
-                    </span>
-                )}
-            </span>
-            <Navigate className="hidden size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground md:block" />
-        </Link>
     );
 }
 
@@ -213,9 +152,9 @@ export default async function PricingPage() {
                         isAvailable ? formatPrice(row.price) : 'Nije dostupno'
                     }
                     href={row.href}
-                    minimumValue={
+                    historyValue={
                         isAvailable ? (
-                            <ThirtyDayMinimumPrice
+                            <PricingHistoryReference
                                 currentPrice={row.price}
                                 history={
                                     pricingHistory[
@@ -299,9 +238,9 @@ export default async function PricingPage() {
                                   : 'Nije dostupno'
                         }
                         href={row.href}
-                        minimumValue={
+                        historyValue={
                             isAvailable ? (
-                                <ThirtyDayMinimumPrice
+                                <PricingHistoryReference
                                     currentPrice={row.price}
                                     history={
                                         pricingHistory[
@@ -366,6 +305,14 @@ export default async function PricingPage() {
                     }
                 />
 
+                <div>
+                    <a
+                        href="/cjenik/preuzimanje"
+                        className="text-sm underline underline-offset-4"
+                    >
+                        Preuzmi CSV cjenik i prethodne verzije
+                    </a>
+                </div>
                 <nav
                     aria-label="Dijelovi cjenika"
                     className="sticky top-[calc(4rem+env(safe-area-inset-top,0px))] z-20 -mx-2 flex gap-2 overflow-x-auto rounded-lg border bg-background/95 p-2 shadow-xs backdrop-blur-sm"
@@ -406,8 +353,8 @@ export default async function PricingPage() {
                                                 pkg.priceEur,
                                             )}
                                             href={KnownPages.Sunflowers}
-                                            minimumValue={
-                                                <ThirtyDayMinimumPrice
+                                            historyValue={
+                                                <PricingHistoryReference
                                                     currentPrice={pkg.priceEur}
                                                     history={
                                                         pricingHistory[
@@ -563,8 +510,8 @@ export default async function PricingPage() {
                                     <CatalogRow
                                         currentValue={`${formatPrice(row.pricePerKilometer)} / km`}
                                         href={row.href}
-                                        minimumValue={
-                                            <ThirtyDayMinimumPrice
+                                        historyValue={
+                                            <PricingHistoryReference
                                                 currentPrice={
                                                     row.pricePerKilometer
                                                 }

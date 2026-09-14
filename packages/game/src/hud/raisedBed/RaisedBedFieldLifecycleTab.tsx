@@ -3,8 +3,11 @@ import {
     userAllowedPlantStatusTransitions,
 } from '@gredice/js/plants';
 import { Button } from '@gredice/ui/Button';
+import {
+    GamePlantStatusIcon,
+    GameShovelIcon as ShovelIcon,
+} from '@gredice/ui/GameIcons';
 import { Row } from '@gredice/ui/Row';
-import { ShovelIcon } from '@gredice/ui/ShovelIcon';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
@@ -22,7 +25,6 @@ import {
     isPlantFieldStatus,
     shouldShowPlantOperationRecommendations,
 } from './featuredOperations';
-import { plantFieldStatusEmoji } from './PlantFieldStatusEmoji';
 import {
     getPlantLifecycleProgressData,
     PlantLifecycleProgress,
@@ -60,12 +62,14 @@ export function RaisedBedFieldLifecycleTab({
     includeInactive = false,
     fieldOverride,
     onShowOperations,
+    disableFieldActions = false,
 }: {
     raisedBedId: number;
     positionIndex: number;
     includeInactive?: boolean;
     fieldOverride?: RaisedBedFieldPlantHistoryEntry;
     onShowOperations?: () => void;
+    disableFieldActions?: boolean;
 }) {
     const { data: garden } = useCurrentGarden();
     const lifecycleData = useRaisedBedFieldLifecycleData(
@@ -88,7 +92,9 @@ export function RaisedBedFieldLifecycleTab({
         return null;
     }
 
-    const currentPlantIdentity = getRaisedBedFieldActivePlantIdentity(field);
+    const currentPlantIdentity = disableFieldActions
+        ? undefined
+        : getRaisedBedFieldActivePlantIdentity(field);
 
     const handleRemovePlant = async () => {
         if (!field.toBeRemoved || !currentPlantIdentity) {
@@ -133,9 +139,11 @@ export function RaisedBedFieldLifecycleTab({
         shouldShowPlantOperationRecommendations(plantStatus);
     const statusContent = (
         <>
-            <span className="text-2xl leading-none" aria-hidden="true">
-                {plantFieldStatusEmoji(field.plantStatus ?? undefined)}
-            </span>
+            <GamePlantStatusIcon
+                status={field.plantStatus ?? undefined}
+                className="size-7 shrink-0"
+                aria-hidden="true"
+            />
             <Typography level="body1" className="text-center" semiBold>
                 {localizedStatus.shortLabel}
             </Typography>
@@ -193,7 +201,8 @@ export function RaisedBedFieldLifecycleTab({
                 }
             />
 
-            {field.active &&
+            {!disableFieldActions &&
+                field.active &&
                 typeof field.plantSortId === 'number' &&
                 showPlantOperationRecommendations && (
                     <RecommendationsCard

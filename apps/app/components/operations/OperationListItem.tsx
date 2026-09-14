@@ -5,6 +5,7 @@ import { IconButton } from '@gredice/ui/IconButton';
 import { Calendar, Check } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { OperationImage } from '@gredice/ui/OperationImage';
+import { PaperNote } from '@gredice/ui/PaperNote';
 import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
@@ -20,7 +21,6 @@ import type {
 } from '../../app/admin/operations/operationsListTypes';
 import { VerifyOperationModal } from '../../app/admin/schedule/VerifyOperationModal';
 import { KnownPages } from '../../src/KnownPages';
-import { FarmerPaperNote } from './FarmerPaperNote';
 import { OperationCancelButton } from './OperationCancelButton';
 import { OperationRescheduleButton } from './OperationRescheduleButton';
 
@@ -153,9 +153,13 @@ export function OperationListItem({
                         </div>
                         {operation.kind === 'operation' &&
                         operation.completionNotes ? (
-                            <FarmerPaperNote className="mt-1 max-w-2xl">
+                            <PaperNote
+                                noteKey={operation.id}
+                                preview
+                                className="max-w-2xl"
+                            >
                                 {operation.completionNotes}
-                            </FarmerPaperNote>
+                            </PaperNote>
                         ) : null}
                     </Stack>
                 </div>

@@ -92,9 +92,25 @@ function buildOperationCardData(
                       raisedBedField.id === operation.raisedBedFieldId,
               )
         : undefined;
-    const sort = field?.plantSortId
-        ? plantSortById.get(field.plantSortId)
-        : undefined;
+    const planting = raisedBed?.plantings.find(
+        (planting) => planting.id === operation.plantingId,
+    );
+    const plantingPositions =
+        planting?.memberships
+            .filter(
+                (membership) =>
+                    !membership.isDeleted &&
+                    !membership.raisedBedField.isDeleted,
+            )
+            .map((membership) =>
+                getFieldPhysicalPositionIndex(
+                    membership.raisedBedField,
+                    raisedBeds,
+                ),
+            )
+            .sort((a, b) => a - b) ?? [];
+    const plantSortId = planting?.plantSortId ?? field?.plantSortId;
+    const sort = plantSortId ? plantSortById.get(plantSortId) : undefined;
     const physicalPositionIndex = field
         ? getFieldPhysicalPositionIndex(field, raisedBeds)
         : null;
@@ -107,13 +123,14 @@ function buildOperationCardData(
     return {
         ...operation,
         durationMinutes: getOperationDurationMinutes(operationData),
-        label:
-            buildGreenhouseTransplantingOperationLabel({
-                operationEntityId: operation.entityId,
-                operationLabel,
-                plantSort: sort,
-                sowingLocation: field?.sowingLocation,
-            }) ?? defaultLabel,
+        label: planting
+            ? `${defaultLabel} · Polja ${plantingPositions.join(', ')} · Broj biljaka: ${planting.plantCount ?? '—'}`
+            : (buildGreenhouseTransplantingOperationLabel({
+                  operationEntityId: operation.entityId,
+                  operationLabel,
+                  plantSort: sort,
+                  sowingLocation: field?.sowingLocation,
+              }) ?? defaultLabel),
         positionNumber: isFullRaisedBed ? null : physicalPositionIndex,
         raisedBedLabel: raisedBed
             ? raisedBed.physicalId

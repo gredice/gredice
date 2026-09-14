@@ -1,4 +1,3 @@
-import { animated } from '@react-spring/three';
 import { useEffect, useMemo } from 'react';
 import { Color, DoubleSide, ShaderMaterial, Vector4 } from 'three';
 import { useBlockData } from '../hooks/useBlockData';
@@ -7,6 +6,7 @@ import {
     useSceneTimeInvalidation,
     useSceneTimeUniform,
 } from '../scene/SceneTime';
+import { animated } from '../scene/sceneSpring';
 import { defaultWaterColors } from '../scene/waterColors';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';

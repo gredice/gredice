@@ -1,5 +1,5 @@
-import { animated } from '@react-spring/three';
 import { MeshDistortMaterial, MeshWobbleMaterial } from '@react-three/drei';
+import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';

@@ -1,6 +1,5 @@
 'use client';
 
-import { animated, useSpring } from '@react-spring/three';
 import { Shadow } from '@react-three/drei';
 import { type ThreeEvent, useThree } from '@react-three/fiber';
 import {
@@ -38,6 +37,7 @@ import {
     useParticles,
 } from '../particles/ParticleSystem';
 import { updateGameProfileMetadata } from '../scene/gameProfileMetadata';
+import { animated, useSpring } from '../scene/sceneSpring';
 import {
     type ActiveDragPreview,
     GameStateContext,
@@ -1645,6 +1645,10 @@ export function InstancedBlockInteractionController({
             : [];
     const showBlockedIndicator = isBlocked || blockedTargets.length > 0;
     const blockedScaleSprings = useSpring({
+        initial: {
+            scale: showBlockedIndicator ? 1 : 0,
+            opacity: showBlockedIndicator ? 1 : 0,
+        },
         scale: showBlockedIndicator ? 1 : 0,
         opacity: showBlockedIndicator ? 1 : 0,
         config: {

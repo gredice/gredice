@@ -1,7 +1,7 @@
 import type { PlantSortData } from '@gredice/client';
 import { Alert } from '@gredice/ui/Alert';
-import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { Button } from '@gredice/ui/Button';
+import { GameBackpackIcon as BackpackIcon } from '@gredice/ui/GameIcons';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Check } from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';

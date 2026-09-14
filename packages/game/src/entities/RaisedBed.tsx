@@ -1,10 +1,10 @@
-import { animated } from '@react-spring/three';
 import { useMemo } from 'react';
 import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useRaisedBedOperationVisualRewards } from '../hooks/useRaisedBedOperationVisualRewards';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
+import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';

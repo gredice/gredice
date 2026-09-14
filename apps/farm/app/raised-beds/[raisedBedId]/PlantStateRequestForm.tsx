@@ -1,11 +1,12 @@
 'use client';
 
 import {
-    plantFieldStatusEmoji,
+    getImageObservablePlantStatusTargets,
     plantFieldStatusLabel,
 } from '@gredice/js/plants';
-import { Button } from '@gredice/ui/Button';
+import type { SelectedRaisedBedPlantingTaskCommandIdentity } from '@gredice/storage';
 import { Chip } from '@gredice/ui/Chip';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { Down } from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';
 import { Popper } from '@gredice/ui/Popper';
@@ -29,7 +30,6 @@ function getStatusOptionLabel(status: string) {
     return {
         value: status,
         label: statusLabel,
-        icon: plantFieldStatusEmoji(status),
     };
 }
 
@@ -38,7 +38,9 @@ export function PlantStateRequestForm({
     positionIndex,
     currentStatus,
     pendingRequestedStatus,
+    selectedIdentity,
 }: {
+    selectedIdentity?: SelectedRaisedBedPlantingTaskCommandIdentity;
     raisedBedId: number;
     positionIndex: number;
     currentStatus?: string | null;
@@ -49,7 +51,18 @@ export function PlantStateRequestForm({
         PlantStateRequestActionState,
         FormData
     >(requestPlantStateChangeAction, null);
-    const groups = getPlantFieldStatusChangeGroups(currentStatus);
+    const groups = getPlantFieldStatusChangeGroups(currentStatus)
+        .map((group) => ({
+            ...group,
+            statuses: selectedIdentity
+                ? group.statuses.filter((status) =>
+                      getImageObservablePlantStatusTargets(
+                          currentStatus,
+                      ).includes(status),
+                  )
+                : group.statuses,
+        }))
+        .filter((group) => group.statuses.length > 0);
 
     useEffect(() => {
         if (state?.success) {
@@ -74,27 +87,41 @@ export function PlantStateRequestForm({
 
         return (
             <Stack spacing={1} className="items-start">
-                <Button
-                    type="button"
-                    variant="plain"
+                <Chip
+                    variant="outlined"
                     color="neutral"
                     size="sm"
                     disabled
-                    className="h-auto justify-start px-1 py-1 text-left"
+                    className="whitespace-normal text-left"
+                    onClick={() => {}}
                     startDecorator={
-                        <span
-                            className="text-base leading-none"
-                            aria-hidden="true"
-                        >
-                            {plantFieldStatusEmoji(currentStatus)}
-                        </span>
+                        <GamePlantStatusIcon
+                            status={currentStatus}
+                            className="size-5! shrink-0"
+                            aria-hidden
+                        />
                     }
                 >
-                    {currentStatusLabel}
-                </Button>
-                <Chip color="warning" size="sm" variant="soft">
-                    {plantFieldStatusEmoji(pendingRequestedStatus)} Čeka:{' '}
-                    {pendingStatusLabel}
+                    <span className="min-w-0 [overflow-wrap:anywhere]">
+                        {currentStatusLabel}
+                    </span>
+                </Chip>
+                <Chip
+                    color="warning"
+                    size="sm"
+                    variant="outlined"
+                    className="whitespace-normal text-left"
+                    startDecorator={
+                        <GamePlantStatusIcon
+                            status={pendingRequestedStatus}
+                            className="size-5! shrink-0"
+                            aria-hidden
+                        />
+                    }
+                >
+                    <span className="min-w-0 [overflow-wrap:anywhere]">
+                        Čeka: {pendingStatusLabel}
+                    </span>
                 </Chip>
             </Stack>
         );
@@ -105,27 +132,26 @@ export function PlantStateRequestForm({
             open={open}
             onOpenChange={setOpen}
             trigger={
-                <Button
-                    type="button"
-                    variant="plain"
-                    color="primary"
+                <Chip
+                    variant="outlined"
+                    color="neutral"
                     size="sm"
-                    className="h-auto justify-start px-1 py-1 text-left"
+                    className="whitespace-normal text-left"
+                    onClick={() => {}}
                     aria-label={`Promijeni stanje biljke. Trenutno stanje: ${currentStatusLabel}`}
                     startDecorator={
-                        <span
-                            className="text-base leading-none"
-                            aria-hidden="true"
-                        >
-                            {plantFieldStatusEmoji(currentStatus)}
-                        </span>
-                    }
-                    endDecorator={
-                        <Down className="size-3.5 shrink-0" aria-hidden />
+                        <GamePlantStatusIcon
+                            status={currentStatus}
+                            className="size-5! shrink-0"
+                            aria-hidden
+                        />
                     }
                 >
-                    {currentStatusLabel}
-                </Button>
+                    <span className="min-w-0 [overflow-wrap:anywhere]">
+                        {currentStatusLabel}
+                    </span>
+                    <Down className="size-3 shrink-0" aria-hidden />
+                </Chip>
             }
             side="bottom"
             align="start"
@@ -139,14 +165,34 @@ export function PlantStateRequestForm({
                     name="positionIndex"
                     value={positionIndex}
                 />
+                {selectedIdentity && (
+                    <>
+                        <input
+                            type="hidden"
+                            name="plantingId"
+                            value={selectedIdentity.plantingId}
+                        />
+                        <input
+                            type="hidden"
+                            name="expectedLifecycleVersionEventId"
+                            value={
+                                selectedIdentity.expectedLifecycleVersionEventId
+                            }
+                        />
+                        <input
+                            type="hidden"
+                            name="expectedPlantSortId"
+                            value={selectedIdentity.expectedPlantSortId}
+                        />
+                    </>
+                )}
                 <Stack spacing={2}>
                     <Row spacing={1} className="items-center">
-                        <span
-                            className="text-base leading-none"
-                            aria-hidden="true"
-                        >
-                            {plantFieldStatusEmoji(currentStatus)}
-                        </span>
+                        <GamePlantStatusIcon
+                            status={currentStatus}
+                            className="size-5! shrink-0"
+                            aria-hidden
+                        />
                         <Typography level="body3" secondary>
                             Trenutno: {currentStatusLabel}
                         </Typography>
@@ -176,12 +222,11 @@ export function PlantStateRequestForm({
                                             className="flex h-auto w-full items-center justify-start gap-2 rounded-none bg-transparent px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
                                             aria-label={`Zatraži promjenu u ${item.label}`}
                                         >
-                                            <span
-                                                className="w-7 text-center text-lg leading-none"
-                                                aria-hidden="true"
-                                            >
-                                                {item.icon}
-                                            </span>
+                                            <GamePlantStatusIcon
+                                                status={item.value}
+                                                className="size-6 shrink-0"
+                                                aria-hidden
+                                            />
                                             <span className="min-w-0 grow font-medium">
                                                 {item.label}
                                             </span>

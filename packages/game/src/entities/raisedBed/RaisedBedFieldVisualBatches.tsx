@@ -1,7 +1,6 @@
 'use client';
 
 import { calculatePlantsPerField } from '@gredice/js/plants';
-import { animated, useSpring } from '@react-spring/three';
 import {
     memo,
     type ReactNode,
@@ -38,6 +37,7 @@ import {
     resolveOperationVisualRewards,
 } from '../../operationVisualRewards';
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
+import { animated, useSpring } from '../../scene/sceneSpring';
 import { useGameState } from '../../useGameState';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import type { RaisedBedOrientation } from '../../utils/raisedBedOrientation';

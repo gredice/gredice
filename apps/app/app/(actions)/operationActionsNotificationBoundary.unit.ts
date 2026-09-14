@@ -36,3 +36,19 @@ test('publishes detailed inspections only from verified operation handling', () 
         /notifyDetailedRaisedBedInspectionVerified/,
     );
 });
+
+test('completed assignment corrections do not notify farmers about new work', () => {
+    const assignmentBlock = sourceBetween(
+        'async function assignOperationUser(',
+        'export async function assignOperationUserAction(',
+    );
+
+    assert.match(
+        assignmentBlock,
+        /if \(\s*operation\.status !== 'pendingVerification' &&\s*assignment\.newlyAssignedUserIds\.length > 0\s*\) \{\s*await notifyOperationAssignedUsers\(/,
+    );
+    assert.match(
+        assignmentBlock,
+        /await revalidateOperationPaths\(operation\)/,
+    );
+});

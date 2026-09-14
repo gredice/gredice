@@ -1154,6 +1154,14 @@ async function resolveOperationRaisedBedFieldTarget(
     }
 
     const operation = await getOperationById(operationId);
+    if (operation?.plantingId)
+        return {
+            ok: false as const,
+            result: skip('Operation uses an explicit planting target.', {
+                operationId,
+                plantingId: operation.plantingId,
+            }),
+        };
     if (!operation?.raisedBedId || !operation.raisedBedFieldId) {
         return {
             ok: false as const,
@@ -1222,6 +1230,14 @@ async function resolveOperationRaisedBedFieldTargets(
     }
 
     const operation = await getOperationById(operationId);
+    if (operation?.plantingId)
+        return {
+            ok: false as const,
+            result: skip('Operation uses an explicit planting target.', {
+                operationId,
+                plantingId: operation.plantingId,
+            }),
+        };
     if (!operation?.raisedBedId) {
         return {
             ok: false as const,

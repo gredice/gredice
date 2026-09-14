@@ -1,8 +1,8 @@
-import { animated } from '@react-spring/three';
 import { Line } from '@react-three/drei';
 import { useMemo } from 'react';
 import { CatmullRomCurve3, Vector3 } from 'three';
 import { useAdventCalendar } from '../hooks/useAdventCalendar';
+import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';

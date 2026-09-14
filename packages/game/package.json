@@ -26,7 +26,7 @@
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
         "typecheck": "tsc --noEmit --pretty false",
-        "test": "tsx --test \"src/**/*.unit.ts\""
+        "test": "tsx --import ./scripts/register-test-assets.mjs --test \"src/**/*.unit.ts\""
     },
     "devDependencies": {
         "@biomejs/biome": "2.5.3",
@@ -39,6 +39,9 @@
         "@gredice/js": "workspace:*",
         "@gredice/stripe": "workspace:*",
         "@gredice/ui": "workspace:*",
+        "@react-spring/animated": "10.1.2",
+        "@react-spring/core": "10.1.2",
+        "@react-spring/shared": "10.1.2",
         "@react-spring/three": "10.1.2",
         "@react-spring/web": "10.1.2",
         "@react-three/drei": "10.7.7",

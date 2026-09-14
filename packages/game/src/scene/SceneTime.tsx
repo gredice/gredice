@@ -1,14 +1,6 @@
 'use client';
 
-import { SpringContext } from '@react-spring/three';
-import {
-    addAfterEffect,
-    type RootState,
-    type RootStore,
-    useFrame,
-    useStore,
-    useThree,
-} from '@react-three/fiber';
+import { useFrame, useStore, useThree } from '@react-three/fiber';
 import {
     createContext,
     type PropsWithChildren,
@@ -30,20 +22,14 @@ import {
 } from './GameRuntimeScheduler';
 import type { RuntimeFrameLoopProfileTelemetry } from './gameProfileMetadata';
 import { bindRuntimeFrameLoopProfileTelemetry } from './gameProfileMetadata';
-import {
-    installR3FRootInvalidationBroker,
-    readRawR3FRootInvalidate,
-} from './r3fRootInvalidationBroker';
-import {
-    installR3FRootFrameloopVisibility,
-    resolveSceneSpringContext,
-} from './r3fRootLifecycle';
-import { consumeSceneClockActivationGap } from './sceneClockActivation';
+import { SceneSpringAnimationContext } from './SceneSpringContext';
 import {
     createScenePostRenderDispatcher,
     type ScenePostRenderListener,
 } from './scenePostRenderDispatcher';
+import { getSceneRootRuntime } from './sceneRootRuntime';
 import { registerGameSceneRuntimeActivity } from './sceneRuntimeActivity';
+import { useSceneAfterFrame } from './useSceneAfterFrame';
 
 export const sceneFrameRates = {
     ambient: 30,
@@ -107,70 +93,9 @@ function readCanvasViewportVisible(canvas: HTMLCanvasElement) {
     );
 }
 
-function R3FRootLifecycle({
-    isFrameRendering,
-    manageVisibility,
-    rawInvalidate,
-    rootStore,
-    scheduler,
-}: {
-    isFrameRendering: () => boolean;
-    manageVisibility: boolean;
-    rawInvalidate: RootState['invalidate'];
-    rootStore: RootStore;
-    scheduler: GameRuntimeScheduler;
-}) {
-    const brokerOwnerRef = useRef(Symbol('game-runtime-invalidation-broker'));
-    const frameloopOwnerRef = useRef(
-        Symbol('game-runtime-frameloop-visibility'),
-    );
-    const requestCoalescedRenderRef = useRef<
-        (reason: string, frames?: number) => boolean
-    >(() => false);
-    requestCoalescedRenderRef.current = (reason, frames) =>
-        scheduler.requestCoalescedRender(reason, frames);
-
-    useLayoutEffect(() => {
-        // Install the hidden-root shield first. R3F subscribes to every store
-        // update with its module-local invalidator, so the root must already be
-        // in `never` mode before broker installation mutates the store.
-        const frameloopVisibility = installR3FRootFrameloopVisibility({
-            enabled: manageVisibility,
-            owner: frameloopOwnerRef.current,
-            store: rootStore,
-        });
-        const unsubscribeVisibility = frameloopVisibility.managed
-            ? scheduler.subscribeVisibility(frameloopVisibility.setVisible)
-            : () => undefined;
-
-        const releaseBroker = installR3FRootInvalidationBroker({
-            isEnabled: () => true,
-            isFrameRendering,
-            owner: brokerOwnerRef.current,
-            rawInvalidate,
-            requestCoalescedRender: (reason, frames) =>
-                requestCoalescedRenderRef.current(reason, frames),
-            store: rootStore,
-        });
-
-        return () => {
-            unsubscribeVisibility();
-            releaseBroker();
-            frameloopVisibility.release();
-        };
-    }, [
-        isFrameRendering,
-        manageVisibility,
-        rawInvalidate,
-        rootStore,
-        scheduler,
-    ]);
-
-    return null;
-}
-
 export function SceneTimeProvider({
     ambientFramesPerSecond,
+    animateSprings = true,
     baseFramesPerSecond = 0,
     children,
     continuousRenderLeasesEnabled = true,
@@ -180,6 +105,7 @@ export function SceneTimeProvider({
     suspendWhenOffscreen = true,
 }: PropsWithChildren<{
     ambientFramesPerSecond?: number;
+    animateSprings?: boolean;
     baseFramesPerSecond?: number;
     continuousRenderLeasesEnabled?: boolean;
     fixedTimeSeconds?: number;
@@ -197,8 +123,7 @@ export function SceneTimeProvider({
         [fixedTime],
     );
     const rootStore = useStore();
-    const [rawInvalidate] = useState(() => readRawR3FRootInvalidate(rootStore));
-    const clock = useThree((state) => state.clock);
+    const rootRuntime = getSceneRootRuntime(rootStore);
     const gl = useThree((state) => state.gl);
     const visibilityReadyRef = useRef(false);
     const [scheduler] = useState(
@@ -222,7 +147,7 @@ export function SceneTimeProvider({
                     documentVisible: false,
                     requireCanvasVisible: suspendWhenOffscreen,
                 },
-                invalidate: () => rawInvalidate(),
+                invalidate: rootRuntime.requestFrame,
                 now: () => globalThis.performance.now(),
                 requestFrame: (callback) =>
                     window.requestAnimationFrame(callback),
@@ -242,55 +167,28 @@ export function SceneTimeProvider({
         }),
     );
     const lifecycleGenerationRef = useRef(0);
-    const isFrameRendering = useCallback(
-        () => postRenderDispatcher.hasRenderedFramePending(),
-        [postRenderDispatcher],
-    );
-    const subscribeRuntimeVisibilitySnapshot = useCallback(
-        (listener: () => void) =>
-            scheduler.subscribeVisibility(() => listener()),
-        [scheduler],
-    );
-    const getRuntimeVisible = useCallback(
-        () => scheduler.getEffectiveVisibility(),
-        [scheduler],
-    );
-    const runtimeVisible = useSyncExternalStore(
-        subscribeRuntimeVisibilitySnapshot,
-        getRuntimeVisible,
-        () => false,
-    );
-    const inheritedSpringContext = useContext(SpringContext);
-    const springContextValue = useMemo(
-        () =>
-            resolveSceneSpringContext({
-                context: inheritedSpringContext,
-                manualFrameloop,
-                runtimeVisible,
-                visibilityManaged: suspendWhenOffscreen,
-            }),
-        [
-            inheritedSpringContext,
-            manualFrameloop,
-            runtimeVisible,
-            suspendWhenOffscreen,
-        ],
-    );
-
-    useEffect(() => {
-        postRenderDispatcher.clearRenderedFrame();
-        if (manualFrameloop) {
-            return () => postRenderDispatcher.clearRenderedFrame();
-        }
-
-        const removeAfterEffect = addAfterEffect((timestamp) => {
-            postRenderDispatcher.flushRenderedFrame(timestamp);
+    useLayoutEffect(() => {
+        const disconnect = rootRuntime.connect((frames) => {
+            if (!manualFrameloop) {
+                scheduler.requestCoalescedRender('r3f-root-update', frames);
+            }
         });
+        const unsubscribe = scheduler.subscribeVisibility(
+            rootRuntime.setVisible,
+        );
         return () => {
-            removeAfterEffect();
-            postRenderDispatcher.clearRenderedFrame();
+            unsubscribe();
+            rootRuntime.setVisible(false);
+            disconnect();
         };
-    }, [manualFrameloop, postRenderDispatcher]);
+    }, [manualFrameloop, rootRuntime, scheduler]);
+
+    useSceneAfterFrame(
+        useCallback(() => {
+            postRenderDispatcher.flushRenderedFrame(performance.now());
+        }, [postRenderDispatcher]),
+        !manualFrameloop,
+    );
 
     useEffect(() => {
         scheduler.setBaseFramesPerSecond(baseFramesPerSecond);
@@ -330,14 +228,6 @@ export function SceneTimeProvider({
             });
         };
     }, [scheduler]);
-
-    useEffect(
-        () =>
-            scheduler.subscribeActivation(() =>
-                consumeSceneClockActivationGap(clock),
-            ),
-        [clock, scheduler],
-    );
 
     useEffect(() => {
         const registration = registerGameSceneRuntimeActivity(
@@ -440,7 +330,10 @@ export function SceneTimeProvider({
                 scheduler.acquireFixedStepLease(owner, options),
             continuousRenderLeasesEnabled,
             fixedTimeSeconds: fixedTime,
-            flushScenePostRender: postRenderDispatcher.flushRenderedFrame,
+            flushScenePostRender: (timestampMs) => {
+                rootRuntime.flushAfterFrame();
+                return postRenderDispatcher.flushRenderedFrame(timestampMs);
+            },
             getRuntimeVisible: () => scheduler.getEffectiveVisibility(),
             requestRender: (reason, frames) =>
                 scheduler.requestRender(reason, frames),
@@ -462,6 +355,7 @@ export function SceneTimeProvider({
             continuousRenderLeasesEnabled,
             fixedTime,
             postRenderDispatcher,
+            rootRuntime,
             scheduler,
             timeUniform,
         ],
@@ -469,16 +363,11 @@ export function SceneTimeProvider({
 
     return (
         <SceneTimeContext.Provider value={contextValue}>
-            <SpringContext.Provider value={springContextValue}>
-                <R3FRootLifecycle
-                    isFrameRendering={isFrameRendering}
-                    manageVisibility={suspendWhenOffscreen}
-                    rawInvalidate={rawInvalidate}
-                    rootStore={rootStore}
-                    scheduler={scheduler}
-                />
+            <SceneSpringAnimationContext.Provider
+                value={animateSprings && !manualFrameloop}
+            >
                 {children}
-            </SpringContext.Provider>
+            </SceneSpringAnimationContext.Provider>
         </SceneTimeContext.Provider>
     );
 }
@@ -581,7 +470,16 @@ export function useSceneDeadline({
 }
 
 export function useSceneRenderRequest() {
-    return useSceneTimeContext().requestRender;
+    const sceneTime = useContext(SceneTimeContext);
+    const invalidate = useThree((state) => state.invalidate);
+    return useCallback(
+        (reason: string, frames?: number) => {
+            if (sceneTime) return sceneTime.requestRender(reason, frames);
+            invalidate(frames);
+            return true;
+        },
+        [invalidate, sceneTime],
+    );
 }
 
 export function useScenePostRenderFlush() {
@@ -597,10 +495,10 @@ export function useSceneFrameReceiptSubscription() {
 }
 
 export function useSceneResume(listener: () => void) {
-    const sceneTime = useSceneTimeContext();
+    const sceneTime = useContext(SceneTimeContext);
 
     useEffect(
-        () => sceneTime.subscribeSceneResume(listener),
+        () => sceneTime?.subscribeSceneResume(listener),
         [listener, sceneTime],
     );
 }

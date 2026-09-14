@@ -1,3 +1,9 @@
+import {
+    type AchievementArtworkKey,
+    type AchievementVisualGrade,
+    getAchievementPresentation,
+} from './presentation';
+
 export type AchievementCategory =
     | 'registration'
     | 'planting'
@@ -10,6 +16,10 @@ export type AchievementStatus = 'pending' | 'approved' | 'denied';
 export interface AchievementDefinition {
     key: string;
     category: AchievementCategory;
+    familyKey: AchievementCategory;
+    level: number;
+    visualGrade: AchievementVisualGrade;
+    artworkKey: AchievementArtworkKey;
     threshold?: number;
     rewardSunflowers: number;
     title: string;
@@ -105,7 +115,10 @@ function communityEditingTitle(threshold: number) {
     }
 }
 
-export const achievementDefinitions: AchievementDefinition[] = [
+const baseDefinitions: Omit<
+    AchievementDefinition,
+    'familyKey' | 'level' | 'visualGrade' | 'artworkKey'
+>[] = [
     {
         key: 'registration',
         category: 'registration',
@@ -156,6 +169,16 @@ export const achievementDefinitions: AchievementDefinition[] = [
         sortOrder: 400 + index,
     })),
 ];
+
+export const achievementDefinitions: AchievementDefinition[] =
+    baseDefinitions.map((definition) => {
+        const presentation = getAchievementPresentation(definition.key);
+        if (!presentation)
+            throw new Error(
+                `Missing achievement presentation: ${definition.key}`,
+            );
+        return { ...definition, ...presentation };
+    });
 
 const definitionsByKey = new Map(
     achievementDefinitions.map((definition) => [definition.key, definition]),

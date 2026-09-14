@@ -28,6 +28,7 @@ test('hydrates unread inspection notifications from current operation notes', ()
             {
                 accountId: 'account-1',
                 assignedUser: {
+                    achievementCount: 10,
                     avatarUrl: 'https://cdn.example.com/farmer.jpg',
                     displayName: '  Ana Farmer  ',
                     userName: 'ana',
@@ -60,6 +61,7 @@ test('hydrates unread inspection notifications from current operation notes', ()
     assert.deepEqual(reports, [
         {
             assignedFarmer: {
+                achievementCount: 10,
                 avatarUrl: 'https://cdn.example.com/farmer.jpg',
                 displayName: 'Ana Farmer',
             },
