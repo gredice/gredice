@@ -1,3 +1,4 @@
+import { isCanonicalSelectedPlantingSowedEvent } from '../helpers/selectedPlantingSowedEvent';
 import 'server-only';
 
 import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
@@ -422,18 +423,6 @@ function sameJsonValue(left: unknown, right: unknown) {
     return (
         JSON.stringify(jsonComparable(left)) ===
         JSON.stringify(jsonComparable(right))
-    );
-}
-
-function isCanonicalSelectedPlantingSowedEvent(event: {
-    data: unknown;
-    type: string;
-}) {
-    return (
-        (event.type === knownEventTypes.raisedBedPlantings.taskCompleted ||
-            event.type === knownEventTypes.raisedBedPlantings.taskVerified) &&
-        isRecord(event.data) &&
-        event.data.status === 'sowed'
     );
 }
 

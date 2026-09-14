@@ -1,3 +1,4 @@
+import type { OperationData } from '@gredice/client';
 import {
     type AdvancedSowingGardenPlantingInput,
     buildAdvancedSowingGardenPlantingVisuals,
@@ -13,11 +14,13 @@ export function AdvancedSowingPersistedStory({
     plantingMode = false,
     pendingPositionIndices = [],
     plantSorts,
+    operations = [],
 }: {
     plantings: AdvancedSowingGardenPlantingInput[];
     plantingMode?: boolean;
     pendingPositionIndices?: number[];
     plantSorts: AdvancedSowingPlantSortVisual[];
+    operations?: OperationData[];
 }) {
     const plantings = buildAdvancedSowingGardenPlantingVisuals(
         plantingInputs,
@@ -28,6 +31,7 @@ export function AdvancedSowingPersistedStory({
         <RaisedBedHudTestProviders
             scenario={{
                 fields: [],
+                operations,
                 plantings: plantingInputs,
                 sorts: plantSorts.flatMap((sort) => {
                     const template = allSorts[0];

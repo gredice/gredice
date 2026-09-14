@@ -5,10 +5,13 @@ import {
     getAllRaisedBeds,
     getApprovalRequests,
     getEntitiesFormatted,
+    type SelectedRaisedBedPlantingTaskCommandIdentity,
 } from '@gredice/storage';
 
 import { serializeOperationDefinitionForList } from '../app/admin/operations/operationListDefinitionVisual';
 import type { EntityStandardized as OperationEntityStandardized } from '../lib/@types/EntityStandardized';
+
+import { buildSelectedPlantingApprovalTasks } from './selectedPlantingApprovalTasks';
 
 type ApprovalTaskBase = {
     id: string;
@@ -41,6 +44,10 @@ export type AdminApprovalTask =
           expectedEntityId: number;
           expectedTaskVersionEventId: number;
           completedBy?: string | null;
+      })
+    | (ApprovalTaskBase & {
+          kind: 'selectedPlantingVerification';
+          identity: SelectedRaisedBedPlantingTaskCommandIdentity;
       })
     | (ApprovalTaskBase & {
           kind: 'schedulePlantingVerification';
@@ -246,7 +253,21 @@ export async function getPendingAdminApprovalTasks() {
             }),
     );
 
-    return [...plantStatusTasks, ...operationTasks, ...plantingTasks].sort(
+    const selectedPlantingTasks = buildSelectedPlantingApprovalTasks(
+        raisedBeds,
+    ).map((task) => ({
+        ...task,
+        description: `${task.description}: ${plantSortName(plantSortsById, task.identity.expectedPlantSortId)}`,
+        plantImageUrl: plantSortImageUrl(
+            plantSortsById.get(task.identity.expectedPlantSortId),
+        ),
+    }));
+    return [
+        ...plantStatusTasks,
+        ...operationTasks,
+        ...plantingTasks,
+        ...selectedPlantingTasks,
+    ].sort(
         (left, right) => right.receivedAt.getTime() - left.receivedAt.getTime(),
     );
 }

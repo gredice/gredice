@@ -382,26 +382,31 @@ Selected crop-specific operations remain subject to the lifecycle boundary below
 - Sowing labels use the immutable `totalPlantCount` and exact footprint rather
   than recalculating current catalogue spacing.
 
-The current customer release stops at sowing, task verification, selected
-sowing labels, cancellation, and removal. It does not authorize selected
-crop-specific operations or harvest trace. Before expanding that boundary:
+Selected plantings now participate in the Admin approval queue, greenhouse and
+seasonal watering, automated status proposals, Garden operations and diary, and
+planting achievements. Each integration retains the logical planting identity:
 
-- crop-specific operation and automation schemas must carry `plantingId`;
-- image analysis and automatic plant-status proposals must target an
-  unambiguous `plantingId` or skip a co-planted field with a controlled reason;
-- selected harvest trace must associate work with `plantingId` rather than a
-  legacy-only `plantPlaceEventId`; and
-- seasonal crop automation must consume planting-scoped completion or
-  verification events and target exact memberships;
-- planting achievement counters must include selected verified sowing once,
-  without double-counting memberships; and
-- the Garden diary must project planting-scoped lifecycle and task events with
-  customer-safe copy and one logical entry per planting;
-- operation, image, and trace tests must cover two co-plants in one field and
-  one planting spanning multiple fields.
+- the central queue shows one pending sowing verification per planting;
+- watering consumes canonical selected completion/verification events and
+  counts a multi-field planting once; seasonal watering is serialized per bed
+  and deduplicated by scheduled day across companion plants and retries;
+- photo proposals must name a valid `plantingId` and one of its memberships;
+  ambiguous field-only proposals, stale observations and invalid transitions
+  are skipped; harvest-operation proposals use the operation's exact planting;
+- automated proposals require Admin approval and never update crop state directly;
+- Garden Radnje offers applicable operations after confirmed sowing. The cart
+  retains `plantingTarget` (ID, variety and expected lifecycle version) in its
+  durable additional-data snapshot. Storage checks ownership, state, definition
+  and version. Sunflower/inventory debits and operation creation commit together;
+  fulfillment retries reuse the recorded operation and delivery provenance;
+- the customer diary contains planting lifecycle/task events and operations for
+  that exact planting, without staff identities or unverified evidence;
+- planting achievements count canonical selected sowing once per planting,
+  including historical plantings, without counting footprint memberships.
 
-Existing legacy operation and harvest-trace behavior remains unchanged while
-this selected lifecycle phase is deferred.
+Selected harvest trace support uses the explicit operation identity described
+below. Outlet and sandbox sowing exclusions remain intentional. Customer
+lifecycle editing remains owned by the Farm/Admin approval workflow.
 
 Legacy field-event deletion and date editing remain available on legacy-only
 positions. Once a position has an active selected membership, those history
@@ -487,8 +492,8 @@ Release prerequisites:
    inventory, euro and sunflower fulfillment, idempotency, and collisions.
 5. Admin and Farm continue to show one task per logical planting, including a
    multi-field planting.
-6. Selected crop-specific operations and harvest trace remain outside this
-   release until their schemas carry explicit planting identity.
+6. Selected operations, automated proposals, diary entries and harvest trace
+   must retain explicit planting identity through retries and co-planted fields.
 
 Attribute-definition and generated-contract gate:
 
@@ -544,9 +549,11 @@ Foundation tests must prove:
 - labels use snapshotted counts and exact footprint membership;
 - analytics accept only bounded properties and controlled reason codes.
 
-Before broad lifecycle activation, the later operation and trace phase must
-add regressions proving crop-specific operations, image proposals, and harvest
-trace fail closed when their planting target is absent, stale, or ambiguous.
+Integration regressions must prove crop-specific operations, image proposals,
+and harvest trace fail closed when their planting target is absent, stale, or
+ambiguous. Run `TZ=UTC pnpm --filter @gredice/storage test:node
+advancedSowingIntegrations.node.spec.ts` for the queue, care, proposal, purchase,
+diary and achievement integration coverage.
 
 Run the narrowest checks for the files changed in each implementation slice.
 The expected full workflow gate is:
@@ -593,15 +600,15 @@ Admin verification of transplant operation 593 changes the selected planting's
 sowing location to direct in the same transaction as operation verification.
 Farmer completion alone leaves it in the greenhouse. Verification of removal
 operation 346 retires the exact stopped planting. Removed or invalid targets
-reject completion/verification atomically. Field-based crop automations skip
-explicit planting targets instead of inferring a crop from the shared field.
+reject completion/verification atomically. Legacy field-only crop automations skip explicit planting targets. Harvest
+status proposals resolve the exact planting ID, while transplant and removal
+continue through the existing atomic verification paths.
 
 Deployment requires an ordered migration adding `operations.planting_id`, its
 foreign key/index and exclusive-target constraint before the new code runs.
 Migration 0091 is included in the maintainer-authorized merge, after the
-existing migrations and before the harvest-trace schema. Harvest QR trace support is a separate
-follow-up; an explicit planting operation must never inherit a legacy field's
-trace or status mutation.
+existing migrations and before the harvest-trace schema. An explicit planting operation must never inherit a legacy field's trace or
+status mutation. Selected harvest traces use the schema described below.
 
 
 ### Selected planting harvest traces

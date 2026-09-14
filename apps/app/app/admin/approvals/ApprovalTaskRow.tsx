@@ -22,6 +22,7 @@ const taskKinds = {
     plantStatusRequest: { label: 'Stanje biljke', Icon: Replace },
     scheduleOperationVerification: { label: 'Radnja', Icon: Verified },
     schedulePlantingVerification: { label: 'Sijanje', Icon: Sprout },
+    selectedPlantingVerification: { label: 'Sijanje', Icon: Sprout },
 };
 
 export function ApprovalTaskRow({

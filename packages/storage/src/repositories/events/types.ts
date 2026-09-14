@@ -5,6 +5,7 @@ import type { ScheduleTaskBlockPayload } from './scheduleTaskBlock';
 // ============================================================================
 export type CheckoutOperationCreatedPayload = {
     operationId: number;
+    plantingId?: number | null;
     accountId: string | null;
     entityId: number;
     entityTypeName: string;

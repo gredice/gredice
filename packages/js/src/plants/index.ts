@@ -8,3 +8,5 @@ export * from './plantFieldStatusLabel';
 export * from './plantFieldStatusTransitions';
 export * from './plantStages';
 export * from './raisedBedFieldGroups';
+
+export * from './selectedPlantingOperationTarget';

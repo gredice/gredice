@@ -5,6 +5,7 @@ import {
 import {
     ADVANCED_SOWING_DEFAULT_BED_FIELD_COUNT,
     type AdvancedSowingCartAuthorizationV1,
+    readSelectedPlantingOperationTarget,
 } from '@gredice/js/plants';
 import {
     isRaisedBedAbandoned,
@@ -978,6 +979,21 @@ async function processNonStripeCartItems(
                                         resolvedAmount,
                                     );
                                 }
+                                for (const item of lockedPendingItems) {
+                                    await prepareSelectedPlantingCheckoutOperation(
+                                        {
+                                            ...item,
+                                            cartItemId: item.id,
+                                            accountId,
+                                            additionalData:
+                                                checkoutAdditionalDataByCartItemId.get(
+                                                    item.id,
+                                                ) ?? item.additionalData,
+                                        },
+                                        db,
+                                        dependencies,
+                                    );
+                                }
                                 return {
                                     pendingItems: lockedPendingItems,
                                     resolvedAmountsByItemId,
@@ -1130,6 +1146,20 @@ async function processNonStripeCartItems(
                                     db,
                                 );
                             }
+                            if (lockedState === 'pending')
+                                await prepareSelectedPlantingCheckoutOperation(
+                                    {
+                                        ...item,
+                                        cartItemId: item.id,
+                                        accountId,
+                                        additionalData:
+                                            checkoutAdditionalDataByCartItemId.get(
+                                                item.id,
+                                            ) ?? item.additionalData,
+                                    },
+                                    db,
+                                    dependencies,
+                                );
                             return lockedState;
                         },
                     );
@@ -3291,6 +3321,79 @@ export function assertCheckoutItemFulfilled(
     }
 }
 
+/** Persist the exact selected operation in the same transaction as a direct debit.
+ * Delivery creation and provider work remain in the normal fulfillment phase. */
+export async function prepareSelectedPlantingCheckoutOperation(
+    item: {
+        cartItemId?: number | null;
+        entityId: string | null | undefined;
+        entityTypeName: string | null | undefined;
+        accountId: string | null | undefined;
+        gardenId: number | null | undefined;
+        raisedBedId: number | null | undefined;
+        positionIndex: number | null | undefined;
+        currency: string | null;
+        additionalData: unknown;
+    },
+    db?: ScheduleTaskTransaction,
+    dependencies: ProcessCheckoutSessionDependencies = realDependencies,
+) {
+    const plantingTarget = readSelectedPlantingOperationTarget(
+        item.additionalData,
+    );
+    if (!plantingTarget) return null;
+    if (
+        item.entityTypeName !== 'operation' ||
+        !item.cartItemId ||
+        !item.accountId ||
+        !item.gardenId ||
+        !item.raisedBedId ||
+        item.positionIndex != null ||
+        !['eur', 'sunflower', 'inventory'].includes(item.currency ?? '')
+    )
+        throw new Error('Invalid selected operation purchase.');
+    const currency = item.currency;
+    if (
+        currency !== 'eur' &&
+        currency !== 'sunflower' &&
+        currency !== 'inventory'
+    )
+        throw new Error('Invalid purchase currency.');
+    const stored = await dependencies.getCheckoutOperationMapping(
+        item.cartItemId,
+        db,
+    );
+    return dependencies.getOrCreateCheckoutOperation(
+        item.cartItemId,
+        {
+            accountId: item.accountId,
+            entityId: Number(item.entityId),
+            entityTypeName: 'operation',
+            gardenId: item.gardenId,
+            raisedBedId: item.raisedBedId,
+            plantingId: plantingTarget.plantingId,
+        },
+        {
+            plantingTarget,
+            paymentCurrency: currency,
+            scheduledDate: stored
+                ? new Date(stored.scheduledDate)
+                : checkoutScheduledDateFromAdditionalData(
+                      item.additionalData,
+                      dependencies,
+                  ),
+            delivery: stored
+                ? stored.delivery
+                : checkoutDeliveryProvenance(
+                      checkoutDeliveryInfoFromAdditionalData(
+                          parseAdditionalDataValue(item.additionalData),
+                      ),
+                  ),
+        },
+        db,
+    );
+}
+
 export async function processItem(
     itemData: {
         entityId: string | null | undefined;
@@ -3400,10 +3503,13 @@ export async function processItem(
         // New operations target the stable field position, including before a
         // plant is placed. Retries keep the field captured in the durable
         // mapping even if the plant at this position changes later.
+        const plantingTarget = readSelectedPlantingOperationTarget(
+            itemData.additionalData,
+        );
         let fieldId: number | undefined;
         if (checkoutOperationMapping) {
             fieldId = checkoutOperationMapping.raisedBedFieldId ?? undefined;
-        } else {
+        } else if (!plantingTarget) {
             fieldId = await resolveCheckoutOperationFieldId({
                 claimControl,
                 dependencies,
@@ -3448,7 +3554,12 @@ export async function processItem(
         await earnSunflowersFunc();
         await claimControl?.assertOwned();
         const { created, operationId } =
-            await dependencies.getOrCreateCheckoutOperation(
+            (await prepareSelectedPlantingCheckoutOperation(
+                itemData,
+                itemData.fulfillmentTransaction,
+                dependencies,
+            )) ??
+            (await dependencies.getOrCreateCheckoutOperation(
                 itemData.cartItemId,
                 {
                     accountId: itemData.accountId,
@@ -3457,13 +3568,18 @@ export async function processItem(
                     gardenId: itemData.gardenId,
                     raisedBedId: itemData.raisedBedId,
                     raisedBedFieldId: fieldId,
+                    plantingId:
+                        checkoutOperationMapping?.plantingId ??
+                        plantingTarget?.plantingId,
                 },
                 {
+                    ...(plantingTarget ? { plantingTarget } : {}),
                     delivery: deliveryProvenance,
                     paymentCurrency,
                     scheduledDate: new Date(operationScheduledDate),
                 },
-            );
+                itemData.fulfillmentTransaction,
+            ));
 
         console.debug(
             `${created ? 'Created' : 'Reused'} scheduled operation ${operationId.toString()} for cart item ${itemData.cartItemId.toString()}.`,
