@@ -2,22 +2,18 @@ import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
 import { DotIndicator } from '@gredice/ui/DotIndicator';
 import {
+    GameContactIcon,
+    GameGardenIcon,
+    GameGardenPlanIcon,
+    GameLogoutIcon,
+    GameProfileIcon,
+    GameSettingsIcon,
     GameMailboxIcon as Inbox,
     GameSeedlingIcon as Sprout,
 } from '@gredice/ui/GameIcons';
 import { useSearchParam } from '@gredice/ui/hooks';
 import { IconButton } from '@gredice/ui/IconButton';
-import {
-    Approved,
-    Comment,
-    Configuration,
-    ExternalLink,
-    Joystick,
-    LayoutGrid,
-    LogOut,
-    Save,
-    User,
-} from '@gredice/ui/icons';
+import { Approved, ExternalLink, Save } from '@gredice/ui/icons';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -231,9 +227,12 @@ function ProfileCard({ viewMode }: { viewMode: GardenViewMode }) {
                 }
             >
                 {nextViewMode === '2d' ? (
-                    <LayoutGrid className="size-4" />
+                    <GameGardenPlanIcon
+                        aria-hidden
+                        className="size-6 shrink-0"
+                    />
                 ) : (
-                    <Joystick className="size-4" />
+                    <GameGardenIcon aria-hidden className="size-6 shrink-0" />
                 )}
                 <span>{nextViewMode.toUpperCase()} prikaz vrta</span>
             </DropdownMenuItem>
@@ -242,7 +241,7 @@ function ProfileCard({ viewMode }: { viewMode: GardenViewMode }) {
                 className="gap-3"
                 onClick={() => setProfileModalOpen('generalno')}
             >
-                <User className="size-4" />
+                <GameProfileIcon aria-hidden className="size-6 shrink-0" />
                 <span>Profil</span>
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -252,14 +251,14 @@ function ProfileCard({ viewMode }: { viewMode: GardenViewMode }) {
                     hasUnreadNotifications && <DotIndicator color={'success'} />
                 }
             >
-                <Inbox className="size-4" />
+                <Inbox aria-hidden className="size-6 shrink-0" />
                 <span>Obavijesti</span>
             </DropdownMenuItem>
             <DropdownMenuItem
                 className="gap-3"
                 onClick={() => setProfileModalOpen('generalno')}
             >
-                <Configuration className="size-4" />
+                <GameSettingsIcon aria-hidden className="size-6 shrink-0" />
                 <span>Postavke</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator className="my-4" />
@@ -274,7 +273,7 @@ function ProfileCard({ viewMode }: { viewMode: GardenViewMode }) {
                 }
             >
                 <Row spacing={3}>
-                    <Sprout className="size-4" />
+                    <Sprout aria-hidden className="size-6 shrink-0" />
                     <span>Baza biljaka</span>
                 </Row>
                 <ExternalLink className="size-4 self-end" />
@@ -290,14 +289,14 @@ function ProfileCard({ viewMode }: { viewMode: GardenViewMode }) {
                 }
             >
                 <Row spacing={3}>
-                    <Comment className="size-4" />
+                    <GameContactIcon aria-hidden className="size-6 shrink-0" />
                     <span>Kontaktiraj nas</span>
                 </Row>
                 <ExternalLink className="size-4 self-end" />
             </DropdownMenuItem>
             <DropdownMenuSeparator className="my-4" />
             <DropdownMenuItem className="gap-3" href="/odjava">
-                <LogOut className="size-4" />
+                <GameLogoutIcon aria-hidden className="size-6 shrink-0" />
                 <span>Odjava</span>
             </DropdownMenuItem>
         </DropdownMenuContent>
