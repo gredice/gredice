@@ -19,12 +19,7 @@ import { createTestDb } from './testDb';
 test('publication supports parentless sorts, deduplicates prices and preserves older downloads after changes', async (t) => {
     createTestDb();
     const entityTypeName = 'plantSort';
-    const incompleteTypes = [
-        'plant',
-        'plantSort',
-        'operation',
-        'hqLocations',
-    ];
+    const incompleteTypes = ['plant', 'plantSort', 'operation', 'hqLocations'];
     await storage()
         .insert(entityTypes)
         .values(incompleteTypes.map((name) => ({ name, label: name })))
