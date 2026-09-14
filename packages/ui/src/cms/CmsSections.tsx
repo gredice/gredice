@@ -1280,7 +1280,13 @@ function FooterSocialLinks({ ctas }: { ctas: SectionData['ctas'] }) {
 export function Footer1(props: SectionData) {
     const { asset, ctas, features, tagline } = props;
     const linkGroups = features?.filter(
-        (feature) => feature.ctas?.length && feature.tagline !== 'SystemStatus',
+        (feature) =>
+            feature.ctas?.length &&
+            feature.tagline !== 'FooterUtility' &&
+            feature.tagline !== 'SystemStatus',
+    );
+    const footerUtility = features?.find(
+        (feature) => feature.tagline === 'FooterUtility',
     );
     const systemStatus = features?.find(
         (feature) => feature.tagline === 'SystemStatus',
@@ -1336,7 +1342,10 @@ export function Footer1(props: SectionData) {
                             >
                                 {asset}
                             </Stack>
-                            <FooterSocialLinks ctas={ctas} />
+                            <div className="flex w-full flex-col items-center gap-3 @[48rem]/cms:w-auto @[48rem]/cms:items-end">
+                                {footerUtility?.asset}
+                                <FooterSocialLinks ctas={ctas} />
+                            </div>
                         </div>
                         <Divider />
                         <div className="flex flex-col items-center gap-8 text-center @[48rem]/cms:flex-row @[48rem]/cms:justify-between">

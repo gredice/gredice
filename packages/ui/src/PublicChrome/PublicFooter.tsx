@@ -51,6 +51,10 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
             asset: <Logotype className="w-[320px] h-[87px]" />,
             features: [
                 {
+                    tagline: 'FooterUtility',
+                    asset: <PublicEnvironmentFooterControls />,
+                },
+                {
                     header: 'Informacije',
                     ctas: [
                         {
@@ -342,7 +346,6 @@ export function PublicFooter({
 }) {
     return (
         <div className="site-footer">
-            <PublicEnvironmentFooterControls />
             <SectionsView
                 sectionsData={sectionsData(linkMode)}
                 componentsRegistry={publicFooterComponentRegistry}
