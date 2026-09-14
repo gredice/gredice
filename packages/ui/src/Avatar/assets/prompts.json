@@ -1,0 +1,16 @@
+{
+    "mode": "Built-in image_gen",
+    "useCase": "stylized-concept",
+    "reference": "packages/ui/src/GameIcons/assets/profile.webp",
+    "processing": "Resize the original square canvas to 460px and add 26px transparent padding on each side for a 512px circular-crop-safe portrait; WebP quality 92, alpha quality 100.",
+    "assets": [
+        {
+            "file": "farmer-male.webp",
+            "prompt": "Use case: stylized-concept. Edit the reference profile icon into a polished farmer avatar portrait in EXACTLY the same chunky low-poly 3D farming-game style: strong physical beveled volumes, warm upper-left lighting, matte golden straw, forest-green cloth, cream shirt, shaded sides and tiny contact shadows. Friendly stylized toy character, not flat vector, not photorealistic. Preserve the reference's simple expressive face, broad polygon geometry, straw hat with green band, cream shirt and green overalls with square gold buckles. A square avatar image, head and shoulders, centered with face looking slightly to our right. Compose for a circular crop: complete hat and shoulders INSIDE an imaginary centered circle occupying 92% of canvas, with comfortable clear margin all around; no hat clipping, character must fill circle well. True transparent alpha background, no drawn circle, no backdrop, no text, no props, no shadows outside character. Male farmer: keep the reference's male character identity, short chestnut-brown hair, warm tan complexion, friendly smile, charming rounded nose. Same clothing and hat design. This is the male partner in a matched male/female avatar set."
+        },
+        {
+            "file": "farmer-female.webp",
+            "prompt": "Use case: stylized-concept. Edit the reference profile icon into a polished farmer avatar portrait in EXACTLY the same chunky low-poly 3D farming-game style: strong physical beveled volumes, warm upper-left lighting, matte golden straw, forest-green cloth, cream shirt, shaded sides and tiny contact shadows. Friendly stylized toy character, not flat vector, not photorealistic. Preserve the reference's simple expressive face, broad polygon geometry, straw hat with green band, cream shirt and green overalls with square gold buckles. A square avatar image, head and shoulders, centered with face looking slightly to our right. Compose for a circular crop: complete hat and shoulders INSIDE an imaginary centered circle occupying 92% of canvas, with comfortable clear margin all around; no hat clipping, character must fill circle well. True transparent alpha background, no drawn circle, no backdrop, no text, no props, no shadows outside character. Female farmer counterpart: same warm tan complexion, friendly smile, rounded nose and same hat, shirt and green-overall design. Chestnut-brown hair visible under the hat and gathered into two simple broad short braids beside the neck, subtle feminine facial features. No makeup, earrings, flowers or extra ornaments. Maintain identical head size, framing, lighting and level of 3D detail as the reference so the two avatars look like a matched set."
+        }
+    ]
+}

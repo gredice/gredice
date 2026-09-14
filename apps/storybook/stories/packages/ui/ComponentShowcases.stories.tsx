@@ -2,7 +2,7 @@ import { Accordion } from '@gredice/ui/Accordion';
 import { Alert } from '@gredice/ui/Alert';
 import { AnchorPrice } from '@gredice/ui/AnchorPrice';
 import { ArchiveIcon } from '@gredice/ui/ArchiveIcon';
-import { Avatar } from '@gredice/ui/Avatar';
+import { Avatar, resolveAvatarSource } from '@gredice/ui/Avatar';
 import { AvatarSelectionMenu } from '@gredice/ui/AvatarSelectionMenu';
 import {
     AuthProvider,
@@ -199,6 +199,7 @@ import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import { AchievementCollectionShowcase } from '../../../../../packages/game/src/shared-ui/achievements/AchievementCollection.fixture';
 import { RaisedBedFieldsGridFixture } from '../../../../../packages/ui/src/raisedBeds/RaisedBedFieldsGrid.fixture';
+import { FarmerAvatarsPreview } from './FarmerAvatarsPreview';
 import { GameAccountMenuPreview } from './GameAccountMenuPreview';
 import { PlantCareHudPreview } from './PlantCareHudPreview';
 
@@ -208,11 +209,15 @@ const sampleImages = [
         alt: 'Suncokret',
     },
     {
-        src: 'https://cdn.gredice.com/avatars/farmer-male.png',
+        src: resolveAvatarSource(
+            'https://cdn.gredice.com/avatars/farmer-male.png',
+        ),
         alt: 'Farmer',
     },
     {
-        src: 'https://cdn.gredice.com/avatars/farmer-female.png',
+        src: resolveAvatarSource(
+            'https://cdn.gredice.com/avatars/farmer-female.png',
+        ),
         alt: 'Farmerka',
     },
 ];
@@ -326,13 +331,17 @@ const galleryPlants: GalleryPlant[] = [
         id: 'basil',
         name: 'Bosiljak',
         state: 'Bilje',
-        imageUrl: 'https://cdn.gredice.com/avatars/farmer-female.png',
+        imageUrl: resolveAvatarSource(
+            'https://cdn.gredice.com/avatars/farmer-female.png',
+        ),
     },
     {
         id: 'pepper',
         name: 'Paprika',
         state: 'Presadnica',
-        imageUrl: 'https://cdn.gredice.com/avatars/farmer-male.png',
+        imageUrl: resolveAvatarSource(
+            'https://cdn.gredice.com/avatars/farmer-male.png',
+        ),
     },
 ];
 
@@ -1418,6 +1427,7 @@ function GardenWorkspaceShowcase() {
                 </PageHeader>
 
                 <GameAccountMenuPreview />
+                <FarmerAvatarsPreview />
                 <PlantCareHudPreview />
                 <AchievementCollectionShowcase state="starter" />
                 <Row spacing={3} className="flex-wrap">

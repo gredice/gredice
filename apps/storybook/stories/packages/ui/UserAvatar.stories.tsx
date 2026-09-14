@@ -4,6 +4,7 @@ import {
     UserLevelBadge,
 } from '@gredice/ui/UserAvatar';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { FarmerAvatarsPreview } from './FarmerAvatarsPreview';
 
 const meta = {
     title: 'packages/ui/Data Display/UserAvatar',
@@ -27,6 +28,18 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Initials: Story = {};
+
+export const Farmers: Story = {
+    render: () => <FarmerAvatarsPreview />,
+};
+
+export const FarmersDark: Story = {
+    render: () => (
+        <div className="dark rounded-lg bg-background p-6 text-foreground">
+            <FarmerAvatarsPreview />
+        </div>
+    ),
+};
 
 export const Levels: Story = {
     render: () => (
