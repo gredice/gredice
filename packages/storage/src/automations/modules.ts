@@ -3126,6 +3126,9 @@ const createPlantStatusApprovalRequestsActionModule: AutomationModule = {
             );
         }
 
+        const configuredNote = getString(node.config, 'note');
+        const reviewNote = (operationId: number) =>
+            `${configuredNote ?? 'Automatski prijedlog promjene stanja biljke nakon završene radnje.'} Radnja #${operationId.toString()}.`;
         const operationId = Number(context.event?.aggregateId);
         const operation =
             Number.isSafeInteger(operationId) && operationId > 0
@@ -3183,7 +3186,7 @@ const createPlantStatusApprovalRequestsActionModule: AutomationModule = {
                         requestedBy:
                             'automation:harvest-operation-status-review',
                         effectiveAt: context.event.createdAt,
-                        note: `Prijedlog nakon završene radnje #${operationId}.`,
+                        note: reviewNote(operationId),
                     });
                 return success({
                     plantingId: planting.id,
@@ -3333,8 +3336,7 @@ const createPlantStatusApprovalRequestsActionModule: AutomationModule = {
             return success({ dryRun: true, ...output });
         }
 
-        const configuredNote = getString(node.config, 'note');
-        const note = `${configuredNote ?? 'Automatski prijedlog promjene stanja biljke nakon završene radnje.'} Radnja #${resolved.operationId.toString()}.`;
+        const note = reviewNote(resolved.operationId);
         const requestIds: string[] = [];
         for (const candidate of candidates) {
             if (candidate.existingRequestId) {

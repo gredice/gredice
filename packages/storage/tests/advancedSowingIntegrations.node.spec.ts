@@ -581,6 +581,7 @@ test('harvest automation proposes the exact selected planting once and leaves co
     const config = {
         targetStatus: 'harvested',
         requestedBy: 'automation:harvest-operation-status-review',
+        note: 'Potvrdite zahtjev samo ako je biljka potpuno obrana; odbijte ga ako se biljka može ponovno brati.',
     };
     const first = await action(
         automationModuleKeys.actionCreatePlantStatusApprovalRequests,
@@ -605,6 +606,7 @@ test('harvest automation proposes the exact selected planting once and leaves co
     );
     assert.equal(requests.length, 1);
     assert.equal(requests[0].target.requestedStatus, 'harvested');
+    assert.equal(requests[0].note, `${config.note} Radnja #${operationId}.`);
     assert.equal(
         (await getRaisedBedPlanting(f.plantingId))?.lifecycleStatus,
         'ready',
