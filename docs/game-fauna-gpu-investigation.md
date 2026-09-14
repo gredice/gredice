@@ -3,9 +3,72 @@
 Date: 2026-09-13. Issue: [#4802](https://github.com/gredice/gredice/issues/4802).
 Integration: [#4777](https://github.com/gredice/gredice/pull/4777).
 
-## Result
+## Integration acceptance, 2026-09-15
 
-**Inconclusive; the optimization and release gate remain blocked.** Twenty-one
+The repaired #4777 integration passes a fresh, non-diagnostic contract-v6
+comparison: **344/344 comparisons and 42/42 invariants**, across all four
+baseline/candidate pairings. There are zero validation errors, reproduced
+regressions, unresolved replications, or cadence-confounded comparisons. Eight
+screening signals and 108 protocol-skipped metrics remain in the report. The
+unchanged replication rule determines the result; individual GPU samples are
+not uniformly faster.
+
+This subject integrates main's per-Canvas frame and spring ownership with the
+semantic scheduler. Only scheduler-admitted frames advance their root;
+post-render receipts follow actual draws and are consumed once, including
+manual preview capture. Building HUD identity also survives mode changes so
+keyboard focus can return correctly. These are source changes from the
+historical rejected integration, not repeated captures of that subject.
+
+- Baseline: clean `fd41eb9c175162f531b918ea007412a19db63b0c`.
+- Candidate: clean `1bd0d82bd30c400556b5ff68621ba756afa944b0`.
+- Four independent 39-run production captures use clean frozen producer
+  `f653a380ecb605654920ed24d86892225fdd10f2`. Both candidate batches pass all
+  39 runs. Baselines fail only the five explicitly permitted legacy scheduler
+  checks on their 30 cross-tier runs; their other nine runs pass.
+- Headless Chromium 149.0.7827.55, ANGLE Metal on M4 Pro, Node 24.15.0,
+  original five-second windows, screenshots, one server/profiler at a time,
+  and command-scoped display-awake assertions. No external instrumentation,
+  quality reduction, scene-content change, or threshold adjustment.
+- The comparator is byte-identical to the existing PR version at
+  `ced09ac7f252be88bad56044f0523a8c0bf453fe`. The older comparator bundled with
+  the frozen producer rejects its own producer's cold/resource field inventory.
+  That invalid attempt remains in `comparison`; the already-committed inventory
+  correction validates the untouched captures in `comparison-current-validator`.
+  No comparator code or threshold was changed for this repair.
+
+| Capture | Fourth fauna arrival median GPU p95 |
+| --- | ---: |
+| baseline-1 | 19.93 ms |
+| baseline-2 | 18.77 ms |
+| candidate-1 | 21.35 ms |
+| candidate-2 | 22.36 ms |
+
+The current candidate also passes all **23/23** standalone acceptance runs:
+static idle, live lifecycle, five owner policies, and matched building controls.
+This acceptance bundle uses the clean candidate as both subject and harness,
+including its current live-lifecycle acknowledgement checks. Validation also
+passes 1,969 game units, 470 profiler/comparator tests, game/garden/www
+typechecks, the production garden build, and complete
+[CI run 34901092670](https://github.com/gredice/gredice/actions/runs/34901092670),
+including WebGL component tests.
+
+Raw reports, screenshots, the predeclared plan, logs, and a SHA-256 manifest are
+retained under `apps/garden/.game-profile-results/4777-fix-2026-09-14/` in both
+the repair worktree and `/Users/aleks/Documents/GitHub/gredice` so removing the
+worktree does not discard them. The strict comparison JSON SHA-256 is
+`d35946f03ac2cd7c26e83b859066dab4aaac815b27a3604399e96e644da97bcb`.
+The directory date follows the UTC capture date; this acceptance note uses the
+local date. Later changes in this PR only record evidence.
+
+This new integration satisfies the release gate that blocked #4777 and #4802.
+It does not establish a native-driver explanation for the old measurements.
+The historical failed comparison and inconclusive diagnostics below retain
+their original meaning. Physical-device thermal clearance remains in #4344.
+
+## Historical result, 2026-09-13
+
+**Inconclusive; the optimization and release gate were blocked.** Twenty-one
 fresh diagnostic runs did not establish a causal explanation or a verified
 correction. No runtime change is proposed by this investigation. The two source
 ablations were restored, and the diagnostic browser instrumentation was never
@@ -19,7 +82,8 @@ baseline GPU p95 medians were 19.70/19.04 ms and candidate medians were
 `e4b3b8731919f2715097743fde9ec0616429396fd7cc4c51f3b75c5e445e2c13`.
 These historical values and hash are transcribed from #4802; the old raw
 `4800-release-v6` bundles were not found in the available local checkouts and
-could not be revalidated. Their recorded failure is not superseded.
+could not be revalidated. Their recorded failure remains valid for those
+historical subjects; the acceptance above measures a different integration.
 
 ## Subjects and observation
 
@@ -131,7 +195,7 @@ is derived from raw per-run reports and is not replacement release evidence.
 | `baseline-drained-instrumented` | `42918c4d6ec07ff34a55f14ae1e72b6b9c5ef66aa5a02424876b1e4d9f09c10c` |
 | `integration-drained-instrumented` | `a22dc9c118c4b6229721cdadffb1981e5f4a2e9379798f10422a12d6d5ae0459` |
 
-## Remaining acceptance
+## Remaining acceptance at the end of the 2026-09-13 investigation
 
 The baseline, integration, both temporary source ablations, and restored
 integration production builds passed. The final change is documentation only;
@@ -144,5 +208,6 @@ command replay to separate command work, driver scheduling, and GPU state.
 `xcrun --find xctrace` failed on this host because `xctrace` is unavailable; a
 native Metal trace was not collected. That limits this investigation, and does
 not establish a cause. A corrected runtime still needs the tests and fresh
-symmetric contract-v6 comparison required by #4802. Keep #4777 draft and #4802
-open. Physical-device High thermal clearance remains separate in #4344.
+symmetric contract-v6 comparison required by #4802. At that point, #4777 was
+kept draft and #4802 open. The subsequent integration acceptance is recorded
+above. Physical-device High thermal clearance remains separate in #4344.

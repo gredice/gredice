@@ -8,10 +8,12 @@ Profiling comparison contract refreshed: 2026-09-02
 
 ## Summary
 
-The [2026-09-13 fauna GPU investigation](./game-fauna-gpu-investigation.md)
-records 21 bounded diagnostic runs for issue #4802. The controls did not
-establish a verified correction; the historical GPU regression remains a
-release blocker for draft integration PR #4777.
+The [fauna GPU investigation ledger](./game-fauna-gpu-investigation.md) retains
+the inconclusive 2026-09-13 diagnostics and records the repaired #4777
+integration's 2026-09-15 acceptance. The new subject passes the unchanged strict
+contract-v6 comparison (344/344 comparisons, 42/42 invariants) and all 23
+standalone acceptance runs. This satisfies the former #4802 release blocker
+without claiming a native-driver explanation for the historical measurements.
 
 The 2026-04-29 analysis did not find the scene asset-bound. Game models are now
 split into one runtime GLB per asset under `apps/garden/public/assets/models`,
@@ -1849,7 +1851,20 @@ Normal frames and scheduler wakeups therefore do not push or deep-copy full
 telemetry merely because the profiling fixture is enabled, while exact endpoint
 and lifecycle assertions still observe a coherent state.
 
-Release evidence status, 2026-09-08:
+Current release evidence, 2026-09-15: clean integration
+`1bd0d82bd30c400556b5ff68621ba756afa944b0` against clean main
+`fd41eb9c175162f531b918ea007412a19db63b0c` passes the strict independent 2x2
+contract-v6 matrix: 344/344 comparisons, 42/42 invariants, zero input errors,
+reproduced regressions, unresolved replications, or cadence-confounded
+comparisons. All 78 candidate producer runs and 23 standalone acceptance runs
+pass. Eight screening signals and 108 protocol-skipped metrics remain visible.
+See the [integration acceptance ledger](./game-fauna-gpu-investigation.md#integration-acceptance-2026-09-15)
+for exact provenance, the retained invalid old-validator attempt, raw evidence
+location, comparison hash, and limitations. Thresholds, scene content, and
+quality settings are unchanged. The historical entries below remain evidence
+about their original subjects.
+
+Historical release evidence status, 2026-09-08:
 
 - `4800-release-v6/acceptance` passes all 23 runs: static idle, live lifecycle,
   cross-policy semantic owners, and the matched ambient-building pair. Both
