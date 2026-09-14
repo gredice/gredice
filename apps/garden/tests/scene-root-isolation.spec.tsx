@@ -151,8 +151,14 @@ for (const fps of [30, 60]) {
             window.requestAnimationFrame = (callback) =>
                 requestFrame((timestamp) => callback((timestamp * 25) / 24));
             performance.now = () => (now() * 25) / 24;
-            window.setTimeout = (handler, timeout, ...args) =>
-                setTimer(handler, ((timeout ?? 0) * 24) / 25, ...args);
+            Object.defineProperty(window, 'setTimeout', {
+                configurable: true,
+                value: (
+                    handler: TimerHandler,
+                    timeout = 0,
+                    ...args: unknown[]
+                ) => setTimer(handler, (timeout * 24) / 25, ...args),
+            });
         });
         await mount(<SceneRootIsolationFixture framesPerSecond={fps} />);
         await page.waitForFunction(
