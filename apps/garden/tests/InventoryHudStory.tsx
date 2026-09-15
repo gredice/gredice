@@ -10,6 +10,7 @@ import {
 type InventoryHudStoryOptions = {
     backpackItemAmount?: number;
     gardenBoxItemAmount?: number;
+    includePlantSort?: boolean;
 };
 
 const mixedInventoryStoryOptions = {
@@ -20,6 +21,7 @@ const mixedInventoryStoryOptions = {
 function createInventoryHudQueryClient({
     backpackItemAmount = 0,
     gardenBoxItemAmount = 2,
+    includePlantSort = false,
 }: InventoryHudStoryOptions = {}) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
@@ -30,14 +32,28 @@ function createInventoryHudQueryClient({
     queryClient.setQueryData(['currentUser'], { id: 'test-user' });
     queryClient.setQueryData(['inventory'], {
         items:
-            backpackItemAmount > 0
+            backpackItemAmount > 0 || includePlantSort
                 ? [
-                      {
-                          amount: backpackItemAmount,
-                          entityId: '2',
-                          entityTypeName: 'block',
-                          name: 'Seed bag',
-                      },
+                      ...(includePlantSort
+                          ? [
+                                {
+                                    amount: 1,
+                                    entityId: '101',
+                                    entityTypeName: 'plantSort',
+                                    name: 'Cherry rajčica',
+                                },
+                            ]
+                          : []),
+                      ...(backpackItemAmount > 0
+                          ? [
+                                {
+                                    amount: backpackItemAmount,
+                                    entityId: '2',
+                                    entityTypeName: 'block',
+                                    name: 'Seed bag',
+                                },
+                            ]
+                          : []),
                   ]
                 : [],
         gardenBoxes: [
@@ -61,6 +77,22 @@ function createInventoryHudQueryClient({
     });
     queryClient.setQueryData(['operations'], []);
     queryClient.setQueryData(['blocks'], []);
+    queryClient.setQueryData(
+        ['sorts'],
+        includePlantSort
+            ? [
+                  {
+                      id: 101,
+                      image: {
+                          cover: {
+                              url: 'https://cdn.gredice.com/cherry-tomato.webp',
+                          },
+                      },
+                      information: { name: 'Cherry rajčica' },
+                  },
+              ]
+            : [],
+    );
 
     return queryClient;
 }
@@ -114,6 +146,19 @@ export function InventoryHudClosedStory() {
 export function InventoryHudGardenBoxesOpenStory() {
     return (
         <InventoryHudTestProviders searchParams="ruksak=true&ruksak-kartica=gardenBoxes">
+            <div className="relative h-screen w-screen p-8">
+                <InventoryHud />
+            </div>
+        </InventoryHudTestProviders>
+    );
+}
+
+export function InventoryHudBackpackOpenStory() {
+    return (
+        <InventoryHudTestProviders
+            inventoryOptions={{ includePlantSort: true }}
+            searchParams="ruksak=true"
+        >
             <div className="relative h-screen w-screen p-8">
                 <InventoryHud />
             </div>

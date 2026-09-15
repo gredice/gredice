@@ -1,9 +1,29 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import {
+    InventoryHudBackpackOpenStory,
     InventoryHudClosedStory,
     InventoryHudGardenBoxesOpenStory,
     InventoryHudTriggerlessStory,
 } from './InventoryHudStory';
+
+test('inventory requests responsive plant thumbnails at their rendered size', async ({
+    mount,
+    page,
+}) => {
+    await mount(<InventoryHudBackpackOpenStory />);
+
+    const plantImage = page.getByRole('img', { name: 'Cherry rajčica' });
+
+    await expect(plantImage).toHaveAttribute(
+        'sizes',
+        '(max-width: 767px) calc((100vw - 5.5rem) / 6), 68px',
+    );
+    expect(
+        await plantImage.evaluate(
+            (image) => image.getBoundingClientRect().width,
+        ),
+    ).toBeGreaterThan(64);
+});
 
 test('inventory HUD badge counts backpack items without garden box contents', async ({
     mount,
