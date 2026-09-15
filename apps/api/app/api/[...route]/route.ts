@@ -6,6 +6,7 @@ import { sessionCookieName } from '../../../lib/auth/sessionConfig';
 import { openApiDocs } from '../../../lib/docs/openApiDocs';
 import { resolveCorsOrigin } from '../../../lib/http/corsOrigins';
 import accountsRoutes from './accountsRoutes';
+import aiOperationNotesRoutes from './aiOperationNotesRoutes';
 import aiSuncokretRoutes from './aiSuncokretRoutes';
 import authRoutes from './authRoutes';
 import checkoutRoutes from './checkoutRoutes';
@@ -87,6 +88,7 @@ const app = new Hono()
     )
     .route('/auth', authRoutes)
     .route('/ai/suncokret', aiSuncokretRoutes)
+    .route('/ai/operation-notes', aiOperationNotesRoutes)
     .route('/directories', directoriesRoutes)
     .route('/accounts', accountsRoutes)
     .route('/users', usersRoutes)
@@ -108,6 +110,14 @@ const app = new Hono()
     .route('/wallpapers', wallpaperRoutes);
 
 app.get('/docs/auth', docs(authRoutes, 'Auth API', 'auth'))
+    .get(
+        '/docs/ai-operation-notes',
+        docs(
+            aiOperationNotesRoutes,
+            'Operation notes AI API',
+            'ai/operation-notes',
+        ),
+    )
     .get(
         '/docs/ai-suncokret',
         docs(aiSuncokretRoutes, 'Suncokret AI API', 'ai/suncokret'),

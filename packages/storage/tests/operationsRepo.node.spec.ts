@@ -432,6 +432,7 @@ test('completed operations expose completion notes and image URLs', async () => 
         'https://cdn.gredice.com/operation-complete.jpg',
     ]);
     assert.strictEqual(operation.completionNotes, 'Zaliveno nakon berbe.');
+    assert.equal(operation.completionNotesEdited, undefined);
 });
 
 test('pending operation completion evidence updates replace notes and images', async () => {
@@ -474,6 +475,7 @@ test('pending operation completion evidence updates replace notes and images', a
         'https://cdn.gredice.com/reviewed.jpg',
     ]);
     assert.strictEqual(operation.completionNotes, 'Reviewed note.');
+    assert.equal(operation.completionNotesEdited, true);
     assert.deepStrictEqual(operation.completedAt, initialOperation.completedAt);
 });
 
@@ -509,6 +511,57 @@ test('pending operation completion evidence updates can clear notes and images',
 
     assert.deepStrictEqual(operation.imageUrls, []);
     assert.strictEqual(operation.completionNotes, '');
+    assert.equal(operation.completionNotesEdited, true);
+});
+
+test('note edit history ignores photo changes, survives text reversion and resets on rescheduling', async () => {
+    createTestDb();
+    const operationId = await createOperation({
+        entityId: 1,
+        entityTypeName: 'operation',
+        accountId: randomUUID(),
+    });
+    const aggregateId = operationId.toString();
+    const completedBy = randomUUID();
+    await createEvent(
+        knownEvents.operations.completedV1(aggregateId, {
+            completedBy,
+            notes: 'Izvorna napomena.',
+        }),
+    );
+    const edit = async (notes: string) =>
+        createEvent(
+            knownEvents.operations.completionEvidenceUpdatedV1(aggregateId, {
+                updatedBy: randomUUID(),
+                notes,
+                images: ['https://cdn.gredice.com/photo.jpg'],
+            }),
+        );
+    await edit('Izvorna napomena.');
+    assert.equal(
+        (await getOperationById(operationId)).completionNotesEdited,
+        undefined,
+    );
+    await edit('Uređena napomena.');
+    await edit('Izvorna napomena.');
+    assert.equal(
+        (await getOperationById(operationId)).completionNotesEdited,
+        true,
+    );
+    await createEvent(
+        knownEvents.operations.scheduledV1(aggregateId, {
+            scheduledDate: '2026-09-16T08:00:00Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.operations.completedV1(aggregateId, {
+            completedBy,
+            notes: 'Nova napomena vrtlara.',
+        }),
+    );
+    const resubmitted = await getOperationById(operationId);
+    assert.equal(resubmitted.completionNotesEdited, undefined);
+    assert.equal(resubmitted.completionNotes, 'Nova napomena vrtlara.');
 });
 
 test('switchOperationEntity changes only the selected operation entity', async () => {

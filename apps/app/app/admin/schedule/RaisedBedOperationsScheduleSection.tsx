@@ -780,6 +780,9 @@ export function RaisedBedOperationsScheduleSection({
                                     )}
                                     {operationPendingVerification && (
                                         <OperationCompletionEvidenceEditModal
+                                            completionNotesEdited={
+                                                operation.completionNotesEdited
+                                            }
                                             operationId={operation.id}
                                             expectedTaskVersionEventId={
                                                 operation.taskVersionEventId

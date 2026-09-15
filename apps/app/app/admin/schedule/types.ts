@@ -76,6 +76,7 @@ export type Operation = {
     blockNote?: string;
     blockImageUrls?: string[];
     completionNotes?: string;
+    completionNotesEdited?: boolean;
     imageUrls?: string[];
     timestamp: Date;
     createdAt: Date;

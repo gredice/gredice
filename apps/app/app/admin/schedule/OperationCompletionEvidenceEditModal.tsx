@@ -23,7 +23,9 @@ import {
     type ImageUploadManagerState,
 } from '../../../components/shared/media/ImageUploadManager';
 import { updateOperationCompletionEvidenceAction } from '../../(actions)/operationActions';
+import { OperationCompletionNotesEditor } from './OperationCompletionNotesEditor';
 import { buildOperationCompletionEvidenceActionArguments } from './operationCompletionEvidenceEditModel';
+import { getOperationScheduleActionFailureMessage } from './operationScheduleActionResult';
 
 const MAX_COMPLETION_IMAGE_COUNT = 20;
 const MAX_COMPLETION_NOTES_LENGTH = 2000;
@@ -39,6 +41,7 @@ type EditOperationCompletionEvidenceModalBaseProps = {
     expectedTaskVersionEventId: number;
     label: string;
     initialNotes?: string | null;
+    completionNotesEdited?: boolean;
     initialImageUrls?: string[] | null;
 };
 
@@ -72,6 +75,7 @@ export function OperationCompletionEvidenceEditModal({
     expectedTaskVersionEventId,
     label,
     initialNotes,
+    completionNotesEdited,
     initialImageUrls,
     trigger,
     renderTrigger,
@@ -178,7 +182,7 @@ export function OperationCompletionEvidenceEditModal({
                 return;
             }
 
-            await updateOperationCompletionEvidenceAction(
+            const result = await updateOperationCompletionEvidenceAction(
                 ...buildOperationCompletionEvidenceActionArguments({
                     operationId,
                     expectedTaskVersionEventId,
@@ -186,6 +190,11 @@ export function OperationCompletionEvidenceEditModal({
                     notes: trimmedNotes,
                 }),
             );
+            const failure = getOperationScheduleActionFailureMessage(result);
+            if (failure) {
+                setErrorMessage(failure);
+                return;
+            }
             setOpen(false);
             resetForm();
             router.refresh();
@@ -246,32 +255,21 @@ export function OperationCompletionEvidenceEditModal({
                             {label}
                         </Typography>
                     </Stack>
-                    <Stack spacing={2}>
-                        <label
-                            htmlFor={`operation-${operationId}-completion-notes`}
-                            className="text-sm font-medium"
-                        >
-                            Napomena
-                        </label>
-                        <textarea
-                            id={`operation-${operationId}-completion-notes`}
-                            value={notes}
-                            onChange={(event) => {
-                                setNotes(event.target.value);
+                    {open && (
+                        <OperationCompletionNotesEditor
+                            operationId={operationId}
+                            expectedTaskVersionEventId={
+                                expectedTaskVersionEventId
+                            }
+                            notes={notes}
+                            previouslyEdited={completionNotesEdited}
+                            disabled={isSubmitting}
+                            onChange={(value) => {
+                                setNotes(value);
                                 setErrorMessage(null);
                             }}
-                            disabled={isSubmitting}
-                            rows={5}
-                            maxLength={MAX_COMPLETION_NOTES_LENGTH}
-                            className="min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-hidden focus:border-primary focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                         />
-                        <Typography
-                            level="body3"
-                            className="text-muted-foreground"
-                        >
-                            {notes.trim().length}/{MAX_COMPLETION_NOTES_LENGTH}
-                        </Typography>
-                    </Stack>
+                    )}
                     <Stack spacing={2}>
                         <Typography level="body2" semiBold>
                             Slike
