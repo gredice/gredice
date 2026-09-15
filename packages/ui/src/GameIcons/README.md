@@ -116,3 +116,18 @@ inventory includes these shared exports under Public-site artwork. See
 
 WWW opts into `variant="game"` on OperationImage and OperationCategoryIcon for
 category controls and image fallbacks. Other consumers keep the default variant.
+
+
+## Public attribute cards
+
+Ruler, Soil, Timer, Weight and Tag use five transparent 384px assets, generated
+with the built-in image tool and recorded in `assets/attributes-prompts.json`.
+They preserve the generated alpha and are resized/encoded to WebP only.
+`GameSowingDepthIcon` composes the ruler and soil without another bitmap.
+These exports use the same SVG props and decorative `aria-hidden` convention as
+other game icons. Public attribute cards use 24px; review 24–96px in PublicVisuals.
+
+The tag does not encode a real product identifier. Keep `BarcodeValue` and
+plant-density grid diagrams as data-driven information. Do not replace them with
+static artwork. `apps/www/Attributes/PublicAttributes` documents the real plant,
+operation, seed and block cards, including missing and zero values.

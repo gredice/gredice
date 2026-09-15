@@ -1,8 +1,13 @@
 import type { PlantData } from '@gredice/client';
 import { calculatePlantsPerField, FIELD_SIZE_LABEL } from '@gredice/js/plants';
-import { GameSeedlingIcon, GameThermometerIcon } from '@gredice/ui/GameIcons';
+import {
+    GameRulerIcon,
+    GameSeedlingIcon,
+    GameSowingDepthIcon,
+    GameThermometerIcon,
+    GameTimerIcon,
+} from '@gredice/ui/GameIcons';
 import { PlantGridIcon } from '@gredice/ui/GridIcons';
-import { ArrowDownToLine, Ruler, Timer } from '@gredice/ui/icons';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { KnownPages } from '../../../src/KnownPages';
 
@@ -45,7 +50,7 @@ export function SowingAttributeCards({
                 navigateLabel="Više o gredicama"
             />
             <AttributeCard
-                icon={<Ruler />}
+                icon={<GameRulerIcon aria-hidden />}
                 header="Razmak sijanja/sadnje"
                 value={`${
                     attributes?.seedingDistance != null
@@ -54,7 +59,7 @@ export function SowingAttributeCards({
                 } cm`}
             />
             <AttributeCard
-                icon={<ArrowDownToLine />}
+                icon={<GameSowingDepthIcon aria-hidden />}
                 header="Dubina sijanja"
                 value={`${
                     attributes?.seedingDepth != null
@@ -73,7 +78,7 @@ export function SowingAttributeCards({
                 value={`${attributes?.gernimationTemperature ?? '-'}°C`}
             />
             <AttributeCard
-                icon={<Timer />}
+                icon={<GameTimerIcon aria-hidden />}
                 header="Vrijeme klijanja"
                 value={formatDayRange(
                     attributes?.germinationWindowMin,

@@ -1,8 +1,5 @@
-import type { BlockData } from '@gredice/directory-types';
 import { decodeRouteParam } from '@gredice/js/uri';
 import { BlockImage } from '@gredice/ui/BlockImage';
-import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
-import { Layers, Ruler } from '@gredice/ui/icons';
 import { ListHeader } from '@gredice/ui/List';
 import { Markdown } from '@gredice/ui/Markdown';
 import { PageHeader } from '@gredice/ui/PageHeader';
@@ -12,7 +9,6 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import {
@@ -23,6 +19,7 @@ import {
 import { getBlocksData } from '../../../lib/blocks/getBlocksData';
 import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../src/KnownPages';
+import { BlockAttributeCards } from './BlockAttributeCards';
 import { BlocksList } from './BlocksList';
 
 export const revalidate = 43200; // 12 hours
@@ -50,32 +47,6 @@ export async function generateMetadata(
 export async function generateStaticParams() {
     const entities = await getBlocksData();
     return getBlockStaticParams(entities);
-}
-
-function BlockAttributes({ prices, attributes }: BlockData) {
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <AttributeCard
-                icon={<Ruler className="size-5" />}
-                header="Visina"
-                value={`${Math.round(attributes.height * 100)} cm`}
-            />
-            <AttributeCard
-                icon={<Layers className="size-5" />}
-                header="Slaganje"
-                value={attributes.stackable === true ? 'Da' : 'Ne'}
-            />
-            <AttributeCard
-                icon={<GameSunflowerIcon className="size-6" />}
-                header="Cijena"
-                value={
-                    (prices.sunflowers ?? 0) <= 0
-                        ? 'Nije za kupnju'
-                        : (prices.sunflowers?.toString() ?? '-')
-                }
-            />
-        </div>
-    );
 }
 
 export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
@@ -140,7 +111,7 @@ export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
                                 sectionKey="attributes"
                             />
                         </Row>
-                        <BlockAttributes {...entity} />
+                        <BlockAttributeCards {...entity} />
                     </Stack>
                     <Row spacing={4}>
                         <Typography level="body1">

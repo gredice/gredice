@@ -2,9 +2,9 @@ import type { PlantData } from '@gredice/client';
 import {
     GameCalendarIcon,
     GameLeafIcon,
+    GameSoilIcon,
     GameSunIcon,
 } from '@gredice/ui/GameIcons';
-import { Tally3 } from '@gredice/ui/icons';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 
 export function GrowthAttributeCards({
@@ -45,7 +45,7 @@ export function GrowthAttributeCards({
                 }
             />
             <AttributeCard
-                icon={<Tally3 className="size-6 rotate-90 mt-2" />}
+                icon={<GameSoilIcon aria-hidden />}
                 header="Zemlja"
                 value={attributes?.soil ?? '-'}
             />
