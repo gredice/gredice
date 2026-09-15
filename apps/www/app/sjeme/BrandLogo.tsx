@@ -1,4 +1,4 @@
-import { Store } from '@gredice/ui/icons';
+import { GameMarketStallIcon } from '@gredice/ui/GameIcons';
 import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
 
@@ -45,12 +45,15 @@ export function BrandLogo({
             <div
                 aria-label={`Logo brenda ${brand.information.name} nije dostupan`}
                 className={cx(
-                    'flex size-full flex-col items-center justify-center gap-2 bg-muted px-3 text-center text-muted-foreground',
+                    'flex size-full flex-col items-center justify-center gap-2 bg-muted px-3 text-center text-foreground',
                     className,
                 )}
                 role="img"
             >
-                <Store aria-hidden className="size-10" />
+                <GameMarketStallIcon
+                    aria-hidden
+                    className="size-16 max-h-[55%] max-w-[55%]"
+                />
                 <span className="text-xl font-semibold">
                     {initials(brand.information.name)}
                 </span>

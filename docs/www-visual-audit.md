@@ -100,10 +100,9 @@ retain the accessible currency name.
   physical-ID rendering was not changed.
 - Brand marks, mascot artwork, actual catalog photographs, garden previews,
   3D models, avatars and achievement awards.
-- Pet catalog routine/capacity symbols and the unindexed `/development` resource
-  menu remain compact technical mnemonics. A dedicated pet-care or developer
-  artwork collection is lower priority; this pass does not generate one image
-  for every diagnostic entry.
+- The unindexed `/development` resource menu keeps its technical emoji mnemonics.
+  It is an optional separate tooling illustration project, not customer-facing
+  artwork left unfinished. Pet-care artwork is covered in the follow-up below.
 
 ## Review examples
 
@@ -128,3 +127,71 @@ Browser review covered 18 public routes at 1280px and 360px with no failed style
 artwork or horizontal overflow. A December browser clock verified the real
 homepage winter switch updates both its state and sun/snowflake artwork. The
 public Storybook examples passed WCAG A/AA checks in light and dark themes.
+
+
+## Follow-up: catalog, pets and empty collections
+
+After #4847 merged, a second read-only audit identified the remaining customer
+surfaces. This follow-up adds four new transparent, 384px WebP assets generated
+with built-in image generation. Exact prompts and the three inspected style
+references are in
+[`www-followup-prompts.json`](../packages/ui/src/GameIcons/assets/www-followup-prompts.json).
+Only resizing and WebP encoding were applied; generated alpha is retained.
+
+| Artwork | Palette and meaning | Consumer |
+| --- | --- | --- |
+| Paw | Coral/pink pads with deep raspberry sides | Pet habits and introduction |
+| Pet home | Teal roof, cream front, natural wood, coral step | Generic shelter information; actual pet-home snapshots remain |
+| Market stall | Coral/cream awning, teal panel, green vegetables | Brand-logo fallback and OPG partner heading |
+| Blocks | Teal, coral and leaf-green cubes | Block search fallback and empty block catalogue |
+| Cloud (reused) | Existing game cloud, byte-for-byte unchanged | Pet weather routine and original game weather compositions |
+| Magnifier (reused) | Existing verification magnifier | Larger search introduction artwork |
+
+`DirectorySearchResultVisual` now uses the shared game artwork for plants,
+varieties, diseases, pests, seeds and blocks, plus the game operation-category
+variant. Unknown result types use the journal and unknown operations use tools.
+The existing image URL wins over every fallback. Header results retain their
+40px tile with 28px artwork; full search results keep a 56px tile with 32px artwork.
+
+| Example route | Follow-up changes |
+| --- | --- |
+| `/blokovi/ljubimci#pas` | Pet-home/paw/heart introductions and paw/sun/moon/cloud/shelter details |
+| `/pretraga` | 80px magnifier in the initial search prompt |
+| `/pretraga?pretraga=biljka` and header search | Matching styled category fallbacks, including missing/unknown categories |
+| `/sjeme/brend/[slug]` | Market-stall fallback with brand initials; styled location and globe |
+| `/sjeme/[slug]` | Location and plant-count artwork; barcode, prices and exact measurements stay functional |
+| `/radnje` | Market-stall icon for OPG partners |
+| `/biljke` | Styled calendar tab and seedling on the sowing filter; switch state and URL behavior unchanged |
+| `/biljke/[alias]`, `/outlet` | Styled origin pin and availability calendar |
+| `/biljke`, `/sjeme`, `/blokovi`, `/bolesti`, `/stetnici` with a non-matching `pretraga` | 64px category artwork beside the existing empty message |
+| `/vrtovi` and public profiles | Garden/trophy artwork for empty public collections; no specific award implied |
+| `/dostava/termini` without available dates | Calendar artwork beside the existing explanation |
+
+`PublicEmptyState` is scoped to these spacious public collection states. The
+compact `NoDataPlaceholder` used by individual attribute panels and other dense
+content is unchanged. Seed result announcements and the block gallery's
+`hasOtherResults` guard remain intact.
+
+Storybook `apps/www/Visuals/PublicCatalogVisuals` provides Light/Dark examples
+using the real pet cards, search fallbacks in both sizes, a provided search image,
+brand initials versus provided logos, and empty collections. These examples also
+appear in PublicVisuals and the component showcase; the six added exports appear
+in the searchable in-game icon inventory.
+
+### Deliberately remaining
+
+The text/content and functional exceptions listed above still apply. Text-only
+navigation/category chips do not need new pictures. Extra 192px heroes for every
+catalogue and decorative bird/bee illustrations would be new layout work rather
+than unfinished replacements; avoid pushing filters and products down on mobile.
+No sunflower mascot, real logo, pet-home snapshot, product photo or physical
+raised-bed identifier was replaced.
+
+Follow-up validation: UI, game, garden, WWW and Storybook typechecks; WWW and
+Storybook production builds; 4 weather-composition tests and 10 pet/profile tests.
+The two new Storybook themes passed WCAG A/AA checks with all 18 distinct artwork
+sources decoding. Ten public routes were checked at 1280px and 360px without
+horizontal overflow or failed styled assets. The sowing switch was exercised in
+both directions while preserving the search query. Brand-fallback initials now
+use foreground text after the contrast check caught the previous muted color.
+Storybook scans all WWW app components so imported public layouts match the site.

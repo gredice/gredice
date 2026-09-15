@@ -1,6 +1,7 @@
 import { type components, directoriesClient } from '@gredice/client';
 import { Card } from '@gredice/ui/Card';
-import { Search, Warning } from '@gredice/ui/icons';
+import { GameSearchIcon } from '@gredice/ui/GameIcons';
+import { Warning } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import {
     normalizeSearchCategory,
@@ -121,7 +122,10 @@ export default async function SearchPage({
 
                 {!trimmedQuery ? (
                     <Card className="p-6 text-center">
-                        <Search className="mx-auto mb-2 size-8 text-muted-foreground" />
+                        <GameSearchIcon
+                            aria-hidden
+                            className="mx-auto mb-4 size-20"
+                        />
                         <Typography>Upiši pojam za pretragu.</Typography>
                     </Card>
                 ) : trimmedQuery.length < 2 ? (

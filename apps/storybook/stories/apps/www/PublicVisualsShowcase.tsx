@@ -1,4 +1,5 @@
 import { cx } from '@gredice/ui/utils';
+import { PublicCatalogVisualExamples } from './PublicCatalogVisualExamples';
 import { PublicVisualExamples } from './PublicVisualExamples';
 import { publicVisualIcons } from './publicVisualIcons';
 
@@ -22,6 +23,7 @@ export function PublicVisualsShowcase({ dark = false }: { dark?: boolean }) {
                     </p>
                 </header>
                 <PublicVisualExamples />
+                <PublicCatalogVisualExamples />
                 <section
                     aria-label="Shared public icon inventory"
                     className="space-y-3"

@@ -1,6 +1,7 @@
 import { orderBy } from '@gredice/js/arrays';
 import { Card, CardOverflow } from '@gredice/ui/Card';
-import { Calendar, LayoutGrid } from '@gredice/ui/icons';
+import { GameCalendarIcon } from '@gredice/ui/GameIcons';
+import { LayoutGrid } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -125,7 +126,10 @@ export default async function PlantsPage({
                                     prefetch
                                 >
                                     <Row spacing={2} className="cursor-default">
-                                        <Calendar className="size-5" />
+                                        <GameCalendarIcon
+                                            aria-hidden
+                                            className="size-5"
+                                        />
                                         <span>Kalendar</span>
                                     </Row>
                                 </Link>

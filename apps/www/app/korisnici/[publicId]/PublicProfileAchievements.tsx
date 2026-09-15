@@ -3,6 +3,8 @@ import {
     AchievementAward,
     AchievementLevelLabel,
 } from '@gredice/ui/AchievementAwards';
+import { GameTrophyIcon } from '@gredice/ui/GameIcons';
+import { PublicEmptyState } from '../../../components/shared/placeholders/PublicEmptyState';
 import {
     type getPublicProfile,
     getTopPublicAchievements,
@@ -58,9 +60,9 @@ export function PublicProfileAchievements({
                     ))}
                 </ul>
             ) : (
-                <p className="text-sm text-foreground/75">
+                <PublicEmptyState icon={GameTrophyIcon}>
                     Još nema otključanih postignuća.
-                </p>
+                </PublicEmptyState>
             )}
         </section>
     );

@@ -202,6 +202,7 @@ import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import { AchievementCollectionShowcase } from '../../../../../packages/game/src/shared-ui/achievements/AchievementCollection.fixture';
 import { RaisedBedFieldsGridFixture } from '../../../../../packages/ui/src/raisedBeds/RaisedBedFieldsGrid.fixture';
+import { PublicCatalogVisualExamples } from '../../apps/www/PublicCatalogVisualExamples';
 import { PublicVisualExamples } from '../../apps/www/PublicVisualExamples';
 import { OverviewNavigationPreview } from '../game/settings/OverviewNavigationPreview';
 import { FarmerAvatarsPreview } from './FarmerAvatarsPreview';
@@ -1044,6 +1045,7 @@ function PublicContentShowcase() {
                     </div>
                     <PublicReleaseTimeline />
                     <PublicVisualExamples />
+                    <PublicCatalogVisualExamples />
 
                     <Heading1
                         tagline="Sezonski vodic"

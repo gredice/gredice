@@ -1,0 +1,30 @@
+{
+    "generatedWith": "built-in image_gen",
+    "references": [
+        "packages/ui/src/GameIcons/assets/backpack.webp",
+        "packages/ui/src/GameIcons/assets/water.webp",
+        "packages/ui/src/GameIcons/assets/blossom.webp"
+    ],
+    "assets": [
+        {
+            "file": "paw.webp",
+            "component": "GamePawIcon",
+            "prompt": "Use case: stylized-concept. Generate ONE original transparent 3D low-poly farming-game UI asset. Attached images are style references ONLY: chunky bevelled polygon volumes, matte tactile toy materials, clear dimensional facets, soft upper-left light and darker right side. Match geometry and lighting, not reference colors. Elevated three-quarter view, centered complete silhouette, 8 percent clear margin, genuine transparent alpha background. No environment, floor, floating shadow, lettering, watermark or badge. Coherent simple silhouette readable at 24px and attractive at 96px. One chunky coral-pink sculpted animal paw print, a large heart-shaped central pad with exactly FOUR distinct oval toe pads above it. Deep raspberry bevelled sides, warm pink front faces, subtle pale pink highlights. All five pads tilted in the same shallow three-quarter plane, real thickness, separated by transparent gaps. No circular base, no actual leg, no gold."
+        },
+        {
+            "file": "pet-home.webp",
+            "component": "GamePetHomeIcon",
+            "prompt": "Use case: stylized-concept. Generate ONE original transparent 3D low-poly farming-game UI asset. Attached images are style references ONLY: chunky bevelled polygon volumes, matte tactile toy materials, clear dimensional facets, soft upper-left light and darker right side. Match geometry and lighting, not reference colors. Elevated three-quarter view, centered complete silhouette, 8 percent clear margin, genuine transparent alpha background. No environment, floor, floating shadow, lettering, watermark or badge. Coherent simple silhouette readable at 24px and attractive at 96px. One compact cozy generic animal shelter, a toy wooden hut with a simple teal-blue pitched roof, cream-painted front wall, natural light brown side planks and a wide rounded dark doorway. One muted coral doorstep. No occupant, no pet silhouette, no paw symbol, no bone, no chimney, no gold. The doorway and chunky roof should remain clear at small sizes."
+        },
+        {
+            "file": "market-stall.webp",
+            "component": "GameMarketStallIcon",
+            "prompt": "Use case: stylized-concept. Generate ONE original transparent 3D low-poly farming-game UI asset. Attached images are style references ONLY: chunky bevelled polygon volumes, matte tactile toy materials, clear dimensional facets, soft upper-left light and darker right side. Match geometry and lighting, not reference colors. Elevated three-quarter view, centered complete silhouette, 8 percent clear margin, genuine transparent alpha background. No environment, floor, floating shadow, lettering, watermark or badge. Coherent simple silhouette readable at 24px and attractive at 96px. One small friendly farmers market stall, natural honey-brown wooden counter and two sturdy posts under a broad CORAL RED and CREAM striped fabric awning. A single small crate of bright green vegetables rests on the counter. Teal painted lower front panel. Simple low-poly shapes with pronounced 3D depth. No shop sign, no text, no coins, no gold metal, no buildings behind."
+        },
+        {
+            "file": "blocks.webp",
+            "component": "GameBlocksIcon",
+            "prompt": "Use case: stylized-concept. Generate ONE original transparent 3D low-poly farming-game UI asset. Attached images are style references ONLY: chunky bevelled polygon volumes, matte tactile toy materials, clear dimensional facets, soft upper-left light and darker right side. Match geometry and lighting, not reference colors. Elevated three-quarter view, centered complete silhouette, 8 percent clear margin, genuine transparent alpha background. No environment, floor, floating shadow, lettering, watermark or badge. Coherent simple silhouette readable at 24px and attractive at 96px. Three chunky beveled modular toy building cubes in a small triangular stack, one matte teal-blue cube at left base, one coral-red cube at right base, one leafy green cube resting centered across their upper inner edges. Distinct top and side faces. Solid unmarked cubes, no interlocking studs, no letters, no numbers, no gold, no platforms. Cozy farming-game construction category icon."
+        }
+    ]
+}
