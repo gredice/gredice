@@ -652,29 +652,29 @@ export default async function OperationDetailsPage({
                     }
                     actions={
                         <Row className="items-center" spacing={2}>
+                            {(operation.status === 'pendingVerification' ||
+                                operation.status === 'completed') && (
+                                <OperationCompletionEvidenceEditModal
+                                    operationId={operation.id}
+                                    expectedTaskVersionEventId={
+                                        operation.taskVersionEventId
+                                    }
+                                    label={operationTitle}
+                                    initialNotes={
+                                        operation.completionNotes ?? ''
+                                    }
+                                    initialImageUrls={operation.imageUrls ?? []}
+                                    notesOnly={operation.status === 'completed'}
+                                />
+                            )}
                             {operation.status === 'pendingVerification' && (
-                                <>
-                                    <OperationCompletionEvidenceEditModal
-                                        operationId={operation.id}
-                                        expectedTaskVersionEventId={
-                                            operation.taskVersionEventId
-                                        }
-                                        label={operationTitle}
-                                        initialNotes={
-                                            operation.completionNotes ?? ''
-                                        }
-                                        initialImageUrls={
-                                            operation.imageUrls ?? []
-                                        }
-                                    />
-                                    <VerifyOperationModal
-                                        operationId={operation.id}
-                                        expectedTaskVersionEventId={
-                                            operation.taskVersionEventId
-                                        }
-                                        label={operationTitle}
-                                    />
-                                </>
+                                <VerifyOperationModal
+                                    operationId={operation.id}
+                                    expectedTaskVersionEventId={
+                                        operation.taskVersionEventId
+                                    }
+                                    label={operationTitle}
+                                />
                             )}
                             {operation.isAccepted ? (
                                 <OperationUnacceptButton

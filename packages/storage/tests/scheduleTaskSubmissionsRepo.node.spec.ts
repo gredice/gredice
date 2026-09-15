@@ -1761,7 +1761,7 @@ test('verification commits before a competing completion-evidence writer revalid
     });
 
     assert.ok(evidencePromise);
-    await assertSubmissionError(evidencePromise, 'invalid_status');
+    await assertSubmissionError(evidencePromise, 'task_changed');
     assert.strictEqual(
         (
             await getAllEvents(
@@ -1838,6 +1838,89 @@ test('concurrent completion-evidence edits accept one rendered version and rejec
     const operation = await getOperationById(fixture.operationId);
     assert.deepEqual(operation.imageUrls, winningEdit.imageUrls);
     assert.equal(operation.completionNotes, winningEdit.notes);
+});
+
+test('verified operation notes can be edited without changing photos or verification history', async () => {
+    const fixture = await createTaskFixture();
+    await assertSubmissionError(
+        updateOperationCompletionEvidence({
+            operationId: fixture.operationId,
+            expectedTaskVersionEventId: fixture.operationTaskVersionEventId,
+            updatedBy: fixture.adminId,
+            imageUrls: [],
+            notes: 'Too early',
+        }),
+        'invalid_status',
+    );
+    await submitOperationTaskCompletion({
+        operationId: fixture.operationId,
+        expectedEntityId: fixture.operationEntityId,
+        expectedTaskVersionEventId: fixture.operationTaskVersionEventId,
+        actor: { userId: fixture.farmerId, role: 'farmer' },
+        imageUrls: ['https://example.com/verified-evidence.jpg'],
+        notes: 'Original verified note',
+    });
+    const pendingOperation = await getOperationById(fixture.operationId);
+    await verifyOperationTaskCompletion({
+        operationId: fixture.operationId,
+        expectedTaskVersionEventId: pendingOperation.taskVersionEventId,
+        verifiedBy: fixture.adminId,
+    });
+    const verifiedOperation = await getOperationById(fixture.operationId);
+
+    const update = await updateOperationCompletionEvidence({
+        operationId: fixture.operationId,
+        expectedTaskVersionEventId: verifiedOperation.taskVersionEventId,
+        updatedBy: fixture.adminId,
+        imageUrls: verifiedOperation.imageUrls,
+        notes: 'Revised after verification',
+    });
+
+    assert.equal(update.status, 'completed');
+    assert.equal(update.created, true);
+    const updatedOperation = await getOperationById(fixture.operationId);
+    assert.equal(updatedOperation.status, 'completed');
+    assert.equal(
+        updatedOperation.completionNotes,
+        'Revised after verification',
+    );
+    assert.deepEqual(updatedOperation.imageUrls, verifiedOperation.imageUrls);
+    assert.equal(
+        updatedOperation.verificationEventId,
+        verifiedOperation.verificationEventId,
+    );
+    assert.deepEqual(updatedOperation.verifiedAt, verifiedOperation.verifiedAt);
+    assert.equal(updatedOperation.verifiedBy, verifiedOperation.verifiedBy);
+
+    const exactRetry = await updateOperationCompletionEvidence({
+        operationId: fixture.operationId,
+        expectedTaskVersionEventId: verifiedOperation.taskVersionEventId,
+        updatedBy: fixture.adminId,
+        imageUrls: verifiedOperation.imageUrls,
+        notes: 'Revised after verification',
+    });
+    assert.equal(exactRetry.status, 'completed');
+    assert.equal(exactRetry.created, false);
+
+    await assertSubmissionError(
+        updateOperationCompletionEvidence({
+            operationId: fixture.operationId,
+            expectedTaskVersionEventId: updatedOperation.taskVersionEventId,
+            updatedBy: fixture.adminId,
+            imageUrls: ['https://example.com/replaced-after-verification.jpg'],
+            notes: 'Attempted photo replacement',
+        }),
+        'invalid_status',
+    );
+    assert.equal(
+        (
+            await getAllEvents(
+                knownEventTypes.operations.completionEvidenceUpdate,
+                [fixture.operationId.toString()],
+            )
+        ).length,
+        1,
+    );
 });
 
 test('planting completion rejects a farmer whose current farm membership was removed', async () => {
