@@ -1,8 +1,5 @@
 import { decodeRouteParam } from '@gredice/js/uri';
-import { BarcodeValue } from '@gredice/ui/Barcode';
-import { GameLocationIcon, GameSeedlingIcon } from '@gredice/ui/GameIcons';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
-import { Euro, Hash, Percent, Ruler, Tally3 } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
@@ -10,11 +7,9 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { PublicBreadcrumbs } from '../../../components/shared/seo/PublicBreadcrumbs';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
-import { formatPrice } from '../../../lib/formatPrice';
 import { getSeedsData } from '../../../lib/seeds/getSeedsData';
 import { KnownPages } from '../../../src/KnownPages';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
@@ -23,13 +18,12 @@ import { getSeedImageViewTransitionName } from '../catalogueViewTransition';
 import { SeedImage } from '../SeedImage';
 import { SeedRelatedCard } from '../SeedRelatedCard';
 import {
-    formatSeedArea,
-    formatSeedWeight,
     seedGtin13,
     seedPackageImages,
     seedPageDescription,
     seedPrimaryImageUrl,
 } from '../seedPresentation';
+import { SeedAttributeCards } from './SeedAttributeCards';
 
 export const revalidate = 3600;
 
@@ -193,65 +187,7 @@ export default async function SeedPage(props: PageProps<'/sjeme/[slug]'>) {
                     <Typography level="h2" className="text-2xl">
                         Informacije o pakiranju
                     </Typography>
-                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                        {typeof seed.attributes.price === 'number' ? (
-                            <AttributeCard
-                                icon={<Euro />}
-                                header="Cijena"
-                                value={formatPrice(seed.attributes.price)}
-                            />
-                        ) : null}
-                        <AttributeCard
-                            icon={<Ruler />}
-                            header="Težina"
-                            value={
-                                typeof seed.attributes.weight === 'number'
-                                    ? formatSeedWeight(seed.attributes.weight)
-                                    : undefined
-                            }
-                        />
-                        {seed.attributes.germinationPercentage != null ? (
-                            <AttributeCard
-                                icon={<Percent />}
-                                header="Klijavost"
-                                value={`${seed.attributes.germinationPercentage}%`}
-                            />
-                        ) : null}
-                        {seed.application?.applicationArea != null ? (
-                            <AttributeCard
-                                icon={<Tally3 />}
-                                header="Površina primjene"
-                                value={formatSeedArea(
-                                    seed.application.applicationArea,
-                                )}
-                            />
-                        ) : null}
-                        {seed.application?.applicationPlants != null ? (
-                            <AttributeCard
-                                icon={<GameSeedlingIcon aria-hidden />}
-                                header="Broj biljaka"
-                                value={seed.application.applicationPlants}
-                            />
-                        ) : null}
-                        {seed.information.barcode ? (
-                            <AttributeCard
-                                icon={<Hash />}
-                                header="Barkod"
-                                value={
-                                    <BarcodeValue
-                                        value={seed.information.barcode}
-                                    />
-                                }
-                            />
-                        ) : null}
-                        {seed.information.countryOfOrigin ? (
-                            <AttributeCard
-                                icon={<GameLocationIcon aria-hidden />}
-                                header="Zemlja podrijetla"
-                                value={seed.information.countryOfOrigin}
-                            />
-                        ) : null}
-                    </div>
+                    <SeedAttributeCards seed={seed} />
                 </Stack>
 
                 <Stack spacing={4}>
