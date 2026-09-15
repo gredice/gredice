@@ -22,7 +22,6 @@ import { KnownPages } from '../../../src/KnownPages';
 import { getPlantImageViewTransitionName } from '../plantViewTransition';
 import { getPlantInforationSections } from './getPlantInforationSections';
 import { PlantCalendarPicker } from './PlantCalendarPicker';
-import { hasPlantHealth } from './PlantHealthSection';
 import { hasPlantRelationships } from './PlantRelationshipsSection';
 import { VerifiedInformationBadge } from './VerifiedInformationBadge';
 
@@ -99,12 +98,6 @@ export function PlantPageHeader({
         contentLinks.push({
             href: `#${slug('Savjeti')}`,
             label: 'Savjeti',
-        });
-    }
-    if (hasPlantHealth(plant.health)) {
-        contentLinks.push({
-            href: `#${slug('Zdravlje biljke')}`,
-            label: 'Zdravlje biljke',
         });
     }
     if (hasPlantRelationships(sort?.relationships ?? plant.relationships)) {

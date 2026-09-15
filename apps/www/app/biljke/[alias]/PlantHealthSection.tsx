@@ -1,5 +1,4 @@
 import type { PlantData } from '@gredice/client';
-import { slug } from '@gredice/js/slug';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { PlantHealthIssueCard } from '../../../components/plant-health/PlantHealthIssueCard';
@@ -11,7 +10,7 @@ type PlantHealthIssueSummary = NonNullable<
     NonNullable<PlantHealth>['diseases']
 >[number];
 
-export function hasPlantHealth(health: PlantHealth | null | undefined) {
+function hasPlantHealth(health: PlantHealth | null | undefined) {
     return (
         (health?.diseases?.length ?? 0) > 0 || (health?.pests?.length ?? 0) > 0
     );
@@ -32,7 +31,7 @@ function PlantHealthIssueGroup({
 
     return (
         <Stack spacing={3}>
-            <Typography level="h3" className="text-xl">
+            <Typography level="h2" className="text-xl">
                 {title}
             </Typography>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -71,13 +70,6 @@ export function PlantHealthSection({
 
     return (
         <Stack spacing={4}>
-            <Typography
-                level="h2"
-                className="text-2xl"
-                id={slug('Zdravlje biljke')}
-            >
-                Zdravlje biljke
-            </Typography>
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <PlantHealthIssueGroup
                     title="Poznate bolesti"
