@@ -37,6 +37,19 @@ export const config: PlaywrightTestConfig = {
                     enforce: 'pre',
                     resolveId(source, importer) {
                         if (
+                            source.endsWith('/operationActions') &&
+                            importer?.endsWith(
+                                '/OperationCompletionEvidenceEditModal.tsx',
+                            )
+                        ) {
+                            return fileURLToPath(
+                                new URL(
+                                    './playwright/operationEvidenceActionsMock.ts',
+                                    import.meta.url,
+                                ),
+                            );
+                        }
+                        if (
                             source.endsWith(
                                 '/raisedBedPlantCorrectionActions',
                             ) &&

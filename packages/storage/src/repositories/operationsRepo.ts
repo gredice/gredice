@@ -342,6 +342,7 @@ async function fillOperationAggregates(
         let cancelReason: string | undefined;
         let imageUrls: string[] | undefined;
         let completionNotes: string | undefined;
+        let completionNotesEdited = false;
         let blockedAt: Date | undefined;
         let blockedBy: string | undefined;
         let blockedEventId: number | undefined;
@@ -401,7 +402,10 @@ async function fillOperationAggregates(
                         (url): url is string => typeof url === 'string',
                     );
                 }
-                completionNotes = asString(data?.notes) ?? '';
+                const updatedNotes = asString(data?.notes) ?? '';
+                completionNotesEdited ||=
+                    updatedNotes !== (completionNotes ?? '');
+                completionNotes = updatedNotes;
             } else if (event.type === knownEventTypes.operations.verify) {
                 status = 'completed';
                 verifiedBy = asString(data?.verifiedBy) ?? verifiedBy;
@@ -435,6 +439,7 @@ async function fillOperationAggregates(
                 cancelReason = undefined;
                 imageUrls = undefined;
                 completionNotes = undefined;
+                completionNotesEdited = false;
                 blockedAt = undefined;
                 blockedBy = undefined;
                 blockedEventId = undefined;
@@ -470,6 +475,7 @@ async function fillOperationAggregates(
             cancelReason,
             imageUrls,
             completionNotes,
+            ...(completionNotesEdited ? { completionNotesEdited: true } : {}),
             blockedAt,
             blockedBy,
             blockedEventId,

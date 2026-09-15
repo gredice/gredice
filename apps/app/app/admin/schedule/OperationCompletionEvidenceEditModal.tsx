@@ -23,6 +23,7 @@ import {
     type ImageUploadManagerState,
 } from '../../../components/shared/media/ImageUploadManager';
 import { updateOperationCompletionEvidenceAction } from '../../(actions)/operationActions';
+import { OperationCompletionNotesEditor } from './OperationCompletionNotesEditor';
 import { buildOperationCompletionEvidenceActionArguments } from './operationCompletionEvidenceEditModel';
 
 const MAX_COMPLETION_IMAGE_COUNT = 20;
@@ -39,6 +40,7 @@ type EditOperationCompletionEvidenceModalBaseProps = {
     expectedTaskVersionEventId: number;
     label: string;
     initialNotes?: string | null;
+    completionNotesEdited?: boolean;
     initialImageUrls?: string[] | null;
     notesOnly?: boolean;
 };
@@ -73,6 +75,7 @@ export function OperationCompletionEvidenceEditModal({
     expectedTaskVersionEventId,
     label,
     initialNotes,
+    completionNotesEdited,
     initialImageUrls,
     notesOnly = false,
     trigger,
@@ -270,32 +273,21 @@ export function OperationCompletionEvidenceEditModal({
                             </Typography>
                         ) : null}
                     </Stack>
-                    <Stack spacing={2}>
-                        <label
-                            htmlFor={`operation-${operationId}-completion-notes`}
-                            className="text-sm font-medium"
-                        >
-                            Napomena
-                        </label>
-                        <textarea
-                            id={`operation-${operationId}-completion-notes`}
-                            value={notes}
-                            onChange={(event) => {
-                                setNotes(event.target.value);
+                    {open && (
+                        <OperationCompletionNotesEditor
+                            operationId={operationId}
+                            expectedTaskVersionEventId={
+                                openedTaskVersionEventIdRef.current
+                            }
+                            notes={notes}
+                            previouslyEdited={completionNotesEdited}
+                            disabled={isSubmitting || hasVersionConflict}
+                            onChange={(value) => {
+                                setNotes(value);
                                 setErrorMessage(null);
                             }}
-                            disabled={isSubmitting}
-                            rows={5}
-                            maxLength={MAX_COMPLETION_NOTES_LENGTH}
-                            className="min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-hidden focus:border-primary focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                         />
-                        <Typography
-                            level="body3"
-                            className="text-muted-foreground"
-                        >
-                            {notes.trim().length}/{MAX_COMPLETION_NOTES_LENGTH}
-                        </Typography>
-                    </Stack>
+                    )}
                     {notesOnly ? null : (
                         <Stack spacing={2}>
                             <Typography level="body2" semiBold>
