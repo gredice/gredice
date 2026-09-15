@@ -1,7 +1,13 @@
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
-import { Cloud, Home, Moon, PawPrint, Sun } from '@gredice/ui/icons';
+import {
+    GameCloudIcon,
+    GameMoonIcon,
+    GamePawIcon,
+    GamePetHomeIcon,
+    GameSunIcon,
+} from '@gredice/ui/GameIcons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -66,9 +72,9 @@ export function GardenPetCard({
                                     className="flex flex-row items-start gap-2"
                                     key={habit}
                                 >
-                                    <PawPrint
+                                    <GamePawIcon
                                         aria-hidden
-                                        className="mt-1 size-4 shrink-0 text-muted-foreground"
+                                        className="mt-0.5 size-5 shrink-0"
                                     />
                                     <Typography level="body2">
                                         {habit}
@@ -79,17 +85,23 @@ export function GardenPetCard({
                     </Stack>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                         <GardenPetRoutine
-                            icon={<Sun aria-hidden className="size-4" />}
+                            icon={
+                                <GameSunIcon aria-hidden className="size-6" />
+                            }
                             label="Danju"
                             value={`Obilazi vrt u krugu do ${formatBlockDistance(pet.dayRangeBlocks)} blokova od doma.`}
                         />
                         <GardenPetRoutine
-                            icon={<Moon aria-hidden className="size-4" />}
+                            icon={
+                                <GameMoonIcon aria-hidden className="size-6" />
+                            }
                             label="Noću"
                             value={pet.nightRoutine}
                         />
                         <GardenPetRoutine
-                            icon={<Cloud aria-hidden className="size-4" />}
+                            icon={
+                                <GameCloudIcon aria-hidden className="size-6" />
+                            }
                             label="Po lošem vremenu"
                             value={pet.weatherRoutine}
                         />
@@ -97,9 +109,9 @@ export function GardenPetCard({
                     {home ? (
                         <Stack spacing={2}>
                             <Row alignItems="start" spacing={2}>
-                                <Home
+                                <GamePetHomeIcon
                                     aria-hidden
-                                    className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                                    className="mt-0.5 size-5 shrink-0"
                                 />
                                 <Typography level="body2">
                                     U vrt stiže s blokom{' '}
@@ -123,9 +135,9 @@ export function GardenPetCard({
                         </Stack>
                     ) : (
                         <Row alignItems="start" spacing={2}>
-                            <Home
+                            <GamePetHomeIcon
                                 aria-hidden
-                                className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                                className="mt-0.5 size-5 shrink-0"
                             />
                             <Typography level="body2" secondary>
                                 Dom ovog ljubimca još nije dostupan u katalogu.

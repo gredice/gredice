@@ -6,9 +6,11 @@ import {
     useGardenSceneTransition,
 } from '@gredice/game/garden-scene-transition';
 import { Button } from '@gredice/ui/Button';
+import { GameGardenIcon } from '@gredice/ui/GameIcons';
 import { Spinner } from '@gredice/ui/Spinner';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { PublicEmptyState } from '../../../components/shared/placeholders/PublicEmptyState';
 import { PublicGardenStatsAccordion } from '../../vrtovi/PublicGardenStatsAccordion';
 import { PublicGardenSummary } from '../../vrtovi/PublicGardenSummary';
 import {
@@ -163,9 +165,9 @@ export function PublicProfileGardens({
                     </section>
                 </>
             ) : (
-                <p className="text-sm text-muted-foreground">
+                <PublicEmptyState icon={GameGardenIcon}>
                     Još nema javnih vrtova.
-                </p>
+                </PublicEmptyState>
             )}
         </section>
     );

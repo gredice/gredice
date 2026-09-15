@@ -1,5 +1,6 @@
+import { GamePlantDiseaseIcon, GamePlantPestIcon } from '@gredice/ui/GameIcons';
 import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
-import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
+import { PublicEmptyState } from '../shared/placeholders/PublicEmptyState';
 import { PlantHealthIssueCard } from './PlantHealthIssueCard';
 import { plantHealthOperationCount } from './PlantHealthIssueOperations';
 import {
@@ -53,11 +54,16 @@ export function PlantHealthIssueDirectory({
 
     if (filteredIssues.length === 0) {
         return (
-            <div className="rounded border py-6">
-                <NoDataPlaceholder>
-                    Nema zapisa za zadani pojam.
-                </NoDataPlaceholder>
-            </div>
+            <PublicEmptyState
+                icon={
+                    kind === 'disease'
+                        ? GamePlantDiseaseIcon
+                        : GamePlantPestIcon
+                }
+                className="rounded border"
+            >
+                Nema zapisa za zadani pojam.
+            </PublicEmptyState>
         );
     }
 

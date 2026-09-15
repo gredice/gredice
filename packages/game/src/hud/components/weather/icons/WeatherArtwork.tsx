@@ -2,14 +2,13 @@
 
 import { gameWeatherArtwork } from '@gredice/ui/GameIcons';
 import type { SVGProps } from 'react';
-import cloud from './assets/cloud.webp';
 import fog from './assets/fog.webp';
 import type { WeatherPart } from './weatherComposition';
 
 const artwork = {
     sun: gameWeatherArtwork.sun,
     moon: gameWeatherArtwork.moon,
-    cloud,
+    cloud: gameWeatherArtwork.cloud,
     snowflake: gameWeatherArtwork.snowflake,
     fog,
     raindrop: gameWeatherArtwork.water,

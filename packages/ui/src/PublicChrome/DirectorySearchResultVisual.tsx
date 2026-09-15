@@ -1,8 +1,15 @@
 import Image from 'next/image';
 import type { ComponentType, SVGProps } from 'react';
-import { Bug, FileText, Layers, Leaf, Shield, Sprout } from '../icons';
+import {
+    GameBlocksIcon,
+    GameJournalIcon,
+    GameLeafIcon,
+    GamePlantDiseaseIcon,
+    GamePlantPestIcon,
+    GameSeedlingIcon,
+    GameSeedPacketIcon,
+} from '../GameIcons';
 import { OperationCategoryIcon } from '../OperationImage';
-import { PlantingSeedIcon } from '../PlantingSeedIcon';
 import { cx } from '../utils';
 
 type DirectorySearchResult = {
@@ -18,12 +25,12 @@ const resultFallbackIcons: Record<
     string,
     ComponentType<ResultFallbackIconProps>
 > = {
-    plant: Leaf,
-    plantSort: Sprout,
-    plantDisease: Shield,
-    plantPest: Bug,
-    block: Layers,
-    seed: PlantingSeedIcon,
+    plant: GameLeafIcon,
+    plantSort: GameSeedlingIcon,
+    plantDisease: GamePlantDiseaseIcon,
+    plantPest: GamePlantPestIcon,
+    block: GameBlocksIcon,
+    seed: GameSeedPacketIcon,
 };
 
 function resultFallbackKey(result: DirectorySearchResult) {
@@ -46,7 +53,7 @@ export function DirectorySearchResultVisual({
     imageSize?: number;
 }) {
     const fallbackKey = resultFallbackKey(result);
-    const Icon = resultFallbackIcons[result.entityType] ?? FileText;
+    const Icon = resultFallbackIcons[result.entityType] ?? GameJournalIcon;
 
     return (
         <span
@@ -71,12 +78,15 @@ export function DirectorySearchResultVisual({
                 >
                     {result.entityType === 'operation' ? (
                         <OperationCategoryIcon
+                            aria-hidden
+                            variant="game"
                             categoryName={result.visualKey}
-                            className={cx('size-5 shrink-0', iconClassName)}
+                            className={cx('size-7 shrink-0', iconClassName)}
                         />
                     ) : (
                         <Icon
-                            className={cx('size-5 shrink-0', iconClassName)}
+                            aria-hidden
+                            className={cx('size-7 shrink-0', iconClassName)}
                         />
                     )}
                 </span>

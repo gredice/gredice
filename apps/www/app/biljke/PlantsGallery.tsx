@@ -3,7 +3,8 @@
 import type { PlantData } from '@gredice/client';
 import { orderBy } from '@gredice/js/arrays';
 import { Gallery } from '@gredice/ui/Gallery';
-import { Typography } from '@gredice/ui/Typography';
+import { GameSeedlingIcon } from '@gredice/ui/GameIcons';
+import { PublicEmptyState } from '../../components/shared/placeholders/PublicEmptyState';
 import { useClientSearchParam } from '../../hooks/useClientSearchParam';
 import type { PlantSortData } from '../../lib/plants/getPlantSortsData';
 import {
@@ -79,9 +80,9 @@ export function PlantsGallery({
     return (
         <>
             {filteredPlants.length === 0 && (
-                <Typography level="body2" className="py-8 text-center">
+                <PublicEmptyState icon={GameSeedlingIcon}>
                     Nema rezultata pretrage.
-                </Typography>
+                </PublicEmptyState>
             )}
             <Gallery
                 gridHeader=""

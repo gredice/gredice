@@ -5,7 +5,7 @@ import type { PlantStageName } from '@gredice/game';
 import { slug } from '@gredice/js/slug';
 import { Accordion } from '@gredice/ui/Accordion';
 import { Chip } from '@gredice/ui/Chip';
-import { Store } from '@gredice/ui/icons';
+import { GameMarketStallIcon } from '@gredice/ui/GameIcons';
 import { OperationCategoryIcon } from '@gredice/ui/OperationImage';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -145,7 +145,10 @@ export function OperationsList({
                 {internalOperations.length > 0 && (
                     <Accordion className="h-min border-tertiary border-b-4">
                         <Row spacing={4} className="px-3">
-                            <Store className="size-5 shrink-0" />
+                            <GameMarketStallIcon
+                                aria-hidden
+                                className="size-6 shrink-0"
+                            />
                             <Typography level="h5" component="h2">
                                 Za OPG partnere
                             </Typography>
