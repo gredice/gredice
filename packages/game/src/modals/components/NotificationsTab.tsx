@@ -1,6 +1,7 @@
 import { clientAuthenticated } from '@gredice/client';
 import { Button } from '@gredice/ui/Button';
 import { Card } from '@gredice/ui/Card';
+import { GameMailboxIcon } from '@gredice/ui/GameIcons';
 import { Input } from '@gredice/ui/Input';
 import {
     Approved,
@@ -699,8 +700,12 @@ export function NotificationsTab({
 
     return (
         <Stack spacing={4}>
-            <Typography level="h4" className="hidden md:block">
-                🔔 Obavijesti
+            <Typography
+                level="h4"
+                className="hidden md:flex items-center gap-2"
+            >
+                <GameMailboxIcon aria-hidden className="size-8 shrink-0" />
+                Obavijesti
             </Typography>
             <Tabs
                 value={activeView}

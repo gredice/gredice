@@ -1,0 +1,42 @@
+{
+    "mode": "Built-in image_gen",
+    "useCase": "stylized-concept",
+    "styleReferences": [
+        "packages/ui/src/GameIcons/assets/backpack.webp",
+        "packages/ui/src/GameIcons/assets/settings.webp"
+    ],
+    "processing": "Trim transparent margins, downsample to fit 320px, add 8px transparent padding, encode WebP quality 92 with alpha quality 100.",
+    "assets": [
+        {
+            "file": "trophy.webp",
+            "prompt": "Use case: stylized-concept. Create ONE transparent 3D farming-game UI icon. The two input images are STYLE REFERENCES ONLY, showing the existing backpack and settings cog: match their chunky bevelled low-poly polygonal volumes, tactile matte materials, forest-green and golden-orange palette, strong contact shading, soft upper-left light and slightly elevated three-quarter camera. Make it look like a solid toy prop rendered in Blender, with unmistakable physical depth. Large complete centered silhouette with 6% empty padding, readable at 24px. Genuinely transparent alpha background. No scene, ground plane, cast shadow outside the object, UI, lettering, numbers, watermark, or border. Subject: One golden trophy cup with two thick loop handles, a short stem and chunky dark forest-green wooden plinth. Broad cup with subtle faceted metal highlights; one simple embossed leaf emblem on the cup. Uncluttered silhouette."
+        },
+        {
+            "file": "delivery.webp",
+            "prompt": "Use case: stylized-concept. Create ONE transparent 3D farming-game UI icon. The two input images are STYLE REFERENCES ONLY, showing the existing backpack and settings cog: match their chunky bevelled low-poly polygonal volumes, tactile matte materials, forest-green and golden-orange palette, strong contact shading, soft upper-left light and slightly elevated three-quarter camera. Make it look like a solid toy prop rendered in Blender, with unmistakable physical depth. Large complete centered silhouette with 6% empty padding, readable at 24px. Genuinely transparent alpha background. No scene, ground plane, cast shadow outside the object, UI, lettering, numbers, watermark, or border. Subject: One compact toy delivery truck with a warm golden-orange cab, a forest-green enclosed rear cargo box, charcoal wheels and cream window highlights. Elevated front three-quarter view showing front and side. No cargo, text or logos. Two visible wheels and solid simple body."
+        },
+        {
+            "file": "gift.webp",
+            "prompt": "Use case: stylized-concept. Create ONE transparent 3D farming-game UI icon. The two input images are STYLE REFERENCES ONLY, showing the existing backpack and settings cog: match their chunky bevelled low-poly polygonal volumes, tactile matte materials, forest-green and golden-orange palette, strong contact shading, soft upper-left light and slightly elevated three-quarter camera. Make it look like a solid toy prop rendered in Blender, with unmistakable physical depth. Large complete centered silhouette with 6% empty padding, readable at 24px. Genuinely transparent alpha background. No scene, ground plane, cast shadow outside the object, UI, lettering, numbers, watermark, or border. Subject: One chunky forest-green gift box with a broad golden-orange ribbon wrapped in both directions and a simple dimensional bow on top. Clear lid seam and bevelled corners. One box only."
+        },
+        {
+            "file": "receipt.webp",
+            "prompt": "Use case: stylized-concept. Create ONE transparent 3D farming-game UI icon. The two input images are STYLE REFERENCES ONLY, showing the existing backpack and settings cog: match their chunky bevelled low-poly polygonal volumes, tactile matte materials, forest-green and golden-orange palette, strong contact shading, soft upper-left light and slightly elevated three-quarter camera. Make it look like a solid toy prop rendered in Blender, with unmistakable physical depth. Large complete centered silhouette with 6% empty padding, readable at 24px. Genuinely transparent alpha background. No scene, ground plane, cast shadow outside the object, UI, lettering, numbers, watermark, or border. Subject: One thick cream paper receipt with a softly curled top and a few wide embossed muted-brown horizontal strokes (not real writing), held against a small forest-green backing with golden-orange bottom edge. Clear zigzag cut at bottom, chunky three-dimensional curled paper. No currency symbol or numbers, no coins."
+        },
+        {
+            "file": "controller.webp",
+            "prompt": "Use case: stylized-concept. Create ONE transparent 3D farming-game UI icon. The two input images are STYLE REFERENCES ONLY, showing the existing backpack and settings cog: match their chunky bevelled low-poly polygonal volumes, tactile matte materials, forest-green and golden-orange palette, strong contact shading, soft upper-left light and slightly elevated three-quarter camera. Make it look like a solid toy prop rendered in Blender, with unmistakable physical depth. Large complete centered silhouette with 6% empty padding, readable at 24px. Genuinely transparent alpha background. No scene, ground plane, cast shadow outside the object, UI, lettering, numbers, watermark, or border. Subject: One chunky forest-green game controller with two rounded grips, a golden-orange directional cross on the left and two large cream-and-orange buttons on the right. Small charcoal joystick near center. Recognizable front silhouette with top and side thickness visible. No cable, screen or logos."
+        },
+        {
+            "file": "lock.webp",
+            "prompt": "Use case: stylized-concept. Create ONE transparent 3D farming-game UI icon. The two input images are STYLE REFERENCES ONLY, showing the existing backpack and settings cog: match their chunky bevelled low-poly polygonal volumes, tactile matte materials, forest-green and golden-orange palette, strong contact shading, soft upper-left light and slightly elevated three-quarter camera. Make it look like a solid toy prop rendered in Blender, with unmistakable physical depth. Large complete centered silhouette with 6% empty padding, readable at 24px. Genuinely transparent alpha background. No scene, ground plane, cast shadow outside the object, UI, lettering, numbers, watermark, or border. Subject: One stout padlock with a warm golden-orange bevelled body, thick charcoal U-shaped metal shackle and dark forest-green inset keyhole plate. Simple large unmistakable lock silhouette, no keys or chains."
+        },
+        {
+            "file": "speaker.webp",
+            "prompt": "Use case: stylized-concept. Create ONE transparent 3D farming-game UI icon. The two input images are STYLE REFERENCES ONLY, showing the existing backpack and settings cog: match their chunky bevelled low-poly polygonal volumes, tactile matte materials, forest-green and golden-orange palette, strong contact shading, soft upper-left light and slightly elevated three-quarter camera. Make it look like a solid toy prop rendered in Blender, with unmistakable physical depth. Large complete centered silhouette with 6% empty padding, readable at 24px. Genuinely transparent alpha background. No scene, ground plane, cast shadow outside the object, UI, lettering, numbers, watermark, or border. Subject: One small chunky forest-green speaker cabinet, with golden-orange bevelled side panels, one large dark charcoal circular speaker cone and a small cream highlight. Slightly elevated three-quarter view, large round recessed cone showing real depth. No floating waves or musical notes."
+        }
+    ],
+    "reusedArtwork": {
+        "sunflower.svg": "Copied unchanged from apps/storybook/public/game-icons/sunflower-large.svg; existing Gredice mascot."
+    }
+}

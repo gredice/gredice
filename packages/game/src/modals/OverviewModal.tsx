@@ -1,11 +1,7 @@
 import { useSearchParam } from '@gredice/ui/hooks';
-import { List } from '@gredice/ui/List';
-import { ListItem } from '@gredice/ui/ListItem';
-import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
-import { Typography } from '@gredice/ui/Typography';
 import { useRouter } from 'next/navigation';
-import { Fragment, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useMarkTutorialChecklistTaskReady } from '../hooks/useTutorialChecklist';
 import {
@@ -27,112 +23,8 @@ import { ReferralsTab } from './components/ReferralsTab';
 import { SecurityTab } from './components/SecurityTab';
 import { SoundTab } from './components/SoundTab';
 import { SunflowersTab } from './components/SunflowersTab';
-
-type OverviewNavItem = {
-    nodeId: string;
-    icon: string;
-    label: string;
-    value: string;
-    href?: '/racun/naplata';
-};
-
-type OverviewNavGroup = {
-    label: string;
-    items: OverviewNavItem[];
-};
-
-const navGroups: OverviewNavGroup[] = [
-    {
-        label: 'Profil',
-        items: [
-            {
-                nodeId: 'profile-general',
-                icon: '⚙️',
-                label: 'Generalno',
-                value: 'generalno',
-            },
-            {
-                nodeId: 'profile-achievements',
-                icon: '🏆',
-                label: 'Postignuća',
-                value: 'postignuca',
-            },
-            {
-                nodeId: 'profile-sunflowers',
-                icon: '🌻',
-                label: 'Suncokreti',
-                value: 'suncokreti',
-            },
-            {
-                nodeId: 'profile-delivery',
-                icon: '🚚',
-                label: 'Dostava',
-                value: 'dostava',
-            },
-            {
-                nodeId: 'profile-notifications',
-                icon: '🔔',
-                label: 'Obavijesti',
-                value: 'obavijesti',
-            },
-            {
-                nodeId: 'profile-referrals',
-                icon: '💮',
-                label: 'Preporuke',
-                value: 'preporuke',
-            },
-        ],
-    },
-    {
-        label: 'Račun',
-        items: [
-            {
-                nodeId: 'account-garden',
-                icon: '🏡',
-                label: 'Vrt',
-                value: 'vrt',
-            },
-            {
-                nodeId: 'account-users',
-                icon: '👥',
-                label: 'Korisnici',
-                value: 'korisnici',
-            },
-            {
-                nodeId: 'account-billing',
-                icon: '🧾',
-                label: 'Računi i plaćanja',
-                value: 'racuni',
-                href: '/racun/naplata',
-            },
-        ],
-    },
-    {
-        label: 'Postavke',
-        items: [
-            {
-                nodeId: 'settings-game',
-                icon: '🎮',
-                label: 'Igra',
-                value: 'igra',
-            },
-            {
-                nodeId: 'profile-security',
-                icon: '🔒',
-                label: 'Sigurnost',
-                value: 'sigurnost',
-            },
-            {
-                nodeId: 'profile-sound',
-                icon: '🔊',
-                label: 'Zvuk',
-                value: 'zvuk',
-            },
-        ],
-    },
-];
-
-const allNavItems = navGroups.flatMap((g) => g.items);
+import { OverviewNavigation } from './OverviewNavigation';
+import { overviewNavItems } from './overviewNavigationItems';
 
 export function OverviewModal() {
     const router = useRouter();
@@ -190,7 +82,9 @@ export function OverviewModal() {
     };
 
     const handleNavSelection = (value: string) => {
-        const selectedItem = allNavItems.find((item) => item.value === value);
+        const selectedItem = overviewNavItems.find(
+            (item) => item.value === value,
+        );
         if (selectedItem?.href) {
             router.push(selectedItem.href);
             return;
@@ -209,58 +103,10 @@ export function OverviewModal() {
             <div className="grid max-h-[calc(90dvh-5rem)] min-h-0 grid-rows-[auto_1fr] gap-4 overflow-y-auto pr-1 md:gap-0 md:grid-rows-1 md:grid-cols-[minmax(230px,auto)_1fr] md:overflow-hidden md:pr-0">
                 <Stack spacing={4} className="md:border-r md:pl-2">
                     <ProfileInfo />
-                    <SelectItems
-                        className="md:hidden bg-card rounded-lg"
+                    <OverviewNavigation
                         value={settingsMode}
                         onValueChange={handleNavSelection}
-                        items={allNavItems.map((item) => ({
-                            label: `${item.icon} ${item.label}`,
-                            value: item.value,
-                        }))}
                     />
-                    <List className="md:pr-6 hidden md:flex">
-                        {navGroups.map((group) => (
-                            <Fragment key={group.label}>
-                                <Typography
-                                    level="body3"
-                                    uppercase
-                                    bold
-                                    className="py-4"
-                                >
-                                    {group.label}
-                                </Typography>
-                                {group.items.map((item) => (
-                                    <Fragment key={item.nodeId}>
-                                        {item.href ? (
-                                            <ListItem
-                                                href={item.href}
-                                                label={item.label}
-                                                startDecorator={
-                                                    <span>{item.icon}</span>
-                                                }
-                                            />
-                                        ) : (
-                                            <ListItem
-                                                nodeId={item.nodeId}
-                                                label={item.label}
-                                                startDecorator={
-                                                    <span>{item.icon}</span>
-                                                }
-                                                selected={
-                                                    settingsMode === item.value
-                                                }
-                                                onSelected={() =>
-                                                    handleNavSelection(
-                                                        item.value,
-                                                    )
-                                                }
-                                            />
-                                        )}
-                                    </Fragment>
-                                ))}
-                            </Fragment>
-                        ))}
-                    </List>
                 </Stack>
                 <div className="min-h-0 overflow-visible md:overflow-y-auto md:pl-6">
                     {settingsMode === 'generalno' && <GeneralTab />}

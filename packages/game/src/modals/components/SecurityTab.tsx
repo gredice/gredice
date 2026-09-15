@@ -1,6 +1,7 @@
 import { clientPublic } from '@gredice/client';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
+import { GameLockIcon } from '@gredice/ui/GameIcons';
 import { CompanyFacebook, Security } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
@@ -48,8 +49,12 @@ export function SecurityTab() {
 
     return (
         <Stack spacing={8}>
-            <Typography level="h4" className="hidden md:block">
-                🔒 Sigurnost
+            <Typography
+                level="h4"
+                className="hidden md:flex items-center gap-2"
+            >
+                <GameLockIcon aria-hidden className="size-8 shrink-0" />
+                Sigurnost
             </Typography>
             <Stack spacing={4}>
                 <Card>

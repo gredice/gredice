@@ -20,6 +20,7 @@ import { DragGripIndicator } from '@packages/game/hud/raisedBed/DragHandle';
 import { SuncokretUsageButton } from '@packages/game/hud/SuncokretUsageButton';
 import { CompanyGoogle } from '@packages/game/modals/components/CompanyGoogle';
 import { SoundSlider } from '@packages/game/modals/components/SoundSlider';
+import { overviewNavItems } from '@packages/game/modals/overviewNavigationItems';
 import Image from 'next/image';
 import type { ReactNode } from 'react';
 import backpackSrc from '../../../../../garden/public/assets/hud/inventory-backpack.webp?url';
@@ -136,6 +137,17 @@ const artwork = [
 
 export const gameIconCatalog: GameIconEntry[] = [
     ...artwork,
+    ...overviewNavItems.map((item) => ({
+        name: `Settings · ${item.label}`,
+        group: 'Settings navigation',
+        description:
+            'Shared game artwork in the mobile selector, desktop navigation and section heading.',
+        sources: [
+            'packages/game/src/modals/overviewNavigationItems.tsx',
+            'packages/game/src/modals/OverviewNavigation.tsx',
+        ],
+        preview: <div className="[&>svg]:size-12">{item.icon}</div>,
+    })),
     ...gameIconComparisons.map(
         ({ componentName, after: Icon, usage, legacyName, sources }) => ({
             name: componentName,
