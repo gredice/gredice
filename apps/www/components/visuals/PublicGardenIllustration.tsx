@@ -1,10 +1,11 @@
 import { cx } from '@gredice/ui/utils';
 import Image, { type ImageProps } from 'next/image';
 import delivery from '../../assets/DeliveryTruck.webp';
+import newsletter from '../../assets/NewsletterVisual.webp';
 import care from '../../assets/RaisedBedMaintenance.webp';
 import sowing from '../../assets/SeedsAndTransplants.webp';
 
-const illustrations = { delivery, care, sowing };
+const illustrations = { delivery, care, sowing, newsletter };
 
 /** Decorative artwork beside a visible page or section heading. */
 export function PublicGardenIllustration({
