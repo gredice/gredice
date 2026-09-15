@@ -62,12 +62,13 @@ import {
     type RaisedBedPlantTab,
     RaisedBedPlantTabsList,
 } from './RaisedBedPlantTabsList';
-import { RaisedBedSelectedPlantingOwnerControls } from './RaisedBedSelectedPlantingOwnerControls';
 import { RecommendationsCard } from './RecommendationsCard';
 import {
     parseScheduledSowingDateValue,
     ScheduledSowingDateBadge,
 } from './ScheduledSowingDateBadge';
+import { SelectedPlantingDiary } from './SelectedPlantingDiary';
+import { SelectedPlantingOperations } from './SelectedPlantingOperations';
 import { selectedPlantingField } from './selectedPlantingField';
 
 export function RaisedBedFieldItemPlanted({
@@ -622,7 +623,7 @@ export function RaisedBedFieldItemPlanted({
                         {!isHistorical && (
                             <TabsContent value="operations">
                                 {garden && selectedPlanting ? (
-                                    <RaisedBedSelectedPlantingOwnerControls
+                                    <SelectedPlantingOperations
                                         gardenId={garden.id}
                                         raisedBedId={raisedBedId}
                                         planting={selectedPlanting}
@@ -645,11 +646,10 @@ export function RaisedBedFieldItemPlanted({
                                     contentClassName="pl-4 pr-2 md:pl-6 md:pr-2"
                                 >
                                     {selectedPlanting ? (
-                                        <RaisedBedSelectedPlantingOwnerControls
+                                        <SelectedPlantingDiary
                                             gardenId={garden.id}
                                             raisedBedId={raisedBedId}
-                                            planting={selectedPlanting}
-                                            readOnly
+                                            plantingId={selectedPlanting.id}
                                         />
                                     ) : (
                                         <RaisedBedOperationHistoryList

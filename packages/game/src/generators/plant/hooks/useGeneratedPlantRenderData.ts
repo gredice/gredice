@@ -18,6 +18,7 @@ import {
     recordGeneratedPlantProfileSchedulerSnapshot,
     recordGeneratedPlantProfileTemplateCacheSnapshot,
 } from '../../../scene/generatedPlantProfileMetrics';
+import { useSceneRuntimeVisible } from '../../../scene/SceneTime';
 import {
     buildGeneratedPlantRenderData,
     generatePlantTopology,
@@ -283,11 +284,16 @@ async function runWorkerTasks(
     {
         allowSyncFallback = true,
         onWorkerAttemptStarted = () => {},
+        signal,
     }: {
         allowSyncFallback?: boolean;
         onWorkerAttemptStarted?: () => void;
+        signal?: AbortSignal;
     } = {},
 ): Promise<PackedPlantWorkerExecutionResult<PackedPlantRenderWorkerResponse>> {
+    if (signal?.aborted) {
+        throw signal.reason;
+    }
     const worker = getWorker();
     if (!worker) {
         if (!allowSyncFallback) {
@@ -332,17 +338,38 @@ async function runWorkerTasks(
     };
     const response = await new Promise<PackedPlantRenderWorkerResponse>(
         (resolve, reject) => {
+            const removeAbortListener = () => {
+                signal?.removeEventListener('abort', handleAbort);
+            };
+            const rejectRequest = (reason?: unknown) => {
+                removeAbortListener();
+                reject(reason);
+            };
+            const resolveRequest = (
+                result: PackedPlantRenderWorkerResponse,
+            ) => {
+                removeAbortListener();
+                resolve(result);
+            };
+            const handleAbort = () => {
+                resetWorker(signal?.reason, worker);
+            };
             pendingRequests.set(requestId, {
                 expectedResultCount: tasks.length,
-                reject,
-                resolve,
+                reject: rejectRequest,
+                resolve: resolveRequest,
             });
+            signal?.addEventListener('abort', handleAbort, { once: true });
+            if (signal?.aborted) {
+                handleAbort();
+                return;
+            }
             try {
                 onWorkerAttemptStarted();
                 worker.postMessage(request);
             } catch (error) {
                 pendingRequests.delete(requestId);
-                reject(error);
+                rejectRequest(error);
             }
         },
     );
@@ -416,13 +443,14 @@ interface ScheduledPlantRenderWorkerTask {
 const generatedPackedPlantRenderTaskScheduler = new GeneratedPlantTaskScheduler<
     ScheduledPlantRenderWorkerTask,
     PackedPlantRenderData
->(async ({ profileSessionId: sessionId, workerTask }) => {
+>(async ({ profileSessionId: sessionId, workerTask }, context) => {
     const { executionKind, response, workerDurationMs } =
         await runPackedPlantWorkerWithRetry({
             execute: ({ allowSyncFallback, onWorkerAttemptStarted }) =>
                 runWorkerTasks([workerTask], {
                     allowSyncFallback,
                     onWorkerAttemptStarted,
+                    signal: context.signal,
                 }),
             isRuntimeError: isWorkerRuntimeError,
             onWorkerAttemptFailed:
@@ -571,6 +599,7 @@ export function useGeneratedPackedPlantRenderDataBatch(
     tasks: GeneratedPackedPlantRenderTask[],
     options: Pick<RequestGeneratedPlantRenderDataOptions, 'priority'> = {},
 ) {
+    const runtimeVisible = useSceneRuntimeVisible();
     const taskKeys = useMemo(() => tasks.map((task) => task.cacheKey), [tasks]);
     const taskSignature = useMemo(() => JSON.stringify(taskKeys), [taskKeys]);
     const [resultsByKey, setResultsByKey] = useState<
@@ -614,6 +643,10 @@ export function useGeneratedPackedPlantRenderDataBatch(
         }
         if (settledTaskSignatureRef.current === taskSignature) {
             setIsPending(false);
+            return;
+        }
+        if (!runtimeVisible) {
+            setIsPending(true);
             return;
         }
         settledTaskSignatureRef.current = null;
@@ -705,7 +738,14 @@ export function useGeneratedPackedPlantRenderDataBatch(
         }
 
         return () => controller.abort();
-    }, [options.priority, retryGeneration, taskKeys, taskSignature, tasks]);
+    }, [
+        options.priority,
+        retryGeneration,
+        runtimeVisible,
+        taskKeys,
+        taskSignature,
+        tasks,
+    ]);
 
     const results = useMemo(
         () => taskKeys.map((key) => resultsByKey[key] ?? null),

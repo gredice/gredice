@@ -58,6 +58,7 @@ import {
     removeGeneratedPlantProfileBatch,
 } from '../../scene/generatedPlantProfileMetrics';
 import { registerGeneratedPlantRenderBatch } from '../../scene/generatedPlantRenderRegistry';
+import { useSceneDeadline } from '../../scene/SceneTime';
 import { RaisedBedPlantShadowProxy } from './RaisedBedPlantShadowProxy';
 
 export interface RaisedBedGeneratedPlantBatchInstance {
@@ -630,24 +631,31 @@ export function RaisedBedGeneratedPlantBatch({
         renderChunkSignature,
         settledBatch,
     ]);
-    useEffect(() => {
-        if (taskPriority !== 'focused' || failedTaskKeys.length === 0) {
-            return;
+    const failedTaskSignature =
+        failedTaskKeys.length === 0
+            ? null
+            : `${renderChunkSignature}:${failedTaskKeys.join('|')}`;
+    const autoRetryDeadlineMs = useMemo(() => {
+        if (
+            taskPriority !== 'focused' ||
+            failedTaskSignature === null ||
+            autoRetriedFailureSignatureRef.current === failedTaskSignature
+        ) {
+            return null;
         }
-
-        const failureSignature = `${renderChunkSignature}:${failedTaskKeys.join('|')}`;
-        if (autoRetriedFailureSignatureRef.current === failureSignature) {
-            return;
-        }
-
-        const timeoutId = window.setTimeout(() => {
-            autoRetriedFailureSignatureRef.current = failureSignature;
+        return globalThis.performance.now() + 1_000;
+    }, [failedTaskSignature, taskPriority]);
+    useSceneDeadline({
+        callback: () => {
+            if (failedTaskSignature === null) {
+                return;
+            }
+            autoRetriedFailureSignatureRef.current = failedTaskSignature;
             retryFailed();
-        }, 1_000);
-        return () => {
-            window.clearTimeout(timeoutId);
-        };
-    }, [failedTaskKeys, renderChunkSignature, retryFailed, taskPriority]);
+        },
+        deadlineMs: autoRetryDeadlineMs,
+        owner: `generated-plant-retry:${batchSeed}`,
+    });
     const profileBatchId = `${batchSeed}:${lodLevel}`;
     const detailedLeafTriangleCount = useMemo(
         () =>

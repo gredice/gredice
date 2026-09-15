@@ -1,7 +1,7 @@
 'use client';
 
 import { useFrame, useThree } from '@react-three/fiber';
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
     AdditiveBlending,
     BufferAttribute,
@@ -24,7 +24,11 @@ import {
     type PerseidsMeteorDefinition,
     samplePerseidsIntervalSeconds,
 } from './perseids';
-import { useSceneTimeInvalidation } from './SceneTime';
+import {
+    useSceneDeadline,
+    useSceneRenderRequest,
+    useSceneTimeInvalidation,
+} from './SceneTime';
 
 const METEOR_SKY_DISTANCE = 42;
 const METEOR_REFERENCE_VERTICAL_FOV_DEGREES = 55;
@@ -120,6 +124,13 @@ function getMeteorWorldWidth(width: number, camera: Camera) {
     return width * (halfHeight / METEOR_REFERENCE_HALF_HEIGHT);
 }
 
+function sampleNextMeteorDeadlineMs(meteorsPerHour: number, nowMs: number) {
+    const intervalSeconds = samplePerseidsIntervalSeconds({ meteorsPerHour });
+    return Number.isFinite(intervalSeconds)
+        ? nowMs + intervalSeconds * 1_000
+        : null;
+}
+
 function setMeteorVertex(
     positions: BufferAttribute | InterleavedBufferAttribute,
     index: number,
@@ -146,7 +157,10 @@ export function Perseids({
     const meshRef = useRef<Mesh>(null);
     const rateRef = useRef(meteorsPerHour);
     const activeMeteorRef = useRef<ActiveMeteor | null>(null);
-    const nextMeteorInRef = useRef(Number.POSITIVE_INFINITY);
+    const meteorStartPendingRef = useRef(false);
+    const [meteorActive, setMeteorActive] = useState(false);
+    const [nextMeteorAtMs, setNextMeteorAtMs] = useState<number | null>(null);
+    const requestRender = useSceneRenderRequest();
     const raycasterRef = useRef(new Raycaster());
     const ndcRef = useRef(new Vector2());
     const startOffsetRef = useRef(new Vector3());
@@ -180,7 +194,20 @@ export function Perseids({
         [],
     );
 
-    useSceneTimeInvalidation(true);
+    useSceneTimeInvalidation('perseid-meteor-flight', meteorActive);
+    useSceneDeadline({
+        callback: () => {
+            meteorStartPendingRef.current = true;
+            setNextMeteorAtMs(
+                sampleNextMeteorDeadlineMs(rateRef.current, performance.now()),
+            );
+            setMeteorActive(true);
+            requestRender('perseid-meteor-start');
+        },
+        deadlineMs: nextMeteorAtMs,
+        enabled: !meteorActive,
+        owner: 'perseid-next-meteor',
+    });
 
     useEffect(
         () => () => {
@@ -195,28 +222,40 @@ export function Perseids({
             1,
             Math.max(0, visibility),
         );
-    }, [material, visibility]);
+        requestRender('perseid-visibility-change');
+    }, [material, requestRender, visibility]);
 
     useEffect(() => {
         const previousRate = rateRef.current;
         rateRef.current = meteorsPerHour;
-        if (
-            Number.isFinite(nextMeteorInRef.current) &&
-            nextMeteorInRef.current > 0 &&
-            previousRate > 0 &&
-            meteorsPerHour > 0
-        ) {
-            nextMeteorInRef.current *= previousRate / meteorsPerHour;
-        }
+        setNextMeteorAtMs((currentDeadlineMs) => {
+            const nowMs = performance.now();
+            if (
+                currentDeadlineMs !== null &&
+                previousRate > 0 &&
+                meteorsPerHour > 0
+            ) {
+                return (
+                    nowMs +
+                    Math.max(0, currentDeadlineMs - nowMs) *
+                        (previousRate / meteorsPerHour)
+                );
+            }
+
+            return sampleNextMeteorDeadlineMs(meteorsPerHour, nowMs);
+        });
     }, [meteorsPerHour]);
 
     useLayoutEffect(() => {
         if (meshRef.current) {
             meshRef.current.visible = false;
         }
-        nextMeteorInRef.current = samplePerseidsIntervalSeconds({
-            meteorsPerHour: rateRef.current,
-        });
+        activeMeteorRef.current = null;
+        meteorStartPendingRef.current = false;
+        setMeteorActive(false);
+        setNextMeteorAtMs(
+            sampleNextMeteorDeadlineMs(rateRef.current, performance.now()),
+        );
     }, []);
 
     useFrame((_, frameDelta) => {
@@ -225,17 +264,16 @@ export function Perseids({
             return;
         }
 
-        const schedulerDelta = Math.max(0, frameDelta);
         const animationDelta = Math.min(
             MAX_FRAME_DELTA_SECONDS,
-            schedulerDelta,
+            Math.max(0, frameDelta),
         );
-        nextMeteorInRef.current -= schedulerDelta;
         const activeMeteor = activeMeteorRef.current;
         if (!activeMeteor) {
-            if (nextMeteorInRef.current > 0) {
+            if (!meteorStartPendingRef.current) {
                 return;
             }
+            meteorStartPendingRef.current = false;
 
             const definition = createPerseidsMeteor();
             const raycaster = raycasterRef.current;
@@ -264,9 +302,6 @@ export function Perseids({
                 definition,
                 elapsedSeconds: 0,
             };
-            nextMeteorInRef.current += samplePerseidsIntervalSeconds({
-                meteorsPerHour: rateRef.current,
-            });
             material.uniforms.uBrightness.value = definition.brightness;
             material.uniforms.uColor.value.set(
                 definition.fireball ? '#fff0c7' : '#dcecff',
@@ -330,6 +365,7 @@ export function Perseids({
 
         mesh.visible = false;
         activeMeteorRef.current = null;
+        setMeteorActive(false);
     });
 
     return (

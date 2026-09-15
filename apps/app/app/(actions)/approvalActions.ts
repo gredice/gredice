@@ -7,6 +7,7 @@ import {
     getEntityFormatted,
     getRaisedBed,
     rejectApprovalRequest,
+    type SelectedRaisedBedPlantingTaskCommandIdentity,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
@@ -14,6 +15,7 @@ import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
 import { completeOperation } from './operationActions';
 import { verifyRaisedBedPlantingAction } from './raisedBedFieldsActions';
+import { verifySelectedPlantingTaskAction } from './selectedRaisedBedPlantingActions';
 
 function revalidateApprovalQueues() {
     revalidatePath(KnownPages.Approvals);
@@ -196,6 +198,17 @@ export async function approveSchedulePlantingTaskAction(
         expectedPlantCycleEventId,
         expectedPlantSortId,
         expectedPlantCycleVersionEventId,
+    );
+    revalidateApprovalQueues();
+    return result;
+}
+
+export async function approveSelectedPlantingTaskAction(
+    identity: SelectedRaisedBedPlantingTaskCommandIdentity,
+) {
+    const result = await verifySelectedPlantingTaskAction(
+        identity,
+        crypto.randomUUID(),
     );
     revalidateApprovalQueues();
     return result;

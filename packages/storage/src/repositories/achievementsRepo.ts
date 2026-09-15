@@ -4,7 +4,7 @@ import {
     getAchievementDefinition,
     getAchievementDefinitions,
 } from '@gredice/js/achievements';
-import { and, asc, desc, eq, isNotNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import {
     type AccountSunflowersPayload,
     accountAchievements,
@@ -16,10 +16,12 @@ import {
     events,
     knownEventTypes,
     operations,
+    raisedBedPlantings,
     raisedBeds,
     type SelectAccountAchievement,
     storage,
 } from '..';
+import { isCanonicalSelectedPlantingSowedEvent } from '../helpers/selectedPlantingSowedEvent';
 import { getEntitiesFormatted } from './entitiesRepo';
 import type { RaisedBedFieldPlantEventsPayload } from './events/types';
 
@@ -580,10 +582,28 @@ export async function evaluateAchievements() {
     const wateringCounters = new Map<string, number>();
 
     const plantEvents = await storage().query.events.findMany({
-        where: eq(events.type, knownEventTypes.raisedBedFields.plantUpdate),
-        orderBy: [asc(events.createdAt)],
+        where: inArray(events.type, [
+            knownEventTypes.raisedBedFields.plantUpdate,
+            knownEventTypes.raisedBedPlantings.taskCompleted,
+            knownEventTypes.raisedBedPlantings.taskVerified,
+        ]),
+        orderBy: [asc(events.createdAt), asc(events.id)],
     });
 
+    const selectedPlantings = await storage()
+        .select({
+            aggregateId: raisedBedPlantings.eventAggregateId,
+            raisedBedId: raisedBedPlantings.raisedBedId,
+        })
+        .from(raisedBedPlantings)
+        .where(eq(raisedBedPlantings.configurationSource, 'selected'));
+    const selectedBedIds = new Map(
+        selectedPlantings.map((planting) => [
+            planting.aggregateId,
+            planting.raisedBedId,
+        ]),
+    );
+    const countedSelectedPlantings = new Set<string>();
     for (const event of plantEvents) {
         const data = event.data as RaisedBedFieldPlantEventsPayload | undefined;
         const status =
@@ -591,7 +611,13 @@ export async function evaluateAchievements() {
         if (status !== 'sowed') {
             continue;
         }
-        const raisedBedId = parseRaisedBedId(event.aggregateId);
+        const selected = isCanonicalSelectedPlantingSowedEvent(event);
+        if (selected && countedSelectedPlantings.has(event.aggregateId))
+            continue;
+        if (selected) countedSelectedPlantings.add(event.aggregateId);
+        const raisedBedId = selected
+            ? selectedBedIds.get(event.aggregateId)
+            : parseRaisedBedId(event.aggregateId);
         if (!raisedBedId) continue;
         const accountId = raisedBedAccountMap.get(raisedBedId);
         if (!accountId) continue;

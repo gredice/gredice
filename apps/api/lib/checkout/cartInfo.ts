@@ -1,3 +1,4 @@
+import { readSelectedPlantingOperationTarget } from '@gredice/js/plants';
 import {
     isRaisedBedAbandoned,
     RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
@@ -7,6 +8,7 @@ import {
     minimumShoppingCartAmountEur,
 } from '@gredice/js/shoppingCart';
 import {
+    assertSelectedPlantingOperationPurchase,
     type CheckoutInventoryConsumption,
     type EntityStandardized,
     getCheckoutInventorySnapshot,
@@ -355,6 +357,38 @@ export async function getCartInfo(
 
     let allowPurchase = true;
     const notes: string[] = [];
+    for (const item of items) {
+        if (item.status === 'paid' || mappedOperationCartItemIds.has(item.id))
+            continue;
+        try {
+            const target = readSelectedPlantingOperationTarget(
+                item.additionalData,
+            );
+            if (target) {
+                if (
+                    !accountId ||
+                    item.entityTypeName !== 'operation' ||
+                    !item.gardenId ||
+                    !item.raisedBedId ||
+                    item.positionIndex !== null ||
+                    item.amount !== 1
+                )
+                    throw new Error('Neispravna radnja za sadnju.');
+                await assertSelectedPlantingOperationPurchase({
+                    target,
+                    accountId,
+                    gardenId: item.gardenId,
+                    raisedBedId: item.raisedBedId,
+                    entityId: Number(item.entityId),
+                });
+            }
+        } catch {
+            allowPurchase = false;
+            notes.push(
+                'Sadnja za odabranu radnju se promijenila. Ukloni radnju iz košare i ponovno je odaberi u vrtu.',
+            );
+        }
+    }
 
     const cartItemsWithShopInfo = items
         .map((item) => {

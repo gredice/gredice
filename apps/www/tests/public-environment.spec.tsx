@@ -1,3 +1,4 @@
+import { PublicChromeProvider, PublicFooter } from '@gredice/ui/PublicChrome';
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import '../app/globals.css';
@@ -120,4 +121,36 @@ test('fits the footer controls on mobile and supports keyboard toggling', async 
         ),
     ).toBe(true);
     await expect(page.getByLabel('Vremenski uvjeti')).toBeVisible();
+});
+
+test('keeps the ambient switch compact above the footer social links', async ({
+    mount,
+    page,
+}) => {
+    await mockPublicEnvironmentRequests(page);
+    await mount(
+        <PublicChromeProvider>
+            <PublicFooter />
+        </PublicChromeProvider>,
+    );
+
+    const footer = page.locator('footer');
+    const toggle = footer.getByRole('switch', {
+        name: 'Ambijentalna pozadina',
+    });
+    const instagram = footer.getByLabel('Instagram', { exact: true });
+    await expect(toggle).toBeVisible();
+    await expect(instagram).toBeVisible();
+
+    const toggleBox = await toggle.boundingBox();
+    const instagramBox = await instagram.boundingBox();
+    expect(toggleBox).not.toBeNull();
+    expect(instagramBox).not.toBeNull();
+
+    if (!toggleBox || !instagramBox) {
+        throw new Error('Footer controls must have measurable bounds');
+    }
+
+    expect(toggleBox.height).toBeLessThanOrEqual(24);
+    expect(toggleBox.y).toBeLessThan(instagramBox.y);
 });

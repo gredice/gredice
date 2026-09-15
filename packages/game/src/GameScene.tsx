@@ -100,6 +100,7 @@ import {
     adaptiveHighQualityLevels,
 } from './scene/adaptiveHighQuality';
 import { Environment } from './scene/Environment';
+import { GameProfileController } from './scene/GameProfileController';
 import {
     recordGardenStructureAvatarCollisionStep,
     recordGardenStructureCompileDurations,
@@ -181,6 +182,8 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
 
     // Development purposes
     adaptiveHighQuality?: boolean;
+    authenticatedGardenQueriesEnabled?: boolean;
+    continuousRenderLeasesEnabled?: boolean;
     enableGameProfileController?: boolean;
     enableStaticOpaqueSceneCacheOcclusionFixture?: boolean;
     gardenStructureDebugFixture?: boolean;
@@ -386,6 +389,7 @@ export function GameScene({
     deferDetails,
     renderDetails: renderDetailsOverride,
     adaptiveHighQuality = true,
+    continuousRenderLeasesEnabled,
     enableGameProfileController,
     enableStaticOpaqueSceneCacheOcclusionFixture,
     gardenStructureDebugFixture,
@@ -1305,6 +1309,9 @@ export function GameScene({
                     onAdaptiveHighProfileChange={setAdaptiveHighProfile}
                     debugStats={showDebugHud}
                     profileStats={Boolean(enableGameProfileController)}
+                    continuousRenderLeasesEnabled={
+                        continuousRenderLeasesEnabled
+                    }
                     fixedTimeSeconds={fixedTimeSeconds}
                     position={sceneCameraPosition}
                     quality={qualityProfile}
@@ -1317,6 +1324,9 @@ export function GameScene({
                     data-scene-garden-id={garden?.id}
                     data-scene-visible={sceneVisible}
                 >
+                    {enableGameProfileController ? (
+                        <GameProfileController />
+                    ) : null}
                     <ParticleSystemProvider>
                         <BlockInteractionRegistryProvider>
                             <PlacementGrid />

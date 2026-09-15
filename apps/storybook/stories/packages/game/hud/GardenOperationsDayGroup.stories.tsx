@@ -138,17 +138,14 @@ function bubbleItemsFor(
  */
 function GardenOperationsDayGroupPreview({
     bubbleLimit,
-    expandNewestDay,
     operations,
     todayKey,
 }: {
     /** How many bubbles a day shows before the rest collapse into `+N`. */
     bubbleLimit: number;
-    /** Mirrors the history default of opening the newest day. */
-    expandNewestDay: boolean;
     /** Records to group, newest first, as the HUD delivers them. */
     operations: GardenOperationItem[];
-    /** Day rendered as "Danas". Fixed here so the story stays deterministic. */
+    /** Day expanded by default. Fixed here so the story stays deterministic. */
     todayKey: string;
 }) {
     const dayGroups = groupGardenOperationsByDay(operations);
@@ -157,11 +154,7 @@ function GardenOperationsDayGroupPreview({
     );
 
     function isDayExpanded(dayKey: string) {
-        return (
-            overrides.get(dayKey) ??
-            (dayKey === todayKey ||
-                (expandNewestDay && dayKey === dayGroups[0]?.dayKey))
-        );
+        return overrides.get(dayKey) ?? dayKey === todayKey;
     }
 
     return (
@@ -179,7 +172,6 @@ function GardenOperationsDayGroupPreview({
                         counts={gardenOperationsDayCounts(bubbleItems)}
                         dayKey={group.dayKey}
                         isExpanded={isDayExpanded(group.dayKey)}
-                        isToday={group.dayKey === todayKey}
                         onToggle={(dayKey) =>
                             setOverrides((previous) =>
                                 new Map(previous).set(
@@ -222,7 +214,6 @@ const meta = {
     },
     args: {
         bubbleLimit: 6,
-        expandNewestDay: true,
         operations: defaultOperations,
         todayKey: '2026-08-26',
     },
@@ -236,7 +227,6 @@ export const Default: Story = {};
 
 export const AllDaysCollapsed: Story = {
     args: {
-        expandNewestDay: false,
         todayKey: '',
     },
     parameters: {

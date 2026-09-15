@@ -17,6 +17,7 @@ export type { GardenOperationStatus } from './gardenOperationStatus';
 const DEFAULT_PAGE_SIZE = 20;
 
 export type GardenOperationItem = {
+    plantingId?: number;
     id: number;
     entityId: number;
     taskVersionEventId: number | null;
@@ -45,6 +46,7 @@ export type GardenOperationItem = {
 };
 
 type GardenOperationsScope = {
+    plantingId?: number;
     raisedBedId?: number;
     raisedBedFieldId?: number;
     positionIndex?: number;
@@ -149,6 +151,9 @@ async function getGardenOperationsPage(
             gardenId: input.gardenId.toString(),
         },
         query: {
+            ...(input.plantingId !== undefined
+                ? { plantingId: String(input.plantingId) }
+                : {}),
             cursor: input.cursor.toString(),
             limit: input.pageSize.toString(),
             includeCompleted: input.includeCompleted ? 'true' : 'false',
@@ -179,6 +184,7 @@ export function gardenOperationsQueryKey({
     raisedBedId,
     raisedBedFieldId,
     positionIndex,
+    plantingId,
 }: {
     gardenId: number | undefined;
     includeCompleted: boolean;
@@ -194,6 +200,7 @@ export function gardenOperationsQueryKey({
         raisedBedId ?? null,
         raisedBedFieldId ?? null,
         positionIndex ?? null,
+        ...(plantingId !== undefined ? [plantingId] : []),
     ] as const;
 }
 
@@ -223,6 +230,7 @@ function getOperationVisualRewardDebugOperationsPage({
     includeCompleted,
     pageSize,
     positionIndex,
+    plantingId,
     raisedBedFieldId,
     raisedBedId,
 }: {
@@ -231,7 +239,7 @@ function getOperationVisualRewardDebugOperationsPage({
     includeCompleted: boolean;
     pageSize: number;
 } & GardenOperationsScope): GardenOperationsPage {
-    if (!includeCompleted) {
+    if (!includeCompleted || plantingId != null) {
         return {
             items: [],
             nextCursor: null,
@@ -291,6 +299,7 @@ export function useGardenOperations({
     raisedBedId,
     raisedBedFieldId,
     positionIndex,
+    plantingId,
 }: {
     enabled?: boolean;
     includeCompleted: boolean;
@@ -319,6 +328,7 @@ export function useGardenOperations({
             raisedBedId,
             raisedBedFieldId,
             positionIndex,
+            plantingId,
         }),
         queryFn: async ({ pageParam }) => {
             if (!currentGarden?.id) {
@@ -337,6 +347,7 @@ export function useGardenOperations({
                     raisedBedId,
                     raisedBedFieldId,
                     positionIndex,
+                    plantingId,
                     cursor: pageParam,
                 });
             }
@@ -355,6 +366,7 @@ export function useGardenOperations({
                 raisedBedId,
                 raisedBedFieldId,
                 positionIndex,
+                plantingId,
                 cursor: pageParam,
             });
         },

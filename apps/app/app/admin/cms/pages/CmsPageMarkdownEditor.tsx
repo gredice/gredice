@@ -12,6 +12,7 @@ import {
     CreateLink,
     headingsPlugin,
     InsertImage,
+    InsertTable,
     InsertThematicBreak,
     imagePlugin,
     ListsToggle,
@@ -23,6 +24,7 @@ import {
     markdownShortcutPlugin,
     quotePlugin,
     Separator,
+    tablePlugin,
     thematicBreakPlugin,
     toolbarPlugin,
     UndoRedo,
@@ -92,6 +94,7 @@ export function CmsPageMarkdownEditor({
             headingsPlugin(),
             listsPlugin(),
             quotePlugin(),
+            tablePlugin(),
             thematicBreakPlugin(),
             linkPlugin(),
             linkDialogPlugin(),
@@ -109,6 +112,7 @@ export function CmsPageMarkdownEditor({
                         <Separator />
                         <CreateLink />
                         <InsertImage />
+                        <InsertTable />
                         <InsertThematicBreak />
                         <ListsToggle />
                     </>

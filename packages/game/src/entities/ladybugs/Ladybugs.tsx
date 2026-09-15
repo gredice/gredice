@@ -1,6 +1,6 @@
 import type { BlockData } from '@gredice/client';
 import { useFrame } from '@react-three/fiber';
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Group, Material, Object3D } from 'three';
 import {
     DoubleSide,
@@ -12,6 +12,10 @@ import {
 import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
+import {
+    sceneFrameRates,
+    useSceneTimeInvalidation,
+} from '../../scene/SceneTime';
 import type { Stack } from '../../types/Stack';
 import {
     type AnimalDebugEntry,
@@ -803,12 +807,14 @@ function LadybugActor({
     active,
     assignment,
     blockedCells,
+    onRuntimeActiveChange,
     slot,
     targets,
 }: {
     active: boolean;
     assignment: LadybugSpawnAssignment | null;
     blockedCells: LadybugBlockedCell[];
+    onRuntimeActiveChange: (slot: number, active: boolean) => void;
     slot: number;
     targets: RuntimeLadybugTarget[];
 }) {
@@ -823,6 +829,7 @@ function LadybugActor({
     const lastDebugUpdateRef = useRef(0);
     const lastDebugCommandSequenceRef = useRef(0);
     const lastDisturbanceSequenceRef = useRef(0);
+    const runtimeActiveRef = useRef(false);
     const animalTargetsDebugVisible = useGameState(
         (state) => state.animalTargetsDebugVisible,
     );
@@ -837,6 +844,13 @@ function LadybugActor({
         (state) => state.removeAnimalDebugEntry,
     );
     const actorId = `ladybug-${slot + 1}`;
+    const reportRuntimeActive = (nextActive: boolean) => {
+        if (runtimeActiveRef.current === nextActive) {
+            return;
+        }
+        runtimeActiveRef.current = nextActive;
+        onRuntimeActiveChange(slot, nextActive);
+    };
 
     const model = useMemo(() => {
         const scene = gltf.scene.clone(true);
@@ -936,6 +950,7 @@ function LadybugActor({
         }
 
         if (runtime.phase === 'hidden') {
+            reportRuntimeActive(false);
             return;
         }
 
@@ -1245,6 +1260,7 @@ function LadybugActor({
                 createDebugEntry({ actor: group, id: actorId, now, runtime }),
             );
         }
+        reportRuntimeActive(runtime.phase !== 'hidden');
     });
 
     useEffect(() => {
@@ -1252,6 +1268,10 @@ function LadybugActor({
             assignmentSeedRef.current = null;
         }
     }, [assignment]);
+    useEffect(
+        () => () => onRuntimeActiveChange(slot, false),
+        [onRuntimeActiveChange, slot],
+    );
 
     return (
         <>
@@ -1324,6 +1344,31 @@ export function Ladybugs({
         weatherOverride: weather,
     });
     const active = isLadybugActive(timeOfDay, ladybugWeather);
+    const [runtimeActiveSlots, setRuntimeActiveSlots] = useState(
+        () => new Set<number>(),
+    );
+    const handleRuntimeActiveChange = useCallback(
+        (slot: number, nextActive: boolean) => {
+            setRuntimeActiveSlots((current) => {
+                if (current.has(slot) === nextActive) {
+                    return current;
+                }
+                const next = new Set(current);
+                if (nextActive) {
+                    next.add(slot);
+                } else {
+                    next.delete(slot);
+                }
+                return next;
+            });
+        },
+        [],
+    );
+    useSceneTimeInvalidation(
+        'fauna:ladybugs',
+        runtimeActiveSlots.size > 0 || (active && assignments.length > 0),
+        sceneFrameRates.ambient,
+    );
 
     if (!garden) {
         return null;
@@ -1335,6 +1380,7 @@ export function Ladybugs({
             active={active}
             assignment={assignments[slot] ?? null}
             blockedCells={blockedCells}
+            onRuntimeActiveChange={handleRuntimeActiveChange}
             slot={slot}
             targets={targets}
         />

@@ -394,3 +394,21 @@ export function groupAdvancedSowingGardenPlantingsByFootprint(
                 left.key.localeCompare(right.key),
         );
 }
+
+/** Resolve display facts by persisted identity, including retired plantings in history. */
+export function findAdvancedSowingGardenPlanting(
+    raisedBed: unknown,
+    plantingId: number | undefined,
+) {
+    if (
+        !plantingId ||
+        !isRecord(raisedBed) ||
+        !Array.isArray(raisedBed.plantings)
+    )
+        return null;
+    for (const value of raisedBed.plantings) {
+        const planting = readAdvancedSowingGardenPlantingInput(value);
+        if (planting?.id === plantingId) return planting;
+    }
+    return null;
+}

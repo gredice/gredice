@@ -4,12 +4,20 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from '@playwright/test';
 import sharp from 'sharp';
+import { assertSafeGameProfileOutputDirectory } from './game-profile-output.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const appRoot = resolve(__dirname, '..');
 const defaultBaseUrl = 'http://localhost:3001';
-const defaultOutDir = resolve(appRoot, 'test-results/game-profile');
-const gameProfileComparisonContractVersion = 1;
+const defaultOutDir = resolve(appRoot, '.game-profile-results');
+const gameProfileComparisonContractVersion = 6;
+const scenarioMemoryMeasurementMode = 'post-scenario-forced-gc-v1';
+const crossTierPerformanceMeasurementMode = 'separate-observer-free-window-v1';
+const crossTierRuntimeObservationMode = 'separate-semantic-raf-window-v1';
+const crossTierColdMilestoneMeasurementMode =
+    'document-start-dpr-aware-canvas-and-fixture-v1';
+const crossTierResourceSnapshotMeasurementMode =
+    'population-exposure-post-render-resource-snapshot-v1';
 const fullSourceCommitPattern = /^[0-9a-f]{40}$/i;
 const gameProfileWeatherTransitionEventName =
     'gredice:game-profile-weather-transition';
@@ -20,6 +28,8 @@ const gameProfilePlacementCommandEventName =
 const gameProfileOutlineCommandEventName =
     'gredice:game-profile-outline-command';
 const gameProfileAnimalCommandEventName = 'gredice:game-profile-animal-command';
+const gameProfileCameraRestoreCommandEventName =
+    'gredice:game-profile-camera-restore-command';
 const gameProfileGardenSwitchEventName = 'gredice:game-profile-garden-switch';
 const adaptiveHighQualityProfileControlEventName =
     'gredice:adaptive-high-profile-control';
@@ -100,11 +110,90 @@ const gardenSwitchMaximumDisplayedMs = 1_000;
 const gardenSwitchMaximumVisibleMs = 1_200;
 const gardenSwitchMaximumSettledMs = 1_800;
 const gardenSwitchMaximumFrameStallMs = 500;
+const gardenSwitchLifetimeResourceMeasurementMode =
+    'page-lifetime-webgl-program-texture-and-arrival-snapshot-geometry-v1';
 const lifecycleExpectedGardenId = 99_996;
 const lifecycleExpectedGardenStackCount = 270;
 const lifecycleExpectedGardenBlockCount = 297;
 const lifecycleExpectedGardenRaisedBedCount = 3;
 const lifecycleContextEventTimeoutMs = 20_000;
+const lifecycleRendererStatsCanonicalMode = 'post-render-receipt-v1';
+const lifecycleRendererStatsLegacyMode = 'legacy-pre-render-settled-v1';
+const lifecycleRendererStatsModes = new Set([
+    lifecycleRendererStatsCanonicalMode,
+    lifecycleRendererStatsLegacyMode,
+]);
+const lifecycleLegacyRendererStatsSettleMs = 600;
+const rendererStatsRuntimeMeasurementMode = 'post-render-microtask-v1';
+const lifecycleResumeTransitionWindowMs = 900;
+const lifecycleResumeSteadyWindowMs = 2_000;
+// Resume may drain already-requested R3F frames, but that semantic surplus
+// must collapse within one bounded transition quarter-second.
+const lifecycleResumeSemanticSurplusWindowMs = 250;
+const lifecycleSuspendTransitionWindowMs = 250;
+const lifecycleSuspensionBoundaryMeasurementMode =
+    'microtask-fresh-visibility-callback-acknowledgement-v1';
+const runtimeOwnerMotion = 'runtime-owner-bounded-zoom-rotate';
+const runtimeOwnerMotionWarmupMs = 900;
+const lifecycleLivePersistentLeaseRates = {
+    'fauna:birds': 30,
+    'fauna:cats': 30,
+    'fauna:dogs': 30,
+    'plant-sway': 30,
+};
+// During suspension, each persistent fauna owner may drain one queued host
+// commit through the coalescing broker before the hidden tail becomes idle.
+const lifecycleSuspendMaximumHiddenCoalescedRenderRequestCount = Object.keys(
+    lifecycleLivePersistentLeaseRates,
+).filter((owner) => owner.startsWith('fauna:')).length;
+const runtimeOwnerPersistentLeaseRates = {
+    'fauna:birds': 30,
+    'fauna:cats': 30,
+    'fauna:dogs': 30,
+    'plant-sway': 30,
+    'rain-particles': 30,
+    'weather-animation': 30,
+};
+const runtimeOwnerLeaseRates = {
+    'camera-interaction': 60,
+    ...runtimeOwnerPersistentLeaseRates,
+};
+const runtimeOwnerDeliveryTargetRates = [30, 60];
+const runtimeOwnerMinimumDeliveryExposureMs = 500;
+const runtimeOwnerMinimumDeliveryRatio = 0.85;
+const runtimeOwnerMaximumDeliveryRatio = 1.15;
+const crossTierAmbientTargetFramesPerSecond = 30;
+const crossTierDisplayCadenceCallbackTimestampMode = 'scheduled-phase-v1';
+const crossTierDisplayCadenceControlMode = 'profiler-owned-raf-v1';
+const crossTierDisplayCadenceControlFramesPerSecond = 30;
+const crossTierDisplayCadenceObservedRateClock = 'native-wall-time-v1';
+const crossTierDisplayCadencePhaseAdvanceToleranceMs = 0.001;
+const crossTierMinimumRenderedFramesPerSecond = 28;
+const crossTierMaximumRenderedFramesPerSecond = 32;
+
+function shouldReadRuntimeOwnerLeaseRafSnapshot(runtimeOwnerLeaseExpectations) {
+    return (
+        runtimeOwnerLeaseExpectations !== null &&
+        runtimeOwnerLeaseExpectations !== undefined
+    );
+}
+
+function shouldObserveRuntimeFrameLoopDuringRaf({
+    buildingProfile,
+    crossTierProfile,
+    runtimeOwnersProfile,
+}) {
+    return (
+        crossTierProfile === true ||
+        runtimeOwnersProfile === true ||
+        buildingProfile?.frameRateClass === 'ambient'
+    );
+}
+
+const staticIdleExpectedGardenId = 99_999;
+const staticIdleExpectedGardenStackCount = 12;
+const staticIdleExpectedGardenBlockCount = 15;
+const staticIdleExpectedGardenRaisedBedCount = 1;
 const highTargetExpectedGeneratedPlantFieldCount = 54;
 const highTargetExpectedGeneratedPlantInstanceCount = 537;
 const highTargetOperationVisualExpectedGeneratedPlantFieldCount = 34;
@@ -538,6 +627,12 @@ const crossTierScenarios = crossTierProfileMatrix.flatMap((profile) =>
         isMobile: false,
         budget: 'gameHighTarget',
         crossTierProfile: true,
+        displayCadenceControl: {
+            callbackTimestampMode: crossTierDisplayCadenceCallbackTimestampMode,
+            framesPerSecond: crossTierDisplayCadenceControlFramesPerSecond,
+            mode: crossTierDisplayCadenceControlMode,
+            observedRateClock: crossTierDisplayCadenceObservedRateClock,
+        },
         expectedDprCap: profile.dprCap,
         expectedGroundDecorationDensity: profile.groundDecorationDensity,
         expectedQualityTier: profile.tier,
@@ -558,6 +653,31 @@ const crossTierScenarios = crossTierProfileMatrix.flatMap((profile) =>
             : {}),
     })),
 );
+
+const runtimeOwnerScenarios = crossTierProfileMatrix.map((profile) => ({
+    name: `game-runtime-owners-${profile.slug}-desktop`,
+    path: `/debug/profile/game?mode=rain&profile=high-target&quality=${profile.quality}&controls=1&details=1&hud=0&debugHud=0&cameraProfile=1&outline=1&staticSceneCache=legacy`,
+    viewport: { width: 1280, height: 720 },
+    dpr: 2,
+    isMobile: false,
+    budget: 'gameHighTarget',
+    expectedDprCap: profile.dprCap,
+    expectedGroundDecorationDensity: profile.groundDecorationDensity,
+    expectedQualityTier: profile.tier,
+    expectedShadowMapSize: profile.shadowMapSize,
+    expectedShadows: profile.shadows,
+    motion: runtimeOwnerMotion,
+    motionWarmupMs: runtimeOwnerMotionWarmupMs,
+    repeat: 3,
+    runtimeOwnersProfile: true,
+    screenshotWitness: true,
+    ...(profile.autoQualityDeviceClass
+        ? {
+              autoQualityDeviceClass: profile.autoQualityDeviceClass,
+              navigatorMetrics: profile.navigatorMetrics,
+          }
+        : {}),
+}));
 
 const faunaHeavyScenarios = [
     {
@@ -602,6 +722,36 @@ const lifecycleScenarios = [
         lifecycleProfile: true,
         repeat: 3,
         screenshotWitness: true,
+    },
+];
+
+const lifecycleLiveScenarios = [
+    {
+        name: 'game-high-target-runtime-lifecycle-live-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&lifecycle=1&quality=high&controls=0&details=1&hud=0&debugHud=0&outline=1&staticSceneCache=legacy',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        lifecycleLiveProfile: true,
+        lifecycleProfile: true,
+        repeat: 3,
+        screenshotWitness: true,
+    },
+];
+
+const staticIdleScenarios = [
+    {
+        name: 'game-fixed-time-static-idle-desktop',
+        path: '/debug/profile/game?mode=baseline&profile=default&quality=high&controls=0&details=0&hud=0&debugHud=0&staticSceneCache=legacy&fixedTimeSeconds=43200&staticIdle=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        fixedTimeSeconds: 43_200,
+        repeat: 3,
+        screenshotWitness: true,
+        staticIdleProfile: true,
     },
 ];
 
@@ -1501,6 +1651,9 @@ const scenarioSets = {
     buildings: gardenBuildingScenarios,
     'garden-switch': gardenSwitchScenarios,
     lifecycle: lifecycleScenarios,
+    'lifecycle-live': lifecycleLiveScenarios,
+    'runtime-owners': runtimeOwnerScenarios,
+    'static-idle': staticIdleScenarios,
     'high-target': highTargetScenarios,
     'high-target-foliage-budget': highTargetFoliageBudgetScenarios,
     'high-target-operation-visuals': highTargetOperationVisualScenarios,
@@ -1564,8 +1717,8 @@ const budgets = {
     gardenBuildingHeadlessAmbientDesktop: {
         // Headless browser rAF cadence is host/display dependent and is not
         // the demand renderer's frame interval. Ambient building profiles
-        // separately prove a 30 FPS runtime target with zero active leases,
-        // then compare the blank shell with a matched no-building control.
+        // separately prove a stable 30 FPS runtime owner set, then compare the
+        // blank shell with a matched no-building control.
         avatarCollisionStepP95Ms: 2,
         p95FrameMs: 33.3,
         maxFrameMs: 100,
@@ -1699,6 +1852,11 @@ function parseArgs(argv) {
         ),
         failOnBudget: process.env.GAME_PROFILE_FAIL_ON_BUDGET === '1',
         graphicsBackend: process.env.GAME_PROFILE_GRAPHICS_BACKEND ?? 'auto',
+        lifecycleRendererStatsMode:
+            process.env.GAME_PROFILE_LIFECYCLE_RENDERER_STATS_MODE ??
+            lifecycleRendererStatsCanonicalMode,
+        legacyOutlinePipeline:
+            process.env.GAME_PROFILE_LEGACY_OUTLINE_PIPELINE === '1',
         outDir: process.env.GAME_PROFILE_OUT_DIR
             ? resolve(appRoot, process.env.GAME_PROFILE_OUT_DIR)
             : defaultOutDir,
@@ -1749,6 +1907,13 @@ function parseArgs(argv) {
             case '--help':
                 options.help = true;
                 break;
+            case '--lifecycle-renderer-stats-mode':
+                options.lifecycleRendererStatsMode = next;
+                index += 1;
+                break;
+            case '--legacy-outline-pipeline':
+                options.legacyOutlinePipeline = true;
+                break;
             case '--out-dir':
                 options.outDir = resolve(appRoot, next);
                 index += 1;
@@ -1797,6 +1962,11 @@ function parseArgs(argv) {
             `Graphics backend must be one of: ${chromiumGraphicsBackends.join(', ')}.`,
         );
     }
+    if (!lifecycleRendererStatsModes.has(options.lifecycleRendererStatsMode)) {
+        throw new Error(
+            `Lifecycle renderer stats mode must be one of: ${[...lifecycleRendererStatsModes].join(', ')}.`,
+        );
+    }
     if (
         !Number.isFinite(options.closeupTimeoutMs) ||
         options.closeupTimeoutMs <= 0
@@ -1819,6 +1989,7 @@ function parseArgs(argv) {
         throw new Error('Warmup duration must be zero or a positive number.');
     }
 
+    options.outDir = assertSafeGameProfileOutputDirectory(options.outDir);
     return options;
 }
 
@@ -1978,7 +2149,12 @@ function buildReportProvenance({ harness, runtime, scenarios, server }) {
     } else if (harnessDirty) {
         reasons.push('harness-dirty');
     }
-    if (subjectCommit && harnessCommit && subjectCommit !== harnessCommit) {
+    if (
+        server?.mode !== 'external' &&
+        subjectCommit &&
+        harnessCommit &&
+        subjectCommit !== harnessCommit
+    ) {
         reasons.push('source-commit-mismatch');
     }
 
@@ -2007,6 +2183,40 @@ function buildReportProvenance({ harness, runtime, scenarios, server }) {
     };
 }
 
+function resolveLifecycleRendererStatsCaptureMode({
+    harness,
+    requestedMode,
+    servedBuild,
+    serverMode,
+}) {
+    if (requestedMode === lifecycleRendererStatsCanonicalMode) {
+        return requestedMode;
+    }
+    if (requestedMode !== lifecycleRendererStatsLegacyMode) {
+        throw new Error(
+            `Unsupported lifecycle renderer stats mode: ${String(requestedMode)}.`,
+        );
+    }
+
+    const harnessCommit = normalizeSourceCommit(harness?.commit);
+    const subjectCommit = normalizeSourceCommit(servedBuild?.commit);
+    if (
+        serverMode !== 'external' ||
+        harness?.dirty !== false ||
+        servedBuild?.dirty !== false ||
+        servedBuild?.comparisonContractVersion !==
+            gameProfileComparisonContractVersion ||
+        harnessCommit === null ||
+        subjectCommit === null ||
+        harnessCommit === subjectCommit
+    ) {
+        throw new Error(
+            `${lifecycleRendererStatsLegacyMode} requires an explicit clean external subject that differs from the clean profiler harness and matches comparison contract ${gameProfileComparisonContractVersion}.`,
+        );
+    }
+    return requestedMode;
+}
+
 function shouldFailProfileRun({ failOnBudget, profileSummary, provenance }) {
     return (
         failOnBudget === true &&
@@ -2030,11 +2240,13 @@ function printHelp(options) {
             '  --start-server         Start pnpm start before profiling. Requires a built app.',
             '                         Uses the port from --base-url or GAME_PROFILE_BASE_URL.',
             `  --graphics-backend <backend> auto, default, or angle-metal (macOS only). Current: ${options.graphicsBackend}`,
-            '  --out-dir <path>       Report directory. Default: test-results/game-profile',
+            `  --lifecycle-renderer-stats-mode <mode> ${lifecycleRendererStatsCanonicalMode} or baseline-only ${lifecycleRendererStatsLegacyMode}. Current: ${options.lifecycleRendererStatsMode}`,
+            '  --legacy-outline-pipeline Measure a clean external baseline without mask-cache telemetry.',
+            '  --out-dir <path>       Report directory. Default: .game-profile-results',
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, buildings, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, buildings, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, lifecycle-live, runtime-owners, static-idle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget or report-comparability check fails.',
@@ -2045,6 +2257,8 @@ function printHelp(options) {
             '  GAME_PROFILE_BASE_URL, GAME_PROFILE_BUILD=1,',
             '  GAME_PROFILE_CLOSEUP_REPEAT, GAME_PROFILE_CLOSEUP_TIMEOUT_MS,',
             '  GAME_PROFILE_GRAPHICS_BACKEND,',
+            '  GAME_PROFILE_LIFECYCLE_RENDERER_STATS_MODE,',
+            '  GAME_PROFILE_LEGACY_OUTLINE_PIPELINE=1,',
             '  GAME_PROFILE_START_SERVER=1,',
             '  GAME_PROFILE_WARMUP_MS, GAME_PROFILE_SOAK_MS,',
             '  GAME_PROFILE_SAMPLE_MS, GAME_PROFILE_OUT_DIR,',
@@ -2067,6 +2281,9 @@ function allScenarios() {
         ...faunaHeavyScenarios,
         ...gardenSwitchScenarios,
         ...lifecycleScenarios,
+        ...lifecycleLiveScenarios,
+        ...runtimeOwnerScenarios,
+        ...staticIdleScenarios,
         ...highTargetScenarios,
         ...highTargetFoliageBudgetScenarios,
         ...highTargetOperationVisualScenarios,
@@ -2106,7 +2323,7 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, buildings, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, buildings, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, lifecycle-live, runtime-owners, static-idle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -2249,6 +2466,12 @@ function getScenarioRequest(path) {
                       url.searchParams.get('lifecycle') === '1' ? '1' : '0',
               }
             : {}),
+        ...(url.searchParams.has('staticIdle')
+            ? {
+                  staticIdle:
+                      url.searchParams.get('staticIdle') === '1' ? '1' : '0',
+              }
+            : {}),
         mode: url.searchParams.get('mode') ?? 'baseline',
         operationVisuals: url.searchParams.get('operationVisuals') ?? '0',
         outline: url.searchParams.get('outline') ?? '0',
@@ -2282,19 +2505,32 @@ function installNavigatorMetrics({ deviceMemory, hardwareConcurrency }) {
     });
 }
 
-function installLifecycleMilestoneTracker() {
+function installLifecycleMilestoneTracker({
+    expectedClientHeight,
+    expectedClientWidth,
+    expectedDpr,
+} = {}) {
     if (globalThis.__grediceLifecycleMilestones) {
         return;
     }
 
+    const resolvedExpectedDpr =
+        typeof expectedDpr === 'number' &&
+        Number.isFinite(expectedDpr) &&
+        expectedDpr > 0
+            ? expectedDpr
+            : globalThis.devicePixelRatio;
     const milestones = {
         canvasAttachmentCount: 0,
         canvasAttachedMs: null,
         canvasSizedMs: null,
         canvasSize: null,
         domContentLoadedMs: null,
+        expectedDpr: resolvedExpectedDpr,
         firstSubmittedFrameMs: null,
         installedMs: performance.now(),
+        mutationObserverStopped: false,
+        observationStoppedMs: null,
     };
     globalThis.__grediceLifecycleMilestones = milestones;
     let observedCanvas = null;
@@ -2314,15 +2550,21 @@ function installLifecycleMilestoneTracker() {
             resizeObserver.observe(canvas);
         }
         const expectedWidth = Math.round(
-            canvas.clientWidth * globalThis.devicePixelRatio,
+            canvas.clientWidth * resolvedExpectedDpr,
         );
         const expectedHeight = Math.round(
-            canvas.clientHeight * globalThis.devicePixelRatio,
+            canvas.clientHeight * resolvedExpectedDpr,
         );
+        const clientSizeMatchesExpectedViewport =
+            (typeof expectedClientWidth !== 'number' ||
+                canvas.clientWidth === expectedClientWidth) &&
+            (typeof expectedClientHeight !== 'number' ||
+                canvas.clientHeight === expectedClientHeight);
         if (
             milestones.canvasSizedMs === null &&
             canvas.clientWidth > 0 &&
             canvas.clientHeight > 0 &&
+            clientSizeMatchesExpectedViewport &&
             canvas.width === expectedWidth &&
             canvas.height === expectedHeight
         ) {
@@ -2343,6 +2585,12 @@ function installLifecycleMilestoneTracker() {
         childList: true,
         subtree: true,
     });
+    globalThis.__grediceLifecycleStopMilestoneTracker = () => {
+        mutationObserver.disconnect();
+        resizeObserver?.disconnect();
+        milestones.mutationObserverStopped = true;
+        milestones.observationStoppedMs ??= performance.now();
+    };
     recordCanvas();
     const recordDomContentLoaded = () => {
         const navigation = performance.getEntriesByType('navigation')[0];
@@ -2358,6 +2606,43 @@ function installLifecycleMilestoneTracker() {
     } else {
         recordDomContentLoaded();
     }
+}
+
+function finishCrossTierColdMilestoneTracking({
+    hostCanvasReadyDiagnosticMs,
+    measurementMode = 'document-start-dpr-aware-canvas-and-fixture-v1',
+}) {
+    const milestones = globalThis.__grediceLifecycleMilestones ?? null;
+    const fixtureReadyMs = performance.now();
+    globalThis.__grediceLifecycleStopMilestoneTracker?.();
+    const currentCanvas = document.querySelector(
+        '[data-scene-garden-id] canvas',
+    );
+
+    return {
+        canvasAttachmentCount: milestones?.canvasAttachmentCount ?? null,
+        canvasAttachedMs: milestones?.canvasAttachedMs ?? null,
+        canvasSize: milestones?.canvasSize
+            ? { ...milestones.canvasSize }
+            : null,
+        canvasSizedMs: milestones?.canvasSizedMs ?? null,
+        domContentLoadedMs:
+            performance.getEntriesByType('navigation')[0]
+                ?.domContentLoadedEventEnd ??
+            milestones?.domContentLoadedMs ??
+            null,
+        expectedDpr: milestones?.expectedDpr ?? null,
+        firstCanvasPersistent:
+            globalThis.__grediceLifecycleFirstCanvas === currentCanvas,
+        firstSubmittedFrameMs: milestones?.firstSubmittedFrameMs ?? null,
+        fixtureReadyMs,
+        hostCanvasReadyDiagnosticMs,
+        installedMs: milestones?.installedMs ?? null,
+        measurementMode,
+        mutationObserverStopped: milestones?.mutationObserverStopped === true,
+        observationStoppedMs: milestones?.observationStoppedMs ?? null,
+        trackerInstalled: milestones !== null,
+    };
 }
 
 function installProfileContextTracker() {
@@ -2412,18 +2697,340 @@ function installProfileContextTracker() {
 
 const installGardenSwitchContextTracker = installProfileContextTracker;
 
-function installBrowserMetrics({ externalGpuTimer = true } = {}) {
+function installBrowserMetrics({
+    displayCadenceControl = null,
+    externalGpuTimer = true,
+} = {}) {
+    const nativeRequestAnimationFrame =
+        globalThis.__gameProfileRequestNativeAnimationFrame ??
+        globalThis.requestAnimationFrame.bind(globalThis);
+    const nativeCancelAnimationFrame =
+        globalThis.__gameProfileCancelNativeAnimationFrame ??
+        globalThis.cancelAnimationFrame.bind(globalThis);
+    globalThis.__gameProfileRequestNativeAnimationFrame ??=
+        nativeRequestAnimationFrame;
+    globalThis.__gameProfileCancelNativeAnimationFrame ??=
+        nativeCancelAnimationFrame;
+
+    if (
+        displayCadenceControl !== null &&
+        globalThis.__gameProfileDisplayCadenceControl === undefined
+    ) {
+        const callbackTimestampMode =
+            displayCadenceControl?.callbackTimestampMode;
+        const observedRateClock = displayCadenceControl?.observedRateClock;
+        const requestedFramesPerSecond = displayCadenceControl?.framesPerSecond;
+        const mode = displayCadenceControl?.mode;
+        const validRequest =
+            typeof requestedFramesPerSecond === 'number' &&
+            Number.isFinite(requestedFramesPerSecond) &&
+            requestedFramesPerSecond > 0 &&
+            mode === 'profiler-owned-raf-v1' &&
+            callbackTimestampMode === 'scheduled-phase-v1' &&
+            observedRateClock === 'native-wall-time-v1';
+
+        if (!validRequest) {
+            globalThis.__gameProfileDisplayCadenceControl = {
+                snapshot: () => ({
+                    callbackTimestampMode:
+                        typeof callbackTimestampMode === 'string'
+                            ? callbackTimestampMode
+                            : null,
+                    installed: false,
+                    installationError:
+                        'Invalid profiler display-cadence control request',
+                    mode: typeof mode === 'string' ? mode : null,
+                    observedRateClock:
+                        typeof observedRateClock === 'string'
+                            ? observedRateClock
+                            : null,
+                    requestedFramesPerSecond:
+                        typeof requestedFramesPerSecond === 'number'
+                            ? requestedFramesPerSecond
+                            : null,
+                }),
+            };
+        } else {
+            const intervalMs = 1_000 / requestedFramesPerSecond;
+            const pendingCallbacks = new Map();
+            let cancelRequestCount = 0;
+            let cancelledBeforeDeliveryCount = 0;
+            let callbackDeliveryPhaseAt = null;
+            let deliveredCallbackCount = 0;
+            let deliveredFrameCount = 0;
+            let firstDeliveredAt = null;
+            let firstDeliveredPhaseAt = null;
+            let lastDeliveredAt = null;
+            let lastDeliveredPhaseAt = null;
+            let nativeFrameCancellationCount = 0;
+            let nativeFrameCount = 0;
+            let nextDeliveryAt = null;
+            let phaseOriginAt = null;
+            let nextPhaseIndex = 0;
+            let nextHandle = 0;
+            let requestCount = 0;
+            let scheduledNativeFrame = null;
+            let skippedPhaseCount = 0;
+            let skippedPhaseCountPendingDelivery = 0;
+
+            const floatingPointTolerance = (...values) =>
+                Number.EPSILON *
+                Math.max(1, ...values.map((value) => Math.abs(value))) *
+                16;
+            const advancePhaseToRequestTime = (requestedAt) => {
+                if (
+                    phaseOriginAt === null ||
+                    nextDeliveryAt === null ||
+                    nextDeliveryAt >= requestedAt
+                ) {
+                    return;
+                }
+                const followingPhaseAt = nextDeliveryAt + intervalMs;
+                if (
+                    requestedAt +
+                        floatingPointTolerance(requestedAt, followingPhaseAt) <
+                    followingPhaseAt
+                ) {
+                    return;
+                }
+                const requestedPhasePosition =
+                    (requestedAt - phaseOriginAt) / intervalMs;
+                let firstEligiblePhaseIndex = Math.max(
+                    nextPhaseIndex,
+                    Math.ceil(requestedPhasePosition),
+                );
+                let firstEligiblePhaseAt =
+                    phaseOriginAt + firstEligiblePhaseIndex * intervalMs;
+                if (firstEligiblePhaseAt < requestedAt) {
+                    firstEligiblePhaseIndex += 1;
+                    firstEligiblePhaseAt =
+                        phaseOriginAt + firstEligiblePhaseIndex * intervalMs;
+                }
+                if (firstEligiblePhaseIndex > nextPhaseIndex) {
+                    const previousPhaseAt =
+                        phaseOriginAt +
+                        (firstEligiblePhaseIndex - 1) * intervalMs;
+                    if (previousPhaseAt >= requestedAt) {
+                        firstEligiblePhaseIndex -= 1;
+                        firstEligiblePhaseAt = previousPhaseAt;
+                    }
+                }
+                skippedPhaseCountPendingDelivery +=
+                    firstEligiblePhaseIndex - nextPhaseIndex;
+                nextPhaseIndex = firstEligiblePhaseIndex;
+                nextDeliveryAt = firstEligiblePhaseAt;
+            };
+            const reportCallbackError = (error) => {
+                if (typeof globalThis.reportError === 'function') {
+                    globalThis.reportError(error);
+                    return;
+                }
+                setTimeout(() => {
+                    throw error;
+                }, 0);
+            };
+            const scheduleNativeFrame = () => {
+                if (
+                    scheduledNativeFrame !== null ||
+                    pendingCallbacks.size === 0
+                ) {
+                    return;
+                }
+                scheduledNativeFrame =
+                    nativeRequestAnimationFrame(deliverNativeFrame);
+            };
+            const deliverNativeFrame = (timestamp) => {
+                scheduledNativeFrame = null;
+                nativeFrameCount += 1;
+                if (pendingCallbacks.size === 0) {
+                    return;
+                }
+                let latestRequestedAt = Number.NEGATIVE_INFINITY;
+                for (const pendingCallback of pendingCallbacks.values()) {
+                    latestRequestedAt = Math.max(
+                        latestRequestedAt,
+                        pendingCallback.requestedAt,
+                    );
+                }
+                advancePhaseToRequestTime(latestRequestedAt);
+                if (
+                    nextDeliveryAt !== null &&
+                    timestamp +
+                        floatingPointTolerance(timestamp, nextDeliveryAt) <
+                        nextDeliveryAt
+                ) {
+                    scheduleNativeFrame();
+                    return;
+                }
+
+                let deliveredPhaseAt;
+                if (nextDeliveryAt === null || phaseOriginAt === null) {
+                    phaseOriginAt = timestamp;
+                    deliveredPhaseAt = phaseOriginAt;
+                    nextPhaseIndex = 1;
+                } else {
+                    const phaseLateness =
+                        (timestamp - nextDeliveryAt) / intervalMs;
+                    const latePhaseCount = Math.max(
+                        0,
+                        Math.floor(
+                            phaseLateness +
+                                floatingPointTolerance(phaseLateness),
+                        ),
+                    );
+                    let deliveredPhaseIndex = nextPhaseIndex + latePhaseCount;
+                    let followingPhaseIndex = deliveredPhaseIndex + 1;
+                    let followingPhaseAt =
+                        phaseOriginAt + followingPhaseIndex * intervalMs;
+                    if (
+                        followingPhaseAt <=
+                        timestamp +
+                            floatingPointTolerance(timestamp, followingPhaseAt)
+                    ) {
+                        const additionalPhaseLateness =
+                            (timestamp - followingPhaseAt) / intervalMs;
+                        const additionalDuePhaseCount = Math.max(
+                            1,
+                            Math.floor(
+                                additionalPhaseLateness +
+                                    floatingPointTolerance(
+                                        additionalPhaseLateness,
+                                    ),
+                            ) + 1,
+                        );
+                        deliveredPhaseIndex += additionalDuePhaseCount;
+                        followingPhaseIndex = deliveredPhaseIndex + 1;
+                        followingPhaseAt =
+                            phaseOriginAt + followingPhaseIndex * intervalMs;
+                    }
+                    const scheduledPhaseAt =
+                        phaseOriginAt + deliveredPhaseIndex * intervalMs;
+                    deliveredPhaseAt = Math.min(scheduledPhaseAt, timestamp);
+                    skippedPhaseCountPendingDelivery += Math.max(
+                        0,
+                        deliveredPhaseIndex - nextPhaseIndex,
+                    );
+                    nextPhaseIndex = followingPhaseIndex;
+                    nextDeliveryAt = followingPhaseAt;
+                }
+                nextDeliveryAt ??= phaseOriginAt + nextPhaseIndex * intervalMs;
+                skippedPhaseCount += skippedPhaseCountPendingDelivery;
+                skippedPhaseCountPendingDelivery = 0;
+                const callbackHandles = [...pendingCallbacks.keys()];
+                deliveredFrameCount += 1;
+                firstDeliveredAt ??= timestamp;
+                firstDeliveredPhaseAt ??= deliveredPhaseAt;
+                lastDeliveredAt = timestamp;
+                lastDeliveredPhaseAt = deliveredPhaseAt;
+                callbackDeliveryPhaseAt = deliveredPhaseAt;
+                try {
+                    for (const handle of callbackHandles) {
+                        const pendingCallback = pendingCallbacks.get(handle);
+                        if (pendingCallback === undefined) {
+                            continue;
+                        }
+                        pendingCallbacks.delete(handle);
+                        deliveredCallbackCount += 1;
+                        try {
+                            pendingCallback.callback(deliveredPhaseAt);
+                        } catch (error) {
+                            reportCallbackError(error);
+                        }
+                    }
+                } finally {
+                    callbackDeliveryPhaseAt = null;
+                }
+                scheduleNativeFrame();
+            };
+            const controlledRequestAnimationFrame = (callback) => {
+                if (typeof callback !== 'function') {
+                    throw new TypeError(
+                        'requestAnimationFrame callback must be a function',
+                    );
+                }
+                do {
+                    nextHandle = (nextHandle + 1) >>> 0;
+                } while (nextHandle === 0 || pendingCallbacks.has(nextHandle));
+                requestCount += 1;
+                const requestedAt =
+                    callbackDeliveryPhaseAt ?? performance.now();
+                pendingCallbacks.set(nextHandle, {
+                    callback,
+                    requestedAt,
+                });
+                scheduleNativeFrame();
+                return nextHandle;
+            };
+            const controlledCancelAnimationFrame = (handle) => {
+                cancelRequestCount += 1;
+                const normalizedHandle = Number(handle) >>> 0;
+                if (!pendingCallbacks.delete(normalizedHandle)) {
+                    return;
+                }
+                cancelledBeforeDeliveryCount += 1;
+                if (
+                    pendingCallbacks.size === 0 &&
+                    scheduledNativeFrame !== null
+                ) {
+                    nativeCancelAnimationFrame(scheduledNativeFrame);
+                    scheduledNativeFrame = null;
+                    nativeFrameCancellationCount += 1;
+                }
+            };
+
+            const controller = {
+                snapshot: () => ({
+                    callbackTimestampMode,
+                    cancelRequestCount,
+                    cancelledBeforeDeliveryCount,
+                    deliveredCallbackCount,
+                    deliveredFrameCount,
+                    firstDeliveredAt,
+                    firstDeliveredPhaseAt,
+                    installed: true,
+                    installationError: null,
+                    intervalMs,
+                    lastDeliveredAt,
+                    lastDeliveredPhaseAt,
+                    mode,
+                    nativeFrameCancellationCount,
+                    nativeFrameCount,
+                    nativeFramePending: scheduledNativeFrame !== null,
+                    observedRateClock,
+                    observedFramesPerSecond:
+                        deliveredFrameCount > 1 &&
+                        firstDeliveredAt !== null &&
+                        lastDeliveredAt !== null &&
+                        lastDeliveredAt > firstDeliveredAt
+                            ? ((deliveredFrameCount - 1) * 1_000) /
+                              (lastDeliveredAt - firstDeliveredAt)
+                            : null,
+                    pendingCallbackCount: pendingCallbacks.size,
+                    requestCount,
+                    requestedFramesPerSecond,
+                    skippedPhaseCount,
+                }),
+            };
+            globalThis.__gameProfileDisplayCadenceControl = controller;
+            globalThis.requestAnimationFrame = controlledRequestAnimationFrame;
+            globalThis.cancelAnimationFrame = controlledCancelAnimationFrame;
+        }
+    }
+
     if (globalThis.__gameProfileMetrics) {
         return;
     }
 
     globalThis.__gameProfileMetrics = {
+        actorGroundingShadowSpeciesCountMax: {},
         drawCalls: 0,
         instancedDrawCalls: 0,
         lastRenderedRafTick: -1,
         renderedFrames: 0,
         rendererShaders: 0,
+        rendererShadersPeak: 0,
         rendererTextures: 0,
+        rendererTexturesPeak: 0,
         submittedTriangles: 0,
     };
     globalThis.__gameProfileLongTasks = [];
@@ -2567,7 +3174,7 @@ function installBrowserMetrics({ externalGpuTimer = true } = {}) {
                     break;
                 }
                 await new Promise((resolveFrame) =>
-                    requestAnimationFrame(resolveFrame),
+                    nativeRequestAnimationFrame(resolveFrame),
                 );
             }
             pollGpuQueries();
@@ -2637,12 +3244,32 @@ function installBrowserMetrics({ externalGpuTimer = true } = {}) {
     if (externalGpuTimer) {
         globalThis.__gameProfileGpuTimer = externalGpuTimerController;
     }
+    const recordActorGroundingShadowSpeciesExposure = () => {
+        const counts =
+            globalThis.__grediceGameProfile?.actorGroundingShadowSpeciesCounts;
+        if (!counts || typeof counts !== 'object' || Array.isArray(counts)) {
+            return;
+        }
+        const exposure =
+            globalThis.__gameProfileMetrics.actorGroundingShadowSpeciesCountMax;
+        for (const [species, count] of Object.entries(counts)) {
+            if (
+                typeof count !== 'number' ||
+                !Number.isInteger(count) ||
+                count < 0
+            ) {
+                continue;
+            }
+            exposure[species] = Math.max(exposure[species] ?? 0, count);
+        }
+    };
     const trackRafTick = () => {
         rafTick += 1;
+        recordActorGroundingShadowSpeciesExposure();
         pollGpuQueries();
-        requestAnimationFrame(trackRafTick);
+        nativeRequestAnimationFrame(trackRafTick);
     };
-    requestAnimationFrame(trackRafTick);
+    nativeRequestAnimationFrame(trackRafTick);
 
     const recordLongTasks = (entries) => {
         for (const entry of entries) {
@@ -2734,10 +3361,20 @@ function installBrowserMetrics({ externalGpuTimer = true } = {}) {
     const livePrograms = new Set();
     const liveTextures = new Set();
     const updateRendererShaderCount = () => {
-        globalThis.__gameProfileMetrics.rendererShaders = livePrograms.size;
+        const metrics = globalThis.__gameProfileMetrics;
+        metrics.rendererShaders = livePrograms.size;
+        metrics.rendererShadersPeak = Math.max(
+            metrics.rendererShadersPeak,
+            livePrograms.size,
+        );
     };
     const updateRendererTextureCount = () => {
-        globalThis.__gameProfileMetrics.rendererTextures = liveTextures.size;
+        const metrics = globalThis.__gameProfileMetrics;
+        metrics.rendererTextures = liveTextures.size;
+        metrics.rendererTexturesPeak = Math.max(
+            metrics.rendererTexturesPeak,
+            liveTextures.size,
+        );
     };
     const patchProgramLifecycle = (Context) => {
         const prototype = Context?.prototype;
@@ -2844,7 +3481,134 @@ function installBrowserMetrics({ externalGpuTimer = true } = {}) {
     patchContext(globalThis.WebGL2RenderingContext);
 }
 
+// Installed only for live-lifecycle acceptance. Geometry changes precede native
+// IntersectionObserver delivery; work before that delivery is not hidden work.
+function installLifecycleSuspensionBoundaryTracker({ measurementMode }) {
+    let state = null;
+    let sampleStartedAt = null;
+    const snapshot = () => ({
+        recordedAt: performance.now(),
+        runtimeFrameLoop: structuredClone(
+            globalThis.__grediceGameProfile?.runtimeFrameLoop ?? null,
+        ),
+        renderer: Object.fromEntries(
+            [
+                'drawCalls',
+                'instancedDrawCalls',
+                'renderedFrames',
+                'submittedTriangles',
+            ].map((field) => [
+                field,
+                typeof globalThis.__gameProfileMetrics?.[field] === 'number'
+                    ? Math.round(globalThis.__gameProfileMetrics[field])
+                    : null,
+            ]),
+        ),
+    });
+    const capture = (signal, callback, intersection = null) => {
+        if (state?.signal !== signal || state.afterAcknowledgement !== null) {
+            return callback();
+        }
+        const armedState = state;
+        const beforeSignal = snapshot();
+        try {
+            return callback();
+        } finally {
+            const callbackReturnedAt = performance.now();
+            // The public telemetry getter caches a synchronous read burst.
+            // Its reset, queued by the before-read, precedes this fresh read.
+            // No timer or animation frame can run between delivery and this
+            // acknowledgement; callback-queued microtask work stays in the
+            // signal window and is subject to its exact-zero work checks.
+            queueMicrotask(() => {
+                if (
+                    state !== armedState ||
+                    state.afterAcknowledgement !== null
+                ) {
+                    return;
+                }
+                const afterAcknowledgement = snapshot();
+                if (
+                    beforeSignal.runtimeFrameLoop?.effectiveVisible === true &&
+                    afterAcknowledgement.runtimeFrameLoop?.effectiveVisible ===
+                        false
+                ) {
+                    state.beforeSignal = beforeSignal;
+                    state.afterAcknowledgement = afterAcknowledgement;
+                    state.callbackReturnedAt = callbackReturnedAt;
+                    state.intersection = intersection;
+                }
+            });
+        }
+    };
+    globalThis.__gameProfileLifecycleSuspensionBoundary = {
+        beginSample(startedAt) {
+            state = null;
+            sampleStartedAt = startedAt;
+        },
+        arm(signal) {
+            if (sampleStartedAt === null || state !== null) {
+                throw new Error('Lifecycle suspension sample is not ready.');
+            }
+            state = {
+                afterAcknowledgement: null,
+                beforeSignal: null,
+                callbackReturnedAt: null,
+                intersection: null,
+                measurementMode,
+                requestedAt: performance.now(),
+                sampleStartedAt,
+                signal,
+            };
+        },
+        capture,
+        finishSample(sampleEndedAt) {
+            sampleStartedAt = null;
+            return state ? structuredClone({ ...state, sampleEndedAt }) : null;
+        },
+    };
+    const NativeIntersectionObserver = globalThis.IntersectionObserver;
+    globalThis.IntersectionObserver = new Proxy(NativeIntersectionObserver, {
+        construct(Target, args, newTarget) {
+            const [callback, ...options] = args;
+            if (typeof callback !== 'function') {
+                return Reflect.construct(Target, args, newTarget);
+            }
+            const wrappedCallback = function (entries, observer) {
+                const canvas = document.querySelector(
+                    '[data-scene-garden-id] canvas',
+                );
+                const entry = entries.find(
+                    (entry) =>
+                        entry.target === canvas &&
+                        (!entry.isIntersecting ||
+                            entry.intersectionRect.width <= 0 ||
+                            entry.intersectionRect.height <= 0),
+                );
+                const invoke = () =>
+                    Reflect.apply(callback, this, [entries, observer]);
+                return entry
+                    ? capture('intersection-observer', invoke, {
+                          height: entry.intersectionRect.height,
+                          isIntersecting: entry.isIntersecting,
+                          time: entry.time,
+                          width: entry.intersectionRect.width,
+                      })
+                    : invoke();
+            };
+            return Reflect.construct(
+                Target,
+                [wrappedCallback, ...options],
+                newTarget,
+            );
+        },
+    });
+}
+
 function beginInteractiveProfileSample() {
+    const requestProfileAnimationFrame =
+        globalThis.__gameProfileRequestNativeAnimationFrame ??
+        globalThis.requestAnimationFrame.bind(globalThis);
     const metrics = globalThis.__gameProfileMetrics;
     if (metrics) {
         metrics.drawCalls = 0;
@@ -2857,9 +3621,41 @@ function beginInteractiveProfileSample() {
     globalThis.__gameProfileGpuTimer?.reset();
 
     const startedAt = performance.now();
+    globalThis.__gameProfileLifecycleSuspensionBoundary?.beginSample(startedAt);
+    const runtimeFrameLoopTelemetry =
+        globalThis.__grediceGameProfile?.runtimeFrameLoop ?? null;
+    const readProfileCounter = (field) => {
+        const value = globalThis.__grediceGameProfile?.[field];
+        return typeof value === 'number' ? value : null;
+    };
     const sample = {
+        hoverOutlineCompositePassCountAtStart: readProfileCounter(
+            'hoverOutlineCompositePassCount',
+        ),
+        hoverOutlineHorizontalPassCountAtStart: readProfileCounter(
+            'hoverOutlineHorizontalPassCount',
+        ),
+        hoverOutlineMaskCacheBypassCountAtStart: readProfileCounter(
+            'hoverOutlineMaskCacheBypassCount',
+        ),
+        hoverOutlineMaskCacheHitCountAtStart: readProfileCounter(
+            'hoverOutlineMaskCacheHitCount',
+        ),
+        hoverOutlineMaskCacheMissCountAtStart: readProfileCounter(
+            'hoverOutlineMaskCacheMissCount',
+        ),
+        hoverOutlineMaskPassCountAtStart: readProfileCounter(
+            'hoverOutlineMaskPassCount',
+        ),
         intervals: [],
         lastFrameAt: startedAt,
+        displayCadenceControlAtStart:
+            globalThis.__gameProfileDisplayCadenceControl?.snapshot?.() ?? null,
+        runtimeFrameLoopAtStart:
+            runtimeFrameLoopTelemetry &&
+            typeof runtimeFrameLoopTelemetry === 'object'
+                ? structuredClone(runtimeFrameLoopTelemetry)
+                : null,
         running: true,
         startedAt,
     };
@@ -2870,16 +3666,21 @@ function beginInteractiveProfileSample() {
         }
         sample.intervals.push(timestamp - sample.lastFrameAt);
         sample.lastFrameAt = timestamp;
-        requestAnimationFrame(step);
+        requestProfileAnimationFrame(step);
     };
-    requestAnimationFrame(step);
+    requestProfileAnimationFrame(step);
 }
 
 async function primeGardenSwitchProfileSample() {
     if (!globalThis.__gameProfileInteractiveSample?.running) {
         throw new Error('No active garden-switch profile sample to prime.');
     }
-    await new Promise((resolveFrame) => requestAnimationFrame(resolveFrame));
+    const requestProfileAnimationFrame =
+        globalThis.__gameProfileRequestNativeAnimationFrame ??
+        globalThis.requestAnimationFrame.bind(globalThis);
+    await new Promise((resolveFrame) =>
+        requestProfileAnimationFrame(resolveFrame),
+    );
 }
 
 async function beginGardenSwitchProfileSample(page) {
@@ -2894,6 +3695,13 @@ async function finishInteractiveProfileSample() {
     }
     sample.running = false;
     const sampleEndedAt = performance.now();
+    const runtimeFrameLoopTelemetry =
+        globalThis.__grediceGameProfile?.runtimeFrameLoop ?? null;
+    const runtimeFrameLoopAtEnd =
+        runtimeFrameLoopTelemetry &&
+        typeof runtimeFrameLoopTelemetry === 'object'
+            ? structuredClone(runtimeFrameLoopTelemetry)
+            : null;
 
     const canvas = document.querySelector('canvas');
     const metrics = globalThis.__gameProfileMetrics;
@@ -2918,6 +3726,95 @@ async function finishInteractiveProfileSample() {
     const safeElapsedSeconds = Math.max(Number.EPSILON, elapsedSeconds);
     const safeRafFrames = Math.max(1, rafFrames);
     const safeRenderedFrames = Math.max(1, renderedFrames);
+    const displayCadenceControlAtEnd =
+        globalThis.__gameProfileDisplayCadenceControl?.snapshot?.() ?? null;
+    const displayCadenceControlAtStart =
+        sample.displayCadenceControlAtStart ?? null;
+    const displayCadenceCounterDelta = (field) => {
+        const startValue = displayCadenceControlAtStart?.[field];
+        const endValue = displayCadenceControlAtEnd?.[field];
+        return typeof startValue === 'number' && typeof endValue === 'number'
+            ? endValue - startValue
+            : null;
+    };
+    const matchingDisplayCadenceValue = (field) => {
+        const startValue = displayCadenceControlAtStart?.[field];
+        const endValue = displayCadenceControlAtEnd?.[field];
+        return startValue !== undefined && startValue === endValue
+            ? startValue
+            : null;
+    };
+    const deliveredDisplayFrameCount = displayCadenceCounterDelta(
+        'deliveredFrameCount',
+    );
+    const displayCadenceControl =
+        displayCadenceControlAtStart !== null ||
+        displayCadenceControlAtEnd !== null
+            ? {
+                  atEnd: displayCadenceControlAtEnd,
+                  atStart: displayCadenceControlAtStart,
+                  callbackTimestampMode: matchingDisplayCadenceValue(
+                      'callbackTimestampMode',
+                  ),
+                  cancelRequestCountDelta:
+                      displayCadenceCounterDelta('cancelRequestCount'),
+                  cancelledBeforeDeliveryCountDelta: displayCadenceCounterDelta(
+                      'cancelledBeforeDeliveryCount',
+                  ),
+                  deliveredCallbackCountDelta: displayCadenceCounterDelta(
+                      'deliveredCallbackCount',
+                  ),
+                  deliveredFrameCountDelta: deliveredDisplayFrameCount,
+                  elapsedMs: elapsedSeconds * 1_000,
+                  installedAtEnd:
+                      displayCadenceControlAtEnd?.installed === true,
+                  installedAtStart:
+                      displayCadenceControlAtStart?.installed === true,
+                  intervalMs: matchingDisplayCadenceValue('intervalMs'),
+                  mode:
+                      displayCadenceControlAtEnd?.mode ??
+                      displayCadenceControlAtStart?.mode ??
+                      null,
+                  nativeFrameCountDelta:
+                      displayCadenceCounterDelta('nativeFrameCount'),
+                  observedRateClock:
+                      matchingDisplayCadenceValue('observedRateClock'),
+                  observedFramesPerSecond:
+                      typeof deliveredDisplayFrameCount === 'number'
+                          ? deliveredDisplayFrameCount / safeElapsedSeconds
+                          : null,
+                  requestedFramesPerSecond:
+                      displayCadenceControlAtEnd?.requestedFramesPerSecond ??
+                      displayCadenceControlAtStart?.requestedFramesPerSecond ??
+                      null,
+                  skippedPhaseCountDelta:
+                      displayCadenceCounterDelta('skippedPhaseCount'),
+              }
+            : null;
+    const readProfileCounter = (field) => {
+        const value = globalThis.__grediceGameProfile?.[field];
+        return typeof value === 'number' ? value : null;
+    };
+    const counterDelta = (startValue, endValue) =>
+        startValue === null || endValue === null ? null : endValue - startValue;
+    const hoverOutlineCompositePassCountAtEnd = readProfileCounter(
+        'hoverOutlineCompositePassCount',
+    );
+    const hoverOutlineHorizontalPassCountAtEnd = readProfileCounter(
+        'hoverOutlineHorizontalPassCount',
+    );
+    const hoverOutlineMaskCacheBypassCountAtEnd = readProfileCounter(
+        'hoverOutlineMaskCacheBypassCount',
+    );
+    const hoverOutlineMaskCacheHitCountAtEnd = readProfileCounter(
+        'hoverOutlineMaskCacheHitCount',
+    );
+    const hoverOutlineMaskCacheMissCountAtEnd = readProfileCounter(
+        'hoverOutlineMaskCacheMissCount',
+    );
+    const hoverOutlineMaskPassCountAtEnd = readProfileCounter(
+        'hoverOutlineMaskPassCount',
+    );
     const nonGpuSample = {
         averageFrameMs,
         canvas: canvas
@@ -2934,9 +3831,34 @@ async function finishInteractiveProfileSample() {
         drawCallsPerRenderedFrame:
             renderedFrames > 0 ? drawCalls / safeRenderedFrames : 0,
         drawCallsPerSecond: drawCalls / safeElapsedSeconds,
+        displayCadenceControl,
         elapsedMs: elapsedSeconds * 1000,
         fps: rafFrames / safeElapsedSeconds,
         frames: rafFrames,
+        hoverOutlineCompositePassCountDelta: counterDelta(
+            sample.hoverOutlineCompositePassCountAtStart,
+            hoverOutlineCompositePassCountAtEnd,
+        ),
+        hoverOutlineHorizontalPassCountDelta: counterDelta(
+            sample.hoverOutlineHorizontalPassCountAtStart,
+            hoverOutlineHorizontalPassCountAtEnd,
+        ),
+        hoverOutlineMaskCacheBypassCountDelta: counterDelta(
+            sample.hoverOutlineMaskCacheBypassCountAtStart,
+            hoverOutlineMaskCacheBypassCountAtEnd,
+        ),
+        hoverOutlineMaskCacheHitCountDelta: counterDelta(
+            sample.hoverOutlineMaskCacheHitCountAtStart,
+            hoverOutlineMaskCacheHitCountAtEnd,
+        ),
+        hoverOutlineMaskCacheMissCountDelta: counterDelta(
+            sample.hoverOutlineMaskCacheMissCountAtStart,
+            hoverOutlineMaskCacheMissCountAtEnd,
+        ),
+        hoverOutlineMaskPassCountDelta: counterDelta(
+            sample.hoverOutlineMaskPassCountAtStart,
+            hoverOutlineMaskPassCountAtEnd,
+        ),
         instancedDrawCalls,
         jsHeapMb: performance.memory
             ? performance.memory.usedJSHeapSize / 1024 / 1024
@@ -2961,6 +3883,16 @@ async function finishInteractiveProfileSample() {
 
     return {
         ...nonGpuSample,
+        ...(globalThis.__gameProfileLifecycleSuspensionBoundary
+            ? {
+                  lifecycleSuspensionBoundary:
+                      globalThis.__gameProfileLifecycleSuspensionBoundary.finishSample(
+                          sampleEndedAt,
+                      ),
+              }
+            : {}),
+        runtimeFrameLoopAtEnd,
+        runtimeFrameLoopAtStart: sample.runtimeFrameLoopAtStart ?? null,
         sampleWindow: {
             endedAt: sampleEndedAt,
             startedAt: sample.startedAt,
@@ -2997,6 +3929,9 @@ async function drainProfileSample(sampleWindow) {
 function mergeProfileSampleDrain(sampleAtEndpoint, drainedSample) {
     const { sampleWindow: _sampleWindow, ...sample } = sampleAtEndpoint;
     const longTasks = drainedSample.longTasks ?? [];
+    const hasRuntimeFrameLoopSnapshots =
+        'runtimeFrameLoopAtStart' in sample ||
+        'runtimeFrameLoopAtEnd' in sample;
 
     return {
         ...sample,
@@ -3004,6 +3939,15 @@ function mergeProfileSampleDrain(sampleAtEndpoint, drainedSample) {
         longTaskCount: longTasks.length,
         longTaskMaxMs: Math.max(0, ...longTasks),
         longTaskTotalMs: longTasks.reduce((sum, value) => sum + value, 0),
+        ...(hasRuntimeFrameLoopSnapshots
+            ? {
+                  runtimeFrameLoopCounterDeltas: runtimeFrameLoopCounterDeltas(
+                      sample.runtimeFrameLoopAtStart,
+                      sample.runtimeFrameLoopAtEnd,
+                      genericRuntimeFrameLoopCounterFields,
+                  ),
+              }
+            : {}),
     };
 }
 
@@ -3021,6 +3965,33 @@ async function finalizeProfileSampleAtEndpoint({
     return {
         endpointMetrics,
         sample: mergeProfileSampleDrain(sampleAtEndpoint, drainedSample),
+    };
+}
+
+async function collectScenarioMemoryEvidence(cdp) {
+    const beforeCollection = metricsByName(
+        await cdp.send('Performance.getMetrics'),
+    );
+    if (!Number.isFinite(beforeCollection.JSHeapUsedSize)) {
+        throw new Error(
+            'CDP did not report JSHeapUsedSize before scenario-end garbage collection.',
+        );
+    }
+    await cdp.send('HeapProfiler.collectGarbage');
+    const retained = metricsByName(await cdp.send('Performance.getMetrics'));
+    if (!Number.isFinite(retained.JSHeapUsedSize)) {
+        throw new Error(
+            'CDP did not report JSHeapUsedSize after scenario-end garbage collection.',
+        );
+    }
+
+    return {
+        jsHeapBeforeCollectionMb: round(
+            beforeCollection.JSHeapUsedSize / 1024 / 1024,
+            1,
+        ),
+        measurementMode: scenarioMemoryMeasurementMode,
+        retainedJsHeapMb: round(retained.JSHeapUsedSize / 1024 / 1024, 1),
     };
 }
 
@@ -3474,6 +4445,7 @@ async function runScenarioMotion(page, scenario, sampleMs) {
         scenario.motion !== 'pan-zoom-rotate' &&
         scenario.motion !== 'pan-zoom-rotate-then-idle' &&
         scenario.motion !== 'bounded-zoom-rotate' &&
+        scenario.motion !== runtimeOwnerMotion &&
         scenario.motion !== 'foliage-detail-zoom' &&
         scenario.interaction !== 'hover-scan'
     ) {
@@ -3542,6 +4514,119 @@ async function runScenarioMotion(page, scenario, sampleMs) {
         return null;
     }
 
+    if (scenario.motion === runtimeOwnerMotion) {
+        const startingCameraSnapshot = await page.evaluate(
+            () => globalThis.__grediceGameProfile?.gameCameraSnapshot ?? null,
+        );
+        if (
+            gameCameraSnapshotMaximumDelta(
+                startingCameraSnapshot,
+                startingCameraSnapshot,
+            ) !== 0 ||
+            !Number.isFinite(startingCameraSnapshot?.version)
+        ) {
+            throw new Error(
+                'Bounded profile motion requires a finite starting camera snapshot.',
+            );
+        }
+
+        let preRestoreSnapshot = startingCameraSnapshot;
+        try {
+            await page.mouse.move(centerX, centerY);
+            try {
+                await page.keyboard.press('KeyQ');
+                await wait(100);
+                await page.keyboard.press('KeyW');
+                await wait(100);
+
+                const cycleBudgetMs = 260;
+                const endpointSettleMs = 300;
+                let cycleIndex = 0;
+                while (
+                    Date.now() - startedAt + cycleBudgetMs <=
+                    sampleMs - endpointSettleMs
+                ) {
+                    const cycle = resolveBoundedCameraMotionCycle(cycleIndex);
+                    for (const panKey of cycle.panKeys) {
+                        await page.keyboard.down(panKey);
+                        await wait(80);
+                        await page.keyboard.up(panKey);
+                    }
+                    for (const deltaY of cycle.wheelDeltas) {
+                        await page.mouse.wheel(0, deltaY);
+                    }
+                    cycleIndex += 1;
+                    await wait(40);
+                }
+            } finally {
+                await page.keyboard.up('ArrowLeft');
+                await page.keyboard.up('ArrowRight');
+            }
+
+            preRestoreSnapshot = await page.evaluate(
+                () =>
+                    globalThis.__grediceGameProfile?.gameCameraSnapshot ?? null,
+            );
+        } finally {
+            await page.evaluate(
+                ({ eventName, snapshot }) => {
+                    globalThis.dispatchEvent(
+                        new CustomEvent(eventName, {
+                            detail: {
+                                position: snapshot.position,
+                                target: snapshot.target,
+                                zoom: snapshot.zoom,
+                            },
+                        }),
+                    );
+                },
+                {
+                    eventName: gameProfileCameraRestoreCommandEventName,
+                    snapshot: startingCameraSnapshot,
+                },
+            );
+            await page.waitForFunction(
+                ({ minimumVersion, snapshot }) => {
+                    const current =
+                        globalThis.__grediceGameProfile?.gameCameraSnapshot;
+                    if (
+                        !current ||
+                        !Array.isArray(current.position) ||
+                        !Array.isArray(current.target) ||
+                        typeof current.zoom !== 'number' ||
+                        typeof current.version !== 'number' ||
+                        current.version <= minimumVersion
+                    ) {
+                        return false;
+                    }
+                    return (
+                        Math.max(
+                            Math.abs(current.zoom - snapshot.zoom),
+                            ...current.position.map((component, index) =>
+                                Math.abs(component - snapshot.position[index]),
+                            ),
+                            ...current.target.map((component, index) =>
+                                Math.abs(component - snapshot.target[index]),
+                            ),
+                        ) <= 0.01
+                    );
+                },
+                {
+                    minimumVersion: Number.isFinite(preRestoreSnapshot?.version)
+                        ? preRestoreSnapshot.version
+                        : startingCameraSnapshot.version,
+                    snapshot: startingCameraSnapshot,
+                },
+                { timeout: 5_000 },
+            );
+        }
+        const remainingMs = sampleMs - (Date.now() - startedAt);
+        if (remainingMs > 0) {
+            await wait(remainingMs);
+        }
+        return null;
+    }
+
     let direction = 1;
     const motionMs =
         scenario.motion === 'pan-zoom-rotate-then-idle'
@@ -3564,6 +4649,46 @@ async function runScenarioMotion(page, scenario, sampleMs) {
         await wait(remainingMs);
     }
     return null;
+}
+
+function resolveBoundedCameraMotionCycle(cycleIndex) {
+    const direction = cycleIndex % 2 === 0 ? 1 : -1;
+    return {
+        panKeys:
+            direction > 0
+                ? ['ArrowLeft', 'ArrowRight']
+                : ['ArrowRight', 'ArrowLeft'],
+        wheelDeltas: [-20 * direction, 20 * direction],
+    };
+}
+
+function gameCameraSnapshotMaximumDelta(start, end) {
+    const validVector = (value) =>
+        Array.isArray(value) &&
+        value.length === 3 &&
+        value.every((component) => Number.isFinite(component));
+    if (
+        !start ||
+        !end ||
+        !validVector(start.position) ||
+        !validVector(start.target) ||
+        !validVector(end.position) ||
+        !validVector(end.target) ||
+        !Number.isFinite(start.zoom) ||
+        !Number.isFinite(end.zoom)
+    ) {
+        return null;
+    }
+
+    return Math.max(
+        Math.abs(end.zoom - start.zoom),
+        ...end.position.map((component, index) =>
+            Math.abs(component - start.position[index]),
+        ),
+        ...end.target.map((component, index) =>
+            Math.abs(component - start.target[index]),
+        ),
+    );
 }
 
 async function isReachable(baseUrl) {
@@ -3697,6 +4822,89 @@ function diffCdpMetrics(before, after) {
             (after.TaskDuration ?? 0) - (before.TaskDuration ?? 0),
             4,
         ),
+    };
+}
+
+function runtimeFrameLoopLeaseTopology(snapshot) {
+    if (
+        !snapshot ||
+        !Number.isInteger(snapshot.activeLeaseCount) ||
+        snapshot.activeLeaseCount <= 0 ||
+        !Number.isInteger(snapshot.activeRenderLeaseCount) ||
+        snapshot.activeRenderLeaseCount !== snapshot.activeLeaseCount ||
+        !Number.isFinite(snapshot.targetFramesPerSecond) ||
+        snapshot.targetFramesPerSecond <= 0 ||
+        !Array.isArray(snapshot.renderLeaseOwners) ||
+        snapshot.renderLeaseOwners.some((owner) => typeof owner !== 'string') ||
+        !Array.isArray(snapshot.renderLeaseSummaries) ||
+        snapshot.renderLeaseSummaries.some(
+            (summary) =>
+                !summary ||
+                typeof summary.owner !== 'string' ||
+                !Number.isFinite(summary.framesPerSecond) ||
+                summary.framesPerSecond <= 0 ||
+                !Number.isInteger(summary.leaseCount) ||
+                summary.leaseCount <= 0,
+        )
+    ) {
+        return null;
+    }
+
+    const summaryLeaseCount = snapshot.renderLeaseSummaries.reduce(
+        (total, summary) => total + summary.leaseCount,
+        0,
+    );
+    const summaryOwners = [
+        ...new Set(
+            snapshot.renderLeaseSummaries.map((summary) => summary.owner),
+        ),
+    ].sort();
+    if (
+        summaryLeaseCount !== snapshot.activeRenderLeaseCount ||
+        JSON.stringify(summaryOwners) !==
+            JSON.stringify(snapshot.renderLeaseOwners)
+    ) {
+        return null;
+    }
+
+    return {
+        activeLeaseCount: snapshot.activeLeaseCount,
+        activeRenderLeaseCount: snapshot.activeRenderLeaseCount,
+        renderLeaseOwners: [...snapshot.renderLeaseOwners],
+        renderLeaseSummaries: snapshot.renderLeaseSummaries.map((summary) => ({
+            framesPerSecond: summary.framesPerSecond,
+            leaseCount: summary.leaseCount,
+            owner: summary.owner,
+        })),
+        targetFramesPerSecond: snapshot.targetFramesPerSecond,
+    };
+}
+
+async function measureObserverFreeScenarioPerformance({
+    cdp,
+    page,
+    sampleMs,
+    scenario,
+}) {
+    const before = metricsByName(await cdp.send('Performance.getMetrics'));
+    await page.evaluate(beginInteractiveProfileSample);
+    await Promise.all([
+        page.waitForTimeout(sampleMs),
+        runScenarioMotion(page, scenario, sampleMs),
+    ]);
+    const sampleAtEndpoint = await page.evaluate(
+        finishInteractiveProfileSample,
+    );
+    const completion = await finalizeProfileSampleAtEndpoint({
+        cdp,
+        page,
+        sampleAtEndpoint,
+    });
+    const after = metricsByName(completion.endpointMetrics);
+
+    return {
+        cdp: diffCdpMetrics(before, after),
+        sample: normalizeRenderWork(completion.sample),
     };
 }
 
@@ -4360,6 +5568,35 @@ async function readGardenSwitchArrival(
     );
 }
 
+function buildGardenSwitchLifetimeResources(
+    arrivals,
+    instrumentedLifetimeResources,
+) {
+    const finiteMaximum = (values) => {
+        const finite = values.filter(
+            (value) => typeof value === 'number' && Number.isFinite(value),
+        );
+        return finite.length > 0 ? Math.max(...finite) : null;
+    };
+    const instrumentedValue = (field) => {
+        const value = instrumentedLifetimeResources?.[field];
+        return typeof value === 'number' && Number.isFinite(value)
+            ? value
+            : null;
+    };
+
+    return {
+        measurementMode: gardenSwitchLifetimeResourceMeasurementMode,
+        rendererGeometries: finiteMaximum(
+            arrivals.map(
+                (arrival) => arrival.resources?.rendererGeometries ?? null,
+            ),
+        ),
+        rendererShaders: instrumentedValue('rendererShadersPeak'),
+        rendererTextures: instrumentedValue('rendererTexturesPeak'),
+    };
+}
+
 async function finishGardenSwitchSample({ cdp, page }) {
     const sampleAtEndpoint = await page.evaluate(
         finishInteractiveProfileSample,
@@ -4382,6 +5619,7 @@ async function measureGardenSwitchScenario(
         deviceScaleFactor: scenario.dpr,
         hasTouch: scenario.isMobile,
         isMobile: scenario.isMobile,
+        legacyOutlinePipeline: options.legacyOutlinePipeline,
         viewport: scenario.viewport,
     });
     const page = await context.newPage();
@@ -4497,6 +5735,7 @@ async function measureGardenSwitchScenario(
             operationVisuals: request.operationVisuals,
             outline: request.outline,
             quality: request.quality,
+            sampleMs: options.sampleMs,
             staticSceneCache: request.staticSceneCache,
             viewport: scenario.viewport,
         };
@@ -4514,7 +5753,7 @@ async function measureGardenSwitchScenario(
                 page,
                 profile,
             );
-            await page.waitForTimeout(550);
+            await page.waitForTimeout(index === 0 ? options.sampleMs : 550);
             const sample = await finishGardenSwitchSample({ cdp, page });
             const arrival = await readGardenSwitchArrival(
                 page,
@@ -4543,46 +5782,49 @@ async function measureGardenSwitchScenario(
                 timing,
             });
         }
+        const instrumentedLifetimeResources = await page.evaluate(() => ({
+            rendererShadersPeak:
+                globalThis.__gameProfileMetrics?.rendererShadersPeak ?? null,
+            rendererTexturesPeak:
+                globalThis.__gameProfileMetrics?.rendererTexturesPeak ?? null,
+        }));
+        const lifetimeResources = buildGardenSwitchLifetimeResources(
+            arrivals,
+            instrumentedLifetimeResources,
+        );
+        const memory = await collectScenarioMemoryEvidence(cdp);
 
         const acceptance = evaluateGardenSwitchAcceptance({
             apiErrors,
             apiRequests,
             arrivals,
             consoleMessages,
+            lifetimeResources,
             pageErrors,
             requested,
         });
         const finalArrival = arrivals.at(-1);
-        const transitionChecks = acceptance.checks.filter(
-            (check) =>
-                check.name.includes('FrameStall') ||
-                check.name.includes('WithinMs') ||
-                check.name.includes('AfterFadeOutMs') ||
-                check.name.includes('SettleDurationMs'),
-        );
-        const budget = {
-            checks: acceptance.checks,
-            pass: acceptance.pass,
-        };
+        const { budget, performanceBudget } = buildGardenSwitchBudgets({
+            acceptance,
+            memory,
+        });
         return {
             acceptance,
             apiErrors: apiErrors.slice(0, 8),
             apiRequests: apiRequests.slice(0, 8),
             budget,
-            budgetName: 'gardenSwitch',
+            budgetName: 'gameHighTarget',
             canvasReadyMs,
             consoleMessages: consoleMessages.slice(0, 8),
             cdp: null,
             domContentLoadedMs,
             environment,
-            gardenSwitch: { arrivals },
+            gardenSwitch: { arrivals, lifetimeResources },
+            memory,
             name: scenario.name,
             pageErrors: pageErrors.slice(0, 8),
             path: scenario.path,
-            performanceBudget: {
-                checks: transitionChecks,
-                pass: transitionChecks.every((check) => check.pass),
-            },
+            performanceBudget,
             requested,
             runtime: {
                 ...finalArrival?.fixture,
@@ -4602,6 +5844,7 @@ async function measureGardenSwitchScenario(
 }
 
 const runtimeFrameLoopBooleanFields = [
+    'awaitingFrameReceipt',
     'canvasVisible',
     'documentVisible',
     'effectiveVisible',
@@ -4625,13 +5868,69 @@ const runtimeFrameLoopCounterFields = [
     'suspendCount',
     'resumeCount',
 ];
+const allowedCoalescedRenderRequestReasons = new Set(['r3f-root-update']);
+const hiddenDeferredCoalescedRenderRequestCounterField =
+    'hiddenDeferredCoalescedRenderRequestCount';
+const hiddenCoalescedRenderRequestCounterField =
+    'hiddenCoalescedRenderRequestCount';
+const legacySafeZeroRuntimeFrameLoopCounterFields = new Set([
+    hiddenDeferredCoalescedRenderRequestCounterField,
+    hiddenCoalescedRenderRequestCounterField,
+]);
+const fullRuntimeFrameLoopCounterFields = [
+    'scheduledCallbackCount',
+    'wakeupCount',
+    'productiveWakeupCount',
+    'retainedTimeoutReconciliationWakeupCount',
+    'pendingFrameReceiptReconciliationWakeupCount',
+    'unexpectedNoWorkWakeupCount',
+    'postCalibrationFrameWakeupCount',
+    'invalidationCount',
+    'ownedInvalidationCount',
+    'cancelledCallbackCount',
+    'suspendCount',
+    'resumeCount',
+    'deadlineCount',
+    'deferredWorkCount',
+    'fixedStepCount',
+    'leaseAcquiredCount',
+    'leaseReleasedCount',
+    'displayFrameCalibrationCount',
+    'fixedStepFailureCount',
+    'invalidationFailureCount',
+    'r3fFrameCallbackCount',
+    hiddenDeferredCoalescedRenderRequestCounterField,
+    hiddenCoalescedRenderRequestCounterField,
+    'hiddenDeferredRenderRequestCount',
+    'missedFrameReceiptCount',
+    'nonessentialHiddenWorkCount',
+];
+const genericRuntimeFrameLoopCounterFields = [
+    ...runtimeFrameLoopCounterFields,
+    'productiveWakeupCount',
+    'retainedTimeoutReconciliationWakeupCount',
+    'pendingFrameReceiptReconciliationWakeupCount',
+    'unexpectedNoWorkWakeupCount',
+    'postCalibrationFrameWakeupCount',
+    'displayFrameCalibrationCount',
+    'fixedStepFailureCount',
+    'r3fFrameCallbackCount',
+    hiddenDeferredCoalescedRenderRequestCounterField,
+    hiddenCoalescedRenderRequestCounterField,
+    'hiddenDeferredRenderRequestCount',
+    'invalidationFailureCount',
+    'missedFrameReceiptCount',
+    'nonessentialHiddenWorkCount',
+];
+const staticIdleRuntimeFrameLoopCounterFields =
+    fullRuntimeFrameLoopCounterFields;
 
 async function readRuntimeFrameLoopSnapshot(page) {
     return page.evaluate(() => {
         const telemetry =
             globalThis.__grediceGameProfile?.runtimeFrameLoop ?? null;
         return telemetry && typeof telemetry === 'object'
-            ? { ...telemetry }
+            ? structuredClone(telemetry)
             : null;
     });
 }
@@ -4652,20 +5951,59 @@ async function waitForRuntimeFrameLoopState(page, expected) {
     );
 }
 
-function runtimeFrameLoopCounterDeltas(before, after) {
+function runtimeFrameLoopCounterDeltas(
+    before,
+    after,
+    counterFields = runtimeFrameLoopCounterFields,
+) {
+    const readCounter = (snapshot, field) => {
+        const value = snapshot?.[field];
+        if (typeof value === 'number') {
+            return value;
+        }
+        return legacySafeZeroRuntimeFrameLoopCounterFields.has(field) &&
+            snapshot !== null &&
+            typeof snapshot === 'object' &&
+            !Object.hasOwn(snapshot, field)
+            ? 0
+            : null;
+    };
     return Object.fromEntries(
-        runtimeFrameLoopCounterFields.map((field) => [
-            field,
-            typeof before?.[field] === 'number' &&
-            typeof after?.[field] === 'number'
-                ? after[field] - before[field]
-                : null,
-        ]),
+        counterFields.map((field) => {
+            const beforeValue = readCounter(before, field);
+            const afterValue = readCounter(after, field);
+            return [
+                field,
+                beforeValue !== null && afterValue !== null
+                    ? afterValue - beforeValue
+                    : null,
+            ];
+        }),
+    );
+}
+
+function coalescedRenderRequestReasonsAreBounded(
+    snapshot,
+    { requireEmpty = false } = {},
+) {
+    const reasons = snapshot?.coalescedRenderRequestReasons;
+    return Boolean(
+        Array.isArray(reasons) &&
+            reasons.length <= (requireEmpty ? 0 : 1) &&
+            reasons.every((reason) =>
+                allowedCoalescedRenderRequestReasons.has(reason),
+            ),
+    );
+}
+
+function lifecycleOwnedSchedulingZeroObserved(deltas) {
+    return runtimeFrameLoopCounterFields.every(
+        (field) => deltas?.[field] === 0,
     );
 }
 
 function lifecycleRuntimeSchedulerZeroObserved(deltas) {
-    return runtimeFrameLoopCounterFields.every(
+    return fullRuntimeFrameLoopCounterFields.every(
         (field) => deltas?.[field] === 0,
     );
 }
@@ -4679,10 +6017,422 @@ function lifecycleZeroWorkObserved(residual, deltas) {
     );
 }
 
-async function measureLifecycleWindow({ cdp, durationMs, page }) {
+function lifecycleCompatibilityZeroWorkObserved(residual, deltas) {
+    return (
+        lifecycleOwnedSchedulingZeroObserved(deltas) &&
+        genericRuntimeFrameLoopCounterFields.every(
+            (field) =>
+                residual?.sample?.runtimeFrameLoopCounterDeltas?.[field] === 0,
+        ) &&
+        residual?.sample?.renderedFrames === 0 &&
+        residual.sample.drawCalls === 0 &&
+        residual.sample.submittedTriangles === 0
+    );
+}
+
+function normalizeRenderLeaseSummaryRates(summaries, expectedRates = null) {
+    if (!Array.isArray(summaries)) {
+        return {};
+    }
+
+    const expectedOwners = expectedRates
+        ? new Set(Object.keys(expectedRates))
+        : null;
+
+    return Object.fromEntries(
+        summaries
+            .filter(
+                (summary) =>
+                    summary &&
+                    typeof summary.owner === 'string' &&
+                    typeof summary.framesPerSecond === 'number' &&
+                    Number.isFinite(summary.framesPerSecond) &&
+                    summary.framesPerSecond >= 0 &&
+                    typeof summary.leaseCount === 'number' &&
+                    Number.isFinite(summary.leaseCount) &&
+                    summary.leaseCount > 0 &&
+                    (expectedOwners === null ||
+                        expectedOwners.has(summary.owner)),
+            )
+            .sort((left, right) => left.owner.localeCompare(right.owner))
+            .map((summary) => [summary.owner, summary.framesPerSecond]),
+    );
+}
+
+function runtimeFrameLoopNumberDelta(before, after, field) {
+    return typeof before?.[field] === 'number' &&
+        Number.isFinite(before[field]) &&
+        typeof after?.[field] === 'number' &&
+        Number.isFinite(after[field])
+        ? after[field] - before[field]
+        : null;
+}
+
+function buildLifecycleResumeWindowEvidence(window) {
+    const sample = window?.sample ?? null;
+    const start = sample?.runtimeFrameLoopAtStart ?? null;
+    const end = sample?.runtimeFrameLoopAtEnd ?? null;
+    const counterDeltas = runtimeFrameLoopCounterDeltas(
+        start,
+        end,
+        fullRuntimeFrameLoopCounterFields,
+    );
+    const targetFramesPerSecond = Math.max(
+        typeof start?.targetFramesPerSecond === 'number'
+            ? start.targetFramesPerSecond
+            : 0,
+        typeof end?.targetFramesPerSecond === 'number'
+            ? end.targetFramesPerSecond
+            : 0,
+    );
+    const elapsedSeconds = Math.max(0, sample?.elapsedMs ?? 0) / 1_000;
+
+    return {
+        ...window,
+        counterDeltas,
+        maximumExpectedOwnedInvalidations:
+            Math.ceil(targetFramesPerSecond * elapsedSeconds) + 2,
+        maximumExpectedR3fFrameCallbacks:
+            Math.ceil(targetFramesPerSecond * elapsedSeconds) + 2,
+        maximumExpectedRenderedFrames:
+            Math.ceil(targetFramesPerSecond * elapsedSeconds) + 2,
+        sceneTimeDeltaSeconds: runtimeFrameLoopNumberDelta(
+            start,
+            end,
+            'sceneTimeSeconds',
+        ),
+        targetFramesPerSecond,
+    };
+}
+
+function buildLifecycleResumeTransitionEvidence(window) {
+    const evidence = buildLifecycleResumeWindowEvidence(window);
+    const browserFrameBoundary = Math.max(0, evidence.sample?.frames ?? 0) + 1;
+    const maximumExpectedR3fOwnedInvalidationSurplus =
+        Math.ceil(
+            evidence.targetFramesPerSecond *
+                (lifecycleResumeSemanticSurplusWindowMs / 1_000),
+        ) + 2;
+    return {
+        ...evidence,
+        maximumExpectedR3fFrameCallbacks: browserFrameBoundary,
+        maximumExpectedRenderedFrames: browserFrameBoundary,
+        maximumExpectedR3fOwnedInvalidationSurplus,
+        r3fOwnedInvalidationSurplus:
+            typeof evidence.counterDeltas?.r3fFrameCallbackCount === 'number' &&
+            typeof evidence.counterDeltas?.ownedInvalidationCount === 'number'
+                ? evidence.counterDeltas.r3fFrameCallbackCount -
+                  evidence.counterDeltas.ownedInvalidationCount
+                : null,
+    };
+}
+
+function buildLifecycleSuspendTransitionEvidence(window) {
+    const sample = window?.sample ?? null;
+    const start = sample?.runtimeFrameLoopAtStart ?? null;
+    const end = sample?.runtimeFrameLoopAtEnd ?? null;
+    const counterDeltas = runtimeFrameLoopCounterDeltas(
+        start,
+        end,
+        fullRuntimeFrameLoopCounterFields,
+    );
+    const browserFrameBoundary = Math.max(0, sample?.frames ?? 0) + 1;
+    const causalHiddenWorkBoundary = [
+        counterDeltas.r3fFrameCallbackCount,
+        counterDeltas.hiddenDeferredRenderRequestCount,
+        counterDeltas.wakeupCount,
+    ].every((value) => typeof value === 'number' && Number.isFinite(value))
+        ? counterDeltas.r3fFrameCallbackCount +
+          counterDeltas.hiddenDeferredRenderRequestCount +
+          counterDeltas.wakeupCount
+        : null;
+    return {
+        ...window,
+        causalHiddenWorkBoundary,
+        counterDeltas,
+        suspensionBoundary: buildLifecycleSuspensionBoundaryEvidence(sample),
+        maximumExpectedR3fFrameCallbacks: browserFrameBoundary,
+        maximumExpectedRenderedFrames: browserFrameBoundary,
+        sceneTimeDeltaSeconds: runtimeFrameLoopNumberDelta(
+            start,
+            end,
+            'sceneTimeSeconds',
+        ),
+        settledAtEnd: Boolean(
+            end?.effectiveVisible === false &&
+                end.loopActive === false &&
+                end.callbackPending === false &&
+                end.pendingCallbackKind === 'none',
+        ),
+    };
+}
+
+function buildLifecycleSuspensionBoundaryEvidence(sample) {
+    const boundary = sample?.lifecycleSuspensionBoundary;
+    const start = sample?.runtimeFrameLoopAtStart;
+    const before = boundary?.beforeSignal?.runtimeFrameLoop;
+    const acknowledged = boundary?.afterAcknowledgement?.runtimeFrameLoop;
+    const end = sample?.runtimeFrameLoopAtEnd;
+    const rendererFields = [
+        'drawCalls',
+        'instancedDrawCalls',
+        'renderedFrames',
+        'submittedTriangles',
+    ];
+    const beforeRenderer = boundary?.beforeSignal?.renderer;
+    const acknowledgedRenderer = boundary?.afterAcknowledgement?.renderer;
+    const segment = (from, to, rendererFrom, rendererTo) => ({
+        counterDeltas: runtimeFrameLoopCounterDeltas(
+            from,
+            to,
+            fullRuntimeFrameLoopCounterFields,
+        ),
+        rendererDeltas: Object.fromEntries(
+            rendererFields.map((field) => [
+                field,
+                runtimeFrameLoopNumberDelta(rendererFrom, rendererTo, field),
+            ]),
+        ),
+        sceneTimeDeltaSeconds: runtimeFrameLoopNumberDelta(
+            from,
+            to,
+            'sceneTimeSeconds',
+        ),
+    });
+    const monotonic = (values, integer = false) =>
+        values.every(
+            (value, index) =>
+                typeof value === 'number' &&
+                Number.isFinite(value) &&
+                value >= 0 &&
+                (!integer || Number.isInteger(value)) &&
+                (index === 0 || value >= values[index - 1]),
+        );
+    const signal = boundary?.signal;
+    const valid = Boolean(
+        boundary?.measurementMode ===
+            lifecycleSuspensionBoundaryMeasurementMode &&
+            ['intersection-observer', 'synthetic-document-hidden'].includes(
+                signal,
+            ) &&
+            monotonic([
+                boundary.sampleStartedAt,
+                boundary.requestedAt,
+                boundary.beforeSignal?.recordedAt,
+                boundary.callbackReturnedAt,
+                boundary.afterAcknowledgement?.recordedAt,
+                boundary.sampleEndedAt,
+            ]) &&
+            Math.abs(
+                boundary.sampleEndedAt -
+                    boundary.sampleStartedAt -
+                    sample.elapsedMs,
+            ) <= 0.011 &&
+            start?.effectiveVisible === true &&
+            before?.effectiveVisible === true &&
+            before.loopActive === true &&
+            typeof before.callbackPending === 'boolean' &&
+            (before.callbackPending
+                ? ['frame', 'timeout'].includes(before.pendingCallbackKind)
+                : before.pendingCallbackKind === 'none') &&
+            acknowledged?.effectiveVisible === false &&
+            acknowledged.loopActive === false &&
+            acknowledged.callbackPending === false &&
+            acknowledged.pendingCallbackKind === 'none' &&
+            acknowledged.pendingCallbackDueAt === null &&
+            (signal === 'intersection-observer'
+                ? before.canvasVisible === true &&
+                  acknowledged.canvasVisible === false &&
+                  acknowledged.documentVisible === true &&
+                  boundary.intersection?.isIntersecting === false &&
+                  boundary.intersection.width === 0 &&
+                  boundary.intersection.height === 0 &&
+                  monotonic([
+                      boundary.requestedAt,
+                      boundary.intersection.time,
+                      boundary.beforeSignal.recordedAt,
+                  ])
+                : before.documentVisible === true &&
+                  acknowledged.documentVisible === false &&
+                  acknowledged.canvasVisible === true) &&
+            fullRuntimeFrameLoopCounterFields.every((field) =>
+                monotonic(
+                    [
+                        start?.[field],
+                        before[field],
+                        acknowledged[field],
+                        end?.[field],
+                    ],
+                    true,
+                ),
+            ) &&
+            monotonic(
+                [start, before, acknowledged, end].map(
+                    (snapshot) => snapshot?.sceneTimeSeconds,
+                ),
+            ) &&
+            rendererFields.every((field) =>
+                monotonic(
+                    [
+                        0,
+                        beforeRenderer?.[field],
+                        acknowledgedRenderer?.[field],
+                        sample?.[field],
+                    ],
+                    true,
+                ),
+            ),
+    );
+    return {
+        measurementMode: boundary?.measurementMode ?? null,
+        signal: signal ?? null,
+        valid,
+        expectedCancelledCallbackCount:
+            before?.callbackPending === true ? 1 : 0,
+        preSignal: segment(
+            start,
+            before,
+            Object.fromEntries(rendererFields.map((field) => [field, 0])),
+            beforeRenderer,
+        ),
+        signalWindow: segment(
+            before,
+            acknowledged,
+            beforeRenderer,
+            acknowledgedRenderer,
+        ),
+        postAcknowledgement: segment(
+            acknowledged,
+            end,
+            acknowledgedRenderer,
+            sample,
+        ),
+    };
+}
+
+function staticIdleSchedulerSettled(snapshot) {
+    return Boolean(
+        snapshot?.effectiveVisible === true &&
+            snapshot.activeDeadlineCount === 0 &&
+            snapshot.activeFixedStepLeaseCount === 0 &&
+            snapshot.activeLeaseCount === 0 &&
+            snapshot.activeRenderLeaseCount === 0 &&
+            snapshot.callbackPending === false &&
+            snapshot.loopActive === false &&
+            snapshot.pendingCallbackKind === 'none' &&
+            snapshot.pendingCallbackDueAt === null &&
+            snapshot.targetFramesPerSecond === 0 &&
+            Array.isArray(snapshot.deadlineOwners) &&
+            snapshot.deadlineOwners.length === 0 &&
+            Array.isArray(snapshot.fixedStepOwners) &&
+            snapshot.fixedStepOwners.length === 0 &&
+            Array.isArray(snapshot.renderLeaseOwners) &&
+            snapshot.renderLeaseOwners.length === 0 &&
+            Array.isArray(snapshot.renderRequestReasons) &&
+            snapshot.renderRequestReasons.length === 0 &&
+            coalescedRenderRequestReasonsAreBounded(snapshot, {
+                requireEmpty: true,
+            }),
+    );
+}
+
+function buildStaticIdleEvidence(sample) {
+    const start = sample?.runtimeFrameLoopAtStart ?? null;
+    const end = sample?.runtimeFrameLoopAtEnd ?? null;
+    const counterDeltas = runtimeFrameLoopCounterDeltas(
+        start,
+        end,
+        staticIdleRuntimeFrameLoopCounterFields,
+    );
+    const schedulerZeroObserved = staticIdleRuntimeFrameLoopCounterFields.every(
+        (field) => counterDeltas[field] === 0,
+    );
+    const rendererZeroObserved =
+        sample?.renderedFrames === 0 &&
+        sample.drawCalls === 0 &&
+        sample.submittedTriangles === 0;
+    const zeroWorkObserved =
+        schedulerZeroObserved &&
+        lifecycleZeroWorkObserved(
+            {
+                sample: {
+                    ...sample,
+                    runtimeFrameLoopCounterDeltas: counterDeltas,
+                },
+            },
+            counterDeltas,
+        );
+
+    return {
+        counterDeltas,
+        ownedSchedulingZeroObserved:
+            lifecycleOwnedSchedulingZeroObserved(counterDeltas),
+        rendererZeroObserved,
+        schedulerSettledAtEnd: staticIdleSchedulerSettled(end),
+        schedulerSettledAtStart: staticIdleSchedulerSettled(start),
+        schedulerZeroObserved,
+        zeroWorkObserved,
+    };
+}
+
+async function waitForStaticIdleStabilization(page) {
+    const waitForSettledState = () =>
+        page.waitForFunction(
+            (expectedFixture) => {
+                const profile = globalThis.__grediceGameProfile;
+                const telemetry = profile?.runtimeFrameLoop;
+                return Boolean(
+                    profile?.profileGardenId === expectedFixture.gardenId &&
+                        profile.profileGardenStackCount ===
+                            expectedFixture.stackCount &&
+                        profile.profileGardenBlockCount ===
+                            expectedFixture.blockCount &&
+                        profile.profileGardenRaisedBedCount ===
+                            expectedFixture.raisedBedCount &&
+                        telemetry?.r3fFrameCallbackCount >= 1 &&
+                        telemetry.effectiveVisible === true &&
+                        telemetry.activeDeadlineCount === 0 &&
+                        telemetry.activeFixedStepLeaseCount === 0 &&
+                        telemetry.activeLeaseCount === 0 &&
+                        telemetry.activeRenderLeaseCount === 0 &&
+                        telemetry.callbackPending === false &&
+                        telemetry.loopActive === false &&
+                        telemetry.pendingCallbackKind === 'none' &&
+                        telemetry.pendingCallbackDueAt === null &&
+                        telemetry.targetFramesPerSecond === 0 &&
+                        telemetry.deadlineOwners?.length === 0 &&
+                        telemetry.fixedStepOwners?.length === 0 &&
+                        telemetry.renderLeaseOwners?.length === 0 &&
+                        telemetry.renderRequestReasons?.length === 0 &&
+                        Array.isArray(
+                            telemetry.coalescedRenderRequestReasons,
+                        ) &&
+                        telemetry.coalescedRenderRequestReasons.length === 0,
+                );
+            },
+            {
+                blockCount: staticIdleExpectedGardenBlockCount,
+                gardenId: staticIdleExpectedGardenId,
+                raisedBedCount: staticIdleExpectedGardenRaisedBedCount,
+                stackCount: staticIdleExpectedGardenStackCount,
+            },
+            { timeout: 60_000 },
+        );
+
+    await waitForSettledState();
+    await page.waitForTimeout(250);
+    await waitForSettledState();
+}
+
+async function measureLifecycleWindow({ cdp, durationMs, page, transition }) {
     const before = metricsByName(await cdp.send('Performance.getMetrics'));
     await page.evaluate(beginInteractiveProfileSample);
-    await page.waitForTimeout(durationMs);
+    const startedAt = Date.now();
+    await transition?.();
+    const remainingMs = durationMs - (Date.now() - startedAt);
+    if (remainingMs > 0) {
+        await page.waitForTimeout(remainingMs);
+    }
     const sampleAtEndpoint = await page.evaluate(
         finishInteractiveProfileSample,
     );
@@ -4708,6 +6458,9 @@ async function moveLifecycleCanvasOffscreen(page, offscreen) {
             '[data-game-profile-lifecycle-spacer]',
         );
         if (shouldMoveOffscreen) {
+            globalThis.__gameProfileLifecycleSuspensionBoundary?.arm(
+                'intersection-observer',
+            );
             if (!spacer) {
                 spacer = document.createElement('div');
                 spacer.setAttribute('data-game-profile-lifecycle-spacer', '1');
@@ -4794,7 +6547,19 @@ async function setSyntheticDocumentHidden(page, hidden) {
                 get: () => (state.hidden ? 'hidden' : 'visible'),
             },
         });
-        document.dispatchEvent(new Event('visibilitychange'));
+        const dispatch = () =>
+            document.dispatchEvent(new Event('visibilitychange'));
+        if (nextHidden && globalThis.__gameProfileLifecycleSuspensionBoundary) {
+            globalThis.__gameProfileLifecycleSuspensionBoundary.arm(
+                'synthetic-document-hidden',
+            );
+            globalThis.__gameProfileLifecycleSuspensionBoundary.capture(
+                'synthetic-document-hidden',
+                dispatch,
+            );
+        } else {
+            dispatch();
+        }
     }, hidden);
 }
 
@@ -4892,7 +6657,462 @@ async function hideLifecycleOutline(page) {
     );
 }
 
+function lifecycleRendererStatsRawSubmissionAdvanced(start, current) {
+    return ['drawCalls', 'renderedFrames', 'submittedTriangles'].every(
+        (field) =>
+            typeof start?.[field] === 'number' &&
+            Number.isFinite(start[field]) &&
+            typeof current?.[field] === 'number' &&
+            Number.isFinite(current[field]) &&
+            current[field] > start[field],
+    );
+}
+
+function isLifecycleRendererStatsBarrierReady(start, current, mode) {
+    if (!lifecycleRendererStatsRawSubmissionAdvanced(start, current)) {
+        return false;
+    }
+    if (mode === lifecycleRendererStatsLegacyMode) {
+        return (
+            current?.rendererStatsMeasurementMode === null &&
+            current.rendererStatsPublishedAt === null &&
+            current.rendererStatsReceiptCount === null &&
+            current.rendererStatsRenderFrame === null
+        );
+    }
+    if (mode !== lifecycleRendererStatsCanonicalMode) {
+        return false;
+    }
+
+    const startReceipt =
+        Number.isInteger(start?.rendererStatsReceiptCount) &&
+        start.rendererStatsReceiptCount >= 0
+            ? start.rendererStatsReceiptCount
+            : -1;
+    return (
+        current?.rendererStatsMeasurementMode ===
+            rendererStatsRuntimeMeasurementMode &&
+        Number.isInteger(current.rendererStatsReceiptCount) &&
+        current.rendererStatsReceiptCount > startReceipt &&
+        typeof current.rendererStatsPublishedAt === 'number' &&
+        Number.isFinite(current.rendererStatsPublishedAt) &&
+        current.rendererStatsPublishedAt > start.capturedAt &&
+        Number.isInteger(current.rendererStatsRenderFrame) &&
+        current.rendererStatsRenderFrame > 0 &&
+        Number.isInteger(start.r3fFrameCallbackCount) &&
+        start.r3fFrameCallbackCount >= 0 &&
+        Number.isInteger(current.r3fFrameCallbackCount) &&
+        current.r3fFrameCallbackCount > start.r3fFrameCallbackCount
+    );
+}
+
+async function readLifecycleRendererStatsBarrierState(page) {
+    return page.evaluate(() => {
+        const profile = globalThis.__grediceGameProfile;
+        const metrics = globalThis.__gameProfileMetrics;
+        const numberOrNull = (value) =>
+            typeof value === 'number' && Number.isFinite(value) ? value : null;
+        return {
+            capturedAt: performance.now(),
+            drawCalls: numberOrNull(metrics?.drawCalls),
+            renderedFrames: numberOrNull(metrics?.renderedFrames),
+            rendererStatsMeasurementMode:
+                typeof profile?.rendererStatsMeasurementMode === 'string'
+                    ? profile.rendererStatsMeasurementMode
+                    : null,
+            rendererStatsPublishedAt: numberOrNull(
+                profile?.rendererStatsPublishedAt,
+            ),
+            rendererStatsReceiptCount: numberOrNull(
+                profile?.rendererStatsReceiptCount,
+            ),
+            rendererStatsRenderFrame: numberOrNull(
+                profile?.rendererStatsRenderFrame,
+            ),
+            r3fFrameCallbackCount: numberOrNull(
+                profile?.runtimeFrameLoop?.r3fFrameCallbackCount,
+            ),
+            submittedTriangles: numberOrNull(metrics?.submittedTriangles),
+        };
+    });
+}
+
+function lifecycleRendererStatsBarrierWitness(start, current, mode) {
+    const delta = (field) =>
+        typeof start?.[field] === 'number' &&
+        typeof current?.[field] === 'number'
+            ? current[field] - start[field]
+            : null;
+    return {
+        completedAt: round(current.capturedAt),
+        drawCallsDelta: delta('drawCalls'),
+        legacySettleMs:
+            mode === lifecycleRendererStatsLegacyMode
+                ? lifecycleLegacyRendererStatsSettleMs
+                : null,
+        measurementMode: mode,
+        renderedFramesDelta: delta('renderedFrames'),
+        rendererStatsPublishedAt: current.rendererStatsPublishedAt,
+        rendererStatsReceiptCount: current.rendererStatsReceiptCount,
+        rendererStatsReceiptDelta:
+            typeof current.rendererStatsReceiptCount === 'number'
+                ? current.rendererStatsReceiptCount -
+                  (typeof start.rendererStatsReceiptCount === 'number'
+                      ? start.rendererStatsReceiptCount
+                      : 0)
+                : null,
+        rendererStatsRenderFrame: current.rendererStatsRenderFrame,
+        r3fFrameCallbackCountDelta: delta('r3fFrameCallbackCount'),
+        runtimeMeasurementMode: current.rendererStatsMeasurementMode,
+        startedAt: round(start.capturedAt),
+        submittedTrianglesDelta: delta('submittedTriangles'),
+    };
+}
+
+async function waitForLifecycleRendererStatsBarrier(page, mode) {
+    const start = await readLifecycleRendererStatsBarrierState(page);
+    if (
+        mode === lifecycleRendererStatsCanonicalMode &&
+        start.rendererStatsMeasurementMode !== null &&
+        start.rendererStatsMeasurementMode !==
+            rendererStatsRuntimeMeasurementMode
+    ) {
+        throw new Error(
+            `Lifecycle renderer stats runtime mode is ${String(start.rendererStatsMeasurementMode)}; expected ${rendererStatsRuntimeMeasurementMode}.`,
+        );
+    }
+    if (
+        mode === lifecycleRendererStatsLegacyMode &&
+        (start.rendererStatsMeasurementMode !== null ||
+            start.rendererStatsPublishedAt !== null ||
+            start.rendererStatsReceiptCount !== null ||
+            start.rendererStatsRenderFrame !== null)
+    ) {
+        throw new Error(
+            `${lifecycleRendererStatsLegacyMode} cannot be used when canonical renderer-stats receipt telemetry is present.`,
+        );
+    }
+
+    if (mode === lifecycleRendererStatsLegacyMode) {
+        await page.waitForTimeout(lifecycleLegacyRendererStatsSettleMs);
+        const settled = await readLifecycleRendererStatsBarrierState(page);
+        if (!lifecycleRendererStatsRawSubmissionAdvanced(start, settled)) {
+            throw new Error(
+                'Legacy lifecycle renderer-stats settling observed no submitted render work.',
+            );
+        }
+        await page.waitForFunction(
+            (barrier) => {
+                const metrics = globalThis.__gameProfileMetrics;
+                const profile = globalThis.__grediceGameProfile;
+                return Boolean(
+                    profile?.rendererStatsMeasurementMode == null &&
+                        profile?.rendererStatsPublishedAt == null &&
+                        profile?.rendererStatsReceiptCount == null &&
+                        profile?.rendererStatsRenderFrame == null &&
+                        typeof metrics?.drawCalls === 'number' &&
+                        metrics.drawCalls > barrier.drawCalls &&
+                        typeof metrics.renderedFrames === 'number' &&
+                        metrics.renderedFrames > barrier.renderedFrames &&
+                        typeof metrics.submittedTriangles === 'number' &&
+                        metrics.submittedTriangles > barrier.submittedTriangles,
+                );
+            },
+            settled,
+            { timeout: 20_000 },
+        );
+    } else {
+        await page.waitForFunction(
+            ({ runtimeMode, start }) => {
+                const profile = globalThis.__grediceGameProfile;
+                const metrics = globalThis.__gameProfileMetrics;
+                const receiptAtStart =
+                    Number.isInteger(start.rendererStatsReceiptCount) &&
+                    start.rendererStatsReceiptCount >= 0
+                        ? start.rendererStatsReceiptCount
+                        : -1;
+                return Boolean(
+                    profile?.rendererStatsMeasurementMode === runtimeMode &&
+                        Number.isInteger(profile.rendererStatsReceiptCount) &&
+                        profile.rendererStatsReceiptCount > receiptAtStart &&
+                        typeof profile.rendererStatsPublishedAt === 'number' &&
+                        profile.rendererStatsPublishedAt > start.capturedAt &&
+                        Number.isInteger(profile.rendererStatsRenderFrame) &&
+                        profile.rendererStatsRenderFrame > 0 &&
+                        Number.isInteger(
+                            profile.runtimeFrameLoop?.r3fFrameCallbackCount,
+                        ) &&
+                        profile.runtimeFrameLoop.r3fFrameCallbackCount >
+                            start.r3fFrameCallbackCount &&
+                        typeof metrics?.drawCalls === 'number' &&
+                        metrics.drawCalls > start.drawCalls &&
+                        typeof metrics.renderedFrames === 'number' &&
+                        metrics.renderedFrames > start.renderedFrames &&
+                        typeof metrics.submittedTriangles === 'number' &&
+                        metrics.submittedTriangles > start.submittedTriangles,
+                );
+            },
+            { runtimeMode: rendererStatsRuntimeMeasurementMode, start },
+            { timeout: 20_000 },
+        );
+    }
+
+    const current = await readLifecycleRendererStatsBarrierState(page);
+    if (!isLifecycleRendererStatsBarrierReady(start, current, mode)) {
+        throw new Error(
+            `Lifecycle renderer stats ${mode} barrier did not produce a fresh submitted-render receipt.`,
+        );
+    }
+    return lifecycleRendererStatsBarrierWitness(start, current, mode);
+}
+
+function isNonNegativeIntegerRecord(value) {
+    return (
+        value !== null &&
+        typeof value === 'object' &&
+        !Array.isArray(value) &&
+        Object.entries(value).every(
+            ([key, entry]) =>
+                key.length > 0 && Number.isInteger(entry) && entry >= 0,
+        )
+    );
+}
+
+function numberRecordsEqual(left, right) {
+    if (
+        !isNonNegativeIntegerRecord(left) ||
+        !isNonNegativeIntegerRecord(right)
+    ) {
+        return false;
+    }
+    const keys = [
+        ...new Set([...Object.keys(left), ...Object.keys(right)]),
+    ].sort();
+    return keys.every((key) => left[key] === right[key]);
+}
+
+function populationExposureCovers(exposure, population) {
+    return (
+        isNonNegativeIntegerRecord(exposure) &&
+        isNonNegativeIntegerRecord(population) &&
+        Object.entries(population).every(
+            ([species, count]) =>
+                Number.isInteger(exposure[species]) &&
+                exposure[species] >= count,
+        )
+    );
+}
+
+function populationExposureSignature(exposure) {
+    if (!isNonNegativeIntegerRecord(exposure)) {
+        return null;
+    }
+    return JSON.stringify(
+        Object.fromEntries(
+            Object.entries(exposure).sort(([left], [right]) =>
+                left.localeCompare(right),
+            ),
+        ),
+    );
+}
+
+async function readCrossTierResourceSnapshotState(
+    page,
+    { allowMissingPopulation = false } = {},
+) {
+    return page.evaluate(
+        ({ allowMissingPopulation: allowMissing }) => {
+            const profile = globalThis.__grediceGameProfile;
+            const metrics = globalThis.__gameProfileMetrics;
+            const numberOrNull = (value) =>
+                typeof value === 'number' && Number.isFinite(value)
+                    ? value
+                    : null;
+            const integerRecord = (value) => {
+                if ((value === null || value === undefined) && allowMissing) {
+                    return {};
+                }
+                if (
+                    !value ||
+                    typeof value !== 'object' ||
+                    Array.isArray(value)
+                ) {
+                    return null;
+                }
+                const entries = Object.entries(value);
+                if (
+                    entries.some(
+                        ([species, count]) =>
+                            species.length === 0 ||
+                            !Number.isInteger(count) ||
+                            count < 0,
+                    )
+                ) {
+                    return null;
+                }
+                return Object.fromEntries(
+                    entries.sort(([left], [right]) =>
+                        left.localeCompare(right),
+                    ),
+                );
+            };
+            return {
+                capturedAt: performance.now(),
+                population: integerRecord(
+                    profile?.actorGroundingShadowSpeciesCounts,
+                ),
+                populationExposure: integerRecord(
+                    metrics?.actorGroundingShadowSpeciesCountMax,
+                ),
+                resources: {
+                    rendererGeometries: numberOrNull(
+                        profile?.rendererGeometries,
+                    ),
+                    rendererShaders:
+                        numberOrNull(profile?.rendererShaders) ??
+                        numberOrNull(metrics?.rendererShaders),
+                    rendererTextures:
+                        numberOrNull(profile?.rendererTextures) ??
+                        numberOrNull(metrics?.rendererTextures),
+                },
+            };
+        },
+        { allowMissingPopulation },
+    );
+}
+
+async function captureCrossTierResourceSnapshot(
+    page,
+    rendererStatsMode,
+    { allowMissingPopulation = false } = {},
+) {
+    const maximumAttempts = 3;
+    let lastStart = null;
+    let lastEnd = null;
+    for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
+        const start = await readCrossTierResourceSnapshotState(page, {
+            allowMissingPopulation,
+        });
+        const rendererStatsMeasurement =
+            await waitForLifecycleRendererStatsBarrier(page, rendererStatsMode);
+        const end = await readCrossTierResourceSnapshotState(page, {
+            allowMissingPopulation,
+        });
+        lastStart = start;
+        lastEnd = end;
+        if (
+            numberRecordsEqual(start.population, end.population) &&
+            numberRecordsEqual(
+                start.populationExposure,
+                end.populationExposure,
+            ) &&
+            populationExposureCovers(end.populationExposure, end.population)
+        ) {
+            return {
+                attemptCount: attempt,
+                capturedAt: round(end.capturedAt),
+                measurementMode: crossTierResourceSnapshotMeasurementMode,
+                populationAtEnd: end.population,
+                populationAtStart: start.population,
+                populationExposure: end.populationExposure,
+                populationExposureAtEnd: end.populationExposure,
+                populationExposureAtStart: start.populationExposure,
+                populationExposureAvailable:
+                    Object.keys(end.populationExposure).length > 0,
+                populationExposureSignature: populationExposureSignature(
+                    end.populationExposure,
+                ),
+                rendererStatsMode,
+                resources: {
+                    ...end.resources,
+                    rendererStatsMeasurement,
+                },
+            };
+        }
+    }
+
+    throw new Error(
+        `Cross-tier renderer resources did not reach a stable population exposure across ${maximumAttempts} fresh render observations: ${JSON.stringify({ lastEnd, lastStart })}`,
+    );
+}
+
+function withLifecycleRendererStatsWitness(arrival, witness) {
+    return {
+        ...arrival,
+        resources: {
+            ...arrival.resources,
+            rendererStatsMeasurement: witness,
+        },
+    };
+}
+
+function isLifecycleRendererStatsMeasurementValid(resources, mode) {
+    const measurement = resources?.rendererStatsMeasurement;
+    const positiveResourceFields = [
+        'rendererGeometries',
+        'rendererShaders',
+        'rendererTextures',
+    ];
+    if (
+        !measurement ||
+        measurement.measurementMode !== mode ||
+        typeof measurement.startedAt !== 'number' ||
+        !Number.isFinite(measurement.startedAt) ||
+        measurement.startedAt <= 0 ||
+        typeof measurement.completedAt !== 'number' ||
+        !Number.isFinite(measurement.completedAt) ||
+        measurement.completedAt < measurement.startedAt ||
+        !positiveResourceFields.every(
+            (field) =>
+                typeof resources?.[field] === 'number' &&
+                Number.isFinite(resources[field]) &&
+                resources[field] > 0,
+        ) ||
+        ![
+            'drawCallsDelta',
+            'renderedFramesDelta',
+            'submittedTrianglesDelta',
+        ].every(
+            (field) =>
+                typeof measurement[field] === 'number' &&
+                Number.isFinite(measurement[field]) &&
+                measurement[field] > 0,
+        )
+    ) {
+        return false;
+    }
+    if (mode === lifecycleRendererStatsLegacyMode) {
+        return (
+            measurement.runtimeMeasurementMode === null &&
+            measurement.rendererStatsPublishedAt === null &&
+            measurement.rendererStatsReceiptCount === null &&
+            measurement.rendererStatsReceiptDelta === null &&
+            measurement.rendererStatsRenderFrame === null &&
+            measurement.r3fFrameCallbackCountDelta === null &&
+            measurement.legacySettleMs === lifecycleLegacyRendererStatsSettleMs
+        );
+    }
+    return (
+        mode === lifecycleRendererStatsCanonicalMode &&
+        measurement.runtimeMeasurementMode ===
+            rendererStatsRuntimeMeasurementMode &&
+        typeof measurement.rendererStatsPublishedAt === 'number' &&
+        Number.isFinite(measurement.rendererStatsPublishedAt) &&
+        measurement.rendererStatsPublishedAt > measurement.startedAt &&
+        Number.isInteger(measurement.rendererStatsReceiptCount) &&
+        measurement.rendererStatsReceiptCount > 0 &&
+        Number.isInteger(measurement.rendererStatsReceiptDelta) &&
+        measurement.rendererStatsReceiptDelta > 0 &&
+        Number.isInteger(measurement.rendererStatsRenderFrame) &&
+        measurement.rendererStatsRenderFrame > 0 &&
+        Number.isInteger(measurement.r3fFrameCallbackCountDelta) &&
+        measurement.r3fFrameCallbackCountDelta > 0 &&
+        measurement.legacySettleMs === null
+    );
+}
+
 async function captureLifecycleActiveControl({
+    lifecycleRendererStatsMode,
     page,
     persistentCanvas,
     persistentContext,
@@ -4900,13 +7120,17 @@ async function captureLifecycleActiveControl({
 }) {
     await waitForGardenSwitchFixture(page, 'high-target');
     await hideLifecycleOutline(page);
-    await page.evaluate(
-        () =>
-            new Promise((resolveFrame) =>
-                requestAnimationFrame(() =>
-                    requestAnimationFrame(resolveFrame),
-                ),
-            ),
+    const rendererStatsWitness = await waitForLifecycleRendererStatsBarrier(
+        page,
+        lifecycleRendererStatsMode,
+    );
+    const fixture = withLifecycleRendererStatsWitness(
+        await readGardenSwitchArrival(
+            page,
+            persistentCanvas,
+            persistentContext,
+        ),
+        rendererStatsWitness,
     );
     const before = await page.evaluate(() => ({
         drawCalls: globalThis.__gameProfileMetrics?.drawCalls ?? null,
@@ -4949,11 +7173,6 @@ async function captureLifecycleActiveControl({
                 : null,
         ]),
     );
-    const fixture = await readGardenSwitchArrival(
-        page,
-        persistentCanvas,
-        persistentContext,
-    );
     await mkdir(dirname(screenshotPath), { recursive: true });
     await page.locator('[data-scene-garden-id] canvas').screenshot({
         animations: 'disabled',
@@ -4982,6 +7201,7 @@ function evaluateLifecycleAcceptance({
     offscreen,
     pageErrors = [],
     requested,
+    rendererStatsMode = lifecycleRendererStatsCanonicalMode,
     resolved,
     restoredInteraction,
     restoredScreenshotWitness,
@@ -5020,14 +7240,54 @@ function evaluateLifecycleAcceptance({
         name,
         pass: typeof actual === 'number' && Number.isFinite(actual),
     });
-    const runtimeContractChecks = (prefix, telemetry) => [
-        ...runtimeFrameLoopBooleanFields.map((field) =>
-            exact(
-                `${prefix}${field[0].toUpperCase()}${field.slice(1)}Type`,
-                typeof telemetry?.[field],
-                'boolean',
-            ),
+    const equivalent = (name, actual, expected) => ({
+        actual,
+        comparison: 'deep-equal',
+        limit: expected,
+        name,
+        pass: JSON.stringify(actual) === JSON.stringify(expected),
+    });
+    const coalescedRenderRequestChecks = (
+        prefix,
+        snapshot,
+        { requireEmpty = false } = {},
+    ) => [
+        exact(
+            `${prefix}CoalescedRenderRequestReasonsBounded`,
+            coalescedRenderRequestReasonsAreBounded(snapshot, {
+                requireEmpty,
+            }),
+            true,
         ),
+    ];
+    const runtimeContractChecks = (prefix, telemetry) => [
+        ...(rendererStatsMode === lifecycleRendererStatsLegacyMode
+            ? [
+                  exact(
+                      `${prefix}AwaitingFrameReceiptLegacyOmitted`,
+                      Boolean(
+                          telemetry &&
+                              Object.hasOwn(telemetry, 'awaitingFrameReceipt'),
+                      ),
+                      false,
+                  ),
+              ]
+            : [
+                  exact(
+                      `${prefix}AwaitingFrameReceiptType`,
+                      typeof telemetry?.awaitingFrameReceipt,
+                      'boolean',
+                  ),
+              ]),
+        ...runtimeFrameLoopBooleanFields
+            .filter((field) => field !== 'awaitingFrameReceipt')
+            .map((field) =>
+                exact(
+                    `${prefix}${field[0].toUpperCase()}${field.slice(1)}Type`,
+                    typeof telemetry?.[field],
+                    'boolean',
+                ),
+            ),
         ...runtimeFrameLoopNumberFields.map((field) =>
             finite(
                 `${prefix}${field[0].toUpperCase()}${field.slice(1)}`,
@@ -5046,6 +7306,23 @@ function evaluateLifecycleAcceptance({
         ),
         exact(`${prefix}ActiveTargetCount`, interaction?.activeTargetCount, 2),
         exact(`${prefix}StyleGroupCount`, interaction?.styleGroupCount, 1),
+    ];
+    const rendererStatsChecks = (prefix, resources) => [
+        exact(
+            `${prefix}RendererStatsMeasurementValid`,
+            isLifecycleRendererStatsMeasurementValid(
+                resources,
+                rendererStatsMode,
+            ),
+            true,
+        ),
+        minimum(
+            `${prefix}RendererGeometries`,
+            resources?.rendererGeometries,
+            1,
+        ),
+        minimum(`${prefix}RendererShaders`, resources?.rendererShaders, 1),
+        minimum(`${prefix}RendererTextures`, resources?.rendererTextures, 1),
     ];
     const activeControlChecks = (
         prefix,
@@ -5109,6 +7386,7 @@ function evaluateLifecycleAcceptance({
             control?.fixture?.fixture?.generatedPlantVisibleInstanceCount,
             highTargetExpectedGeneratedPlantInstanceCount,
         ),
+        ...rendererStatsChecks(prefix, control?.fixture?.resources),
         minimum(
             `${prefix}PostCommandRenderedFrames`,
             control?.postCommandRender?.renderedFrames,
@@ -5140,7 +7418,7 @@ function evaluateLifecycleAcceptance({
             1_440,
         ),
     ];
-    const residualWindowChecks = (prefix, phase) => [
+    const baselineResidualWindowChecks = (prefix, phase) => [
         minimum(
             `${prefix}ElapsedMs`,
             phase?.residual?.sample?.elapsedMs,
@@ -5178,7 +7456,7 @@ function evaluateLifecycleAcceptance({
         ),
         ...runtimeFrameLoopCounterFields.map((field) =>
             minimum(
-                `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                `${prefix}${field[0].toUpperCase()}${field.slice(1)}DeltaFinite`,
                 phase?.residualDeltas?.[field],
                 0,
             ),
@@ -5210,6 +7488,458 @@ function evaluateLifecycleAcceptance({
             0,
         ),
     ];
+    const fullResidualWindowChecks = (prefix, phase) => [
+        minimum(
+            `${prefix}ElapsedMs`,
+            phase?.residual?.sample?.elapsedMs,
+            Math.max(0, (requested?.sampleMs ?? 0) - 100),
+        ),
+        exact(
+            `${prefix}RenderedFrames`,
+            phase?.residual?.sample?.renderedFrames,
+            0,
+        ),
+        exact(`${prefix}DrawCalls`, phase?.residual?.sample?.drawCalls, 0),
+        exact(
+            `${prefix}SubmittedTriangles`,
+            phase?.residual?.sample?.submittedTriangles,
+            0,
+        ),
+        finite(
+            `${prefix}CdpScriptDuration`,
+            phase?.residual?.cdp?.scriptDuration,
+        ),
+        finite(`${prefix}CdpTaskDuration`, phase?.residual?.cdp?.taskDuration),
+        finite(
+            `${prefix}CdpLayoutDuration`,
+            phase?.residual?.cdp?.layoutDuration,
+        ),
+        ...fullRuntimeFrameLoopCounterFields.map((field) =>
+            exact(
+                `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                phase?.residualDeltas?.[field],
+                0,
+            ),
+        ),
+        ...coalescedRenderRequestChecks(
+            `${prefix}Start`,
+            phase?.residual?.sample?.runtimeFrameLoopAtStart,
+        ),
+        ...coalescedRenderRequestChecks(
+            `${prefix}End`,
+            phase?.residual?.sample?.runtimeFrameLoopAtEnd,
+        ),
+        exact(`${prefix}ZeroWorkObserved`, phase?.zeroWorkObserved, true),
+    ];
+    const residualWindowChecks =
+        requested?.lifecycleLiveProfile === true
+            ? fullResidualWindowChecks
+            : baselineResidualWindowChecks;
+    const suspendTransitionChecks = (prefix, phase) => {
+        const transition = phase?.suspendTransition;
+        const boundary = transition?.suspensionBoundary;
+        const signalCounters = boundary?.signalWindow?.counterDeltas;
+        const postAcknowledgement = boundary?.postAcknowledgement;
+        const exactZeroCounterFields = fullRuntimeFrameLoopCounterFields.filter(
+            (field) =>
+                field !== 'cancelledCallbackCount' &&
+                field !== 'deferredWorkCount' &&
+                field !== 'invalidationCount' &&
+                field !== hiddenDeferredCoalescedRenderRequestCounterField &&
+                field !== hiddenCoalescedRenderRequestCounterField &&
+                field !== 'nonessentialHiddenWorkCount' &&
+                field !== 'ownedInvalidationCount' &&
+                field !== 'r3fFrameCallbackCount' &&
+                field !== 'scheduledCallbackCount' &&
+                field !== 'suspendCount' &&
+                field !== 'wakeupCount',
+        );
+        return [
+            exact(`${prefix}BoundaryValid`, boundary?.valid, true),
+            equivalent(
+                `${prefix}BoundaryMatchesRawEvidence`,
+                boundary,
+                buildLifecycleSuspensionBoundaryEvidence(transition?.sample),
+            ),
+            exact(`${prefix}BoundarySignal`, boundary?.signal, phase?.signal),
+            minimum(`${prefix}ElapsedMs`, transition?.sample?.elapsedMs, 200),
+            maximum(
+                `${prefix}ElapsedMsMaximum`,
+                transition?.sample?.elapsedMs,
+                400,
+            ),
+            maximum(
+                `${prefix}SceneTimeDeltaBounded`,
+                boundary?.signalWindow?.sceneTimeDeltaSeconds,
+                0.1,
+            ),
+            maximum(
+                `${prefix}RenderedFramesBrowserBound`,
+                transition?.sample?.renderedFrames,
+                transition?.maximumExpectedRenderedFrames,
+            ),
+            finite(`${prefix}DrawCalls`, transition?.sample?.drawCalls),
+            finite(
+                `${prefix}SubmittedTriangles`,
+                transition?.sample?.submittedTriangles,
+            ),
+            maximum(
+                `${prefix}R3fFrameCallbackBrowserBound`,
+                transition?.counterDeltas?.r3fFrameCallbackCount,
+                transition?.maximumExpectedR3fFrameCallbacks,
+            ),
+            maximum(
+                `${prefix}NonessentialHiddenWorkCausalBound`,
+                transition?.counterDeltas?.nonessentialHiddenWorkCount,
+                transition?.causalHiddenWorkBoundary,
+            ),
+            minimum(
+                `${prefix}HiddenDeferredCoalescedRenderRequestCountDeltaMinimum`,
+                signalCounters?.hiddenDeferredCoalescedRenderRequestCount,
+                0,
+            ),
+            maximum(
+                `${prefix}HiddenDeferredCoalescedRenderRequestCountDelta`,
+                signalCounters?.hiddenDeferredCoalescedRenderRequestCount,
+                1,
+            ),
+            minimum(
+                `${prefix}HiddenCoalescedRenderRequestCountDeltaMinimum`,
+                signalCounters?.hiddenCoalescedRenderRequestCount,
+                0,
+            ),
+            maximum(
+                `${prefix}HiddenCoalescedRenderRequestCountDelta`,
+                signalCounters?.hiddenCoalescedRenderRequestCount,
+                lifecycleSuspendMaximumHiddenCoalescedRenderRequestCount,
+            ),
+            minimum(
+                `${prefix}HiddenCoalescedRenderRequestCountIncludesDeferredDelta`,
+                signalCounters?.hiddenCoalescedRenderRequestCount,
+                signalCounters?.hiddenDeferredCoalescedRenderRequestCount,
+            ),
+            exact(
+                `${prefix}SuspendCountDelta`,
+                signalCounters?.suspendCount,
+                1,
+            ),
+            exact(
+                `${prefix}DeferredWorkCountDelta`,
+                signalCounters?.deferredWorkCount,
+                1,
+            ),
+            exact(
+                `${prefix}CancelledCallbackCountDelta`,
+                signalCounters?.cancelledCallbackCount,
+                boundary?.expectedCancelledCallbackCount,
+            ),
+            ...[
+                'scheduledCallbackCount',
+                'wakeupCount',
+                'invalidationCount',
+                'ownedInvalidationCount',
+            ].map((field) =>
+                exact(
+                    `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                    signalCounters?.[field],
+                    0,
+                ),
+            ),
+            exact(
+                `${prefix}RendererAndR3fFrameCountMatch`,
+                transition?.sample?.renderedFrames,
+                transition?.counterDeltas?.r3fFrameCallbackCount,
+            ),
+            exact(`${prefix}SettledAtEnd`, transition?.settledAtEnd, true),
+            ...coalescedRenderRequestChecks(
+                `${prefix}Start`,
+                transition?.sample?.runtimeFrameLoopAtStart,
+            ),
+            ...coalescedRenderRequestChecks(
+                `${prefix}End`,
+                transition?.sample?.runtimeFrameLoopAtEnd,
+            ),
+            ...exactZeroCounterFields.map((field) =>
+                exact(
+                    `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                    signalCounters?.[field],
+                    0,
+                ),
+            ),
+            ...['r3fFrameCallbackCount', 'nonessentialHiddenWorkCount'].map(
+                (field) =>
+                    exact(
+                        `${prefix}Signal${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                        signalCounters?.[field],
+                        0,
+                    ),
+            ),
+            ...[
+                'drawCalls',
+                'instancedDrawCalls',
+                'renderedFrames',
+                'submittedTriangles',
+            ].map((field) =>
+                exact(
+                    `${prefix}Signal${field[0].toUpperCase()}${field.slice(1)}`,
+                    boundary?.signalWindow?.rendererDeltas?.[field],
+                    0,
+                ),
+            ),
+            exact(
+                `${prefix}PostAcknowledgementSceneTimeDelta`,
+                postAcknowledgement?.sceneTimeDeltaSeconds,
+                0,
+            ),
+            ...[
+                'drawCalls',
+                'instancedDrawCalls',
+                'renderedFrames',
+                'submittedTriangles',
+            ].map((field) =>
+                exact(
+                    `${prefix}PostAcknowledgement${field[0].toUpperCase()}${field.slice(1)}`,
+                    postAcknowledgement?.rendererDeltas?.[field],
+                    0,
+                ),
+            ),
+            ...fullRuntimeFrameLoopCounterFields.map((field) =>
+                exact(
+                    `${prefix}PostAcknowledgement${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                    postAcknowledgement?.counterDeltas?.[field],
+                    0,
+                ),
+            ),
+        ];
+    };
+    const resumeTransitionChecks = (prefix, phase) => {
+        const transition = phase?.resumeTransition;
+        const elapsedSeconds =
+            typeof transition?.sample?.elapsedMs === 'number'
+                ? transition.sample.elapsedMs / 1_000
+                : null;
+        return [
+            minimum(
+                `${prefix}ElapsedMs`,
+                transition?.sample?.elapsedMs,
+                lifecycleResumeTransitionWindowMs - 150,
+            ),
+            maximum(
+                `${prefix}ElapsedMsMaximum`,
+                transition?.sample?.elapsedMs,
+                lifecycleResumeTransitionWindowMs + 100,
+            ),
+            minimum(
+                `${prefix}SceneTimeDeltaSeconds`,
+                transition?.sceneTimeDeltaSeconds,
+                0.000_001,
+            ),
+            maximum(
+                `${prefix}SceneTimeDeltaBounded`,
+                transition?.sceneTimeDeltaSeconds,
+                elapsedSeconds === null ? null : elapsedSeconds + 0.15,
+            ),
+            minimum(
+                `${prefix}TargetFramesPerSecond`,
+                transition?.targetFramesPerSecond,
+                1,
+            ),
+            minimum(
+                `${prefix}RenderedFrames`,
+                transition?.sample?.renderedFrames,
+                1,
+            ),
+            maximum(
+                `${prefix}RenderedFramesBrowserBound`,
+                transition?.sample?.renderedFrames,
+                transition?.maximumExpectedRenderedFrames,
+            ),
+            minimum(`${prefix}DrawCalls`, transition?.sample?.drawCalls, 1),
+            minimum(
+                `${prefix}SubmittedTriangles`,
+                transition?.sample?.submittedTriangles,
+                1,
+            ),
+            minimum(
+                `${prefix}WakeupDelta`,
+                transition?.counterDeltas?.wakeupCount,
+                1,
+            ),
+            minimum(
+                `${prefix}OwnedInvalidationDelta`,
+                transition?.counterDeltas?.ownedInvalidationCount,
+                1,
+            ),
+            maximum(
+                `${prefix}OwnedInvalidationCadenceBound`,
+                transition?.counterDeltas?.ownedInvalidationCount,
+                transition?.maximumExpectedOwnedInvalidations,
+            ),
+            minimum(
+                `${prefix}R3fFrameCallbackDelta`,
+                transition?.counterDeltas?.r3fFrameCallbackCount,
+                1,
+            ),
+            maximum(
+                `${prefix}R3fFrameCallbackBrowserBound`,
+                transition?.counterDeltas?.r3fFrameCallbackCount,
+                transition?.maximumExpectedR3fFrameCallbacks,
+            ),
+            maximum(
+                `${prefix}R3fOwnedInvalidationSurplusBound`,
+                transition?.r3fOwnedInvalidationSurplus,
+                transition?.maximumExpectedR3fOwnedInvalidationSurplus,
+            ),
+            exact(
+                `${prefix}RendererAndR3fFrameCountMatch`,
+                transition?.sample?.renderedFrames,
+                transition?.counterDeltas?.r3fFrameCallbackCount,
+            ),
+            exact(
+                `${prefix}ResumeCountDelta`,
+                transition?.counterDeltas?.resumeCount,
+                1,
+            ),
+            equivalent(
+                `${prefix}RenderRequestsDrained`,
+                transition?.sample?.runtimeFrameLoopAtEnd?.renderRequestReasons,
+                [],
+            ),
+            ...coalescedRenderRequestChecks(
+                `${prefix}Start`,
+                transition?.sample?.runtimeFrameLoopAtStart,
+            ),
+            ...coalescedRenderRequestChecks(
+                `${prefix}End`,
+                transition?.sample?.runtimeFrameLoopAtEnd,
+            ),
+            ...[
+                'fixedStepFailureCount',
+                hiddenDeferredCoalescedRenderRequestCounterField,
+                hiddenCoalescedRenderRequestCounterField,
+                'hiddenDeferredRenderRequestCount',
+                'invalidationFailureCount',
+                'missedFrameReceiptCount',
+                'nonessentialHiddenWorkCount',
+            ].map((field) =>
+                exact(
+                    `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                    transition?.counterDeltas?.[field],
+                    0,
+                ),
+            ),
+        ];
+    };
+    const resumeWindowChecks = (prefix, phase) => {
+        const resumeWindow = phase?.resumeWindow;
+        const elapsedSeconds =
+            typeof resumeWindow?.sample?.elapsedMs === 'number'
+                ? resumeWindow.sample.elapsedMs / 1_000
+                : null;
+        return [
+            minimum(
+                `${prefix}ElapsedMs`,
+                resumeWindow?.sample?.elapsedMs,
+                lifecycleResumeSteadyWindowMs - 150,
+            ),
+            maximum(
+                `${prefix}ElapsedMsMaximum`,
+                resumeWindow?.sample?.elapsedMs,
+                lifecycleResumeSteadyWindowMs + 100,
+            ),
+            minimum(
+                `${prefix}SceneTimeDeltaSeconds`,
+                resumeWindow?.sceneTimeDeltaSeconds,
+                0.000_001,
+            ),
+            maximum(
+                `${prefix}SceneTimeDeltaBounded`,
+                resumeWindow?.sceneTimeDeltaSeconds,
+                elapsedSeconds === null ? null : elapsedSeconds + 0.15,
+            ),
+            minimum(
+                `${prefix}TargetFramesPerSecond`,
+                resumeWindow?.targetFramesPerSecond,
+                1,
+            ),
+            minimum(
+                `${prefix}RenderedFrames`,
+                resumeWindow?.sample?.renderedFrames,
+                1,
+            ),
+            maximum(
+                `${prefix}RenderedFramesCatchUpBound`,
+                resumeWindow?.sample?.renderedFrames,
+                resumeWindow?.maximumExpectedRenderedFrames,
+            ),
+            minimum(`${prefix}DrawCalls`, resumeWindow?.sample?.drawCalls, 1),
+            minimum(
+                `${prefix}SubmittedTriangles`,
+                resumeWindow?.sample?.submittedTriangles,
+                1,
+            ),
+            minimum(
+                `${prefix}WakeupDelta`,
+                resumeWindow?.counterDeltas?.wakeupCount,
+                1,
+            ),
+            minimum(
+                `${prefix}OwnedInvalidationDelta`,
+                resumeWindow?.counterDeltas?.ownedInvalidationCount,
+                1,
+            ),
+            maximum(
+                `${prefix}OwnedInvalidationCadenceBound`,
+                resumeWindow?.counterDeltas?.ownedInvalidationCount,
+                resumeWindow?.maximumExpectedOwnedInvalidations,
+            ),
+            minimum(
+                `${prefix}R3fFrameCallbackDelta`,
+                resumeWindow?.counterDeltas?.r3fFrameCallbackCount,
+                1,
+            ),
+            maximum(
+                `${prefix}R3fFrameCallbackCadenceBound`,
+                resumeWindow?.counterDeltas?.r3fFrameCallbackCount,
+                resumeWindow?.maximumExpectedR3fFrameCallbacks,
+            ),
+            equivalent(
+                `${prefix}RenderRequestsEmptyAtStart`,
+                resumeWindow?.sample?.runtimeFrameLoopAtStart
+                    ?.renderRequestReasons,
+                [],
+            ),
+            equivalent(
+                `${prefix}RenderRequestsEmptyAtEnd`,
+                resumeWindow?.sample?.runtimeFrameLoopAtEnd
+                    ?.renderRequestReasons,
+                [],
+            ),
+            ...coalescedRenderRequestChecks(
+                `${prefix}Start`,
+                resumeWindow?.sample?.runtimeFrameLoopAtStart,
+            ),
+            ...coalescedRenderRequestChecks(
+                `${prefix}End`,
+                resumeWindow?.sample?.runtimeFrameLoopAtEnd,
+            ),
+            ...[
+                'fixedStepFailureCount',
+                hiddenDeferredCoalescedRenderRequestCounterField,
+                hiddenCoalescedRenderRequestCounterField,
+                'hiddenDeferredRenderRequestCount',
+                'invalidationFailureCount',
+                'missedFrameReceiptCount',
+                'nonessentialHiddenWorkCount',
+            ].map((field) =>
+                exact(
+                    `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                    resumeWindow?.counterDeltas?.[field],
+                    0,
+                ),
+            ),
+        ];
+    };
     const minimumActiveFrames = (sample) =>
         Math.max(1, Math.floor((sample?.elapsedMs ?? 0) / 1_000));
     const checks = [
@@ -5242,7 +7972,7 @@ function evaluateLifecycleAcceptance({
         exact(
             'lifecycleFixedTimeSecondsRequest',
             requested?.fixedTimeSeconds,
-            43_200,
+            requested?.lifecycleLiveProfile === true ? null : 43_200,
         ),
         exact('lifecycleQualityRequest', requested?.quality, 'high'),
         exact('lifecycleResolvedQualityTier', resolved?.qualityTier, 'high'),
@@ -5333,6 +8063,7 @@ function evaluateLifecycleAcceptance({
             cold?.fixture?.resources?.staticOpaqueSceneCacheEnabled,
             false,
         ),
+        ...rendererStatsChecks('lifecycleCold', cold?.fixture?.resources),
         exact(
             'lifecycleColdScreenshotValid',
             isProfileScreenshotWitnessValid(cold?.screenshotWitness),
@@ -5853,14 +8584,138 @@ function evaluateLifecycleAcceptance({
         exact('lifecyclePageErrors', pageErrors.length, 0),
     ];
 
+    if (requested?.lifecycleLiveProfile === true) {
+        const activeLeaseRates = normalizeRenderLeaseSummaryRates(
+            active?.runtimeFrameLoop?.renderLeaseSummaries,
+            lifecycleLivePersistentLeaseRates,
+        );
+        const offscreenLeaseRates = normalizeRenderLeaseSummaryRates(
+            offscreen?.resumed?.renderLeaseSummaries,
+            lifecycleLivePersistentLeaseRates,
+        );
+        const hiddenLeaseRates = normalizeRenderLeaseSummaryRates(
+            hidden?.resumed?.renderLeaseSummaries,
+            lifecycleLivePersistentLeaseRates,
+        );
+        const lifecycleLiveTargetFramesPerSecond = Math.max(
+            ...Object.values(lifecycleLivePersistentLeaseRates),
+        );
+        checks.push(
+            exact('lifecycleLiveProfile', requested.lifecycleLiveProfile, true),
+            exact(
+                'lifecycleLiveSuspensionBoundaryMeasurementMode',
+                requested.lifecycleSuspensionBoundaryMeasurementMode,
+                lifecycleSuspensionBoundaryMeasurementMode,
+            ),
+            finite(
+                'lifecycleLiveActiveSceneTimeSeconds',
+                active?.runtimeFrameLoop?.sceneTimeSeconds,
+            ),
+            exact(
+                'lifecycleLiveOffscreenResidualSceneTimeDelta',
+                offscreen?.residualSceneTimeDeltaSeconds,
+                0,
+            ),
+            exact(
+                'lifecycleLiveHiddenResidualSceneTimeDelta',
+                hidden?.residualSceneTimeDeltaSeconds,
+                0,
+            ),
+            equivalent(
+                'lifecycleLiveActivePersistentRenderLeaseRates',
+                activeLeaseRates,
+                lifecycleLivePersistentLeaseRates,
+            ),
+            equivalent(
+                'lifecycleLiveOffscreenRenderLeaseRatesRestored',
+                offscreenLeaseRates,
+                lifecycleLivePersistentLeaseRates,
+            ),
+            equivalent(
+                'lifecycleLiveHiddenRenderLeaseRatesRestored',
+                hiddenLeaseRates,
+                lifecycleLivePersistentLeaseRates,
+            ),
+            exact(
+                'lifecycleLiveActiveTargetFramesPerSecond',
+                active?.runtimeFrameLoop?.targetFramesPerSecond,
+                lifecycleLiveTargetFramesPerSecond,
+            ),
+            exact(
+                'lifecycleLiveActiveHiddenDeferredCoalescedRenderRequestCountDelta',
+                active?.sample?.runtimeFrameLoopCounterDeltas
+                    ?.hiddenDeferredCoalescedRenderRequestCount,
+                0,
+            ),
+            exact(
+                'lifecycleLiveActiveHiddenCoalescedRenderRequestCountDelta',
+                active?.sample?.runtimeFrameLoopCounterDeltas
+                    ?.hiddenCoalescedRenderRequestCount,
+                0,
+            ),
+            ...coalescedRenderRequestChecks(
+                'lifecycleLiveActiveStart',
+                active?.sample?.runtimeFrameLoopAtStart,
+            ),
+            ...coalescedRenderRequestChecks(
+                'lifecycleLiveActiveEnd',
+                active?.sample?.runtimeFrameLoopAtEnd,
+            ),
+            ...coalescedRenderRequestChecks(
+                'lifecycleLiveActive',
+                active?.runtimeFrameLoop,
+            ),
+            exact(
+                'lifecycleLiveOffscreenTargetFramesPerSecondRestored',
+                offscreen?.resumed?.targetFramesPerSecond,
+                lifecycleLiveTargetFramesPerSecond,
+            ),
+            exact(
+                'lifecycleLiveHiddenTargetFramesPerSecondRestored',
+                hidden?.resumed?.targetFramesPerSecond,
+                lifecycleLiveTargetFramesPerSecond,
+            ),
+            ...suspendTransitionChecks(
+                'lifecycleLiveOffscreenSuspendTransition',
+                offscreen,
+            ),
+            ...suspendTransitionChecks(
+                'lifecycleLiveHiddenSuspendTransition',
+                hidden,
+            ),
+            ...resumeTransitionChecks(
+                'lifecycleLiveOffscreenResumeTransition',
+                offscreen,
+            ),
+            ...resumeTransitionChecks(
+                'lifecycleLiveHiddenResumeTransition',
+                hidden,
+            ),
+            ...resumeWindowChecks('lifecycleLiveOffscreenResume', offscreen),
+            ...resumeWindowChecks('lifecycleLiveHiddenResume', hidden),
+        );
+    }
+
     return {
         checks,
         pass: checks.every((check) => check.pass),
-        residualWorkPolicy: {
-            rendererAndCdpGated: false,
-            runtimeSchedulerGated: true,
-            reason: 'Offscreen and synthetic-hidden draw, frame, and script work are baseline observations until the runtime scheduler optimization lands.',
-        },
+        residualWorkPolicy:
+            requested?.lifecycleLiveProfile === true
+                ? {
+                      cdpFiniteDiagnostic: true,
+                      fullResidualZeroWorkGated: true,
+                      ownedSchedulingGated: true,
+                      rendererGated: true,
+                      runtimeSchedulerGated: true,
+                      reason: 'The candidate-only live lifecycle gates every offscreen and synthetic-hidden runtime counter, R3F callback, rendered frame, draw call, and submitted triangle at exact zero. CDP script, task, and layout durations remain finite diagnostics rather than zero-work gates.',
+                  }
+                : {
+                      fullResidualZeroWorkGated: false,
+                      ownedSchedulingGated: true,
+                      rendererAndCdpGated: false,
+                      runtimeSchedulerGated: true,
+                      reason: 'The canonical comparison lifecycle preserves its compatibility gate for owned scheduling counters. Full residual runtime, renderer, and CDP evidence remains diagnostic so before-system baseline capture stays valid.',
+                  },
     };
 }
 
@@ -5910,6 +8765,11 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
     await cdp.send('Performance.enable');
     await page.addInitScript(installLifecycleMilestoneTracker);
     await page.addInitScript(installProfileContextTracker);
+    if (scenario.lifecycleLiveProfile === true) {
+        await page.addInitScript(installLifecycleSuspensionBoundaryTracker, {
+            measurementMode: lifecycleSuspensionBoundaryMeasurementMode,
+        });
+    }
     await page.addInitScript(installBrowserMetrics, {
         externalGpuTimer: false,
     });
@@ -5925,6 +8785,13 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             timeout: 60_000,
         });
         const servedBuildProvenance = await readServedBuildProvenance(page);
+        const lifecycleRendererStatsMode =
+            resolveLifecycleRendererStatsCaptureMode({
+                harness: options.harnessProvenance,
+                requestedMode: options.lifecycleRendererStatsMode,
+                servedBuild: servedBuildProvenance,
+                serverMode: options.startServer ? 'managed' : 'external',
+            });
         await page.waitForFunction(
             () => {
                 const canvas = document.querySelector(
@@ -5959,16 +8826,20 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             loopActive: true,
         });
         await installLifecycleIntersectionWitness(page);
+        const coldRendererStatsWitness =
+            await waitForLifecycleRendererStatsBarrier(
+                page,
+                lifecycleRendererStatsMode,
+            );
+        const coldFixture = withLifecycleRendererStatsWitness(
+            await readGardenSwitchArrival(page, sceneCanvas, sceneContext),
+            coldRendererStatsWitness,
+        );
         const interaction = await dispatchGardenSwitchInteraction(
             page,
             'high-target',
         );
         const interactionReadyMs = await page.evaluate(() => performance.now());
-        const coldFixture = await readGardenSwitchArrival(
-            page,
-            sceneCanvas,
-            sceneContext,
-        );
         const coldScreenshotPath = resolve(
             options.outDir,
             'screenshots',
@@ -6015,6 +8886,10 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
         await hideLifecycleOutline(page);
         await page.waitForTimeout(options.warmupMs);
         const sampleMs = scenario.sampleMs ?? options.sampleMs;
+        const residualCounterFields =
+            scenario.lifecycleLiveProfile === true
+                ? fullRuntimeFrameLoopCounterFields
+                : runtimeFrameLoopCounterFields;
         const activeWindow = await measureLifecycleWindow({
             cdp,
             durationMs: sampleMs,
@@ -6026,26 +8901,44 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
         };
 
         const offscreenBefore = await readRuntimeFrameLoopSnapshot(page);
-        await moveLifecycleCanvasOffscreen(page, true);
-        await page.waitForFunction(
-            () => {
-                const entry =
-                    globalThis.__grediceLifecycleIntersectionEntries?.at(-1);
-                return Boolean(
-                    entry?.isIntersecting === false &&
-                        entry.width === 0 &&
-                        entry.height === 0,
+        const suspendOffscreen = async () => {
+            await moveLifecycleCanvasOffscreen(page, true);
+            await page.waitForFunction(
+                () => {
+                    const entry =
+                        globalThis.__grediceLifecycleIntersectionEntries?.at(
+                            -1,
+                        );
+                    return Boolean(
+                        entry?.isIntersecting === false &&
+                            entry.width === 0 &&
+                            entry.height === 0,
+                    );
+                },
+                undefined,
+                { timeout: 20_000 },
+            );
+            await waitForRuntimeFrameLoopState(page, {
+                canvasVisible: false,
+                documentVisible: true,
+                effectiveVisible: false,
+                loopActive: false,
+            });
+        };
+        let offscreenSuspendTransition = null;
+        if (scenario.lifecycleLiveProfile === true) {
+            offscreenSuspendTransition =
+                buildLifecycleSuspendTransitionEvidence(
+                    await measureLifecycleWindow({
+                        cdp,
+                        durationMs: lifecycleSuspendTransitionWindowMs,
+                        page,
+                        transition: suspendOffscreen,
+                    }),
                 );
-            },
-            undefined,
-            { timeout: 20_000 },
-        );
-        await waitForRuntimeFrameLoopState(page, {
-            canvasVisible: false,
-            documentVisible: true,
-            effectiveVisible: false,
-            loopActive: false,
-        });
+        } else {
+            await suspendOffscreen();
+        }
         const offscreenSuspended = await readRuntimeFrameLoopSnapshot(page);
         const offscreenSuspendedIntersection =
             await readLifecycleIntersectionWitness(page);
@@ -6058,25 +8951,52 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
         const offscreenResidualDeltas = runtimeFrameLoopCounterDeltas(
             offscreenSuspended,
             offscreenSampleEnd,
+            residualCounterFields,
         );
-        await moveLifecycleCanvasOffscreen(page, false);
-        await page.waitForFunction(
-            () =>
-                globalThis.__grediceLifecycleIntersectionEntries?.at(-1)
-                    ?.isIntersecting === true,
-            undefined,
-            { timeout: 20_000 },
-        );
-        await waitForRuntimeFrameLoopState(page, {
-            canvasVisible: true,
-            documentVisible: true,
-            effectiveVisible: true,
-            loopActive: true,
-        });
+        const resumeOffscreen = async () => {
+            await moveLifecycleCanvasOffscreen(page, false);
+            await page.waitForFunction(
+                () =>
+                    globalThis.__grediceLifecycleIntersectionEntries?.at(-1)
+                        ?.isIntersecting === true,
+                undefined,
+                { timeout: 20_000 },
+            );
+            await waitForRuntimeFrameLoopState(page, {
+                canvasVisible: true,
+                documentVisible: true,
+                effectiveVisible: true,
+                loopActive: true,
+            });
+        };
+        let offscreenResumeTransition = null;
+        if (scenario.lifecycleLiveProfile === true) {
+            offscreenResumeTransition = buildLifecycleResumeTransitionEvidence(
+                await measureLifecycleWindow({
+                    cdp,
+                    durationMs: lifecycleResumeTransitionWindowMs,
+                    page,
+                    transition: resumeOffscreen,
+                }),
+            );
+        } else {
+            await resumeOffscreen();
+        }
+        const offscreenResumeWindow =
+            scenario.lifecycleLiveProfile === true
+                ? buildLifecycleResumeWindowEvidence(
+                      await measureLifecycleWindow({
+                          cdp,
+                          durationMs: lifecycleResumeSteadyWindowMs,
+                          page,
+                      }),
+                  )
+                : null;
         const offscreenResumed = await readRuntimeFrameLoopSnapshot(page);
         const offscreenResumedIntersection =
             await readLifecycleIntersectionWitness(page);
         const offscreenResumedControl = await captureLifecycleActiveControl({
+            lifecycleRendererStatsMode,
             page,
             persistentCanvas: sceneCanvas,
             persistentContext: sceneContext,
@@ -6090,38 +9010,75 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             before: offscreenBefore,
             residual: offscreenWindow,
             residualDeltas: offscreenResidualDeltas,
+            residualSceneTimeDeltaSeconds: runtimeFrameLoopNumberDelta(
+                offscreenSuspended,
+                offscreenSampleEnd,
+                'sceneTimeSeconds',
+            ),
             resumeDeltas: runtimeFrameLoopCounterDeltas(
                 offscreenSampleEnd,
                 offscreenResumed,
             ),
+            resumeTransition: offscreenResumeTransition,
+            resumeWindow: offscreenResumeWindow,
             resumed: offscreenResumed,
             resumedControl: offscreenResumedControl,
             resumedIntersection: offscreenResumedIntersection,
             signal: 'intersection-observer',
+            suspendTransition: offscreenSuspendTransition,
             suspended: offscreenSuspended,
             suspendedIntersection: offscreenSuspendedIntersection,
             transitionDeltas: runtimeFrameLoopCounterDeltas(
                 offscreenBefore,
                 offscreenSuspended,
             ),
-            runtimeSchedulerZeroObserved: lifecycleRuntimeSchedulerZeroObserved(
+            ownedSchedulingZeroObserved: lifecycleOwnedSchedulingZeroObserved(
                 offscreenResidualDeltas,
             ),
-            zeroWorkObserved: lifecycleZeroWorkObserved(
-                offscreenWindow,
-                offscreenResidualDeltas,
-            ),
+            runtimeSchedulerZeroObserved:
+                scenario.lifecycleLiveProfile === true
+                    ? lifecycleRuntimeSchedulerZeroObserved(
+                          offscreenResidualDeltas,
+                      )
+                    : lifecycleOwnedSchedulingZeroObserved(
+                          offscreenResidualDeltas,
+                      ),
+            zeroWorkObserved:
+                scenario.lifecycleLiveProfile === true
+                    ? lifecycleZeroWorkObserved(
+                          offscreenWindow,
+                          offscreenResidualDeltas,
+                      )
+                    : lifecycleCompatibilityZeroWorkObserved(
+                          offscreenWindow,
+                          offscreenResidualDeltas,
+                      ),
         };
 
         await hideLifecycleOutline(page);
         const hiddenBefore = await readRuntimeFrameLoopSnapshot(page);
-        await setSyntheticDocumentHidden(page, true);
-        await waitForRuntimeFrameLoopState(page, {
-            canvasVisible: true,
-            documentVisible: false,
-            effectiveVisible: false,
-            loopActive: false,
-        });
+        const suspendHidden = async () => {
+            await setSyntheticDocumentHidden(page, true);
+            await waitForRuntimeFrameLoopState(page, {
+                canvasVisible: true,
+                documentVisible: false,
+                effectiveVisible: false,
+                loopActive: false,
+            });
+        };
+        let hiddenSuspendTransition = null;
+        if (scenario.lifecycleLiveProfile === true) {
+            hiddenSuspendTransition = buildLifecycleSuspendTransitionEvidence(
+                await measureLifecycleWindow({
+                    cdp,
+                    durationMs: lifecycleSuspendTransitionWindowMs,
+                    page,
+                    transition: suspendHidden,
+                }),
+            );
+        } else {
+            await suspendHidden();
+        }
         const hiddenSuspended = await readRuntimeFrameLoopSnapshot(page);
         const hiddenSuspendedDocument = await page.evaluate(() => ({
             hidden: document.hidden,
@@ -6136,20 +9093,47 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
         const hiddenResidualDeltas = runtimeFrameLoopCounterDeltas(
             hiddenSuspended,
             hiddenSampleEnd,
+            residualCounterFields,
         );
-        await setSyntheticDocumentHidden(page, false);
-        await waitForRuntimeFrameLoopState(page, {
-            canvasVisible: true,
-            documentVisible: true,
-            effectiveVisible: true,
-            loopActive: true,
-        });
+        const resumeHidden = async () => {
+            await setSyntheticDocumentHidden(page, false);
+            await waitForRuntimeFrameLoopState(page, {
+                canvasVisible: true,
+                documentVisible: true,
+                effectiveVisible: true,
+                loopActive: true,
+            });
+        };
+        let hiddenResumeTransition = null;
+        if (scenario.lifecycleLiveProfile === true) {
+            hiddenResumeTransition = buildLifecycleResumeTransitionEvidence(
+                await measureLifecycleWindow({
+                    cdp,
+                    durationMs: lifecycleResumeTransitionWindowMs,
+                    page,
+                    transition: resumeHidden,
+                }),
+            );
+        } else {
+            await resumeHidden();
+        }
+        const hiddenResumeWindow =
+            scenario.lifecycleLiveProfile === true
+                ? buildLifecycleResumeWindowEvidence(
+                      await measureLifecycleWindow({
+                          cdp,
+                          durationMs: lifecycleResumeSteadyWindowMs,
+                          page,
+                      }),
+                  )
+                : null;
         const hiddenResumed = await readRuntimeFrameLoopSnapshot(page);
         const hiddenResumedDocument = await page.evaluate(() => ({
             hidden: document.hidden,
             visibilityState: document.visibilityState,
         }));
         const hiddenResumedControl = await captureLifecycleActiveControl({
+            lifecycleRendererStatsMode,
             page,
             persistentCanvas: sceneCanvas,
             persistentContext: sceneContext,
@@ -6163,26 +9147,48 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             before: hiddenBefore,
             residual: hiddenWindow,
             residualDeltas: hiddenResidualDeltas,
+            residualSceneTimeDeltaSeconds: runtimeFrameLoopNumberDelta(
+                hiddenSuspended,
+                hiddenSampleEnd,
+                'sceneTimeSeconds',
+            ),
             resumeDeltas: runtimeFrameLoopCounterDeltas(
                 hiddenSampleEnd,
                 hiddenResumed,
             ),
+            resumeTransition: hiddenResumeTransition,
+            resumeWindow: hiddenResumeWindow,
             resumed: hiddenResumed,
             resumedControl: hiddenResumedControl,
             resumedDocument: hiddenResumedDocument,
             signal: 'synthetic-document-hidden',
+            suspendTransition: hiddenSuspendTransition,
             suspended: hiddenSuspended,
             suspendedDocument: hiddenSuspendedDocument,
             transitionDeltas: runtimeFrameLoopCounterDeltas(
                 hiddenBefore,
                 hiddenSuspended,
             ),
+            ownedSchedulingZeroObserved:
+                lifecycleOwnedSchedulingZeroObserved(hiddenResidualDeltas),
             runtimeSchedulerZeroObserved:
-                lifecycleRuntimeSchedulerZeroObserved(hiddenResidualDeltas),
-            zeroWorkObserved: lifecycleZeroWorkObserved(
-                hiddenWindow,
-                hiddenResidualDeltas,
-            ),
+                scenario.lifecycleLiveProfile === true
+                    ? lifecycleRuntimeSchedulerZeroObserved(
+                          hiddenResidualDeltas,
+                      )
+                    : lifecycleOwnedSchedulingZeroObserved(
+                          hiddenResidualDeltas,
+                      ),
+            zeroWorkObserved:
+                scenario.lifecycleLiveProfile === true
+                    ? lifecycleZeroWorkObserved(
+                          hiddenWindow,
+                          hiddenResidualDeltas,
+                      )
+                    : lifecycleCompatibilityZeroWorkObserved(
+                          hiddenWindow,
+                          hiddenResidualDeltas,
+                      ),
         };
 
         await hideLifecycleOutline(page);
@@ -6246,6 +9252,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             loopActive: true,
         });
         const restoredControl = await captureLifecycleActiveControl({
+            lifecycleRendererStatsMode,
             page,
             persistentCanvas: sceneCanvas,
             persistentContext: sceneContext,
@@ -6323,6 +9330,10 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             hud: profileMetadata?.hud ?? request.hud,
             isMobile: scenario.isMobile,
             lifecycle: profileMetadata?.lifecycle ?? null,
+            lifecycleLiveProfile: scenario.lifecycleLiveProfile === true,
+            ...(scenario.lifecycleLiveProfile === true
+                ? { lifecycleSuspensionBoundaryMeasurementMode }
+                : {}),
             lifecycleProfile: true,
             lifecycleRequest: request.lifecycle ?? '0',
             mode: profileMetadata?.mode ?? request.mode,
@@ -6356,13 +9367,16 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             offscreen,
             pageErrors,
             requested,
+            rendererStatsMode: lifecycleRendererStatsMode,
             resolved,
             restoredInteraction: restoredControl.interaction,
             restoredScreenshotWitness: screenshotWitness,
         });
+        const memory = await collectScenarioMemoryEvidence(cdp);
         const performanceBudget = evaluateBudget(
             active.sample,
             budgets[scenario.budget],
+            memory,
         );
         return {
             acceptance,
@@ -6411,6 +9425,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
                 offscreen,
                 restoredInteraction: restoredControl.interaction,
             },
+            memory,
             name: scenario.name,
             pageErrors: pageErrors.slice(0, 8),
             path: scenario.path,
@@ -6460,7 +9475,16 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             scenario.navigatorMetrics,
         );
     }
+    if (scenario.crossTierProfile === true) {
+        const expectedDpr = Math.min(scenario.dpr, scenario.expectedDprCap);
+        await page.addInitScript(installLifecycleMilestoneTracker, {
+            expectedClientHeight: scenario.viewport.height,
+            expectedClientWidth: scenario.viewport.width,
+            expectedDpr,
+        });
+    }
     await page.addInitScript(installBrowserMetrics, {
+        displayCadenceControl: scenario.displayCadenceControl ?? null,
         externalGpuTimer: scenario.externalGpuTimer !== false,
     });
 
@@ -6526,6 +9550,15 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         timeout: 60000,
     });
     const servedBuildProvenance = await readServedBuildProvenance(page);
+    const crossTierRendererStatsMode =
+        scenario.crossTierProfile === true
+            ? resolveLifecycleRendererStatsCaptureMode({
+                  harness: options.harnessProvenance,
+                  requestedMode: options.lifecycleRendererStatsMode,
+                  servedBuild: servedBuildProvenance,
+                  serverMode: options.startServer ? 'managed' : 'external',
+              })
+            : null;
     await page.waitForFunction(
         () => {
             const canvas = document.querySelector('canvas');
@@ -6541,8 +9574,17 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 ),
             ),
     );
-    const canvasReadyMs = Date.now() - navigationStart;
+    const hostCanvasReadyDiagnosticMs = Date.now() - navigationStart;
     const request = getScenarioRequest(scenario.path);
+    if (scenario.crossTierProfile === true) {
+        await page.waitForFunction(
+            () =>
+                typeof globalThis.__grediceLifecycleMilestones
+                    ?.firstSubmittedFrameMs === 'number',
+            undefined,
+            { timeout: 60_000 },
+        );
+    }
     if (request.gardenProfile === 'high-target') {
         await page.waitForFunction(
             ({
@@ -6596,6 +9638,17 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             { timeout: 60000 },
         );
     }
+    const crossTierCold =
+        scenario.crossTierProfile === true
+            ? await page.evaluate(finishCrossTierColdMilestoneTracking, {
+                  hostCanvasReadyDiagnosticMs,
+                  measurementMode: crossTierColdMilestoneMeasurementMode,
+              })
+            : null;
+    const canvasReadyMs =
+        scenario.crossTierProfile === true
+            ? (crossTierCold?.canvasSizedMs ?? null)
+            : hostCanvasReadyDiagnosticMs;
     if (scenario.faunaProfile === true) {
         await page.waitForFunction(
             ({
@@ -6668,6 +9721,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             new Promise((resolveWarmup) => setTimeout(resolveWarmup, warmupMs)),
         options.warmupMs,
     );
+    if (scenario.staticIdleProfile === true) {
+        await waitForStaticIdleStabilization(page);
+    }
     if (
         scenario.staticSceneCacheBenchmark === true &&
         request.staticSceneCache === 'cache'
@@ -6703,11 +9759,30 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         await wait(options.soakMs);
     }
     const motionRunsBeforeSample = scenario.motion === 'foliage-detail-zoom';
+    const motionWarmupMs = Number.isFinite(scenario.motionWarmupMs)
+        ? Math.max(0, scenario.motionWarmupMs)
+        : 0;
+    let motionWarmupCameraSnapshotAtEnd = null;
+    let motionWarmupCameraSnapshotAtStart = null;
+    if (!motionRunsBeforeSample && scenario.motion && motionWarmupMs > 0) {
+        motionWarmupCameraSnapshotAtStart = await page.evaluate(() =>
+            globalThis.__grediceGameProfile?.gameCameraSnapshot
+                ? { ...globalThis.__grediceGameProfile.gameCameraSnapshot }
+                : null,
+        );
+        await runScenarioMotion(page, scenario, motionWarmupMs);
+        await page.waitForTimeout(250);
+        motionWarmupCameraSnapshotAtEnd = await page.evaluate(() =>
+            globalThis.__grediceGameProfile?.gameCameraSnapshot
+                ? { ...globalThis.__grediceGameProfile.gameCameraSnapshot }
+                : null,
+        );
+    }
     if (motionRunsBeforeSample) {
         await runScenarioMotion(
             page,
             scenario,
-            scenario.motionWarmupMs ?? options.warmupMs,
+            motionWarmupMs || options.warmupMs,
         );
         if (request.foliageBudget === 'legacy') {
             await page.waitForFunction(
@@ -6811,6 +9886,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     typeof deviceMemory === 'number' ? deviceMemory : null,
                 narrowViewport: window.innerWidth <= 640,
             },
+            continuousRenderLeases:
+                element.dataset.gameProfileContinuousRenderLeases ?? null,
             controls: element.dataset.gameProfileControls ?? null,
             closeupRaisedBedId:
                 Number.parseInt(
@@ -6837,6 +9914,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             quality: element.dataset.gameProfileQuality ?? null,
             staticSceneCache:
                 element.dataset.gameProfileStaticSceneCache ?? null,
+            staticIdle: element.dataset.gameProfileStaticIdle ?? null,
             staticSceneCacheOcclusionFixture:
                 element.dataset.gameProfileStaticSceneCacheOcclusionFixture ??
                 null,
@@ -6872,12 +9950,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         });
         const sample = closeup.cold.steady.sample;
         const request = getScenarioRequest(scenario.path);
+        const memory = await collectScenarioMemoryEvidence(cdp);
         await context.close();
 
         return {
             apiErrors: apiErrors.slice(0, 8),
             apiRequests: apiRequests.slice(0, 8),
-            budget: evaluateBudget(sample, budgets[scenario.budget]),
+            budget: evaluateBudget(sample, budgets[scenario.budget], memory),
             closeup: {
                 cold: closeup.cold,
                 normalScreenshotPath: closeup.normalScreenshotPath,
@@ -6889,6 +9968,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             domContentLoadedMs,
             environment,
             canvasReadyMs,
+            memory,
             pageErrors,
             path: scenario.path,
             requested: {
@@ -6945,6 +10025,12 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         scenario.weatherSurfaceTransition ?? null;
     const placementProfileRequest = scenario.placementProfile ?? null;
     const animalProfileCommandRequest = scenario.animalProfileCommand ?? null;
+    const runtimeOwnerLeaseExpectations =
+        scenario.runtimeOwnersProfile === true ? runtimeOwnerLeaseRates : null;
+    const runtimeOwnerLeaseRafSnapshotsEnabled =
+        shouldReadRuntimeOwnerLeaseRafSnapshot(runtimeOwnerLeaseExpectations);
+    const runtimeFrameLoopRafObservationsEnabled =
+        shouldObserveRuntimeFrameLoopDuringRaf(scenario);
     const samplePromise = page.evaluate(
         async (sampleOptions) => {
             const {
@@ -6954,10 +10040,16 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 animalProfileCommandEventName,
                 animalProfileCommandRequest,
                 faunaExpectedSpecies,
+                motionWarmupCameraSnapshotAtEnd,
+                motionWarmupCameraSnapshotAtStart,
                 outlineProfileDispatched,
                 outlineProfileTelemetryAvailable,
                 placementProfileEventName,
                 placementProfileRequest,
+                runtimeFrameLoopRafObservationsEnabled,
+                runtimeOwnerDeliveryTargetRates,
+                runtimeOwnerLeaseExpectations,
+                runtimeOwnerLeaseRafSnapshotsEnabled,
                 sampleMs,
                 weatherTransitionEventName,
                 weatherTransitionRequest,
@@ -6974,6 +10066,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             }
             globalThis.__gameProfileLongTasks = [];
             globalThis.__gameProfileGpuTimer?.reset();
+            const requestProfileAnimationFrame =
+                globalThis.__gameProfileRequestNativeAnimationFrame ??
+                globalThis.requestAnimationFrame.bind(globalThis);
 
             const intervals = [];
             const start = performance.now();
@@ -6994,10 +10089,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             let runtimeFrameLoopActiveLeaseCountAtEnd = null;
             let runtimeFrameLoopActiveLeaseCountAtStart = null;
             let runtimeFrameLoopActiveLeaseCountMax = null;
+            let runtimeFrameLoopActiveLeaseCountMin = null;
             let runtimeFrameLoopObservationCount = 0;
             let runtimeFrameLoopTargetFramesPerSecondAtEnd = null;
             let runtimeFrameLoopTargetFramesPerSecondAtStart = null;
             let runtimeFrameLoopTargetFramesPerSecondMax = null;
+            let runtimeFrameLoopTargetFramesPerSecondMin = null;
+            let runtimeOwnerDeliveryPreviousSample = null;
             const readProfileNumber = (field) => {
                 const value = globalThis.__grediceGameProfile?.[field];
                 return typeof value === 'number' ? value : null;
@@ -7009,6 +10107,178 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             const readProfileString = (field) => {
                 const value = globalThis.__grediceGameProfile?.[field];
                 return typeof value === 'string' ? value : null;
+            };
+            const readRuntimeFrameLoopSnapshot = () => {
+                const telemetry =
+                    globalThis.__grediceGameProfile?.runtimeFrameLoop ?? null;
+                return telemetry && typeof telemetry === 'object'
+                    ? structuredClone(telemetry)
+                    : null;
+            };
+            const runtimeOwnerLeaseObservation = runtimeOwnerLeaseExpectations
+                ? {
+                      endpointObserved: false,
+                      deliveryByTargetFramesPerSecond: Object.fromEntries(
+                          runtimeOwnerDeliveryTargetRates.map(
+                              (framesPerSecond) => [
+                                  framesPerSecond,
+                                  {
+                                      actualRenderedFrames: 0,
+                                      durationMs: 0,
+                                      framesPerSecond,
+                                  },
+                              ],
+                          ),
+                      ),
+                      frameCount: 0,
+                      observationCount: 0,
+                      owners: Object.fromEntries(
+                          Object.entries(runtimeOwnerLeaseExpectations).map(
+                              ([owner, expectedFramesPerSecond]) => [
+                                  owner,
+                                  {
+                                      endpointObserved: false,
+                                      expectedFramesPerSecond,
+                                      framesPerSecond: [],
+                                      matchingObservationCount: 0,
+                                      matchingRafObservationCount: 0,
+                                      maximumLeaseCount: 0,
+                                      observedFrameCount: 0,
+                                      observedObservationCount: 0,
+                                      startObserved: false,
+                                  },
+                              ],
+                          ),
+                      ),
+                      rafObservationCount: 0,
+                      startObserved: false,
+                      targetFramesPerSecondMax: null,
+                      targetFramesPerSecondMin: null,
+                  }
+                : null;
+            const recordRuntimeOwnerLeaseObservation = (
+                point,
+                snapshot,
+                observedAt,
+            ) => {
+                if (!runtimeOwnerLeaseObservation || !snapshot) {
+                    return;
+                }
+                const renderedFrames = metrics?.renderedFrames;
+                const targetFramesPerSecond =
+                    typeof snapshot.targetFramesPerSecond === 'number' &&
+                    Number.isFinite(snapshot.targetFramesPerSecond)
+                        ? snapshot.targetFramesPerSecond
+                        : null;
+                if (
+                    runtimeOwnerDeliveryPreviousSample !== null &&
+                    typeof renderedFrames === 'number' &&
+                    Number.isFinite(renderedFrames)
+                ) {
+                    const previous = runtimeOwnerDeliveryPreviousSample;
+                    const delivery =
+                        runtimeOwnerLeaseObservation
+                            .deliveryByTargetFramesPerSecond[
+                            previous.targetFramesPerSecond
+                        ];
+                    if (delivery) {
+                        delivery.durationMs += Math.max(
+                            0,
+                            observedAt - previous.observedAt,
+                        );
+                        delivery.actualRenderedFrames += Math.max(
+                            0,
+                            renderedFrames - previous.renderedFrames,
+                        );
+                    }
+                }
+                runtimeOwnerDeliveryPreviousSample =
+                    typeof renderedFrames === 'number' &&
+                    Number.isFinite(renderedFrames)
+                        ? {
+                              observedAt,
+                              renderedFrames,
+                              targetFramesPerSecond,
+                          }
+                        : null;
+                runtimeOwnerLeaseObservation.observationCount += 1;
+                runtimeOwnerLeaseObservation.startObserved ||=
+                    point === 'start';
+                runtimeOwnerLeaseObservation.endpointObserved ||=
+                    point === 'endpoint';
+                if (point === 'raf') {
+                    runtimeOwnerLeaseObservation.rafObservationCount += 1;
+                    runtimeOwnerLeaseObservation.frameCount += 1;
+                }
+                if (targetFramesPerSecond !== null) {
+                    runtimeOwnerLeaseObservation.targetFramesPerSecondMax =
+                        runtimeOwnerLeaseObservation.targetFramesPerSecondMax ===
+                        null
+                            ? targetFramesPerSecond
+                            : Math.max(
+                                  runtimeOwnerLeaseObservation.targetFramesPerSecondMax,
+                                  targetFramesPerSecond,
+                              );
+                    runtimeOwnerLeaseObservation.targetFramesPerSecondMin =
+                        runtimeOwnerLeaseObservation.targetFramesPerSecondMin ===
+                        null
+                            ? targetFramesPerSecond
+                            : Math.min(
+                                  runtimeOwnerLeaseObservation.targetFramesPerSecondMin,
+                                  targetFramesPerSecond,
+                              );
+                }
+                const summaries = Array.isArray(snapshot.renderLeaseSummaries)
+                    ? snapshot.renderLeaseSummaries
+                    : [];
+                for (const [owner, ownerObservation] of Object.entries(
+                    runtimeOwnerLeaseObservation.owners,
+                )) {
+                    const summary = summaries.find(
+                        (candidate) => candidate?.owner === owner,
+                    );
+                    if (!summary) {
+                        continue;
+                    }
+                    const validLease =
+                        typeof summary.leaseCount === 'number' &&
+                        Number.isFinite(summary.leaseCount) &&
+                        summary.leaseCount > 0;
+                    const validFramesPerSecond =
+                        typeof summary.framesPerSecond === 'number' &&
+                        Number.isFinite(summary.framesPerSecond);
+                    if (!validLease || !validFramesPerSecond) {
+                        continue;
+                    }
+                    ownerObservation.observedObservationCount += 1;
+                    ownerObservation.startObserved ||= point === 'start';
+                    ownerObservation.endpointObserved ||= point === 'endpoint';
+                    if (point === 'raf') {
+                        ownerObservation.observedFrameCount += 1;
+                    }
+                    if (
+                        !ownerObservation.framesPerSecond.includes(
+                            summary.framesPerSecond,
+                        )
+                    ) {
+                        ownerObservation.framesPerSecond.push(
+                            summary.framesPerSecond,
+                        );
+                    }
+                    ownerObservation.maximumLeaseCount = Math.max(
+                        ownerObservation.maximumLeaseCount,
+                        summary.leaseCount,
+                    );
+                    const matches =
+                        summary.framesPerSecond ===
+                        ownerObservation.expectedFramesPerSecond;
+                    if (matches) {
+                        ownerObservation.matchingObservationCount += 1;
+                        if (point === 'raf') {
+                            ownerObservation.matchingRafObservationCount += 1;
+                        }
+                    }
+                }
             };
             const readActorGroundingShadowSpeciesCounts = () => {
                 if (!faunaExpectedSpecies.length) {
@@ -7177,8 +10447,17 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     runtimeFrameLoopActiveLeaseCountMax ?? activeLeaseCount,
                     activeLeaseCount,
                 );
+                runtimeFrameLoopActiveLeaseCountMin = Math.min(
+                    runtimeFrameLoopActiveLeaseCountMin ?? activeLeaseCount,
+                    activeLeaseCount,
+                );
                 runtimeFrameLoopTargetFramesPerSecondMax = Math.max(
                     runtimeFrameLoopTargetFramesPerSecondMax ??
+                        targetFramesPerSecond,
+                    targetFramesPerSecond,
+                );
+                runtimeFrameLoopTargetFramesPerSecondMin = Math.min(
+                    runtimeFrameLoopTargetFramesPerSecondMin ??
                         targetFramesPerSecond,
                     targetFramesPerSecond,
                 );
@@ -7222,6 +10501,12 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             recordGeneratedPlantVisibility();
             recordRuntimeFrameLoopState();
             recordAdaptiveHighState();
+            const runtimeFrameLoopAtStart = readRuntimeFrameLoopSnapshot();
+            recordRuntimeOwnerLeaseObservation(
+                'start',
+                runtimeFrameLoopAtStart,
+                start,
+            );
             const adaptiveHighDeclineCountAtStart = readProfileNumber(
                 'adaptiveHighDeclineCount',
             );
@@ -7239,6 +10524,24 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             );
             const cloudAttenuationUpdateCountAtStart = readProfileNumber(
                 'cloudAttenuationUpdateCount',
+            );
+            const hoverOutlineCompositePassCountAtStart = readProfileNumber(
+                'hoverOutlineCompositePassCount',
+            );
+            const hoverOutlineHorizontalPassCountAtStart = readProfileNumber(
+                'hoverOutlineHorizontalPassCount',
+            );
+            const hoverOutlineMaskCacheBypassCountAtStart = readProfileNumber(
+                'hoverOutlineMaskCacheBypassCount',
+            );
+            const hoverOutlineMaskCacheHitCountAtStart = readProfileNumber(
+                'hoverOutlineMaskCacheHitCount',
+            );
+            const hoverOutlineMaskCacheMissCountAtStart = readProfileNumber(
+                'hoverOutlineMaskCacheMissCount',
+            );
+            const hoverOutlineMaskPassCountAtStart = readProfileNumber(
+                'hoverOutlineMaskPassCount',
             );
             const staticOpaqueSceneCacheBypassFrameCountAtStart =
                 readProfileNumber('staticOpaqueSceneCacheBypassFrameCount');
@@ -7499,12 +10802,21 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 const step = (now) => {
                     intervals.push(now - last);
                     last = now;
+                    if (runtimeOwnerLeaseRafSnapshotsEnabled) {
+                        recordRuntimeOwnerLeaseObservation(
+                            'raf',
+                            readRuntimeFrameLoopSnapshot(),
+                            now,
+                        );
+                    }
                     recordAdaptiveHighState();
                     recordActorGroundingShadowSpeciesCounts();
                     recordEffectiveDpr();
                     recordGameCameraMotion();
                     recordGeneratedPlantVisibility();
-                    recordRuntimeFrameLoopState();
+                    if (runtimeFrameLoopRafObservationsEnabled) {
+                        recordRuntimeFrameLoopState();
+                    }
                     const rainParticleCount =
                         globalThis.__grediceGameProfile?.rainParticleCount;
                     if (
@@ -7522,9 +10834,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                         resolveSample();
                         return;
                     }
-                    requestAnimationFrame(step);
+                    requestProfileAnimationFrame(step);
                 };
-                requestAnimationFrame(step);
+                requestProfileAnimationFrame(step);
             });
             const profileRecoveryPromise = adaptiveHighProfileControlRecovery
                 ? (async () => {
@@ -7612,6 +10924,12 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             ]);
 
             const sampleEndedAt = performance.now();
+            const runtimeFrameLoopAtEnd = readRuntimeFrameLoopSnapshot();
+            recordRuntimeOwnerLeaseObservation(
+                'endpoint',
+                runtimeFrameLoopAtEnd,
+                sampleEndedAt,
+            );
             recordGameCameraMotion();
             recordRuntimeFrameLoopState();
             const actorGroundingShadowSpeciesCountsAtEnd =
@@ -7698,6 +11016,24 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             const cloudAttenuationUpdateCountAtEnd = readProfileNumber(
                 'cloudAttenuationUpdateCount',
             );
+            const hoverOutlineCompositePassCountAtEnd = readProfileNumber(
+                'hoverOutlineCompositePassCount',
+            );
+            const hoverOutlineHorizontalPassCountAtEnd = readProfileNumber(
+                'hoverOutlineHorizontalPassCount',
+            );
+            const hoverOutlineMaskCacheBypassCountAtEnd = readProfileNumber(
+                'hoverOutlineMaskCacheBypassCount',
+            );
+            const hoverOutlineMaskCacheHitCountAtEnd = readProfileNumber(
+                'hoverOutlineMaskCacheHitCount',
+            );
+            const hoverOutlineMaskCacheMissCountAtEnd = readProfileNumber(
+                'hoverOutlineMaskCacheMissCount',
+            );
+            const hoverOutlineMaskPassCountAtEnd = readProfileNumber(
+                'hoverOutlineMaskPassCount',
+            );
             const staticOpaqueSceneCacheBypassFrameCountAtEnd =
                 readProfileNumber('staticOpaqueSceneCacheBypassFrameCount');
             const staticOpaqueSceneCacheCaptureCountAtEnd = readProfileNumber(
@@ -7747,6 +11083,60 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     total + (typeof value === 'number' ? value : 0),
                 0,
             );
+            const runtimeOwnerLeaseEvidence = runtimeOwnerLeaseObservation
+                ? {
+                      ...runtimeOwnerLeaseObservation,
+                      sceneTimeDeltaSeconds:
+                          typeof runtimeFrameLoopAtStart?.sceneTimeSeconds ===
+                              'number' &&
+                          typeof runtimeFrameLoopAtEnd?.sceneTimeSeconds ===
+                              'number'
+                              ? runtimeFrameLoopAtEnd.sceneTimeSeconds -
+                                runtimeFrameLoopAtStart.sceneTimeSeconds
+                              : null,
+                      deliveryByTargetFramesPerSecond: Object.fromEntries(
+                          Object.entries(
+                              runtimeOwnerLeaseObservation.deliveryByTargetFramesPerSecond,
+                          ).map(([rate, delivery]) => {
+                              const expectedFrameBudget =
+                                  (delivery.durationMs *
+                                      delivery.framesPerSecond) /
+                                  1_000;
+                              return [
+                                  rate,
+                                  {
+                                      ...delivery,
+                                      deliveryRatio:
+                                          expectedFrameBudget > 0
+                                              ? delivery.actualRenderedFrames /
+                                                expectedFrameBudget
+                                              : null,
+                                      expectedFrameBudget,
+                                  },
+                              ];
+                          }),
+                      ),
+                      owners: Object.fromEntries(
+                          Object.entries(
+                              runtimeOwnerLeaseObservation.owners,
+                          ).map(([owner, observation]) => [
+                              owner,
+                              {
+                                  ...observation,
+                                  coverageRatio:
+                                      runtimeOwnerLeaseObservation.rafObservationCount >
+                                      0
+                                          ? observation.matchingRafObservationCount /
+                                            runtimeOwnerLeaseObservation.rafObservationCount
+                                          : 0,
+                                  framesPerSecond: [
+                                      ...observation.framesPerSecond,
+                                  ].sort((left, right) => left - right),
+                              },
+                          ]),
+                      ),
+                  }
+                : null;
             const nonGpuSample = {
                 adaptiveHighDeclineCountDelta:
                     adaptiveHighDeclineCountAtStart === null ||
@@ -7837,6 +11227,38 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 gameCameraSnapshotAtStart,
                 gameCameraSnapshotVersionDelta,
                 gameCameraSnapshotVersionMax,
+                hoverOutlineCompositePassCountDelta: counterDelta(
+                    hoverOutlineCompositePassCountAtStart,
+                    hoverOutlineCompositePassCountAtEnd,
+                ),
+                hoverOutlineHorizontalPassCountDelta: counterDelta(
+                    hoverOutlineHorizontalPassCountAtStart,
+                    hoverOutlineHorizontalPassCountAtEnd,
+                ),
+                hoverOutlineMaskCacheBypassCountDelta: counterDelta(
+                    hoverOutlineMaskCacheBypassCountAtStart,
+                    hoverOutlineMaskCacheBypassCountAtEnd,
+                ),
+                hoverOutlineMaskCacheHitCountDelta: counterDelta(
+                    hoverOutlineMaskCacheHitCountAtStart,
+                    hoverOutlineMaskCacheHitCountAtEnd,
+                ),
+                hoverOutlineMaskCacheMissCountDelta: counterDelta(
+                    hoverOutlineMaskCacheMissCountAtStart,
+                    hoverOutlineMaskCacheMissCountAtEnd,
+                ),
+                hoverOutlineMaskPassCountDelta: counterDelta(
+                    hoverOutlineMaskPassCountAtStart,
+                    hoverOutlineMaskPassCountAtEnd,
+                ),
+                motionWarmupCameraSnapshotAtEnd,
+                motionWarmupCameraSnapshotAtStart,
+                motionWarmupCameraSnapshotVersionDelta:
+                    motionWarmupCameraSnapshotAtStart &&
+                    motionWarmupCameraSnapshotAtEnd
+                        ? motionWarmupCameraSnapshotAtEnd.version -
+                          motionWarmupCameraSnapshotAtStart.version
+                        : null,
                 generatedPlantVisibleFieldCountMin,
                 generatedPlantVisibleInstanceCountMin,
                 instancedDrawCalls,
@@ -7891,13 +11313,18 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 renderedFrames,
                 rendererShaders: metrics?.rendererShaders ?? null,
                 rendererTextures: metrics?.rendererTextures ?? null,
+                runtimeFrameLoopAtEnd,
+                runtimeFrameLoopAtStart,
+                runtimeOwnerLeaseEvidence,
                 runtimeFrameLoopActiveLeaseCountAtEnd,
                 runtimeFrameLoopActiveLeaseCountAtStart,
                 runtimeFrameLoopActiveLeaseCountMax,
+                runtimeFrameLoopActiveLeaseCountMin,
                 runtimeFrameLoopObservationCount,
                 runtimeFrameLoopTargetFramesPerSecondAtEnd,
                 runtimeFrameLoopTargetFramesPerSecondAtStart,
                 runtimeFrameLoopTargetFramesPerSecondMax,
+                runtimeFrameLoopTargetFramesPerSecondMin,
                 staticOpaqueSceneCacheBypassFrameCountDelta,
                 staticOpaqueSceneCacheCaptureCountAtStart,
                 staticOpaqueSceneCacheCaptureCountDelta,
@@ -7964,11 +11391,17 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 scenario.faunaProfile === true
                     ? Object.keys(faunaHeavyExpectedFixedSpeciesCounts)
                     : [],
+            motionWarmupCameraSnapshotAtEnd,
+            motionWarmupCameraSnapshotAtStart,
             outlineProfileDispatched: outlineProfileState.dispatched,
             outlineProfileTelemetryAvailable:
                 outlineProfileState.telemetryAvailable,
             placementProfileEventName: gameProfilePlacementCommandEventName,
             placementProfileRequest,
+            runtimeFrameLoopRafObservationsEnabled,
+            runtimeOwnerDeliveryTargetRates,
+            runtimeOwnerLeaseExpectations,
+            runtimeOwnerLeaseRafSnapshotsEnabled,
             sampleMs,
             weatherTransitionEventName: gameProfileWeatherTransitionEventName,
             weatherTransitionRequest,
@@ -7993,13 +11426,90 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         sampleCompletionPromise,
         motionPromise,
     ]);
-    const sample = normalizeRenderWork(sampleCompletion.sample);
+    const semanticSample = normalizeRenderWork(sampleCompletion.sample);
     const after = Object.fromEntries(
         sampleCompletion.endpointMetrics.metrics.map((metric) => [
             metric.name,
             metric.value,
         ]),
     );
+    const observerFreePerformance =
+        scenario.crossTierProfile === true
+            ? await (async () => {
+                  // The semantic witness intentionally exercises subject-side
+                  // telemetry on every RAF. Start the performance control from
+                  // a clean heap so those observer allocations cannot spill
+                  // into its natural-GC and script-duration measurements.
+                  await cdp.send('HeapProfiler.collectGarbage');
+                  return measureObserverFreeScenarioPerformance({
+                      cdp,
+                      page,
+                      sampleMs,
+                      scenario,
+                  });
+              })()
+            : null;
+    const sample = observerFreePerformance
+        ? {
+              ...semanticSample,
+              ...observerFreePerformance.sample,
+              hoverOutlineSemanticCompositePassCountDelta:
+                  semanticSample.hoverOutlineCompositePassCountDelta,
+              hoverOutlineSemanticHorizontalPassCountDelta:
+                  semanticSample.hoverOutlineHorizontalPassCountDelta,
+              hoverOutlineSemanticMaskCacheBypassCountDelta:
+                  semanticSample.hoverOutlineMaskCacheBypassCountDelta,
+              hoverOutlineSemanticMaskCacheHitCountDelta:
+                  semanticSample.hoverOutlineMaskCacheHitCountDelta,
+              hoverOutlineSemanticMaskCacheMissCountDelta:
+                  semanticSample.hoverOutlineMaskCacheMissCountDelta,
+              hoverOutlineSemanticMaskPassCountDelta:
+                  semanticSample.hoverOutlineMaskPassCountDelta,
+              performanceMeasurementMode: crossTierPerformanceMeasurementMode,
+              runtimeFrameLoopActiveLeaseCountAtEnd:
+                  semanticSample.runtimeFrameLoopActiveLeaseCountAtEnd,
+              runtimeFrameLoopActiveLeaseCountAtStart:
+                  semanticSample.runtimeFrameLoopActiveLeaseCountAtStart,
+              runtimeFrameLoopActiveLeaseCountMax:
+                  semanticSample.runtimeFrameLoopActiveLeaseCountMax,
+              runtimeFrameLoopActiveLeaseCountMin:
+                  semanticSample.runtimeFrameLoopActiveLeaseCountMin,
+              runtimeFrameLoopObservationCount:
+                  semanticSample.runtimeFrameLoopObservationCount,
+              runtimeFrameLoopObservationMode: crossTierRuntimeObservationMode,
+              runtimeFrameLoopObservationRafFrameCount: semanticSample.frames,
+              runtimeFrameLoopSemanticLeaseTopologyAtEnd:
+                  runtimeFrameLoopLeaseTopology(
+                      semanticSample.runtimeFrameLoopAtEnd,
+                  ),
+              runtimeFrameLoopSemanticLeaseTopologyAtStart:
+                  runtimeFrameLoopLeaseTopology(
+                      semanticSample.runtimeFrameLoopAtStart,
+                  ),
+              runtimeFrameLoopTargetFramesPerSecondAtEnd:
+                  semanticSample.runtimeFrameLoopTargetFramesPerSecondAtEnd,
+              runtimeFrameLoopTargetFramesPerSecondAtStart:
+                  semanticSample.runtimeFrameLoopTargetFramesPerSecondAtStart,
+              runtimeFrameLoopTargetFramesPerSecondMax:
+                  semanticSample.runtimeFrameLoopTargetFramesPerSecondMax,
+              runtimeFrameLoopTargetFramesPerSecondMin:
+                  semanticSample.runtimeFrameLoopTargetFramesPerSecondMin,
+          }
+        : semanticSample;
+    const scenarioCdp =
+        observerFreePerformance?.cdp ?? diffCdpMetrics(before, after);
+
+    const crossTierResourceSnapshot =
+        scenario.crossTierProfile === true
+            ? await captureCrossTierResourceSnapshot(
+                  page,
+                  crossTierRendererStatsMode,
+                  {
+                      allowMissingPopulation:
+                          scenario.expectedShadows === false,
+                  },
+              )
+            : null;
 
     const instrumentedRendererResources = {
         rendererShaders: sample.rendererShaders,
@@ -8220,6 +11730,18 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             ),
             hoverOutlineMaskPassCount: numberOrNull(
                 metadata.hoverOutlineMaskPassCount,
+            ),
+            hoverOutlineMaskCacheEligibleTargetCount: numberOrNull(
+                metadata.hoverOutlineMaskCacheEligibleTargetCount,
+            ),
+            hoverOutlineMaskCacheBypassCount: numberOrNull(
+                metadata.hoverOutlineMaskCacheBypassCount,
+            ),
+            hoverOutlineMaskCacheHitCount: numberOrNull(
+                metadata.hoverOutlineMaskCacheHitCount,
+            ),
+            hoverOutlineMaskCacheMissCount: numberOrNull(
+                metadata.hoverOutlineMaskCacheMissCount,
             ),
             hoverOutlineMaxKernelSampleCount: numberOrNull(
                 metadata.hoverOutlineMaxKernelSampleCount,
@@ -9038,6 +12560,17 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         responses: gardenStructureAssetResponses,
         runtime,
     });
+    if (crossTierResourceSnapshot && runtime) {
+        runtime = {
+            ...runtime,
+            rendererGeometries:
+                crossTierResourceSnapshot.resources.rendererGeometries,
+            rendererShaders:
+                crossTierResourceSnapshot.resources.rendererShaders,
+            rendererTextures:
+                crossTierResourceSnapshot.resources.rendererTextures,
+        };
+    }
 
     const screenshotPath =
         options.screenshots ||
@@ -9065,9 +12598,14 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         }
     }
 
+    const memory = await collectScenarioMemoryEvidence(cdp);
     await context.close();
 
     const roundedSample = roundSample(sample);
+    const staticIdle =
+        scenario.staticIdleProfile === true
+            ? buildStaticIdleEvidence(roundedSample)
+            : null;
     const requested = {
         adaptiveHigh: profileMetadata?.adaptiveHigh ?? request.adaptiveHigh,
         avatar: profileMetadata?.avatar ?? request.avatar,
@@ -9077,11 +12615,15 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         autoQualityMetrics: profileMetadata?.autoQualityMetrics ?? null,
         comparisonPair: scenario.comparisonPair ?? null,
         comparisonRole: scenario.comparisonRole ?? null,
+        continuousRenderLeases: profileMetadata?.continuousRenderLeases ?? null,
         controls: profileMetadata?.controls ?? request.controls,
         building: profileMetadata?.building ?? request.building,
         buildingFixture:
             profileMetadata?.buildingFixture ?? request.buildingFixture,
         crossTierProfile: scenario.crossTierProfile === true,
+        displayCadenceControl: scenario.displayCadenceControl
+            ? { ...scenario.displayCadenceControl }
+            : null,
         details: profileMetadata?.details ?? request.details,
         debugHud: profileMetadata?.debugHud ?? request.debugHud,
         dpr: scenario.dpr,
@@ -9110,12 +12652,14 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         graphicsBackend: options.graphicsBackend,
         hud: profileMetadata?.hud ?? request.hud,
         isMobile: scenario.isMobile,
+        legacyOutlinePipeline: options.legacyOutlinePipeline,
         mode: profileMetadata?.mode ?? request.mode,
         motion:
             scenario.motion ??
             scenario.interaction ??
             scenario.buildingProfile?.motion ??
             'none',
+        motionWarmupMs,
         operationVisuals:
             profileMetadata?.operationVisuals ?? request.operationVisuals,
         outline: profileMetadata?.outline ?? request.outline,
@@ -9136,9 +12680,12 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         profileControlRecovery: scenario.profileControlRecovery === true,
         quality: profileMetadata?.quality ?? request.quality,
         runtimeGpuSource: scenario.runtimeGpuSource === true,
+        runtimeOwnersProfile: scenario.runtimeOwnersProfile === true,
         sampleMs,
         staticSceneCache:
             profileMetadata?.staticSceneCache ?? request.staticSceneCache,
+        staticIdle: profileMetadata?.staticIdle ?? request.staticIdle ?? '0',
+        staticIdleProfile: scenario.staticIdleProfile === true,
         staticSceneCacheVisualDeterministic:
             scenario.staticSceneCacheVisualDeterministic !== false,
         staticSceneCacheOcclusionFixture:
@@ -9150,17 +12697,24 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         weatherSurfaceTransition: weatherSurfaceTransitionRequest ?? 'none',
         weatherTransition: weatherTransitionRequest ?? 'none',
     };
-    const budget = evaluateBudget(roundedSample, budgets[scenario.budget]);
+    const budget = evaluateBudget(
+        roundedSample,
+        budgets[scenario.budget],
+        memory,
+    );
     const acceptance = evaluateHighTargetAcceptance({
         apiErrors,
         apiRequests,
         consoleMessages,
+        crossTierCold,
+        crossTierResourceSnapshot,
         environment,
         pageErrors,
         requested,
         runtime,
         sample: roundedSample,
         screenshotWitness,
+        staticIdle,
     });
     const buildingAcceptance = evaluateGardenBuildingAcceptance({
         apiErrors,
@@ -9189,33 +12743,24 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         },
         budgetName: scenario.budget,
         consoleMessages: consoleMessages.slice(0, 8),
-        cdp: {
-            jsHeapMb: round((after.JSHeapUsedSize ?? 0) / 1024 / 1024, 1),
-            layoutDuration: round(
-                (after.LayoutDuration ?? 0) - (before.LayoutDuration ?? 0),
-                4,
-            ),
-            scriptDuration: round(
-                (after.ScriptDuration ?? 0) - (before.ScriptDuration ?? 0),
-                4,
-            ),
-            taskDuration: round(
-                (after.TaskDuration ?? 0) - (before.TaskDuration ?? 0),
-                4,
-            ),
-        },
+        cdp: scenarioCdp,
+        crossTierCold,
+        crossTierResourceSnapshot,
         domContentLoadedMs,
         environment,
         canvasReadyMs,
+        memory,
         pageErrors,
         path: scenario.path,
         performanceBudget: budget,
         requested,
         runtime,
+        runtimeOwners: roundedSample.runtimeOwnerLeaseEvidence ?? null,
         sample: roundedSample,
         servedBuildProvenance,
         screenshotPath,
         screenshotWitness,
+        staticIdle,
         url,
         name: scenario.name,
     };
@@ -9261,6 +12806,36 @@ function roundSample(sample) {
         drawCallsPerRafFrame: round(sample.drawCallsPerRafFrame, 1),
         drawCallsPerRenderedFrame: round(sample.drawCallsPerRenderedFrame, 1),
         drawCallsPerSecond: round(sample.drawCallsPerSecond, 1),
+        displayCadenceControl: sample.displayCadenceControl
+            ? {
+                  ...sample.displayCadenceControl,
+                  atEnd: sample.displayCadenceControl.atEnd
+                      ? {
+                            ...sample.displayCadenceControl.atEnd,
+                            observedFramesPerSecond: round(
+                                sample.displayCadenceControl.atEnd
+                                    .observedFramesPerSecond,
+                                2,
+                            ),
+                        }
+                      : null,
+                  atStart: sample.displayCadenceControl.atStart
+                      ? {
+                            ...sample.displayCadenceControl.atStart,
+                            observedFramesPerSecond: round(
+                                sample.displayCadenceControl.atStart
+                                    .observedFramesPerSecond,
+                                2,
+                            ),
+                        }
+                      : null,
+                  elapsedMs: round(sample.displayCadenceControl.elapsedMs),
+                  observedFramesPerSecond: round(
+                      sample.displayCadenceControl.observedFramesPerSecond,
+                      2,
+                  ),
+              }
+            : sample.displayCadenceControl,
         effectiveDprAtEnd: round(sample.effectiveDprAtEnd, 3),
         effectiveDprMin: round(sample.effectiveDprMin, 3),
         elapsedMs: round(sample.elapsedMs),
@@ -9293,18 +12868,18 @@ function roundSample(sample) {
     };
 }
 
-function evaluateBudget(sample, budget) {
+function evaluateBudget(sample, budget, memory = null) {
     const checks = [
         ['p95FrameMs', sample.p95FrameMs, budget.p95FrameMs],
         ['maxFrameMs', sample.maxFrameMs, budget.maxFrameMs],
         ['longTaskCount', sample.longTaskCount, budget.longTaskCount],
-        ['jsHeapMb', sample.jsHeapMb ?? 0, budget.jsHeapMb],
     ].map(([name, actual, limit]) => ({
         actual,
         limit,
         name,
         pass: actual <= limit,
     }));
+    checks.push(...evaluateRetainedHeapBudget(memory, budget).checks);
     for (const name of [
         'drawCallsPerFrame',
         'drawCallsPerRenderedFrame',
@@ -9336,6 +12911,49 @@ function evaluateBudget(sample, budget) {
     return {
         checks,
         pass: checks.every((check) => check.pass),
+    };
+}
+
+function evaluateRetainedHeapBudget(memory, budget) {
+    if (budget.jsHeapMb === undefined) {
+        return { checks: [], pass: true };
+    }
+    const actual = memory?.retainedJsHeapMb ?? null;
+    const check = {
+        actual,
+        limit: budget.jsHeapMb,
+        name: 'retainedJsHeapMb',
+        pass: Number.isFinite(actual) && actual <= budget.jsHeapMb,
+    };
+    return {
+        checks: [check],
+        pass: check.pass,
+    };
+}
+
+function buildGardenSwitchBudgets({ acceptance, memory }) {
+    const retainedHeapBudget = evaluateRetainedHeapBudget(
+        memory,
+        budgets.gameHighTarget,
+    );
+    const transitionChecks = acceptance.checks.filter(
+        (check) =>
+            check.name.includes('FrameStall') ||
+            check.name.includes('WithinMs') ||
+            check.name.includes('AfterFadeOutMs') ||
+            check.name.includes('SettleDurationMs'),
+    );
+    return {
+        budget: {
+            checks: [...retainedHeapBudget.checks, ...acceptance.checks],
+            pass: retainedHeapBudget.pass && acceptance.pass,
+        },
+        performanceBudget: {
+            checks: [...retainedHeapBudget.checks, ...transitionChecks],
+            pass:
+                retainedHeapBudget.pass &&
+                transitionChecks.every((check) => check.pass),
+        },
     };
 }
 
@@ -9420,6 +13038,109 @@ function isProfileScreenshotWitnessValid(witness) {
     );
 }
 
+function readGardenBuildingAmbientSchedulerEvidence(snapshot) {
+    const summaries = Array.isArray(snapshot?.renderLeaseSummaries)
+        ? snapshot.renderLeaseSummaries
+        : null;
+    const validSummaries =
+        summaries !== null &&
+        summaries.length > 0 &&
+        summaries.every(
+            (summary) =>
+                summary &&
+                typeof summary.owner === 'string' &&
+                summary.owner.length > 0 &&
+                typeof summary.framesPerSecond === 'number' &&
+                Number.isFinite(summary.framesPerSecond) &&
+                summary.framesPerSecond > 0 &&
+                Number.isInteger(summary.leaseCount) &&
+                summary.leaseCount > 0,
+        );
+    const summaryOwners = validSummaries
+        ? summaries
+              .map((summary) => summary.owner)
+              .sort((left, right) => left.localeCompare(right))
+        : null;
+    const publishedOwners =
+        Array.isArray(snapshot?.renderLeaseOwners) &&
+        snapshot.renderLeaseOwners.every(
+            (owner) => typeof owner === 'string' && owner.length > 0,
+        )
+            ? [...snapshot.renderLeaseOwners].sort((left, right) =>
+                  left.localeCompare(right),
+              )
+            : null;
+    const semanticLeaseCount = validSummaries
+        ? summaries.reduce((total, summary) => total + summary.leaseCount, 0)
+        : null;
+    const maximumLeaseFramesPerSecond = validSummaries
+        ? Math.max(...summaries.map((summary) => summary.framesPerSecond))
+        : null;
+    const interactiveOwnerCount = validSummaries
+        ? summaries.filter((summary) => summary.owner === 'camera-interaction')
+              .length
+        : null;
+    const leaseCountsReconciled = Boolean(
+        semanticLeaseCount !== null &&
+            snapshot?.activeLeaseCount === semanticLeaseCount &&
+            snapshot.activeRenderLeaseCount === semanticLeaseCount,
+    );
+    const leaseOwnersReconciled = Boolean(
+        summaryOwners !== null &&
+            publishedOwners !== null &&
+            new Set(summaryOwners).size === summaryOwners.length &&
+            summaryOwners.length === publishedOwners.length &&
+            summaryOwners.every(
+                (owner, index) => owner === publishedOwners[index],
+            ),
+    );
+    const renderRequestsDrained = Boolean(
+        Array.isArray(snapshot?.renderRequestReasons) &&
+            snapshot.renderRequestReasons.length === 0,
+    );
+    const coalescedRenderRequestReasonsBounded =
+        coalescedRenderRequestReasonsAreBounded(snapshot);
+    const leaseSummariesBounded = Boolean(
+        validSummaries && maximumLeaseFramesPerSecond <= 30,
+    );
+    const visible = snapshot?.effectiveVisible === true;
+    const schedulerSettled = Boolean(
+        visible &&
+            snapshot?.targetFramesPerSecond === 30 &&
+            renderRequestsDrained &&
+            coalescedRenderRequestReasonsBounded &&
+            leaseSummariesBounded &&
+            interactiveOwnerCount === 0 &&
+            leaseCountsReconciled &&
+            leaseOwnersReconciled,
+    );
+    const leaseSummarySignature = validSummaries
+        ? JSON.stringify(
+              [...summaries]
+                  .sort((left, right) => left.owner.localeCompare(right.owner))
+                  .map(({ framesPerSecond, leaseCount, owner }) => ({
+                      framesPerSecond,
+                      leaseCount,
+                      owner,
+                  })),
+          )
+        : null;
+
+    return {
+        coalescedRenderRequestReasonsBounded,
+        interactiveOwnerCount,
+        leaseCountsReconciled,
+        leaseOwnersReconciled,
+        leaseSummariesBounded,
+        leaseSummarySignature,
+        maximumLeaseFramesPerSecond,
+        renderRequestsDrained,
+        schedulerSettled,
+        semanticLeaseCount,
+        visible,
+    };
+}
+
 function evaluateGardenBuildingAcceptance({
     apiErrors = [],
     apiRequests = [],
@@ -9483,56 +13204,159 @@ function evaluateGardenBuildingAcceptance({
             false,
         ),
     ];
-    const frameRateChecks =
-        profile.frameRateClass === 'ambient'
-            ? [
-                  exact(
-                      'buildingAmbientTargetFramesPerSecond',
-                      runtime?.runtimeFrameLoop?.targetFramesPerSecond,
-                      30,
-                  ),
-                  exact(
-                      'buildingAmbientActiveLeaseCount',
-                      runtime?.runtimeFrameLoop?.activeLeaseCount,
-                      0,
-                  ),
-                  minimum(
-                      'buildingAmbientFrameLoopObservationCount',
-                      sample?.runtimeFrameLoopObservationCount,
-                      1,
-                  ),
-                  exact(
-                      'buildingAmbientSampleStartTargetFramesPerSecond',
-                      sample?.runtimeFrameLoopTargetFramesPerSecondAtStart,
-                      30,
-                  ),
-                  exact(
-                      'buildingAmbientSampleMaximumTargetFramesPerSecond',
-                      sample?.runtimeFrameLoopTargetFramesPerSecondMax,
-                      30,
-                  ),
-                  exact(
-                      'buildingAmbientSampleEndTargetFramesPerSecond',
-                      sample?.runtimeFrameLoopTargetFramesPerSecondAtEnd,
-                      30,
-                  ),
-                  exact(
-                      'buildingAmbientSampleStartActiveLeaseCount',
-                      sample?.runtimeFrameLoopActiveLeaseCountAtStart,
-                      0,
-                  ),
-                  exact(
-                      'buildingAmbientSampleMaximumActiveLeaseCount',
-                      sample?.runtimeFrameLoopActiveLeaseCountMax,
-                      0,
-                  ),
-                  exact(
-                      'buildingAmbientSampleEndActiveLeaseCount',
-                      sample?.runtimeFrameLoopActiveLeaseCountAtEnd,
-                      0,
-                  ),
-              ]
-            : [];
+    const frameRateChecks = (() => {
+        if (profile.frameRateClass !== 'ambient') {
+            return [];
+        }
+        const start = readGardenBuildingAmbientSchedulerEvidence(
+            sample?.runtimeFrameLoopAtStart,
+        );
+        const end = readGardenBuildingAmbientSchedulerEvidence(
+            sample?.runtimeFrameLoopAtEnd,
+        );
+        const stableSemanticLeaseCount = Boolean(
+            start.semanticLeaseCount !== null &&
+                sample?.runtimeFrameLoopActiveLeaseCountAtStart ===
+                    start.semanticLeaseCount &&
+                sample?.runtimeFrameLoopActiveLeaseCountMax ===
+                    start.semanticLeaseCount &&
+                sample?.runtimeFrameLoopActiveLeaseCountAtEnd ===
+                    start.semanticLeaseCount &&
+                end.semanticLeaseCount === start.semanticLeaseCount &&
+                runtime?.runtimeFrameLoop?.activeLeaseCount ===
+                    start.semanticLeaseCount,
+        );
+        const stableLeaseSummaries = Boolean(
+            start.leaseSummarySignature !== null &&
+                end.leaseSummarySignature === start.leaseSummarySignature,
+        );
+
+        return [
+            exact(
+                'buildingAmbientTargetFramesPerSecond',
+                runtime?.runtimeFrameLoop?.targetFramesPerSecond,
+                30,
+            ),
+            minimum(
+                'buildingAmbientFrameLoopObservationCount',
+                sample?.runtimeFrameLoopObservationCount,
+                2,
+            ),
+            exact(
+                'buildingAmbientHiddenDeferredCoalescedRenderRequestCountDelta',
+                sample?.runtimeFrameLoopCounterDeltas
+                    ?.hiddenDeferredCoalescedRenderRequestCount,
+                0,
+            ),
+            exact(
+                'buildingAmbientHiddenCoalescedRenderRequestCountDelta',
+                sample?.runtimeFrameLoopCounterDeltas
+                    ?.hiddenCoalescedRenderRequestCount,
+                0,
+            ),
+            exact(
+                'buildingAmbientSampleStartTargetFramesPerSecond',
+                sample?.runtimeFrameLoopTargetFramesPerSecondAtStart,
+                30,
+            ),
+            exact(
+                'buildingAmbientSampleMaximumTargetFramesPerSecond',
+                sample?.runtimeFrameLoopTargetFramesPerSecondMax,
+                30,
+            ),
+            exact(
+                'buildingAmbientSampleEndTargetFramesPerSecond',
+                sample?.runtimeFrameLoopTargetFramesPerSecondAtEnd,
+                30,
+            ),
+            exact(
+                'buildingAmbientSampleStartSnapshotTargetFramesPerSecond',
+                sample?.runtimeFrameLoopAtStart?.targetFramesPerSecond,
+                30,
+            ),
+            exact(
+                'buildingAmbientSampleEndSnapshotTargetFramesPerSecond',
+                sample?.runtimeFrameLoopAtEnd?.targetFramesPerSecond,
+                30,
+            ),
+            minimum(
+                'buildingAmbientSemanticLeaseCount',
+                start.semanticLeaseCount,
+                1,
+            ),
+            exact(
+                'buildingAmbientSampleStartActiveLeaseCount',
+                sample?.runtimeFrameLoopActiveLeaseCountAtStart,
+                start.semanticLeaseCount,
+            ),
+            exact(
+                'buildingAmbientSampleMaximumActiveLeaseCount',
+                sample?.runtimeFrameLoopActiveLeaseCountMax,
+                start.semanticLeaseCount,
+            ),
+            exact(
+                'buildingAmbientSampleEndActiveLeaseCount',
+                sample?.runtimeFrameLoopActiveLeaseCountAtEnd,
+                start.semanticLeaseCount,
+            ),
+            exact(
+                'buildingAmbientRuntimeActiveLeaseCount',
+                runtime?.runtimeFrameLoop?.activeLeaseCount,
+                start.semanticLeaseCount,
+            ),
+            exact(
+                'buildingAmbientSemanticLeaseCountStable',
+                stableSemanticLeaseCount,
+                true,
+            ),
+            exact(
+                'buildingAmbientLeaseSummariesStable',
+                stableLeaseSummaries,
+                true,
+            ),
+            ...[
+                ['SampleStart', start],
+                ['SampleEnd', end],
+            ].flatMap(([label, evidence]) => [
+                exact(`buildingAmbient${label}Visible`, evidence.visible, true),
+                exact(
+                    `buildingAmbient${label}RenderRequestsDrained`,
+                    evidence.renderRequestsDrained,
+                    true,
+                ),
+                exact(
+                    `buildingAmbient${label}CoalescedRenderRequestReasonsBounded`,
+                    evidence.coalescedRenderRequestReasonsBounded,
+                    true,
+                ),
+                maximum(
+                    `buildingAmbient${label}MaximumLeaseFramesPerSecond`,
+                    evidence.maximumLeaseFramesPerSecond,
+                    30,
+                ),
+                exact(
+                    `buildingAmbient${label}InteractiveOwnerCount`,
+                    evidence.interactiveOwnerCount,
+                    0,
+                ),
+                exact(
+                    `buildingAmbient${label}LeaseCountsReconciled`,
+                    evidence.leaseCountsReconciled,
+                    true,
+                ),
+                exact(
+                    `buildingAmbient${label}LeaseOwnersReconciled`,
+                    evidence.leaseOwnersReconciled,
+                    true,
+                ),
+                exact(
+                    `buildingAmbient${label}SchedulerSettled`,
+                    evidence.schedulerSettled,
+                    true,
+                ),
+            ]),
+        ];
+    })();
     if (profile.fixture === 'none') {
         const checks = [
             ...runtimeErrorChecks,
@@ -10211,9 +14035,15 @@ function evaluateGardenSwitchAcceptance({
     apiRequests = [],
     arrivals = [],
     consoleMessages = [],
+    lifetimeResources = null,
     pageErrors = [],
     requested,
 }) {
+    const fullControlSampleMinimumMs =
+        typeof requested?.sampleMs === 'number' &&
+        Number.isFinite(requested.sampleMs)
+            ? Math.max(0, requested.sampleMs - 100)
+            : 0;
     const exact = (name, actual, expected) => ({
         actual,
         comparison: 'equal',
@@ -10241,6 +14071,13 @@ function evaluateGardenSwitchAcceptance({
             Number.isFinite(actual) &&
             actual >= limit,
     });
+    const positiveInteger = (name, actual) => ({
+        actual,
+        comparison: 'positive-integer',
+        limit: 1,
+        name,
+        pass: Number.isInteger(actual) && actual >= 1,
+    });
     const exactStringSet = (name, actual, expected) => {
         const normalize = (value) =>
             Array.isArray(value) &&
@@ -10266,6 +14103,7 @@ function evaluateGardenSwitchAcceptance({
         exact('gardenSwitchOptIn', requested?.gardenSwitch, '1'),
         exact('gardenSwitchQualityRequest', requested?.quality, 'high'),
         exact('gardenSwitchReportedDpr', requested?.dpr, 2),
+        minimum('gardenSwitchRequestedSampleMs', requested?.sampleMs, 1),
         exact(
             'gardenSwitchStaticSceneCacheRequest',
             requested?.staticSceneCache,
@@ -10293,6 +14131,23 @@ function evaluateGardenSwitchAcceptance({
             0,
         ),
         exact('gardenSwitchPageErrors', pageErrors.length, 0),
+        exact(
+            'gardenSwitchLifetimeResourceMeasurementMode',
+            lifetimeResources?.measurementMode,
+            gardenSwitchLifetimeResourceMeasurementMode,
+        ),
+        positiveInteger(
+            'gardenSwitchLifetimeRendererGeometries',
+            lifetimeResources?.rendererGeometries,
+        ),
+        positiveInteger(
+            'gardenSwitchLifetimeRendererShaders',
+            lifetimeResources?.rendererShaders,
+        ),
+        positiveInteger(
+            'gardenSwitchLifetimeRendererTextures',
+            lifetimeResources?.rendererTextures,
+        ),
     ];
 
     let faunaVisit = 0;
@@ -10392,6 +14247,14 @@ function evaluateGardenSwitchAcceptance({
                 arrival.resources?.rendererTextures,
                 1,
             ),
+            positiveInteger(
+                `${prefix}InstrumentedRendererShaders`,
+                arrival.sample?.rendererShaders,
+            ),
+            positiveInteger(
+                `${prefix}InstrumentedRendererTextures`,
+                arrival.sample?.rendererTextures,
+            ),
             exact(
                 `${prefix}StaticOpaqueSceneCacheEnabled`,
                 arrival.resources?.staticOpaqueSceneCacheEnabled,
@@ -10407,6 +14270,11 @@ function evaluateGardenSwitchAcceptance({
         if (index === 0) {
             checks.push(
                 exact(`${prefix}InitialArrival`, arrival.timing?.initial, true),
+                minimum(
+                    `${prefix}FullControlSampleDurationMs`,
+                    arrival.sample?.elapsedMs,
+                    fullControlSampleMinimumMs,
+                ),
             );
         } else {
             checks.push(
@@ -10607,6 +14475,33 @@ function evaluateGardenSwitchAcceptance({
         }
     }
 
+    const geometryArrivalPeak = Math.max(
+        ...arrivals.map(
+            (arrival) => arrival.resources?.rendererGeometries ?? Number.NaN,
+        ),
+    );
+    checks.push(
+        exact(
+            'gardenSwitchLifetimeMatchesArrivalPeak:rendererGeometries',
+            lifetimeResources?.rendererGeometries,
+            geometryArrivalPeak,
+        ),
+    );
+    for (const resourceName of ['rendererShaders', 'rendererTextures']) {
+        const instrumentedArrivalPeak = Math.max(
+            ...arrivals.map(
+                (arrival) => arrival.sample?.[resourceName] ?? Number.NaN,
+            ),
+        );
+        checks.push(
+            minimum(
+                `gardenSwitchLifetimeCoversInstrumentedArrivalPeak:${resourceName}`,
+                lifetimeResources?.[resourceName],
+                instrumentedArrivalPeak,
+            ),
+        );
+    }
+
     return {
         checks,
         pass: checks.every((check) => check.pass),
@@ -10689,6 +14584,13 @@ function buildLifecycleSummary(scenarios) {
             (run) =>
                 run.lifecycle?.[phase]?.residual?.sample?.submittedTriangles,
         ),
+        ownedSchedulingZeroObservedRunCount: lifecycleRuns.filter((run) => {
+            const lifecyclePhase = run.lifecycle?.[phase];
+            return (
+                (lifecyclePhase?.ownedSchedulingZeroObserved ??
+                    lifecyclePhase?.runtimeSchedulerZeroObserved) === true
+            );
+        }).length,
         runtimeSchedulerZeroObservedRunCount: lifecycleRuns.filter(
             (run) =>
                 run.lifecycle?.[phase]?.runtimeSchedulerZeroObserved === true,
@@ -10696,7 +14598,43 @@ function buildLifecycleSummary(scenarios) {
         zeroWorkObservedRunCount: lifecycleRuns.filter(
             (run) => run.lifecycle?.[phase]?.zeroWorkObserved === true,
         ).length,
+        resumeTransition: transitionWindow(phase, 'resumeTransition'),
+        resumeWindow: transitionWindow(phase, 'resumeWindow'),
+        suspendTransition: transitionWindow(phase, 'suspendTransition'),
     });
+
+    function transitionWindow(phase, windowName) {
+        return {
+            elapsedMs: metric(
+                (run) =>
+                    run.lifecycle?.[phase]?.[windowName]?.sample?.elapsedMs,
+            ),
+            ownedInvalidationCount: metric(
+                (run) =>
+                    run.lifecycle?.[phase]?.[windowName]?.counterDeltas
+                        ?.ownedInvalidationCount,
+            ),
+            r3fFrameCallbackCount: metric(
+                (run) =>
+                    run.lifecycle?.[phase]?.[windowName]?.counterDeltas
+                        ?.r3fFrameCallbackCount,
+            ),
+            r3fOwnedInvalidationSurplus: metric(
+                (run) =>
+                    run.lifecycle?.[phase]?.[windowName]
+                        ?.r3fOwnedInvalidationSurplus,
+            ),
+            renderedFrames: metric(
+                (run) =>
+                    run.lifecycle?.[phase]?.[windowName]?.sample
+                        ?.renderedFrames,
+            ),
+            sceneTimeDeltaSeconds: metric(
+                (run) =>
+                    run.lifecycle?.[phase]?.[windowName]?.sceneTimeDeltaSeconds,
+            ),
+        };
+    }
 
     return {
         baseScenarioCount: new Set(
@@ -10735,6 +14673,225 @@ function buildLifecycleSummary(scenarios) {
         passedRunCount: lifecycleRuns.filter((run) => run.budget?.pass === true)
             .length,
         runCount: lifecycleRuns.length,
+    };
+}
+
+function evaluateStaticIdleAcceptance({
+    apiErrors = [],
+    consoleMessages = [],
+    pageErrors = [],
+    requested,
+    runtime,
+    sample,
+    screenshotWitness,
+    staticIdle,
+}) {
+    if (requested?.staticIdleProfile !== true) {
+        return { checks: [], pass: true };
+    }
+
+    const exact = (name, actual, expected) => ({
+        actual,
+        comparison: 'equal',
+        limit: expected,
+        name,
+        pass: actual === expected,
+    });
+    const minimum = (name, actual, limit) => ({
+        actual,
+        comparison: 'minimum',
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual >= limit,
+    });
+    const start = sample?.runtimeFrameLoopAtStart;
+    const end = sample?.runtimeFrameLoopAtEnd;
+    const checks = [
+        exact('staticIdleProfile', requested.staticIdleProfile, true),
+        exact('staticIdleOptIn', requested.staticIdle, '1'),
+        exact(
+            'staticIdleContinuousRenderLeases',
+            requested.continuousRenderLeases,
+            '1',
+        ),
+        exact('staticIdleMode', requested.mode, 'baseline'),
+        exact('staticIdleGardenProfile', requested.gardenProfile, 'default'),
+        exact('staticIdleControls', requested.controls, '0'),
+        exact('staticIdleDetails', requested.details, '0'),
+        exact('staticIdleHud', requested.hud, '0'),
+        exact('staticIdleDebugHud', requested.debugHud, '0'),
+        exact('staticIdleFixedTimeSeconds', requested.fixedTimeSeconds, 43_200),
+        exact('staticIdleQualityRequest', requested.quality, 'high'),
+        exact('staticIdleQualityTier', runtime?.qualityTier, 'high'),
+        exact('staticIdleDprCap', runtime?.dprCap, 2),
+        exact('staticIdleShadowsEnabled', runtime?.shadowsEnabled, true),
+        exact('staticIdleShadowMapSize', runtime?.shadowMapSize, 4_096),
+        exact('staticIdleReportedDpr', sample?.reportedDpr, 2),
+        exact(
+            'staticIdleCanvasClientWidth',
+            sample?.canvas?.clientWidth,
+            1_280,
+        ),
+        exact(
+            'staticIdleCanvasClientHeight',
+            sample?.canvas?.clientHeight,
+            720,
+        ),
+        exact('staticIdleCanvasWidth', sample?.canvas?.width, 2_560),
+        exact('staticIdleCanvasHeight', sample?.canvas?.height, 1_440),
+        exact(
+            'staticIdleStaticSceneCacheRequest',
+            requested.staticSceneCache,
+            'legacy',
+        ),
+        exact(
+            'staticIdleStaticSceneCacheEnabled',
+            runtime?.staticOpaqueSceneCacheEnabled,
+            false,
+        ),
+        exact(
+            'staticIdleGardenId',
+            runtime?.profileGardenId,
+            staticIdleExpectedGardenId,
+        ),
+        exact(
+            'staticIdleGardenStackCount',
+            runtime?.profileGardenStackCount,
+            staticIdleExpectedGardenStackCount,
+        ),
+        exact(
+            'staticIdleGardenBlockCount',
+            runtime?.profileGardenBlockCount,
+            staticIdleExpectedGardenBlockCount,
+        ),
+        exact(
+            'staticIdleGardenRaisedBedCount',
+            runtime?.profileGardenRaisedBedCount,
+            staticIdleExpectedGardenRaisedBedCount,
+        ),
+        exact('staticIdleCanvasVisibleAtStart', start?.canvasVisible, true),
+        exact('staticIdleDocumentVisibleAtStart', start?.documentVisible, true),
+        exact(
+            'staticIdleEffectiveVisibleAtStart',
+            start?.effectiveVisible,
+            true,
+        ),
+        exact('staticIdleCanvasVisibleAtEnd', end?.canvasVisible, true),
+        exact('staticIdleDocumentVisibleAtEnd', end?.documentVisible, true),
+        exact('staticIdleEffectiveVisibleAtEnd', end?.effectiveVisible, true),
+        exact(
+            'staticIdleCoalescedRenderRequestReasonsEmptyAtStart',
+            coalescedRenderRequestReasonsAreBounded(start, {
+                requireEmpty: true,
+            }),
+            true,
+        ),
+        exact(
+            'staticIdleCoalescedRenderRequestReasonsEmptyAtEnd',
+            coalescedRenderRequestReasonsAreBounded(end, {
+                requireEmpty: true,
+            }),
+            true,
+        ),
+        minimum(
+            'staticIdleSetupR3fFrameCallbacks',
+            start?.r3fFrameCallbackCount,
+            1,
+        ),
+        exact(
+            'staticIdleSchedulerSettledAtStart',
+            staticIdle?.schedulerSettledAtStart,
+            true,
+        ),
+        exact(
+            'staticIdleSchedulerSettledAtEnd',
+            staticIdle?.schedulerSettledAtEnd,
+            true,
+        ),
+        exact(
+            'staticIdleOwnedSchedulingZeroObserved',
+            staticIdle?.ownedSchedulingZeroObserved,
+            true,
+        ),
+        exact(
+            'staticIdleSchedulerZeroObserved',
+            staticIdle?.schedulerZeroObserved,
+            true,
+        ),
+        exact(
+            'staticIdleRendererZeroObserved',
+            staticIdle?.rendererZeroObserved,
+            true,
+        ),
+        exact('staticIdleZeroWorkObserved', staticIdle?.zeroWorkObserved, true),
+        ...staticIdleRuntimeFrameLoopCounterFields.map((field) =>
+            exact(
+                `staticIdle${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                staticIdle?.counterDeltas?.[field],
+                0,
+            ),
+        ),
+        minimum(
+            'staticIdleElapsedMs',
+            sample?.elapsedMs,
+            Math.max(0, (requested.sampleMs ?? 0) - 100),
+        ),
+        minimum('staticIdleBrowserFrames', sample?.frames, 1),
+        exact('staticIdleRenderedFps', sample?.renderedFps, 0),
+        exact('staticIdleRenderedFrames', sample?.renderedFrames, 0),
+        exact('staticIdleDrawCalls', sample?.drawCalls, 0),
+        exact('staticIdleSubmittedTriangles', sample?.submittedTriangles, 0),
+        exact(
+            'staticIdleScreenshotWitnessValid',
+            isProfileScreenshotWitnessValid(screenshotWitness),
+            true,
+        ),
+        exact(
+            'staticIdleScreenshotWidth',
+            screenshotWitness?.width,
+            sample?.canvas?.width,
+        ),
+        exact(
+            'staticIdleScreenshotHeight',
+            screenshotWitness?.height,
+            sample?.canvas?.height,
+        ),
+        exact('staticIdleScreenshotOpaque', screenshotWitness?.opaque, true),
+        minimum('staticIdleScreenshotEntropy', screenshotWitness?.entropy, 0.5),
+        minimum(
+            'staticIdleScreenshotMaximumChannelStandardDeviation',
+            screenshotWitness?.maximumChannelStandardDeviation,
+            5,
+        ),
+        minimum(
+            'staticIdleScreenshotSampledLumaRange',
+            screenshotWitness?.sampledLumaRange,
+            20,
+        ),
+        minimum(
+            'staticIdleScreenshotSampledUniqueColorCount',
+            screenshotWitness?.sampledUniqueColorCount,
+            16,
+        ),
+        exact('staticIdleApiErrors', apiErrors.length, 0),
+        exact(
+            'staticIdleConsoleErrors',
+            consoleMessages.filter(
+                (message) =>
+                    message.type === 'error' &&
+                    !isIgnoredLocalProfilerConsoleError(message),
+            ).length,
+            0,
+        ),
+        exact('staticIdlePageErrors', pageErrors.length, 0),
+    ];
+
+    return {
+        checks,
+        pass: checks.every((check) => check.pass),
     };
 }
 
@@ -11060,9 +15217,55 @@ function evaluateFaunaHeavyAcceptance({
     };
 }
 
+function outlineCacheWindowChecks({
+    exact,
+    fieldPrefix = '',
+    minimum,
+    namePrefix,
+    requireMiss,
+    sample,
+}) {
+    const read = (name) =>
+        sample?.[`hoverOutline${fieldPrefix}${name}CountDelta`];
+    const bypasses = read('MaskCacheBypass');
+    const composites = read('CompositePass');
+    const hits = read('MaskCacheHit');
+    const horizontal = read('HorizontalPass');
+    const masks = read('MaskPass');
+    const misses = read('MaskCacheMiss');
+    const maskConservation =
+        typeof misses === 'number' && typeof bypasses === 'number'
+            ? misses + bypasses
+            : null;
+    const compositeConservation =
+        typeof hits === 'number' &&
+        typeof misses === 'number' &&
+        typeof bypasses === 'number'
+            ? hits + misses + bypasses
+            : null;
+
+    return [
+        exact(`${namePrefix}Bypasses`, bypasses, 0),
+        minimum(`${namePrefix}Hits`, hits, 1),
+        minimum(`${namePrefix}Misses`, misses, requireMiss ? 1 : 0),
+        minimum(`${namePrefix}MaskPasses`, masks, 0),
+        minimum(`${namePrefix}HorizontalPasses`, horizontal, 0),
+        minimum(`${namePrefix}CompositePasses`, composites, 1),
+        exact(`${namePrefix}MaskConservation`, masks, maskConservation),
+        exact(`${namePrefix}HorizontalAlignment`, horizontal, masks),
+        exact(
+            `${namePrefix}CompositeConservation`,
+            composites,
+            compositeConservation,
+        ),
+    ];
+}
+
 function evaluateCrossTierAcceptance({
     apiErrors = [],
     consoleMessages = [],
+    crossTierCold,
+    crossTierResourceSnapshot,
     pageErrors = [],
     requested,
     runtime,
@@ -11085,7 +15288,24 @@ function evaluateCrossTierAcceptance({
         comparison: 'minimum',
         limit,
         name,
-        pass: typeof actual === 'number' && actual >= limit,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual >= limit,
+    });
+    const range = (name, actual, minimumValue, maximumValue) => ({
+        actual,
+        comparison: 'range',
+        limit: {
+            maximum: maximumValue,
+            minimum: minimumValue,
+        },
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual >= minimumValue &&
+            actual <= maximumValue,
     });
     const canvasMatchesDpr = (name, actual, clientSize, dpr) => {
         const expected =
@@ -11113,8 +15333,414 @@ function evaluateCrossTierAcceptance({
         1,
         Math.floor((sample.elapsedMs ?? 0) / 1_000),
     );
+    const expectedRuntimeFrameLoopObservationCount =
+        Number.isInteger(sample?.runtimeFrameLoopObservationRafFrameCount) &&
+        sample.runtimeFrameLoopObservationRafFrameCount > 0
+            ? sample.runtimeFrameLoopObservationRafFrameCount + 3
+            : null;
+    const activeLeaseCountAtStart =
+        sample?.runtimeFrameLoopActiveLeaseCountAtStart;
+    const semanticLeaseTopologyAtStart = runtimeFrameLoopLeaseTopology(
+        sample?.runtimeFrameLoopSemanticLeaseTopologyAtStart,
+    );
+    const semanticLeaseTopologyAtEnd = runtimeFrameLoopLeaseTopology(
+        sample?.runtimeFrameLoopSemanticLeaseTopologyAtEnd,
+    );
+    const controlLeaseTopologyAtStart = runtimeFrameLoopLeaseTopology(
+        sample?.runtimeFrameLoopAtStart,
+    );
+    const controlLeaseTopologyAtEnd = runtimeFrameLoopLeaseTopology(
+        sample?.runtimeFrameLoopAtEnd,
+    );
+    const leaseTopologyKey = (topology) =>
+        topology === null ? null : JSON.stringify(topology);
+    const semanticLeaseTopologyAtStartKey = leaseTopologyKey(
+        semanticLeaseTopologyAtStart,
+    );
+    const legacyOutlinePipeline = requested.legacyOutlinePipeline === true;
+    const displayCadenceControl = sample?.displayCadenceControl;
+    const displayCadenceIntervalMs = displayCadenceControl?.intervalMs;
+    const displayCadenceStartPhaseTimestamp =
+        displayCadenceControl?.atStart?.lastDeliveredPhaseAt;
+    const displayCadenceEndPhaseTimestamp =
+        displayCadenceControl?.atEnd?.lastDeliveredPhaseAt;
+    const displayCadenceDeliveredFrameCount =
+        displayCadenceControl?.deliveredFrameCountDelta;
+    const displayCadenceSkippedPhaseCount =
+        displayCadenceControl?.skippedPhaseCountDelta;
+    const displayCadencePhaseAdvanceMs =
+        Number.isFinite(displayCadenceStartPhaseTimestamp) &&
+        Number.isFinite(displayCadenceEndPhaseTimestamp)
+            ? displayCadenceEndPhaseTimestamp -
+              displayCadenceStartPhaseTimestamp
+            : null;
+    const displayCadenceExpectedPhaseAdvanceMs =
+        Number.isFinite(displayCadenceDeliveredFrameCount) &&
+        Number.isFinite(displayCadenceSkippedPhaseCount) &&
+        Number.isFinite(displayCadenceIntervalMs)
+            ? (displayCadenceDeliveredFrameCount +
+                  displayCadenceSkippedPhaseCount) *
+              displayCadenceIntervalMs
+            : null;
+    const displayCadencePhaseAdvanceErrorMs =
+        Number.isFinite(displayCadencePhaseAdvanceMs) &&
+        Number.isFinite(displayCadenceExpectedPhaseAdvanceMs)
+            ? Math.abs(
+                  displayCadencePhaseAdvanceMs -
+                      displayCadenceExpectedPhaseAdvanceMs,
+              )
+            : null;
+    const expectedColdDpr =
+        typeof requested.dpr === 'number' &&
+        Number.isFinite(requested.dpr) &&
+        typeof requested.expectedDprCap === 'number' &&
+        Number.isFinite(requested.expectedDprCap)
+            ? Math.min(requested.dpr, requested.expectedDprCap)
+            : null;
+    const orderedColdMilestones = [
+        crossTierCold?.installedMs,
+        crossTierCold?.canvasAttachedMs,
+        crossTierCold?.canvasSizedMs,
+        crossTierCold?.firstSubmittedFrameMs,
+        crossTierCold?.fixtureReadyMs,
+        crossTierCold?.observationStoppedMs,
+    ];
+    const crossTierColdMilestonesOrdered =
+        orderedColdMilestones.every(
+            (value) => typeof value === 'number' && Number.isFinite(value),
+        ) &&
+        orderedColdMilestones.every(
+            (value, index) =>
+                index === 0 || value >= orderedColdMilestones[index - 1],
+        );
+    const crossTierColdInstalledBeforeDomContentLoaded =
+        typeof crossTierCold?.installedMs === 'number' &&
+        Number.isFinite(crossTierCold.installedMs) &&
+        typeof crossTierCold?.domContentLoadedMs === 'number' &&
+        Number.isFinite(crossTierCold.domContentLoadedMs) &&
+        crossTierCold.installedMs <= crossTierCold.domContentLoadedMs;
+    const populationAtStart =
+        crossTierResourceSnapshot?.populationAtStart ?? null;
+    const populationAtEnd = crossTierResourceSnapshot?.populationAtEnd ?? null;
+    const populationExposureAtStart =
+        crossTierResourceSnapshot?.populationExposureAtStart ?? null;
+    const populationExposureAtEnd =
+        crossTierResourceSnapshot?.populationExposureAtEnd ?? null;
+    const populationExposure =
+        crossTierResourceSnapshot?.populationExposure ?? null;
+    const expectedPopulationExposureAvailable =
+        requested.expectedShadows === true;
+    const populationExposureHasEntries =
+        isNonNegativeIntegerRecord(populationExposure) &&
+        Object.keys(populationExposure).length > 0;
+    const resourceSnapshotCapturedAfterReceipt =
+        typeof crossTierResourceSnapshot?.capturedAt === 'number' &&
+        Number.isFinite(crossTierResourceSnapshot.capturedAt) &&
+        typeof crossTierResourceSnapshot?.resources?.rendererStatsMeasurement
+            ?.completedAt === 'number' &&
+        Number.isFinite(
+            crossTierResourceSnapshot.resources.rendererStatsMeasurement
+                .completedAt,
+        ) &&
+        crossTierResourceSnapshot.capturedAt >=
+            crossTierResourceSnapshot.resources.rendererStatsMeasurement
+                .completedAt;
     const checks = [
         exact('crossTierGardenProfile', requested.gardenProfile, 'high-target'),
+        exact(
+            'crossTierColdMeasurementMode',
+            crossTierCold?.measurementMode,
+            crossTierColdMilestoneMeasurementMode,
+        ),
+        exact(
+            'crossTierColdTrackerInstalled',
+            crossTierCold?.trackerInstalled,
+            true,
+        ),
+        exact(
+            'crossTierColdMutationObserverStopped',
+            crossTierCold?.mutationObserverStopped,
+            true,
+        ),
+        exact(
+            'crossTierColdExpectedDpr',
+            crossTierCold?.expectedDpr,
+            expectedColdDpr,
+        ),
+        exact(
+            'crossTierColdCanvasAttachmentCount',
+            crossTierCold?.canvasAttachmentCount,
+            1,
+        ),
+        exact(
+            'crossTierColdFirstCanvasPersistent',
+            crossTierCold?.firstCanvasPersistent,
+            true,
+        ),
+        minimum(
+            'crossTierColdTrackerInstalledMs',
+            crossTierCold?.installedMs,
+            0,
+        ),
+        minimum(
+            'crossTierColdDomContentLoadedMs',
+            crossTierCold?.domContentLoadedMs,
+            0,
+        ),
+        minimum(
+            'crossTierColdCanvasAttachedMs',
+            crossTierCold?.canvasAttachedMs,
+            0,
+        ),
+        minimum('crossTierColdCanvasSizedMs', crossTierCold?.canvasSizedMs, 0),
+        minimum(
+            'crossTierColdFirstSubmittedFrameMs',
+            crossTierCold?.firstSubmittedFrameMs,
+            0,
+        ),
+        minimum(
+            'crossTierColdFixtureReadyMs',
+            crossTierCold?.fixtureReadyMs,
+            0,
+        ),
+        minimum(
+            'crossTierColdObservationStoppedMs',
+            crossTierCold?.observationStoppedMs,
+            0,
+        ),
+        minimum(
+            'crossTierColdHostCanvasReadyDiagnosticMs',
+            crossTierCold?.hostCanvasReadyDiagnosticMs,
+            0,
+        ),
+        exact(
+            'crossTierColdMilestoneOrder',
+            crossTierColdMilestonesOrdered,
+            true,
+        ),
+        exact(
+            'crossTierColdInstalledBeforeDomContentLoaded',
+            crossTierColdInstalledBeforeDomContentLoaded,
+            true,
+        ),
+        exact(
+            'crossTierColdCanvasClientWidth',
+            crossTierCold?.canvasSize?.clientWidth,
+            requested.viewport?.width,
+        ),
+        exact(
+            'crossTierColdCanvasClientHeight',
+            crossTierCold?.canvasSize?.clientHeight,
+            requested.viewport?.height,
+        ),
+        canvasMatchesDpr(
+            'crossTierColdCanvasWidth',
+            crossTierCold?.canvasSize?.width,
+            crossTierCold?.canvasSize?.clientWidth,
+            expectedColdDpr,
+        ),
+        canvasMatchesDpr(
+            'crossTierColdCanvasHeight',
+            crossTierCold?.canvasSize?.height,
+            crossTierCold?.canvasSize?.clientHeight,
+            expectedColdDpr,
+        ),
+        exact(
+            'crossTierResourceSnapshotMeasurementMode',
+            crossTierResourceSnapshot?.measurementMode,
+            crossTierResourceSnapshotMeasurementMode,
+        ),
+        range(
+            'crossTierResourceSnapshotAttemptCount',
+            crossTierResourceSnapshot?.attemptCount,
+            1,
+            3,
+        ),
+        minimum(
+            'crossTierResourceSnapshotCapturedAt',
+            crossTierResourceSnapshot?.capturedAt,
+            0,
+        ),
+        exact(
+            'crossTierResourceSnapshotCapturedAfterReceipt',
+            resourceSnapshotCapturedAfterReceipt,
+            true,
+        ),
+        exact(
+            'crossTierResourcePopulationStable',
+            numberRecordsEqual(populationAtStart, populationAtEnd),
+            true,
+        ),
+        exact(
+            'crossTierResourcePopulationExposureStable',
+            numberRecordsEqual(
+                populationExposureAtStart,
+                populationExposureAtEnd,
+            ),
+            true,
+        ),
+        exact(
+            'crossTierResourcePopulationExposureMatchesSnapshot',
+            numberRecordsEqual(populationExposureAtEnd, populationExposure),
+            true,
+        ),
+        exact(
+            'crossTierResourcePopulationExposureCoversEndpoint',
+            populationExposureCovers(populationExposure, populationAtEnd),
+            true,
+        ),
+        exact(
+            'crossTierResourcePopulationExposureAvailable',
+            crossTierResourceSnapshot?.populationExposureAvailable,
+            expectedPopulationExposureAvailable,
+        ),
+        exact(
+            'crossTierResourcePopulationExposureEntryState',
+            populationExposureHasEntries,
+            expectedPopulationExposureAvailable,
+        ),
+        exact(
+            'crossTierResourcePopulationExposureSignature',
+            crossTierResourceSnapshot?.populationExposureSignature,
+            populationExposureSignature(populationExposure),
+        ),
+        exact(
+            'crossTierResourceRendererStatsMode',
+            lifecycleRendererStatsModes.has(
+                crossTierResourceSnapshot?.rendererStatsMode,
+            ),
+            true,
+        ),
+        exact(
+            'crossTierResourceRendererStatsMeasurementValid',
+            isLifecycleRendererStatsMeasurementValid(
+                crossTierResourceSnapshot?.resources,
+                crossTierResourceSnapshot?.rendererStatsMode,
+            ),
+            true,
+        ),
+        ...['rendererGeometries', 'rendererShaders', 'rendererTextures'].map(
+            (field) =>
+                minimum(
+                    `crossTierResourceSnapshot:${field}`,
+                    crossTierResourceSnapshot?.resources?.[field],
+                    1,
+                ),
+        ),
+        ...['rendererGeometries', 'rendererShaders', 'rendererTextures'].map(
+            (field) =>
+                exact(
+                    `crossTierResourceSnapshotMatchesRuntime:${field}`,
+                    crossTierResourceSnapshot?.resources?.[field],
+                    runtime?.[field],
+                ),
+        ),
+        exact(
+            'crossTierResourceSnapshotPopulationMatchesRuntime',
+            numberRecordsEqual(
+                populationAtEnd,
+                runtime?.actorGroundingShadowSpeciesCounts ?? {},
+            ),
+            true,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlMode',
+            requested.displayCadenceControl?.mode,
+            crossTierDisplayCadenceControlMode,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlTargetFramesPerSecond',
+            requested.displayCadenceControl?.framesPerSecond,
+            crossTierDisplayCadenceControlFramesPerSecond,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlInstalledAtStart',
+            sample?.displayCadenceControl?.installedAtStart,
+            true,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlInstalledAtEnd',
+            sample?.displayCadenceControl?.installedAtEnd,
+            true,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlObservedMode',
+            sample?.displayCadenceControl?.mode,
+            crossTierDisplayCadenceControlMode,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlObservedTargetFramesPerSecond',
+            sample?.displayCadenceControl?.requestedFramesPerSecond,
+            crossTierDisplayCadenceControlFramesPerSecond,
+        ),
+        range(
+            'crossTierDisplayCadenceControlObservedFramesPerSecond',
+            sample?.displayCadenceControl?.observedFramesPerSecond,
+            crossTierMinimumRenderedFramesPerSecond,
+            crossTierMaximumRenderedFramesPerSecond,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlRequestedCallbackTimestampMode',
+            requested.displayCadenceControl?.callbackTimestampMode,
+            crossTierDisplayCadenceCallbackTimestampMode,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlRequestedObservedRateClock',
+            requested.displayCadenceControl?.observedRateClock,
+            crossTierDisplayCadenceObservedRateClock,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlObservedCallbackTimestampMode',
+            displayCadenceControl?.callbackTimestampMode,
+            crossTierDisplayCadenceCallbackTimestampMode,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlObservedRateClock',
+            displayCadenceControl?.observedRateClock,
+            crossTierDisplayCadenceObservedRateClock,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlIntervalMs',
+            displayCadenceIntervalMs,
+            1_000 / crossTierDisplayCadenceControlFramesPerSecond,
+        ),
+        minimum(
+            'crossTierDisplayCadenceControlStartPhaseTimestamp',
+            displayCadenceStartPhaseTimestamp,
+            0,
+        ),
+        minimum(
+            'crossTierDisplayCadenceControlEndPhaseTimestamp',
+            displayCadenceEndPhaseTimestamp,
+            0,
+        ),
+        minimum(
+            'crossTierDisplayCadenceControlDeliveredFrameCount',
+            displayCadenceDeliveredFrameCount,
+            1,
+        ),
+        minimum(
+            'crossTierDisplayCadenceControlSkippedPhaseCount',
+            displayCadenceSkippedPhaseCount,
+            0,
+        ),
+        {
+            actual: {
+                absoluteErrorMs: displayCadencePhaseAdvanceErrorMs,
+                expectedPhaseAdvanceMs: displayCadenceExpectedPhaseAdvanceMs,
+                phaseAdvanceMs: displayCadencePhaseAdvanceMs,
+            },
+            comparison: 'phase-advance-conservation',
+            limit: {
+                maximumAbsoluteErrorMs:
+                    crossTierDisplayCadencePhaseAdvanceToleranceMs,
+            },
+            name: 'crossTierDisplayCadenceControlPhaseAdvanceConservation',
+            pass:
+                Number.isFinite(displayCadencePhaseAdvanceErrorMs) &&
+                displayCadencePhaseAdvanceErrorMs <=
+                    crossTierDisplayCadencePhaseAdvanceToleranceMs,
+        },
         exact(
             'crossTierQualityRequest',
             requested.quality,
@@ -11228,6 +15854,127 @@ function evaluateCrossTierAcceptance({
             sample.generatedPlantVisibleInstanceCountMin,
             highTargetExpectedGeneratedPlantInstanceCount,
         ),
+        exact(
+            'crossTierRuntimeTargetFramesPerSecond',
+            runtime?.runtimeFrameLoop?.targetFramesPerSecond,
+            crossTierAmbientTargetFramesPerSecond,
+        ),
+        exact(
+            'crossTierSampleStartTargetFramesPerSecond',
+            sample?.runtimeFrameLoopTargetFramesPerSecondAtStart,
+            crossTierAmbientTargetFramesPerSecond,
+        ),
+        exact(
+            'crossTierSampleMaximumTargetFramesPerSecond',
+            sample?.runtimeFrameLoopTargetFramesPerSecondMax,
+            crossTierAmbientTargetFramesPerSecond,
+        ),
+        exact(
+            'crossTierSampleMinimumTargetFramesPerSecond',
+            sample?.runtimeFrameLoopTargetFramesPerSecondMin,
+            crossTierAmbientTargetFramesPerSecond,
+        ),
+        exact(
+            'crossTierSampleEndTargetFramesPerSecond',
+            sample?.runtimeFrameLoopTargetFramesPerSecondAtEnd,
+            crossTierAmbientTargetFramesPerSecond,
+        ),
+        exact(
+            'crossTierSampleStartSnapshotTargetFramesPerSecond',
+            sample?.runtimeFrameLoopAtStart?.targetFramesPerSecond,
+            crossTierAmbientTargetFramesPerSecond,
+        ),
+        exact(
+            'crossTierSampleEndSnapshotTargetFramesPerSecond',
+            sample?.runtimeFrameLoopAtEnd?.targetFramesPerSecond,
+            crossTierAmbientTargetFramesPerSecond,
+        ),
+        exact(
+            'crossTierSampleStartVisible',
+            sample?.runtimeFrameLoopAtStart?.effectiveVisible,
+            true,
+        ),
+        exact(
+            'crossTierSampleEndVisible',
+            sample?.runtimeFrameLoopAtEnd?.effectiveVisible,
+            true,
+        ),
+        minimum(
+            'crossTierSampleStartActiveLeaseCount',
+            activeLeaseCountAtStart,
+            1,
+        ),
+        exact(
+            'crossTierSampleMaximumActiveLeaseCount',
+            sample?.runtimeFrameLoopActiveLeaseCountMax,
+            activeLeaseCountAtStart,
+        ),
+        exact(
+            'crossTierSampleMinimumActiveLeaseCount',
+            sample?.runtimeFrameLoopActiveLeaseCountMin,
+            activeLeaseCountAtStart,
+        ),
+        exact(
+            'crossTierSampleEndActiveLeaseCount',
+            sample?.runtimeFrameLoopActiveLeaseCountAtEnd,
+            activeLeaseCountAtStart,
+        ),
+        exact(
+            'crossTierSemanticLeaseTopologyAvailable',
+            semanticLeaseTopologyAtStartKey !== null,
+            true,
+        ),
+        exact(
+            'crossTierSemanticStartLeaseTopologyCount',
+            semanticLeaseTopologyAtStart?.activeLeaseCount,
+            activeLeaseCountAtStart,
+        ),
+        exact(
+            'crossTierSemanticEndLeaseTopologyCount',
+            semanticLeaseTopologyAtEnd?.activeLeaseCount,
+            sample?.runtimeFrameLoopActiveLeaseCountAtEnd,
+        ),
+        exact(
+            'crossTierSemanticEndLeaseTopology',
+            leaseTopologyKey(semanticLeaseTopologyAtEnd),
+            semanticLeaseTopologyAtStartKey,
+        ),
+        exact(
+            'crossTierControlStartLeaseTopology',
+            leaseTopologyKey(controlLeaseTopologyAtStart),
+            semanticLeaseTopologyAtStartKey,
+        ),
+        exact(
+            'crossTierControlEndLeaseTopology',
+            leaseTopologyKey(controlLeaseTopologyAtEnd),
+            semanticLeaseTopologyAtStartKey,
+        ),
+        minimum('crossTierRafFrames', sample?.frames, 1),
+        minimum(
+            'crossTierSemanticRafFrames',
+            sample?.runtimeFrameLoopObservationRafFrameCount,
+            1,
+        ),
+        exact(
+            'crossTierRuntimeFrameLoopObservationCount',
+            sample?.runtimeFrameLoopObservationCount,
+            expectedRuntimeFrameLoopObservationCount,
+        ),
+        exact(
+            'crossTierPerformanceMeasurementMode',
+            sample?.performanceMeasurementMode,
+            crossTierPerformanceMeasurementMode,
+        ),
+        exact(
+            'crossTierRuntimeFrameLoopObservationMode',
+            sample?.runtimeFrameLoopObservationMode,
+            crossTierRuntimeObservationMode,
+        ),
+        exact(
+            'crossTierRenderedFramesMatchR3fFrameCallbackDelta',
+            sample?.renderedFrames,
+            sample?.runtimeFrameLoopCounterDeltas?.r3fFrameCallbackCount,
+        ),
         ...(requested.motion === 'bounded-zoom-rotate'
             ? [
                   exact(
@@ -11280,6 +16027,87 @@ function evaluateCrossTierAcceptance({
             1,
         ),
         exact(
+            'crossTierOutlinePipeline',
+            runtime?.hoverOutlinePipeline,
+            legacyOutlinePipeline
+                ? 'cropped-bounded-separable-r8'
+                : 'cropped-bounded-separable-r8-content-cache',
+        ),
+        ...(legacyOutlinePipeline
+            ? [
+                  exact(
+                      'crossTierOutlineLegacyHorizontalPassAlignment',
+                      runtime?.hoverOutlineHorizontalPassCount,
+                      runtime?.hoverOutlineMaskPassCount,
+                  ),
+                  exact(
+                      'crossTierOutlineLegacyCompositePassAlignment',
+                      runtime?.hoverOutlineCompositePassCount,
+                      runtime?.hoverOutlineMaskPassCount,
+                  ),
+              ]
+            : [
+                  exact(
+                      'crossTierOutlineCacheEligibleTargets',
+                      runtime?.hoverOutlineMaskCacheEligibleTargetCount,
+                      2,
+                  ),
+                  exact(
+                      'crossTierOutlineCacheBypasses',
+                      runtime?.hoverOutlineMaskCacheBypassCount,
+                      0,
+                  ),
+                  minimum(
+                      'crossTierOutlineCacheHits',
+                      runtime?.hoverOutlineMaskCacheHitCount,
+                      1,
+                  ),
+                  minimum(
+                      'crossTierOutlineCacheMisses',
+                      runtime?.hoverOutlineMaskCacheMissCount,
+                      1,
+                  ),
+                  exact(
+                      'crossTierOutlineMaskMissAlignment',
+                      runtime?.hoverOutlineMaskPassCount,
+                      runtime?.hoverOutlineMaskCacheMissCount,
+                  ),
+                  exact(
+                      'crossTierOutlineHorizontalPassAlignment',
+                      runtime?.hoverOutlineHorizontalPassCount,
+                      runtime?.hoverOutlineMaskPassCount,
+                  ),
+                  exact(
+                      'crossTierOutlineCacheConservation',
+                      runtime?.hoverOutlineCompositePassCount,
+                      typeof runtime?.hoverOutlineMaskCacheHitCount ===
+                          'number' &&
+                          typeof runtime?.hoverOutlineMaskCacheMissCount ===
+                              'number' &&
+                          typeof runtime?.hoverOutlineMaskCacheBypassCount ===
+                              'number'
+                          ? runtime.hoverOutlineMaskCacheHitCount +
+                                runtime.hoverOutlineMaskCacheMissCount +
+                                runtime.hoverOutlineMaskCacheBypassCount
+                          : null,
+                  ),
+                  ...outlineCacheWindowChecks({
+                      exact,
+                      minimum,
+                      namePrefix: 'crossTierOutlinePerformanceWindow',
+                      requireMiss: requested.motion === 'bounded-zoom-rotate',
+                      sample,
+                  }),
+                  ...outlineCacheWindowChecks({
+                      exact,
+                      fieldPrefix: 'Semantic',
+                      minimum,
+                      namePrefix: 'crossTierOutlineSemanticWindow',
+                      requireMiss: requested.motion === 'bounded-zoom-rotate',
+                      sample,
+                  }),
+              ]),
+        exact(
             'crossTierOutlineCommandAction',
             runtime?.hoverOutlineProfileCommandAction,
             'show',
@@ -11321,7 +16149,12 @@ function evaluateCrossTierAcceptance({
             screenshotWitness?.sampledUniqueColorCount,
             16,
         ),
-        minimum('crossTierRenderedFps', sample.renderedFps, 1),
+        range(
+            'crossTierRenderedFps',
+            sample.renderedFps,
+            crossTierMinimumRenderedFramesPerSecond,
+            crossTierMaximumRenderedFramesPerSecond,
+        ),
         minimum(
             'crossTierRenderedFrames',
             sample.renderedFrames,
@@ -11348,17 +16181,507 @@ function evaluateCrossTierAcceptance({
     };
 }
 
+function evaluateRuntimeOwnersAcceptance({
+    apiErrors = [],
+    consoleMessages = [],
+    pageErrors = [],
+    requested,
+    runtime,
+    sample,
+    screenshotWitness,
+}) {
+    if (requested?.runtimeOwnersProfile !== true) {
+        return { checks: [], pass: true };
+    }
+
+    const exact = (name, actual, expected) => ({
+        actual,
+        comparison: 'equal',
+        limit: expected,
+        name,
+        pass: actual === expected,
+    });
+    const equivalent = (name, actual, expected) => ({
+        actual,
+        comparison: 'deep-equal',
+        limit: expected,
+        name,
+        pass: JSON.stringify(actual) === JSON.stringify(expected),
+    });
+    const minimum = (name, actual, limit) => ({
+        actual,
+        comparison: 'minimum',
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual >= limit,
+    });
+    const maximum = (name, actual, limit) => ({
+        actual,
+        comparison: 'maximum',
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual <= limit,
+    });
+    const evidence = sample?.runtimeOwnerLeaseEvidence;
+    const owners = evidence?.owners ?? {};
+    const elapsedSeconds =
+        typeof sample?.elapsedMs === 'number' &&
+        Number.isFinite(sample.elapsedMs)
+            ? sample.elapsedMs / 1_000
+            : null;
+    const deliveryByTargetFramesPerSecond =
+        evidence?.deliveryByTargetFramesPerSecond ?? {};
+    const attributedRenderedFrames = runtimeOwnerDeliveryTargetRates.every(
+        (rate) =>
+            Number.isInteger(
+                deliveryByTargetFramesPerSecond[rate]?.actualRenderedFrames,
+            ) &&
+            deliveryByTargetFramesPerSecond[rate].actualRenderedFrames >= 0,
+    )
+        ? runtimeOwnerDeliveryTargetRates.reduce(
+              (total, rate) =>
+                  total +
+                  deliveryByTargetFramesPerSecond[rate].actualRenderedFrames,
+              0,
+          )
+        : null;
+    const deliveryChecks = runtimeOwnerDeliveryTargetRates.flatMap((rate) => {
+        const label = `${rate}Fps`;
+        const delivery = deliveryByTargetFramesPerSecond[rate];
+        const computedExpectedFrameBudget =
+            typeof delivery?.durationMs === 'number' &&
+            Number.isFinite(delivery.durationMs)
+                ? (delivery.durationMs * rate) / 1_000
+                : null;
+        const computedDeliveryRatio =
+            typeof delivery?.actualRenderedFrames === 'number' &&
+            computedExpectedFrameBudget !== null &&
+            computedExpectedFrameBudget > 0
+                ? delivery.actualRenderedFrames / computedExpectedFrameBudget
+                : null;
+        return [
+            exact(
+                `runtimeOwners${label}DeliveryFramesPerSecond`,
+                delivery?.framesPerSecond,
+                rate,
+            ),
+            minimum(
+                `runtimeOwners${label}DeliveryDurationMs`,
+                delivery?.durationMs,
+                runtimeOwnerMinimumDeliveryExposureMs,
+            ),
+            minimum(
+                `runtimeOwners${label}DeliveryExpectedFrameBudget`,
+                delivery?.expectedFrameBudget,
+                (runtimeOwnerMinimumDeliveryExposureMs * rate) / 1_000,
+            ),
+            exact(
+                `runtimeOwners${label}DeliveryExpectedFrameBudgetComputed`,
+                delivery?.expectedFrameBudget,
+                computedExpectedFrameBudget,
+            ),
+            minimum(
+                `runtimeOwners${label}DeliveryActualRenderedFrames`,
+                delivery?.actualRenderedFrames,
+                1,
+            ),
+            minimum(
+                `runtimeOwners${label}DeliveryRatioMinimum`,
+                delivery?.deliveryRatio,
+                runtimeOwnerMinimumDeliveryRatio,
+            ),
+            maximum(
+                `runtimeOwners${label}DeliveryRatioMaximum`,
+                delivery?.deliveryRatio,
+                runtimeOwnerMaximumDeliveryRatio,
+            ),
+            exact(
+                `runtimeOwners${label}DeliveryRatioComputed`,
+                delivery?.deliveryRatio,
+                computedDeliveryRatio,
+            ),
+        ];
+    });
+    const expectedOwners = Object.keys(runtimeOwnerLeaseRates).sort();
+    const autoQualityRequested =
+        requested.autoQualityDeviceClass === 'standard' ||
+        requested.autoQualityDeviceClass === 'constrained';
+    const expectedQualityRequest = autoQualityRequested
+        ? 'auto'
+        : requested.expectedQualityTier;
+    const checks = [
+        exact('runtimeOwnersProfile', requested.runtimeOwnersProfile, true),
+        exact(
+            'runtimeOwnersGardenProfile',
+            requested.gardenProfile,
+            'high-target',
+        ),
+        exact('runtimeOwnersMode', requested.mode, 'rain'),
+        exact('runtimeOwnersControls', requested.controls, '1'),
+        exact('runtimeOwnersDetails', requested.details, '1'),
+        exact('runtimeOwnersHud', requested.hud, '0'),
+        exact('runtimeOwnersDebugHud', requested.debugHud, '0'),
+        exact('runtimeOwnersOutline', requested.outline, '1'),
+        exact('runtimeOwnersMotion', requested.motion, runtimeOwnerMotion),
+        exact(
+            'runtimeOwnersMotionWarmupMs',
+            requested.motionWarmupMs,
+            runtimeOwnerMotionWarmupMs,
+        ),
+        minimum(
+            'runtimeOwnersMotionWarmupCameraVersionDelta',
+            sample?.motionWarmupCameraSnapshotVersionDelta,
+            1,
+        ),
+        maximum(
+            'runtimeOwnersMotionWarmupCameraEndpointMaximumDelta',
+            gameCameraSnapshotMaximumDelta(
+                sample?.motionWarmupCameraSnapshotAtStart,
+                sample?.motionWarmupCameraSnapshotAtEnd,
+            ),
+            0.01,
+        ),
+        exact(
+            'runtimeOwnersFixedTimeSeconds',
+            requested.fixedTimeSeconds,
+            null,
+        ),
+        exact(
+            'runtimeOwnersStaticSceneCacheRequest',
+            requested.staticSceneCache,
+            'legacy',
+        ),
+        exact(
+            'runtimeOwnersStaticSceneCacheEnabled',
+            runtime?.staticOpaqueSceneCacheEnabled,
+            false,
+        ),
+        exact(
+            'runtimeOwnersQualityRequest',
+            requested.quality,
+            expectedQualityRequest,
+        ),
+        exact(
+            'runtimeOwnersQualityTier',
+            runtime?.qualityTier,
+            requested.expectedQualityTier,
+        ),
+        exact('runtimeOwnersDprCap', runtime?.dprCap, requested.expectedDprCap),
+        exact(
+            'runtimeOwnersShadowsEnabled',
+            runtime?.shadowsEnabled,
+            requested.expectedShadows,
+        ),
+        exact(
+            'runtimeOwnersShadowMapSize',
+            runtime?.shadowMapSize,
+            requested.expectedShadowMapSize,
+        ),
+        exact(
+            'runtimeOwnersGroundDecorationDensity',
+            runtime?.groundDecorationDensity,
+            requested.expectedGroundDecorationDensity,
+        ),
+        ...(autoQualityRequested
+            ? [
+                  exact(
+                      'runtimeOwnersAutoMemoryGb',
+                      requested.autoQualityMetrics?.memoryGb,
+                      requested.expectedAutoQualityMetrics?.memoryGb,
+                  ),
+                  exact(
+                      'runtimeOwnersAutoCoreCount',
+                      requested.autoQualityMetrics?.coreCount,
+                      requested.expectedAutoQualityMetrics?.coreCount,
+                  ),
+                  exact(
+                      'runtimeOwnersAutoReportedDpr',
+                      requested.autoQualityMetrics?.dpr,
+                      requested.expectedAutoQualityMetrics?.dpr,
+                  ),
+                  exact(
+                      'runtimeOwnersAutoCoarsePointer',
+                      requested.autoQualityMetrics?.coarsePointer,
+                      requested.expectedAutoQualityMetrics?.coarsePointer,
+                  ),
+                  exact(
+                      'runtimeOwnersAutoNarrowViewport',
+                      requested.autoQualityMetrics?.narrowViewport,
+                      requested.expectedAutoQualityMetrics?.narrowViewport,
+                  ),
+              ]
+            : []),
+        exact('runtimeOwnersStartObserved', evidence?.startObserved, true),
+        exact(
+            'runtimeOwnersEndpointObserved',
+            evidence?.endpointObserved,
+            true,
+        ),
+        minimum('runtimeOwnersFrameCount', evidence?.frameCount, 2),
+        minimum(
+            'runtimeOwnersRafObservationCount',
+            evidence?.rafObservationCount,
+            2,
+        ),
+        exact(
+            'runtimeOwnersFrameAndRafObservationCountMatch',
+            evidence?.frameCount,
+            evidence?.rafObservationCount,
+        ),
+        minimum(
+            'runtimeOwnersSceneTimeDeltaSecondsMinimum',
+            evidence?.sceneTimeDeltaSeconds,
+            elapsedSeconds === null
+                ? Number.NaN
+                : Math.max(0, elapsedSeconds - 0.2),
+        ),
+        maximum(
+            'runtimeOwnersSceneTimeDeltaSecondsMaximum',
+            evidence?.sceneTimeDeltaSeconds,
+            elapsedSeconds === null ? Number.NaN : elapsedSeconds + 0.2,
+        ),
+        exact(
+            'runtimeOwnersTargetFramesPerSecondMin',
+            evidence?.targetFramesPerSecondMin,
+            30,
+        ),
+        minimum(
+            'runtimeOwnersTargetFramesPerSecondMax',
+            evidence?.targetFramesPerSecondMax,
+            60,
+        ),
+        ...deliveryChecks,
+        equivalent(
+            'runtimeOwnersOwnerSet',
+            Object.keys(owners).sort(),
+            expectedOwners,
+        ),
+        exact(
+            'runtimeOwnersCameraExpectedFramesPerSecond',
+            owners['camera-interaction']?.expectedFramesPerSecond,
+            runtimeOwnerLeaseRates['camera-interaction'],
+        ),
+        equivalent(
+            'runtimeOwnersCameraFramesPerSecond',
+            owners['camera-interaction']?.framesPerSecond,
+            [runtimeOwnerLeaseRates['camera-interaction']],
+        ),
+        minimum(
+            'runtimeOwnersCameraObservedFrameCount',
+            owners['camera-interaction']?.observedFrameCount,
+            2,
+        ),
+        minimum(
+            'runtimeOwnersCameraMatchingFrameCount',
+            owners['camera-interaction']?.matchingRafObservationCount,
+            2,
+        ),
+        minimum(
+            'runtimeOwnersCameraMaximumLeaseCount',
+            owners['camera-interaction']?.maximumLeaseCount,
+            1,
+        ),
+        ...Object.entries(runtimeOwnerPersistentLeaseRates).flatMap(
+            ([owner, expectedFramesPerSecond]) => {
+                const ownerLabel = owner
+                    .split(/[:-]/u)
+                    .map(
+                        (part) =>
+                            `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`,
+                    )
+                    .join('');
+                const observation = owners[owner];
+                return [
+                    exact(
+                        `runtimeOwners${ownerLabel}ExpectedFramesPerSecond`,
+                        observation?.expectedFramesPerSecond,
+                        expectedFramesPerSecond,
+                    ),
+                    equivalent(
+                        `runtimeOwners${ownerLabel}FramesPerSecond`,
+                        observation?.framesPerSecond,
+                        [expectedFramesPerSecond],
+                    ),
+                    exact(
+                        `runtimeOwners${ownerLabel}StartObserved`,
+                        observation?.startObserved,
+                        true,
+                    ),
+                    exact(
+                        `runtimeOwners${ownerLabel}EndpointObserved`,
+                        observation?.endpointObserved,
+                        true,
+                    ),
+                    minimum(
+                        `runtimeOwners${ownerLabel}CoverageRatio`,
+                        observation?.coverageRatio,
+                        0.9,
+                    ),
+                    minimum(
+                        `runtimeOwners${ownerLabel}MaximumLeaseCount`,
+                        observation?.maximumLeaseCount,
+                        1,
+                    ),
+                ];
+            },
+        ),
+        exact(
+            'runtimeOwnersCameraMotionObserved',
+            sample?.gameCameraMotionObserved,
+            true,
+        ),
+        minimum(
+            'runtimeOwnersCameraSnapshotVersionDelta',
+            sample?.gameCameraSnapshotVersionDelta,
+            1,
+        ),
+        maximum(
+            'runtimeOwnersCameraEndpointMaximumDelta',
+            gameCameraSnapshotMaximumDelta(
+                sample?.gameCameraSnapshotAtStart,
+                sample?.gameCameraSnapshotAtEnd,
+            ),
+            0.01,
+        ),
+        minimum(
+            'runtimeOwnersOwnedInvalidationDelta',
+            sample?.runtimeFrameLoopCounterDeltas?.ownedInvalidationCount,
+            1,
+        ),
+        minimum(
+            'runtimeOwnersR3fFrameCallbackDelta',
+            sample?.runtimeFrameLoopCounterDeltas?.r3fFrameCallbackCount,
+            1,
+        ),
+        exact(
+            'runtimeOwnersRenderedFramesMatchR3fFrameCallbackDelta',
+            sample?.renderedFrames,
+            sample?.runtimeFrameLoopCounterDeltas?.r3fFrameCallbackCount,
+        ),
+        exact(
+            'runtimeOwnersAttributedRenderedFramesMatchRenderedFrames',
+            attributedRenderedFrames,
+            sample?.renderedFrames,
+        ),
+        exact(
+            'runtimeOwnersHiddenDeferredCoalescedRenderRequestCountDelta',
+            sample?.runtimeFrameLoopCounterDeltas
+                ?.hiddenDeferredCoalescedRenderRequestCount,
+            0,
+        ),
+        exact(
+            'runtimeOwnersHiddenCoalescedRenderRequestCountDelta',
+            sample?.runtimeFrameLoopCounterDeltas
+                ?.hiddenCoalescedRenderRequestCount,
+            0,
+        ),
+        minimum('runtimeOwnersRenderedFrames', sample?.renderedFrames, 1),
+        minimum('runtimeOwnersDrawCalls', sample?.drawCalls, 1),
+        minimum(
+            'runtimeOwnersSubmittedTriangles',
+            sample?.submittedTriangles,
+            1,
+        ),
+        exact(
+            'runtimeOwnersScreenshotWitnessValid',
+            isProfileScreenshotWitnessValid(screenshotWitness),
+            true,
+        ),
+        exact(
+            'runtimeOwnersScreenshotWidth',
+            screenshotWitness?.width,
+            requested.viewport?.width * requested.dpr,
+        ),
+        exact(
+            'runtimeOwnersScreenshotHeight',
+            screenshotWitness?.height,
+            requested.viewport?.height * requested.dpr,
+        ),
+        exact('runtimeOwnersScreenshotOpaque', screenshotWitness?.opaque, true),
+        minimum(
+            'runtimeOwnersScreenshotEntropy',
+            screenshotWitness?.entropy,
+            0.5,
+        ),
+        minimum(
+            'runtimeOwnersScreenshotMaximumChannelStandardDeviation',
+            screenshotWitness?.maximumChannelStandardDeviation,
+            5,
+        ),
+        minimum(
+            'runtimeOwnersScreenshotSampledLumaRange',
+            screenshotWitness?.sampledLumaRange,
+            20,
+        ),
+        minimum(
+            'runtimeOwnersScreenshotSampledUniqueColorCount',
+            screenshotWitness?.sampledUniqueColorCount,
+            16,
+        ),
+        exact('runtimeOwnersApiErrors', apiErrors.length, 0),
+        exact(
+            'runtimeOwnersConsoleErrors',
+            consoleMessages.filter(
+                (message) =>
+                    message.type === 'error' &&
+                    !isIgnoredLocalProfilerConsoleError(message),
+            ).length,
+            0,
+        ),
+        exact('runtimeOwnersPageErrors', pageErrors.length, 0),
+    ];
+
+    return {
+        checks,
+        pass: checks.every((check) => check.pass),
+    };
+}
+
 function evaluateHighTargetAcceptance({
     apiErrors = [],
     apiRequests = [],
     consoleMessages = [],
+    crossTierCold,
+    crossTierResourceSnapshot,
     environment,
     pageErrors,
     requested,
     runtime,
     sample,
     screenshotWitness,
+    staticIdle,
 }) {
+    if (requested?.staticIdleProfile === true) {
+        return evaluateStaticIdleAcceptance({
+            apiErrors,
+            consoleMessages,
+            pageErrors,
+            requested,
+            runtime,
+            sample,
+            screenshotWitness,
+            staticIdle: staticIdle ?? buildStaticIdleEvidence(sample),
+        });
+    }
+
+    if (requested?.runtimeOwnersProfile === true) {
+        return evaluateRuntimeOwnersAcceptance({
+            apiErrors,
+            consoleMessages,
+            pageErrors,
+            requested,
+            runtime,
+            sample,
+            screenshotWitness,
+        });
+    }
+
     if (requested?.faunaProfile === true) {
         return evaluateFaunaHeavyAcceptance({
             apiErrors,
@@ -11376,6 +16699,8 @@ function evaluateHighTargetAcceptance({
         return evaluateCrossTierAcceptance({
             apiErrors,
             consoleMessages,
+            crossTierCold,
+            crossTierResourceSnapshot,
             pageErrors,
             requested,
             runtime,
@@ -11457,6 +16782,7 @@ function evaluateHighTargetAcceptance({
         : null;
     const operationVisualsRequested = requested.operationVisuals === '1';
     const foliageBudgetRequested = requested.foliageBudget === '1';
+    const legacyOutlinePipeline = requested.legacyOutlinePipeline === true;
     const staticSceneCacheBenchmarkRequested =
         highTargetStaticSceneCacheComparisonPairs.has(requested.comparisonPair);
     const staticSceneCacheCloudyBenchmarkRequested =
@@ -12405,7 +17731,9 @@ function evaluateHighTargetAcceptance({
                 exact(
                     'highTargetOutlinePipeline',
                     runtime?.hoverOutlinePipeline,
-                    'cropped-bounded-separable-r8',
+                    legacyOutlinePipeline
+                        ? 'cropped-bounded-separable-r8'
+                        : 'cropped-bounded-separable-r8-content-cache',
                 ),
                 exact(
                     'highTargetOutlineFormat',
@@ -12468,16 +17796,74 @@ function evaluateHighTargetAcceptance({
                     runtime?.hoverOutlineMaskPassCount,
                     1,
                 ),
-                exact(
-                    'highTargetOutlineHorizontalPassAlignment',
-                    runtime?.hoverOutlineHorizontalPassCount,
-                    runtime?.hoverOutlineMaskPassCount,
-                ),
-                exact(
-                    'highTargetOutlineCompositePassAlignment',
-                    runtime?.hoverOutlineCompositePassCount,
-                    runtime?.hoverOutlineMaskPassCount,
-                ),
+                ...(legacyOutlinePipeline
+                    ? [
+                          exact(
+                              'highTargetOutlineLegacyHorizontalPassAlignment',
+                              runtime?.hoverOutlineHorizontalPassCount,
+                              runtime?.hoverOutlineMaskPassCount,
+                          ),
+                          exact(
+                              'highTargetOutlineLegacyCompositePassAlignment',
+                              runtime?.hoverOutlineCompositePassCount,
+                              runtime?.hoverOutlineMaskPassCount,
+                          ),
+                      ]
+                    : [
+                          exact(
+                              'highTargetOutlineCacheEligibleTargets',
+                              runtime?.hoverOutlineMaskCacheEligibleTargetCount,
+                              2,
+                          ),
+                          exact(
+                              'highTargetOutlineCacheBypasses',
+                              runtime?.hoverOutlineMaskCacheBypassCount,
+                              0,
+                          ),
+                          minimum(
+                              'highTargetOutlineCacheHits',
+                              runtime?.hoverOutlineMaskCacheHitCount,
+                              1,
+                          ),
+                          minimum(
+                              'highTargetOutlineCacheMisses',
+                              runtime?.hoverOutlineMaskCacheMissCount,
+                              1,
+                          ),
+                          exact(
+                              'highTargetOutlineMaskMissAlignment',
+                              runtime?.hoverOutlineMaskPassCount,
+                              runtime?.hoverOutlineMaskCacheMissCount,
+                          ),
+                          exact(
+                              'highTargetOutlineHorizontalPassAlignment',
+                              runtime?.hoverOutlineHorizontalPassCount,
+                              runtime?.hoverOutlineMaskPassCount,
+                          ),
+                          exact(
+                              'highTargetOutlineCacheConservation',
+                              runtime?.hoverOutlineCompositePassCount,
+                              typeof runtime?.hoverOutlineMaskCacheHitCount ===
+                                  'number' &&
+                                  typeof runtime?.hoverOutlineMaskCacheMissCount ===
+                                      'number' &&
+                                  typeof runtime?.hoverOutlineMaskCacheBypassCount ===
+                                      'number'
+                                  ? runtime.hoverOutlineMaskCacheHitCount +
+                                        runtime.hoverOutlineMaskCacheMissCount +
+                                        runtime.hoverOutlineMaskCacheBypassCount
+                                  : null,
+                          ),
+                          ...outlineCacheWindowChecks({
+                              exact,
+                              minimum,
+                              namePrefix: 'highTargetOutlineSampleWindow',
+                              requireMiss:
+                                  typeof requested.motion === 'string' &&
+                                  requested.motion !== 'none',
+                              sample,
+                          }),
+                      ]),
                 exact(
                     'highTargetOutlineAllocationBytes',
                     runtime?.hoverOutlineAllocationEstimatedBytes,
@@ -13021,7 +18407,8 @@ function buildHighTargetMedians(scenarios) {
             (scenario) =>
                 (scenario.requested?.gardenProfile === 'high-target' ||
                     scenario.requested?.faunaProfile === true) &&
-                scenario.requested?.lifecycleProfile !== true,
+                scenario.requested?.lifecycleProfile !== true &&
+                scenario.requested?.runtimeOwnersProfile !== true,
         ),
         (scenario) => scenario.baseName ?? scenario.name,
     );
@@ -13084,6 +18471,10 @@ function buildHighTargetMedians(scenarios) {
                 };
             });
             const jsHeapMb = metric(runs, (run) => run.sample.jsHeapMb);
+            const retainedJsHeapMb = metric(
+                runs,
+                (run) => run.memory?.retainedJsHeapMb,
+            );
             const longTaskCount = metric(
                 runs,
                 (run) => run.sample.longTaskCount,
@@ -13224,6 +18615,7 @@ function buildHighTargetMedians(scenarios) {
             const performanceBudget = evaluateBudget(
                 medianSample,
                 budgets[budgetName] ?? budgets.gameHighTarget,
+                { retainedJsHeapMb: retainedJsHeapMb.median },
             );
             const failedAcceptanceRuns = runs
                 .filter((run) => run.acceptance?.pass !== true)
@@ -13269,6 +18661,7 @@ function buildHighTargetMedians(scenarios) {
                     rendererShadersRuns,
                     rendererTextures,
                     rendererTexturesRuns,
+                    retainedJsHeapMb,
                     runCount: runs.length,
                     staticOpaqueSceneCacheCaptureSubmissionCount,
                     staticOpaqueSceneCacheCaptureTriangleCount,
@@ -14366,6 +19759,18 @@ function buildProfileSummary(
             pass: runs.every((run) => run.budget.pass),
         }),
     );
+    const runtimeOwnerResults = Array.from(
+        Map.groupBy(
+            scenarios.filter(
+                (scenario) => scenario.requested?.runtimeOwnersProfile === true,
+            ),
+            (scenario) => scenario.baseName ?? scenario.name,
+        ),
+        ([name, runs]) => ({
+            name,
+            pass: runs.every((run) => run.budget.pass),
+        }),
+    );
     const highTargetResults = Object.entries(highTargetMedians);
     const comparativeFailureNames = Object.values(
         buildAdaptiveHighComparisons(highTargetMedians),
@@ -14393,6 +19798,9 @@ function buildProfileSummary(
             ...lifecycleResults
                 .filter((result) => !result.pass)
                 .map((result) => result.name),
+            ...runtimeOwnerResults
+                .filter((result) => !result.pass)
+                .map((result) => result.name),
             ...highTargetResults
                 .filter(([, result]) => !result.pass)
                 .map(([name]) => name),
@@ -14405,6 +19813,7 @@ function buildProfileSummary(
         nonHighTargetScenarios.length +
         gardenSwitchResults.length +
         lifecycleResults.length +
+        runtimeOwnerResults.length +
         highTargetResults.length;
     const failedRuns = scenarios.filter(
         (scenario) => !scenario.budget.pass,
@@ -15154,6 +20563,109 @@ function buildMarkdown(report) {
         );
     }
 
+    const staticIdleProfiles = report.scenarios.filter(
+        (scenario) => scenario.requested?.staticIdleProfile === true,
+    );
+    if (staticIdleProfiles.length > 0) {
+        lines.push(
+            '',
+            '## Fixed-time visible static-idle witness',
+            '',
+            '| Scenario / run | Visible / settled start-end | Scheduler counter deltas | R3F callbacks | WebGL frames / draws / triangles | Nonblank screenshot | Full zero work | Result |',
+            '| --- | --- | --- | ---: | ---: | --- | --- | --- |',
+        );
+        for (const scenario of staticIdleProfiles) {
+            const evidence = scenario.staticIdle;
+            const counterDeltas = evidence?.counterDeltas ?? {};
+            lines.push(
+                `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${scenario.sample?.runtimeFrameLoopAtStart?.effectiveVisible === true && scenario.sample?.runtimeFrameLoopAtEnd?.effectiveVisible === true ? 'yes' : 'no'} / ${evidence?.schedulerSettledAtStart === true && evidence?.schedulerSettledAtEnd === true ? 'yes' : 'no'} | wake ${counterDeltas.wakeupCount ?? 'n/a'}, invalidate ${counterDeltas.ownedInvalidationCount ?? 'n/a'}, fixed ${counterDeltas.fixedStepCount ?? 'n/a'}, deadline ${counterDeltas.deadlineCount ?? 'n/a'}, hidden ${counterDeltas.nonessentialHiddenWorkCount ?? 'n/a'} | ${counterDeltas.r3fFrameCallbackCount ?? 'n/a'} | ${scenario.sample?.renderedFrames ?? 'n/a'} / ${scenario.sample?.drawCalls ?? 'n/a'} / ${scenario.sample?.submittedTriangles ?? 'n/a'} | ${isProfileScreenshotWitnessValid(scenario.screenshotWitness) ? 'yes' : 'no'} | ${evidence?.zeroWorkObserved ? 'yes' : 'no'} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+            );
+        }
+    }
+
+    const runtimeOwnerProfiles = report.scenarios.filter(
+        (scenario) => scenario.requested?.runtimeOwnersProfile === true,
+    );
+    if (runtimeOwnerProfiles.length > 0) {
+        lines.push(
+            '',
+            '## Cross-tier runtime-owner cadence witness',
+            '',
+            '| Scenario / run | Tier | Target FPS min / max | Sample RAF observations | SceneTime delta | Delivered 30 / 60 FPS duration; actual / expected (ratio) | Camera cadence | Motion preflight | Camera endpoint drift | Persistent 30 FPS owner coverage | Owned invalidations / R3F callbacks / rendered frames | Nonblank screenshot | Result |',
+            '| --- | --- | ---: | ---: | ---: | --- | --- | --- | --- | --- | ---: | --- | --- |',
+        );
+        for (const scenario of runtimeOwnerProfiles) {
+            const evidence = scenario.runtimeOwners;
+            const owners = evidence?.owners ?? {};
+            const persistentCadence = Object.keys(
+                runtimeOwnerPersistentLeaseRates,
+            )
+                .map((owner) => {
+                    const observation = owners[owner];
+                    const rates =
+                        observation?.framesPerSecond?.join(',') ?? 'n/a';
+                    const coverage =
+                        typeof observation?.coverageRatio === 'number'
+                            ? `${round(observation.coverageRatio * 100, 1)}%`
+                            : 'n/a';
+                    return `${owner} ${rates} FPS @ ${coverage}`;
+                })
+                .join('; ');
+            const camera = owners['camera-interaction'];
+            const deliveryByTargetFramesPerSecond =
+                evidence?.deliveryByTargetFramesPerSecond ?? {};
+            const delivery = runtimeOwnerDeliveryTargetRates
+                .map((rate) => {
+                    const rateDelivery = deliveryByTargetFramesPerSecond[rate];
+                    return `${rate}: ${typeof rateDelivery?.durationMs === 'number' ? `${round(rateDelivery.durationMs, 1)} ms` : 'n/a'}; ${rateDelivery?.actualRenderedFrames ?? 'n/a'} / ${typeof rateDelivery?.expectedFrameBudget === 'number' ? round(rateDelivery.expectedFrameBudget, 1) : 'n/a'} (${typeof rateDelivery?.deliveryRatio === 'number' ? round(rateDelivery.deliveryRatio, 3) : 'n/a'})`;
+                })
+                .join(' / ');
+            const warmupEndpointDelta = gameCameraSnapshotMaximumDelta(
+                scenario.sample?.motionWarmupCameraSnapshotAtStart,
+                scenario.sample?.motionWarmupCameraSnapshotAtEnd,
+            );
+            const sampleEndpointDelta = gameCameraSnapshotMaximumDelta(
+                scenario.sample?.gameCameraSnapshotAtStart,
+                scenario.sample?.gameCameraSnapshotAtEnd,
+            );
+            lines.push(
+                `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${scenario.runtime?.qualityTier ?? 'n/a'} | ${evidence?.targetFramesPerSecondMin ?? 'n/a'} / ${evidence?.targetFramesPerSecondMax ?? 'n/a'} | ${evidence?.frameCount ?? 'n/a'} | ${typeof evidence?.sceneTimeDeltaSeconds === 'number' ? `${round(evidence.sceneTimeDeltaSeconds, 3)} s` : 'n/a'} | ${delivery} | ${camera?.framesPerSecond?.join(',') ?? 'n/a'} FPS across ${camera?.observedFrameCount ?? 'n/a'} frames | ${scenario.requested?.motionWarmupMs ?? 0} ms / Δv${scenario.sample?.motionWarmupCameraSnapshotVersionDelta ?? 'n/a'} / drift ${warmupEndpointDelta ?? 'n/a'} | Δv${scenario.sample?.gameCameraSnapshotVersionDelta ?? 'n/a'} / drift ${sampleEndpointDelta ?? 'n/a'} | ${persistentCadence} | ${scenario.sample?.runtimeFrameLoopCounterDeltas?.ownedInvalidationCount ?? 'n/a'} / ${scenario.sample?.runtimeFrameLoopCounterDeltas?.r3fFrameCallbackCount ?? 'n/a'} / ${scenario.sample?.renderedFrames ?? 'n/a'} | ${isProfileScreenshotWitnessValid(scenario.screenshotWitness) ? 'yes' : 'no'} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+            );
+        }
+    }
+
+    const crossTierProfiles = report.scenarios.filter(
+        (scenario) => scenario.requested?.crossTierProfile === true,
+    );
+    if (crossTierProfiles.length > 0) {
+        lines.push(
+            '',
+            '## Cross-tier cold and resource witnesses',
+            '',
+            'The document-start milestones are the comparable cold evidence. Host double-RAF readiness remains diagnostic only. Resource counts come from a fresh post-render receipt after a stable endpoint population and cumulative exposure observation.',
+            '',
+            '| Scenario / run | Cold DCL/attach/size/first frame/fixture | Host double-RAF diagnostic | DPR expected / canvas | Population endpoint / cumulative exposure | Geometries / shaders / textures | Renderer receipt / attempts | Result |',
+            '| --- | ---: | ---: | --- | --- | ---: | --- | --- |',
+        );
+        for (const scenario of crossTierProfiles) {
+            const cold = scenario.crossTierCold;
+            const snapshot = scenario.crossTierResourceSnapshot;
+            const resources = snapshot?.resources;
+            const canvas = cold?.canvasSize;
+            const canvasDimensions = canvas
+                ? `${canvas.clientWidth ?? 'n/a'}x${canvas.clientHeight ?? 'n/a'} CSS / ${canvas.width ?? 'n/a'}x${canvas.height ?? 'n/a'} backing`
+                : 'n/a';
+            const endpointPopulation = JSON.stringify(
+                snapshot?.populationAtEnd ?? {},
+            );
+            const populationExposure =
+                snapshot?.populationExposureSignature ?? 'n/a';
+            lines.push(
+                `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${cold?.domContentLoadedMs ?? 'n/a'}/${cold?.canvasAttachedMs ?? 'n/a'}/${cold?.canvasSizedMs ?? 'n/a'}/${cold?.firstSubmittedFrameMs ?? 'n/a'}/${cold?.fixtureReadyMs ?? 'n/a'} ms | ${cold?.hostCanvasReadyDiagnosticMs ?? 'n/a'} ms | ${cold?.expectedDpr ?? 'n/a'} / ${canvasDimensions} | ${endpointPopulation} / ${populationExposure} | ${resources?.rendererGeometries ?? 'n/a'} / ${resources?.rendererShaders ?? 'n/a'} / ${resources?.rendererTextures ?? 'n/a'} | ${snapshot?.rendererStatsMode ?? 'n/a'} / ${snapshot?.attemptCount ?? 'n/a'} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+            );
+        }
+    }
+
     const buildingProfiles = report.scenarios.filter(
         (scenario) => scenario.requested?.buildingProfile,
     );
@@ -15249,6 +20761,11 @@ function buildMarkdown(report) {
         (scenario) => scenario.requested?.lifecycleProfile === true,
     );
     if (lifecycleProfiles.length > 0) {
+        const canonicalLifecycleProfileCount = lifecycleProfiles.filter(
+            (scenario) => scenario.requested?.lifecycleLiveProfile !== true,
+        ).length;
+        const liveLifecycleProfileCount =
+            lifecycleProfiles.length - canonicalLifecycleProfileCount;
         const summary =
             report.lifecycleSummary ?? buildLifecycleSummary(report.scenarios);
         const formatMetric = (metric) =>
@@ -15261,9 +20778,21 @@ function buildMarkdown(report) {
             '',
             `Cold milestone medians [min, max] in ms — DOMContentLoaded ${formatMetric(summary.cold.domContentLoadedMs)}, Canvas attached ${formatMetric(summary.cold.canvasAttachedMs)}, Canvas sized ${formatMetric(summary.cold.canvasSizedMs)}, first submitted frame ${formatMetric(summary.cold.firstSubmittedFrameMs)}, exact fixture ${formatMetric(summary.cold.fixtureReadyMs)}, outline interaction ${formatMetric(summary.cold.interactionReadyMs)}.`,
             '',
-            'Offscreen and synthetic document-hidden renderer/CDP residuals are recorded honestly. The structural gate covers SceneTime scheduling counters; residual submitted GL work and CDP script time remain observations for the scheduler optimization.',
+            `Owned-scheduling zero witnesses — offscreen ${summary.offscreen.ownedSchedulingZeroObservedRunCount}/${summary.runCount}, synthetic hidden ${summary.hidden.ownedSchedulingZeroObservedRunCount}/${summary.runCount}. Full render/runtime zero-work witnesses — offscreen ${summary.offscreen.zeroWorkObservedRunCount}/${summary.runCount}, synthetic hidden ${summary.hidden.zeroWorkObservedRunCount}/${summary.runCount}.`,
             '',
-            '| Scenario / run | Cold DCL/attach/size/first frame/fixture/interaction | Active rendered/draws | Offscreen residual rendered/draws/triangles/script; scheduler zero | Offscreen resume draw/context | Synthetic hidden residual rendered/draws/triangles/script; scheduler zero | Hidden resume draw/context | Context loss events/default/lost GL | Restored window/context | Screenshots cold/offscreen/hidden/restored | Result |',
+            ...(canonicalLifecycleProfileCount > 0
+                ? [
+                      `Canonical compatibility runs (${canonicalLifecycleProfileCount}) gate the original owned-scheduling counters; full runtime, renderer, and CDP residuals remain diagnostics so before-system comparison captures stay valid.`,
+                      '',
+                  ]
+                : []),
+            ...(liveLifecycleProfileCount > 0
+                ? [
+                      `Candidate-only live runs (${liveLifecycleProfileCount}) retain the action-start window and pre-signal work as diagnostics. Suspension gates cancellation and required suspend/defer at native visibility delivery with a microtask-fresh acknowledgement, requires zero productive/renderer work during delivery and exact-zero work after acknowledgement, then gates an exact-zero residual tail. The raw action-plus-R3F drain remains bounded by observed browser frames; resume permits only a quarter-second semantic R3F surplus within a browser-frame bound; a second steady window gates exact owner cadence, bounded SceneTime, drained requests, and zero scheduler failures. Finite CDP durations remain diagnostics.`,
+                      '',
+                  ]
+                : []),
+            '| Scenario / run | Cold DCL/attach/size/first frame/fixture/interaction | Active rendered/draws | Offscreen residual rendered/draws/triangles/script; owned scheduling zero/full zero | Offscreen resume draw/context | Synthetic hidden residual rendered/draws/triangles/script; owned scheduling zero/full zero | Hidden resume draw/context | Context loss events/default/lost GL | Restored window/context | Screenshots cold/offscreen/hidden/restored | Result |',
             '| --- | ---: | ---: | --- | --- | --- | --- | --- | --- | --- | --- |',
         );
         for (const scenario of lifecycleProfiles) {
@@ -15273,9 +20802,45 @@ function buildMarkdown(report) {
             const restoredControl = lifecycle?.context?.restoredControl;
             const screenshot = (control) =>
                 `${control?.screenshotWitness?.width ?? 'n/a'}x${control?.screenshotWitness?.height ?? 'n/a'}`;
+            const zeroWitnesses = (phase) => {
+                const ownedSchedulingZeroObserved =
+                    phase?.ownedSchedulingZeroObserved ??
+                    phase?.runtimeSchedulerZeroObserved;
+                return `${ownedSchedulingZeroObserved ? 'yes' : 'no'}/${phase?.zeroWorkObserved ? 'yes' : 'no'}`;
+            };
             lines.push(
-                `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${lifecycle?.cold?.domContentLoadedMs ?? 'n/a'}/${lifecycle?.cold?.canvasAttachedMs ?? 'n/a'}/${lifecycle?.cold?.canvasSizedMs ?? 'n/a'}/${lifecycle?.cold?.firstSubmittedFrameMs ?? 'n/a'}/${lifecycle?.cold?.fixtureReadyMs ?? 'n/a'}/${lifecycle?.cold?.interactionReadyMs ?? 'n/a'} ms | ${lifecycle?.active?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.active?.sample?.drawCalls ?? 'n/a'} | ${lifecycle?.offscreen?.residual?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.offscreen?.residual?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.offscreen?.residual?.sample?.submittedTriangles ?? 'n/a'}/${lifecycle?.offscreen?.residual?.cdp?.scriptDuration ?? 'n/a'} s; ${lifecycle?.offscreen?.runtimeSchedulerZeroObserved ? 'yes' : 'no'} | ${offscreenControl?.postCommandRender?.drawCalls ?? 'n/a'} / ${offscreenControl?.fixture?.canvas?.sameCanvas && offscreenControl?.fixture?.canvas?.sameContext ? 'same' : 'changed'} | ${lifecycle?.hidden?.residual?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.hidden?.residual?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.hidden?.residual?.sample?.submittedTriangles ?? 'n/a'}/${lifecycle?.hidden?.residual?.cdp?.scriptDuration ?? 'n/a'} s; ${lifecycle?.hidden?.runtimeSchedulerZeroObserved ? 'yes' : 'no'} | ${hiddenControl?.postCommandRender?.drawCalls ?? 'n/a'} / ${hiddenControl?.fixture?.canvas?.sameCanvas && hiddenControl?.fixture?.canvas?.sameContext ? 'same' : 'changed'} | ${lifecycle?.context?.lost?.lostEventCount ?? 'n/a'}/${lifecycle?.context?.lost?.lostDefaultPreventedCount ?? 'n/a'}; ${lifecycle?.context?.lostWindow?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.context?.lostWindow?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.context?.lostWindow?.sample?.submittedTriangles ?? 'n/a'} | ${lifecycle?.context?.restoredWindow?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.context?.restoredWindow?.sample?.drawCalls ?? 'n/a'}; ${lifecycle?.context?.restored?.sameCanvas && lifecycle?.context?.restored?.sameContext ? 'same' : 'changed'} | ${lifecycle?.cold?.screenshotWitness?.width ?? 'n/a'}x${lifecycle?.cold?.screenshotWitness?.height ?? 'n/a'} / ${screenshot(offscreenControl)} / ${screenshot(hiddenControl)} / ${screenshot(restoredControl)} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+                `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${lifecycle?.cold?.domContentLoadedMs ?? 'n/a'}/${lifecycle?.cold?.canvasAttachedMs ?? 'n/a'}/${lifecycle?.cold?.canvasSizedMs ?? 'n/a'}/${lifecycle?.cold?.firstSubmittedFrameMs ?? 'n/a'}/${lifecycle?.cold?.fixtureReadyMs ?? 'n/a'}/${lifecycle?.cold?.interactionReadyMs ?? 'n/a'} ms | ${lifecycle?.active?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.active?.sample?.drawCalls ?? 'n/a'} | ${lifecycle?.offscreen?.residual?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.offscreen?.residual?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.offscreen?.residual?.sample?.submittedTriangles ?? 'n/a'}/${lifecycle?.offscreen?.residual?.cdp?.scriptDuration ?? 'n/a'} s; ${zeroWitnesses(lifecycle?.offscreen)} | ${offscreenControl?.postCommandRender?.drawCalls ?? 'n/a'} / ${offscreenControl?.fixture?.canvas?.sameCanvas && offscreenControl?.fixture?.canvas?.sameContext ? 'same' : 'changed'} | ${lifecycle?.hidden?.residual?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.hidden?.residual?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.hidden?.residual?.sample?.submittedTriangles ?? 'n/a'}/${lifecycle?.hidden?.residual?.cdp?.scriptDuration ?? 'n/a'} s; ${zeroWitnesses(lifecycle?.hidden)} | ${hiddenControl?.postCommandRender?.drawCalls ?? 'n/a'} / ${hiddenControl?.fixture?.canvas?.sameCanvas && hiddenControl?.fixture?.canvas?.sameContext ? 'same' : 'changed'} | ${lifecycle?.context?.lost?.lostEventCount ?? 'n/a'}/${lifecycle?.context?.lost?.lostDefaultPreventedCount ?? 'n/a'}; ${lifecycle?.context?.lostWindow?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.context?.lostWindow?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.context?.lostWindow?.sample?.submittedTriangles ?? 'n/a'} | ${lifecycle?.context?.restoredWindow?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.context?.restoredWindow?.sample?.drawCalls ?? 'n/a'}; ${lifecycle?.context?.restored?.sameCanvas && lifecycle?.context?.restored?.sameContext ? 'same' : 'changed'} | ${lifecycle?.cold?.screenshotWitness?.width ?? 'n/a'}x${lifecycle?.cold?.screenshotWitness?.height ?? 'n/a'} / ${screenshot(offscreenControl)} / ${screenshot(hiddenControl)} / ${screenshot(restoredControl)} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
             );
+        }
+        const liveLifecycleProfiles = lifecycleProfiles.filter(
+            (scenario) => scenario.requested?.lifecycleLiveProfile === true,
+        );
+        if (liveLifecycleProfiles.length > 0) {
+            const reasonCount = (snapshot) =>
+                Array.isArray(snapshot?.renderRequestReasons)
+                    ? snapshot.renderRequestReasons.length
+                    : 'n/a';
+            const seconds = (value) =>
+                Number.isFinite(value) ? round(value, 3) : 'n/a';
+            lines.push(
+                '',
+                'Candidate-live visibility transition evidence:',
+                '',
+                '| Scenario / run | Phase | Suspend action+drain ms; rendered/R3F/hidden; suspend/defer/cancel; SceneTime; settled | Exact-zero tail rendered/R3F/SceneTime | Resume transition ms; rendered/R3F/owned/surplus; SceneTime; pending end | Steady ms; rendered/R3F/owned; SceneTime; pending start/end | Boundary mode; pre-signal/signal/post-ack productive; post-ack rendered/R3F | Result |',
+                '| --- | --- | --- | --- | --- | --- | --- | --- |',
+            );
+            for (const scenario of liveLifecycleProfiles) {
+                for (const phaseName of ['offscreen', 'hidden']) {
+                    const phase = scenario.lifecycle?.[phaseName];
+                    const suspend = phase?.suspendTransition;
+                    const boundary = suspend?.suspensionBoundary;
+                    const resume = phase?.resumeTransition;
+                    const steady = phase?.resumeWindow;
+                    lines.push(
+                        `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${phaseName} | ${suspend?.sample?.elapsedMs ?? 'n/a'} ms; ${suspend?.sample?.renderedFrames ?? 'n/a'}/${suspend?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${suspend?.counterDeltas?.nonessentialHiddenWorkCount ?? 'n/a'}; ${suspend?.counterDeltas?.suspendCount ?? 'n/a'}/${suspend?.counterDeltas?.deferredWorkCount ?? 'n/a'}/${suspend?.counterDeltas?.cancelledCallbackCount ?? 'n/a'}; ${seconds(suspend?.sceneTimeDeltaSeconds)} s; ${suspend?.settledAtEnd ? 'yes' : 'no'} | ${phase?.residual?.sample?.renderedFrames ?? 'n/a'}/${phase?.residualDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${seconds(phase?.residualSceneTimeDeltaSeconds)} s; ${phase?.zeroWorkObserved ? 'yes' : 'no'} | ${resume?.sample?.elapsedMs ?? 'n/a'} ms; ${resume?.sample?.renderedFrames ?? 'n/a'}/${resume?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${resume?.counterDeltas?.ownedInvalidationCount ?? 'n/a'}/${resume?.r3fOwnedInvalidationSurplus ?? 'n/a'}; ${seconds(resume?.sceneTimeDeltaSeconds)} s; ${reasonCount(resume?.sample?.runtimeFrameLoopAtEnd)} | ${steady?.sample?.elapsedMs ?? 'n/a'} ms; ${steady?.sample?.renderedFrames ?? 'n/a'}/${steady?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${steady?.counterDeltas?.ownedInvalidationCount ?? 'n/a'}; ${seconds(steady?.sceneTimeDeltaSeconds)} s; ${reasonCount(steady?.sample?.runtimeFrameLoopAtStart)}/${reasonCount(steady?.sample?.runtimeFrameLoopAtEnd)} | ${boundary?.measurementMode ?? 'n/a'}; ${boundary?.preSignal?.counterDeltas?.productiveWakeupCount ?? 'n/a'}/${boundary?.signalWindow?.counterDeltas?.productiveWakeupCount ?? 'n/a'}/${boundary?.postAcknowledgement?.counterDeltas?.productiveWakeupCount ?? 'n/a'}; ${boundary?.postAcknowledgement?.rendererDeltas?.renderedFrames ?? 'n/a'}/${boundary?.postAcknowledgement?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+                    );
+                }
+            }
         }
     }
 
@@ -15337,6 +20902,19 @@ function buildMarkdown(report) {
                     `| ${scenario.name} | ${arrival.arrivalIndex} | ${arrival.profile} / ${arrival.gardenId ?? 'n/a'} | ${arrival.fixture?.stackCount ?? 'n/a'}/${arrival.fixture?.blockCount ?? 'n/a'}/${arrival.fixture?.raisedBedCount ?? 'n/a'} | ${faunaCensus} | ${interaction} | ${arrival.canvas?.sameCanvas ? 'same' : 'changed'} / ${arrival.canvas?.sameContext ? 'same' : 'changed'}; ${arrival.canvas?.contextLost ? 'lost' : 'healthy'}; context events ${arrival.canvas?.contextLostEventCount ?? 'n/a'}/${arrival.canvas?.contextRestoredEventCount ?? 'n/a'} | ${timing} | ${arrival.resources?.rendererGeometries ?? 'n/a'}/${arrival.resources?.rendererShaders ?? 'n/a'}/${arrival.resources?.rendererTextures ?? 'n/a'}; cache ${arrival.resources?.staticOpaqueSceneCacheEnabled === false ? 'off' : arrival.resources?.staticOpaqueSceneCacheEnabled === true ? 'on' : 'n/a'} | ${screenshot?.width ?? 'n/a'}x${screenshot?.height ?? 'n/a'}, entropy ${screenshot?.entropy ?? 'n/a'}, colors ${screenshot?.sampledUniqueColorCount ?? 'n/a'} |`,
                 );
             }
+        }
+        lines.push(
+            '',
+            'Workflow lifetime resource evidence:',
+            '',
+            '| Scenario | Arrival-snapshot geometry peak | Page-lifetime WebGL program peak | Page-lifetime WebGL texture peak | Measurement mode |',
+            '| --- | ---: | ---: | ---: | --- |',
+        );
+        for (const scenario of gardenSwitchProfiles) {
+            const lifetime = scenario.gardenSwitch?.lifetimeResources;
+            lines.push(
+                `| ${scenario.name} | ${lifetime?.rendererGeometries ?? 'n/a'} | ${lifetime?.rendererShaders ?? 'n/a'} | ${lifetime?.rendererTextures ?? 'n/a'} | ${lifetime?.measurementMode ?? 'n/a'} |`,
+            );
         }
     }
 
@@ -15840,16 +21418,17 @@ function buildMarkdown(report) {
 }
 
 async function writeReports(report, outDir) {
+    const safeOutDir = assertSafeGameProfileOutputDirectory(outDir);
     const stamp = report.generatedAt.replaceAll(/[:.]/g, '-');
     const json = `${JSON.stringify(report, null, 2)}\n`;
     const markdown = buildMarkdown(report);
 
-    await mkdir(outDir, { recursive: true });
+    await mkdir(safeOutDir, { recursive: true });
     await Promise.all([
-        writeFile(resolve(outDir, `${stamp}.json`), json),
-        writeFile(resolve(outDir, `${stamp}.md`), markdown),
-        writeFile(resolve(outDir, 'latest.json'), json),
-        writeFile(resolve(outDir, 'latest.md'), markdown),
+        writeFile(resolve(safeOutDir, `${stamp}.json`), json),
+        writeFile(resolve(safeOutDir, `${stamp}.md`), markdown),
+        writeFile(resolve(safeOutDir, 'latest.json'), json),
+        writeFile(resolve(safeOutDir, 'latest.md'), markdown),
     ]);
 }
 
@@ -15869,6 +21448,7 @@ async function main() {
         options.scenarios,
     );
     const harnessProvenance = await readHarnessProvenance();
+    options.harnessProvenance = harnessProvenance;
 
     if (options.startServer && (await isReachable(options.baseUrl))) {
         throw new Error(
@@ -16027,6 +21607,7 @@ async function main() {
                 closeupRepeat: options.closeupRepeat,
                 closeupTimeoutMs: options.closeupTimeoutMs,
                 graphicsBackend: options.graphicsBackend,
+                legacyOutlinePipeline: options.legacyOutlinePipeline,
                 managedServer: options.startServer,
                 sampleMs: options.sampleMs,
                 scenarios: options.scenarios,
@@ -16086,18 +21667,27 @@ export {
     buildAdaptiveHighComparisons,
     buildCrossTierMedians,
     buildGardenBuildingMatchedBaselineComparison,
+    buildGardenSwitchBudgets,
+    buildGardenSwitchLifetimeResources,
     buildGardenSwitchSummary,
     buildHighTargetMedians,
+    buildLifecycleResumeTransitionEvidence,
+    buildLifecycleResumeWindowEvidence,
     buildLifecycleSummary,
+    buildLifecycleSuspendTransitionEvidence,
     buildMarkdown,
     buildPlantCloseupAcceptance,
     buildPlantCloseupMedians,
     buildProfileSummary,
     buildReportProvenance,
     buildScenarioRunQueue,
+    buildStaticIdleEvidence,
     buildStaticSceneCacheComparisons,
     buildStaticSceneCacheVisualComparisons,
     buildWeatherSurfaceComparisons,
+    collectScenarioMemoryEvidence,
+    crossTierColdMilestoneMeasurementMode,
+    crossTierResourceSnapshotMeasurementMode,
     drainProfileSample,
     evaluateBudget,
     evaluateCrossTierAcceptance,
@@ -16106,31 +21696,55 @@ export {
     evaluateGardenSwitchAcceptance,
     evaluateHighTargetAcceptance,
     evaluateLifecycleAcceptance,
+    evaluateRuntimeOwnersAcceptance,
+    evaluateStaticIdleAcceptance,
     finalizeProfileSampleAtEndpoint,
+    finishCrossTierColdMilestoneTracking,
     finishInteractiveProfileSample,
+    fullRuntimeFrameLoopCounterFields,
+    gameCameraSnapshotMaximumDelta,
     getScenarioRequest,
     installBrowserMetrics,
     installGardenSwitchContextTracker,
     installLifecycleMilestoneTracker,
+    installLifecycleSuspensionBoundaryTracker,
     installProfileContextTracker,
     isExpectedGardenBuildingProfileApiError,
     isExpectedGardenBuildingProfileConsoleError,
     isIgnoredLocalProfilerConsoleError,
+    isLifecycleRendererStatsBarrierReady,
+    isLifecycleRendererStatsMeasurementValid,
+    isNonNegativeIntegerRecord,
     isOutlineProfileTelemetryReady,
     isProfileScreenshotWitnessValid,
+    lifecycleOwnedSchedulingZeroObserved,
+    lifecycleRendererStatsCanonicalMode,
+    lifecycleRendererStatsLegacyMode,
+    lifecycleSuspensionBoundaryMeasurementMode,
+    lifecycleZeroWorkObserved,
     measureProfileScreenshotWitness,
     measureStaticSceneCacheImageParity,
     mergeGardenStructureAssetNetworkRuntime,
     mergeProfileSampleDrain,
+    normalizeRenderLeaseSummaryRates,
     normalizeRenderWork,
+    numberRecordsEqual,
     parseArgs,
     parseComparisonContractVersion,
+    populationExposureCovers,
+    populationExposureSignature,
     primeGardenSwitchProfileSample,
+    readCrossTierResourceSnapshotState,
+    resolveBoundedCameraMotionCycle,
     resolveChromiumGraphicsArgs,
     resolveChromiumGraphicsBackend,
+    resolveLifecycleRendererStatsCaptureMode,
     resolveScenarios,
     shouldFailProfileRun,
+    shouldObserveRuntimeFrameLoopDuringRaf,
+    shouldReadRuntimeOwnerLeaseRafSnapshot,
     summarizeGardenStructureAssetNetwork,
+    writeReports,
 };
 
 const invokedModuleUrl = process.argv[1]

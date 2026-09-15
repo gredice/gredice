@@ -29,7 +29,7 @@ export const UpcomingOperations: Story = {
     parameters: {
         docs: {
             description: {
-                story: 'The open popover: cart operations first, then upcoming work grouped by day. Every day starts expanded because this list is short and actionable.',
+                story: "The open popover: cart operations first, then upcoming work grouped by day. Only today's group starts expanded; other days stay collapsed until opened.",
             },
         },
     },

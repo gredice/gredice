@@ -5,7 +5,11 @@ import { useCallback, useEffect, useLayoutEffect, useMemo } from 'react';
 import type { IUniform, Texture } from 'three';
 import { Color, type ColorRepresentation, PlaneGeometry, Vector4 } from 'three';
 import { SeededRNG } from '../generators/plant/lib/rng';
-import { useSceneTimeUniform } from '../scene/SceneTime';
+import {
+    useSceneFixedTimeSeconds,
+    useSceneTimeInvalidation,
+    useSceneTimeUniform,
+} from '../scene/SceneTime';
 import { useGameState } from '../useGameState';
 import { resolveSpriteAtlasAssetPaths } from './resolveSpriteAtlasAssetPaths';
 import { getSpriteBrightness } from './spriteLighting';
@@ -437,7 +441,9 @@ function AnimatedSpriteAtlasBillboardMesh({
     texture,
     wobbleAnimation,
 }: AnimatedBillboardMeshProps) {
+    const fixedTimeSeconds = useSceneFixedTimeSeconds();
     const timeUniform = useSceneTimeUniform();
+    useSceneTimeInvalidation('sprite-wobble', fixedTimeSeconds === undefined);
     const wobbleUniforms = useMemo(
         () => createSpriteWobbleShaderUniforms(timeUniform),
         [timeUniform],

@@ -72,7 +72,9 @@ export const RAISED_BED_DETAILED_INSPECTION_OPERATION_NAME =
 export const HARVEST_OPERATION_PLANT_STATUS_REQUESTER =
     'automation:harvest-operation-status-review';
 
-export function seasonalSowedWateringAutomationGraph(): AutomationGraph {
+export function seasonalSowedWateringAutomationGraph(
+    eventType: string = knownEventTypes.raisedBedFields.plantUpdate,
+): AutomationGraph {
     return {
         nodes: [
             {
@@ -81,7 +83,7 @@ export function seasonalSowedWateringAutomationGraph(): AutomationGraph {
                 moduleKey: automationModuleKeys.triggerDomainEvent,
                 position: { x: 0, y: 120 },
                 config: {
-                    eventType: knownEventTypes.raisedBedFields.plantUpdate,
+                    eventType,
                 },
             },
             {
@@ -560,6 +562,21 @@ export async function ensureDefaultAutomationDefinitions() {
             defaultAutomation: true,
         },
     });
+
+    for (const eventType of [
+        knownEventTypes.raisedBedPlantings.taskCompleted,
+        knownEventTypes.raisedBedPlantings.taskVerified,
+    ]) {
+        await upsertAutomationDefinitionByKey({
+            key: `${seasonalSowedWateringAutomationKey}.${eventType}`,
+            name: 'Dodaj sezonska zalijevanja nakon napredne sjetve',
+            description:
+                'Nakon potvrđenog sijanja jedne sadnje dodaj sezonska zalijevanja za gredicu.',
+            status: 'enabled',
+            graph: seasonalSowedWateringAutomationGraph(eventType),
+            metadata: { managedBy: 'gredice', defaultAutomation: true },
+        });
+    }
 
     const operationImagePlantStatusReview =
         await upsertAutomationDefinitionByKey({

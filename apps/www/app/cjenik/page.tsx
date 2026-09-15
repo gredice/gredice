@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { Container } from '@gredice/ui/Container';
 import {
+    ArrowDownToLine,
     Hammer,
+    History,
     Navigate,
     Sprout,
     Sun,
@@ -15,6 +17,7 @@ import {
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { PlantOrSortImage } from '@gredice/ui/plants';
+import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
@@ -53,25 +56,19 @@ const sunflowerFormatter = new Intl.NumberFormat('hr-HR', {
     maximumFractionDigits: 0,
 });
 
-function itemCountLabel(count: number) {
-    return count === 1 ? '1 stavka' : `${count} stavki`;
-}
-
 function CatalogSectionHeader({
-    count,
     description,
     headingId,
     icon,
     title,
 }: {
-    count: number;
     description: string;
     headingId: string;
     icon: ReactNode;
     title: string;
 }) {
     return (
-        <CardHeader className="flex-row items-start justify-between gap-4 p-4 pb-2">
+        <CardHeader className="p-4 pb-2">
             <div className="flex min-w-0 items-start gap-3">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary [&>svg]:size-5">
                     {icon}
@@ -85,23 +82,7 @@ function CatalogSectionHeader({
                     </Typography>
                 </div>
             </div>
-            <Chip color="neutral" size="sm" variant="soft">
-                {itemCountLabel(count)}
-            </Chip>
         </CardHeader>
-    );
-}
-
-function CatalogColumnHeader({ itemLabel }: { itemLabel: string }) {
-    return (
-        <div
-            aria-hidden="true"
-            className="hidden grid-cols-[minmax(0,1fr)_17rem_1.25rem] gap-3 border-b bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground md:grid"
-        >
-            <span>{itemLabel}</span>
-            <span className="text-right">Cijena</span>
-            <span />
-        </div>
     );
 }
 
@@ -275,65 +256,20 @@ export default async function PricingPage() {
     return (
         <Container className="pb-12" maxWidth="lg">
             <Stack spacing={6}>
-                <PageHeader
-                    header="💶 Cjenik"
-                    subHeader="Jasan pregled cijena i dostupnosti paketa suncokreta, biljaka, sorti, radnji i dostave."
-                    headerChildren={
-                        <div className="space-y-2">
-                            <div className="flex flex-wrap gap-2">
-                                <Chip color="warning" size="sm" variant="soft">
-                                    Interna radnja
-                                </Chip>
-                                <Chip
-                                    color="neutral"
-                                    size="sm"
-                                    variant="outlined"
-                                >
-                                    Nije dostupno
-                                </Chip>
-                            </div>
-                            <Typography level="body3" secondary>
-                                Minimalna vrijednost narudžbe iznosi{' '}
-                                {formatPrice(minimumShoppingCartAmountEur)}.
-                            </Typography>
-                            <Typography level="body3" secondary>
-                                Interne radnje namijenjene su OPG partnerima i
-                                ne naplaćuju se. Cijena 0 € za biljku, sortu ili
-                                javnu radnju znači da trenutačno nije dostupna.
-                            </Typography>
-                        </div>
-                    }
-                />
-
-                <div>
-                    <a
-                        href="/cjenik/preuzimanje"
-                        className="text-sm underline underline-offset-4"
-                    >
-                        Preuzmi CSV cjenik i prethodne verzije
-                    </a>
-                </div>
-                <nav
-                    aria-label="Dijelovi cjenika"
-                    className="sticky top-[calc(4rem+env(safe-area-inset-top,0px))] z-20 -mx-2 flex gap-2 overflow-x-auto rounded-lg border bg-background/95 p-2 shadow-xs backdrop-blur-sm"
-                >
-                    <Chip color="neutral" href="#suncokreti" variant="soft">
-                        Suncokreti
-                    </Chip>
-                    <Chip color="neutral" href="#biljke-i-sorte" variant="soft">
-                        Biljke i sorte
-                    </Chip>
-                    <Chip color="neutral" href="#radnje" variant="soft">
-                        Radnje
-                    </Chip>
-                    <Chip color="neutral" href="#dostava" variant="soft">
-                        Dostava
-                    </Chip>
-                </nav>
+                <Stack spacing={2}>
+                    <PageHeader
+                        header="💶 Cjenik"
+                        padded
+                        subHeader="Jasan pregled cijena i dostupnosti paketa suncokreta, biljaka, sorti, radnji i dostave."
+                    />
+                    <Typography level="body2" secondary>
+                        Minimalna vrijednost narudžbe iznosi{' '}
+                        {formatPrice(minimumShoppingCartAmountEur)}.
+                    </Typography>
+                </Stack>
 
                 <Card className="scroll-mt-28" id="suncokreti">
                     <CatalogSectionHeader
-                        count={sunflowerPackages.length}
                         description="Prepaid Gredice bodovi za radnje u vrtu. Orijentacijski odnos je 1 EUR ≈ 1.000 suncokreta."
                         headingId="suncokreti-naslov"
                         icon={<Sun />}
@@ -342,7 +278,6 @@ export default async function PricingPage() {
                     <CardContent className="p-4 pt-2">
                         {sunflowerPackages.length > 0 ? (
                             <div className="overflow-hidden rounded-lg border">
-                                <CatalogColumnHeader itemLabel="Paket" />
                                 {sunflowerPackages.map((pkg) => (
                                     <div
                                         className="border-b last:border-b-0"
@@ -419,7 +354,6 @@ export default async function PricingPage() {
 
                 <Card className="scroll-mt-28" id="biljke-i-sorte">
                     <CatalogSectionHeader
-                        count={plantPricingRows.length}
                         description="Cijena po posađenoj biljci, uz zasebne cijene sorti kada su definirane."
                         headingId="biljke-i-sorte-naslov"
                         icon={<Sprout />}
@@ -427,9 +361,6 @@ export default async function PricingPage() {
                     />
                     <CardContent className="p-4 pt-2">
                         <PricingCatalogList
-                            columnHeader={
-                                <CatalogColumnHeader itemLabel="Biljka ili sorta" />
-                            }
                             emptyMessage="Nema biljaka ili sorti koje odgovaraju pretrazi."
                             filters={[
                                 { label: 'Sve', value: 'all' },
@@ -454,7 +385,6 @@ export default async function PricingPage() {
 
                 <Card className="scroll-mt-28" id="radnje">
                     <CatalogSectionHeader
-                        count={operationPricingRows.length}
                         description="Cijene po radnji, uključujući jasno označene interne i trenutačno nedostupne radnje."
                         headingId="radnje-naslov"
                         icon={<Hammer />}
@@ -462,9 +392,6 @@ export default async function PricingPage() {
                     />
                     <CardContent className="p-4 pt-2">
                         <PricingCatalogList
-                            columnHeader={
-                                <CatalogColumnHeader itemLabel="Radnja" />
-                            }
                             emptyMessage="Nema radnji koje odgovaraju pretrazi."
                             filters={[
                                 { label: 'Sve', value: 'all' },
@@ -493,7 +420,6 @@ export default async function PricingPage() {
 
                 <Card className="scroll-mt-28" id="dostava">
                     <CatalogSectionHeader
-                        count={deliveryPricingRows.length}
                         description="Za svaku lokaciju prikazane su besplatna zona, maksimalna zona i cijena po kilometru."
                         headingId="dostava-naslov"
                         icon={<Truck />}
@@ -501,7 +427,6 @@ export default async function PricingPage() {
                     />
                     <CardContent className="p-4 pt-2">
                         <div className="overflow-hidden rounded-lg border">
-                            <CatalogColumnHeader itemLabel="Lokacija" />
                             {deliveryPricingRows.map((row) => (
                                 <div
                                     className="border-b last:border-b-0"
@@ -547,26 +472,52 @@ export default async function PricingPage() {
                 </Card>
 
                 <Card>
-                    <CardContent
-                        className="flex flex-col items-start justify-between gap-4 p-4 sm:flex-row sm:items-center"
-                        noHeader
-                    >
-                        <div>
-                            <Typography level="h5" component="h2">
-                                Podijeli povratnu informaciju
-                            </Typography>
-                            <Typography
-                                level="body2"
-                                secondary
-                                className="mt-1"
-                            >
-                                Nedostaje li cijena ili želiš predložiti
-                                poboljšanje cjenika?
-                            </Typography>
+                    <CardHeader className="p-4 pb-2">
+                        <div className="flex items-start gap-3">
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                <ArrowDownToLine className="size-5" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-xl">
+                                    Preuzmi cjenik
+                                </CardTitle>
+                                <Typography
+                                    level="body2"
+                                    secondary
+                                    className="mt-1"
+                                >
+                                    Aktualni CSV cjenik i arhiva prethodno
+                                    objavljenih verzija.
+                                </Typography>
+                            </div>
                         </div>
-                        <FeedbackModal topic="www/pricing" />
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-2 p-4 pt-2 sm:flex-row">
+                        <Button
+                            href="/cjenik/cjenik.csv"
+                            startDecorator={
+                                <ArrowDownToLine className="size-4" />
+                            }
+                        >
+                            Preuzmi CSV cjenik
+                        </Button>
+                        <Button
+                            color="neutral"
+                            href="/cjenik/preuzimanje"
+                            startDecorator={<History className="size-4" />}
+                            variant="outlined"
+                        >
+                            Prethodne verzije
+                        </Button>
                     </CardContent>
                 </Card>
+
+                <Row spacing={4} className="pt-4">
+                    <Typography level="body1">
+                        Jesu li ti informacije u cjeniku korisne?
+                    </Typography>
+                    <FeedbackModal topic="www/pricing" />
+                </Row>
             </Stack>
         </Container>
     );

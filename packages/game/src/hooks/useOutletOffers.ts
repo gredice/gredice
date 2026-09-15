@@ -1,5 +1,7 @@
 import { clientPublic } from '@gredice/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useGameSceneRuntimeActive } from '../scene/sceneRuntimeActivity';
 
 export type OutletOfferData = {
     id: number;
@@ -27,11 +29,11 @@ export type OutletOfferData = {
     url: string;
 };
 
-async function getOutletOffers(includeSoldOut: boolean) {
+async function getOutletOffers(includeSoldOut: boolean, signal: AbortSignal) {
     const response = await clientPublic().api.outlet.offers.$get(
         includeSoldOut ? { query: { includeSoldOut: 'true' } } : { query: {} },
         {
-            init: { cache: 'no-store' },
+            init: { cache: 'no-store', signal },
         },
     );
     if (response.status !== 200) {
@@ -52,14 +54,28 @@ export function useOutletOffers({
     enabled?: boolean;
     includeSoldOut?: boolean;
 } = {}) {
+    const runtimeActive = useGameSceneRuntimeActive();
+    const queryClient = useQueryClient();
+    const queryEnabled = enabled && runtimeActive;
+
+    useEffect(() => {
+        if (runtimeActive) {
+            return;
+        }
+        const queryKey = includeSoldOut
+            ? [...useOutletOffersQueryKey, 'including-sold-out']
+            : useOutletOffersQueryKey;
+        void queryClient.cancelQueries({ exact: true, queryKey });
+    }, [includeSoldOut, queryClient, runtimeActive]);
+
     return useQuery({
-        enabled,
+        enabled: queryEnabled,
         queryKey: includeSoldOut
             ? [...useOutletOffersQueryKey, 'including-sold-out']
             : useOutletOffersQueryKey,
-        queryFn: () => getOutletOffers(includeSoldOut),
+        queryFn: ({ signal }) => getOutletOffers(includeSoldOut, signal),
         staleTime: 0,
         refetchOnMount: 'always',
-        refetchInterval: enabled ? outletOffersRefetchIntervalMs : false,
+        refetchInterval: queryEnabled ? outletOffersRefetchIntervalMs : false,
     });
 }

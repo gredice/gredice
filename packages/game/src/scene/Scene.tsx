@@ -3,6 +3,7 @@
 import {
     Canvas,
     type Vector3 as FiberVector3,
+    type Frameloop,
     useFrame,
     useThree,
 } from '@react-three/fiber';
@@ -42,7 +43,13 @@ import {
     resolveGameQualityProfile,
 } from './gameQuality';
 import { subscribeToRendererContextLoss } from './RendererContextLossReporter';
-import { SceneTimeProvider, sceneFrameRates } from './SceneTime';
+import { createRendererStatsPublisher } from './rendererStats';
+import {
+    SceneTimeProvider,
+    sceneFrameRates,
+    useSceneRenderRequest,
+    useSceneTimeInvalidation,
+} from './SceneTime';
 import { StaticOpaqueSceneCacheProvider } from './StaticOpaqueSceneCache';
 import { WeatherSurfaceUniformProvider } from './WeatherSurfaceUniformProvider';
 
@@ -53,9 +60,11 @@ export type SceneProps = HTMLAttributes<HTMLDivElement> &
         adaptiveHighProfile?: AdaptiveHighQualityLevelProfile;
         adaptiveHighProfileControlEnabled?: boolean;
         baseFramesPerSecond?: number;
+        continuousRenderLeasesEnabled?: boolean;
         animateSprings?: boolean;
         debugStats?: boolean;
         fixedTimeSeconds?: number;
+        frameloop?: Frameloop;
         onAdaptiveHighProfileChange?: (
             profile: AdaptiveHighQualityLevelProfile,
         ) => void;
@@ -142,6 +151,24 @@ function restoreWireframeOverride(
 
 function RendererStatsReporter() {
     const lastUpdateRef = useRef(0);
+    const publisherRef = useRef<ReturnType<
+        typeof createRendererStatsPublisher
+    > | null>(null);
+
+    useEffect(() => {
+        const publisher = createRendererStatsPublisher({
+            publish: updateGameProfileMetadata,
+            readCurrentReceipt: () =>
+                readGameProfileMetadata()?.rendererStatsReceiptCount,
+        });
+        publisherRef.current = publisher;
+        return () => {
+            publisher.dispose();
+            if (publisherRef.current === publisher) {
+                publisherRef.current = null;
+            }
+        };
+    }, []);
 
     useFrame(({ gl }) => {
         const now = performance.now();
@@ -150,15 +177,7 @@ function RendererStatsReporter() {
         }
 
         lastUpdateRef.current = now;
-        updateGameProfileMetadata({
-            rendererGeometries: gl.info.memory.geometries,
-            rendererLines: gl.info.render.lines,
-            rendererPoints: gl.info.render.points,
-            rendererRenderCalls: gl.info.render.calls,
-            rendererShaders: gl.info.programs?.length,
-            rendererTextures: gl.info.memory.textures,
-            rendererTriangles: gl.info.render.triangles,
-        });
+        publisherRef.current?.schedule(gl);
     });
 
     return null;
@@ -168,6 +187,12 @@ function SceneWireframeMode({ enabled }: { enabled: boolean }) {
     const scene = useThree((state) => state.scene);
     const previousStatesRef = useRef(new Map<string, WireframeMaterialState>());
     const lastApplyRef = useRef(0);
+    const requestRender = useSceneRenderRequest();
+    useSceneTimeInvalidation(
+        'wireframe-debug',
+        enabled,
+        1_000 / wireframeOverrideRefreshMs,
+    );
 
     const applyOverride = useCallback(() => {
         applyWireframeOverride(scene, previousStatesRef.current);
@@ -177,13 +202,21 @@ function SceneWireframeMode({ enabled }: { enabled: boolean }) {
         const previousStates = previousStatesRef.current;
 
         if (!enabled) {
+            const hadOverrides = previousStates.size > 0;
             restoreWireframeOverride(previousStates);
+            if (hadOverrides) {
+                requestRender('wireframe-debug-disabled');
+            }
             return;
         }
 
         applyOverride();
-        return () => restoreWireframeOverride(previousStates);
-    }, [applyOverride, enabled]);
+        requestRender('wireframe-debug-enabled');
+        return () => {
+            restoreWireframeOverride(previousStates);
+            requestRender('wireframe-debug-disabled');
+        };
+    }, [applyOverride, enabled, requestRender]);
 
     useFrame(() => {
         if (enabled) {
@@ -218,8 +251,10 @@ export function Scene({
     baseFramesPerSecond,
     animateSprings,
     children,
+    continuousRenderLeasesEnabled,
     debugStats,
     fixedTimeSeconds,
+    frameloop = 'demand',
     onAdaptiveHighProfileChange,
     onContextLost,
     pixelRatio,
@@ -339,8 +374,13 @@ export function Scene({
         >
             <SceneTimeProvider
                 animateSprings={animateSprings}
-                baseFramesPerSecond={ambientFramesPerSecond}
+                ambientFramesPerSecond={ambientFramesPerSecond}
+                // An explicit override retains the compatibility heartbeat for
+                // isolated consumers. Normal scenes are semantic-owner only.
+                baseFramesPerSecond={baseFramesPerSecond ?? 0}
+                continuousRenderLeasesEnabled={continuousRenderLeasesEnabled}
                 fixedTimeSeconds={fixedTimeSeconds}
+                manualFrameloop={frameloop === 'never'}
                 runtimeFrameLoop={runtimeFrameLoop}
                 suspendWhenOffscreen={suspendWhenOffscreen}
             >

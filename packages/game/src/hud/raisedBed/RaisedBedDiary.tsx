@@ -214,7 +214,7 @@ function SavedAiDiaryEntryButton({
     );
 }
 
-function DiaryList({
+export function DiaryList({
     error,
     gardenId,
     isLoading,

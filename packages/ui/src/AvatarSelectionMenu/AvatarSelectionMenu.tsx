@@ -37,7 +37,9 @@ export function AvatarSelectionMenu({
                 <DropdownMenuItem
                     onClick={() => onChange(null)}
                     startDecorator={
-                        <Avatar size="lg">{initials(displayName ?? '')}</Avatar>
+                        <Avatar aria-hidden size="lg">
+                            {initials(displayName ?? '')}
+                        </Avatar>
                     }
                 >
                     <DropdownMenuLabel>{emptyLabel}</DropdownMenuLabel>
@@ -49,12 +51,13 @@ export function AvatarSelectionMenu({
                         startDecorator={
                             option.avatarUrl ? (
                                 <Avatar
+                                    aria-hidden
                                     src={option.avatarUrl}
                                     alt={option.label}
                                     size="lg"
                                 />
                             ) : (
-                                <Avatar size="lg">
+                                <Avatar aria-hidden size="lg">
                                     {initials(option.label)}
                                 </Avatar>
                             )

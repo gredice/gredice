@@ -1,7 +1,7 @@
 'use client';
 
 import { useFrame, useThree } from '@react-three/fiber';
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     type Group,
     type Mesh,
@@ -14,6 +14,7 @@ import {
     readGameProfileMetadata,
     updateGameProfileMetadata,
 } from './gameProfileMetadata';
+import { useSceneRenderRequest, useSceneTimeInvalidation } from './SceneTime';
 import { StaticOpaqueSceneCacheBoundary } from './StaticOpaqueSceneCache';
 
 const backgroundColor = [255, 0, 0] as const;
@@ -158,7 +159,8 @@ function setTerminalState(state: FixtureState, pass: boolean) {
 export function StaticOpaqueSceneCacheOcclusionFixture() {
     const camera = useThree((state) => state.camera);
     const gl = useThree((state) => state.gl);
-    const invalidate = useThree((state) => state.invalidate);
+    const requestRender = useSceneRenderRequest();
+    const [fixtureActive, setFixtureActive] = useState(true);
     const rootRef = useRef<Group>(null);
     const dynamicGroupRef = useRef<Group>(null);
     const backgroundRef = useRef<Mesh>(null);
@@ -185,6 +187,11 @@ export function StaticOpaqueSceneCacheOcclusionFixture() {
         material.toneMapped = false;
         return material;
     }, []);
+    useSceneTimeInvalidation('profile-static-cache-occlusion', fixtureActive);
+    const finishFixture = useCallback((pass: boolean) => {
+        setTerminalState(stateRef.current, pass);
+        setFixtureActive(false);
+    }, []);
 
     useEffect(() => {
         publishFixtureState(stateRef.current);
@@ -209,7 +216,7 @@ export function StaticOpaqueSceneCacheOcclusionFixture() {
             return;
         }
         if (!(camera instanceof OrthographicCamera)) {
-            setTerminalState(stateRef.current, false);
+            finishFixture(false);
             return;
         }
 
@@ -298,7 +305,7 @@ export function StaticOpaqueSceneCacheOcclusionFixture() {
             dynamicGroup.position.x = 0;
             dynamicGroup.updateWorldMatrix(true, true);
             publishFixtureState(fixtureState);
-            invalidate();
+            requestRender('profile-static-cache-occlusion-transition');
         }
     }, 0.5);
 
@@ -317,7 +324,7 @@ export function StaticOpaqueSceneCacheOcclusionFixture() {
             typeof captureCount !== 'number' ||
             captureCount !== fixtureState.captureCountAtTransition
         ) {
-            setTerminalState(fixtureState, false);
+            finishFixture(false);
             return;
         }
         if (
@@ -326,7 +333,7 @@ export function StaticOpaqueSceneCacheOcclusionFixture() {
                 (fixtureState.lastObservedHitFrameCount ??
                     Number.NEGATIVE_INFINITY)
         ) {
-            invalidate();
+            requestRender('profile-static-cache-occlusion-verify');
             return;
         }
 
@@ -334,12 +341,12 @@ export function StaticOpaqueSceneCacheOcclusionFixture() {
         const hitsAfterTransition =
             hitFrameCount - (fixtureState.hitFrameCountAtTransition ?? 0);
         if (hitsAfterTransition <= settleHitCount) {
-            invalidate();
+            requestRender('profile-static-cache-occlusion-settle');
             return;
         }
 
         if (!gl.capabilities.isWebGL2) {
-            setTerminalState(fixtureState, false);
+            finishFixture(false);
             return;
         }
         const context = gl.getContext();
@@ -378,8 +385,7 @@ export function StaticOpaqueSceneCacheOcclusionFixture() {
         publishFixtureState(fixtureState);
 
         if (fixtureState.verifiedHitFrameCount >= verifiedHitCount) {
-            setTerminalState(
-                fixtureState,
+            finishFixture(
                 fixtureState.backgroundWitnessMinimumMatchRatio >=
                     minimumMatchRatio &&
                     fixtureState.occluderMinimumMatchRatio >=
@@ -391,7 +397,7 @@ export function StaticOpaqueSceneCacheOcclusionFixture() {
             );
             return;
         }
-        invalidate();
+        requestRender('profile-static-cache-occlusion-verify');
     }, 2);
 
     return (

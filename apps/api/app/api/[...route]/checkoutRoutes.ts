@@ -1,3 +1,4 @@
+import { readSelectedPlantingOperationTarget } from '@gredice/js/plants';
 import { isRaisedBedAbandoned } from '@gredice/js/raisedBeds';
 import {
     assignStripeCustomerIdIfUnchanged,
@@ -113,6 +114,7 @@ import {
 import { getPostHogClient } from '../../../lib/posthog-server';
 import {
     assertCheckoutItemFulfilled,
+    prepareSelectedPlantingCheckoutOperation,
     processItem,
 } from '../../../lib/stripe/processCheckoutSession';
 import {
@@ -1001,9 +1003,15 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                         advancedSowingAuthorizationsByCartItemId.get(
                                             item.id,
                                         );
-                                    if (!advancedSowingAuthorization) {
+                                    const selectedOperationTarget =
+                                        readSelectedPlantingOperationTarget(
+                                            item.additionalData,
+                                        );
+                                    if (
+                                        !advancedSowingAuthorization &&
+                                        !selectedOperationTarget
+                                    )
                                         continue;
-                                    }
                                     const usesInventory =
                                         item.currency === 'inventory' ||
                                         item.usesInventory;
@@ -1041,6 +1049,21 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                         throw new Error(
                                             `Sunflower checkout amount is missing for cart item ${item.id.toString()}.`,
                                         );
+                                    }
+                                    if (selectedOperationTarget) {
+                                        await prepareSelectedPlantingCheckoutOperation(
+                                            {
+                                                ...item,
+                                                accountId,
+                                                cartItemId: item.id,
+                                                additionalData:
+                                                    checkoutAdditionalDataByCartItemId.get(
+                                                        item.id,
+                                                    ) ?? item.additionalData,
+                                            },
+                                            transaction,
+                                        );
+                                        continue;
                                     }
                                     const fulfillment = await processItem({
                                         accountId,

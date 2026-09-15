@@ -1,4 +1,5 @@
 import { timeZoneDayKey } from '@gredice/js/dates';
+import { readSelectedPlantingOperationTarget } from '@gredice/js/plants';
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
 import { DotIndicator } from '@gredice/ui/DotIndicator';
@@ -77,6 +78,7 @@ import {
     gardenOperationsTimeZone,
     groupGardenOperationsByDay,
 } from './gardenOperationsDayGrouping';
+import { findAdvancedSowingGardenPlanting } from './raisedBed/advancedSowingGardenVisuals';
 import { RaisedBedDiaryCancelAction } from './raisedBed/RaisedBedDiaryCancelAction';
 import { RaisedBedDiaryRescheduleAction } from './raisedBed/RaisedBedDiaryRescheduleAction';
 
@@ -566,10 +568,16 @@ function getOperationTargetDetails(
         };
     }
 
-    const fieldLabel = getRaisedBedFieldLabel(
+    const planting = findAdvancedSowingGardenPlanting(
         raisedBed,
-        operation.raisedBedFieldId,
+        operation.plantingId,
     );
+    const labels = planting?.memberships
+        .map((membership) => membership.positionIndex + 1)
+        .sort((a, b) => a - b);
+    const fieldLabel = labels?.length
+        ? `${labels.length === 1 ? 'Polje' : 'Polja'} ${labels.join(', ')}`
+        : getRaisedBedFieldLabel(raisedBed, operation.raisedBedFieldId);
 
     return {
         type: 'raisedBed',
@@ -868,10 +876,26 @@ function getCartOperationTargetDetails(
         };
     }
 
-    const fieldLabel =
-        typeof item.positionIndex === 'number'
-            ? `Polje ${item.positionIndex + 1}`
-            : null;
+    let plantingTarget: ReturnType<typeof readSelectedPlantingOperationTarget>;
+    try {
+        plantingTarget = readSelectedPlantingOperationTarget(
+            item.additionalData,
+        );
+    } catch {
+        plantingTarget = null;
+    }
+    const planting = findAdvancedSowingGardenPlanting(
+        raisedBed,
+        plantingTarget?.plantingId,
+    );
+    const labels = planting?.memberships
+        .map((membership) => membership.positionIndex + 1)
+        .sort((a, b) => a - b);
+    const fieldLabel = labels?.length
+        ? `${labels.length === 1 ? 'Polje' : 'Polja'} ${labels.join(', ')}`
+        : typeof item.positionIndex === 'number'
+          ? `Polje ${item.positionIndex + 1}`
+          : null;
 
     return {
         type: 'raisedBed',
@@ -1862,9 +1886,9 @@ function HistoryModal({
         operations,
         plantSortById,
     });
-    // A long history opens only today and the most recent day.
+    // Keep the history compact by default while leaving today's work visible.
     const { isDayExpanded, toggleDay } = useGardenOperationsDayExpansion(
-        (dayKey) => dayKey === todayKey || dayKey === dayGroups[0]?.dayKey,
+        (dayKey) => dayKey === todayKey,
     );
 
     return (
@@ -1904,7 +1928,6 @@ function HistoryModal({
                                     )}
                                     dayKey={group.dayKey}
                                     isExpanded={isDayExpanded(group.dayKey)}
-                                    isToday={group.dayKey === todayKey}
                                     onToggle={toggleDay}
                                 >
                                     {group.operations.map((operation) => {
@@ -2130,10 +2153,9 @@ export function GardenOperationsHud({
         operations: pendingOperations,
         plantSortById,
     });
-    // Upcoming work is short and actionable, so every day starts open and the
-    // day header is there to summarise and to collapse what is already handled.
+    // Keep upcoming work compact by default while leaving today's work visible.
     const { isDayExpanded: isPendingDayExpanded, toggleDay: togglePendingDay } =
-        useGardenOperationsDayExpansion(() => true);
+        useGardenOperationsDayExpansion((dayKey) => dayKey === todayKey);
     const activeOperationCount =
         pendingOperations.length + cartOperations.length;
 
@@ -2169,7 +2191,7 @@ export function GardenOperationsHud({
                     justifyContent="space-between"
                 >
                     <Typography level="body2" bold>
-                        Aktivne radnje
+                        Planirane radnje
                     </Typography>
                 </Row>
                 <Divider />
@@ -2234,7 +2256,6 @@ export function GardenOperationsHud({
                                         isExpanded={isPendingDayExpanded(
                                             group.dayKey,
                                         )}
-                                        isToday={group.dayKey === todayKey}
                                         onToggle={togglePendingDay}
                                     >
                                         {group.operations.map((operation) => {

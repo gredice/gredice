@@ -2,7 +2,7 @@ import { Accordion } from '@gredice/ui/Accordion';
 import { Alert } from '@gredice/ui/Alert';
 import { AnchorPrice } from '@gredice/ui/AnchorPrice';
 import { ArchiveIcon } from '@gredice/ui/ArchiveIcon';
-import { Avatar } from '@gredice/ui/Avatar';
+import { Avatar, resolveAvatarSource } from '@gredice/ui/Avatar';
 import { AvatarSelectionMenu } from '@gredice/ui/AvatarSelectionMenu';
 import {
     AuthProvider,
@@ -199,6 +199,8 @@ import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import { AchievementCollectionShowcase } from '../../../../../packages/game/src/shared-ui/achievements/AchievementCollection.fixture';
 import { RaisedBedFieldsGridFixture } from '../../../../../packages/ui/src/raisedBeds/RaisedBedFieldsGrid.fixture';
+import { FarmerAvatarsPreview } from './FarmerAvatarsPreview';
+import { GameAccountMenuPreview } from './GameAccountMenuPreview';
 import { PlantCareHudPreview } from './PlantCareHudPreview';
 
 const sampleImages = [
@@ -207,11 +209,15 @@ const sampleImages = [
         alt: 'Suncokret',
     },
     {
-        src: 'https://cdn.gredice.com/avatars/farmer-male.png',
+        src: resolveAvatarSource(
+            'https://cdn.gredice.com/avatars/farmer-male.png',
+        ),
         alt: 'Farmer',
     },
     {
-        src: 'https://cdn.gredice.com/avatars/farmer-female.png',
+        src: resolveAvatarSource(
+            'https://cdn.gredice.com/avatars/farmer-female.png',
+        ),
         alt: 'Farmerka',
     },
 ];
@@ -325,13 +331,17 @@ const galleryPlants: GalleryPlant[] = [
         id: 'basil',
         name: 'Bosiljak',
         state: 'Bilje',
-        imageUrl: 'https://cdn.gredice.com/avatars/farmer-female.png',
+        imageUrl: resolveAvatarSource(
+            'https://cdn.gredice.com/avatars/farmer-female.png',
+        ),
     },
     {
         id: 'pepper',
         name: 'Paprika',
         state: 'Presadnica',
-        imageUrl: 'https://cdn.gredice.com/avatars/farmer-male.png',
+        imageUrl: resolveAvatarSource(
+            'https://cdn.gredice.com/avatars/farmer-male.png',
+        ),
     },
 ];
 
@@ -1105,7 +1115,7 @@ function PublicContentShowcase() {
                         ]}
                     />
 
-                    <MarkdownBlock markdown="## Markdown CMS section\n\nMarkdownBlock renders author-provided Markdown with the shared Markdown and StyledHtml primitives.\n\n- Supports lists\n- Supports **emphasis**\n- Supports [links](/)" />
+                    <MarkdownBlock markdown="## Markdown CMS section\n\nMarkdownBlock renders author-provided Markdown with the shared Markdown and StyledHtml primitives.\n\n- Supports lists\n- Supports **emphasis**\n- Supports [links](/)\n\n| Pitanje | Gredice |\n| --- | --- |\n| Što biraš? | Biljke za svoju gredicu |\n| Što pratiš? | Stanje, fotografije i radnje u svojoj gredici |" />
 
                     <HtmlBlock html="<h2>HTML CMS section</h2><p>HtmlBlock renders trusted author-provided HTML with the shared StyledHtml primitive.</p><ul><li>Styled lists</li><li>Styled text</li></ul>" />
 
@@ -1357,6 +1367,14 @@ function PublicContentShowcase() {
                         ]}
                         features={[
                             {
+                                tagline: 'FooterUtility',
+                                asset: (
+                                    <div className="rounded-full border px-3 py-1.5 text-xs text-muted-foreground">
+                                        Footer utility
+                                    </div>
+                                ),
+                            },
+                            {
                                 header: 'Sadrzaj',
                                 ctas: [
                                     { label: 'Biljke', href: '/' },
@@ -1416,6 +1434,8 @@ function GardenWorkspaceShowcase() {
                     </Card>
                 </PageHeader>
 
+                <GameAccountMenuPreview />
+                <FarmerAvatarsPreview />
                 <PlantCareHudPreview />
                 <AchievementCollectionShowcase state="starter" />
                 <Row spacing={3} className="flex-wrap">

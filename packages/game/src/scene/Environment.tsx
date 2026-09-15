@@ -31,7 +31,12 @@ import { Perseids } from './PerseidMeteorShower';
 import { getPerseidsMeteorRatePerHour, shouldRenderPerseids } from './perseids';
 import { Drops } from './Rain/Drops';
 import { resolveRainParticleState } from './Rain/rainParticles';
-import { useSceneTimeInvalidation } from './SceneTime';
+import {
+    useSceneDeadline,
+    useSceneRenderRequest,
+    useSceneRuntimeVisible,
+    useSceneTimeInvalidation,
+} from './SceneTime';
 import { ShadowMapController } from './ShadowMapController';
 import { SkyGradientBackground } from './SkyGradientBackground';
 import Snow from './Snow/Snow';
@@ -99,6 +104,16 @@ const DEBUG_WEATHER_BLEND_CONFIG: WeatherBlendConfig = {
 };
 const BACKGROUND_COLOR_TRANSITION_SECONDS = 0.55;
 const BACKGROUND_COLOR_EPSILON = 0.001;
+const LIGHTNING_CLEAR_DELAY_MS = 120;
+
+function getLightningDelayMs(stormStrength: number) {
+    const minimumDelayMs = 8_000;
+    const maximumDelayMs = 22_000;
+    const chanceWindowMs =
+        maximumDelayMs -
+        (maximumDelayMs - minimumDelayMs) * Math.min(1, stormStrength);
+    return minimumDelayMs + Math.random() * Math.max(2_000, chanceWindowMs);
+}
 
 function isWithinColorEpsilon(current: Color, target: Color) {
     return (
@@ -119,9 +134,16 @@ function SceneBackgroundColor({
     const displayedColor = useRef<Color>(new Color());
     const targetColor = useRef<Color>(new Color());
     const initialized = useRef(false);
+    const [transitionActive, setTransitionActive] = useState(false);
+    const requestRender = useSceneRenderRequest();
     const colorRed = color.r;
     const colorGreen = color.g;
     const colorBlue = color.b;
+
+    useSceneTimeInvalidation(
+        'scene-background-color-transition',
+        transitionActive,
+    );
 
     useEffect(() => {
         targetColor.current.setRGB(colorRed, colorGreen, colorBlue);
@@ -129,10 +151,19 @@ function SceneBackgroundColor({
         if (!animate || !initialized.current) {
             displayedColor.current.setRGB(colorRed, colorGreen, colorBlue);
             initialized.current = true;
+            setTransitionActive(false);
+        } else {
+            setTransitionActive(
+                !isWithinColorEpsilon(
+                    displayedColor.current,
+                    targetColor.current,
+                ),
+            );
         }
 
         scene.background = displayedColor.current;
-    }, [animate, colorBlue, colorGreen, colorRed, scene]);
+        requestRender('scene-background-color-change');
+    }, [animate, colorBlue, colorGreen, colorRed, requestRender, scene]);
 
     useEffect(() => {
         scene.background = displayedColor.current;
@@ -155,6 +186,9 @@ function SceneBackgroundColor({
 
         if (isWithinColorEpsilon(displayedColor.current, targetColor.current)) {
             displayedColor.current.copy(targetColor.current);
+            if (transitionActive) {
+                setTransitionActive(false);
+            }
             return;
         }
 
@@ -209,7 +243,7 @@ function useBlendedWeather(
         );
     }, [enabled, weather]);
 
-    useSceneTimeInvalidation(blendState.isBlending);
+    useSceneTimeInvalidation('weather-blend', blendState.isBlending);
 
     useFrame((_, delta) => {
         if (!blendState.isBlending) {
@@ -600,6 +634,7 @@ export function Environment({
 }: EnvironmentProps) {
     const qualityProfile = quality ?? resolveGameQualityProfile();
     const directionalLightRef = useRef<DirectionalLight | null>(null);
+    const sceneRuntimeVisible = useSceneRuntimeVisible();
 
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const dayNightCycleDisabled = useGameState(
@@ -711,7 +746,7 @@ export function Environment({
             (actualWeather?.foggy ?? 0) > 0.01 ||
             (actualWeather?.rainy ?? 0) > 0 ||
             (actualWeather?.snowy ?? 0) > 0);
-    useSceneTimeInvalidation(activeWeatherAnimation);
+    useSceneTimeInvalidation('weather-animation', activeWeatherAnimation);
 
     // Sound management
     const morningAmbient = ambientAudioMixer.useMusic(
@@ -736,7 +771,7 @@ export function Environment({
         'https://cdn.gredice.com/sounds/ambient/Mod Rain Medium 01.mp3',
     );
     useEffect(() => {
-        if (noSound) {
+        if (noSound || !sceneRuntimeVisible) {
             return;
         }
 
@@ -777,6 +812,7 @@ export function Environment({
         timeOfDay,
         actualWeather,
         noSound,
+        sceneRuntimeVisible,
         dayAmbient.play,
         dayAmbient.stop,
         dayRainAmbient.play,
@@ -964,75 +1000,66 @@ export function Environment({
             : 0;
 
     const [lightningFlash, setLightningFlash] = useState(0);
-    const lightningScheduleTimeout = useRef<number | null>(null);
-    const lightningClearTimeout = useRef<number | null>(null);
+    const [lightningClearAt, setLightningClearAt] = useState<number | null>(
+        null,
+    );
+    const [nextLightningAt, setNextLightningAt] = useState<number | null>(null);
+    const thunderLevel = actualWeather?.thundery ?? 0;
+    const lightningEnabled = !weatherDisabled && thunderLevel > 0;
+    const stormStrength = Math.min(
+        1,
+        thunderLevel * 0.6 +
+            (blendedWeather?.rainy ?? 0) * 0.3 +
+            (blendedWeather?.cloudy ?? 0) * 0.2,
+    );
+    const nightFactor = 0.2 + nightVisibility * 0.6;
+    const flashStrength = Math.min(
+        1,
+        0.35 + stormStrength * 0.45 + nightFactor,
+    );
+    const requestRender = useSceneRenderRequest();
 
     useEffect(() => {
-        const thunderLevel = actualWeather?.thundery ?? 0;
-        if (weatherDisabled || thunderLevel <= 0) {
+        if (!lightningEnabled) {
             setLightningFlash(0);
-            if (lightningScheduleTimeout.current !== null) {
-                window.clearTimeout(lightningScheduleTimeout.current);
-                lightningScheduleTimeout.current = null;
-            }
-            if (lightningClearTimeout.current !== null) {
-                window.clearTimeout(lightningClearTimeout.current);
-                lightningClearTimeout.current = null;
-            }
+            setLightningClearAt(null);
+            setNextLightningAt(null);
+            requestRender('lightning-disabled');
             return;
         }
 
-        const stormStrength = Math.min(
-            1,
-            thunderLevel * 0.6 +
-                (blendedWeather?.rainy ?? 0) * 0.3 +
-                (blendedWeather?.cloudy ?? 0) * 0.2,
+        setLightningFlash(0);
+        setLightningClearAt(null);
+        setNextLightningAt(
+            performance.now() + getLightningDelayMs(stormStrength),
         );
-        const nightFactor = 0.2 + nightVisibility * 0.6;
-        const flashStrength = Math.min(
-            1,
-            0.35 + stormStrength * 0.45 + nightFactor,
-        );
+    }, [lightningEnabled, requestRender, stormStrength]);
 
-        const scheduleNextFlash = () => {
-            const minimumDelayMs = 8000;
-            const maximumDelayMs = 22000;
-            const chanceWindowMs =
-                maximumDelayMs -
-                (maximumDelayMs - minimumDelayMs) * Math.min(1, stormStrength);
-            const delayMs =
-                minimumDelayMs + Math.random() * Math.max(2000, chanceWindowMs);
-
-            lightningScheduleTimeout.current = window.setTimeout(() => {
+    useSceneDeadline({
+        callback: (deadline) => {
+            if (deadline.latenessMs <= 1_000) {
                 setLightningFlash(flashStrength);
-                lightningClearTimeout.current = window.setTimeout(() => {
-                    setLightningFlash(0);
-                    lightningClearTimeout.current = null;
-                }, 120);
-                scheduleNextFlash();
-            }, delayMs);
-        };
-
-        scheduleNextFlash();
-
-        return () => {
-            if (lightningScheduleTimeout.current !== null) {
-                window.clearTimeout(lightningScheduleTimeout.current);
-                lightningScheduleTimeout.current = null;
+                setLightningClearAt(deadline.nowMs + LIGHTNING_CLEAR_DELAY_MS);
+                requestRender('lightning-flash');
             }
-            if (lightningClearTimeout.current !== null) {
-                window.clearTimeout(lightningClearTimeout.current);
-                lightningClearTimeout.current = null;
-                setLightningFlash(0);
-            }
-        };
-    }, [
-        blendedWeather?.cloudy,
-        blendedWeather?.rainy,
-        actualWeather?.thundery,
-        nightVisibility,
-        weatherDisabled,
-    ]);
+            setNextLightningAt(
+                deadline.nowMs + getLightningDelayMs(stormStrength),
+            );
+        },
+        deadlineMs: nextLightningAt,
+        enabled: lightningEnabled,
+        owner: 'lightning-flash',
+    });
+    useSceneDeadline({
+        callback: () => {
+            setLightningFlash(0);
+            setLightningClearAt(null);
+            requestRender('lightning-clear');
+        },
+        deadlineMs: lightningClearAt,
+        enabled: lightningEnabled,
+        owner: 'lightning-clear',
+    });
 
     return (
         <>

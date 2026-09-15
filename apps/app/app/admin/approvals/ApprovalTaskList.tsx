@@ -18,6 +18,8 @@ function taskKey(task: AdminApprovalTask) {
     switch (task.kind) {
         case 'plantStatusRequest':
             return task.id;
+        case 'selectedPlantingVerification':
+            return `${task.id}:${task.identity.expectedLifecycleVersionEventId}`;
         case 'scheduleOperationVerification':
             return `${task.id}:${task.expectedTaskVersionEventId}`;
         case 'schedulePlantingVerification':

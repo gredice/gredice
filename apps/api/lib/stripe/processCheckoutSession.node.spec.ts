@@ -21,6 +21,7 @@ import { encodeHarvestDatesMetadata } from '../checkout/harvestCheckout';
 import {
     __testUtils,
     type ProcessCheckoutSessionDependencies,
+    prepareSelectedPlantingCheckoutOperation,
     processCheckoutSession,
     processCheckoutSessionForReconciliation,
     processItem,
@@ -5702,6 +5703,84 @@ describe('processCheckoutSession test utilities', () => {
         assert.equal(
             __testUtils.parseAdditionalDataValue(undefined),
             undefined,
+        );
+    });
+});
+
+describe('selected planting operation purchases', () => {
+    const plantingTarget = {
+        plantingId: 901,
+        expectedLifecycleVersionEventId: 123,
+        expectedPlantSortId: 42,
+    };
+    const item = {
+        accountId: 'account-1',
+        cartItemId: 501,
+        entityId: '601',
+        entityTypeName: 'operation',
+        gardenId: 1,
+        raisedBedId: 2,
+        positionIndex: null,
+        currency: 'sunflower',
+        additionalData: JSON.stringify({
+            plantingTarget,
+            scheduledDate: '2026-09-15T00:00:00.000Z',
+        }),
+    };
+    it('persists an explicit target without resolving a legacy field', async () => {
+        const calls: RecordedCall[] = [];
+        await prepareSelectedPlantingCheckoutOperation(
+            item,
+            undefined,
+            makeDependencies(calls),
+        );
+        const call = callsNamed(calls, 'getOrCreateCheckoutOperation')[0];
+        assert.equal(call?.args[0], 501);
+        assert.deepEqual(call?.args[1], {
+            accountId: 'account-1',
+            entityId: 601,
+            entityTypeName: 'operation',
+            gardenId: 1,
+            raisedBedId: 2,
+            plantingId: 901,
+        });
+        assert.ok(isRecord(call?.args[2]));
+        assert.deepEqual(call.args[2].plantingTarget, plantingTarget);
+        assert.equal(
+            callsNamed(calls, 'getRaisedBedFieldsWithEvents').length,
+            0,
+        );
+    });
+    it('rejects ambiguous and malformed targets before creating an operation', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls);
+        await assert.rejects(
+            prepareSelectedPlantingCheckoutOperation(
+                { ...item, positionIndex: 0 },
+                undefined,
+                dependencies,
+            ),
+        );
+        await assert.rejects(
+            prepareSelectedPlantingCheckoutOperation(
+                {
+                    ...item,
+                    additionalData: JSON.stringify({
+                        plantingTarget: { plantingId: 901 },
+                    }),
+                },
+                undefined,
+                dependencies,
+            ),
+        );
+        assert.equal(calls.length, 0);
+        assert.equal(
+            await prepareSelectedPlantingCheckoutOperation(
+                { ...item, additionalData: '{}' },
+                undefined,
+                dependencies,
+            ),
+            null,
         );
     });
 });

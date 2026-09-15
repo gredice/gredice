@@ -23,7 +23,8 @@
         "test:plant-operation-stages": "node --experimental-strip-types --test ./tests/plantOperationStageAvailability.node.spec.ts",
         "test:seeds": "node --experimental-strip-types --test ./app/sjeme/seedPresentation.node.spec.ts ./tests/directoryRevalidationPaths.node.spec.ts ./tests/plantSortSeeds.node.spec.ts",
         "test:block-routes": "node --experimental-strip-types --test ./lib/blocks/blockRoute.node.spec.ts",
-        "test:static-data": "node --experimental-strip-types --test ./tests/staticGenerationData.node.spec.ts ./app/dostava/termini/deliverySlotFormatting.node.spec.ts ./app/landingFeaturedGardens.node.spec.ts",
+        "test:static-data": "node --experimental-strip-types --test ./tests/staticGenerationData.node.spec.ts ./app/dostava/termini/deliverySlotFormatting.node.spec.ts ./app/landingFeaturedGardens.node.spec.ts && pnpm run test:landing-featured-gardens",
+        "test:landing-featured-gardens": "node --import tsx --conditions=react-server --test ./app/getLandingFeaturedGardens.node.spec.ts",
         "test:canonical-urls": "node --import tsx --test ./tests/canonicalUrls.node.spec.ts",
         "test:pets": "node --import tsx --test ./lib/pets/gardenPetSearch.node.spec.ts",
         "test:delivery-summary": "node --import tsx --test ./app/dostava/deliverySummary.node.spec.ts",
@@ -60,7 +61,7 @@
         "nuqs": "2.9.0",
         "react": "19.2.8",
         "react-dom": "19.2.8",
-        "sharp": "0.35.3",
+        "sharp": "0.35.4",
         "server-only": "0.0.1"
     },
     "devDependencies": {

@@ -152,6 +152,15 @@ export function useSelectedPlantingOwnerAction(
             }),
         onSuccess: async (_result, action) => {
             const invalidations = [
+                queryClient.invalidateQueries({
+                    queryKey: [
+                        'raisedBeds',
+                        raisedBedId,
+                        'plantings',
+                        action.target.plantingId,
+                        'diary',
+                    ],
+                }),
                 queryClient.invalidateQueries({ queryKey: useGardensKeys }),
                 queryClient.invalidateQueries({
                     queryKey: raisedBedDiaryQueryKeys.byId(raisedBedId),

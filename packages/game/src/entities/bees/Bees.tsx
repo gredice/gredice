@@ -13,6 +13,10 @@ import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
 import {
+    sceneFrameRates,
+    useSceneTimeInvalidation,
+} from '../../scene/SceneTime';
+import {
     type AnimalDebugEntry,
     type AnimalDisturbance,
     type GameState,
@@ -1235,8 +1239,10 @@ export function Bees({
         () => createBeeHabitats(garden, blockData, groundDecorationDensity),
         [blockData, garden, groundDecorationDensity],
     );
+    const active = habitats.length > 0 && isBeeActive(timeOfDay, beeWeather);
+    useSceneTimeInvalidation('fauna:bees', active, sceneFrameRates.ambient);
 
-    if (habitats.length <= 0 || !isBeeActive(timeOfDay, beeWeather)) {
+    if (!active) {
         return null;
     }
 

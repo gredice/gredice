@@ -1,12 +1,6 @@
+import { GameGardenIcon } from '@gredice/ui/GameIcons';
 import { IconButton } from '@gredice/ui/IconButton';
-import {
-    Add,
-    Bookmark,
-    Check,
-    Delete,
-    Joystick,
-    MapPinHouse,
-} from '@gredice/ui/icons';
+import { Add, Bookmark, Check, Delete, MapPinHouse } from '@gredice/ui/icons';
 import {
     DropdownMenuItem,
     DropdownMenuLabel,
@@ -459,7 +453,10 @@ export function GardenAccountMenuItems({
             {showSandboxMenu && useSandboxSubmenu && (
                 <DropdownMenuSub>
                     <DropdownMenuSubTrigger className="gap-3">
-                        <Joystick className="size-4 shrink-0" />
+                        <GameGardenIcon
+                            aria-hidden
+                            className="size-6 shrink-0"
+                        />
                         <span>Vrtovi za igru</span>
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent
@@ -473,7 +470,10 @@ export function GardenAccountMenuItems({
             {showSandboxMenu && !useSandboxSubmenu && (
                 <>
                     <DropdownMenuLabel className="flex items-center gap-3 px-2 py-1.5 text-sm font-normal text-muted-foreground">
-                        <Joystick className="size-4 shrink-0" />
+                        <GameGardenIcon
+                            aria-hidden
+                            className="size-6 shrink-0"
+                        />
                         <span>Vrtovi za igru</span>
                     </DropdownMenuLabel>
                     {renderSandboxGardenItems()}

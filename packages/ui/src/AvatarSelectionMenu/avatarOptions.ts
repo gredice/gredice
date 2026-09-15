@@ -1,3 +1,5 @@
+import { farmerAvatarUrls } from '../Avatar/farmerAvatarSources';
+
 export type AvatarOption = {
     label: string;
     avatarUrl: string | null;
@@ -6,10 +8,10 @@ export type AvatarOption = {
 export const AVATAR_OPTIONS: readonly AvatarOption[] = [
     {
         label: 'Farmer',
-        avatarUrl: 'https://cdn.gredice.com/avatars/farmer-male.png',
+        avatarUrl: farmerAvatarUrls.male,
     },
     {
         label: 'Farmerka',
-        avatarUrl: 'https://cdn.gredice.com/avatars/farmer-female.png',
+        avatarUrl: farmerAvatarUrls.female,
     },
 ];
