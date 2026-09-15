@@ -89,19 +89,23 @@ export function OperationCompletionEvidenceEditModal({
     const [uploadItemCount, setUploadItemCount] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [hasVersionConflict, setHasVersionConflict] = useState(false);
     const imageUploaderRef = useRef<ImageUploadManagerHandle>(null);
+    const openedTaskVersionEventIdRef = useRef(expectedTaskVersionEventId);
 
     const resetForm = useCallback(() => {
         setNotes(initialNotes ?? '');
         setImageUrls(initialUrls);
         setUploadItemCount(0);
         setErrorMessage(null);
+        setHasVersionConflict(false);
         imageUploaderRef.current?.reset();
     }, [initialNotes, initialUrls]);
 
     const handleOpenChange = (nextOpen: boolean) => {
         setOpen(nextOpen);
         if (nextOpen) {
+            openedTaskVersionEventIdRef.current = expectedTaskVersionEventId;
             resetForm();
         } else if (!isSubmitting) {
             resetForm();
@@ -182,13 +186,17 @@ export function OperationCompletionEvidenceEditModal({
             const result = await updateOperationCompletionEvidenceAction(
                 ...buildOperationCompletionEvidenceActionArguments({
                     operationId,
-                    expectedTaskVersionEventId,
+                    expectedTaskVersionEventId:
+                        openedTaskVersionEventIdRef.current,
                     imageUrls: nextImageUrls,
                     notes: trimmedNotes,
                 }),
             );
             if (!result.success) {
-                setErrorMessage(result.message);
+                setErrorMessage(
+                    `${result.message} Zatvorite i ponovno otvorite uređivanje kako biste učitali najnoviju napomenu.`,
+                );
+                setHasVersionConflict(true);
                 router.refresh();
                 return;
             }
@@ -374,7 +382,7 @@ export function OperationCompletionEvidenceEditModal({
                             variant="solid"
                             onClick={handleSave}
                             loading={isSubmitting}
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || hasVersionConflict}
                         >
                             Spremi izmjene
                         </Button>
