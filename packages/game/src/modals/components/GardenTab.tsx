@@ -1,6 +1,7 @@
 import { Accordion } from '@gredice/ui/Accordion';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
+import { GameGardenIcon } from '@gredice/ui/GameIcons';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Add, Warning } from '@gredice/ui/icons';
 import {
@@ -82,7 +83,10 @@ function GardensSelector() {
                             variant="plain"
                         >
                             <Row spacing={2} className="min-w-0">
-                                <span>🏡</span>
+                                <GameGardenIcon
+                                    aria-hidden
+                                    className="size-6 shrink-0"
+                                />
                                 <Typography noWrap>
                                     {selectedGarden?.name ?? 'Odaberi vrt'}
                                 </Typography>
@@ -133,8 +137,12 @@ export function GardenTab() {
 
     return (
         <Stack spacing={8}>
-            <Typography level="h4" className="hidden md:block">
-                🏡 Vrt
+            <Typography
+                level="h4"
+                className="hidden md:flex items-center gap-2"
+            >
+                <GameGardenIcon aria-hidden className="size-8 shrink-0" />
+                Vrt
             </Typography>
             <Stack spacing={2}>
                 {isLoading && !hasAnyGarden ? (

@@ -69,3 +69,20 @@ Review `packages/ui/Icons/GameAccountMenu` for the menu composition in light and
 dark themes, and `packages/ui/Icons/GameIcons` for the 16–64px comparisons.
 The Garden workspace showcase includes the same menu preview. Menu navigation,
 account selection and sign-out behavior remain owned by `@gredice/game`.
+
+## Profile and settings
+
+The settings navigation, mobile selector and section headings share these icons:
+Settings, Trophy, Sunflower, Delivery, Mailbox, Gift, Garden, Profile, Receipt,
+Controller, Lock and Speaker. Use 24px beside menu labels and 32px beside section
+headings; mark decorative artwork `aria-hidden` so labels remain searchable and
+are announced once. Keep selector labels as plain text and pass artwork through
+`SelectItems.items[].icon`.
+
+The seven new rendered objects use the same processing as the existing artwork.
+`assets/settings-prompts.json` records their built-in image generation prompts.
+`sunflower.svg` is the existing mascot copied unchanged from the Storybook game
+asset; it is bundled locally so settings do not depend on the CDN.
+
+Review `packages/game/Settings/OverviewNavigation` at mobile and desktop widths in
+light/dark themes. The Garden workspace showcase includes the same navigation.

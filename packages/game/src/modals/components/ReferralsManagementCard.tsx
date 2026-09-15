@@ -1,6 +1,7 @@
 import { clientAuthenticated } from '@gredice/client';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardActions, CardContent, CardHeader } from '@gredice/ui/Card';
+import { GameGiftIcon } from '@gredice/ui/GameIcons';
 import { Input } from '@gredice/ui/Input';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -13,7 +14,16 @@ export function ReferralsManagementCard() {
 
     return (
         <Card>
-            <CardHeader title="💮 Referral račun" />
+            <CardHeader>
+                <Typography
+                    level="body1"
+                    semiBold
+                    className="flex items-center gap-2"
+                >
+                    <GameGiftIcon aria-hidden className="size-6 shrink-0" />
+                    Referral račun
+                </Typography>
+            </CardHeader>
             <CardContent>
                 <Stack spacing={2}>
                     <Typography level="body2">

@@ -202,6 +202,7 @@ import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import { AchievementCollectionShowcase } from '../../../../../packages/game/src/shared-ui/achievements/AchievementCollection.fixture';
 import { RaisedBedFieldsGridFixture } from '../../../../../packages/ui/src/raisedBeds/RaisedBedFieldsGrid.fixture';
+import { OverviewNavigationPreview } from '../game/settings/OverviewNavigationPreview';
 import { FarmerAvatarsPreview } from './FarmerAvatarsPreview';
 import { GameAccountMenuPreview } from './GameAccountMenuPreview';
 import { PlantCareHudPreview } from './PlantCareHudPreview';
@@ -1439,6 +1440,7 @@ function GardenWorkspaceShowcase() {
                 </PageHeader>
 
                 <GameAccountMenuPreview />
+                <OverviewNavigationPreview />
                 <FarmerAvatarsPreview
                     heading="Avatari za igru"
                     options={AVATAR_OPTIONS.filter((option) =>

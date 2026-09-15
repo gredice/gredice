@@ -1,4 +1,5 @@
 import { Card, CardContent } from '@gredice/ui/Card';
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
@@ -12,8 +13,12 @@ export function SunflowersTab() {
 
     return (
         <Stack spacing={8}>
-            <Typography level="h4" className="hidden md:block">
-                🌻 Suncokreti
+            <Typography
+                level="h4"
+                className="hidden md:flex items-center gap-2"
+            >
+                <GameSunflowerIcon aria-hidden className="size-8 shrink-0" />
+                Suncokreti
             </Typography>
             <Stack
                 spacing={3}

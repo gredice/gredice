@@ -2,6 +2,11 @@ import { clientAuthenticated } from '@gredice/client';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardActions, CardContent } from '@gredice/ui/Card';
+import {
+    GameGiftIcon,
+    GameHistoryIcon,
+    GameSunflowerIcon,
+} from '@gredice/ui/GameIcons';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
 import { Check, Copy, Edit, ExternalLink, Info } from '@gredice/ui/icons';
@@ -178,8 +183,12 @@ export function ReferralsTab() {
                     <Confetti mode="fall" particleCount={80} />
                 </div>
             ) : null}
-            <Typography level="h4" className="hidden md:block">
-                💮 Preporuke
+            <Typography
+                level="h4"
+                className="hidden md:flex items-center gap-2"
+            >
+                <GameGiftIcon aria-hidden className="size-8 shrink-0" />
+                Preporuke
             </Typography>
             <Stack spacing={2}>
                 <Alert
@@ -188,10 +197,13 @@ export function ReferralsTab() {
                 >
                     <Typography level="body2">
                         Podijeli svoj kod i zaradi{' '}
-                        <strong>{data?.rewardAmount ?? 10000} 🌻</strong> kada
-                        pozvani račun posadi svoje prvo povrće u gredici. Kod se
-                        može iskoristiti jednom po računu, a isti kod može
-                        iskoristiti više različitih računa.{' '}
+                        <strong className="inline-flex items-center gap-1">
+                            {data?.rewardAmount ?? 10000}
+                            <GameSunflowerIcon className="size-4 shrink-0" />
+                        </strong>{' '}
+                        kada pozvani račun posadi svoje prvo povrće u gredici.
+                        Kod se može iskoristiti jednom po računu, a isti kod
+                        može iskoristiti više različitih računa.{' '}
                         <Button
                             className="inline-flex text-blue-950 dark:text-blue-100"
                             endDecorator={
@@ -532,17 +544,17 @@ export function ReferralsTab() {
                                                     : 'Čeka prvu sadnju'}
                                             </Typography>
                                         </div>
-                                        <span
-                                            aria-label={
-                                                u.rewarded
-                                                    ? 'Nagrada dodijeljena'
-                                                    : 'Čeka prvu sadnju'
-                                            }
-                                            className="text-base"
-                                            role="img"
-                                        >
-                                            {u.rewarded ? '✅' : '⏳'}
-                                        </span>
+                                        {u.rewarded ? (
+                                            <GameGiftIcon
+                                                aria-hidden
+                                                className="size-6 shrink-0"
+                                            />
+                                        ) : (
+                                            <GameHistoryIcon
+                                                aria-hidden
+                                                className="size-6 shrink-0"
+                                            />
+                                        )}
                                     </li>
                                 ))}
                             </ul>
