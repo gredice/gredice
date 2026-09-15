@@ -43,7 +43,10 @@ function Providers({ children }: PropsWithChildren) {
 export function UserBirthdayCardStory() {
     return (
         <Providers>
-            <div className="w-[600px] p-4" data-testid="birthday-card-frame">
+            <div
+                className="w-[600px] max-w-full p-4"
+                data-testid="birthday-card-frame"
+            >
                 <UserBirthdayCard />
             </div>
         </Providers>
