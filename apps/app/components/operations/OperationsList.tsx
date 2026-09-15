@@ -128,7 +128,7 @@ export function OperationsList({
         [isGrouped, operations, sort.key],
     );
 
-    // Days without an explicit choice start open for today and for the newest day.
+    // Days without an explicit choice start open only for today.
     function isDayExpanded(dayKey: string) {
         const override = dayExpansionOverrides.get(dayKey);
 
@@ -136,7 +136,7 @@ export function OperationsList({
             return override;
         }
 
-        return dayKey === dayGroups[0]?.dayKey || dayKey === todayKey;
+        return dayKey === todayKey;
     }
 
     function toggleDay(dayKey: string) {
@@ -148,7 +148,14 @@ export function OperationsList({
     }
 
     useEffect(() => {
-        setTodayKey(operationsListDayKey(new Date()));
+        function refreshTodayKey() {
+            setTodayKey(operationsListDayKey(new Date()));
+        }
+
+        refreshTodayKey();
+        const interval = window.setInterval(refreshTodayKey, 60_000);
+
+        return () => window.clearInterval(interval);
     }, []);
 
     useEffect(() => {
@@ -221,7 +228,6 @@ export function OperationsList({
                                   )}
                                   dayKey={group.dayKey}
                                   isExpanded={isDayExpanded(group.dayKey)}
-                                  isToday={group.dayKey === todayKey}
                                   onToggle={toggleDay}
                               >
                                   {group.operations.map((operation) => (

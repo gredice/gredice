@@ -1,6 +1,5 @@
 'use client';
 
-import { Chip } from '@gredice/ui/Chip';
 import { Collapse } from '@gredice/ui/Collapse';
 import { ExpandDown } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
@@ -22,7 +21,6 @@ export function OperationsDayGroup({
     counts,
     dayKey,
     isExpanded,
-    isToday,
     onToggle,
 }: {
     bubbles: OperationsListDayBubblesModel;
@@ -30,7 +28,6 @@ export function OperationsDayGroup({
     counts: OperationsListDayCounts;
     dayKey: string;
     isExpanded: boolean;
-    isToday?: boolean;
     onToggle: (dayKey: string) => void;
 }) {
     // Collapsed days keep their rows unmounted so a long list does not pay for
@@ -66,16 +63,9 @@ export function OperationsDayGroup({
             >
                 <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <Stack spacing={1} className="min-w-0 flex-1">
-                        <div className="flex min-w-0 flex-wrap items-center gap-2">
-                            <span className="min-w-0 truncate font-medium first-letter:uppercase">
-                                {operationsListDayLabel(dayKey)}
-                            </span>
-                            {isToday ? (
-                                <Chip color="info" size="sm">
-                                    Danas
-                                </Chip>
-                            ) : null}
-                        </div>
+                        <span className="min-w-0 truncate font-medium first-letter:uppercase">
+                            {operationsListDayLabel(dayKey)}
+                        </span>
                         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                             <span className="max-w-full truncate">
                                 {operationsListDayCountsLabel(counts)}

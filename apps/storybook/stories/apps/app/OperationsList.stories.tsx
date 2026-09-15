@@ -206,17 +206,14 @@ const busyDayOperations = busyDaySeeds.flatMap(([label, category], index) =>
 
 function OperationsListPreview({
     bubbleLimit,
-    expandNewestDay,
     operations: previewOperations,
     todayKey,
 }: {
     /** How many bubbles a day header shows before collapsing the rest into `+N`. */
     bubbleLimit: number;
-    /** Mirrors the list default of opening the newest day. */
-    expandNewestDay: boolean;
     /** Records to group, already sorted the way the API returns them. */
     operations: OperationsListOperation[];
-    /** Day rendered as "Danas". Fixed here so the story stays deterministic. */
+    /** Day expanded by default. Fixed here so the story stays deterministic. */
     todayKey: string;
 }) {
     const dayGroups = groupOperationsByDay(previewOperations, 'date');
@@ -225,11 +222,7 @@ function OperationsListPreview({
     );
 
     function isDayExpanded(dayKey: string) {
-        return (
-            overrides.get(dayKey) ??
-            (dayKey === todayKey ||
-                (expandNewestDay && dayKey === dayGroups[0]?.dayKey))
-        );
+        return overrides.get(dayKey) ?? dayKey === todayKey;
     }
 
     return (
@@ -249,7 +242,6 @@ function OperationsListPreview({
                                 )}
                                 dayKey={group.dayKey}
                                 isExpanded={isDayExpanded(group.dayKey)}
-                                isToday={group.dayKey === todayKey}
                                 onToggle={(dayKey) =>
                                     setOverrides((previous) =>
                                         new Map(previous).set(
@@ -290,7 +282,6 @@ const meta = {
     },
     args: {
         bubbleLimit: 6,
-        expandNewestDay: true,
         operations,
         todayKey: '2026-08-26',
     },
@@ -304,7 +295,6 @@ export const Default: Story = {};
 
 export const AllDaysCollapsed: Story = {
     args: {
-        expandNewestDay: false,
         todayKey: '',
     },
     parameters: {
