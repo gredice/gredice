@@ -1,6 +1,6 @@
 import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
 import { decodeRouteParam } from '@gredice/js/uri';
-import { Euro } from '@gredice/ui/icons';
+import { GameReceiptIcon } from '@gredice/ui/GameIcons';
 import { Markdown } from '@gredice/ui/Markdown';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PageHeader } from '@gredice/ui/PageHeader';
@@ -150,7 +150,7 @@ export default async function OperationPage(
                         <Stack spacing={2}>
                             <div className="grid grid-cols-2 gap-2">
                                 <PriceAttributeCard
-                                    icon={<Euro />}
+                                    icon={<GameReceiptIcon aria-hidden />}
                                     header="Cijena"
                                     currentPrice={operation.prices.perOperation}
                                     availability={priceAvailability}

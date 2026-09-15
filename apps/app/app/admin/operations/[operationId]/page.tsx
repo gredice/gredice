@@ -655,6 +655,9 @@ export default async function OperationDetailsPage({
                             {(operation.status === 'pendingVerification' ||
                                 operation.status === 'completed') && (
                                 <OperationCompletionEvidenceEditModal
+                                    completionNotesEdited={
+                                        operation.completionNotesEdited
+                                    }
                                     operationId={operation.id}
                                     expectedTaskVersionEventId={
                                         operation.taskVersionEventId

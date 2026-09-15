@@ -93,7 +93,7 @@ retain the accessible currency name.
   content and editorial text. There is no global emoji replacement or rewriting
   of persisted CMS data.
 - Search, close, arrows, editing, download, loading, warnings, checks,
-  verification, discounts and precise measurement/spacing/grid symbols.
+  verification, discounts and exact plant-density diagrams. Attribute-card measurement decorators now use the shared 3D artwork described below.
 - The outline/filled heart on `PublicGardenLikeButton`: its appearance communicates
   selected state. Preserve that distinction instead of substituting a static image.
 - Physical raised-bed identifiers and the exact plant-grid symbols. Shared
@@ -228,3 +228,41 @@ Chromium verified the actual landing newsletter in light and dark themes at
 1280px and 360px: artwork decodes, dimensions and lazy loading are present, the
 email input can receive focus, and the image/form controls remain within the
 viewport. No newsletter subscription was submitted during visual verification.
+
+## Attribute-card follow-up
+
+The plant detail audit also covers varieties (which reuse the plant sections),
+operations, seed packets, seed brands and block details. Five new transparent
+384px WebP assets use the backpack/water references and colorful, faceted style.
+Exact built-in image-generation prompts are in
+[`attributes-prompts.json`](../packages/ui/src/GameIcons/assets/attributes-prompts.json).
+
+| Surface | Updated artwork |
+| --- | --- |
+| Plants and varieties: spacing, depth, germination time, soil | Teal ruler, soil + ruler composition, coral stopwatch, layered soil block |
+| Operations: frequency, duration, price, unknown application | Reused history clock, stopwatch, receipt, tools |
+| Seeds: weight, germination, area, barcode, price | Blue scale weight, seedling, garden plan, cream/coral tag, receipt |
+| Blocks: height, stacking | Ruler, reused colored blocks |
+| Seed brands | Already styled: location, globe and market-stall fallback; no additional replacement |
+
+`GameSowingDepthIcon` composes the soil and ruler sources without another bitmap.
+The barcode tag is decorative; `BarcodeValue` still renders the original exact
+barcode and identifier. Plant-density grids remain precise diagrams at 1/4/9/16
+positions. Information buttons, copy, numeric values, units, conditional cards,
+price availability and physical raised-bed identifiers keep their behavior.
+
+Seed and block attribute groups are extracted unchanged apart from artwork so
+Storybook can render the actual page components. Review
+`apps/www/Attributes/PublicAttributes` (Light, Dark, MissingAndZeroValues), and
+`apps/www/Visuals/PublicVisuals` for the new icons at 24–96px. Examples are also in
+the public component showcase and searchable in-game icon inventory.
+
+Validation: scoped Biome and diff checks; UI/WWW typechecks; WWW and Storybook
+production builds. Light, Dark and MissingAndZeroValues pass WCAG A/AA checks at
+360px with all artwork decoding; layouts also fit 768px and 1280px. The information
+dialog opens, retains its detail link and restores focus on Escape.
+Production-built plant, variety, operation, seed and block routes were inspected
+at 360px/1280px in both themes without horizontal overflow. The existing labeled
+sunflower icon still communicates the block-price currency to screen readers.
+The five images total 98,548 bytes. Storybook enables TypeScript-extension imports
+so its no-emit typecheck can include the existing seed formatting module unchanged.

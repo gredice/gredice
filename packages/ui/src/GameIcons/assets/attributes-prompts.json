@@ -1,0 +1,35 @@
+{
+    "generatedWith": "built-in image_gen",
+    "references": [
+        "packages/ui/src/GameIcons/assets/backpack.webp",
+        "packages/ui/src/GameIcons/assets/water.webp"
+    ],
+    "processing": "Resize to 384px square WebP at quality 90 and alphaQuality 100; preserve generated transparency.",
+    "assets": [
+        {
+            "file": "ruler.webp",
+            "component": "GameRulerIcon",
+            "prompt": "Use case: stylized-concept. Generate ONE original transparent 3D low-poly farming-game UI icon. The attached backpack and blue water drop are STYLE REFERENCES ONLY: chunky beveled polygon volumes, matte tactile toy materials, pronounced dimensional facets, soft upper-left illumination, darker right faces. Match their geometry and lighting, not their colors. Elevated three-quarter view, centered complete silhouette, 8 percent clear margin. Genuine transparent alpha background, no floor, backdrop, shadow outside the object, text, watermark or frame. Simple coherent shape readable at 24px and attractive at 96px. One short thick rectangular TEAL BLUE garden measuring ruler, placed on an ascending diagonal. Chunky beveled edges, ivory recessed measurement tick marks along ONE straight edge, no numerals. Strong visible thickness with navy side face. No metal gold, no tape, no extras."
+        },
+        {
+            "file": "soil.webp",
+            "component": "GameSoilIcon",
+            "prompt": "Use case: stylized-concept. Generate ONE original transparent 3D low-poly farming-game UI icon. The attached backpack and blue water drop are STYLE REFERENCES ONLY: chunky beveled polygon volumes, matte tactile toy materials, pronounced dimensional facets, soft upper-left illumination, darker right faces. Match their geometry and lighting, not their colors. Elevated three-quarter view, centered complete silhouette, 8 percent clear margin. Genuine transparent alpha background, no floor, backdrop, shadow outside the object, text, watermark or frame. Simple coherent shape readable at 24px and attractive at 96px. One compact square cutaway block of fertile garden SOIL. Mostly flat broad dark cocoa-brown top, layered chestnut and terracotta-brown cut side faces with just a few tiny embedded cream pebbles. Smooth chunky facets, not a pile of rubble. No grass, plants, seeds, roots, frame or tools. Clear simple top surface and visible depth."
+        },
+        {
+            "file": "timer.webp",
+            "component": "GameTimerIcon",
+            "prompt": "Use case: stylized-concept. Generate ONE original transparent 3D low-poly farming-game UI icon. The attached backpack and blue water drop are STYLE REFERENCES ONLY: chunky beveled polygon volumes, matte tactile toy materials, pronounced dimensional facets, soft upper-left illumination, darker right faces. Match their geometry and lighting, not their colors. Elevated three-quarter view, centered complete silhouette, 8 percent clear margin. Genuine transparent alpha background, no floor, backdrop, shadow outside the object, text, watermark or frame. Simple coherent shape readable at 24px and attractive at 96px. One chunky CORAL RED stopwatch with an IVORY clock face, one large dark charcoal hand, four simple dark tick marks at the cardinal positions, a silver top plunger and small silver side button. Deep brick red beveled case side, pale salmon highlight facets. No digits, letters, gold, gems, second clock or decorative stand."
+        },
+        {
+            "file": "weight.webp",
+            "component": "GameWeightIcon",
+            "prompt": "Use case: stylized-concept. Generate ONE original transparent 3D low-poly farming-game UI icon. The attached backpack and blue water drop are STYLE REFERENCES ONLY: chunky beveled polygon volumes, matte tactile toy materials, pronounced dimensional facets, soft upper-left illumination, darker right faces. Match their geometry and lighting, not their colors. Elevated three-quarter view, centered complete silhouette, 8 percent clear margin. Genuine transparent alpha background, no floor, backdrop, shadow outside the object, text, watermark or frame. Simple coherent shape readable at 24px and attractive at 96px. One compact classic scale weight: squat chunky TEAL BLUE trapezoidal metal body with broad flat base and integrated thick rounded rectangular handle opening on top. Navy beveled side faces, cool pale blue highlight. Plain unmarked body, no lettering, numbers or units. No gold, scales, platform or loose objects."
+        },
+        {
+            "file": "tag.webp",
+            "component": "GameTagIcon",
+            "prompt": "Use case: stylized-concept. Generate ONE original transparent 3D low-poly farming-game UI icon. The attached backpack and blue water drop are STYLE REFERENCES ONLY: chunky beveled polygon volumes, matte tactile toy materials, pronounced dimensional facets, soft upper-left illumination, darker right faces. Match their geometry and lighting, not their colors. Elevated three-quarter view, centered complete silhouette, 8 percent clear margin. Genuine transparent alpha background, no floor, backdrop, shadow outside the object, text, watermark or frame. Simple coherent shape readable at 24px and attractive at 96px. One chunky hanging product identification tag made from CREAM card with a CORAL RED reinforced hole and a short simple teal cord through the hole. Broad almost-front-facing face holds exactly five simple raised dark charcoal parallel vertical bars of varied widths as an abstract barcode symbol, NO digits or letters and NOT an actual scannable barcode. Thick beveled cream edges and visible tan side face. Tilted slightly diagonally. No price, percent, currency, coins or gold."
+        }
+    ]
+}
