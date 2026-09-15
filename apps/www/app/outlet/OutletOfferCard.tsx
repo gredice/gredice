@@ -1,5 +1,5 @@
-import { GameSeedlingIcon } from '@gredice/ui/GameIcons';
-import { Calendar, Discount, Timer } from '@gredice/ui/icons';
+import { GameCalendarIcon, GameSeedlingIcon } from '@gredice/ui/GameIcons';
+import { Discount, Timer } from '@gredice/ui/icons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -100,9 +100,9 @@ export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
                         </div>
                         <div>
                             <dt className="flex items-center gap-1.5 text-muted-foreground">
-                                <Calendar
+                                <GameCalendarIcon
                                     aria-hidden
-                                    className="size-3.5 sm:size-4"
+                                    className="size-4 sm:size-5"
                                 />
                                 Preostalo
                             </dt>
@@ -114,7 +114,7 @@ export function OutletOfferCard({ offer }: { offer: OutletOffer }) {
                             <dt className="flex items-center gap-1.5 text-muted-foreground">
                                 <Timer
                                     aria-hidden
-                                    className="size-3.5 sm:size-4"
+                                    className="size-4 sm:size-5"
                                 />
                                 Istječe
                             </dt>

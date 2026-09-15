@@ -246,6 +246,10 @@ async function SlotsDisplay() {
             <Card className="p-6 border-tertiary border-b-4">
                 <CardContent noHeader>
                     <Stack spacing={4} className="text-center">
+                        <GameCalendarIcon
+                            aria-hidden
+                            className="mx-auto size-16"
+                        />
                         <Typography level="h6">
                             Nema dostupnih termina
                         </Typography>

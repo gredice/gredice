@@ -175,7 +175,7 @@ export function SearchInteractive({
                                 result={result}
                                 imageSize={56}
                                 className="size-14 rounded-lg"
-                                iconClassName="size-6"
+                                iconClassName="size-8"
                             />
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">

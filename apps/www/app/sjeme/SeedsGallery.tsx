@@ -3,7 +3,9 @@
 import type { SeedData } from '@gredice/client';
 import { orderBy } from '@gredice/js/arrays';
 import { Gallery } from '@gredice/ui/Gallery';
+import { GameSeedPacketIcon } from '@gredice/ui/GameIcons';
 import { Typography } from '@gredice/ui/Typography';
+import { PublicEmptyState } from '../../components/shared/placeholders/PublicEmptyState';
 import { useClientSearchParam } from '../../hooks/useClientSearchParam';
 import { SeedCard } from './SeedCard';
 import { seedCountLabel, seedMatchesSearch } from './seedPresentation';
@@ -39,9 +41,9 @@ export function SeedsGallery({
                 {seedCountLabel(filteredSeeds.length)}
             </Typography>
             {filteredSeeds.length === 0 ? (
-                <Typography level="body2" className="py-8 text-center">
+                <PublicEmptyState icon={GameSeedPacketIcon}>
                     Nema rezultata pretrage.
-                </Typography>
+                </PublicEmptyState>
             ) : (
                 <Gallery
                     gridHeader=""

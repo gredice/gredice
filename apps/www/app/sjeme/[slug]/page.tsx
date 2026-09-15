@@ -1,15 +1,8 @@
 import { decodeRouteParam } from '@gredice/js/uri';
 import { BarcodeValue } from '@gredice/ui/Barcode';
+import { GameLocationIcon, GameSeedlingIcon } from '@gredice/ui/GameIcons';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
-import {
-    Euro,
-    Hash,
-    MapPinHouse,
-    Percent,
-    Ruler,
-    Sprout,
-    Tally3,
-} from '@gredice/ui/icons';
+import { Euro, Hash, Percent, Ruler, Tally3 } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
@@ -235,7 +228,7 @@ export default async function SeedPage(props: PageProps<'/sjeme/[slug]'>) {
                         ) : null}
                         {seed.application?.applicationPlants != null ? (
                             <AttributeCard
-                                icon={<Sprout />}
+                                icon={<GameSeedlingIcon aria-hidden />}
                                 header="Broj biljaka"
                                 value={seed.application.applicationPlants}
                             />
@@ -253,7 +246,7 @@ export default async function SeedPage(props: PageProps<'/sjeme/[slug]'>) {
                         ) : null}
                         {seed.information.countryOfOrigin ? (
                             <AttributeCard
-                                icon={<MapPinHouse />}
+                                icon={<GameLocationIcon aria-hidden />}
                                 header="Zemlja podrijetla"
                                 value={seed.information.countryOfOrigin}
                             />

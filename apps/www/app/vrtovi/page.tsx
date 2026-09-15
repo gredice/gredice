@@ -1,9 +1,10 @@
 import { Card } from '@gredice/ui/Card';
-import { GameSeedlingIcon } from '@gredice/ui/GameIcons';
+import { GameGardenIcon, GameSeedlingIcon } from '@gredice/ui/GameIcons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
+import { PublicEmptyState } from '../../components/shared/placeholders/PublicEmptyState';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 import { PublicGardenLikeButton } from './PublicGardenLikeButton';
@@ -105,9 +106,9 @@ export default async function PublicGardensPage() {
                     ))}
                 </div>
             ) : (
-                <Typography level="body1" className="px-2">
+                <PublicEmptyState icon={GameGardenIcon}>
                     Trenutno nema vidljivih vrtova.
-                </Typography>
+                </PublicEmptyState>
             )}
         </Stack>
     );

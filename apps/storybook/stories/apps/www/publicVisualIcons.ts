@@ -1,21 +1,63 @@
 import {
     GameBasketIcon,
+    GameBlocksIcon,
     GameBlossomIcon,
     GameCalendarIcon,
+    GameCloudIcon,
     GameCommunityIcon,
     GameGlobeIcon,
     GameHarvestIcon,
     GameIdeaIcon,
     GameLeafIcon,
     GameLocationIcon,
+    GameMarketStallIcon,
     GameMoonIcon,
+    GamePawIcon,
+    GamePetHomeIcon,
     GamePlantDiseaseIcon,
     GamePlantPestIcon,
+    GameSearchIcon,
     GameSnowflakeIcon,
     GameSunIcon,
 } from '@gredice/ui/GameIcons';
 
 export const publicVisualIcons = [
+    {
+        name: 'GamePawIcon',
+        Icon: GamePawIcon,
+        usage: 'Pet habits and introductions',
+        path: 'apps/www/app/blokovi/ljubimci/GardenPetCard.tsx',
+    },
+    {
+        name: 'GamePetHomeIcon',
+        Icon: GamePetHomeIcon,
+        usage: 'Generic pet shelter information',
+        path: 'apps/www/app/blokovi/ljubimci/GardenPetsIntro.tsx',
+    },
+    {
+        name: 'GameMarketStallIcon',
+        Icon: GameMarketStallIcon,
+        usage: 'Producer and unavailable brand logo',
+        path: 'apps/www/app/sjeme/BrandLogo.tsx',
+    },
+    {
+        name: 'GameBlocksIcon',
+        Icon: GameBlocksIcon,
+        usage: 'Building block search fallback and empty catalogue',
+        path: 'packages/ui/src/PublicChrome/DirectorySearchResultVisual.tsx',
+    },
+    {
+        name: 'GameCloudIcon',
+        Icon: GameCloudIcon,
+        usage: 'Reused weather artwork: pet shelter routines',
+        path: 'apps/www/app/blokovi/ljubimci/GardenPetCard.tsx',
+    },
+    {
+        name: 'GameSearchIcon',
+        Icon: GameSearchIcon,
+        usage: 'Reused magnifier: search introduction',
+        path: 'apps/www/app/pretraga/page.tsx',
+    },
     {
         name: 'GameBlossomIcon',
         Icon: GameBlossomIcon,

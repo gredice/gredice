@@ -4,11 +4,12 @@ import type { BlockData } from '@gredice/client';
 import { orderBy } from '@gredice/js/arrays';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Gallery } from '@gredice/ui/Gallery';
-import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
+import { GameBlocksIcon, GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { Row } from '@gredice/ui/Row';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { ItemCard } from '../../components/shared/ItemCard';
+import { PublicEmptyState } from '../../components/shared/placeholders/PublicEmptyState';
 import { getBlockRouteAlias } from '../../lib/blocks/blockRoute';
 import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { KnownPages } from '../../src/KnownPages';
@@ -74,7 +75,9 @@ export function BlockGallery({
     return (
         <>
             {filteredBlocks.length === 0 && !hasOtherResults ? (
-                <Typography level="body2">Nema rezultata pretrage.</Typography>
+                <PublicEmptyState icon={GameBlocksIcon}>
+                    Nema rezultata pretrage.
+                </PublicEmptyState>
             ) : null}
             <Gallery
                 gridHeader={''}

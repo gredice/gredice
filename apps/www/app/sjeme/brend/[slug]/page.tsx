@@ -1,5 +1,6 @@
 import { decodeRouteParam } from '@gredice/js/uri';
-import { ExternalLink, Globe, MapPinHouse } from '@gredice/ui/icons';
+import { GameGlobeIcon, GameLocationIcon } from '@gredice/ui/GameIcons';
+import { ExternalLink } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -208,14 +209,14 @@ export default async function SeedBrandPage(
                         <div className="grid gap-2 sm:grid-cols-2">
                             {brand.information.country ? (
                                 <AttributeCard
-                                    icon={<MapPinHouse />}
+                                    icon={<GameLocationIcon aria-hidden />}
                                     header="Zemlja"
                                     value={brand.information.country}
                                 />
                             ) : null}
                             {website ? (
                                 <AttributeCard
-                                    icon={<Globe />}
+                                    icon={<GameGlobeIcon aria-hidden />}
                                     header="Web stranica"
                                     value={
                                         <a

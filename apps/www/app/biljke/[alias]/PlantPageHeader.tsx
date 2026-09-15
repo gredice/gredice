@@ -2,9 +2,8 @@ import type { OperationData, PlantData } from '@gredice/client';
 import { calculatePlantsPerField, FIELD_SIZE_LABEL } from '@gredice/js/plants';
 import { slug } from '@gredice/js/slug';
 import { Chip } from '@gredice/ui/Chip';
-import { GameSeedlingIcon } from '@gredice/ui/GameIcons';
+import { GameLocationIcon, GameSeedlingIcon } from '@gredice/ui/GameIcons';
 import { PlantGridIcon } from '@gredice/ui/GridIcons';
-import { MapPinHouse } from '@gredice/ui/icons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { PlantOrSortImage, SeedTimeInformationBadge } from '@gredice/ui/plants';
@@ -179,7 +178,10 @@ export function PlantPageHeader({
                             <Typography level="body2">Porijeklo</Typography>
                             {origin && (
                                 <Row spacing={2}>
-                                    <MapPinHouse className="size-5 shrink-0" />
+                                    <GameLocationIcon
+                                        aria-hidden
+                                        className="size-5 shrink-0"
+                                    />
                                     <Typography>{origin}</Typography>
                                 </Row>
                             )}
