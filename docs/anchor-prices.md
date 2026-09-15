@@ -38,18 +38,17 @@ source Git commit beside the constant.
 ## Display
 
 `AnchorPrice` is shared by WWW and Garden. It compares EUR amounts as formatted
-to cents. Equal amounts appear once with `Ista cijena kao 10. 9. 2026.`; changed
-amounts get a dated reference amount. This is the requested presentation of
-equal prices, not an exemption from displaying the reference date. Unknown
-history adds no claim. A matching reference price also suppresses an older
-30-day minimum. For changed or unknown references, the public catalog retains
-a separate 30-day minimum only when it differs from the current amount.
+to cents and renders a dated reference amount only when it differs from the
+current amount. Equal amounts and unknown history render no note. A matching
+reference price also suppresses an older 30-day minimum. For changed or unknown
+references, the public price list retains a separate 30-day minimum only when
+it differs from the current amount.
 
-WWW covers the price list, plant/sort/operation price cards, sunflower package
-cards, delivery pricing and delivery quote. Garden covers plant and operation
-selection, operation scheduling, sunflower package offers and unpaid cart
-items, including the checkout view of those items. Paid history and inventory
-redemptions are excluded. The public `GET /api/pricing` feed and
+Price-change information is displayed only on the public `/cjenik` page and for
+unpaid, non-inventory items in the Garden shopping cart, including checkout.
+Plant, sort and operation cards, delivery pricing, sunflower offers and other
+Garden selection or scheduling surfaces omit it. Paid history and inventory
+redemptions are also excluded. The public `GET /api/pricing` feed and
 `GET /api/docs/pricing` contract expose only published catalog entries;
 `anchorPrice: null` means evidence is unavailable.
 
