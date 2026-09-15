@@ -1,17 +1,14 @@
-import { farmerAvatarUrls } from '../Avatar/farmerAvatarSources';
+import { builtInAvatars } from '../Avatar/avatarCatalog';
 
-export type AvatarOption = {
-    label: string;
-    avatarUrl: string | null;
-};
+export { avatarCategories as AVATAR_CATEGORIES } from '../Avatar/avatarCatalog';
 
-export const AVATAR_OPTIONS: readonly AvatarOption[] = [
-    {
-        label: 'Farmer',
-        avatarUrl: farmerAvatarUrls.male,
-    },
-    {
-        label: 'Farmerka',
-        avatarUrl: farmerAvatarUrls.female,
-    },
-];
+export const AVATAR_OPTIONS = builtInAvatars.map(
+    ({ id, label, category, avatarUrl }) => ({
+        id,
+        label,
+        category,
+        avatarUrl,
+    }),
+);
+
+export type AvatarOption = (typeof AVATAR_OPTIONS)[number];

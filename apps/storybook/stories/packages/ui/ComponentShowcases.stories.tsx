@@ -3,7 +3,10 @@ import { Alert } from '@gredice/ui/Alert';
 import { AnchorPrice } from '@gredice/ui/AnchorPrice';
 import { ArchiveIcon } from '@gredice/ui/ArchiveIcon';
 import { Avatar, resolveAvatarSource } from '@gredice/ui/Avatar';
-import { AvatarSelectionMenu } from '@gredice/ui/AvatarSelectionMenu';
+import {
+    AVATAR_OPTIONS,
+    AvatarSelectionMenu,
+} from '@gredice/ui/AvatarSelectionMenu';
 import {
     AuthProvider,
     FacebookLoginButton,
@@ -484,6 +487,7 @@ function AvatarMenuDemo() {
     return (
         <AvatarSelectionMenu
             displayName="Gredice Storybook"
+            avatarUrl={avatarUrl}
             onChange={setAvatarUrl}
             title="Avatar za demo profil"
         >
@@ -1435,7 +1439,19 @@ function GardenWorkspaceShowcase() {
                 </PageHeader>
 
                 <GameAccountMenuPreview />
-                <FarmerAvatarsPreview />
+                <FarmerAvatarsPreview
+                    heading="Avatari za igru"
+                    options={AVATAR_OPTIONS.filter((option) =>
+                        [
+                            'bearded-farmer',
+                            'young-farmer-girl',
+                            'garden-robot',
+                            'butterfly',
+                            'rabbit',
+                            'garden-gnome',
+                        ].includes(option.id),
+                    )}
+                />
                 <PlantCareHudPreview />
                 <AchievementCollectionShowcase state="starter" />
                 <Row spacing={3} className="flex-wrap">

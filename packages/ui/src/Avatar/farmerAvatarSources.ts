@@ -1,22 +1,14 @@
-/// <reference types="next/image-types/global" />
+import { builtInAvatars } from './avatarCatalog';
 
-import femaleArtwork from './assets/farmer-female.webp';
-import maleArtwork from './assets/farmer-male.webp';
+export { farmerAvatarUrls } from './avatarCatalog';
 
-// These URLs are persisted in user profiles. Keep them stable across artwork updates.
-export const farmerAvatarUrls = {
-    male: 'https://cdn.gredice.com/avatars/farmer-male.png',
-    female: 'https://cdn.gredice.com/avatars/farmer-female.png',
-};
+const artworkByUrl = new Map(
+    builtInAvatars.map(({ avatarUrl, artwork }) => [avatarUrl, artwork]),
+);
 
 /** Resolve built-in avatars locally while preserving custom image URLs. */
 export function resolveAvatarSource(source: string) {
-    const artwork =
-        source === farmerAvatarUrls.male
-            ? maleArtwork
-            : source === farmerAvatarUrls.female
-              ? femaleArtwork
-              : undefined;
+    const artwork = artworkByUrl.get(source);
 
     // Next.js imports image metadata; Storybook and component tests import URLs.
     return artwork

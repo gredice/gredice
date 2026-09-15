@@ -1,7 +1,9 @@
 import { Avatar } from '@gredice/ui/Avatar';
 import { AvatarSelectionMenu } from '@gredice/ui/AvatarSelectionMenu';
+import { Modal } from '@gredice/ui/Modal';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { expect, test } from '@playwright/experimental-ct-react';
+import { AvatarCollectionFixture } from './AvatarCollectionFixture';
 
 const maleUrl = 'https://cdn.gredice.com/avatars/farmer-male.png';
 const femaleUrl = 'https://cdn.gredice.com/avatars/farmer-female.png';
@@ -74,9 +76,129 @@ test('the avatar picker keeps saving stable choices and can clear the selection'
         </AvatarSelectionMenu>,
     );
 
-    for (const name of ['Farmer', 'Farmerka', 'Prazno']) {
+    for (const name of [
+        'Farmer',
+        'Farmerka',
+        'Vrtni robot',
+        'Leptir',
+        'Vrtni patuljak',
+        'Prazno',
+    ]) {
         await page.getByRole('button', { name: 'Promijeni avatar' }).click();
-        await page.getByRole('menuitem', { name, exact: true }).click();
+        await page
+            .getByRole('dialog', { name: 'Odaberi avatar' })
+            .getByRole('button', { name, exact: true })
+            .click();
     }
-    await expect.poll(() => selections).toEqual([maleUrl, femaleUrl, null]);
+    await expect
+        .poll(() => selections)
+        .toEqual([
+            maleUrl,
+            femaleUrl,
+            'https://cdn.gredice.com/avatars/garden-robot.webp',
+            'https://cdn.gredice.com/avatars/butterfly.webp',
+            'https://cdn.gredice.com/avatars/garden-gnome.webp',
+            null,
+        ]);
+});
+
+test('every avatar renders from bundled artwork without depending on the CDN', async ({
+    mount,
+    page,
+}) => {
+    await page.route('https://cdn.gredice.com/avatars/**', (route) =>
+        route.abort(),
+    );
+    await mount(<AvatarCollectionFixture />);
+    await expect(page.getByRole('img')).toHaveCount(58);
+    await expect
+        .poll(() =>
+            page
+                .locator('img')
+                .evaluateAll((images: HTMLImageElement[]) =>
+                    images.every(
+                        (image) =>
+                            image.complete &&
+                            image.naturalWidth === 512 &&
+                            !image.src.startsWith('https://cdn.gredice.com/'),
+                    ),
+                ),
+        )
+        .toBe(true);
+    await expect(page.getByRole('img', { name: /Suncokret/i })).toHaveCount(0);
+});
+
+test('the gallery shows the saved selection and restores keyboard focus on dismissal', async ({
+    mount,
+    page,
+}) => {
+    const robotUrl = 'https://cdn.gredice.com/avatars/garden-robot.webp';
+    await mount(
+        <AvatarSelectionMenu
+            displayName="Ana"
+            avatarUrl={robotUrl}
+            onChange={() => {}}
+        >
+            <button type="button">Promijeni avatar</button>
+        </AvatarSelectionMenu>,
+    );
+    const trigger = page.getByRole('button', { name: 'Promijeni avatar' });
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+    const dialog = page.getByRole('dialog', { name: 'Odaberi avatar' });
+    await expect(dialog).toBeVisible();
+    await expect(
+        dialog.getByRole('button', { name: 'Vrtni robot', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await expect(
+        dialog.getByRole('button', { name: 'Farmer', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'false');
+    await expect(dialog.getByRole('region')).toHaveCount(3);
+    await page.keyboard.press('Escape');
+    await expect(dialog).not.toBeVisible();
+    await expect(trigger).toBeFocused();
+});
+
+test('a mobile user can reach the last avatar from inside the profile modal', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 360, height: 640 });
+    const selections: (string | null)[] = [];
+    await mount(
+        <Modal title="Profil" open>
+            <AvatarSelectionMenu
+                displayName="Ana"
+                avatarUrl={null}
+                onChange={(value) => selections.push(value)}
+            >
+                <button type="button">Promijeni avatar</button>
+            </AvatarSelectionMenu>
+        </Modal>,
+    );
+    const trigger = page.getByRole('button', { name: 'Promijeni avatar' });
+    await trigger.click();
+    const picker = page.getByRole('dialog', { name: 'Odaberi avatar' });
+    const lastChoice = picker.getByRole('button', {
+        name: 'Vrtni patuljak',
+        exact: true,
+    });
+    await lastChoice.scrollIntoViewIfNeeded();
+    await expect(lastChoice).toBeInViewport();
+    await expect
+        .poll(() =>
+            picker.evaluate(
+                (element) => element.scrollWidth <= element.clientWidth,
+            ),
+        )
+        .toBe(true);
+    await lastChoice.click();
+    await expect
+        .poll(() => selections)
+        .toEqual(['https://cdn.gredice.com/avatars/garden-gnome.webp']);
+    await expect(picker).not.toBeVisible();
+    await expect(
+        page.getByRole('dialog', { name: 'Profil', exact: true }),
+    ).toBeVisible();
+    await expect(trigger).toBeFocused();
 });

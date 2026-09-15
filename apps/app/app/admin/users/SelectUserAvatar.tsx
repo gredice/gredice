@@ -27,10 +27,12 @@ export function SelectUserAvatar({
     return (
         <AvatarSelectionMenu
             displayName={displayName}
+            avatarUrl={avatarUrl}
             onChange={handleAvatarChange}
         >
             <button
                 type="button"
+                aria-label="Promijeni avatar"
                 className="cursor-pointer rounded-full disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isPending}
             >

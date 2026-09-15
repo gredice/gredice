@@ -1,3 +1,4 @@
+import { AVATAR_OPTIONS } from '@gredice/ui/AvatarSelectionMenu';
 import {
     UserAchievementProgress,
     UserAvatar,
@@ -120,6 +121,26 @@ export const InitialsInColoredParent: Story = {
         <div className="inline-flex items-center gap-2 rounded-full bg-green-800 px-3 py-2 text-white">
             <UserAvatar displayName="Ana Kovač" size="sm" />
             <span className="text-sm font-medium">Moj vrt</span>
+        </div>
+    ),
+};
+
+export const Collection: Story = {
+    render: () => (
+        <FarmerAvatarsPreview
+            options={AVATAR_OPTIONS}
+            heading="Avatari za igru"
+        />
+    ),
+};
+
+export const CollectionDark: Story = {
+    render: () => (
+        <div className="dark rounded-lg bg-background p-6 text-foreground">
+            <FarmerAvatarsPreview
+                options={AVATAR_OPTIONS}
+                heading="Avatari za igru"
+            />
         </div>
     ),
 };
