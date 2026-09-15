@@ -16,12 +16,54 @@ import {
     GamePetHomeIcon,
     GamePlantDiseaseIcon,
     GamePlantPestIcon,
+    GameRulerIcon,
     GameSearchIcon,
     GameSnowflakeIcon,
+    GameSoilIcon,
+    GameSowingDepthIcon,
     GameSunIcon,
+    GameTagIcon,
+    GameTimerIcon,
+    GameWeightIcon,
 } from '@gredice/ui/GameIcons';
 
 export const publicVisualIcons = [
+    {
+        name: 'GameRulerIcon',
+        Icon: GameRulerIcon,
+        usage: 'Plant spacing and block height',
+        path: 'apps/www/app/biljke/[alias]/SowingAttributeCards.tsx',
+    },
+    {
+        name: 'GameSoilIcon',
+        Icon: GameSoilIcon,
+        usage: 'Plant soil composition',
+        path: 'apps/www/app/biljke/[alias]/GrowthAttributeCards.tsx',
+    },
+    {
+        name: 'GameSowingDepthIcon',
+        Icon: GameSowingDepthIcon,
+        usage: 'Sowing depth: composed soil and ruler',
+        path: 'apps/www/app/biljke/[alias]/SowingAttributeCards.tsx',
+    },
+    {
+        name: 'GameTimerIcon',
+        Icon: GameTimerIcon,
+        usage: 'Germination time and operation duration',
+        path: 'apps/www/app/radnje/[alias]/OperationAttributesCards.tsx',
+    },
+    {
+        name: 'GameWeightIcon',
+        Icon: GameWeightIcon,
+        usage: 'Seed packet weight',
+        path: 'apps/www/app/sjeme/[slug]/SeedAttributeCards.tsx',
+    },
+    {
+        name: 'GameTagIcon',
+        Icon: GameTagIcon,
+        usage: 'Product identifier decoration; real barcode remains unchanged',
+        path: 'apps/www/app/sjeme/[slug]/SeedAttributeCards.tsx',
+    },
     {
         name: 'GamePawIcon',
         Icon: GamePawIcon,

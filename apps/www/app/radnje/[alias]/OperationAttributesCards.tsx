@@ -1,10 +1,12 @@
 import type { OperationData } from '@gredice/client';
 import {
     GameGardenIcon,
+    GameHistoryIcon,
     GameRaisedBedSimpleIcon,
     GameSeedlingIcon,
+    GameTimerIcon,
+    GameToolsIcon,
 } from '@gredice/ui/GameIcons';
-import { Hourglass, Ruler, Timer } from '@gredice/ui/icons';
 import type { JSX } from 'react';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { operationFrequencyLabel } from '../../biljke/[alias]/PlantOperations';
@@ -54,7 +56,7 @@ export function OperationAttributesCards({
                 <AttributeCard
                     icon={
                         applicationMap[attributes.application]?.icon ?? (
-                            <Ruler />
+                            <GameToolsIcon aria-hidden />
                         )
                     }
                     header="Primjena"
@@ -65,13 +67,13 @@ export function OperationAttributesCards({
                 />
             )}
             <AttributeCard
-                icon={<Hourglass />}
+                icon={<GameHistoryIcon aria-hidden />}
                 header="Učestalost"
                 subheader="Savjet o učestalosti izvođenja radnje"
                 value={operationFrequencyLabel(attributes?.frequency)}
             />
             <AttributeCard
-                icon={<Timer />}
+                icon={<GameTimerIcon aria-hidden />}
                 header="Trajanje"
                 subheader="Prosječno vrijeme izvođenja radnje u minutama"
                 value={
