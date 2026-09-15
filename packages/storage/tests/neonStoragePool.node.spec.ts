@@ -57,6 +57,26 @@ test('pool diagnostics allow safe codes without serializing error payloads', () 
         ),
         false,
     );
+
+    const cyclicRoot: { cause?: unknown; error?: unknown } = {};
+    cyclicRoot.cause = cyclicRoot;
+    let cyclicTail = cyclicRoot;
+    for (let index = 0; index < 4; index += 1) {
+        const next: { cause?: unknown; error?: unknown } = {
+            cause: cyclicRoot,
+        };
+        cyclicTail.error = next;
+        cyclicTail = next;
+    }
+    cyclicTail.error = {
+        type: 'error',
+        target: { url: secret },
+    };
+    assert.deepEqual(neonPoolErrorDetails(cyclicRoot), {
+        kind: 'error-event',
+        code: undefined,
+    });
+    assert.equal(isRetryableNeonReadError(cyclicRoot), true);
 });
 
 test('transient read retry is bounded and keeps diagnostics sanitized', async (t) => {

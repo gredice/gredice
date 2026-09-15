@@ -37,18 +37,19 @@ function isErrorEvent(error: unknown) {
 function errorChain(error: unknown) {
     const chain: unknown[] = [];
     const pending = [error];
-    const seen = new Set<object>();
+    const seen = new Set<unknown>();
 
     while (pending.length > 0 && chain.length < 8) {
         const current = pending.shift();
-        chain.push(current);
-        if (typeof current !== 'object' || current === null) {
-            continue;
-        }
         if (seen.has(current)) {
             continue;
         }
         seen.add(current);
+        chain.push(current);
+
+        if (typeof current !== 'object' || current === null) {
+            continue;
+        }
 
         if ('cause' in current) {
             pending.push(current.cause);
