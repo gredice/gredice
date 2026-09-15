@@ -13,7 +13,7 @@ const meta = {
         operationId: 5089,
         expectedTaskVersionEventId: 20,
         notes: 'Preporuka dekapitacije rajcica i ispiranje od stetnika (smrdljivi martini po plodovima)\nSanitarna rezidba krastavaca\nUklanjanje blitve\nUklanjanje korova',
-        requestSuggestion: async () => suggestedNote,
+        requestSuggestion: async (): Promise<string | null> => suggestedNote,
         onChange: () => {},
     },
     render: function Editor(args) {
