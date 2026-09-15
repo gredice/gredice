@@ -1,6 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { Container } from '@gredice/ui/Container';
+import {
+    GameBasketIcon,
+    GameGardenIcon,
+    GameJournalIcon,
+} from '@gredice/ui/GameIcons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
@@ -29,19 +34,19 @@ export const metadata = createPublicMetadata({
 
 const accessLevels = [
     {
-        icon: '🌿',
+        icon: <GameJournalIcon aria-hidden className="size-12" />,
         title: 'Javno znanje',
         description:
             'AI asistent može bez prijave pretraživati biljke, sorte, sjeme, radnje i objavljene proizvode.',
     },
     {
-        icon: '🪴',
+        icon: <GameGardenIcon aria-hidden className="size-12" />,
         title: 'Tvoj vrt',
         description:
             'Autorizirane integracije mogu čitati vrtove, gredice, polja i radnje samo za dopušteni račun.',
     },
     {
-        icon: '🛒',
+        icon: <GameBasketIcon aria-hidden className="size-12" />,
         title: 'Zaštićene promjene',
         description:
             'Čitanje košarice traži prijavu, a svaka promjena i zasebnu dozvolu za pisanje.',

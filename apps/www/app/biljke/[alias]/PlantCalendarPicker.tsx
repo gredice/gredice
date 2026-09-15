@@ -1,5 +1,5 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
-import { Calendar, Sprout } from '@gredice/ui/icons';
+import { GameCalendarIcon, GameSeedlingIcon } from '@gredice/ui/GameIcons';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
@@ -33,7 +33,10 @@ export function PlantCalendarPicker({
                                     value="year"
                                     className="flex min-w-0 gap-1 overflow-hidden px-2"
                                 >
-                                    <Calendar className="size-4 shrink-0" />
+                                    <GameCalendarIcon
+                                        aria-hidden
+                                        className="size-5 shrink-0"
+                                    />
                                     <span className="truncate">
                                         Kalendar sijanja
                                     </span>
@@ -42,7 +45,10 @@ export function PlantCalendarPicker({
                                     value="growth"
                                     className="flex min-w-0 gap-1 overflow-hidden px-2"
                                 >
-                                    <Sprout className="size-4 shrink-0" />
+                                    <GameSeedlingIcon
+                                        aria-hidden
+                                        className="size-5 shrink-0"
+                                    />
                                     <span className="truncate">
                                         Kalendar rasta
                                     </span>

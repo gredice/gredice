@@ -1,8 +1,11 @@
 # Rendered game icons
 
 Use `@gredice/ui/GameIcons` for the garden's illustrated actions and objects.
-The images match the chunky low-poly geometry, beveled edges, warm wood, greens,
-and shaded materials of the existing backpack and shopping basket HUD artwork.
+The images share chunky low-poly geometry, beveled edges, tactile shaded materials
+and soft lighting across the game library. Use colors that suit each object:
+leaf greens, blue water, pink flowers, red fruit, terracotta, cream and natural skin
+tones. Warm wood and gold belong where the material or meaning calls for them,
+such as a basket or trophy; they are not a default palette for every new asset.
 
 - `assets/*.webp` contains the selected transparent rendered artwork, generated
   with the built-in image tool. The exact prompts and reference descriptions are
@@ -36,7 +39,7 @@ controls. Keep compact status indicators and standard utility controls legible.
 
 `GameWaterIcon`, `GameThermometerIcon`, `GameHeartIcon`, `GameLightningIcon` and
 `GameHealthIcon` cover soil readings, neighbour relationships and plant health.
-Water and lightning share their exact source bitmaps with composed weather icons
+Water, lightning, sun, moon and snowflake share their exact source bitmaps with composed weather icons
 through `gameWeatherArtwork`; keep these assets in one place.
 
 `GamePlantStatusIcon` covers all 12 plant statuses and an unknown-state fallback.
@@ -86,3 +89,30 @@ asset; it is bundled locally so settings do not depend on the CDN.
 
 Review `packages/game/Settings/OverviewNavigation` at mobile and desktop widths in
 light/dark themes. The Garden workspace showcase includes the same navigation.
+
+## Public website
+
+`GameLeafIcon`, `GameLocationIcon`, `GameCommunityIcon`, `GameGlobeIcon` and
+`GameIdeaIcon` cover plant facts, delivery and public feature cards. The plant
+disease and pest artwork is generic category illustration, not diagnostic
+photography. Those two assets retain a 768px content edge for 192px page visuals;
+compact category cards use the same artwork at 40px.
+
+`assets/www-prompts.json` records the exact selected prompts and style references.
+Calendar, Blossom and Harvest reuse the existing lifecycle calendar, flower and harvest crate;
+Basket copies the garden HUD shopping basket byte-for-byte. Sun, Moon and
+Snowflake move unchanged from the game's weather assets into this shared package.
+The composed weather renderer still uses the same images and arrangement.
+
+Public pages use `PublicGardenIllustration` to reuse the existing delivery, sowing
+and raised-bed-care compositions. Keep real catalog images and public garden
+previews; illustration fallbacks only render when the existing image is absent.
+Hide artwork beside visible labels, but keep currency units accessible.
+
+Review `apps/www/Visuals/PublicVisuals` in light/dark themes at 24–96px, with larger
+editorial examples and actual public card components. The searchable game icon
+inventory includes these shared exports under Public-site artwork. See
+`docs/www-visual-audit.md` for source routes, decisions and retained content emojis.
+
+WWW opts into `variant="game"` on OperationImage and OperationCategoryIcon for
+category controls and image fallbacks. Other consumers keep the default variant.

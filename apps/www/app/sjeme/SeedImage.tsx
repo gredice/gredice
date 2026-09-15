@@ -1,5 +1,5 @@
 import type { SeedData } from '@gredice/client';
-import { Sprout } from '@gredice/ui/icons';
+import { GameSeedPacketIcon } from '@gredice/ui/GameIcons';
 import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
 import { seedPrimaryImageUrl } from './seedPresentation';
@@ -37,7 +37,10 @@ export function SeedImage({
                 )}
                 role="img"
             >
-                <Sprout aria-hidden className="size-16" />
+                <GameSeedPacketIcon
+                    aria-hidden
+                    className="size-24 max-h-full max-w-full p-2"
+                />
             </div>
         );
     }

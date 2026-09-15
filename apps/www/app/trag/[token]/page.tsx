@@ -9,18 +9,18 @@ import {
 } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
 import { Card } from '@gredice/ui/Card';
-import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
-import { ImageGallery } from '@gredice/ui/ImageGallery';
 import {
-    Calendar,
-    Camera,
-    Droplets,
-    Hammer,
-    Leaf,
-    LinkOff,
-    Sprout,
-    Upload,
-} from '@gredice/ui/icons';
+    GameCalendarIcon,
+    GameCameraIcon,
+    GameHarvestIcon,
+    GameLeafIcon,
+    GamePlantStatusIcon,
+    GameSeedlingIcon,
+    GameToolsIcon,
+    GameWaterIcon,
+} from '@gredice/ui/GameIcons';
+import { ImageGallery } from '@gredice/ui/ImageGallery';
+import { LinkOff } from '@gredice/ui/icons';
 import { OperationCategoryIcon } from '@gredice/ui/OperationImage';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
@@ -31,6 +31,7 @@ import { headers } from 'next/headers';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { PublicGardenIllustration } from '../../../components/visuals/PublicGardenIllustration';
 import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import {
     PlantMonthCalendar,
@@ -373,7 +374,11 @@ function TraceHero({ trace }: { trace: PublicHarvestTrace }) {
                         />
                     ) : (
                         <div className="flex size-full items-center justify-center">
-                            <Sprout className="size-16 text-primary/70 sm:size-24" />
+                            <PublicGardenIllustration
+                                kind="sowing"
+                                size={256}
+                                className="size-full"
+                            />
                         </div>
                     )}
                 </div>
@@ -648,7 +653,7 @@ function TraceStatistics({ trace }: { trace: PublicHarvestTrace }) {
 
     const wateringCard = hasWatering ? (
         <StatisticCard
-            icon={<Droplets className="size-4" />}
+            icon={<GameWaterIcon aria-hidden className="size-6" />}
             label="Zalijevanje"
             value={
                 statistics.plantWaterLiters !== undefined
@@ -679,7 +684,7 @@ function TraceStatistics({ trace }: { trace: PublicHarvestTrace }) {
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
                 <div className="flex min-w-0 items-start gap-3">
                     <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                        <Camera className="size-4" />
+                        <GameCameraIcon aria-hidden className="size-6" />
                     </span>
                     <Stack spacing={1} className="min-w-0">
                         <Typography
@@ -711,7 +716,7 @@ function TraceStatistics({ trace }: { trace: PublicHarvestTrace }) {
 
     const otherOperationsCard = hasOtherOperations ? (
         <StatisticCard
-            icon={<Hammer className="size-4" />}
+            icon={<GameToolsIcon aria-hidden className="size-6" />}
             label="Ostale radnje"
             value={operationCountLabel(statistics.otherOperationCount)}
         >
@@ -774,7 +779,7 @@ function TraceStatistics({ trace }: { trace: PublicHarvestTrace }) {
 }
 
 function TimelineVisual({ item }: { item: PublicHarvestTraceTimelineItem }) {
-    const iconClassName = 'size-4 text-primary';
+    const iconClassName = 'size-6';
 
     if (item.imageUrl) {
         return (
@@ -794,17 +799,19 @@ function TimelineVisual({ item }: { item: PublicHarvestTraceTimelineItem }) {
         <span className="flex size-10 shrink-0 items-center justify-center rounded-lg">
             {item.kind === 'operation' ? (
                 <OperationCategoryIcon
+                    aria-hidden
+                    variant="game"
                     categoryName={item.operationCategoryName}
                     className={iconClassName}
                 />
             ) : item.tone === 'seed' ? (
-                <Sprout className={iconClassName} />
+                <GameSeedlingIcon aria-hidden className={iconClassName} />
             ) : item.tone === 'harvest' ? (
-                <Upload className={iconClassName} />
+                <GameHarvestIcon aria-hidden className={iconClassName} />
             ) : item.tone === 'ready' ? (
-                <Calendar className={iconClassName} />
+                <GameCalendarIcon aria-hidden className={iconClassName} />
             ) : (
-                <Leaf className={iconClassName} />
+                <GameLeafIcon aria-hidden className={iconClassName} />
             )}
         </span>
     );

@@ -3,7 +3,7 @@ import {
     calculatePlantsPerField,
     getHarvestPlantRemovalDisclaimer,
 } from '@gredice/js/plants';
-import { ShoppingCart, Store } from '@gredice/ui/icons';
+import { GameCalendarIcon, GameHarvestIcon } from '@gredice/ui/GameIcons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
@@ -106,7 +106,7 @@ export function HarvestAttributeCards({
         <Stack spacing={2}>
             <div className="grid grid-cols-2 gap-2">
                 <AttributeCard
-                    icon={<Store />}
+                    icon={<GameCalendarIcon aria-hidden />}
                     header="Vrijeme berbe"
                     value={formatDayRange(
                         attributes?.harvestWindowMin,
@@ -114,7 +114,7 @@ export function HarvestAttributeCards({
                     )}
                 />
                 <AttributeCard
-                    icon={<ShoppingCart />}
+                    icon={<GameHarvestIcon aria-hidden />}
                     header="Očekivani prinos"
                     value={
                         yieldDetails ? (

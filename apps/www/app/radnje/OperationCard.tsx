@@ -49,6 +49,7 @@ export function OperationCard({
                                 }}
                             >
                                 <OperationImage
+                                    variant="game"
                                     operation={operation}
                                     size={compact ? 48 : 72}
                                 />

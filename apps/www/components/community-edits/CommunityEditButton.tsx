@@ -603,9 +603,10 @@ function OperationOptionIcon({
     return (
         <span className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background text-foreground">
             <OperationCategoryIcon
+                variant="game"
                 aria-hidden
                 categoryName={option.iconKey}
-                className="size-5"
+                className="size-6"
             />
         </span>
     );

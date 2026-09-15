@@ -1,4 +1,5 @@
-import { Discount, Sprout } from '@gredice/ui/icons';
+import { GameSeedlingIcon } from '@gredice/ui/GameIcons';
+import { Discount } from '@gredice/ui/icons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -41,9 +42,9 @@ export async function OutletLandingSection() {
                     </Stack>
                     <div className="flex flex-wrap gap-2">
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-sm text-secondary-foreground ring-1 ring-tertiary">
-                            <Sprout
+                            <GameSeedlingIcon
                                 aria-hidden
-                                className="size-4 text-primary"
+                                className="size-5 shrink-0"
                             />
                             Već krenule u rast
                         </span>

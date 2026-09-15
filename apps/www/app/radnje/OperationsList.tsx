@@ -88,8 +88,10 @@ export function OperationsList({
                                     href={`#${slug(stage.label)}`}
                                     startDecorator={
                                         <OperationCategoryIcon
+                                            aria-hidden
+                                            variant="game"
                                             categoryName={stage.name}
-                                            className="size-4"
+                                            className="size-5"
                                         />
                                     }
                                 >
@@ -120,8 +122,10 @@ export function OperationsList({
                         >
                             <Row spacing={4}>
                                 <OperationCategoryIcon
+                                    aria-hidden
+                                    variant="game"
                                     categoryName={stage.name}
-                                    className="size-5 shrink-0"
+                                    className="size-6 shrink-0"
                                 />
                                 <Typography level="h5" component="h2">
                                     {stage.label}

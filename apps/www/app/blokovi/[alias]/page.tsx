@@ -1,6 +1,7 @@
 import type { BlockData } from '@gredice/directory-types';
 import { decodeRouteParam } from '@gredice/js/uri';
 import { BlockImage } from '@gredice/ui/BlockImage';
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { Layers, Ruler } from '@gredice/ui/icons';
 import { ListHeader } from '@gredice/ui/List';
 import { Markdown } from '@gredice/ui/Markdown';
@@ -65,7 +66,7 @@ function BlockAttributes({ prices, attributes }: BlockData) {
                 value={attributes.stackable === true ? 'Da' : 'Ne'}
             />
             <AttributeCard
-                icon={<span className="text-xl">🌻</span>}
+                icon={<GameSunflowerIcon className="size-6" />}
                 header="Cijena"
                 value={
                     (prices.sunflowers ?? 0) <= 0

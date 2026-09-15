@@ -1,13 +1,8 @@
 import type { PlantData } from '@gredice/client';
 import { calculatePlantsPerField, FIELD_SIZE_LABEL } from '@gredice/js/plants';
+import { GameSeedlingIcon, GameThermometerIcon } from '@gredice/ui/GameIcons';
 import { PlantGridIcon } from '@gredice/ui/GridIcons';
-import {
-    ArrowDownToLine,
-    Ruler,
-    Sprout,
-    Thermometer,
-    Timer,
-} from '@gredice/ui/icons';
+import { ArrowDownToLine, Ruler, Timer } from '@gredice/ui/icons';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { KnownPages } from '../../../src/KnownPages';
 
@@ -68,12 +63,12 @@ export function SowingAttributeCards({
                 } cm`}
             />
             <AttributeCard
-                icon={<Sprout />}
+                icon={<GameSeedlingIcon aria-hidden />}
                 header="Klijanje"
                 value={attributes?.germinationType ?? '-'}
             />
             <AttributeCard
-                icon={<Thermometer />}
+                icon={<GameThermometerIcon aria-hidden />}
                 header="Temperatura klijanja"
                 value={`${attributes?.gernimationTemperature ?? '-'}°C`}
             />

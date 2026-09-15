@@ -3,7 +3,15 @@ import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Container } from '@gredice/ui/Container';
-import { Calendar, Warning } from '@gredice/ui/icons';
+import {
+    GameCalendarIcon,
+    GameGiftIcon,
+    GameInformationIcon,
+    GameLocationIcon,
+    GameReceiptIcon,
+    GameSeedlingIcon,
+} from '@gredice/ui/GameIcons';
+import { Warning } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -11,6 +19,7 @@ import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
+import { PublicGardenIllustration } from '../../components/visuals/PublicGardenIllustration';
 import { formatPrice } from '../../lib/formatPrice';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
@@ -46,12 +55,17 @@ export default function DeliveryPage() {
             <Stack>
                 <PageHeader
                     padded
-                    header="🚚 Dostava"
+                    header="Dostava"
+                    visual={<PublicGardenIllustration kind="delivery" />}
                     subHeader="Sve informacije o dostavi povrća iz tvojih gredica"
                 />
                 <StyledHtml>
                     <h2 id={deliverySummaryHeadingId}>
-                        🌱 {deliverySummaryHeading}
+                        <GameSeedlingIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-7 align-text-bottom"
+                        />{' '}
+                        {deliverySummaryHeading}
                     </h2>
                     <p>{deliverySummaryLead}</p>
                     <ul>
@@ -83,13 +97,27 @@ export default function DeliveryPage() {
                         dostavu na vrijeme. Termini unutar dva dana često više
                         nisu dostupni.
                     </Typography>
-                    <h2 id="besplatna-dostava">🆓 Besplatna dostava</h2>
+                    <h2 id="besplatna-dostava">
+                        <GameGiftIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-7 align-text-bottom"
+                        />{' '}
+                        Besplatna dostava
+                    </h2>
                     <p>
                         Za adrese na području Zagreba dostava je uvijek{' '}
                         <strong>besplatna</strong>, bez obzira na broj biljaka
                         ili količinu povrća u narudžbi.
                     </p>
-                    <Alert startDecorator={'ℹ️'} color="info">
+                    <Alert
+                        startDecorator={
+                            <GameInformationIcon
+                                aria-hidden
+                                className="size-6"
+                            />
+                        }
+                        color="info"
+                    >
                         Dostava za adrese izvan Zagreba računa se prema
                         udaljenosti:
                         <strong>
@@ -99,7 +127,13 @@ export default function DeliveryPage() {
                         </strong>
                         .
                     </Alert>
-                    <h2 id="cijena-dostave">🫰 Cijena dostave</h2>
+                    <h2 id="cijena-dostave">
+                        <GameReceiptIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-7 align-text-bottom"
+                        />{' '}
+                        Cijena dostave
+                    </h2>
                     <p>
                         Za dostavu izvan Zagreba cijena se računa prema
                         udaljenosti od naše najbliže{' '}
@@ -177,7 +211,13 @@ export default function DeliveryPage() {
                                     <strong>Zagreb</strong>
                                 </td>
                                 <td className="border-border border-t border-r px-2 py-2">
-                                    <strong>🎉 Besplatna dostava 🎉</strong>
+                                    <strong>
+                                        <GameGiftIcon
+                                            aria-hidden
+                                            className="mr-2 inline-block size-5 align-text-bottom"
+                                        />{' '}
+                                        Besplatna dostava
+                                    </strong>
                                 </td>
                                 <td className="border-border border-t px-2 py-2">
                                     <strong>0 €</strong>
@@ -246,7 +286,13 @@ export default function DeliveryPage() {
                         </strong>
                         , niti nudimo dostavu <strong>izvan Hrvatske</strong>.
                     </Alert>
-                    <h2 id="osobno-preuzimanje">🚶 Osobno preuzimanje</h2>
+                    <h2 id="osobno-preuzimanje">
+                        <GameLocationIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-7 align-text-bottom"
+                        />{' '}
+                        Osobno preuzimanje
+                    </h2>
                     <p>
                         Ako ti više odgovara osobno preuzeti svoje povrće,
                         uvijek možeš doći do jedne od naših{' '}
@@ -271,7 +317,11 @@ export default function DeliveryPage() {
                         </li>
                     </ul>
                     <h2 id="planiranje-i-zakazivanje">
-                        ⌛ Planiranje i zakazivanje
+                        <GameCalendarIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-7 align-text-bottom"
+                        />{' '}
+                        Planiranje i zakazivanje
                     </h2>
                     <p>
                         Dostave se zakazuju unaprijed, minimalno{' '}
@@ -303,7 +353,13 @@ export default function DeliveryPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <Card className="mb-8">
                     <CardHeader>
-                        <CardTitle>📅 Termini dostave</CardTitle>
+                        <CardTitle>
+                            <GameCalendarIcon
+                                aria-hidden
+                                className="mr-2 inline-block size-7 align-text-bottom"
+                            />{' '}
+                            Termini dostave
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <Stack spacing={6}>
@@ -314,7 +370,12 @@ export default function DeliveryPage() {
                             <Button
                                 href={KnownPages.DeliverySlots}
                                 variant="solid"
-                                startDecorator={<Calendar className="size-4" />}
+                                startDecorator={
+                                    <GameCalendarIcon
+                                        aria-hidden
+                                        className="size-4"
+                                    />
+                                }
                             >
                                 Pogledaj dostupne termine
                             </Button>

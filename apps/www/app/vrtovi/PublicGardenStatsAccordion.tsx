@@ -1,5 +1,6 @@
 import { Accordion } from '@gredice/ui/Accordion';
-import { LayoutGrid, Ruler, Wallet } from '@gredice/ui/icons';
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
+import { LayoutGrid, Ruler } from '@gredice/ui/icons';
 import { Typography } from '@gredice/ui/Typography';
 import {
     formatGardenAreaSquareMeters,
@@ -28,7 +29,7 @@ export function PublicGardenStatsAccordion({
         },
         {
             id: 'sunflowers',
-            icon: Wallet,
+            icon: GameSunflowerIcon,
             label: 'Cijena blokova',
             value: formatGardenSunflowerPrice(stats.totalSunflowerPrice),
         },
@@ -53,7 +54,11 @@ export function PublicGardenStatsAccordion({
                         >
                             <Icon
                                 aria-hidden
-                                className="mt-0.5 size-4 shrink-0 text-primary"
+                                className={
+                                    id === 'sunflowers'
+                                        ? 'size-5 shrink-0'
+                                        : 'mt-0.5 size-4 shrink-0 text-primary'
+                                }
                             />
                             <div className="min-w-0">
                                 <Typography

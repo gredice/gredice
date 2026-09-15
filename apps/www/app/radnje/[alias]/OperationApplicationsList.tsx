@@ -2,7 +2,7 @@ import { isOperationApplicableToPlant } from '@gredice/js/operations';
 import { getHarvestBehaviorOverviewDisclaimer } from '@gredice/js/plants';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Card, CardContent } from '@gredice/ui/Card';
-import { Leaf } from '@gredice/ui/icons';
+import { GameSeedlingIcon } from '@gredice/ui/GameIcons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
@@ -92,7 +92,10 @@ export async function OperationApplicationsList({
                     <Card className="border-tertiary border-b-4">
                         <CardContent noHeader>
                             <Row spacing={4}>
-                                <Leaf aria-hidden className="size-6 shrink-0" />
+                                <GameSeedlingIcon
+                                    aria-hidden
+                                    className="size-6 shrink-0"
+                                />
                                 <Typography>
                                     Ova radnja je dostupna za sve biljke
                                 </Typography>

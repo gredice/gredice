@@ -1,5 +1,5 @@
 import { Card, CardContent } from '@gredice/ui/Card';
-import { Bug, Shield } from '@gredice/ui/icons';
+import { GamePlantDiseaseIcon, GamePlantPestIcon } from '@gredice/ui/GameIcons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -25,7 +25,8 @@ export function PlantHealthIssueCard({
 }: {
     issue: PlantHealthIssueCardData;
 }) {
-    const Icon = issue.kind === 'disease' ? Shield : Bug;
+    const Icon =
+        issue.kind === 'disease' ? GamePlantDiseaseIcon : GamePlantPestIcon;
     const borderClassName =
         issue.kind === 'disease' ? 'border-emerald-500' : 'border-amber-500';
     const visibleAffectedPlantNames =
@@ -46,9 +47,7 @@ export function PlantHealthIssueCard({
             <CardContent noHeader>
                 <Stack spacing={3}>
                     <Row spacing={3} alignItems="start">
-                        <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                            <Icon className="size-5" />
-                        </span>
+                        <Icon aria-hidden className="mt-0.5 size-10 shrink-0" />
                         <Stack spacing={1} className="min-w-0">
                             <Typography level="body3" secondary>
                                 {plantHealthIssueKindLabel(issue.kind)}
