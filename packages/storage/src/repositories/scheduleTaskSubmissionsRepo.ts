@@ -127,7 +127,7 @@ export type OperationTaskVerificationResult = {
 
 export type OperationCompletionEvidenceUpdateResult = {
     kind: 'operation';
-    status: 'pendingVerification';
+    status: 'pendingVerification' | 'completed';
     eventId: number;
     occurredAt: Date;
     created: boolean;
@@ -1599,10 +1599,11 @@ export async function updateOperationCompletionEvidence(
             await assertCurrentAdmin(tx, updatedBy);
             await lockOperationAggregateRow(tx, validOperationId);
             const operation = await getOperationById(validOperationId, tx);
-            if (operation.status !== 'pendingVerification') {
+            const status = operation.status;
+            if (status !== 'pendingVerification' && status !== 'completed') {
                 throw new ScheduleTaskSubmissionError(
                     'invalid_status',
-                    'Zapis završetka može se urediti samo prije verifikacije.',
+                    'Zapis završetka može se urediti samo za dovršenu radnju.',
                 );
             }
 
@@ -1645,7 +1646,7 @@ export async function updateOperationCompletionEvidence(
                 if (isExactRetry) {
                     return {
                         kind: 'operation',
-                        status: 'pendingVerification',
+                        status,
                         eventId: latestEvent.id,
                         occurredAt: latestEvent.createdAt,
                         created: false,
@@ -1654,6 +1655,16 @@ export async function updateOperationCompletionEvidence(
                 throw new ScheduleTaskSubmissionError(
                     'task_changed',
                     'Zapis završetka je u međuvremenu promijenjen. Osvježi zadatak i pokušaj ponovno.',
+                );
+            }
+
+            if (
+                status === 'completed' &&
+                !sameStrings(currentImageUrls, normalizedImageUrls)
+            ) {
+                throw new ScheduleTaskSubmissionError(
+                    'invalid_status',
+                    'Nakon verifikacije moguće je urediti samo napomenu završetka.',
                 );
             }
 
@@ -1669,7 +1680,7 @@ export async function updateOperationCompletionEvidence(
                 }
                 return {
                     kind: 'operation',
-                    status: 'pendingVerification',
+                    status,
                     eventId: latestEvent.id,
                     occurredAt: latestEvent.createdAt,
                     created: false,
@@ -1689,7 +1700,7 @@ export async function updateOperationCompletionEvidence(
             );
             return {
                 kind: 'operation',
-                status: 'pendingVerification',
+                status,
                 eventId: event.id,
                 occurredAt: event.createdAt,
                 created: true,

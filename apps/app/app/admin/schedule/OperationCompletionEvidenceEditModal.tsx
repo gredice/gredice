@@ -40,6 +40,7 @@ type EditOperationCompletionEvidenceModalBaseProps = {
     label: string;
     initialNotes?: string | null;
     initialImageUrls?: string[] | null;
+    notesOnly?: boolean;
 };
 
 type EditOperationCompletionEvidenceModalProps =
@@ -73,6 +74,7 @@ export function OperationCompletionEvidenceEditModal({
     label,
     initialNotes,
     initialImageUrls,
+    notesOnly = false,
     trigger,
     renderTrigger,
 }: EditOperationCompletionEvidenceModalProps) {
@@ -157,7 +159,7 @@ export function OperationCompletionEvidenceEditModal({
 
             setIsSubmitting(true);
             const uploadedImageUrls =
-                uploadItemCount > 0
+                !notesOnly && uploadItemCount > 0
                     ? await imageUploaderRef.current?.uploadPendingImages()
                     : [];
             if (!uploadedImageUrls) {
@@ -167,10 +169,9 @@ export function OperationCompletionEvidenceEditModal({
                 return;
             }
 
-            const nextImageUrls = normalizeImageUrls([
-                ...imageUrls,
-                ...uploadedImageUrls,
-            ]);
+            const nextImageUrls = notesOnly
+                ? initialUrls
+                : normalizeImageUrls([...imageUrls, ...uploadedImageUrls]);
             if (nextImageUrls.length > MAX_COMPLETION_IMAGE_COUNT) {
                 setErrorMessage(
                     `Zapis završetka može imati najviše ${MAX_COMPLETION_IMAGE_COUNT} slika.`,
@@ -178,7 +179,7 @@ export function OperationCompletionEvidenceEditModal({
                 return;
             }
 
-            await updateOperationCompletionEvidenceAction(
+            const result = await updateOperationCompletionEvidenceAction(
                 ...buildOperationCompletionEvidenceActionArguments({
                     operationId,
                     expectedTaskVersionEventId,
@@ -186,6 +187,11 @@ export function OperationCompletionEvidenceEditModal({
                     notes: trimmedNotes,
                 }),
             );
+            if (!result.success) {
+                setErrorMessage(result.message);
+                router.refresh();
+                return;
+            }
             setOpen(false);
             resetForm();
             router.refresh();
@@ -206,15 +212,18 @@ export function OperationCompletionEvidenceEditModal({
         0,
         MAX_COMPLETION_IMAGE_COUNT - imageUrls.length,
     );
+    const editorTitle = notesOnly
+        ? 'Uredi napomenu završetka'
+        : 'Uredi zapis završetka';
     const defaultTrigger = (
         <Button
             variant="outlined"
             size="xs"
-            title="Uredi zapis završetka"
+            title={editorTitle}
             startDecorator={<Edit className="size-3.5" />}
             loading={isSubmitting}
         >
-            Uredi zapis
+            {notesOnly ? 'Uredi napomenu' : 'Uredi zapis'}
         </Button>
     );
 
@@ -226,7 +235,7 @@ export function OperationCompletionEvidenceEditModal({
                 defaultTrigger,
             })}
             <Modal
-                title="Uređivanje zapisa završetka"
+                title={editorTitle}
                 open={open}
                 onOpenChange={handleOpenChange}
                 trigger={
@@ -236,15 +245,22 @@ export function OperationCompletionEvidenceEditModal({
             >
                 <Stack spacing={4}>
                     <Stack spacing={1}>
-                        <Typography level="h5">
-                            Uredi zapis završetka
-                        </Typography>
+                        <Typography level="h5">{editorTitle}</Typography>
                         <Typography
                             level="body2"
                             className="text-muted-foreground"
                         >
                             {label}
                         </Typography>
+                        {notesOnly ? (
+                            <Typography
+                                level="body2"
+                                className="text-muted-foreground"
+                            >
+                                Slike i podaci verifikacije ostat će
+                                nepromijenjeni.
+                            </Typography>
+                        ) : null}
                     </Stack>
                     <Stack spacing={2}>
                         <label
@@ -272,71 +288,75 @@ export function OperationCompletionEvidenceEditModal({
                             {notes.trim().length}/{MAX_COMPLETION_NOTES_LENGTH}
                         </Typography>
                     </Stack>
-                    <Stack spacing={2}>
-                        <Typography level="body2" semiBold>
-                            Slike
-                        </Typography>
-                        {imageUrls.length > 0 ? (
-                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                                {imageUrls.map((imageUrl, index) => (
-                                    <div
-                                        key={imageUrl}
-                                        className="relative overflow-hidden rounded-md border bg-muted"
-                                    >
-                                        <Image
-                                            src={imageUrl}
-                                            alt={`Slika završetka radnje ${operationId}-${index + 1}`}
-                                            width={240}
-                                            height={180}
-                                            className="aspect-[4/3] w-full object-cover"
-                                        />
-                                        <IconButton
-                                            aria-label={`Ukloni sliku ${index + 1}`}
-                                            type="button"
-                                            size="xs"
-                                            variant="solid"
-                                            color="danger"
-                                            className="absolute right-2 top-2"
-                                            disabled={isSubmitting}
-                                            onClick={() =>
-                                                removeImageUrl(imageUrl)
-                                            }
+                    {notesOnly ? null : (
+                        <Stack spacing={2}>
+                            <Typography level="body2" semiBold>
+                                Slike
+                            </Typography>
+                            {imageUrls.length > 0 ? (
+                                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                    {imageUrls.map((imageUrl, index) => (
+                                        <div
+                                            key={imageUrl}
+                                            className="relative overflow-hidden rounded-md border bg-muted"
                                         >
-                                            <Clear className="size-3.5" />
-                                        </IconButton>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <Typography
-                                level="body2"
-                                className="rounded-md border border-dashed border-input bg-muted/20 px-3 py-4 text-muted-foreground"
-                            >
-                                Nema slika u zapisu završetka.
-                            </Typography>
-                        )}
-                        {remainingImageSlots > 0 ? (
-                            <ImageUploadManager
-                                ref={imageUploaderRef}
-                                disabled={isSubmitting}
-                                handleUploadUrl="/api/operations/images/upload"
-                                clientPayload={JSON.stringify({ operationId })}
-                                maxItems={remainingImageSlots}
-                                uploadPath={operationImageUploadPath}
-                                addLabel="Dodaj nove slike"
-                                addMoreLabel="Dodaj još novih slika"
-                                emptyLabel="Dodajte slike koje će se spremiti u zapis završetka."
-                                onStateChange={handleUploadStateChange}
-                            />
-                        ) : (
-                            <Typography
-                                level="body2"
-                                className="text-muted-foreground"
-                            >
-                                Dosegnut je najveći broj slika.
-                            </Typography>
-                        )}
-                    </Stack>
+                                            <Image
+                                                src={imageUrl}
+                                                alt={`Slika završetka radnje ${operationId}-${index + 1}`}
+                                                width={240}
+                                                height={180}
+                                                className="aspect-[4/3] w-full object-cover"
+                                            />
+                                            <IconButton
+                                                aria-label={`Ukloni sliku ${index + 1}`}
+                                                type="button"
+                                                size="xs"
+                                                variant="solid"
+                                                color="danger"
+                                                className="absolute right-2 top-2"
+                                                disabled={isSubmitting}
+                                                onClick={() =>
+                                                    removeImageUrl(imageUrl)
+                                                }
+                                            >
+                                                <Clear className="size-3.5" />
+                                            </IconButton>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <Typography
+                                    level="body2"
+                                    className="rounded-md border border-dashed border-input bg-muted/20 px-3 py-4 text-muted-foreground"
+                                >
+                                    Nema slika u zapisu završetka.
+                                </Typography>
+                            )}
+                            {remainingImageSlots > 0 ? (
+                                <ImageUploadManager
+                                    ref={imageUploaderRef}
+                                    disabled={isSubmitting}
+                                    handleUploadUrl="/api/operations/images/upload"
+                                    clientPayload={JSON.stringify({
+                                        operationId,
+                                    })}
+                                    maxItems={remainingImageSlots}
+                                    uploadPath={operationImageUploadPath}
+                                    addLabel="Dodaj nove slike"
+                                    addMoreLabel="Dodaj još novih slika"
+                                    emptyLabel="Dodajte slike koje će se spremiti u zapis završetka."
+                                    onStateChange={handleUploadStateChange}
+                                />
+                            ) : (
+                                <Typography
+                                    level="body2"
+                                    className="text-muted-foreground"
+                                >
+                                    Dosegnut je najveći broj slika.
+                                </Typography>
+                            )}
+                        </Stack>
+                    )}
                     {errorMessage && (
                         <Typography level="body2" className="text-red-600">
                             {errorMessage}
