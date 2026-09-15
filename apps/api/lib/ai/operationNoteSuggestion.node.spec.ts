@@ -127,6 +127,20 @@ test('edited notes skip automatic generation and allow a manual request', async 
     assert.ok(fixture.calls.includes('generate'));
 });
 
+test('verified completion notes support both automatic and manual suggestions', async () => {
+    const fixture = setup({ status: 'completed' });
+    assert.equal((await fixture.request()).status, 200);
+    const edited = setup({ status: 'completed', edited: true });
+    assert.deepEqual(await (await edited.request()).json(), {
+        suggestion: null,
+        skipped: true,
+    });
+    assert.equal(
+        (await edited.request({ ...input, mode: 'manual' })).status,
+        200,
+    );
+});
+
 test('a locally edited note is never automatically rewritten', async () => {
     const fixture = setup();
     assert.deepEqual(
@@ -138,10 +152,10 @@ test('a locally edited note is never automatically rewritten', async () => {
     assert.deepEqual(fixture.calls, ['operation']);
 });
 
-test('rejects stale versions and verified operations before generation', async () => {
+test('rejects stale versions and operations without completion notes', async () => {
     for (const fixture of [
         setup({ version: 21 }),
-        setup({ status: 'completed' }),
+        setup({ status: 'planned' }),
     ]) {
         assert.equal((await fixture.request()).status, 409);
         assert.deepEqual(fixture.calls, ['operation']);
@@ -236,4 +250,49 @@ test('context uses a narrow projection and prompts preserve meaning and recommen
     );
     assert.match(operationNoteSuggestionSystem, /nikada upute/);
     assert.match(operationNoteSuggestionSystem, /Izbjegavaj naredbe/);
+});
+
+test('catalog grounding includes canonical names and scope without execution instructions', () => {
+    const grounded = buildOperationNoteContext({
+        operation,
+        raisedBed: null,
+        garden: { name: 'Povrtnjak' },
+        plantSorts: [],
+        operations: [
+            {
+                id: 10,
+                information: {
+                    name: 'inspect',
+                    label: 'Detaljan pregled',
+                    description: 'Full description',
+                    shortDescription: 'x'.repeat(500),
+                    instructions: 'Execution instructions must not be included',
+                },
+                attributes: {
+                    internal: true,
+                    application: 'raisedBedFull',
+                    duration: 10,
+                    deliverable: false,
+                    stage: {
+                        id: 1,
+                        information: { name: 'all', label: 'Svi' },
+                    },
+                },
+            },
+        ],
+    });
+    assert.equal(grounded.operation.name, 'Detaljan pregled');
+    assert.equal(grounded.garden?.name, 'Povrtnjak');
+    assert.deepEqual(grounded.operationNames, [
+        {
+            name: 'Detaljan pregled',
+            description: 'x'.repeat(300),
+            internal: true,
+            application: 'raisedBedFull',
+        },
+    ]);
+    assert.doesNotMatch(
+        JSON.stringify(grounded),
+        /Execution instructions|Full description|duration/,
+    );
 });

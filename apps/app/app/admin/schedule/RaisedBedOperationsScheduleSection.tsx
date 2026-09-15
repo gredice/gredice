@@ -778,7 +778,8 @@ export function RaisedBedOperationsScheduleSection({
                                             imageUrls={operation.imageUrls}
                                         />
                                     )}
-                                    {operationPendingVerification && (
+                                    {(isOperationCompleted(operation.status) ||
+                                        operationPendingVerification) && (
                                         <OperationCompletionEvidenceEditModal
                                             completionNotesEdited={
                                                 operation.completionNotesEdited
@@ -794,9 +795,18 @@ export function RaisedBedOperationsScheduleSection({
                                             initialImageUrls={
                                                 operation.imageUrls ?? []
                                             }
+                                            notesOnly={isOperationCompleted(
+                                                operation.status,
+                                            )}
                                             trigger={
                                                 <IconButton
-                                                    title="Uredi zapis završetka"
+                                                    title={
+                                                        isOperationCompleted(
+                                                            operation.status,
+                                                        )
+                                                            ? 'Uredi napomenu završetka'
+                                                            : 'Uredi zapis završetka'
+                                                    }
                                                     type="button"
                                                     size="xs"
                                                     variant="plain"

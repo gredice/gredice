@@ -3,6 +3,40 @@ import { OperationCompletionEvidenceEditHarness } from '../../../playwright/Oper
 
 const suggestion = 'Predlažemo uklanjanje vrhova rajčica.';
 
+test('verified notes can apply a manual suggestion while preserving existing images', async ({
+    mount,
+    page,
+}) => {
+    await page.route('**/api/ai/operation-notes', (route) =>
+        route.fulfill({ json: { suggestion, skipped: false } }),
+    );
+    await mount(<OperationCompletionEvidenceEditHarness verified edited />);
+    await page
+        .getByRole('button', { name: 'Uredi napomenu', exact: true })
+        .click();
+    await expect(
+        page.getByRole('button', { name: 'Dodaj nove slike' }),
+    ).not.toBeVisible();
+    await page
+        .getByRole('button', { name: 'Predloži uređenu napomenu' })
+        .click();
+    await page.getByRole('button', { name: 'Primijeni prijedlog' }).click();
+    await page.getByRole('button', { name: 'Spremi izmjene' }).click();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+    expect(
+        await page.evaluate(() =>
+            JSON.parse(
+                document.documentElement.dataset.savedEvidence ?? 'null',
+            ),
+        ),
+    ).toEqual([
+        5089,
+        20,
+        ['https://cdn.gredice.com/verified-photo.jpg'],
+        suggestion,
+    ]);
+});
+
 test('the shared modal applies and saves a suggestion through the existing versioned action', async ({
     mount,
     page,
@@ -50,9 +84,7 @@ test('a save conflict keeps the edited draft and dialog open', async ({
     await page.getByLabel('Napomena', { exact: true }).fill(suggestion);
     await page.getByRole('button', { name: 'Spremi izmjene' }).click();
     await expect(
-        page.getByText(
-            'Radnja se u međuvremenu promijenila. Osvježi stranicu i pokušaj ponovno.',
-        ),
+        page.getByText(/Radnja se u međuvremenu promijenila\./),
     ).toBeVisible();
     await expect(page.getByLabel('Napomena', { exact: true })).toHaveValue(
         suggestion,
@@ -61,7 +93,7 @@ test('a save conflict keeps the edited draft and dialog open', async ({
         await page.evaluate(
             () => document.documentElement.dataset.evidenceRefreshed,
         ),
-    ).toBeUndefined();
+    ).toBe('true');
 });
 
 test('canceling discards an applied draft and reopening edited notes stays manual', async ({

@@ -2,7 +2,7 @@
 
 Admins can request a Croatian language edit while reviewing a completed operation in the schedule (bed and farm sections) or operation details. These surfaces share `OperationCompletionEvidenceEditModal` and `OperationCompletionNotesEditor`.
 
-Opening the editor automatically requests a suggestion for a nonempty farmer note that has not been edited. A manual request uses the current draft. Applying a suggestion changes only the draft; saving uses the existing admin evidence-update action and version guard. Verification still controls customer visibility. Generation never schedules work, saves notes, or sends notifications.
+Opening the editor automatically requests a suggestion for a nonempty farmer note that has not been edited. A manual request uses the current draft. Applying a suggestion changes only the draft; saving uses the existing admin evidence-update action and version guard. Pending notes become customer-visible through verification. Saving a correction to an already verified note updates the visible text while the existing notes-only edit flow preserves images and verification metadata. Generation never schedules work, saves notes, or sends notifications.
 
 `completionNotesEdited` is derived from completion-evidence events whose text differs from the preceding note. Photo-only changes do not count. The marker survives reverting the text and resets when an operation is rescheduled, alongside the completion evidence. Existing edit history is recognized without a migration.
 

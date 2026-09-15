@@ -3,8 +3,10 @@ import { OperationCompletionEvidenceEditModal } from '../app/admin/schedule/Oper
 
 export function OperationCompletionEvidenceEditHarness({
     edited = false,
+    verified = false,
 }: {
     edited?: boolean;
+    verified?: boolean;
 }) {
     return (
         <AppRouterContext.Provider
@@ -26,6 +28,12 @@ export function OperationCompletionEvidenceEditHarness({
                 label="Detaljan pregled gredice"
                 initialNotes="rajcice vrh odrezat"
                 completionNotesEdited={edited}
+                notesOnly={verified}
+                initialImageUrls={
+                    verified
+                        ? ['https://cdn.gredice.com/verified-photo.jpg']
+                        : []
+                }
             />
         </AppRouterContext.Provider>
     );

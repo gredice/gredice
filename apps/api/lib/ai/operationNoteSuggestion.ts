@@ -64,7 +64,7 @@ export function buildOperationNoteContext({
         'name'
     > | null;
     plantSorts: Pick<PlantSortData, 'id' | 'information'>[];
-    operations: Pick<OperationData, 'id' | 'information'>[];
+    operations: Pick<OperationData, 'id' | 'information' | 'attributes'>[];
 }) {
     const sorts = new Map(plantSorts.map((sort) => [Number(sort.id), sort]));
     const plantNames = (sortId: number | null | undefined) => {
@@ -120,6 +120,9 @@ export function buildOperationNoteContext({
             name: contextText(
                 item.information?.label ?? item.information?.name,
             ),
+            description: contextText(item.information?.shortDescription, 300),
+            internal: item.attributes?.internal ?? false,
+            application: contextText(item.attributes?.application),
         })),
     };
 }

@@ -36,7 +36,7 @@ export function createAiOperationNotesRoutes(deps = defaults) {
                 401: { description: 'Admin authentication required.' },
                 409: {
                     description:
-                        'Operation changed or is no longer awaiting verification.',
+                        'Operation changed or no longer has editable completion notes.',
                 },
                 503: { description: 'Suggestion temporarily unavailable.' },
             },
@@ -49,7 +49,8 @@ export function createAiOperationNotesRoutes(deps = defaults) {
             try {
                 const operation = await deps.getOperation(input.operationId);
                 if (
-                    operation.status !== 'pendingVerification' ||
+                    (operation.status !== 'pendingVerification' &&
+                        operation.status !== 'completed') ||
                     operation.taskVersionEventId !==
                         input.expectedTaskVersionEventId
                 ) {
@@ -73,7 +74,8 @@ export function createAiOperationNotesRoutes(deps = defaults) {
                 );
                 const current = await deps.getOperation(input.operationId);
                 if (
-                    current.status !== 'pendingVerification' ||
+                    (current.status !== 'pendingVerification' &&
+                        current.status !== 'completed') ||
                     current.taskVersionEventId !==
                         input.expectedTaskVersionEventId
                 ) {
