@@ -160,12 +160,14 @@ function InventoryItemCell({
             className="relative aspect-square overflow-visible rounded-lg border bg-card p-0.5 transition-all hover:bg-primary/10"
         >
             {sortData ? (
-                <PlantOrSortImage
-                    width={48}
-                    height={48}
-                    className="rounded-md w-full h-full object-cover"
-                    plantSort={sortData}
-                />
+                <div className="relative size-full overflow-hidden rounded-md">
+                    <PlantOrSortImage
+                        fill
+                        sizes="(max-width: 767px) calc((100vw - 5.5rem) / 6), 68px"
+                        className="object-cover"
+                        plantSort={sortData}
+                    />
+                </div>
             ) : operationData ? (
                 <div className="flex items-center justify-center h-full w-full rounded-md bg-card">
                     <OperationImage operation={operationData} size={48} />
