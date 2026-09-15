@@ -1,6 +1,7 @@
 import type { AvatarProps } from '@gredice/ui/Avatar';
 import {
     AVATAR_OPTIONS,
+    type AvatarOption,
     AvatarSelectionMenu,
 } from '@gredice/ui/AvatarSelectionMenu';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
@@ -8,16 +9,22 @@ import { useState } from 'react';
 
 const sizes: AvatarProps['size'][] = ['sm', 'md', 'lg'];
 
-export function FarmerAvatarsPreview() {
+export function FarmerAvatarsPreview({
+    options = AVATAR_OPTIONS.slice(0, 2),
+    heading = 'Avatari farmera',
+}: {
+    options?: readonly AvatarOption[];
+    heading?: string;
+}) {
     const [selectedAvatar, setSelectedAvatar] = useState<string | null>(
         AVATAR_OPTIONS[0].avatarUrl,
     );
 
     return (
-        <section aria-label="Avatari farmera" className="space-y-6">
-            <h2 className="text-lg font-semibold">Avatari farmera</h2>
+        <section aria-label={heading} className="space-y-6">
+            <h2 className="text-lg font-semibold">{heading}</h2>
             <div className="flex flex-wrap gap-8">
-                {AVATAR_OPTIONS.map((option) => (
+                {options.map((option) => (
                     <div key={option.label} className="space-y-4">
                         <UserAvatar
                             avatarUrl={option.avatarUrl}
@@ -41,6 +48,7 @@ export function FarmerAvatarsPreview() {
             </div>
             <AvatarSelectionMenu
                 displayName="Veseli vrtlar"
+                avatarUrl={selectedAvatar}
                 onChange={setSelectedAvatar}
             >
                 <button
