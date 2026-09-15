@@ -31,7 +31,7 @@ function PlantHealthIssueGroup({
 
     return (
         <Stack spacing={3}>
-            <Typography level="h3" className="text-xl">
+            <Typography level="h2" className="text-xl">
                 {title}
             </Typography>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
