@@ -2,14 +2,16 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Client, Pool } from '@neondatabase/serverless';
 import { sql } from 'drizzle-orm';
+import { withTransientDatabaseReadRetry } from '../../src/databaseReadRetry';
 import { closeStorage, storage } from '../../src/storage';
 
 test('production pool lifecycle using the installed Neon driver', async (t) => {
     // Stub only the transport. Pool acquisition, release, idleListener, query
     // error forwarding, and Drizzle transactions use their real implementations.
     let connectionError: Error | undefined;
-    let queryError: Error | undefined;
-    let activeConnectionError: Error | undefined;
+    let queryError: unknown;
+    let activeConnectionError: unknown;
+    let clearActiveConnectionErrorAfterEmit = false;
     const statements: string[] = [];
     t.mock.method(Client.prototype, 'connect', (...args: unknown[]) => {
         const callback = args.at(-1);
@@ -45,7 +47,12 @@ test('production pool lifecycle using the installed Neon driver', async (t) => {
             if (typeof callback === 'function') {
                 queueMicrotask(() => {
                     if (activeConnectionError) {
-                        this.emit('error', activeConnectionError);
+                        const emittedError = activeConnectionError;
+                        if (clearActiveConnectionErrorAfterEmit) {
+                            activeConnectionError = undefined;
+                            clearActiveConnectionErrorAfterEmit = false;
+                        }
+                        this.emit('error', emittedError);
                     } else {
                         callback(error, result);
                     }
@@ -56,6 +63,7 @@ test('production pool lifecycle using the installed Neon driver', async (t) => {
         },
     );
     const logs = t.mock.method(console, 'error', () => undefined);
+    const warnings = t.mock.method(console, 'warn', () => undefined);
     t.after(closeStorage);
 
     const db = storage();
@@ -143,6 +151,71 @@ test('production pool lifecycle using the installed Neon driver', async (t) => {
             );
             assert.equal(logs.mock.callCount(), previousLogs);
             activeConnectionError = undefined;
+        },
+    );
+
+    await t.test(
+        'a nested Neon ErrorEvent retries on a replacement connection',
+        async () => {
+            const secret = 'wss://user:secret@database.invalid/private';
+            activeConnectionError = {
+                type: 'error',
+                target: { url: secret },
+            };
+            clearActiveConnectionErrorAfterEmit = true;
+            const previousEnds = end.mock.callCount();
+            const previousWarnings = warnings.mock.callCount();
+            const start = statements.length;
+
+            await withTransientDatabaseReadRetry(
+                () => db.execute(sql`select retry`),
+                {
+                    operation: 'hydrate-garden-operation-events',
+                    context: {
+                        gardenId: 66,
+                        aggregateCount: 295,
+                        eventTypeCount: 10,
+                    },
+                },
+            );
+
+            assert.deepEqual(statements.slice(start), [
+                'select retry',
+                'select retry',
+            ]);
+            assert.equal(end.mock.callCount(), previousEnds + 1);
+            assert.equal(warnings.mock.callCount(), previousWarnings + 2);
+            const warningCalls = warnings.mock.calls
+                .slice(previousWarnings)
+                .map((call) => call.arguments);
+            assert.deepEqual(warningCalls, [
+                [
+                    'Transient database read failed; retrying once',
+                    {
+                        gardenId: 66,
+                        aggregateCount: 295,
+                        eventTypeCount: 10,
+                        event: 'storage.database.read.retry',
+                        operation: 'hydrate-garden-operation-events',
+                        attempt: 1,
+                        maxAttempts: 2,
+                        error: { kind: 'error-event', code: undefined },
+                    },
+                ],
+                [
+                    'Database read recovered after transient failure',
+                    {
+                        gardenId: 66,
+                        aggregateCount: 295,
+                        eventTypeCount: 10,
+                        event: 'storage.database.read.recovered',
+                        operation: 'hydrate-garden-operation-events',
+                        attempt: 2,
+                        error: { kind: 'error-event', code: undefined },
+                    },
+                ],
+            ]);
+            assert.doesNotMatch(JSON.stringify(warningCalls), /secret|private/);
         },
     );
 

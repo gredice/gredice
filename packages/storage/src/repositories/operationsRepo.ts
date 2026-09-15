@@ -20,6 +20,7 @@ import {
     scheduleCacheKeys,
     scheduleCacheTtls,
 } from '../cache/scheduleCache';
+import { withTransientDatabaseReadRetry } from '../databaseReadRetry';
 import {
     attributeDefinitions,
     attributeValues,
@@ -262,6 +263,7 @@ function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
 async function fillOperationAggregates(
     operations: SelectOperation[],
     db: DatabaseClient = storage(),
+    readRecoveryContext?: { gardenId: number },
 ) {
     if (operations.length === 0) {
         return [];
@@ -283,13 +285,26 @@ async function fillOperationAggregates(
     const aggregatesEvents: Awaited<ReturnType<typeof getEvents>> = [];
     const eventPageSize = 10000;
     for (let offset = 0; ; offset += eventPageSize) {
-        const eventPage = await getEvents(
-            aggregateEventTypes,
-            aggregateIds,
-            offset,
-            eventPageSize,
-            db,
-        );
+        const readEventPage = () =>
+            getEvents(
+                aggregateEventTypes,
+                aggregateIds,
+                offset,
+                eventPageSize,
+                db,
+            );
+        const eventPage = readRecoveryContext
+            ? await withTransientDatabaseReadRetry(readEventPage, {
+                  operation: 'hydrate-garden-operation-events',
+                  context: {
+                      gardenId: readRecoveryContext.gardenId,
+                      aggregateCount: aggregateIds.length,
+                      eventTypeCount: aggregateEventTypes.length,
+                      offset,
+                      limit: eventPageSize,
+                  },
+              })
+            : await readEventPage();
         aggregatesEvents.push(...eventPage);
         if (eventPage.length < eventPageSize) {
             break;
@@ -1422,7 +1437,8 @@ export async function getAppliedRaisedBedOperationsForGarden(
 ) {
     // Select matching operation rows directly. Re-hydrating an intermediate
     // ID list creates an unbounded IN query for long-lived gardens.
-    const rows = await storage()
+    const db = storage();
+    const rows = await db
         .select()
         .from(operations)
         .where(
@@ -1434,7 +1450,9 @@ export async function getAppliedRaisedBedOperationsForGarden(
         )
         .orderBy(desc(operations.timestamp));
 
-    return fillOperationAggregates(rows);
+    // This repository path is read-only. Retry only a failed event page so a
+    // transport disconnect cannot discard otherwise complete public history.
+    return fillOperationAggregates(rows, db, { gardenId });
 }
 
 export async function getAllOperations(filter?: {
