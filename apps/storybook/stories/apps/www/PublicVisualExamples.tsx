@@ -19,6 +19,7 @@ const editorialArtwork = [
     { kind: 'delivery', title: 'Dostava' },
     { kind: 'sowing', title: 'Sjetva' },
     { kind: 'care', title: 'Briga o gredici' },
+    { kind: 'newsletter', title: 'Vrtne novosti i savjeti' },
 ] satisfies ReadonlyArray<{
     kind: ComponentProps<typeof PublicGardenIllustration>['kind'];
     title: string;
@@ -29,7 +30,7 @@ export function PublicVisualExamples() {
         <div className="space-y-8">
             <section aria-label="Editorial artwork" className="space-y-3">
                 <h2 className="text-xl font-semibold">Veće ilustracije</h2>
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     {editorialArtwork.map(({ kind, title }) => (
                         <figure
                             key={kind}

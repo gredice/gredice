@@ -195,3 +195,36 @@ horizontal overflow or failed styled assets. The sowing switch was exercised in
 both directions while preserving the search query. Brand-fallback initials now
 use foreground text after the contrast check caught the previous muted color.
 Storybook scans all WWW app components so imported public layouts match the site.
+
+
+## Landing newsletter illustration
+
+The large newsletter artwork was a missed style mismatch in the first two
+passes: its pastel texture and pale baked-in shadows differed from the faceted
+sowing, raised-bed-care and delivery compositions. It is now a transparent 3D
+still life with a teal envelope, ivory gardening note, red tomato, orange carrot
+and one correctly connected trowel. Platform logos and functional form-state
+icons remain intact.
+
+The built-in image-generation prompt, reference paths and input Git revision are
+recorded in [`newsletter-prompt.json`](../apps/www/assets/newsletter-prompt.json).
+The replacement lives at `apps/www/assets/NewsletterVisual.webp`, is 768px square,
+and retains the generated alpha. Resizing and WebP encoding reduced it from
+105,546 to 61,474 bytes. The newsletter uses `PublicGardenIllustration` at up to
+320px, with explicit dimensions, lazy loading and decorative empty alt text.
+
+The other large landing/service illustrations, shopping basket and outlet mark
+were inspected and already share the faceted game style. Real scene previews,
+mascot art, brand logos and the soil-composition explanatory diagram retain
+their own purposes.
+
+Review `apps/www/Visuals/PublicGardenIllustration` (Newsletter / NewsletterDark)
+at 320px, or all four editorial compositions in PublicVisuals (Light / Dark).
+The newsletter form and its server action have no behavioral changes.
+
+Newsletter validation: WWW and Storybook production builds and their TypeScript
+checks pass. The two dedicated stories pass WCAG A/AA checks and fit at 360px.
+Chromium verified the actual landing newsletter in light and dark themes at
+1280px and 360px: artwork decodes, dimensions and lazy loading are present, the
+email input can receive focus, and the image/form controls remain within the
+viewport. No newsletter subscription was submitted during visual verification.

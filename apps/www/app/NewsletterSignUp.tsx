@@ -7,9 +7,8 @@ import { Input } from '@gredice/ui/Input';
 import { MailCheck, Warning } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Typography } from '@gredice/ui/Typography';
-import Image from 'next/image';
 import { useActionState } from 'react';
-import NewsletterImage from '../assets/NewsletterVisual.webp';
+import { PublicGardenIllustration } from '../components/visuals/PublicGardenIllustration';
 import { newsletterSubscribe } from './actions';
 
 export function NewsletterSignUp() {
@@ -21,7 +20,11 @@ export function NewsletterSignUp() {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2">
             <div className="flex flex-col items-center justify-center">
-                <Image src={NewsletterImage} alt="Newsletter" width={320} />
+                <PublicGardenIllustration
+                    kind="newsletter"
+                    size={320}
+                    className="h-auto w-full max-w-80"
+                />
             </div>
             <div className="flex flex-col gap-y-4 justify-center">
                 <Typography level="h4" component="h2">
