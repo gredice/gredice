@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { neonPoolErrorDetails } from '../src/neonPoolError';
+import { withTransientDatabaseReadRetry } from '../src/databaseReadRetry';
+import {
+    isRetryableNeonReadError,
+    neonPoolErrorDetails,
+} from '../src/neonPoolError';
 
 test('pool diagnostics allow safe codes without serializing error payloads', () => {
     const secret = 'postgresql://user:secret@database.invalid/private';
@@ -29,6 +33,130 @@ test('pool diagnostics allow safe codes without serializing error payloads', () 
         kind: 'error-event',
         code: 'ECONNRESET',
     });
+
+    const wrappedEvent = Object.assign(new Error(`Failed query: ${secret}`), {
+        cause: Object.create({
+            type: 'error',
+            target: { url: secret },
+        }),
+    });
+    assert.deepEqual(neonPoolErrorDetails(wrappedEvent), {
+        kind: 'error-event',
+        code: undefined,
+    });
+    assert.equal(isRetryableNeonReadError(wrappedEvent), true);
+    assert.equal(
+        isRetryableNeonReadError(
+            Object.assign(new Error('connection failed'), { code: '08006' }),
+        ),
+        true,
+    );
+    assert.equal(
+        isRetryableNeonReadError(
+            Object.assign(new Error('unique violation'), { code: '23505' }),
+        ),
+        false,
+    );
+});
+
+test('transient read retry is bounded and keeps diagnostics sanitized', async (t) => {
+    const secret = 'postgresql://user:secret@database.invalid/private';
+    const warnings = t.mock.method(console, 'warn', () => undefined);
+    const errors = t.mock.method(console, 'error', () => undefined);
+    let attempts = 0;
+
+    const result = await withTransientDatabaseReadRetry(
+        async () => {
+            attempts += 1;
+            if (attempts === 1) {
+                throw Object.assign(new Error(secret), { code: 'ETIMEDOUT' });
+            }
+            return 'recovered';
+        },
+        {
+            operation: 'hydrate-garden-operation-events',
+            context: { gardenId: 66, aggregateCount: 295 },
+        },
+    );
+
+    assert.equal(result, 'recovered');
+    assert.equal(attempts, 2);
+    assert.equal(errors.mock.callCount(), 0);
+    assert.deepEqual(
+        warnings.mock.calls.map((call) => call.arguments),
+        [
+            [
+                'Transient database read failed; retrying once',
+                {
+                    gardenId: 66,
+                    aggregateCount: 295,
+                    event: 'storage.database.read.retry',
+                    operation: 'hydrate-garden-operation-events',
+                    attempt: 1,
+                    maxAttempts: 2,
+                    error: { kind: 'error', code: 'ETIMEDOUT' },
+                },
+            ],
+            [
+                'Database read recovered after transient failure',
+                {
+                    gardenId: 66,
+                    aggregateCount: 295,
+                    event: 'storage.database.read.recovered',
+                    operation: 'hydrate-garden-operation-events',
+                    attempt: 2,
+                    error: { kind: 'error', code: 'ETIMEDOUT' },
+                },
+            ],
+        ],
+    );
+    assert.doesNotMatch(JSON.stringify(warnings.mock.calls), /secret|private/);
+
+    const permanentError = Object.assign(new Error(secret), { code: '23505' });
+    attempts = 0;
+    await assert.rejects(
+        withTransientDatabaseReadRetry(
+            async () => {
+                attempts += 1;
+                throw permanentError;
+            },
+            { operation: 'hydrate-garden-operation-events' },
+        ),
+        (error) => error === permanentError,
+    );
+    assert.equal(attempts, 1);
+    assert.equal(errors.mock.callCount(), 1);
+    assert.doesNotMatch(JSON.stringify(errors.mock.calls), /secret|private/);
+
+    const transientError = {
+        type: 'error',
+        target: { url: secret },
+    };
+    attempts = 0;
+    await assert.rejects(
+        withTransientDatabaseReadRetry(
+            async () => {
+                attempts += 1;
+                throw transientError;
+            },
+            { operation: 'hydrate-garden-operation-events' },
+        ),
+        (error) => error === transientError,
+    );
+    assert.equal(attempts, 2);
+    assert.equal(errors.mock.callCount(), 2);
+    assert.deepEqual(errors.mock.calls.at(-1)?.arguments, [
+        'Database read failed',
+        {
+            event: 'storage.database.read.failed',
+            operation: 'hydrate-garden-operation-events',
+            attempt: 2,
+            maxAttempts: 2,
+            retryable: true,
+            error: { kind: 'error-event', code: undefined },
+        },
+    ]);
+    assert.doesNotMatch(JSON.stringify(errors.mock.calls), /secret|private/);
 });
 
 test('production Neon pool handles background errors and preserves database failures', () => {
@@ -62,6 +190,6 @@ test('production Neon pool handles background errors and preserves database fail
     );
     assert.ifError(result.error);
     assert.equal(result.status, 0, result.stdout + result.stderr);
-    assert.match(result.stdout, /# tests 7\b/);
+    assert.match(result.stdout, /# tests 8\b/);
     assert.match(result.stdout, /# fail 0\b/);
 });
