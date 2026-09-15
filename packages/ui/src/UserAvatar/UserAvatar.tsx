@@ -15,7 +15,7 @@ export function UserAvatar({
     avatarUrl,
     displayName,
     className,
-    size,
+    size = 'md',
     animate,
     achievementCount,
 }: UserAvatarProps) {
@@ -44,10 +44,13 @@ export function UserAvatar({
             {achievementCount !== undefined && (
                 <UserLevelBadge
                     level={getAchievementProgress(achievementCount).level}
+                    compact={size !== 'lg'}
                     className={cx(
-                        'absolute -bottom-1.5 -right-1 z-10',
-                        size === 'sm' &&
-                            'gap-0 border px-0.5 text-[9px] [&_svg]:size-2.5',
+                        'absolute z-10',
+                        size === 'lg'
+                            ? '-bottom-1.5 -right-1'
+                            : '-bottom-1 -right-0.5',
+                        size === 'sm' && 'h-3 min-w-3 text-[8px] leading-none',
                     )}
                 />
             )}

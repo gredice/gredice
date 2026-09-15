@@ -14,7 +14,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'UserAvatar displays either a user image or generated initials with configurable sizing and optional entry animation.',
+                    'UserAvatar displays a user image or initials with optional level badges. Small and medium avatars use compact number-only badges; large avatars include the level icon.',
             },
         },
     },
@@ -60,7 +60,7 @@ export const Levels: Story = {
 
 export const CompactLevels: Story = {
     render: () => (
-        <div className="flex items-center gap-8 p-4">
+        <div className="flex flex-wrap items-center gap-8 p-4">
             <UserAvatar
                 displayName="Ana Kovač"
                 achievementCount={0}
@@ -78,6 +78,17 @@ export const CompactLevels: Story = {
                 size="lg"
             />
             <UserLevelBadge level={12} />
+            <UserAvatar
+                displayName="Farmer"
+                avatarUrl="https://cdn.gredice.com/avatars/farmer-male.png"
+                achievementCount={66}
+                size="sm"
+            />
+            <UserAvatar
+                displayName="Farmerka"
+                avatarUrl="https://cdn.gredice.com/avatars/farmer-female.png"
+                achievementCount={66}
+            />
         </div>
     ),
 };
