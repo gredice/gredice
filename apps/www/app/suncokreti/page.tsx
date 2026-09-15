@@ -2,6 +2,7 @@ import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { Container } from '@gredice/ui/Container';
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { Navigate } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
@@ -60,7 +61,8 @@ function packageCard(pkg: PublicSunflowerPackage) {
             <CardContent>
                 <Stack spacing={3}>
                     <Typography level="h3" className="tabular-nums">
-                        {sunflowerFormatter.format(pkg.sunflowers)} 🌻
+                        {sunflowerFormatter.format(pkg.sunflowers)}
+                        <GameSunflowerIcon className="ml-1 inline-block size-6 align-text-bottom" />
                     </Typography>
                     {pkg.bonusSunflowers > 0 ? (
                         <Typography level="body2" className="text-primary">

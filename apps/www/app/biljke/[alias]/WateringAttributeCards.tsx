@@ -1,5 +1,5 @@
 import type { PlantData } from '@gredice/client';
-import { Droplet } from '@gredice/ui/icons';
+import { GameWaterIcon } from '@gredice/ui/GameIcons';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 
 export function WateringAttributeCards({
@@ -10,7 +10,7 @@ export function WateringAttributeCards({
     return (
         <div className="grid grid-cols-2 gap-2">
             <AttributeCard
-                icon={<Droplet />}
+                icon={<GameWaterIcon aria-hidden />}
                 header="Voda"
                 value={attributes?.water ?? '-'}
             />

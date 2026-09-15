@@ -1,7 +1,12 @@
 import { clientPublic } from '@gredice/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Container } from '@gredice/ui/Container';
-import { MapPin, Truck } from '@gredice/ui/icons';
+import {
+    GameCalendarIcon,
+    GameDeliveryIcon,
+    GameIdeaIcon,
+    GameLocationIcon,
+} from '@gredice/ui/GameIcons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -274,16 +279,16 @@ async function SlotsDisplay() {
                         {weekIndex === 0 && (
                             <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground md:ml-auto md:justify-end">
                                 <span className="inline-flex items-center gap-2">
-                                    <Truck
+                                    <GameDeliveryIcon
                                         aria-hidden
-                                        className="size-4 text-primary"
+                                        className="size-5 shrink-0"
                                     />
                                     Dostava na adresu
                                 </span>
                                 <span className="inline-flex items-center gap-2">
-                                    <MapPin
+                                    <GameLocationIcon
                                         aria-hidden
-                                        className="size-4 text-tertiary-foreground"
+                                        className="size-5 shrink-0"
                                     />
                                     Osobno preuzimanje
                                 </span>
@@ -343,8 +348,8 @@ async function SlotsDisplay() {
                                                     slot.status !== 'scheduled';
                                                 const SlotIcon =
                                                     slot.type === 'delivery'
-                                                        ? Truck
-                                                        : MapPin;
+                                                        ? GameDeliveryIcon
+                                                        : GameLocationIcon;
 
                                                 return (
                                                     <div
@@ -360,15 +365,9 @@ async function SlotsDisplay() {
                                                             <SlotIcon
                                                                 aria-hidden
                                                                 className={cx(
-                                                                    'size-4 shrink-0',
-                                                                    !isClosed &&
-                                                                        slot.type ===
-                                                                            'delivery' &&
-                                                                        'text-primary',
-                                                                    !isClosed &&
-                                                                        slot.type ===
-                                                                            'pickup' &&
-                                                                        'text-tertiary-foreground',
+                                                                    'size-5 shrink-0',
+                                                                    isClosed &&
+                                                                        'grayscale opacity-50',
                                                                 )}
                                                             />
                                                             <span
@@ -444,7 +443,10 @@ export default async function DeliverySlotsPage() {
             <Stack spacing={8}>
                 <PageHeader
                     padded
-                    header="📅 Termini dostave"
+                    header="Termini dostave"
+                    visual={
+                        <GameCalendarIcon aria-hidden className="size-48 p-6" />
+                    }
                     subHeader="Vidi termine za dostavu ili osobno preuzimanje u sljedećih mjesec dana."
                 />
 
@@ -466,7 +468,13 @@ export default async function DeliverySlotsPage() {
 
                 <Card className="w-fit p-4 pr-12 border-tertiary border-b-4">
                     <CardHeader>
-                        <CardTitle>💡 Kako rezervirati termin?</CardTitle>
+                        <CardTitle>
+                            <GameIdeaIcon
+                                aria-hidden
+                                className="mr-2 inline-block size-7 align-text-bottom"
+                            />{' '}
+                            Kako rezervirati termin?
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <StyledHtml>

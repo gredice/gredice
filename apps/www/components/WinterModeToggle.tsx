@@ -1,5 +1,7 @@
 'use client';
 
+import { GameSnowflakeIcon, GameSunIcon } from '@gredice/ui/GameIcons';
+
 import { isWinterSeason, useWinterMode } from '@gredice/ui/PublicChrome';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 
@@ -26,9 +28,10 @@ export function WinterModeToggle() {
                 className="relative inline-flex h-7 w-14 items-center rounded-full bg-gray-200 cursor-not-allowed opacity-50 animate-scale-in"
                 role="switch"
                 aria-checked={false}
+                aria-label="Zimski način"
             >
                 <span className="size-6 transform rounded-full bg-white shadow-lg transition-transform flex items-center justify-center text-sm translate-x-0.5">
-                    ❄️
+                    <GameSnowflakeIcon aria-hidden className="size-5" />
                 </span>
             </button>
         );
@@ -45,6 +48,7 @@ export function WinterModeToggle() {
             }`}
             role="switch"
             aria-checked={isWinter}
+            aria-label="Zimski način"
             title={
                 isWinter ? 'Prebaci na ljetni način' : 'Prebaci na zimski način'
             }
@@ -54,7 +58,11 @@ export function WinterModeToggle() {
                     isWinter ? 'translate-x-7' : 'translate-x-0.5'
                 }`}
             >
-                {isWinter ? '❄️' : '☀️'}
+                {isWinter ? (
+                    <GameSnowflakeIcon aria-hidden className="size-5" />
+                ) : (
+                    <GameSunIcon aria-hidden className="size-5" />
+                )}
             </span>
         </button>
     );

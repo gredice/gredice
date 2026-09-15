@@ -1,0 +1,89 @@
+{
+    "tool": "image_gen.imagegen",
+    "mode": "style-referenced generation",
+    "palette": "Object-specific colors from the full stylized library. Match chunky geometry, bevels, lighting and materials; gold is not a universal palette requirement.",
+    "processing": "Trim transparent margins; resize inside 320px (icons) or 768px (plant-health illustrations); add 8px transparent padding; WebP quality 92, alpha quality 100.",
+    "assets": [
+        {
+            "file": "leaf.webp",
+            "component": "GameLeafIcon",
+            "references": [
+                "packages/ui/src/GameIcons/assets/backpack.webp",
+                "packages/ui/src/GameIcons/assets/settings.webp"
+            ],
+            "prompt": "Use case: stylized-concept. Generate ONE original transparent 3D low-poly farming-game asset. The input backpack and wooden cog are STYLE REFERENCES ONLY. Match their thick bevelled polygon volumes, solid toy-like depth, forest-green and golden-orange materials, warm matte finish, strong contact shading and soft upper-left lighting. Elevated three-quarter view, clear centered complete silhouette with 7% empty margin, no floor or environment, no cast shadow beyond the object, no text, label, numbers or watermark. Genuinely transparent alpha background. Small UI icon readable at 24px: one thick healthy forest-green leaf, tilted diagonally, with a central raised pale-green vein and two broad shallow side veins. The curled edge shows real depth; short golden-green stem. No pot or other objects."
+        },
+        {
+            "file": "location.webp",
+            "component": "GameLocationIcon",
+            "references": [
+                "packages/ui/src/GameIcons/assets/backpack.webp",
+                "packages/ui/src/GameIcons/assets/water.webp",
+                "packages/ui/src/GameIcons/assets/blossom.webp",
+                "packages/ui/src/Avatar/assets/butterfly.webp",
+                "apps/www/assets/SeedsAndTransplants.webp"
+            ],
+            "prompt": "Use case: stylized-concept. Generate ONE original transparent 3D low-poly farming-game asset. Reference images show our established style: chunky bevelled polygon volumes, strong solid toy-like DEPTH, matte tactile surfaces, clear silhouette, soft upper-left illumination with coherent contact shading. Match the GEOMETRY and LIGHTING across the references, NOT a single color scheme. Use the object-specific colorful palette described below; color can be blue, coral, pink, leaf green, terracotta, ivory or natural skin. Elevated three-quarter view, centered complete silhouette, 7% clear margin. True transparent alpha background. No environment, floor, extra cast shadow, text, labels, numbers, watermark or decorative badge. Small UI icon readable at 24px: one stout coral-red location pin with rounded teardrop silhouette and a clean OPEN circular hole through its upper center. Matte coral face, deeper brick-red bevelled side, a very thin cream inner rim inside the hole. Tactile painted token, clearly shows chunky depth. No green inset, no gold, no stand, no map."
+        },
+        {
+            "file": "community.webp",
+            "component": "GameCommunityIcon",
+            "references": [
+                "packages/ui/src/GameIcons/assets/backpack.webp",
+                "packages/ui/src/GameIcons/assets/water.webp",
+                "packages/ui/src/GameIcons/assets/blossom.webp",
+                "packages/ui/src/Avatar/assets/butterfly.webp",
+                "apps/www/assets/SeedsAndTransplants.webp"
+            ],
+            "prompt": "Use case: stylized-concept. Generate ONE original transparent 3D low-poly farming-game asset. Reference images show our established style: chunky bevelled polygon volumes, strong solid toy-like DEPTH, matte tactile surfaces, clear silhouette, soft upper-left illumination with coherent contact shading. Match the GEOMETRY and LIGHTING across the references, NOT a single color scheme. Use the object-specific colorful palette described below; color can be blue, coral, pink, leaf green, terracotta, ivory or natural skin. Elevated three-quarter view, centered complete silhouette, 7% clear margin. True transparent alpha background. No environment, floor, extra cast shadow, text, labels, numbers, watermark or decorative badge. Friendly community / trust illustration readable at 32–96px: a clear handshake between two naturally colored human hands, one medium brown and one light warm tan. One short cuff is denim blue, the other muted rust red with ivory edging. Anatomically coherent simplified chunky fingers, two wrists only, no arms beyond cuffs. Hands look like stylized human skin, NOT wood. Friendly toy sculpture, no gold, no badge or background."
+        },
+        {
+            "file": "globe.webp",
+            "component": "GameGlobeIcon",
+            "references": [
+                "packages/ui/src/GameIcons/assets/backpack.webp",
+                "packages/ui/src/GameIcons/assets/water.webp",
+                "packages/ui/src/GameIcons/assets/blossom.webp",
+                "packages/ui/src/Avatar/assets/butterfly.webp",
+                "apps/www/assets/SeedsAndTransplants.webp"
+            ],
+            "prompt": "Use case: stylized-concept. Generate ONE original transparent 3D low-poly farming-game asset. Reference images show our established style: chunky bevelled polygon volumes, strong solid toy-like DEPTH, matte tactile surfaces, clear silhouette, soft upper-left illumination with coherent contact shading. Match the GEOMETRY and LIGHTING across the references, NOT a single color scheme. Use the object-specific colorful palette described below; color can be blue, coral, pink, leaf green, terracotta, ivory or natural skin. Elevated three-quarter view, centered complete silhouette, 7% clear margin. True transparent alpha background. No environment, floor, extra cast shadow, text, labels, numbers, watermark or decorative badge. Friendly accessible-world illustration readable at 32–96px: a faceted miniature globe of Earth, rich blue oceans with raised green continents, on a short indigo-blue circular stand and a slender ivory meridian arch. The sphere dominates. Tilted geographic toy, real thickness and friendly tactile matte materials. No gold, no orange, no text or flags."
+        },
+        {
+            "file": "idea.webp",
+            "component": "GameIdeaIcon",
+            "references": [
+                "packages/ui/src/GameIcons/assets/backpack.webp",
+                "packages/ui/src/GameIcons/assets/water.webp",
+                "packages/ui/src/GameIcons/assets/blossom.webp",
+                "packages/ui/src/Avatar/assets/butterfly.webp",
+                "apps/www/assets/SeedsAndTransplants.webp"
+            ],
+            "prompt": "Use case: stylized-concept. Generate ONE original transparent 3D low-poly farming-game asset. Reference images show our established style: chunky bevelled polygon volumes, strong solid toy-like DEPTH, matte tactile surfaces, clear silhouette, soft upper-left illumination with coherent contact shading. Match the GEOMETRY and LIGHTING across the references, NOT a single color scheme. Use the object-specific colorful palette described below; color can be blue, coral, pink, leaf green, terracotta, ivory or natural skin. Elevated three-quarter view, centered complete silhouette, 7% clear margin. True transparent alpha background. No environment, floor, extra cast shadow, text, labels, numbers, watermark or decorative badge. An ideas/technology illustration readable at 32–96px: one chunky bevelled lightbulb with frosted pale-ivory glass and a warm soft yellow core, on a cobalt-blue stepped screw base with two slate-silver ridges. Three-quarter view shows its volume, polygon facets and a white highlight. Bright welcoming little toy. No gold or bronze frame, no haze, no external glow, no rays or floating objects."
+        },
+        {
+            "file": "plant-disease.webp",
+            "component": "GamePlantDiseaseIcon",
+            "references": [
+                "packages/ui/src/GameIcons/assets/backpack.webp",
+                "packages/ui/src/GameIcons/assets/water.webp",
+                "packages/ui/src/GameIcons/assets/blossom.webp",
+                "packages/ui/src/Avatar/assets/butterfly.webp",
+                "apps/www/assets/SeedsAndTransplants.webp"
+            ],
+            "prompt": "Use case: stylized-concept. Generate ONE original transparent 3D low-poly farming-game asset. Reference images show our established style: chunky bevelled polygon volumes, strong solid toy-like DEPTH, matte tactile surfaces, clear silhouette, soft upper-left illumination with coherent contact shading. Match the GEOMETRY and LIGHTING across the references, NOT a single color scheme. Use the object-specific colorful palette described below; color can be blue, coral, pink, leaf green, terracotta, ivory or natural skin. Elevated three-quarter view, centered complete silhouette, 7% clear margin. True transparent alpha background. No environment, floor, extra cast shadow, text, labels, numbers, watermark or decorative badge. An editorial plant-disease CATEGORY illustration at 192px, also readable at 40px: a green seedling growing from a chunky rich-brown soil clod, three broad leaves. The large foremost leaf has several rust-brown spots and a slightly drooping edge. A compact TEAL BLUE magnifying glass with blue-grey glass and a short terracotta handle leans beside the plant at lower right. Natural bright leaf greens, earth brown, blue tool. Friendly generic illustration, no particular species, no diagnostic text, no medical cross, no shield, no skull, no pot. No gold. Coherent small 3D still life with clear silhouette."
+        },
+        {
+            "file": "plant-pest.webp",
+            "component": "GamePlantPestIcon",
+            "references": [
+                "packages/ui/src/GameIcons/assets/backpack.webp",
+                "packages/ui/src/GameIcons/assets/water.webp",
+                "packages/ui/src/GameIcons/assets/blossom.webp",
+                "packages/ui/src/Avatar/assets/butterfly.webp",
+                "apps/www/assets/SeedsAndTransplants.webp"
+            ],
+            "prompt": "Use case: stylized-concept. Generate ONE original transparent 3D low-poly farming-game asset. Reference images show our established style: chunky bevelled polygon volumes, strong solid toy-like DEPTH, matte tactile surfaces, clear silhouette, soft upper-left illumination with coherent contact shading. Match the GEOMETRY and LIGHTING across the references, NOT a single color scheme. Use the object-specific colorful palette described below; color can be blue, coral, pink, leaf green, terracotta, ivory or natural skin. Elevated three-quarter view, centered complete silhouette, 7% clear margin. True transparent alpha background. No environment, floor, extra cast shadow, text, labels, numbers, watermark or decorative badge. An editorial plant-eating-pest CATEGORY illustration at 192px, also readable at 40px: one plump friendly lime-green caterpillar sitting across a broad deeper forest-green leaf with two clearly nibbled notches. Chunky faceted lime-green body segments, cream underside, tiny charcoal eyes and tiny green antennae. Segments have natural green shading, NO yellow/orange/gold stripes, no bee pattern. No human expression. Raised pale green central leaf vein and curled thick edge. No ladybug, bee, butterfly, scary fangs, pesticide or text. Coherent small toy-like 3D still life."
+        }
+    ]
+}

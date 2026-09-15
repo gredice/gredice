@@ -1,4 +1,10 @@
 import { Container } from '@gredice/ui/Container';
+import {
+    GameCommunityIcon,
+    GameGlobeIcon,
+    GameIdeaIcon,
+    GameSeedlingIcon,
+} from '@gredice/ui/GameIcons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -7,6 +13,7 @@ import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
+import { AboutValueCard } from './AboutValueCard';
 
 export const metadata = createPublicMetadata({
     title: 'O nama',
@@ -33,33 +40,6 @@ function SectionHeader({
                     {subheader}
                 </Typography>
             )}
-        </Stack>
-    );
-}
-
-function ValueCard({
-    icon,
-    title,
-    description,
-    microCopy,
-}: {
-    icon: string;
-    title: string;
-    description: string;
-    microCopy: string;
-}) {
-    return (
-        <Stack
-            spacing={4}
-            className="bg-card border border-tertiary border-b-4 rounded-xl p-6 shadow"
-        >
-            <Typography level="h5" component="h3">
-                {icon} {title}
-            </Typography>
-            <Typography level="body1">{description}</Typography>
-            <Typography level="body2" className="italic text-muted-foreground">
-                {microCopy}
-            </Typography>
         </Stack>
     );
 }
@@ -203,26 +183,43 @@ export default function AboutUsPage() {
                 <Stack spacing={8}>
                     <SectionHeader>Naše vrijednosti</SectionHeader>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <ValueCard
-                            icon="🌱"
+                        <AboutValueCard
+                            icon={
+                                <GameSeedlingIcon
+                                    aria-hidden
+                                    className="size-16"
+                                />
+                            }
                             title="Lokalno i održivo"
                             description="Radimo s malim OPG-ovima i vjerujemo u lokalnu proizvodnju, pošten odnos i dugoročnu održivost."
                             microCopy="Malo lokalno. Velika razlika."
                         />
-                        <ValueCard
-                            icon="🤝"
+                        <AboutValueCard
+                            icon={
+                                <GameCommunityIcon
+                                    aria-hidden
+                                    className="size-16"
+                                />
+                            }
                             title="Povjerenje i transparentnost"
                             description="Tvoj vrt je stvaran. Znaš gdje je, tko ga uzgaja i kako."
                             microCopy="Bez skrivenih slojeva."
                         />
-                        <ValueCard
-                            icon="🌍"
+                        <AboutValueCard
+                            icon={
+                                <GameGlobeIcon
+                                    aria-hidden
+                                    className="size-16"
+                                />
+                            }
                             title="Dostupnost svima"
                             description="Vrt ne smije biti luksuz. Gredice postoje kako bi vrt bio dostupan svima — bez obzira gdje živiš."
                             microCopy="Vrt za grad, selo i sve između."
                         />
-                        <ValueCard
-                            icon="🧠"
+                        <AboutValueCard
+                            icon={
+                                <GameIdeaIcon aria-hidden className="size-16" />
+                            }
                             title="Pametna tehnologija"
                             description="Koristimo tehnologiju da bismo pojednostavili vrtlarenje, ne da bismo ga udaljili od prirode."
                             microCopy="Tehnologija u službi zemlje."

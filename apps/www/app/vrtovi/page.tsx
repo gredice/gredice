@@ -1,5 +1,5 @@
 import { Card } from '@gredice/ui/Card';
-import { Sprout } from '@gredice/ui/icons';
+import { GameSeedlingIcon } from '@gredice/ui/GameIcons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -74,9 +74,9 @@ export default async function PublicGardensPage() {
                                 </div>
                                 <div className="grid grid-cols-2 divide-x border-t bg-card">
                                     <div className="flex items-center gap-2 px-3 py-3">
-                                        <Sprout
+                                        <GameSeedlingIcon
                                             aria-hidden
-                                            className="size-4 shrink-0 text-primary"
+                                            className="size-5 shrink-0"
                                         />
                                         <div className="min-w-0">
                                             <Typography

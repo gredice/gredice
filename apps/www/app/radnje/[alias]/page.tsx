@@ -133,7 +133,11 @@ export default async function OperationPage(
                                     ),
                             }}
                         >
-                            <OperationImage operation={operation} size={192} />
+                            <OperationImage
+                                variant="game"
+                                operation={operation}
+                                size={192}
+                            />
                         </span>
                     }
                     header={operation.information.label}

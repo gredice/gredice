@@ -1,0 +1,103 @@
+import {
+    GameBasketIcon,
+    GameBlossomIcon,
+    GameCalendarIcon,
+    GameCommunityIcon,
+    GameGlobeIcon,
+    GameHarvestIcon,
+    GameIdeaIcon,
+    GameLeafIcon,
+    GameLocationIcon,
+    GameMoonIcon,
+    GamePlantDiseaseIcon,
+    GamePlantPestIcon,
+    GameSnowflakeIcon,
+    GameSunIcon,
+} from '@gredice/ui/GameIcons';
+
+export const publicVisualIcons = [
+    {
+        name: 'GameBlossomIcon',
+        Icon: GameBlossomIcon,
+        usage: 'Reused lifecycle flower: operation category',
+        path: 'packages/ui/src/OperationImage/OperationImage.tsx',
+    },
+    {
+        name: 'GameLeafIcon',
+        Icon: GameLeafIcon,
+        usage: 'Plant nutrition and growth',
+        path: 'apps/www/app/biljke/[alias]/GrowthAttributeCards.tsx',
+    },
+    {
+        name: 'GameLocationIcon',
+        Icon: GameLocationIcon,
+        usage: 'Delivery availability and pickup slots',
+        path: 'apps/www/app/dostava/termini/page.tsx',
+    },
+    {
+        name: 'GameCommunityIcon',
+        Icon: GameCommunityIcon,
+        usage: 'About: community values',
+        path: 'apps/www/app/o-nama/page.tsx',
+    },
+    {
+        name: 'GameGlobeIcon',
+        Icon: GameGlobeIcon,
+        usage: 'About: accessibility',
+        path: 'apps/www/app/o-nama/page.tsx',
+    },
+    {
+        name: 'GameIdeaIcon',
+        Icon: GameIdeaIcon,
+        usage: 'About: technology; helpful information',
+        path: 'apps/www/app/o-nama/page.tsx',
+    },
+    {
+        name: 'GamePlantDiseaseIcon',
+        Icon: GamePlantDiseaseIcon,
+        usage: 'Generic plant disease category',
+        path: 'apps/www/components/plant-health/PlantHealthIssueDetail.tsx',
+    },
+    {
+        name: 'GamePlantPestIcon',
+        Icon: GamePlantPestIcon,
+        usage: 'Generic plant pest category',
+        path: 'apps/www/components/plant-health/PlantHealthIssueCard.tsx',
+    },
+    {
+        name: 'GameCalendarIcon',
+        Icon: GameCalendarIcon,
+        usage: 'Reused lifecycle calendar: sowing and delivery',
+        path: 'apps/www/app/sjetva/page.tsx',
+    },
+    {
+        name: 'GameBasketIcon',
+        Icon: GameBasketIcon,
+        usage: 'Reused shopping basket: MCP actions',
+        path: 'apps/www/app/mcp/page.tsx',
+    },
+    {
+        name: 'GameHarvestIcon',
+        Icon: GameHarvestIcon,
+        usage: 'Reused harvest crate: expected yield',
+        path: 'apps/www/app/biljke/[alias]/HarvestAttributeCards.tsx',
+    },
+    {
+        name: 'GameSunIcon',
+        Icon: GameSunIcon,
+        usage: 'Shared weather artwork: light and seasons',
+        path: 'apps/www/components/WinterModeToggle.tsx',
+    },
+    {
+        name: 'GameMoonIcon',
+        Icon: GameMoonIcon,
+        usage: 'Shared weather artwork: night',
+        path: 'packages/game/src/hud/components/weather/icons/WeatherArtwork.tsx',
+    },
+    {
+        name: 'GameSnowflakeIcon',
+        Icon: GameSnowflakeIcon,
+        usage: 'Shared weather artwork: winter',
+        path: 'apps/www/components/WinterModeToggle.tsx',
+    },
+];

@@ -8,6 +8,7 @@ import {
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { GameLocationIcon } from '@gredice/ui/GameIcons';
 import { Input } from '@gredice/ui/Input';
 import { Check, MapPin, Search, Warning } from '@gredice/ui/icons';
 import { type FormEvent, useState } from 'react';
@@ -159,7 +160,11 @@ export function DeliveryAvailabilityChecker() {
         <Card className="not-prose mb-4 border-tertiary border-b-4 p-3 sm:p-4">
             <CardHeader>
                 <CardTitle className="text-xl">
-                    📍 Provjeri dostupnost i cijenu dostave
+                    <GameLocationIcon
+                        aria-hidden
+                        className="mr-2 inline-block size-7 align-text-bottom"
+                    />{' '}
+                    Provjeri dostupnost i cijenu dostave
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
                     Upiši adresu u Hrvatskoj i odmah provjeri dostavljamo li do

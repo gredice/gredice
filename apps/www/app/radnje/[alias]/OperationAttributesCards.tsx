@@ -1,13 +1,10 @@
 import type { OperationData } from '@gredice/client';
 import {
-    Hourglass,
-    Leaf,
-    Ruler,
-    Sprout,
-    Sun,
-    Tally3,
-    Timer,
-} from '@gredice/ui/icons';
+    GameGardenIcon,
+    GameRaisedBedSimpleIcon,
+    GameSeedlingIcon,
+} from '@gredice/ui/GameIcons';
+import { Hourglass, Ruler, Timer } from '@gredice/ui/icons';
 import type { JSX } from 'react';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { operationFrequencyLabel } from '../../biljke/[alias]/PlantOperations';
@@ -19,18 +16,35 @@ export function OperationAttributesCards({
 }) {
     const applicationMap: Record<string, { label: string; icon: JSX.Element }> =
         {
-            garden: { label: 'Vrt', icon: <Sun className="size-5 shrink-0" /> },
+            garden: {
+                label: 'Vrt',
+                icon: (
+                    <GameGardenIcon aria-hidden className="size-6 shrink-0" />
+                ),
+            },
             raisedBedFull: {
                 label: 'Cijela gredica',
-                icon: <Tally3 className="size-5 shrink-0 rotate-90 mt-1" />,
+                icon: (
+                    <GameRaisedBedSimpleIcon
+                        aria-hidden
+                        className="size-6 shrink-0"
+                    />
+                ),
             },
             raisedBed1m: {
                 label: 'Gredica 1m²',
-                icon: <Tally3 className="size-5 shrink-0 rotate-90 mt-1" />,
+                icon: (
+                    <GameRaisedBedSimpleIcon
+                        aria-hidden
+                        className="size-6 shrink-0"
+                    />
+                ),
             },
             plant: {
                 label: 'Biljka',
-                icon: <Leaf className="size-5 shrink-0" />,
+                icon: (
+                    <GameSeedlingIcon aria-hidden className="size-6 shrink-0" />
+                ),
             },
         };
 
@@ -67,7 +81,7 @@ export function OperationAttributesCards({
                 }
             />
             <AttributeCard
-                icon={<Sprout />}
+                icon={<GameSeedlingIcon aria-hidden />}
                 header="Stadij"
                 subheader="Preporučeni stadij biljke za izvođenje radnje"
                 value={attributes?.stage?.information?.label ?? '-'}

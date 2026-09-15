@@ -1,4 +1,6 @@
+import { GameContactIcon, GameMailboxIcon } from '@gredice/ui/GameIcons';
 import { PageHeader } from '@gredice/ui/PageHeader';
+import { CompanyWhatsApp } from '@gredice/ui/PublicChrome';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { FacebookCard } from '../../components/social/FacebookCard';
@@ -40,17 +42,29 @@ export default function ContactPage() {
                 <p>Kontaktiraj nas:</p>
                 <ul>
                     <li>
-                        ✉️ E-mail za generalne informacije:{' '}
+                        <GameMailboxIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-6 align-text-bottom"
+                        />{' '}
+                        E-mail za generalne informacije:{' '}
                         <a href="mailto:info@gredice.com">info@gredice.com</a>
                     </li>
                     <li>
-                        📧 E-mail tehničke podrške:{' '}
+                        <GameContactIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-6 align-text-bottom"
+                        />{' '}
+                        E-mail tehničke podrške:{' '}
                         <a href="mailto:podrska@gredice.com">
                             podrska@gredice.com
                         </a>
                     </li>
                     <li>
-                        📱 WhatsApp:{' '}
+                        <CompanyWhatsApp
+                            aria-hidden
+                            className="mr-2 inline-block size-6 align-text-bottom"
+                        />{' '}
+                        WhatsApp:{' '}
                         <a href="https://wa.me/385993447418">
                             +385 99 344 7418
                         </a>

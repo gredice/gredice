@@ -1,6 +1,6 @@
 'use client';
 
-import { Sprout } from '@gredice/ui/icons';
+import { GameGardenIcon } from '@gredice/ui/GameIcons';
 import { usePublicEnvironment } from '@gredice/ui/PublicChrome';
 import Image from 'next/image';
 import { useState } from 'react';
@@ -37,7 +37,7 @@ export function PublicGardenPreviewImage({
                 role="img"
             >
                 <div className="flex max-w-[80%] items-center gap-2 rounded-full border bg-background/85 px-4 py-2 text-muted-foreground shadow-sm backdrop-blur-sm">
-                    <Sprout aria-hidden className="size-4 shrink-0" />
+                    <GameGardenIcon aria-hidden className="size-6 shrink-0" />
                     <span className="truncate text-sm font-medium">
                         Pregled se priprema
                     </span>

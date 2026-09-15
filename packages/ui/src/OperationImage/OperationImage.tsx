@@ -1,5 +1,16 @@
 import Image from 'next/image';
 import type { ComponentType, CSSProperties, SVGProps } from 'react';
+import {
+    GameBasketIcon,
+    GameBlossomIcon,
+    GameHarvestIcon,
+    GameLeafIcon,
+    GameRaisedBedSimpleIcon,
+    GameSeedlingIcon,
+    GameShovelIcon,
+    GameToolsIcon,
+    GameWaterIcon,
+} from '../GameIcons';
 import { Droplet, Hammer, Leaf, Sprout, Store, Tally3, Upload } from '../icons';
 import { ShovelIcon } from '../ShovelIcon';
 import { cx } from '../utils';
@@ -29,10 +40,12 @@ export type OperationImageProps = {
     };
     size?: number;
     className?: string;
+    variant?: 'default' | 'game';
 };
 
 export type OperationCategoryIconProps = SVGProps<SVGSVGElement> & {
     categoryName?: string | null;
+    variant?: 'default' | 'game';
 };
 
 const categoryIcons: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
@@ -52,15 +65,34 @@ const categoryIcons: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
     storage: Store,
 };
 
+const gameCategoryIcons: Record<
+    string,
+    ComponentType<SVGProps<SVGSVGElement>>
+> = {
+    soilpreparation: GameRaisedBedSimpleIcon,
+    sowing: GameSeedlingIcon,
+    planting: GameShovelIcon,
+    growth: GameLeafIcon,
+    maintenance: GameToolsIcon,
+    watering: GameWaterIcon,
+    flowering: GameBlossomIcon,
+    harvest: GameHarvestIcon,
+    storage: GameBasketIcon,
+};
+
 function normalizeCategoryName(name: string | null | undefined) {
     return name?.toLowerCase().replace(/[\s_-]/g, '') ?? '';
 }
 
 export function OperationCategoryIcon({
     categoryName,
+    variant = 'default',
     ...props
 }: OperationCategoryIconProps) {
-    const Icon = categoryIcons[normalizeCategoryName(categoryName)] ?? Hammer;
+    const icons = variant === 'game' ? gameCategoryIcons : categoryIcons;
+    const Icon =
+        icons[normalizeCategoryName(categoryName)] ??
+        (variant === 'game' ? GameToolsIcon : Hammer);
     return <Icon {...props} />;
 }
 
@@ -68,6 +100,7 @@ export function OperationImage({
     operation,
     size,
     className,
+    variant = 'default',
 }: OperationImageProps) {
     const categoryName =
         operation.attributes?.category?.information?.name ??
@@ -89,12 +122,18 @@ export function OperationImage({
             >
                 <OperationCategoryIcon
                     categoryName={categoryName}
+                    variant={variant}
                     style={
                         {
                             '--imageSize': size ? `${size / 2}px` : '24px',
                         } as CSSProperties
                     }
-                    className="size-[--imageSize] shrink-0"
+                    className={cx(
+                        'shrink-0',
+                        variant === 'game'
+                            ? 'size-full p-2'
+                            : 'size-[--imageSize]',
+                    )}
                 />
             </span>
         );

@@ -1,5 +1,10 @@
 import type { PlantData } from '@gredice/client';
-import { Leaf, Sun, SunMoon, Tally3 } from '@gredice/ui/icons';
+import {
+    GameCalendarIcon,
+    GameLeafIcon,
+    GameSunIcon,
+} from '@gredice/ui/GameIcons';
+import { Tally3 } from '@gredice/ui/icons';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 
 export function GrowthAttributeCards({
@@ -27,7 +32,7 @@ export function GrowthAttributeCards({
     return (
         <div className="grid grid-cols-2 gap-2">
             <AttributeCard
-                icon={<Sun />}
+                icon={<GameSunIcon aria-hidden />}
                 header="Svijetlost"
                 value={
                     attributes?.light == null || Number.isNaN(attributes?.light)
@@ -45,12 +50,12 @@ export function GrowthAttributeCards({
                 value={attributes?.soil ?? '-'}
             />
             <AttributeCard
-                icon={<Leaf />}
+                icon={<GameLeafIcon aria-hidden />}
                 header="Nutrijenti"
                 value={attributes?.nutrients ?? '-'}
             />
             <AttributeCard
-                icon={<SunMoon />}
+                icon={<GameCalendarIcon aria-hidden />}
                 header="Vrijeme rasta"
                 value={formatDayRange(
                     attributes?.growthWindowMin,

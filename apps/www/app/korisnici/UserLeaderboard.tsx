@@ -2,7 +2,7 @@ import {
     achievementXp,
     getAchievementProgress,
 } from '@gredice/js/achievements';
-import { Trophy } from '@gredice/ui/icons';
+import { GameTrophyIcon } from '@gredice/ui/GameIcons';
 import { Link } from '@gredice/ui/Link';
 import { publicUserProfileHref } from '@gredice/ui/PublicChrome';
 import { UserAvatar, UserLevelBadge } from '@gredice/ui/UserAvatar';
@@ -16,8 +16,8 @@ export function UserLeaderboard({
         <div className="mx-auto max-w-4xl py-10 sm:py-16">
             <header className="mb-10 max-w-2xl">
                 <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-                    <Trophy aria-hidden className="size-4 text-amber-600" />{' '}
-                    Naša zajednica
+                    <GameTrophyIcon aria-hidden className="size-6" /> Naša
+                    zajednica
                 </p>
                 <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
                     Vrtlari koji rastu zajedno

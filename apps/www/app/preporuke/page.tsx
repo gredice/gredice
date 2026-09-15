@@ -1,6 +1,12 @@
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Container } from '@gredice/ui/Container';
+import {
+    GameGiftIcon,
+    GameLightningIcon,
+    GameReceiptIcon,
+    GameSunflowerIcon,
+} from '@gredice/ui/GameIcons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -114,11 +120,18 @@ export default function ReferralsLandingPage() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <Card>
                         <CardHeader>
-                            <CardTitle>🎁 Nagrada</CardTitle>
+                            <CardTitle>
+                                <GameGiftIcon
+                                    aria-hidden
+                                    className="mr-2 inline-block size-7 align-text-bottom"
+                                />{' '}
+                                Nagrada
+                            </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <Typography level="h3" component="p">
-                                {formattedReferralReward} 🌻
+                                {formattedReferralReward}
+                                <GameSunflowerIcon className="ml-2 inline-block size-8 align-text-bottom" />
                             </Typography>
                             <Typography level="body2" secondary>
                                 Toliko dobiva račun koji je podijelio kod, a još
@@ -128,7 +141,13 @@ export default function ReferralsLandingPage() {
                     </Card>
                     <Card>
                         <CardHeader>
-                            <CardTitle>💶 Vrijednost</CardTitle>
+                            <CardTitle>
+                                <GameReceiptIcon
+                                    aria-hidden
+                                    className="mr-2 inline-block size-7 align-text-bottom"
+                                />{' '}
+                                Vrijednost
+                            </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <Typography level="h3" component="p">
@@ -143,7 +162,13 @@ export default function ReferralsLandingPage() {
                     </Card>
                     <Card className="flex h-full flex-col">
                         <CardHeader>
-                            <CardTitle>⚡ Brzi pristup</CardTitle>
+                            <CardTitle>
+                                <GameLightningIcon
+                                    aria-hidden
+                                    className="mr-2 inline-block size-7 align-text-bottom"
+                                />{' '}
+                                Brzi pristup
+                            </CardTitle>
                         </CardHeader>
                         <CardContent className="flex flex-1 flex-col gap-4">
                             <Typography level="body2" secondary>

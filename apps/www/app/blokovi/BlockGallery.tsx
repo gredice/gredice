@@ -4,6 +4,7 @@ import type { BlockData } from '@gredice/client';
 import { orderBy } from '@gredice/js/arrays';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Gallery } from '@gredice/ui/Gallery';
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { Row } from '@gredice/ui/Row';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
@@ -31,7 +32,7 @@ function BlockGalleryItem(
                                 level="body2"
                                 className="flex flex-row gap-2"
                             >
-                                <span>🌻</span>
+                                <GameSunflowerIcon className="size-5 shrink-0" />
                                 <span>{entity.prices.sunflowers}</span>
                             </Typography>
                         )}

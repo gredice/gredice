@@ -28,6 +28,7 @@ import outletSrc from '../../../../../garden/public/assets/hud/outlet-seedling-p
 import basketSrc from '../../../../../garden/public/assets/hud/shopping-basket.webp?url';
 import checklistSrc from '../../../../../garden/public/assets/hud/tutorial-task-list.png?url';
 import recycleSrc from '../../../../../garden/public/assets/textures/recycle.png?url';
+import { publicVisualIcons } from '../../../apps/www/publicVisualIcons';
 import { gameIconComparisons } from '../../ui/gameIconComparisons';
 import { plantStatusIconExamples } from '../../ui/plantStatusIconExamples';
 import { gameIconUsage } from './gameIconUsage';
@@ -137,6 +138,13 @@ const artwork = [
 
 export const gameIconCatalog: GameIconEntry[] = [
     ...artwork,
+    ...publicVisualIcons.map(({ name, Icon, usage, path }) => ({
+        name,
+        group: 'Public-site artwork',
+        description: usage,
+        sources: [`packages/ui/src/GameIcons/${name}.tsx`, path],
+        preview: <Icon aria-hidden className="size-12" />,
+    })),
     ...overviewNavItems.map((item) => ({
         name: `Settings · ${item.label}`,
         group: 'Settings navigation',

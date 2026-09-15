@@ -1,5 +1,6 @@
 import { Container } from '@gredice/ui/Container';
-import { Discount, Sprout, Timer } from '@gredice/ui/icons';
+import { GameSeedlingIcon } from '@gredice/ui/GameIcons';
+import { Discount, Timer } from '@gredice/ui/icons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -122,9 +123,9 @@ export default async function OutletPage() {
                         </Typography>
                         <div className="flex flex-wrap gap-2">
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-sm text-secondary-foreground ring-1 ring-tertiary">
-                                <Sprout
+                                <GameSeedlingIcon
                                     aria-hidden
-                                    className="size-4 text-primary"
+                                    className="size-8 shrink-0"
                                 />
                                 Spremne za tvoju gredicu
                             </span>
@@ -199,7 +200,10 @@ export default async function OutletPage() {
                     <div className="rounded-2xl border border-tertiary border-b-4 bg-card p-6 sm:p-8">
                         <Stack spacing={4} className="max-w-2xl">
                             <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                <Sprout aria-hidden className="size-6" />
+                                <GameSeedlingIcon
+                                    aria-hidden
+                                    className="size-8 shrink-0"
+                                />
                             </div>
                             <Typography level="h3" component="h2">
                                 Trenutno nema aktivnih outlet ponuda

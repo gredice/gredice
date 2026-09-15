@@ -1,6 +1,6 @@
 import type { PlantDiseaseData, PlantPestData } from '@gredice/client';
 import { Chip } from '@gredice/ui/Chip';
-import { Bug, Shield } from '@gredice/ui/icons';
+import { GamePlantDiseaseIcon, GamePlantPestIcon } from '@gredice/ui/GameIcons';
 import { Markdown } from '@gredice/ui/Markdown';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { PlantOrSortImage } from '@gredice/ui/plants';
@@ -24,15 +24,6 @@ import {
 
 type PlantHealthIssueData = PlantDiseaseData | PlantPestData;
 
-function issueIcon(kind: PlantHealthIssueKind) {
-    const Icon = kind === 'disease' ? Shield : Bug;
-    return (
-        <span className="inline-flex size-48 items-center justify-center overflow-hidden text-primary">
-            <Icon className="size-14" />
-        </span>
-    );
-}
-
 export function PlantHealthIssueDetail({
     issue,
     kind,
@@ -42,6 +33,8 @@ export function PlantHealthIssueDetail({
     kind: PlantHealthIssueKind;
     path: string;
 }) {
+    const Illustration =
+        kind === 'disease' ? GamePlantDiseaseIcon : GamePlantPestIcon;
     const title = plantHealthIssueTitle(issue);
     const affectedPlants = issue.relationships?.affectedPlants ?? [];
     const sources = issue.review?.sources ?? [];
@@ -59,7 +52,7 @@ export function PlantHealthIssueDetail({
                 ]}
             />
             <PageHeader
-                visual={issueIcon(kind)}
+                visual={<Illustration aria-hidden className="size-48" />}
                 header={title}
                 subHeader={plantHealthIssueShortDescription(issue)}
                 headerChildren={

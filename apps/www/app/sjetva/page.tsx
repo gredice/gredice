@@ -1,10 +1,20 @@
 import { Container } from '@gredice/ui/Container';
+import {
+    GameCalendarIcon,
+    GameIdeaIcon,
+    GameJournalIcon,
+    GameLeafIcon,
+    GameReceiptIcon,
+    GameSeedlingIcon,
+    GameSunIcon,
+} from '@gredice/ui/GameIcons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
+import { PublicGardenIllustration } from '../../components/visuals/PublicGardenIllustration';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
@@ -36,6 +46,12 @@ export default async function SowingPage() {
             <Stack spacing={8}>
                 <PageHeader
                     header="Sjetva biljaka"
+                    visual={
+                        <PublicGardenIllustration
+                            kind="sowing"
+                            loading="eager"
+                        />
+                    }
                     subHeader="Sve o naručivanju sjetve, cijeni i dodatnim pogodnostima tijekom ljeta."
                     padded
                 />
@@ -48,7 +64,13 @@ export default async function SowingPage() {
                         prepustiti našem timu da pripremi zemlju, posije
                         odabrane biljke i prati njihov rast.
                     </p>
-                    <h2>🫰 Cijena sjetve</h2>
+                    <h2>
+                        <GameReceiptIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-7 align-text-bottom"
+                        />{' '}
+                        Cijena sjetve
+                    </h2>
                     <p>
                         Sjetva se naplaćuje po biljci i trenutno iznosi
                         minimalno 1,99&nbsp;€ ili 1.990 🌻. Cijena uključuje
@@ -62,7 +84,13 @@ export default async function SowingPage() {
                         biljke možeš pronaći na stranici{' '}
                         <a href={KnownPages.Plants}>biljaka</a>.
                     </p>
-                    <h2>✍️ Zakazivanje</h2>
+                    <h2>
+                        <GameJournalIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-7 align-text-bottom"
+                        />{' '}
+                        Zakazivanje
+                    </h2>
                     <p>
                         Kao i ostale radnje u Gredicama, sjetvu možeš zakazati
                         unaprijed. Odaberi datum koji ti odgovara, a naš će tim
@@ -70,7 +98,13 @@ export default async function SowingPage() {
                         nadolazeće radnje pregledavaš na istom mjestu u
                         aplikaciji.
                     </p>
-                    <h2 id="kalendar-sjetve">🗓️ Kalendar sjetve</h2>
+                    <h2 id="kalendar-sjetve">
+                        <GameCalendarIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-7 align-text-bottom"
+                        />{' '}
+                        Kalendar sjetve
+                    </h2>
                     <p>
                         Svaka biljka ima svoj kalendar sjetve. Za odabir
                         idealnog termina posjeti stranicu{' '}
@@ -122,7 +156,13 @@ export default async function SowingPage() {
                         vremenu sjetve, pa slobodno eksperimentiraj i istražuj
                         nove biljke!
                     </p>
-                    <h2 id="kalendar-rasta">🌿 Kalendar rasta</h2>
+                    <h2 id="kalendar-rasta">
+                        <GameLeafIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-7 align-text-bottom"
+                        />{' '}
+                        Kalendar rasta
+                    </h2>
                     <p>
                         Kalendar rasta prikazuje očekivane faze biljke ako je
                         posiješ danas. Pomaže ti vidjeti kada biljka obično
@@ -161,7 +201,13 @@ export default async function SowingPage() {
                         Ovaj kalendar je procjena, a stvarni razvoj može
                         odstupati zbog vremena, sezone, njege i sorte biljke.
                     </p>
-                    <h2>🌱 Proljetne pogodnosti</h2>
+                    <h2>
+                        <GameSeedlingIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-7 align-text-bottom"
+                        />{' '}
+                        Proljetne pogodnosti
+                    </h2>
                     <p>
                         Tijekom proljeća svaka naručena sjetva donosi besplatno
                         3 zalijevanja* &quot;
@@ -179,7 +225,13 @@ export default async function SowingPage() {
                             zalijevanja.
                         </i>
                     </small>
-                    <h2>☀️ Ljetne pogodnosti</h2>
+                    <h2>
+                        <GameSunIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-7 align-text-bottom"
+                        />{' '}
+                        Ljetne pogodnosti
+                    </h2>
                     <p>
                         Tijekom ljeta svaka naručena sjetva donosi besplatno 5
                         zalijevanja* &quot;
@@ -196,7 +248,13 @@ export default async function SowingPage() {
                             zalijevanja.
                         </i>
                     </small>
-                    <h2>🍂 Jesenske pogodnosti</h2>
+                    <h2>
+                        <GameLeafIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-7 align-text-bottom"
+                        />{' '}
+                        Jesenske pogodnosti
+                    </h2>
                     <p>
                         Tijekom jeseni svaka naručena sjetva donosi besplatno 3
                         zalijevanja* &quot;
@@ -214,7 +272,13 @@ export default async function SowingPage() {
                             zalijevanja.
                         </i>
                     </small>
-                    <h2>💭 Sljedeći koraci</h2>
+                    <h2>
+                        <GameIdeaIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-7 align-text-bottom"
+                        />{' '}
+                        Sljedeći koraci
+                    </h2>
                     <p>
                         Kada biljke niknu, možeš nastaviti planirati ostale
                         radnje poput prihrane ili berbe izravno u aplikaciji. Za

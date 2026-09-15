@@ -5,15 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { Container } from '@gredice/ui/Container';
 import {
-    ArrowDownToLine,
-    Hammer,
-    History,
-    Navigate,
-    Sprout,
-    Sun,
-    Truck,
-    Warning,
-} from '@gredice/ui/icons';
+    GameDeliveryIcon,
+    GameReceiptIcon,
+    GameSeedlingIcon,
+    GameSunflowerIcon,
+    GameToolsIcon,
+} from '@gredice/ui/GameIcons';
+import { ArrowDownToLine, History, Navigate, Warning } from '@gredice/ui/icons';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { PlantOrSortImage } from '@gredice/ui/plants';
@@ -70,7 +68,7 @@ function CatalogSectionHeader({
     return (
         <CardHeader className="p-4 pb-2">
             <div className="flex min-w-0 items-start gap-3">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary [&>svg]:size-5">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary [&>svg]:size-7">
                     {icon}
                 </span>
                 <div className="min-w-0">
@@ -242,6 +240,7 @@ export default async function PricingPage() {
                         title={row.label}
                         visual={
                             <OperationImage
+                                variant="game"
                                 className="rounded-md bg-muted text-muted-foreground"
                                 operation={row.operation}
                                 size={40}
@@ -258,7 +257,13 @@ export default async function PricingPage() {
             <Stack spacing={6}>
                 <Stack spacing={2}>
                     <PageHeader
-                        header="💶 Cjenik"
+                        header="Cjenik"
+                        visual={
+                            <GameReceiptIcon
+                                aria-hidden
+                                className="size-48 p-6"
+                            />
+                        }
                         padded
                         subHeader="Jasan pregled cijena i dostupnosti paketa suncokreta, biljaka, sorti, radnji i dostave."
                     />
@@ -272,7 +277,7 @@ export default async function PricingPage() {
                     <CatalogSectionHeader
                         description="Prepaid Gredice bodovi za radnje u vrtu. Orijentacijski odnos je 1 EUR ≈ 1.000 suncokreta."
                         headingId="suncokreti-naslov"
-                        icon={<Sun />}
+                        icon={<GameSunflowerIcon aria-hidden />}
                         title="Paketi suncokreta"
                     />
                     <CardContent className="p-4 pt-2">
@@ -313,7 +318,10 @@ export default async function PricingPage() {
                                             }`}
                                             title={pkg.name}
                                             visual={
-                                                <Sun className="size-5 text-primary" />
+                                                <GameSunflowerIcon
+                                                    aria-hidden
+                                                    className="size-5 text-primary"
+                                                />
                                             }
                                         />
                                     </div>
@@ -356,7 +364,7 @@ export default async function PricingPage() {
                     <CatalogSectionHeader
                         description="Cijena po posađenoj biljci, uz zasebne cijene sorti kada su definirane."
                         headingId="biljke-i-sorte-naslov"
-                        icon={<Sprout />}
+                        icon={<GameSeedlingIcon aria-hidden />}
                         title="Biljke i sorte"
                     />
                     <CardContent className="p-4 pt-2">
@@ -387,7 +395,7 @@ export default async function PricingPage() {
                     <CatalogSectionHeader
                         description="Cijene po radnji, uključujući jasno označene interne i trenutačno nedostupne radnje."
                         headingId="radnje-naslov"
-                        icon={<Hammer />}
+                        icon={<GameToolsIcon aria-hidden />}
                         title="Radnje"
                     />
                     <CardContent className="p-4 pt-2">
@@ -422,7 +430,7 @@ export default async function PricingPage() {
                     <CatalogSectionHeader
                         description="Za svaku lokaciju prikazane su besplatna zona, maksimalna zona i cijena po kilometru."
                         headingId="dostava-naslov"
-                        icon={<Truck />}
+                        icon={<GameDeliveryIcon aria-hidden />}
                         title="Dostava"
                     />
                     <CardContent className="p-4 pt-2">
@@ -453,7 +461,10 @@ export default async function PricingPage() {
                                         subtitle={`Prvih ${row.freeRadius} km bez naknade · dostupno do ${row.zoneRadius} km`}
                                         title={row.label}
                                         visual={
-                                            <Truck className="size-5 text-primary" />
+                                            <GameDeliveryIcon
+                                                aria-hidden
+                                                className="size-6"
+                                            />
                                         }
                                     />
                                 </div>
