@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
     operationListStatusColor,
     operationListStatusLabel,
+    operationsListDateFormat,
 } from './operationListLabels';
 import type { OperationsListStatus } from './operationsListTypes';
 
@@ -52,4 +53,31 @@ test('operation list status colors distinguish success and failure states', () =
     assert.equal(operationListStatusColor('blocked'), 'warning');
     assert.equal(operationListStatusColor('failed'), 'error');
     assert.equal(operationListStatusColor('canceled'), 'neutral');
+});
+
+test('operation list omits the year for dates inside the current year', () => {
+    assert.deepEqual(
+        operationsListDateFormat(new Date('2026-07-03T10:00:00.000Z'), 2026),
+        { day: 'numeric', month: 'numeric' },
+    );
+});
+
+test('operation list keeps the year for dates outside the current year', () => {
+    assert.deepEqual(
+        operationsListDateFormat(new Date('2025-07-03T10:00:00.000Z'), 2026),
+        { day: 'numeric', month: 'numeric', year: 'numeric' },
+    );
+});
+
+test('operation list keeps the year for missing and invalid dates', () => {
+    assert.deepEqual(operationsListDateFormat(null, 2026), {
+        day: 'numeric',
+        month: 'numeric',
+        year: 'numeric',
+    });
+    assert.deepEqual(operationsListDateFormat('not-a-date', 2026), {
+        day: 'numeric',
+        month: 'numeric',
+        year: 'numeric',
+    });
 });

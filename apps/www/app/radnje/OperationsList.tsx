@@ -5,16 +5,9 @@ import type { PlantStageName } from '@gredice/game';
 import { slug } from '@gredice/js/slug';
 import { Accordion } from '@gredice/ui/Accordion';
 import { Chip } from '@gredice/ui/Chip';
-import {
-    Droplet,
-    Leaf,
-    Sprout,
-    Store,
-    Tally3,
-    Upload,
-} from '@gredice/ui/icons';
+import { Store } from '@gredice/ui/icons';
+import { OperationCategoryIcon } from '@gredice/ui/OperationImage';
 import { Row } from '@gredice/ui/Row';
-import { ShovelIcon } from '@gredice/ui/ShovelIcon';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useMemo } from 'react';
@@ -26,21 +19,6 @@ import {
     getAvailableOperationStages,
     operationMatchesSearch,
 } from './operationFilters';
-
-const stageIcons: Record<
-    PlantStageName,
-    React.ComponentType<{ className?: string }>
-> = {
-    soilPreparation: () => <Tally3 className="size-4 rotate-90 mt-1" />,
-    sowing: Sprout,
-    planting: ShovelIcon,
-    growth: Leaf,
-    maintenance: Leaf,
-    watering: Droplet,
-    flowering: Leaf,
-    harvest: Upload,
-    storage: Store,
-};
 
 export function OperationsList({
     operationsData,
@@ -103,13 +81,17 @@ export function OperationsList({
                     <Typography level="body3">Kategorije</Typography>
                     <Row spacing={2} className="flex-wrap">
                         {availableStages.map((stage) => {
-                            const Icon = stageIcons[stage.name];
                             return (
                                 <Chip
                                     key={stage.name}
                                     color="neutral"
                                     href={`#${slug(stage.label)}`}
-                                    startDecorator={<Icon className="size-4" />}
+                                    startDecorator={
+                                        <OperationCategoryIcon
+                                            categoryName={stage.name}
+                                            className="size-4"
+                                        />
+                                    }
                                 >
                                     {stage.label}
                                 </Chip>
@@ -129,7 +111,6 @@ export function OperationsList({
                 {availableStages.map((stage) => {
                     const operationsForStage =
                         stageOperations.get(stage.name) ?? [];
-                    const Icon = stageIcons[stage.name];
                     return (
                         <Stack
                             key={stage.name}
@@ -138,7 +119,10 @@ export function OperationsList({
                             className="scroll-mt-24"
                         >
                             <Row spacing={4}>
-                                <Icon className="size-5 shrink-0" />
+                                <OperationCategoryIcon
+                                    categoryName={stage.name}
+                                    className="size-5 shrink-0"
+                                />
                                 <Typography level="h5" component="h2">
                                     {stage.label}
                                 </Typography>

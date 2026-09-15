@@ -1,4 +1,4 @@
-type OperationOrderingItem = {
+export type OperationOrderingItem = {
     id: number;
     createdAt: string;
     scheduledDate: string | null;

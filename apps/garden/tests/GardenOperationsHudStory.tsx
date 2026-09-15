@@ -468,3 +468,15 @@ export function DenseGardenOperationsHudStory() {
         </Providers>
     );
 }
+
+export function OpenGardenOperationsHudStory({
+    denseOperations = false,
+}: {
+    denseOperations?: boolean;
+}) {
+    return (
+        <Providers denseOperations={denseOperations}>
+            <GardenOperationsHud defaultOpen />
+        </Providers>
+    );
+}
