@@ -2,14 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { anchorPriceLabel } from './index';
 
-test('unchanged prices show the reference date without a second amount', () => {
-    assert.equal(
-        anchorPriceLabel(5, { price: 5, date: '2026-09-10' }),
-        'Ista cijena kao 10. 9. 2026.',
-    );
+test('unchanged prices do not show a reference note', () => {
+    assert.equal(anchorPriceLabel(5, { price: 5, date: '2026-09-10' }), null);
     assert.equal(
         anchorPriceLabel(5.001, { price: 5.002, date: '2026-09-10' }),
-        'Ista cijena kao 10. 9. 2026.',
+        null,
     );
 });
 

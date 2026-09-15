@@ -246,8 +246,6 @@ export function PlantPageHeader({
                             <PriceAttributeCard
                                 icon={<Sprout />}
                                 header="Cijena sijanja"
-                                entityId={price.entityId}
-                                entityTypeName={price.entityTypeName}
                                 currentPrice={price.currentPrice}
                                 description="Cijena jedne biljke uključuje troškove sjemena, pripreme tla, sjetve i sezonske pogodnosti. Više o samoj sjetvi u gredicama možeš pročitati u nastavku."
                                 navigateHref={KnownPages.Sowing}

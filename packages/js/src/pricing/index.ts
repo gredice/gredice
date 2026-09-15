@@ -33,6 +33,6 @@ export function anchorPriceLabel(
     const date = `${Number(day)}. ${Number(month)}. ${year}.`;
     const price = priceFormatter.format(anchor.price);
     return priceFormatter.format(currentPrice) === price
-        ? `Ista cijena kao ${date}`
+        ? null
         : `Cijena ${date}: ${price}`;
 }
