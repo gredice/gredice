@@ -46,6 +46,7 @@ export function createAiOperationNotesRoutes(deps = defaults) {
         async (c) => {
             c.header('Cache-Control', 'no-store');
             const input = c.req.valid('json');
+            let stage = 'load_operation';
             try {
                 const operation = await deps.getOperation(input.operationId);
                 if (
@@ -68,10 +69,17 @@ export function createAiOperationNotesRoutes(deps = defaults) {
                 ) {
                     return c.json({ suggestion: null, skipped: true }, 200);
                 }
+                stage = 'load_context';
                 const context = await deps.loadContext(operation);
-                const suggestion = operationNoteSuggestionText.parse(
-                    await deps.generate(input.notes, context, c.req.raw.signal),
+                stage = 'generate';
+                const generated = await deps.generate(
+                    input.notes,
+                    context,
+                    c.req.raw.signal,
                 );
+                stage = 'validate_output';
+                const suggestion = operationNoteSuggestionText.parse(generated);
+                stage = 'recheck_operation';
                 const current = await deps.getOperation(input.operationId);
                 if (
                     (current.status !== 'pendingVerification' &&
@@ -87,9 +95,25 @@ export function createAiOperationNotesRoutes(deps = defaults) {
                     );
                 }
                 return c.json({ suggestion, skipped: false }, 200);
-            } catch {
+            } catch (error) {
                 console.warn('operation.note.suggestion.failed', {
                     operationId: input.operationId,
+                    stage,
+                    // AI SDK errors can carry request bodies containing the note
+                    // and private context. Log diagnostic metadata, not raw errors.
+                    error: {
+                        name:
+                            error instanceof Error
+                                ? error.name
+                                : 'UnknownError',
+                        statusCode:
+                            error &&
+                            typeof error === 'object' &&
+                            'statusCode' in error &&
+                            typeof error.statusCode === 'number'
+                                ? error.statusCode
+                                : undefined,
+                    },
                 });
                 return c.json(
                     {

@@ -193,13 +193,18 @@ test('empty and oversized model output cannot replace a note', async () => {
     }
 });
 
-test('generation failures return a safe retryable error', async () => {
+test('generation failures return a safe retryable error and sanitized diagnostics', async (t) => {
+    const warnings: unknown[][] = [];
+    t.mock.method(console, 'warn', (...args: unknown[]) => warnings.push(args));
     const routes = createAiOperationNotesRoutes({
         authValidator: () => async (_c, next) => next(),
         getOperation: async () => operation,
         loadContext: async () => context,
         generate: async () => {
-            throw new Error('private provider details');
+            throw Object.assign(new Error('private provider details'), {
+                statusCode: 429,
+                requestBodyValues: { notes: 'private note' },
+            });
         },
     });
     const response = await routes.request('/', {
@@ -209,6 +214,17 @@ test('generation failures return a safe retryable error', async () => {
     });
     assert.equal(response.status, 503);
     assert.doesNotMatch(await response.text(), /private provider/);
+    assert.deepEqual(warnings, [
+        [
+            'operation.note.suggestion.failed',
+            {
+                operationId: 5089,
+                stage: 'generate',
+                error: { name: 'Error', statusCode: 429 },
+            },
+        ],
+    ]);
+    assert.doesNotMatch(JSON.stringify(warnings), /private|requestBodyValues/);
 });
 
 test('a changed version during generation discards the result', async () => {
