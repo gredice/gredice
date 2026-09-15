@@ -148,8 +148,6 @@ export default async function OperationPage(
                                 <PriceAttributeCard
                                     icon={<Euro />}
                                     header="Cijena"
-                                    entityId={operation.id}
-                                    entityTypeName="operation"
                                     currentPrice={operation.prices.perOperation}
                                     availability={priceAvailability}
                                 />

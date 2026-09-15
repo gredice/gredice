@@ -2,12 +2,10 @@
 
 import { getBrowserGrediceAppOrigin } from '@gredice/client';
 import {
-    deliveryAnchorPricePerKilometre,
     deliveryPricePerKilometre,
     maximumDeliveryDistanceKilometres,
 } from '@gredice/js/delivery';
 import { Alert } from '@gredice/ui/Alert';
-import { AnchorPrice } from '@gredice/ui/AnchorPrice';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Input } from '@gredice/ui/Input';
@@ -124,15 +122,6 @@ function ResultAlert({ result }: { result: DeliveryAvailabilityResult }) {
                 vožnje. Procijenjena cijena je{' '}
                 <strong>{formatPrice(result.price)}</strong> ({distance} km ×{' '}
                 {formatPrice(deliveryPricePerKilometre)}/km).
-                <AnchorPrice
-                    currentPrice={result.price}
-                    anchor={{
-                        ...deliveryAnchorPricePerKilometre,
-                        price:
-                            result.distanceKilometres *
-                            deliveryAnchorPricePerKilometre.price,
-                    }}
-                />
             </p>
         </Alert>
     );

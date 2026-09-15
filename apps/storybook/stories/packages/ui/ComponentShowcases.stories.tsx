@@ -1029,10 +1029,10 @@ function PublicContentShowcase() {
 
                     <div className="rounded-lg border p-4">
                         <Typography level="body1" semiBold>
-                            Uzgoj rajčice · 5,00 €
+                            Uzgoj rajčice · 7,00 €
                         </Typography>
                         <AnchorPrice
-                            currentPrice={5}
+                            currentPrice={7}
                             anchor={{ price: 5, date: '2026-09-10' }}
                         />
                     </div>

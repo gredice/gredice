@@ -16,7 +16,6 @@ import {
     useAnimateFlyToShoppingCart,
 } from '../../../indicators/AnimateFlyTo';
 import { KnownPages } from '../../../knownPages';
-import { EntityAnchorPrice } from '../../../shared-ui/EntityAnchorPrice';
 import { FavoriteToggleButton } from '../FavoriteToggleButton';
 import { OperationScheduleModal } from './OperationScheduleModal';
 
@@ -142,11 +141,6 @@ export function OperationsListItem({
                     </Stack>
                     <Typography level="body1" semiBold>
                         {price}
-                        <EntityAnchorPrice
-                            entityTypeName="operation"
-                            entityId={operation.id}
-                            currentPrice={operation.prices?.perOperation}
-                        />
                     </Typography>
                 </div>
                 {operation.information.shortDescription && (

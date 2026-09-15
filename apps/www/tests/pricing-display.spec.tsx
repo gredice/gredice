@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/experimental-ct-react';
 import { PricingDisplayTestStory } from './PricingDisplayTestStory';
 
 for (const width of [360, 1280]) {
-    test(`unchanged price appears once at ${width}px`, async ({
+    test(`unchanged price has no reference note at ${width}px`, async ({
         mount,
         page,
     }) => {
@@ -13,7 +13,7 @@ for (const width of [360, 1280]) {
         ).toHaveCount(1);
         await expect(
             component.getByText('Ista cijena kao 10. 9. 2026.'),
-        ).toBeVisible();
+        ).toHaveCount(0);
         await expect(component.getByText('Najniža u 30 dana')).toHaveCount(0);
         expect(
             await page.evaluate(
