@@ -113,14 +113,15 @@ export function UserBirthdayCard() {
             <CardContent noHeader>
                 <form onSubmit={handleBirthdayUpdate}>
                     <Stack spacing={4}>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(5.5rem,1fr)_minmax(5.5rem,1fr)_minmax(10rem,2fr)]">
+                        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)] gap-3 sm:grid-cols-[minmax(5.5rem,1fr)_minmax(5.5rem,1fr)_minmax(10rem,2fr)]">
                             <Input
                                 name="birthdayDay"
-                                label="Dan"
+                                label="Dan *"
                                 fullWidth
                                 type="number"
                                 min={1}
                                 max={31}
+                                required
                                 placeholder="npr. 12"
                                 defaultValue={birthday?.day?.toString() ?? ''}
                                 disabled={
@@ -129,11 +130,12 @@ export function UserBirthdayCard() {
                             />
                             <Input
                                 name="birthdayMonth"
-                                label="Mjesec"
+                                label="Mjesec *"
                                 fullWidth
                                 type="number"
                                 min={1}
                                 max={12}
+                                required
                                 placeholder="npr. 7"
                                 defaultValue={birthday?.month?.toString() ?? ''}
                                 disabled={
@@ -142,7 +144,7 @@ export function UserBirthdayCard() {
                             />
                             <Input
                                 name="birthdayYear"
-                                label="Godina (nije obavezna)"
+                                label="Godina"
                                 fullWidth
                                 type="number"
                                 min={MIN_BIRTH_YEAR}
