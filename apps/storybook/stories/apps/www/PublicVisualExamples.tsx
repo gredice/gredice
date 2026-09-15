@@ -13,6 +13,16 @@ import {
     GameWaterIcon,
 } from '@gredice/ui/GameIcons';
 import { OperationImage } from '@gredice/ui/OperationImage';
+import type { ComponentProps } from 'react';
+
+const editorialArtwork = [
+    { kind: 'delivery', title: 'Dostava' },
+    { kind: 'sowing', title: 'Sjetva' },
+    { kind: 'care', title: 'Briga o gredici' },
+] satisfies ReadonlyArray<{
+    kind: ComponentProps<typeof PublicGardenIllustration>['kind'];
+    title: string;
+}>;
 
 export function PublicVisualExamples() {
     return (
@@ -20,13 +30,7 @@ export function PublicVisualExamples() {
             <section aria-label="Editorial artwork" className="space-y-3">
                 <h2 className="text-xl font-semibold">Veće ilustracije</h2>
                 <div className="grid gap-4 sm:grid-cols-3">
-                    {(
-                        [
-                            { kind: 'delivery', title: 'Dostava' },
-                            { kind: 'sowing', title: 'Sjetva' },
-                            { kind: 'care', title: 'Briga o gredici' },
-                        ] as const
-                    ).map(({ kind, title }) => (
+                    {editorialArtwork.map(({ kind, title }) => (
                         <figure
                             key={kind}
                             className="flex flex-col items-center gap-2 rounded-xl border bg-card p-4"

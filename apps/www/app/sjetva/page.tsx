@@ -46,7 +46,12 @@ export default async function SowingPage() {
             <Stack spacing={8}>
                 <PageHeader
                     header="Sjetva biljaka"
-                    visual={<PublicGardenIllustration kind="sowing" />}
+                    visual={
+                        <PublicGardenIllustration
+                            kind="sowing"
+                            loading="eager"
+                        />
+                    }
                     subHeader="Sve o naručivanju sjetve, cijeni i dodatnim pogodnostima tijekom ljeta."
                     padded
                 />

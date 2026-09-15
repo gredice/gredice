@@ -56,7 +56,12 @@ export default function DeliveryPage() {
                 <PageHeader
                     padded
                     header="Dostava"
-                    visual={<PublicGardenIllustration kind="delivery" />}
+                    visual={
+                        <PublicGardenIllustration
+                            kind="delivery"
+                            loading="eager"
+                        />
+                    }
                     subHeader="Sve informacije o dostavi povrća iz tvojih gredica"
                 />
                 <StyledHtml>

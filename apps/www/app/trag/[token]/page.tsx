@@ -377,6 +377,7 @@ function TraceHero({ trace }: { trace: PublicHarvestTrace }) {
                             <PublicGardenIllustration
                                 kind="sowing"
                                 size={256}
+                                loading="eager"
                                 className="size-full"
                             />
                         </div>
