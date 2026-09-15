@@ -3,7 +3,7 @@
 import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Close, Search } from '@gredice/ui/icons';
+import { Close, Down, Search } from '@gredice/ui/icons';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
@@ -23,13 +23,11 @@ export type PricingCatalogFilter = {
 };
 
 export function PricingCatalogList({
-    columnHeader,
     emptyMessage,
     filters,
     items,
     searchLabel,
 }: {
-    columnHeader?: ReactNode;
     emptyMessage: string;
     filters: PricingCatalogFilter[];
     items: PricingCatalogItem[];
@@ -113,7 +111,7 @@ export function PricingCatalogList({
                 </div>
             </div>
 
-            <p className="mb-2 text-xs text-muted-foreground" role="status">
+            <p className="sr-only" role="status">
                 {filteredItems.length === 1
                     ? 'Prikazana je 1 stavka.'
                     : `Prikazano stavki: ${filteredItems.length}.`}
@@ -121,34 +119,34 @@ export function PricingCatalogList({
 
             {shownItems.length > 0 ? (
                 <div className="overflow-hidden rounded-lg border">
-                    {columnHeader}
                     {shownItems.map((item) => (
                         <div className="border-b last:border-b-0" key={item.id}>
                             {item.content}
                         </div>
                     ))}
+                    {remainingItems > 0 ? (
+                        <Button
+                            className="h-12 rounded-none border-t bg-muted/30 hover:bg-muted/60"
+                            color="neutral"
+                            endDecorator={<Down className="size-4" />}
+                            fullWidth
+                            onClick={() =>
+                                setVisibleItems(
+                                    (current) =>
+                                        current + INITIAL_VISIBLE_ITEMS,
+                                )
+                            }
+                            variant="plain"
+                        >
+                            Prikaži još ({remainingItems})
+                        </Button>
+                    ) : null}
                 </div>
             ) : (
                 <div className="rounded-lg border border-dashed bg-muted/30 px-4 py-10 text-center text-sm text-muted-foreground">
                     {emptyMessage}
                 </div>
             )}
-
-            {remainingItems > 0 ? (
-                <div className="mt-4 flex justify-center">
-                    <Button
-                        color="neutral"
-                        onClick={() =>
-                            setVisibleItems(
-                                (current) => current + INITIAL_VISIBLE_ITEMS,
-                            )
-                        }
-                        variant="outlined"
-                    >
-                        Prikaži još ({remainingItems})
-                    </Button>
-                </div>
-            ) : null}
         </div>
     );
 }
