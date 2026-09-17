@@ -229,7 +229,7 @@ test.describe('Sunflowers HUD', () => {
         page,
     }) => {
         await page.setViewportSize({ width: 320, height: 844 });
-        await mount(<SunflowerPackagesPanelStory />);
+        await mount(<SunflowerPackagesPanelStory panelWidth={320} />);
 
         const mainPackageCards = [
             page.locator('[data-sunflower-package="mali_zalogaj"]'),
