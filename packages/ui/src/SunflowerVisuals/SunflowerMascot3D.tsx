@@ -2,7 +2,7 @@ import type { SVGProps } from 'react';
 import { GameIconFrame } from '../GameIcons/GameIconFrame';
 import artwork from './assets/mascot-3d.webp';
 
-/** Reviewable 3D illustration; the existing currency/brand mascot remains the default. */
+/** Approved 3D-style mascot illustration, shared with the currency icon. */
 export function SunflowerMascot3D(props: SVGProps<SVGSVGElement>) {
     return <GameIconFrame source={artwork} label="Suncokret" {...props} />;
 }

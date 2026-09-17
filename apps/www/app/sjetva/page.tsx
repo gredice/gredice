@@ -6,6 +6,7 @@ import {
     GameLeafIcon,
     GameReceiptIcon,
     GameSeedlingIcon,
+    GameSunflowerIcon,
     GameSunIcon,
 } from '@gredice/ui/GameIcons';
 import { PageHeader } from '@gredice/ui/PageHeader';
@@ -73,10 +74,11 @@ export default async function SowingPage() {
                     </h2>
                     <p>
                         Sjetva se naplaćuje po biljci i trenutno iznosi
-                        minimalno 1,99&nbsp;€ ili 1.990 🌻. Cijena uključuje
-                        nabavu sjemena, pripremu tla i evidenciju radnje u
-                        aplikaciji, tako da u svakom trenutku znaš što je
-                        posađeno u tvojoj gredici.
+                        minimalno 1,99&nbsp;€ ili 1.990{' '}
+                        <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
+                        . Cijena uključuje nabavu sjemena, pripremu tla i
+                        evidenciju radnje u aplikaciji, tako da u svakom
+                        trenutku znaš što je posađeno u tvojoj gredici.
                     </p>
                     <p>
                         Točna cijena sjetve može varirati ovisno o vrsti biljke

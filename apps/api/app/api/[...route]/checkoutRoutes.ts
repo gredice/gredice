@@ -1690,7 +1690,7 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
                                 description:
                                     packageData.descriptionShort ?? undefined,
                                 imageUrls: [
-                                    'https://cdn.gredice.com/sunflower-large.svg',
+                                    'https://www.gredice.com/assets/sunflower-3d.webp',
                                 ],
                                 metadata: {
                                     kind: 'sunflowerPackage',

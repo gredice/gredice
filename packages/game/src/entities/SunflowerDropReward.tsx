@@ -1,3 +1,4 @@
+import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import { type ThreeEvent, useFrame } from '@react-three/fiber';
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -80,7 +81,7 @@ export function SunflowerDropFlyAnimation({
         >
             <AnimateFlyToItem {...props}>
                 <Image
-                    src="https://cdn.gredice.com/sunflower-large.svg"
+                    src={sunflowerMascotArtwork}
                     alt=""
                     aria-hidden
                     width={32}

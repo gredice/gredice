@@ -27,6 +27,7 @@ import {
 import { Popper } from '@gredice/ui/Popper';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { useQueryClient } from '@tanstack/react-query';
@@ -709,7 +710,7 @@ function ChatMessage({
             avatar={
                 isUser ? undefined : (
                     <Image
-                        src="https://cdn.gredice.com/sunflower-large.svg"
+                        src={sunflowerMascotArtwork}
                         alt=""
                         width={32}
                         height={32}
@@ -1242,7 +1243,7 @@ export function SuncokretChatHud() {
                             <Row spacing={2} className="min-w-0">
                                 <span className="grid size-10 shrink-0 place-items-center rounded-full border border-amber-200 bg-white shadow-sm dark:border-amber-900 dark:bg-amber-950">
                                     <Image
-                                        src="https://cdn.gredice.com/sunflower-large.svg"
+                                        src={sunflowerMascotArtwork}
                                         alt=""
                                         width={32}
                                         height={32}
@@ -1422,9 +1423,8 @@ export function SuncokretChatHud() {
                                                                   Nastavi
                                                                   razgovor
                                                                   jednim od
-                                                                  prijedloga
-                                                                  ili pitaj
-                                                                  svoje
+                                                                  prijedloga ili
+                                                                  pitaj svoje
                                                                   pitanje.
                                                               </Typography>
                                                               {

@@ -1,4 +1,7 @@
-import { SunflowerPackageVisual } from '@gredice/ui/SunflowerVisuals';
+import {
+    SunflowerPackageVisual,
+    SunflowerText,
+} from '@gredice/ui/SunflowerVisuals';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { SunflowerMascotComparison } from '../game/hud/SunflowerMascotComparison';
 
@@ -26,6 +29,22 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 export const Package: Story = {};
 export const UnknownPackage: Story = { args: { packageCode: 'unknown' } };
-export const MascotProposal: Story = {
+export const Mascot: Story = {
     render: () => <SunflowerMascotComparison />,
+};
+
+export const CurrencyLabels: Story = {
+    render: () => (
+        <div className="space-y-4">
+            <p>
+                <SunflowerText>Stanje: 42.000 🌻</SunflowerText>
+            </p>
+            <p className="text-xs">
+                <SunflowerText>Bonus: +2.000 🌻</SunflowerText>
+            </p>
+            <p>
+                <SunflowerText>Za platiti 0 🌻</SunflowerText>
+            </p>
+        </div>
+    ),
 };

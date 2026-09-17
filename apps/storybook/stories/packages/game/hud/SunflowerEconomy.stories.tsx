@@ -10,7 +10,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Five shared package illustrations, the actual package card and earn/spend history, and a separate 3D mascot proposal. Checkout is inert in this offline preview. Existing mascot/currency uses remain unchanged.',
+                    'Five shared package illustrations, the actual package card and earn/spend history, and the approved shared 3D mascot. Checkout is inert in this offline preview. The Majstor vrtlar package uses a golden wheelbarrow.',
             },
         },
     },

@@ -1,6 +1,7 @@
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { ExpandDown } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { SunflowerPackageVisual } from '@gredice/ui/SunflowerVisuals';
@@ -48,7 +49,8 @@ export function SunflowerPackageCard({
                     bold
                     className="shrink-0 whitespace-nowrap tabular-nums"
                 >
-                    {formatSunflowers(pkg.baseSunflowers)} 🌻
+                    {formatSunflowers(pkg.baseSunflowers)}{' '}
+                    <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
                 </Typography>
             </Row>
             <Row justifyContent="space-between" className="min-w-0 gap-3">
@@ -63,7 +65,8 @@ export function SunflowerPackageCard({
                     bold
                     className="shrink-0 whitespace-nowrap text-primary tabular-nums"
                 >
-                    + {formatSunflowers(pkg.bonusSunflowers)} 🌻
+                    + {formatSunflowers(pkg.bonusSunflowers)}{' '}
+                    <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
                 </Typography>
             </Row>
         </div>
@@ -156,7 +159,8 @@ export function SunflowerPackageCard({
                                         level="h4"
                                         className="whitespace-nowrap text-right tabular-nums"
                                     >
-                                        {formatSunflowers(pkg.sunflowers)} 🌻
+                                        {formatSunflowers(pkg.sunflowers)}{' '}
+                                        <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
                                     </Typography>
                                 </div>
                             </div>
@@ -183,7 +187,7 @@ export function SunflowerPackageCard({
                                             className="whitespace-nowrap tabular-nums"
                                         >
                                             {formatSunflowers(pkg.sunflowers)}{' '}
-                                            🌻
+                                            <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
                                         </Typography>
                                         <ExpandDown className="size-4 text-foreground/75 transition-transform group-open:rotate-180" />
                                     </span>
@@ -211,7 +215,8 @@ export function SunflowerPackageCard({
                                 bold
                                 className="whitespace-nowrap tabular-nums"
                             >
-                                {formatSunflowers(pkg.sunflowers)} 🌻
+                                {formatSunflowers(pkg.sunflowers)}{' '}
+                                <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
                             </Typography>
                         </div>
                     )}

@@ -144,7 +144,12 @@ test('shows custom award milestones and visible gardens without exposing the log
     ).toHaveText('7');
     await details.getByRole('button', { name: /Statistika vrta/ }).click();
     await expect(details.getByText('1 m²')).toBeVisible();
-    await expect(details.getByText('2 🌻')).toBeVisible();
+    await expect(
+        details
+            .getByText('Cijena blokova')
+            .locator('..')
+            .getByText(/^2\s*Suncokreti$/u),
+    ).toBeVisible();
     await expect(details.locator('[data-collapse-state="open"]')).toHaveCSS(
         'opacity',
         '1',

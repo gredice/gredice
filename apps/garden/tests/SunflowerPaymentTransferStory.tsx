@@ -1,3 +1,4 @@
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { useState } from 'react';
 import { ButtonPricePickPaymentMethod } from '../../../packages/game/src/hud/components/shopping-cart/ButtonPricePickPaymentMethod';
 
@@ -16,7 +17,7 @@ export function SunflowerPaymentTransferStory({
                 aria-label="Suncokreti"
                 className="fixed right-6 top-6 rounded-full border px-4 py-2"
             >
-                8.000 🌻
+                8.000 <GameSunflowerIcon className="size-4" />
             </button>
             <div className="mt-48 w-fit">
                 <ButtonPricePickPaymentMethod

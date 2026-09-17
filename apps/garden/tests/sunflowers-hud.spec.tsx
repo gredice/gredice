@@ -230,7 +230,7 @@ test.describe('Sunflowers HUD', () => {
         );
         await expect(mobileBreakdown).not.toHaveAttribute('open', '');
         await expect(
-            mobileBreakdown.getByText('42.000 🌻', { exact: true }),
+            mobileBreakdown.getByText('42.000 Suncokreti', { exact: true }),
         ).toBeVisible();
         await expect(page.getByText('Prikaži raščlambu')).toHaveCount(0);
         await expect(page.getByText('Sakrij raščlambu')).toHaveCount(0);
@@ -284,7 +284,7 @@ test.describe('Sunflowers HUD', () => {
         await expect(
             bestValuePackage
                 .locator('[data-package-breakdown="compact"]')
-                .getByText('110.000 🌻', { exact: true }),
+                .getByText('110.000 Suncokreti', { exact: true }),
         ).toBeVisible();
 
         const panelOverflow = await page

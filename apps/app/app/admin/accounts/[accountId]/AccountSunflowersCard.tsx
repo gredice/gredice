@@ -15,25 +15,30 @@ import {
     CardTitle,
 } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
+import {
+    GameBasketIcon,
+    GameBirthdayIcon,
+    GameCalendarIcon,
+    GameCommunityIcon,
+    GameGiftIcon,
+    GameHistoryIcon,
+    GameReceiptIcon,
+    GameRefundIcon,
+    GameSeedlingIcon,
+    GameTasksIcon,
+    GameTrophyIcon,
+} from '@gredice/ui/GameIcons';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
-import {
-    Add,
-    Calendar,
-    Heart,
-    History,
-    ListTodo,
-    People,
-    Reset,
-    ShoppingCart,
-    Sprout,
-    Verified,
-    Wallet,
-} from '@gredice/ui/icons';
+import { Add } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Popper } from '@gredice/ui/Popper';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
+import {
+    SunflowerPackageVisual,
+    sunflowerMascotArtwork,
+} from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { revalidatePath } from 'next/cache';
@@ -52,8 +57,6 @@ type SunflowerHistoryEvent = Awaited<
 >[number];
 
 type SunflowerLedgerTone = 'earned' | 'spent' | 'neutral';
-
-const sunflowerIconUrl = 'https://cdn.gredice.com/sunflower-large.svg';
 
 function formatSunflowerAmount(amount: number) {
     return amount.toLocaleString('hr-HR', {
@@ -99,7 +102,10 @@ function iconFrame(children: ReactNode, tone: SunflowerLedgerTone = 'neutral') {
 
 function blockIcon(blockName: string | undefined, tone: SunflowerLedgerTone) {
     if (!blockName || !getBlockImageUrl(blockName)) {
-        return iconFrame(<Sprout className="size-5" aria-hidden />, tone);
+        return iconFrame(
+            <GameSeedlingIcon className="size-8" aria-hidden />,
+            tone,
+        );
     }
 
     return iconFrame(
@@ -128,7 +134,10 @@ function getSunflowerReasonSummary(event: SunflowerHistoryEvent) {
 
     if (reason === 'registration') {
         return {
-            icon: iconFrame(<Verified className="size-5" aria-hidden />, tone),
+            icon: iconFrame(
+                <GameTrophyIcon className="size-8" aria-hidden />,
+                tone,
+            ),
             label: 'Nagrada za registraciju',
             description: 'Početni bonus dodijeljen pri stvaranju računa.',
             reason,
@@ -140,7 +149,10 @@ function getSunflowerReasonSummary(event: SunflowerHistoryEvent) {
             ? getAchievementDefinition(reasonDetail)
             : undefined;
         return {
-            icon: iconFrame(<Verified className="size-5" aria-hidden />, tone),
+            icon: iconFrame(
+                <GameTrophyIcon className="size-8" aria-hidden />,
+                tone,
+            ),
             label: definition
                 ? `Postignuće: ${definition.title}`
                 : 'Nagrada za postignuće',
@@ -154,7 +166,10 @@ function getSunflowerReasonSummary(event: SunflowerHistoryEvent) {
     if (reasonPrefix === 'daily') {
         const day = reasonDetail ? `${reasonDetail}. dan` : 'Dnevni niz';
         return {
-            icon: iconFrame(<Calendar className="size-5" aria-hidden />, tone),
+            icon: iconFrame(
+                <GameCalendarIcon className="size-8" aria-hidden />,
+                tone,
+            ),
             label: 'Dnevna aktivnost',
             description: `${day} aktivnosti u vrtu.`,
             reason,
@@ -163,7 +178,10 @@ function getSunflowerReasonSummary(event: SunflowerHistoryEvent) {
 
     if (reasonPrefix === 'tutorial') {
         return {
-            icon: iconFrame(<ListTodo className="size-5" aria-hidden />, tone),
+            icon: iconFrame(
+                <GameTasksIcon className="size-8" aria-hidden />,
+                tone,
+            ),
             label: 'Zadaci za novi vrt',
             description: 'Nagrada iz uvodnog popisa zadataka.',
             reason,
@@ -177,7 +195,7 @@ function getSunflowerReasonSummary(event: SunflowerHistoryEvent) {
                     alt="Suncokret"
                     className="size-8"
                     height={32}
-                    src={sunflowerIconUrl}
+                    src={sunflowerMascotArtwork}
                     width={32}
                 />,
                 tone,
@@ -199,7 +217,10 @@ function getSunflowerReasonSummary(event: SunflowerHistoryEvent) {
 
     if (reasonPrefix === 'recycle') {
         return {
-            icon: iconFrame(<Reset className="size-5" aria-hidden />, tone),
+            icon: iconFrame(
+                <GameRefundIcon className="size-8" aria-hidden />,
+                tone,
+            ),
             label: 'Recikliranje bloka',
             description: 'Povrat suncokreta nakon recikliranja.',
             reason,
@@ -208,7 +229,10 @@ function getSunflowerReasonSummary(event: SunflowerHistoryEvent) {
 
     if (reason === 'gift') {
         return {
-            icon: iconFrame(<Heart className="size-5" aria-hidden />, tone),
+            icon: iconFrame(
+                <GameGiftIcon className="size-8" aria-hidden />,
+                tone,
+            ),
             label: 'Poklon',
             description: 'Ručno dodijeljeno iz administracije.',
             reason,
@@ -217,7 +241,10 @@ function getSunflowerReasonSummary(event: SunflowerHistoryEvent) {
 
     if (reason === 'payment') {
         return {
-            icon: iconFrame(<Wallet className="size-5" aria-hidden />, tone),
+            icon: iconFrame(
+                <GameReceiptIcon className="size-8" aria-hidden />,
+                tone,
+            ),
             label: 'Bonus za plaćanje',
             description: 'Suncokreti dodijeljeni nakon plaćanja.',
             reason,
@@ -226,7 +253,14 @@ function getSunflowerReasonSummary(event: SunflowerHistoryEvent) {
 
     if (reasonPrefix === 'sunflowerPackage') {
         return {
-            icon: iconFrame(<Wallet className="size-5" aria-hidden />, tone),
+            icon: iconFrame(
+                <SunflowerPackageVisual
+                    packageCode={reasonDetail}
+                    className="size-8"
+                    aria-hidden
+                />,
+                tone,
+            ),
             label: 'Kupnja paketa suncokreta',
             description: 'Suncokreti dodijeljeni iz plaćenog paketa.',
             reason,
@@ -239,7 +273,7 @@ function getSunflowerReasonSummary(event: SunflowerHistoryEvent) {
     ) {
         return {
             icon: iconFrame(
-                <ShoppingCart className="size-5" aria-hidden />,
+                <GameBasketIcon className="size-8" aria-hidden />,
                 tone,
             ),
             label:
@@ -253,7 +287,10 @@ function getSunflowerReasonSummary(event: SunflowerHistoryEvent) {
 
     if (reasonPrefix === 'refund') {
         return {
-            icon: iconFrame(<Reset className="size-5" aria-hidden />, tone),
+            icon: iconFrame(
+                <GameRefundIcon className="size-8" aria-hidden />,
+                tone,
+            ),
             label: 'Povrat sredstava',
             description: 'Vraćeni suncokreti nakon otkazivanja ili promjene.',
             reason,
@@ -262,7 +299,10 @@ function getSunflowerReasonSummary(event: SunflowerHistoryEvent) {
 
     if (reasonPrefix === 'referral') {
         return {
-            icon: iconFrame(<People className="size-5" aria-hidden />, tone),
+            icon: iconFrame(
+                <GameCommunityIcon className="size-8" aria-hidden />,
+                tone,
+            ),
             label: 'Preporuka',
             description: 'Nagrada povezana s preporukom računa.',
             reason,
@@ -271,7 +311,10 @@ function getSunflowerReasonSummary(event: SunflowerHistoryEvent) {
 
     if (reasonPrefix === 'birthday') {
         return {
-            icon: iconFrame(<Heart className="size-5" aria-hidden />, tone),
+            icon: iconFrame(
+                <GameBirthdayIcon className="size-8" aria-hidden />,
+                tone,
+            ),
             label: 'Rođendanski poklon',
             description: 'Posebna rođendanska nagrada.',
             reason,
@@ -279,7 +322,10 @@ function getSunflowerReasonSummary(event: SunflowerHistoryEvent) {
     }
 
     return {
-        icon: iconFrame(<History className="size-5" aria-hidden />, tone),
+        icon: iconFrame(
+            <GameHistoryIcon className="size-8" aria-hidden />,
+            tone,
+        ),
         label:
             event.type === knownEventTypes.accounts.spendSunflowers
                 ? 'Potrošnja suncokreta'
@@ -371,7 +417,7 @@ export async function AccountSunflowersCard({
                             alt="Suncokret"
                             className="size-10"
                             height={40}
-                            src={sunflowerIconUrl}
+                            src={sunflowerMascotArtwork}
                             width={40}
                         />
                     </span>

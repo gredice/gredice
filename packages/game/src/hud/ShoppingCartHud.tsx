@@ -1,10 +1,12 @@
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Calendar, Delete, Info, Navigate, Truck } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { SunflowerText } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
@@ -373,8 +375,10 @@ export function ShoppingCart({
                 >
                     <Alert color="primary">
                         Dio košare možeš platiti u{' '}
-                        <span className="text-yellow-500">🌻</span>. Odaberi
-                        željeni način plaćanja desno od cijene.
+                        <span className="text-yellow-500">
+                            <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
+                        </span>
+                        . Odaberi željeni način plaćanja desno od cijene.
                     </Alert>
                 </div>
                 <Stack>
@@ -418,7 +422,9 @@ export function ShoppingCart({
                                                   cart?.totalSunflowers ?? 0,
                                               )
                                             : '0'}{' '}
-                                        <span className={'text-lg'}>🌻</span>
+                                        <span className={'text-lg'}>
+                                            <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
+                                        </span>
                                     </Typography>
                                 )}
                             </Stack>
@@ -439,7 +445,9 @@ export function ShoppingCart({
                                                 level="body2"
                                                 className="text-blue-900 dark:text-blue-100"
                                             >
-                                                {note}
+                                                <SunflowerText>
+                                                    {note}
+                                                </SunflowerText>
                                             </Typography>
                                         </Alert>
                                     ))}

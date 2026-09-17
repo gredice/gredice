@@ -15,6 +15,7 @@ import {
     getGardenStructureFootprintBounds,
     getGardenStructureKitReferenceDefinition,
 } from '@gredice/js/gardenStructures';
+import { SunflowerText } from '@gredice/ui/SunflowerVisuals';
 import { cx } from '@gredice/ui/utils';
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -2682,9 +2683,15 @@ export function GardenStructureVerticalSliceHud({
                         {displayedWidth} × {displayedDepth} /{' '}
                         {gardenStructureMaxSideLength}
                     </span>
-                    <span>{pricingPresentation.rateLabel}</span>
+                    <span>
+                        <SunflowerText>
+                            {pricingPresentation.rateLabel}
+                        </SunflowerText>
+                    </span>
                     <span className="text-right font-semibold">
-                        {pricingPresentation.actionLabel}
+                        <SunflowerText>
+                            {pricingPresentation.actionLabel}
+                        </SunflowerText>
                     </span>
                 </div>
 
@@ -3260,7 +3267,7 @@ export function GardenStructureVerticalSliceHud({
 
             <p className="sr-only" aria-live="polite" aria-atomic="true">
                 {announcement ||
-                    `${originTemplateLabel}, ${pricing.cellCount.toString()} polja, ${pricingPresentation.actionLabel}.`}
+                    `${originTemplateLabel}, ${pricing.cellCount.toString()} polja, ${pricingPresentation.actionLabel.replaceAll('🌻', 'suncokreta')}.`}
             </p>
         </section>
     );

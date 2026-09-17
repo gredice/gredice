@@ -453,7 +453,7 @@ test('keeps one canvas through the touch-first building slice in portrait and la
     await expect(page.getByTestId('garden-structure-build-done')).toBeFocused();
     await expect(avatarEntry).toHaveCount(0);
     await expect(hud).toContainText('12 / 100 polja');
-    await expect(hud).toContainText('600 🌻');
+    await expect(hud).toContainText('600 Suncokreti');
     await waitForStructureInsideVisibleViewport(page, portraitViewport);
     await expect(canvas).toHaveCount(1);
     if (originalCanvas) {
@@ -478,7 +478,7 @@ test('keeps one canvas through the touch-first building slice in portrait and la
         templateCatalog.locator('label:has(input[value$=":template:blank"])'),
     );
     await expect(hud).toContainText('4 / 100 polja');
-    await expect(hud).toContainText('200 🌻');
+    await expect(hud).toContainText('200 Suncokreti');
     await tapTarget(
         templateCatalog.locator('label:has(input[value$=":template:house"])'),
     );

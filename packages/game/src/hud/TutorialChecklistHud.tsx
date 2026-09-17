@@ -3,10 +3,12 @@
 import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
 import { DotIndicator } from '@gredice/ui/DotIndicator';
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Check, ExpandDown, Warning } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { SunflowerText } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { useQueryClient } from '@tanstack/react-query';
@@ -45,7 +47,7 @@ const completedChecklistDismissedStorageKey =
 
 function RewardText({ task }: { task: TutorialChecklistTask }) {
     if (task.rewardLabel) {
-        return <>{task.rewardLabel}</>;
+        return <SunflowerText>{task.rewardLabel}</SunflowerText>;
     }
     if (task.rewardSunflowers <= 0) {
         return <>Bez dodatne nagrade</>;
@@ -53,7 +55,9 @@ function RewardText({ task }: { task: TutorialChecklistTask }) {
     return (
         <>
             +{formatSunflowers(task.rewardSunflowers)}{' '}
-            <span aria-hidden="true">🌻</span>
+            <span aria-hidden="true">
+                <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
+            </span>
         </>
     );
 }
@@ -179,7 +183,11 @@ function useCompletedChecklistDismissal(
 
 function ClaimButtonContent({ task }: { task: TutorialChecklistTask }) {
     if (task.rewardLabel) {
-        return <span className="text-sm font-bold">{task.rewardLabel}</span>;
+        return (
+            <span className="text-sm font-bold">
+                <SunflowerText>{task.rewardLabel}</SunflowerText>
+            </span>
+        );
     }
     if (task.rewardSunflowers <= 0) {
         return <span className="text-sm font-bold">Označi</span>;
@@ -187,7 +195,9 @@ function ClaimButtonContent({ task }: { task: TutorialChecklistTask }) {
     return (
         <span className="text-sm font-bold leading-none">
             +{formatSunflowers(task.rewardSunflowers)}{' '}
-            <span aria-hidden="true">🌻</span>
+            <span aria-hidden="true">
+                <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
+            </span>
         </span>
     );
 }

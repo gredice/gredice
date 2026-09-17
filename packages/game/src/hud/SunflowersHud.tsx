@@ -1,5 +1,6 @@
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { useSearchParam } from '@gredice/ui/hooks';
 import { IconButton } from '@gredice/ui/IconButton';
 import {
@@ -10,6 +11,7 @@ import {
 import { Popper } from '@gredice/ui/Popper';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
@@ -31,11 +33,17 @@ function DailyRewardInfo() {
             </Typography>
             <Row justifyContent="space-between">
                 <Typography level="body3">{`Danas - dan ${currentDay}`}</Typography>
-                <Typography level="body2">+{data.current.amount} 🌻</Typography>
+                <Typography level="body2">
+                    +{data.current.amount}{' '}
+                    <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
+                </Typography>
             </Row>
             <Row justifyContent="space-between">
                 <Typography level="body3">{`Sutra te čeka`}</Typography>
-                <Typography level="body2">+{data.next.amount} 🌻</Typography>
+                <Typography level="body2">
+                    +{data.next.amount}{' '}
+                    <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
+                </Typography>
             </Row>
         </Stack>
     );
@@ -46,7 +54,7 @@ export function SunflowersInfoTooltipContent() {
         <Stack className="p-4" spacing={4}>
             <Row spacing={4} alignItems="start">
                 <Image
-                    src="https://cdn.gredice.com/sunflower-large.svg"
+                    src={sunflowerMascotArtwork}
                     alt="Suncokret"
                     width={72}
                     height={72}
@@ -75,7 +83,8 @@ export function SunflowersInfoTooltipContent() {
                             Plaćanje
                         </Typography>
                         <Typography level="body1" bold className="tabular-nums">
-                            1 € = 1.000 🌻
+                            1 € = 1.000{' '}
+                            <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
                         </Typography>
                     </Stack>
                     <Stack
@@ -89,7 +98,8 @@ export function SunflowersInfoTooltipContent() {
                             Bonus za kupnju
                         </Typography>
                         <Typography level="body1" bold className="tabular-nums">
-                            1 € = 10 🌻
+                            1 € = 10{' '}
+                            <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
                         </Typography>
                     </Stack>
                 </div>
@@ -178,7 +188,7 @@ function SunflowersAmount() {
                     data-sunflowers-hud-target
                     startDecorator={
                         <Image
-                            src="https://cdn.gredice.com/sunflower-large.svg"
+                            src={sunflowerMascotArtwork}
                             alt="Suncokret"
                             className="size-6"
                             width={24}
@@ -208,7 +218,7 @@ function SunflowersAmount() {
                     {pendingSunflowers > 0 && (
                         <span
                             aria-hidden="true"
-                            title={`U košari: ${formatSunflowers(pendingSunflowers)} 🌻`}
+                            title={`U košari: ${formatSunflowers(pendingSunflowers)} suncokreta`}
                             data-sunflowers-cart-indicator
                             className="pointer-events-none absolute -right-1 -top-1 flex size-6 items-center justify-center rounded-full border border-background bg-neutral-100 text-neutral-900 shadow-xs"
                         >

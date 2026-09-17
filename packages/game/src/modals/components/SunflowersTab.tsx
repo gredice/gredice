@@ -1,6 +1,7 @@
 import { Card, CardContent } from '@gredice/ui/Card';
 import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { Stack } from '@gredice/ui/Stack';
+import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useCurrentAccount } from '../../hooks/useCurrentAccount';
@@ -27,7 +28,7 @@ export function SunflowersTab() {
                 <div className="relative md:mt-0">
                     <span className="absolute text-5xl -top-12 right-6 hidden md:block">
                         <Image
-                            src="https://cdn.gredice.com/sunflower-large.svg"
+                            src={sunflowerMascotArtwork}
                             alt="Suncokret"
                             className="size-12"
                             width={48}

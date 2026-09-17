@@ -1,14 +1,19 @@
-import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { SunflowerMascot3D } from '@gredice/ui/SunflowerVisuals';
+import previousMascot from '../../../../../../packages/ui/src/GameIcons/assets/sunflower.svg';
+import { GameIconFrame } from '../../../../../../packages/ui/src/GameIcons/GameIconFrame';
 
 export function SunflowerMascotComparison() {
     return (
         <section aria-label="Usporedba maskote" className="space-y-4">
-            <h2 className="text-xl font-semibold">Maskota · 3D prijedlog</h2>
+            <h2 className="text-xl font-semibold">Maskota · 3D prikaz</h2>
             <div className="flex flex-wrap items-end gap-8 rounded-xl border bg-card p-4">
                 <figure className="space-y-2">
-                    <GameSunflowerIcon className="size-36" aria-hidden />
-                    <figcaption>Sada</figcaption>
+                    <GameIconFrame
+                        source={previousMascot}
+                        className="size-36"
+                        aria-hidden
+                    />
+                    <figcaption>Prethodno</figcaption>
                 </figure>
                 <figure className="space-y-2">
                     <SunflowerMascot3D className="size-36" aria-hidden />

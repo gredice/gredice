@@ -1,5 +1,7 @@
 'use client';
 
+import { SunflowerText } from '@gredice/ui/SunflowerVisuals';
+
 import { cx } from '@gredice/ui/utils';
 import {
     type KeyboardEvent as ReactKeyboardEvent,
@@ -105,7 +107,7 @@ export function GardenStructureConfirmationDialog({
                     className="mt-1 text-sm text-muted-foreground"
                     id={descriptionId}
                 >
-                    {description}
+                    <SunflowerText>{description}</SunflowerText>
                 </p>
                 {details}
                 {error ? (
@@ -154,7 +156,7 @@ export function GardenStructureConfirmationDialog({
                         disabled={confirmDisabled}
                         onClick={onConfirm}
                     >
-                        {confirmLabel}
+                        <SunflowerText>{confirmLabel}</SunflowerText>
                     </button>
                 </div>
             </div>

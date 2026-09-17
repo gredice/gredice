@@ -1,6 +1,7 @@
 'use client';
 
 import { gardenStructureMaxSideLength } from '@gredice/js/gardenStructures';
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { GardenStructureConfirmationDialog } from '../GardenStructureConfirmationDialog';
 import type { GardenStructureEditorPricingPreview } from './gardenStructureEditorTypes';
 
@@ -44,15 +45,18 @@ export function GardenStructureFootprintConfirmationDialog({
                         </dd>
                         <dt>Ukupna vrijednost</dt>
                         <dd className="text-right font-semibold">
-                            {pricing.totalPrice.toLocaleString('hr-HR')} 🌻
+                            {pricing.totalPrice.toLocaleString('hr-HR')}{' '}
+                            <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
                         </dd>
                         <dt>Dodatna naplata</dt>
                         <dd className="text-right font-semibold">
-                            {pricing.delta.debit.toLocaleString('hr-HR')} 🌻
+                            {pricing.delta.debit.toLocaleString('hr-HR')}{' '}
+                            <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
                         </dd>
                         <dt>Povrat</dt>
                         <dd className="text-right font-semibold">
-                            {pricing.delta.refund.toLocaleString('hr-HR')} 🌻
+                            {pricing.delta.refund.toLocaleString('hr-HR')}{' '}
+                            <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
                         </dd>
                     </dl>
                     {isSandbox ? (

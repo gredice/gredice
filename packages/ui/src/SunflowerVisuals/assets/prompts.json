@@ -40,5 +40,13 @@
         }
     ],
     "processing": "Resize and encode WebP only, preserving original transparent margins and alpha. Package illustrations: 512px, mascot preview: 768px, event icons: 384px. Quality 90, alphaQuality 100.",
-    "scope": "Five package visuals and event icons are integrated. The 3D mascot is a separate preview; existing mascot/currency uses are unchanged."
+    "scope": "Five package visuals and activity icons are integrated. The approved 3D mascot is shared by currency icons and simple app mascot visuals.",
+    "edits": [
+        {
+            "file": "package-master.webp",
+            "prompt": "Use case: precise-object-edit. Edit this existing Gredice game package illustration. Change only the PURPLE wheelbarrow tray/body to a rich GOLDEN YELLOW metal finish with warm amber side facets and pale gold upper edges, matching the chunky low-poly 3D game style. Keep all sunflower flowers, their brown centers, green leaves, teal handle grips, natural wood frame, charcoal wheel, geometry, camera angle, composition, proportions, lighting and transparent alpha background unchanged. Golden cart should be distinct from the natural yellow petals through amber shaded sides; no jewels, coins or added objects, no text, no extra shine/glitter. One complete wheelbarrow, no floor or external shadow. Preserve true transparent background.",
+            "reference": "Previously generated purple package-master.webp",
+            "generatedWith": "built-in image_gen"
+        }
+    ]
 }

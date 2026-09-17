@@ -5,7 +5,10 @@ import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { Navigate } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
-import { SunflowerPackageVisual } from '@gredice/ui/SunflowerVisuals';
+import {
+    SunflowerPackageVisual,
+    sunflowerMascotArtwork,
+} from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -130,7 +133,7 @@ export default async function SunflowersPage() {
                     padded
                     visual={
                         <Image
-                            src="https://cdn.gredice.com/sunflower-large.svg"
+                            src={sunflowerMascotArtwork}
                             alt="Suncokret"
                             width={192}
                             height={192}

@@ -1,6 +1,7 @@
 'use client';
 
 import { IconButton } from '@gredice/ui/IconButton';
+import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
 import {
@@ -54,7 +55,7 @@ export function SuncokretChatTrigger({
             )}
         >
             <Image
-                src="https://cdn.gredice.com/sunflower-large.svg"
+                src={sunflowerMascotArtwork}
                 alt=""
                 aria-hidden="true"
                 width={24}

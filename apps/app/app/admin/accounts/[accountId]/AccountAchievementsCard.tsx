@@ -9,6 +9,7 @@ import {
     CardTitle,
 } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -118,7 +119,7 @@ export async function AccountAchievementsCard({
                                                     size="sm"
                                                     variant="outlined"
                                                 >
-                                                    🌻{' '}
+                                                    <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />{' '}
                                                     {achievement.rewardSunflowers.toLocaleString(
                                                         'hr-HR',
                                                     )}

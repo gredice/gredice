@@ -8,7 +8,10 @@ import {
     GameRaisedBedIcon as RaisedBedIcon,
 } from '@gredice/ui/GameIcons';
 import { PlantGridIcon } from '@gredice/ui/GridIcons';
-import { SunflowerPackageVisual } from '@gredice/ui/SunflowerVisuals';
+import {
+    SunflowerPackageVisual,
+    sunflowerMascotArtwork,
+} from '@gredice/ui/SunflowerVisuals';
 import { MoveIndicator } from '@packages/game/controls/components/MoveIndicator';
 import { RainIcon } from '@packages/game/hud/components/weather/icons/RainIcon';
 import { weatherDefinitions } from '@packages/game/hud/components/weather/icons/weatherDefinitions';
@@ -97,8 +100,8 @@ const artwork = [
     },
     {
         name: 'Sunflower',
-        src: '/game-icons/sunflower-large.svg',
-        source: 'https://cdn.gredice.com/sunflower-large.svg',
+        src: sunflowerMascotArtwork,
+        source: 'packages/ui/src/SunflowerVisuals/assets/mascot-3d.webp',
         usage: 'packages/game/src/hud/SunflowersHud.tsx',
         description: 'Currency, rewards and Suncokret assistant identity.',
     },

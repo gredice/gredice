@@ -422,7 +422,9 @@ test('confirms cancellation and reports the bounded one-per-planting refund', as
         reason: 'Promjena plana.',
     });
     await expect(
-        page.getByText('Sijanje je otkazano. Vraćeno je 4321 🌻.'),
+        page.getByText('Sijanje je otkazano. Vraćeno je 4321 Suncokreti.', {
+            exact: true,
+        }),
     ).toBeVisible();
 });
 

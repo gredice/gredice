@@ -226,9 +226,13 @@ test('shows exact footprint impact and exposes explicit confirm and cancel contr
     await expect(dialog).toBeVisible();
     await expect(dialog.getByText('63 / 100')).toBeVisible();
     await expect(dialog.getByText('9 × 8 / 20')).toBeVisible();
-    await expect(dialog.getByText('3.150 🌻')).toBeVisible();
-    await expect(dialog.getByText('550 🌻')).toBeVisible();
-    await expect(dialog.getByText('0 🌻', { exact: true })).toBeVisible();
+    await expect(
+        dialog.getByText('3.150 Suncokreti', { exact: true }),
+    ).toBeVisible();
+    await expect(
+        dialog.getByText('550 Suncokreti', { exact: true }),
+    ).toBeVisible();
+    await expect(dialog.getByText(/^0\s*Suncokreti$/u)).toBeVisible();
 
     await dialog.getByRole('button', { name: 'Potvrdi promjenu' }).click();
     await expect(page.getByTestId('footprint-confirmation-action')).toHaveText(
