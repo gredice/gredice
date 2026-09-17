@@ -215,7 +215,7 @@ export function SunflowerPackagesPanel() {
             ) : null}
 
             {initialOffers.length > 0 || mainPackages.length > 0 ? (
-                <div className="grid min-w-0 grid-cols-1 gap-3 @[36rem]/sunflower-packages:grid-cols-2 @[50rem]/sunflower-packages:grid-cols-3">
+                <div className="grid min-w-0 grid-cols-3 gap-2 @[36rem]/sunflower-packages:gap-3">
                     {initialOffers.map((pkg) => packageCard(pkg, true))}
                     {mainPackages.map((pkg) => packageCard(pkg))}
                 </div>
