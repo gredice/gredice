@@ -228,7 +228,7 @@ test.describe('Sunflowers HUD', () => {
         mount,
         page,
     }) => {
-        await page.setViewportSize({ width: 390, height: 844 });
+        await page.setViewportSize({ width: 320, height: 844 });
         await mount(<SunflowerPackagesPanelStory />);
 
         const mainPackageCards = [
@@ -248,6 +248,16 @@ test.describe('Sunflowers HUD', () => {
         expect(popularPackageBox?.y).toBe(bestValuePackageBox?.y);
         expect(smallPackageBox?.x).toBeLessThan(popularPackageBox?.x ?? 0);
         expect(popularPackageBox?.x).toBeLessThan(bestValuePackageBox?.x ?? 0);
+
+        const panelOverflow = await page
+            .locator('[data-sunflower-packages-panel]')
+            .evaluate((panel) => ({
+                clientWidth: panel.clientWidth,
+                scrollWidth: panel.scrollWidth,
+            }));
+        expect(panelOverflow.scrollWidth).toBeLessThanOrEqual(
+            panelOverflow.clientWidth + 1,
+        );
 
         const smallPackage = mainPackageCards[0];
         await expect(

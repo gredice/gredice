@@ -115,7 +115,7 @@ export function SunflowerPackageCard({
                                     size="sm"
                                     variant="soft"
                                     color={isPopular ? 'warning' : 'neutral'}
-                                    className="min-h-5 px-1 py-0 text-[9px] leading-4 @[12rem]/package:min-h-6 @[12rem]/package:px-1.5 @[12rem]/package:py-0.5 @[12rem]/package:text-xs"
+                                    className="min-h-5 whitespace-normal break-words px-1 py-0 text-left text-[9px] leading-tight @[12rem]/package:min-h-6 @[12rem]/package:whitespace-nowrap @[12rem]/package:px-1.5 @[12rem]/package:py-0.5 @[12rem]/package:text-xs"
                                 >
                                     {pkg.tag}
                                 </Chip>
