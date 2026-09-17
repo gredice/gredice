@@ -139,17 +139,20 @@ test.describe('Sunflowers HUD', () => {
             4,
         );
 
-        for (const code of [
-            'mali_zalogaj',
-            'vrtna_kosarica',
-            'mirna_sezona',
-            'puna_gredica',
-        ]) {
+        for (const [code, filename] of Object.entries({
+            mali_zalogaj: 'package-small',
+            vrtna_kosarica: 'package-basket',
+            mirna_sezona: 'package-season',
+            puna_gredica: 'package-starter',
+        })) {
             await expect(
                 page.locator(
                     `[data-sunflower-package="${code}"] [data-sunflower-package-artwork="${code}"] image`,
                 ),
-            ).toHaveAttribute('href', /package-.*\.webp/u);
+            ).toHaveAttribute(
+                'href',
+                new RegExp(`/${filename}(?:-[\\w-]+)?\\.webp$`, 'u'),
+            );
         }
 
         const initialOffer = page.locator(
@@ -200,6 +203,11 @@ test.describe('Sunflowers HUD', () => {
 
         await expect(page.getByText('Želiš veći saldo?')).toBeVisible();
         await expect(page.getByText('Majstor vrtlar')).toBeVisible();
+        await expect(
+            page.locator(
+                '[data-sunflower-package-artwork="majstor_vrtlar"] image',
+            ),
+        ).toHaveAttribute('href', /\/package-master(?:-[\w-]+)?\.webp$/u);
         await expect(
             page.getByRole('button', { name: 'Odaberi majstor paket' }),
         ).toBeVisible();
