@@ -35,11 +35,13 @@ errors, and the explicit high-signal request logs above. This prevents routine
 cron completion and health records from forcing an outgoing OTLP request every
 minute while retaining operational failures.
 
-API, WWW, and Farm log flushes share the batch processor's one-second
+API, WWW, App, and Farm log flushes share the batch processor's one-second
 collection window. A single post-response flush then covers concurrent
 high-signal records. The OTLP fetch transport aborts exports after five seconds
-so DNS, connection, and response stalls settle before the processor's
-six-second bound and the provider's seven-second deadline.
+so DNS, connection, and response stalls are bounded. A timeout retries the same
+batch once because OpenTelemetry treats its own fetch abort as non-retryable;
+the processor's 12-second bound and provider's 13-second deadline cover both
+attempts without delaying the response.
 
 Failed exports propagate through the forced-flush scheduler, which uses
 exponential backoff from 30 seconds to five minutes. The batch processor's own
