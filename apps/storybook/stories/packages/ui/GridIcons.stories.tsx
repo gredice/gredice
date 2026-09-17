@@ -68,3 +68,25 @@ export const LargeSize: Story = {
         </div>
     ),
 };
+
+export const PlantDensities: Story = {
+    render: () => (
+        <div className="flex flex-wrap gap-6">
+            {[0, 1, 4, 9, 16, 25, 36, 49, 64, 100, 17].map((totalPlants) => (
+                <figure key={totalPlants} className="space-y-2">
+                    <div className="flex items-end gap-2">
+                        {[24, 32, 64].map((size) => (
+                            <PlantGridIcon
+                                key={size}
+                                totalPlants={totalPlants}
+                                width={size}
+                                height={size}
+                            />
+                        ))}
+                    </div>
+                    <figcaption>{totalPlants} · 24 / 32 / 64px</figcaption>
+                </figure>
+            ))}
+        </div>
+    ),
+};

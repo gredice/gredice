@@ -1442,6 +1442,14 @@ function GardenWorkspaceShowcase() {
                                     totalPlants={9}
                                     className="size-6"
                                 />
+                                <PlantGridIcon
+                                    totalPlants={25}
+                                    className="size-6"
+                                />
+                                <PlantGridIcon
+                                    totalPlants={36}
+                                    className="size-6"
+                                />
                             </Row>
                         </CardContent>
                     </Card>

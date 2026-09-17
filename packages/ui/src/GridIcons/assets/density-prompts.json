@@ -15,5 +15,5 @@
         }
     ],
     "processing": "Resize to 384px WebP at quality 90 with full alpha; original transparent margins preserved.",
-    "scope": "Storybook proposal only; existing runtime density diagrams remain unchanged."
+    "scope": "Shared PlantGridIcon artwork used by public plant and variety attributes and in-game advanced sowing. Marker positions are computed from the exact plant count, including counts above 16."
 }

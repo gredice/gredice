@@ -267,39 +267,46 @@ sunflower icon still communicates the block-price currency to screen readers.
 The five images total 98,548 bytes. Storybook enables TypeScript-extension imports
 so its no-emit typecheck can include the existing seed formatting module unchanged.
 
-## Consistent tabs and sowing-density proposal
+## Consistent tabs and exact sowing density
 
-The plant archive's Popis tab now uses the illustrated garden-plan icon alongside
-the existing illustrated calendar. Both icons are decorative and 20px; the actual
-tab component is shared with Storybook. The links keep their existing query,
-sowing filter and view behavior. Tab labels use foreground text for sufficient
-contrast in both selected states. DESIGN.md records the group-level rule: when
-one tab has illustrated artwork, all icon-bearing tabs in that group should match.
+The plant archive's Popis tab uses the illustrated garden-plan icon alongside
+its illustrated calendar. Both icons are decorative and 20px; the actual tab
+component is shared with Storybook. Links retain search, sowing filter and view
+behavior. Tab labels use foreground text for sufficient contrast in both
+selected states. DESIGN.md records the matching-artwork rule for tab groups.
+Plant-detail sowing/growth tabs and game inventory/raised-bed tabs were already
+illustrated; text-only groups and consistently monochrome editor controls remain.
 
-The plant detail's sowing/growth tabs already use illustrated calendar/seedling
-artwork. The game inventory and raised-bed tabs are also already illustrated;
-text-only groups and the consistently monochrome model-editor controls do not
-require replacement under this rule.
+The approved soil-tile design is now the shared `PlantGridIcon`, used by public
+plant/variety headers and sowing attributes, the advanced-sowing layout picker,
+and persisted planting details in the game. It replaces the old 1/4/9/16 buckets
+with an exact data-driven layout, including 25 and 36. A repeated planting-spot
+SVG pattern keeps DOM size constant at higher densities; non-square counts use
+an incomplete final row. Zero shows empty soil; invalid counts show empty soil
+with an unknown-count label. Numeric counts remain beside compact icons.
+The general-purpose Grid1/4/9/16 glyphs are unchanged.
 
-Sowing density is a **Storybook-only proposal**, leaving the production
-`PlantGridIcon` and its density buckets unchanged. A shallow, nearly top-down soil
-tile supplies depth; code places exactly 1, 4, 9 or 16 green planting spots in
-rows and columns. The numeric label stays next to the diagram. Repeating simple
-spots keeps the dense versions clearer at 24px than miniature upright seedlings.
-The same two images serve every density, rather than generating separate grids
-whose counts could be inaccurate.
+The published catalogue checked on 2026-09-17 has default densities up to 16,
+but carrot, radish and corn salad allow 5 cm minimum spacing in advanced sowing.
+That fits 6x6 = 36 plants in a 30x30 cm field; 6 cm gives 5x5 = 25. Their default
+7.5 cm spacing gives 4x4 = 16. The implementation supports higher counts too
+without another artwork file or a new bucket.
 
 Review `apps/www/Visuals/PlantVisualConsistency` (Light / Dark) for the actual tabs,
-current/proposed diagrams at 24–64px, real attribute cards, and the seedling
-alternative. The tab examples also appear in the public component showcase.
-Two transparent 384px WebP sources total 40,300 bytes and remain scoped to
-Storybook. Exact built-in generation prompts and reference paths are in
-[`density-concept-prompts.json`](../apps/storybook/stories/apps/www/assets/density-concept-prompts.json).
+old/new density comparisons at 24–64px and real attribute cards. Shared
+`packages/ui/Icons/GridIcons` (PlantDensities) includes 0, 17, 25, 36 and larger
+counts. Dense variants also appear in the garden workspace showcase and game
+icon inventory. Two transparent 384px WebP sources total 40,300 bytes. Exact
+built-in generation prompts and style references are recorded in
+[`density-prompts.json`](../packages/ui/src/GridIcons/assets/density-prompts.json).
 
-Validation: scoped Biome and diff checks; WWW and Storybook production builds
-including TypeScript. Both proposal stories pass WCAG A/AA checks, decode all
-artwork, preserve the exact count in all 28 diagrams, and fit at 360/768/1280px.
-The production-built plant archive was checked in both themes at 360/1280px:
-both tab images decode at 20px, mouse and keyboard navigation preserve search
-and the sowing filter, tab-list accessibility checks pass, and there is no
-horizontal page overflow.
+Validation: scoped Biome and diff checks; UI/game/garden typechecks; all 14 UI
+tests, including dense, partial-row, zero and invalid layouts; WWW and Storybook
+production builds. The Light/Dark comparisons pass WCAG A/AA checks and decode
+all artwork at 360/768/1280px, with exact counts and unique pattern IDs in all
+30 icons. The shared examples cover empty, non-square and larger densities.
+Production-built carrot and carrot-variety pages render the correct 16 spots
+in both themes with no browser errors. The carrot page fits 360/1280px and its
+information dialog retains the detail link and restores focus on Escape.
+The tab changes also retain their verified mouse/keyboard navigation, search
+and sowing-filter preservation in both themes.

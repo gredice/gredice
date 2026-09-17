@@ -10,7 +10,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Actual plant-view tabs use matching illustrated artwork. Sowing density is a Storybook-only design comparison: exact repeated planting spots versus miniature seedlings, at compact sizes and inside attribute cards. Production density diagrams are unchanged.',
+                    'Actual plant-view tabs and sowing-density icons use matching illustrated artwork. The shared PlantGridIcon preserves exact counts, including 25 and 36, using one soil tile and a repeated planting spot. Compare the previous capped diagrams with the new layouts at compact sizes and inside real attribute cards.',
             },
         },
     },
