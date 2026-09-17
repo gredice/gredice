@@ -5,6 +5,7 @@ import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { Navigate } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
+import { SunflowerPackageVisual } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -49,6 +50,11 @@ function packageCard(pkg: PublicSunflowerPackage) {
     return (
         <Card key={pkg.code} className="h-full border-tertiary border-b-4">
             <CardHeader>
+                <SunflowerPackageVisual
+                    packageCode={pkg.code}
+                    className="mb-3 h-28 w-full"
+                    aria-hidden
+                />
                 <div className="flex items-start justify-between gap-3">
                     <Stack spacing={1}>
                         <CardTitle>{pkg.name}</CardTitle>

@@ -70,6 +70,50 @@ test.describe('Sunflowers HUD', () => {
         await expect(page.getByText('Nepoznato')).toHaveCount(0);
     });
 
+    test('keeps grouped spending and earned amounts beside the new artwork', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <SunflowersPendingDetailsStory
+                cartSunflowers={0}
+                history={[
+                    {
+                        id: 1,
+                        amount: -3000,
+                        createdAt: '2026-09-17T08:00:00.000Z',
+                        reason: 'shoppingCart:1',
+                    },
+                    {
+                        id: 2,
+                        amount: -3000,
+                        createdAt: '2026-09-17T08:00:00.000Z',
+                        reason: 'shoppingCart:2',
+                    },
+                    {
+                        id: 3,
+                        amount: 200,
+                        createdAt: '2026-09-17T08:00:00.000Z',
+                        reason: 'refund:operation:1',
+                    },
+                    {
+                        id: 4,
+                        amount: 1000,
+                        createdAt: '2026-09-17T08:00:00.000Z',
+                        reason: 'birthday:2026',
+                    },
+                ]}
+            />,
+        );
+        await expect(page.getByText('Kupnja')).toBeVisible();
+        await expect(page.getByText('x2')).toBeVisible();
+        await expect(page.getByText(/[\u2212-]6\.000/u)).toBeVisible();
+        await expect(page.getByText('+200', { exact: true })).toBeVisible();
+        await expect(page.getByText('+1.000', { exact: true })).toBeVisible();
+        await expect(page.locator('image[href*="refund"]')).toHaveCount(1);
+        await expect(page.locator('image[href*="birthday"]')).toHaveCount(1);
+    });
+
     test('shows sunflower packages and master upsell in the purchase panel', async ({
         mount,
         page,
@@ -94,6 +138,19 @@ test.describe('Sunflowers HUD', () => {
         await expect(page.getByRole('button', { name: 'Odaberi' })).toHaveCount(
             4,
         );
+
+        for (const code of [
+            'mali_zalogaj',
+            'vrtna_kosarica',
+            'mirna_sezona',
+            'puna_gredica',
+        ]) {
+            await expect(
+                page.locator(
+                    `[data-sunflower-package="${code}"] [data-sunflower-package-artwork="${code}"] image`,
+                ),
+            ).toHaveAttribute('href', /package-.*\.webp/u);
+        }
 
         const initialOffer = page.locator(
             '[data-sunflower-package="puna_gredica"]',
