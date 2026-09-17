@@ -10,6 +10,7 @@ export * from './cache/grediceCached';
 export * from './cache/redisCache';
 export * from './cache/scheduleCache';
 export * from './cmsPageContent';
+export * from './databaseReadRetry';
 export * from './deliveryNotificationPolicy';
 export * from './deliveryTrackingPolicy';
 export * from './helpers/communityEditableFields';
