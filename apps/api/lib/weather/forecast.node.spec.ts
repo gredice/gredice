@@ -98,6 +98,36 @@ describe('parseBjelovarForecastXml', () => {
         assert.equal(forecast[1]?.entries[0]?.windDirection, null);
     });
 
+    it('preserves every DHMZ wind category, including stormy wind', async () => {
+        for (const { symbol, strength, direction } of [
+            { symbol: 'C0', strength: 0, direction: null },
+            { symbol: 'NE1', strength: 1, direction: 'NE' },
+            { symbol: 'W2', strength: 2, direction: 'W' },
+            { symbol: 'S3', strength: 3, direction: 'S' },
+            { symbol: 'NW4', strength: 4, direction: 'NW' },
+        ]) {
+            const forecast = await parseBjelovarForecastXml(
+                currentFeedXml.replace(
+                    '<vjetar>W2</vjetar>',
+                    `<vjetar>${symbol}</vjetar>`,
+                ),
+                new Date('2026-07-05T15:03:00+02:00'),
+            );
+
+            assert.equal(
+                forecast[1]?.entries[0]?.windStrength,
+                strength,
+                symbol,
+            );
+            assert.equal(
+                forecast[1]?.entries[0]?.windDirection,
+                direction,
+                symbol,
+            );
+            assert.equal(forecast[1]?.windStrength, strength, symbol);
+        }
+    });
+
     it('rejects stale feeds before cron can write fake current history', async () => {
         await assert.rejects(
             () =>
