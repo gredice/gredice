@@ -1,5 +1,6 @@
 export { GameBackpackIcon } from './GameBackpackIcon';
 export { GameBasketIcon } from './GameBasketIcon';
+export { GameBirthdayIcon } from './GameBirthdayIcon';
 export { GameBlocksIcon } from './GameBlocksIcon';
 export { GameBlossomIcon } from './GameBlossomIcon';
 export { GameCalendarIcon } from './GameCalendarIcon';
@@ -37,6 +38,7 @@ export { GameProfileIcon } from './GameProfileIcon';
 export { GameRaisedBedIcon } from './GameRaisedBedIcon';
 export { GameRaisedBedSimpleIcon } from './GameRaisedBedSimpleIcon';
 export { GameReceiptIcon } from './GameReceiptIcon';
+export { GameRefundIcon } from './GameRefundIcon';
 export { GameRulerIcon } from './GameRulerIcon';
 export { GameSearchIcon } from './GameSearchIcon';
 export { GameSeedlingIcon } from './GameSeedlingIcon';

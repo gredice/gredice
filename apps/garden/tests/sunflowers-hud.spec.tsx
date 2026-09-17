@@ -70,6 +70,50 @@ test.describe('Sunflowers HUD', () => {
         await expect(page.getByText('Nepoznato')).toHaveCount(0);
     });
 
+    test('keeps grouped spending and earned amounts beside the new artwork', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <SunflowersPendingDetailsStory
+                cartSunflowers={0}
+                history={[
+                    {
+                        id: 1,
+                        amount: -3000,
+                        createdAt: '2026-09-17T08:00:00.000Z',
+                        reason: 'shoppingCart:1',
+                    },
+                    {
+                        id: 2,
+                        amount: -3000,
+                        createdAt: '2026-09-17T08:00:00.000Z',
+                        reason: 'shoppingCart:2',
+                    },
+                    {
+                        id: 3,
+                        amount: 200,
+                        createdAt: '2026-09-17T08:00:00.000Z',
+                        reason: 'refund:operation:1',
+                    },
+                    {
+                        id: 4,
+                        amount: 1000,
+                        createdAt: '2026-09-17T08:00:00.000Z',
+                        reason: 'birthday:2026',
+                    },
+                ]}
+            />,
+        );
+        await expect(page.getByText('Kupnja')).toBeVisible();
+        await expect(page.getByText('x2')).toBeVisible();
+        await expect(page.getByText(/[\u2212-]6\.000/u)).toBeVisible();
+        await expect(page.getByText('+200', { exact: true })).toBeVisible();
+        await expect(page.getByText('+1.000', { exact: true })).toBeVisible();
+        await expect(page.locator('image[href*="refund"]')).toHaveCount(1);
+        await expect(page.locator('image[href*="birthday"]')).toHaveCount(1);
+    });
+
     test('shows sunflower packages and master upsell in the purchase panel', async ({
         mount,
         page,
@@ -94,6 +138,22 @@ test.describe('Sunflowers HUD', () => {
         await expect(page.getByRole('button', { name: 'Odaberi' })).toHaveCount(
             4,
         );
+
+        for (const [code, filename] of Object.entries({
+            mali_zalogaj: 'package-small',
+            vrtna_kosarica: 'package-basket',
+            mirna_sezona: 'package-season',
+            puna_gredica: 'package-starter',
+        })) {
+            await expect(
+                page.locator(
+                    `[data-sunflower-package="${code}"] [data-sunflower-package-artwork="${code}"] image`,
+                ),
+            ).toHaveAttribute(
+                'href',
+                new RegExp(`/${filename}(?:-[\\w-]+)?\\.webp$`, 'u'),
+            );
+        }
 
         const initialOffer = page.locator(
             '[data-sunflower-package="puna_gredica"]',
@@ -144,6 +204,11 @@ test.describe('Sunflowers HUD', () => {
         await expect(page.getByText('Želiš veći saldo?')).toBeVisible();
         await expect(page.getByText('Majstor vrtlar')).toBeVisible();
         await expect(
+            page.locator(
+                '[data-sunflower-package-artwork="majstor_vrtlar"] image',
+            ),
+        ).toHaveAttribute('href', /\/package-master(?:-[\w-]+)?\.webp$/u);
+        await expect(
             page.getByRole('button', { name: 'Odaberi majstor paket' }),
         ).toBeVisible();
     });
@@ -173,7 +238,7 @@ test.describe('Sunflowers HUD', () => {
         );
         await expect(mobileBreakdown).not.toHaveAttribute('open', '');
         await expect(
-            mobileBreakdown.getByText('42.000 🌻', { exact: true }),
+            mobileBreakdown.getByText('42.000 Suncokreti', { exact: true }),
         ).toBeVisible();
         await expect(page.getByText('Prikaži raščlambu')).toHaveCount(0);
         await expect(page.getByText('Sakrij raščlambu')).toHaveCount(0);
@@ -227,7 +292,7 @@ test.describe('Sunflowers HUD', () => {
         await expect(
             bestValuePackage
                 .locator('[data-package-breakdown="compact"]')
-                .getByText('110.000 🌻', { exact: true }),
+                .getByText('110.000 Suncokreti', { exact: true }),
         ).toBeVisible();
 
         const panelOverflow = await page

@@ -3,7 +3,12 @@
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { Stack } from '@gredice/ui/Stack';
+import {
+    SunflowerText,
+    sunflowerMascotArtwork,
+} from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
@@ -187,9 +192,9 @@ export function WelcomeMessage({ onClosed }: { onClosed?: () => void }) {
                                         }`}
                                     </Typography>
                                     <Typography level="body1" gutterBottom>
-                                        {`Danas dobivaš 🌻${
+                                        <SunflowerText>{`Danas dobivaš 🌻${
                                             dailyReward.current.amount
-                                        } za dnevnu aktivnost.`}
+                                        } za dnevnu aktivnost.`}</SunflowerText>
                                     </Typography>
                                     <Typography level="body3">
                                         ✨ Posjeti svoj vrt svaki dan i skupljaj
@@ -217,7 +222,7 @@ export function WelcomeMessage({ onClosed }: { onClosed?: () => void }) {
                                 >
                                     <span>{`+${dailyReward.current.amount}`}</span>
                                     <span role="img" aria-hidden>
-                                        🌻
+                                        <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
                                     </span>
                                 </AnimateFlyToItem>
                             </Chip>
@@ -229,7 +234,7 @@ export function WelcomeMessage({ onClosed }: { onClosed?: () => void }) {
                 <div className="w-full h-full rounded-3xl bg-card flex flex-row items-end justify-center [grid-area:sunflower]">
                     <div className="size-40 relative">
                         <Image
-                            src="https://cdn.gredice.com/sunflower-large.svg"
+                            src={sunflowerMascotArtwork}
                             alt="Suncokret"
                             width={160}
                             height={160}

@@ -5,6 +5,7 @@ import { Input } from '@gredice/ui/Input';
 import { Close, Warning } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { SunflowerText } from '@gredice/ui/SunflowerVisuals';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@gredice/ui/Tooltip';
 import { Typography } from '@gredice/ui/Typography';
 import { type ReactNode, useState } from 'react';
@@ -156,7 +157,9 @@ export function RaisedBedDiaryCancelAction({
                     />
                 )}
                 {successMessage && (
-                    <Alert color="success">{successMessage}</Alert>
+                    <Alert color="success">
+                        <SunflowerText>{successMessage}</SunflowerText>
+                    </Alert>
                 )}
                 <Row spacing={2} className="justify-end">
                     <Button

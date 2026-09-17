@@ -13,6 +13,7 @@ import {
     CardTitle,
 } from '@gredice/ui/Card';
 import { Chip, type ColorPaletteProp } from '@gredice/ui/Chip';
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -219,7 +220,9 @@ export default async function AchievementsPage({
                                                         size="sm"
                                                         variant="outlined"
                                                     >
-                                                        Nagrada: 🌻 {reward}
+                                                        Nagrada:{' '}
+                                                        <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />{' '}
+                                                        {reward}
                                                     </Chip>
                                                 </div>
                                                 <div className="grid min-w-0 grid-cols-1 gap-1 sm:grid-cols-2 lg:justify-items-end">

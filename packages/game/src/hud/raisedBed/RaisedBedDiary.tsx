@@ -6,6 +6,7 @@ import { ListItem } from '@gredice/ui/ListItem';
 import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
+import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
@@ -298,7 +299,9 @@ export function DiaryList({
                                                     className="flex min-w-0 items-center gap-1.5 break-words"
                                                 >
                                                     <Image
-                                                        src="https://cdn.gredice.com/sunflower-large.svg"
+                                                        src={
+                                                            sunflowerMascotArtwork
+                                                        }
                                                         alt=""
                                                         width={18}
                                                         height={18}

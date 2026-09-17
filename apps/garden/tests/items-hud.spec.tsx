@@ -685,7 +685,9 @@ test('sandbox decoration picker includes special blocks', async ({
     await expect(page.getByRole('button', { name: 'Besplatno' })).toHaveCount(
         0,
     );
-    await expect(page.getByRole('button', { name: '🌻 0' })).not.toHaveCount(0);
+    await expect(
+        page.getByRole('button', { name: 'Suncokreti 0' }),
+    ).not.toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Snowman' })).toBeVisible();
     await expect(
         page.getByRole('button', { name: 'Mali drveni most' }),

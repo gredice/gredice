@@ -3,6 +3,7 @@
 import { Button } from '@gredice/ui/Button';
 import { Navigate } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
+import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import Confetti from 'react-confetti-boom';
@@ -68,7 +69,7 @@ export function PaymentSuccessfulMessage() {
                     <Confetti mode="fall" />
                     <div className="size-40 relative">
                         <Image
-                            src="https://cdn.gredice.com/sunflower-large.svg"
+                            src={sunflowerMascotArtwork}
                             alt="Suncokret"
                             width={160}
                             height={160}

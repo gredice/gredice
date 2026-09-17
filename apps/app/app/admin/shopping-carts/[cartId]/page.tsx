@@ -10,6 +10,7 @@ import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { SunflowerText } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -144,10 +145,13 @@ export default async function ShoppingCartDetailsPage({
             return 'Ruksak';
         }
 
+        if (currency.toLowerCase() === 'sunflower') {
+            return <SunflowerText>{`${amount} 🌻`}</SunflowerText>;
+        }
+
         const currencyMap: Record<string, { symbol: string; code?: string }> = {
             eur: { symbol: '€', code: 'EUR' },
             usd: { symbol: '$', code: 'USD' },
-            sunflower: { symbol: '🌻' },
         };
 
         const currencyInfo = currencyMap[currency.toLowerCase()];
@@ -222,7 +226,7 @@ export default async function ShoppingCartDetailsPage({
                               currency === 'eur'
                                   ? 'Ukupno (€)'
                                   : currency === 'sunflower'
-                                    ? 'Ukupno (🌻)'
+                                    ? 'Ukupno (suncokreti)'
                                     : `Ukupno (${currency.toUpperCase()})`,
                           value: formatCurrency(total, currency),
                       }),

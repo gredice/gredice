@@ -10,6 +10,7 @@ import {
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { SunflowerText } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import { Card, CardContent } from '../../../components/shared/Card';
 import type { GardenPet } from '../../../lib/pets/gardenPets';
@@ -118,9 +119,11 @@ export function GardenPetCard({
                                     <span className="font-semibold">
                                         {home.label}
                                     </span>
-                                    {(home.sunflowers ?? 0) > 0
-                                        ? ` (🌻 ${home.sunflowers})`
-                                        : ''}
+                                    <SunflowerText>
+                                        {(home.sunflowers ?? 0) > 0
+                                            ? ` (🌻 ${home.sunflowers})`
+                                            : ''}
+                                    </SunflowerText>
                                     .
                                 </Typography>
                             </Row>
