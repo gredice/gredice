@@ -129,5 +129,11 @@ other game icons. Public attribute cards use 24px; review 24–96px in PublicVis
 
 The tag does not encode a real product identifier. Keep `BarcodeValue` and
 plant-density grid diagrams as data-driven information. Do not replace them with
-static artwork. `apps/www/Attributes/PublicAttributes` documents the real plant,
+static artwork. `PlantGridIcon` in `../GridIcons` composes the approved shallow
+soil tile and planting-spot artwork using an SVG pattern driven by the exact
+plant count. It supports 25/36 and larger densities without clamping to 16 or
+creating one DOM node per plant. Numeric labels remain next to compact icons.
+The plain Grid1/4/9/16 exports remain available for general grid geometry.
+Generation prompts live in `../GridIcons/assets/density-prompts.json`.
+`apps/www/Attributes/PublicAttributes` documents the real plant,
 operation, seed and block cards, including missing and zero values.
