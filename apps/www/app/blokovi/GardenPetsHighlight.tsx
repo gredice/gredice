@@ -1,8 +1,8 @@
-import { Card, CardContent } from '@gredice/ui/Card';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { Card, CardContent } from '../../components/shared/Card';
 import type { GardenPet } from '../../lib/pets/gardenPets';
 import { KnownPages } from '../../src/KnownPages';
 import { GardenPetLink } from './GardenPetLink';

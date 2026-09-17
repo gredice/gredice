@@ -1,5 +1,4 @@
 import { clientPublic } from '@gredice/client';
-import { Card, CardContent } from '@gredice/ui/Card';
 import { Container } from '@gredice/ui/Container';
 import { CountingNumber } from '@gredice/ui/CountingNumber';
 import type { SectionData } from '@gredice/ui/cms';
@@ -13,6 +12,7 @@ import { Suspense } from 'react';
 import DeliveryTruck from '../assets/DeliveryTruck.webp';
 import RaisedBedMaintenance from '../assets/RaisedBedMaintenance.webp';
 import SeedsAndTransplants from '../assets/SeedsAndTransplants.webp';
+import { Card, CardContent } from '../components/shared/Card';
 import { sectionsComponentRegistry } from '../components/shared/sectionsComponentRegistry';
 import { FacebookCard } from '../components/social/FacebookCard';
 import { InstagramCard } from '../components/social/InstagramCard';

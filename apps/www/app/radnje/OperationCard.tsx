@@ -1,10 +1,10 @@
 import type { OperationData } from '@gredice/client';
-import { Card, CardContent } from '@gredice/ui/Card';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
+import { Card, CardContent } from '../../components/shared/Card';
 import { KnownPages } from '../../src/KnownPages';
 import { getOperationImageViewTransitionName } from './operationViewTransition';
 

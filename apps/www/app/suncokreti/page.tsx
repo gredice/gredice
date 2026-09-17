@@ -1,5 +1,4 @@
 import { Button } from '@gredice/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { Container } from '@gredice/ui/Container';
 import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
@@ -9,6 +8,12 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import Link from 'next/link';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '../../components/shared/Card';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import {
     getPublicSunflowerPackages,

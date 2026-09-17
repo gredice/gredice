@@ -1,5 +1,4 @@
 import { slugify } from '@gredice/js/slug';
-import { Card, CardContent, CardHeader } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { Container } from '@gredice/ui/Container';
 import { Navigate, Timer } from '@gredice/ui/icons';
@@ -8,6 +7,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Route } from 'next';
+import { Card, CardContent, CardHeader } from '../../../components/shared/Card';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { getOccasionsData } from '../../../lib/occasions/getOccasionsData';
 import { createPublicMetadata } from '../../../lib/seo/publicMetadata';

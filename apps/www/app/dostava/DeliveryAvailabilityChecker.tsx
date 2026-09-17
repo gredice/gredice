@@ -7,11 +7,16 @@ import {
 } from '@gredice/js/delivery';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { GameLocationIcon } from '@gredice/ui/GameIcons';
 import { Input } from '@gredice/ui/Input';
 import { Check, MapPin, Search, Warning } from '@gredice/ui/icons';
 import { type FormEvent, useState } from 'react';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '../../components/shared/Card';
 import { formatPrice } from '../../lib/formatPrice';
 
 type DeliveryAvailabilityResult = {

@@ -1,10 +1,10 @@
-import { Card, CardContent } from '@gredice/ui/Card';
 import { Container } from '@gredice/ui/Container';
 import { CompanyGitHub } from '@gredice/ui/icons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
+import { Card, CardContent } from '../../components/shared/Card';
 import { DeploymentStatsCard } from './DeploymentStatsCard';
 
 export const revalidate = 300;

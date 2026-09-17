@@ -1,12 +1,12 @@
 import type { PlantData } from '@gredice/client';
 import { slug } from '@gredice/js/slug';
-import { Card } from '@gredice/ui/Card';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
+import { Card } from '../../../components/shared/Card';
 import { KnownPages } from '../../../src/KnownPages';
 
 type PlantRelationship = NonNullable<

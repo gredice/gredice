@@ -1,4 +1,3 @@
-import { Card, CardContent } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { Container } from '@gredice/ui/Container';
 import { AI } from '@gredice/ui/icons';
@@ -6,6 +5,7 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
+import { Card, CardContent } from '../../components/shared/Card';
 import { WallpaperStudio } from './WallpaperStudio';
 
 export const metadata: Metadata = {

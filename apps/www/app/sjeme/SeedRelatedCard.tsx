@@ -1,4 +1,3 @@
-import { Card } from '@gredice/ui/Card';
 import { Navigate } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -6,6 +5,7 @@ import { Typography } from '@gredice/ui/Typography';
 import type { Route } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { Card } from '../../components/shared/Card';
 
 export function SeedRelatedCard({
     header,

@@ -1,5 +1,4 @@
 import { type components, directoriesClient } from '@gredice/client';
-import { Card } from '@gredice/ui/Card';
 import { GameSearchIcon } from '@gredice/ui/GameIcons';
 import { Warning } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
@@ -11,6 +10,7 @@ import {
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { Card } from '../../components/shared/Card';
 import { SearchInteractive } from './SearchInteractive';
 import { SearchPageControls } from './SearchPageControls';
 
