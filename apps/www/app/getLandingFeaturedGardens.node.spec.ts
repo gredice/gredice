@@ -67,8 +67,8 @@ function mockRequests(
         signal: AbortSignal,
     ) => Response | Promise<Response>,
 ) {
-    // Native AbortSignal.timeout uses internal timers. Substitute a controller
-    // driven by the mock clock so the real loader's entire 5s budget is tested.
+    // Native AbortSignal.timeout uses internal timers. Substitute controllers
+    // driven by the mock clock so both loader phase budgets are tested.
     t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 0 });
     const timeout = t.mock.method(AbortSignal, 'timeout', (delayMs: number) => {
         const controller = new AbortController();
@@ -137,9 +137,15 @@ test('loads only the ten most popular gardens and retains their owners and ranki
                 owner: item.owner,
             })),
     );
-    assert.equal(timeout.mock.callCount(), 1);
-    assert.deepEqual(timeout.mock.calls[0]?.arguments, [5_000]);
-    assert.ok(requests.every(({ signal }) => signal === requests[0]?.signal));
+    assert.equal(timeout.mock.callCount(), 2);
+    assert.deepEqual(
+        timeout.mock.calls.map(({ arguments: args }) => args),
+        [[3_000], [5_000]],
+    );
+    assert.notEqual(requests[0]?.signal, requests[1]?.signal);
+    assert.ok(
+        requests.slice(1).every(({ signal }) => signal === requests[1]?.signal),
+    );
 });
 
 test('a rejected detail does not discard completed gardens or later successes', async (t) => {
@@ -171,18 +177,18 @@ test('a rejected detail does not discard completed gardens or later successes', 
     );
 });
 
-test('shares the 5s budget with a slow list and preserves details decoded before timeout', async (t) => {
+test('gives details a fresh bounded budget after a slow list and preserves completed gardens', async (t) => {
     const { requests, timeout, warnings, errors } = mockRequests(
         t,
         (id, signal) => {
             if (id === null)
-                return delayedResponse(signal, 3_000, {
+                return delayedResponse(signal, 2_109, {
                     items: [summary(1), summary(2), summary(3)],
                 });
             if (id === 3) return pendingBody(signal);
             return delayedResponse(
                 signal,
-                id === 1 ? 1_000 : 3_000,
+                id === 1 ? 1_000 : 4_500,
                 garden(id),
             );
         },
@@ -192,31 +198,42 @@ test('shares the 5s budget with a slow list and preserves details decoded before
         settled = true;
         return gardens;
     });
-    await advanceTime(t, 3_000);
+    await advanceTime(t, 2_109);
     assert.equal(requests.length, 4);
-    await advanceTime(t, 1_999);
+    await advanceTime(t, 2_891);
+    assert.equal(settled, false);
+    await advanceTime(t, 1_609);
+    assert.equal(settled, false);
+    await advanceTime(t, 499);
     assert.equal(settled, false);
     await advanceTime(t, 1);
     assert.deepEqual(await result, [
         { garden: garden(1), owner: summary(1).owner },
+        { garden: garden(2), owner: summary(2).owner },
     ]);
-    assert.equal(Date.now(), 5_000);
-    assert.equal(timeout.mock.callCount(), 1);
+    assert.equal(Date.now(), 7_109);
+    assert.equal(timeout.mock.callCount(), 2);
+    assert.deepEqual(
+        timeout.mock.calls.map(({ arguments: args }) => args),
+        [[3_000], [5_000]],
+    );
+    assert.equal(requests[0]?.signal.aborted, true);
     assert.ok(
-        requests.every(
-            ({ signal }) => signal === requests[0]?.signal && signal.aborted,
-        ),
+        requests
+            .slice(1)
+            .every(
+                ({ signal }) =>
+                    signal === requests[1]?.signal && signal.aborted,
+            ),
     );
     assert.equal(errors.mock.callCount(), 0);
-    assert.equal(warnings.mock.callCount(), 2);
-    for (const call of warnings.mock.calls) {
-        assert.partialDeepStrictEqual(call.arguments[1], {
-            listDurationMs: 3_000,
-            detailDurationMs: 2_000,
-            elapsedMs: 5_000,
-            timedOut: true,
-        });
-    }
+    assert.equal(warnings.mock.callCount(), 1);
+    assert.partialDeepStrictEqual(warnings.mock.calls[0]?.arguments[1], {
+        listDurationMs: 2_109,
+        detailDurationMs: 5_000,
+        elapsedMs: 7_109,
+        timedOut: true,
+    });
 });
 
 test('skips HTTP errors and invalid detail JSON while retaining a valid garden', async (t) => {

@@ -6,7 +6,8 @@ import {
 } from './landingGardenCarousel';
 import { comparePublicGardensByPopularity } from './vrtovi/publicGardenFormatting';
 
-const landingFeaturedGardensTimeoutMs = 5_000;
+const landingFeaturedGardensListTimeoutMs = 3_000;
+const landingFeaturedGardenDetailsTimeoutMs = 5_000;
 
 const playwrightFeaturedGardensFixture: LandingGardenCandidate[] = [
     {
@@ -41,11 +42,12 @@ export async function getLandingFeaturedGardens(): Promise<
 
     const startedAt = Date.now();
     try {
-        // The list, detail requests, and response bodies share one total budget.
-        const signal = AbortSignal.timeout(landingFeaturedGardensTimeoutMs);
+        const listSignal = AbortSignal.timeout(
+            landingFeaturedGardensListTimeoutMs,
+        );
         const response = await clientPublic().api.gardens.public.$get(
             undefined,
-            { init: { signal } },
+            { init: { signal: listSignal } },
         );
         if (!response.ok) {
             console.error('Failed to fetch featured gardens for landing', {
@@ -60,6 +62,11 @@ export async function getLandingFeaturedGardens(): Promise<
         const featuredGardenSummaries = publicGardens.items
             .toSorted(comparePublicGardensByPopularity)
             .slice(0, landingFeaturedGardenLimit);
+        // Keep the detail fan-out bounded without allowing a slow list to
+        // consume the time needed to prepare otherwise healthy gardens.
+        const detailSignal = AbortSignal.timeout(
+            landingFeaturedGardenDetailsTimeoutMs,
+        );
         const featuredGardens = await Promise.all(
             featuredGardenSummaries.map(async (garden) => {
                 const detailStartedAt = Date.now();
@@ -70,7 +77,7 @@ export async function getLandingFeaturedGardens(): Promise<
                         {
                             param: { gardenId: garden.id.toString() },
                         },
-                        { init: { signal } },
+                        { init: { signal: detailSignal } },
                     );
 
                     if (!gardenResponse.ok) {
@@ -92,14 +99,14 @@ export async function getLandingFeaturedGardens(): Promise<
                     };
                 } catch (error) {
                     // A failed fetch or body read must not discard gardens
-                    // that completed within the shared deadline.
+                    // that completed within the detail deadline.
                     console.warn('Failed to prepare featured garden details', {
                         gardenId: garden.id,
                         error,
                         listDurationMs,
                         detailDurationMs: Date.now() - detailStartedAt,
                         elapsedMs: Date.now() - startedAt,
-                        timedOut: signal.aborted,
+                        timedOut: detailSignal.aborted,
                     });
                     return null;
                 }
