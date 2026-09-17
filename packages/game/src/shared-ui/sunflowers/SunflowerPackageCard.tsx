@@ -33,37 +33,43 @@ export function SunflowerPackageCard({
     onSelect: () => void;
 }) {
     const hasBonus = pkg.bonusSunflowers > 0;
-    const isBestValue = pkg.tag === 'Najbolja vrijednost';
+    const isPopular = pkg.tag === 'Najpopularnije';
 
     const breakdownRows = (
-        <div className="space-y-0.5">
-            <Row justifyContent="space-between" className="min-w-0 gap-3">
+        <div className="space-y-1 py-1">
+            <Row
+                justifyContent="space-between"
+                className="min-w-0 flex-col items-start gap-0 @[12rem]/package:flex-row @[12rem]/package:items-center @[12rem]/package:gap-3"
+            >
                 <Typography
                     level="body3"
-                    className="whitespace-nowrap text-foreground/75"
+                    className="text-[10px] leading-tight text-foreground/75 @[12rem]/package:whitespace-nowrap @[12rem]/package:text-xs"
                 >
                     Osnovni iznos
                 </Typography>
                 <Typography
                     level="body3"
                     bold
-                    className="shrink-0 whitespace-nowrap tabular-nums"
+                    className="shrink-0 whitespace-nowrap text-[10px] tabular-nums @[12rem]/package:text-xs"
                 >
                     {formatSunflowers(pkg.baseSunflowers)}{' '}
                     <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
                 </Typography>
             </Row>
-            <Row justifyContent="space-between" className="min-w-0 gap-3">
+            <Row
+                justifyContent="space-between"
+                className="min-w-0 flex-col items-start gap-0 @[12rem]/package:flex-row @[12rem]/package:items-center @[12rem]/package:gap-3"
+            >
                 <Typography
                     level="body3"
-                    className="whitespace-nowrap text-primary"
+                    className="text-[10px] leading-tight text-primary @[12rem]/package:whitespace-nowrap @[12rem]/package:text-xs"
                 >
                     Bonus {pkg.bonusPercentage} %
                 </Typography>
                 <Typography
                     level="body3"
                     bold
-                    className="shrink-0 whitespace-nowrap text-primary tabular-nums"
+                    className="shrink-0 whitespace-nowrap text-[10px] text-primary tabular-nums @[12rem]/package:text-xs"
                 >
                     + {formatSunflowers(pkg.bonusSunflowers)}{' '}
                     <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
@@ -77,58 +83,52 @@ export function SunflowerPackageCard({
             key={pkg.code}
             data-sunflower-package={pkg.code}
             className={cx(
-                '@container/package min-w-0 border-tertiary/30',
-                featured &&
-                    '@[36rem]/sunflower-packages:col-span-2 @[50rem]/sunflower-packages:col-span-3',
+                '@container/package min-w-0 border-tertiary/30 p-1',
+                featured && 'col-span-3',
                 featured && 'border-primary/40 bg-primary/5',
-                isBestValue && 'border-primary/40 bg-primary/[0.03]',
+                isPopular &&
+                    'border-amber-300 bg-amber-50/70 dark:border-amber-800 dark:bg-amber-950/40',
             )}
         >
-            <CardContent noHeader className="h-full">
+            <CardContent noHeader className="h-full p-1.5 @[12rem]/package:p-2">
                 <div className="flex h-full flex-col">
                     <SunflowerPackageVisual
                         packageCode={pkg.code}
-                        className="mb-3 h-20 w-full shrink-0"
+                        className="mb-2 h-14 w-full shrink-0 @[12rem]/package:mb-3 @[12rem]/package:h-20"
                         aria-hidden
                     />
                     <div className="min-w-0">
                         <Row
                             justifyContent="space-between"
                             alignItems="start"
-                            className="min-w-0 gap-2"
+                            className="min-w-0 flex-col gap-1 @[12rem]/package:flex-row @[12rem]/package:gap-2"
                         >
-                            <Typography level="body1" bold className="min-w-0">
+                            <Typography
+                                level="body1"
+                                bold
+                                className="min-w-0 text-xs leading-tight @[12rem]/package:text-base"
+                            >
                                 {pkg.name}
                             </Typography>
                             {pkg.tag ? (
-                                <Chip size="sm" variant="soft">
+                                <Chip
+                                    size="sm"
+                                    variant="soft"
+                                    color={isPopular ? 'warning' : 'neutral'}
+                                    className="min-h-5 whitespace-normal break-words px-1 py-0 text-left text-[9px] leading-tight @[12rem]/package:min-h-6 @[12rem]/package:whitespace-nowrap @[12rem]/package:px-1.5 @[12rem]/package:py-0.5 @[12rem]/package:text-xs"
+                                >
                                     {pkg.tag}
                                 </Chip>
                             ) : null}
                         </Row>
-                        <Row
-                            justifyContent="space-between"
-                            alignItems="start"
-                            spacing={2}
-                            className="mt-1 min-h-7"
-                        >
-                            {pkg.descriptionShort ? (
-                                <Typography
-                                    level="body3"
-                                    className="min-w-0 flex-1 text-foreground/75"
-                                >
-                                    {pkg.descriptionShort}
-                                </Typography>
-                            ) : (
-                                <span />
-                            )}
-                            <Typography level="body1" bold>
-                                <span className="sr-only">Cijena: </span>
-                                <span className="whitespace-nowrap tabular-nums">
-                                    {packagePrice(pkg)}
-                                </span>
+                        {pkg.descriptionShort ? (
+                            <Typography
+                                level="body3"
+                                className="mt-1 hidden min-h-7 text-foreground/75 @[12rem]/package:block"
+                            >
+                                {pkg.descriptionShort}
                             </Typography>
-                        </Row>
+                        ) : null}
                     </div>
 
                     {hasBonus ? (
@@ -167,32 +167,32 @@ export function SunflowerPackageCard({
 
                             <details
                                 data-package-breakdown="compact"
-                                className="group mt-1 rounded-lg border bg-muted/20 @[28rem]/package:hidden"
+                                className="group mt-1 @[28rem]/package:hidden"
                             >
-                                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 [&::-webkit-details-marker]:hidden">
+                                <summary className="flex cursor-pointer list-none flex-col items-start gap-0.5 py-2 @[12rem]/package:flex-row @[12rem]/package:items-center @[12rem]/package:justify-between @[12rem]/package:gap-2 [&::-webkit-details-marker]:hidden">
                                     <span className="min-w-0">
                                         <Typography
                                             level="body3"
                                             bold
                                             uppercase
-                                            className="text-foreground/75"
+                                            className="text-[10px] leading-tight text-foreground/75 @[12rem]/package:text-xs"
                                         >
                                             Ukupno
                                         </Typography>
                                     </span>
-                                    <span className="flex shrink-0 items-center gap-2">
+                                    <span className="flex shrink-0 items-center gap-1">
                                         <Typography
-                                            level="body1"
+                                            level="body3"
                                             bold
-                                            className="whitespace-nowrap tabular-nums"
+                                            className="whitespace-nowrap text-[10px] tabular-nums @[12rem]/package:text-base"
                                         >
                                             {formatSunflowers(pkg.sunflowers)}{' '}
                                             <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
                                         </Typography>
-                                        <ExpandDown className="size-4 text-foreground/75 transition-transform group-open:rotate-180" />
+                                        <ExpandDown className="size-3 text-foreground/75 transition-transform group-open:rotate-180 @[12rem]/package:size-4" />
                                     </span>
                                 </summary>
-                                <div className="border-t px-3 py-2">
+                                <div className="pb-1 pt-0.5">
                                     {breakdownRows}
                                 </div>
                             </details>
@@ -200,20 +200,20 @@ export function SunflowerPackageCard({
                     ) : (
                         <div
                             data-package-total
-                            className="mt-1 flex items-baseline justify-between gap-3 rounded-lg bg-muted/20 px-3 py-2"
+                            className="mt-1 flex min-w-0 flex-col items-start justify-between gap-0.5 py-2 @[12rem]/package:flex-row @[12rem]/package:items-baseline @[12rem]/package:gap-3"
                         >
                             <Typography
                                 level="body3"
                                 bold
                                 uppercase
-                                className="shrink-0 whitespace-nowrap text-foreground/75"
+                                className="shrink-0 whitespace-nowrap text-[10px] leading-tight text-foreground/75 @[12rem]/package:text-xs"
                             >
                                 Ukupno
                             </Typography>
                             <Typography
-                                level="body1"
+                                level="body3"
                                 bold
-                                className="whitespace-nowrap tabular-nums"
+                                className="whitespace-nowrap text-[10px] tabular-nums @[12rem]/package:text-base"
                             >
                                 {formatSunflowers(pkg.sunflowers)}{' '}
                                 <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
@@ -221,16 +221,21 @@ export function SunflowerPackageCard({
                         </div>
                     )}
 
-                    <div className="mt-auto pt-3">
+                    <div className="mt-auto pt-2 @[12rem]/package:pt-3">
                         <Button
+                            data-package-cta
                             size="sm"
                             fullWidth
-                            variant={isBestValue ? 'solid' : 'soft'}
+                            variant={isPopular ? 'solid' : 'soft'}
+                            className="px-1 tabular-nums @[12rem]/package:px-3"
                             disabled={disabled}
                             loading={loading}
                             onClick={onSelect}
                         >
-                            Odaberi
+                            <span className="sr-only">
+                                Odaberi {pkg.name} za{' '}
+                            </span>
+                            <span data-package-price>{packagePrice(pkg)}</span>
                         </Button>
                     </div>
                 </div>
