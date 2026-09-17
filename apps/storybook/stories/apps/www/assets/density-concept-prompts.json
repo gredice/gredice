@@ -1,0 +1,19 @@
+{
+    "generatedWith": "built-in image_gen",
+    "references": [
+        "packages/ui/src/GameIcons/assets/soil.webp",
+        "packages/ui/src/GameIcons/assets/seedling.webp"
+    ],
+    "assets": [
+        {
+            "file": "density-soil.webp",
+            "prompt": "Use case: stylized-concept. Generate ONE transparent game UI component, in the same chunky low-poly faceted 3D style as the attached soil block and seedling, which are STYLE REFERENCES ONLY. Soft upper-left light, matte tactile surfaces, clear darker beveled sides. True transparent alpha. Isolated complete object, no cast shadow outside the object, no background, no text, numbers or watermark. A SHALLOW square tile of rich dark brown garden soil, seen almost exactly FROM ABOVE, with only a narrow front thickness visible. Square axis-aligned top face (NOT a diamond/isometric orientation), all four edges parallel to the image edges. Large flat uncluttered planting surface covering almost the entire tile, quiet broad dark cocoa facets. Thin terracotta brown bevel around it and a subtly visible darker front lip. Do not add a frame, boards, planter, plants, seeds, stones, holes, dots or gridlines. The central 80 percent must be empty flat soil for later exact numeric layout overlays. Broad square, not a deep cube. Centered fills 90 percent of square image."
+        },
+        {
+            "file": "density-spot.webp",
+            "prompt": "Use case: stylized-concept. Generate ONE transparent game UI component, in the same chunky low-poly faceted 3D style as the attached soil block and seedling, which are STYLE REFERENCES ONLY. Soft upper-left light, matte tactile surfaces, clear darker beveled sides. True transparent alpha. Isolated complete object, no cast shadow outside the object, no background, no text, numbers or watermark. One VERY SIMPLE tiny leafy green planting spot, seen EXACTLY FROM ABOVE: a compact round rosette of FOUR broad faceted leaves, lime-green upper-left facets and forest-green lower-right facets. The leaves form a near circular silhouette with just four short lobes. No stems, stalk, pot, soil, roots, flowers, highlights outside silhouette, vein lines, long protrusions, or extra details. This will repeat as a counting marker at 3 pixels wide, so simple circular green silhouette matters most. Centered fills 90 percent of square image."
+        }
+    ],
+    "processing": "Resize to 384px WebP at quality 90 with full alpha; original transparent margins preserved.",
+    "scope": "Storybook proposal only; existing runtime density diagrams remain unchanged."
+}

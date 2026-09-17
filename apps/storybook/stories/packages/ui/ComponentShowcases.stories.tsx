@@ -205,6 +205,7 @@ import { RaisedBedFieldsGridFixture } from '../../../../../packages/ui/src/raise
 import { PublicAttributeExamples } from '../../apps/www/PublicAttributeExamples';
 import { PublicCatalogVisualExamples } from '../../apps/www/PublicCatalogVisualExamples';
 import { PublicVisualExamples } from '../../apps/www/PublicVisualExamples';
+import { StyledPlantTabsExample } from '../../apps/www/StyledPlantTabsExample';
 import { OverviewNavigationPreview } from '../game/settings/OverviewNavigationPreview';
 import { FarmerAvatarsPreview } from './FarmerAvatarsPreview';
 import { GameAccountMenuPreview } from './GameAccountMenuPreview';
@@ -1048,6 +1049,7 @@ function PublicContentShowcase() {
                     <PublicVisualExamples />
                     <PublicCatalogVisualExamples />
                     <PublicAttributeExamples />
+                    <StyledPlantTabsExample />
 
                     <Heading1
                         tagline="Sezonski vodic"
