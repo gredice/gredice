@@ -4,7 +4,6 @@ import { clientAuthenticated, type GardenResponse } from '@gredice/client';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { ButtonGroup, buttonGroupItemClassName } from '@gredice/ui/ButtonGroup';
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Desktop, Laptop, Mobile, Navigate, Warning } from '@gredice/ui/icons';
 import { Logotype } from '@gredice/ui/PublicChrome';
 import { Spinner } from '@gredice/ui/Spinner';
@@ -14,6 +13,12 @@ import { Typography } from '@gredice/ui/Typography';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { InlineLoginDialog } from '../../components/auth/InlineLoginDialog';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '../../components/shared/Card';
 import {
     currentUserQueryKey,
     useCurrentUser,

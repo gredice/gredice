@@ -1,4 +1,3 @@
-import { Card, CardContent } from '@gredice/ui/Card';
 import {
     GameHeartIcon,
     GamePawIcon,
@@ -8,6 +7,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { ReactNode } from 'react';
+import { Card, CardContent } from '../../../components/shared/Card';
 
 const steps = [
     {

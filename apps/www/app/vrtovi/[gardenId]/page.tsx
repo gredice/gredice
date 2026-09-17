@@ -1,8 +1,8 @@
-import { Card } from '@gredice/ui/Card';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { Card } from '../../../components/shared/Card';
 import { PublicBreadcrumbs } from '../../../components/shared/seo/PublicBreadcrumbs';
 import { KnownPages } from '../../../src/KnownPages';
 import { PublicGardenExplorer } from '../PublicGardenExplorer';

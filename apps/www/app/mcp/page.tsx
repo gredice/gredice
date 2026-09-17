@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { Container } from '@gredice/ui/Container';
 import {
@@ -10,6 +9,12 @@ import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '../../components/shared/Card';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 

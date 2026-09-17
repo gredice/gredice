@@ -1,9 +1,9 @@
-import { Card, CardContent } from '@gredice/ui/Card';
 import { GamePlantDiseaseIcon, GamePlantPestIcon } from '@gredice/ui/GameIcons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Route } from 'next';
+import { Card, CardContent } from '../shared/Card';
 import {
     type PlantHealthIssueKind,
     plantHealthIssueKindLabel,

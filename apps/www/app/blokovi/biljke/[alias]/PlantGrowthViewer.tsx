@@ -2,13 +2,13 @@
 
 import type { PlantData, PlantSortData } from '@gredice/client';
 import { Button } from '@gredice/ui/Button';
-import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Edit, Reset } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { useCallback, useState } from 'react';
+import { Card, CardOverflow } from '../../../../components/shared/Card';
 import { KnownPages } from '../../../../src/KnownPages';
 import { PlantBlockImage } from '../../PlantBlockImage';
 import { resolveProceduralPlantType } from '../../plantNamesWithProceduralModels';

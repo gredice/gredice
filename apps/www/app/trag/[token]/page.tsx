@@ -8,7 +8,6 @@ import {
     recordHarvestTraceScan,
 } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
-import { Card } from '@gredice/ui/Card';
 import {
     GameCalendarIcon,
     GameCameraIcon,
@@ -31,6 +30,7 @@ import { headers } from 'next/headers';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { Card } from '../../../components/shared/Card';
 import { PublicGardenIllustration } from '../../../components/visuals/PublicGardenIllustration';
 import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import {

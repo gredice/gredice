@@ -1,10 +1,10 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { Suspense } from 'react';
 import { UrlAuthForward } from '../../app/prijava/UrlAuthForward';
+import { Card, CardContent, CardHeader, CardTitle } from '../shared/Card';
 
 export function OAuthCallbackStatus({ provider }: { provider: string }) {
     return (

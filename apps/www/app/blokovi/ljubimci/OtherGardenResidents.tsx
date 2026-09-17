@@ -1,7 +1,7 @@
-import { Card, CardContent } from '@gredice/ui/Card';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { Card, CardContent } from '../../../components/shared/Card';
 
 const residents = [
     {

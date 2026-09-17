@@ -7,7 +7,6 @@ import {
     gardenSceneTransitionDelayMs,
 } from '@gredice/game/garden-scene-transition';
 import { getGardenBaseUrl } from '@gredice/js/urls';
-import { Card, CardContent } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Left, Navigate, Pause, Play } from '@gredice/ui/icons';
@@ -19,6 +18,7 @@ import { cx } from '@gredice/ui/utils';
 import { useQuery } from '@tanstack/react-query';
 import type { FocusEvent, PointerEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Card, CardContent } from '../components/shared/Card';
 import { WinterModeToggle } from '../components/WinterModeToggle';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { KnownPages } from '../src/KnownPages';

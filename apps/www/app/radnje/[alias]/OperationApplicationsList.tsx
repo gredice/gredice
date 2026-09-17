@@ -1,12 +1,12 @@
 import { isOperationApplicableToPlant } from '@gredice/js/operations';
 import { getHarvestBehaviorOverviewDisclaimer } from '@gredice/js/plants';
 import { BlockImage } from '@gredice/ui/BlockImage';
-import { Card, CardContent } from '@gredice/ui/Card';
 import { GameSeedlingIcon } from '@gredice/ui/GameIcons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { Typography } from '@gredice/ui/Typography';
+import { Card, CardContent } from '../../../components/shared/Card';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { getPlantsData } from '../../../lib/plants/getPlantsData';

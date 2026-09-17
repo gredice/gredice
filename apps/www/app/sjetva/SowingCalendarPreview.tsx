@@ -1,9 +1,9 @@
 import type { PlantData } from '@gredice/client';
-import { Card } from '@gredice/ui/Card';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import type { ReactNode } from 'react';
+import { Card } from '../../components/shared/Card';
 import {
     PlantGrowthCalendar,
     type PlantGrowthCalendarWindows,

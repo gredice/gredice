@@ -1,5 +1,4 @@
 import { Button } from '@gredice/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Container } from '@gredice/ui/Container';
 import {
     GameGiftIcon,
@@ -13,6 +12,12 @@ import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '../../components/shared/Card';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { formatPrice } from '../../lib/formatPrice';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
