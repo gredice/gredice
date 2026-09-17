@@ -144,6 +144,7 @@ import {
     serializePublicRaisedBedField,
     serializeRaisedBedPlantingsForGardenView,
 } from '../../../lib/garden/publicGardenSerialization';
+import { listPublicGardenStructures } from '../../../lib/garden/publicGardenStructuresRead';
 import {
     publicGardenVisitorClientAddress,
     publicGardenVisitorPresenceBodySchema,
@@ -2179,7 +2180,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     gardenIdNumber,
                 ),
                 getGardenQueuedTasks(garden),
-                listGardenStructures(gardenIdNumber),
+                listPublicGardenStructures(gardenIdNumber),
             ]);
             const gardenDetails = await serializeGardenDetails(
                 garden,
