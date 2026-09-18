@@ -8,10 +8,15 @@ import {
     GameSeedlingIcon,
     GameSettingsIcon,
 } from '@gredice/ui/GameIcons';
-import { ExternalLink, Navigate } from '@gredice/ui/icons';
+import { Add, ExternalLink, Navigate } from '@gredice/ui/icons';
 
 const entries = [
-    { label: 'Vrtovi za igru', Icon: GameGardenIcon, submenu: true },
+    {
+        label: 'Vrtovi za igru',
+        Icon: GameGardenIcon,
+        submenu: true,
+        create: true,
+    },
     { label: '2D prikaz vrta', Icon: GameGardenPlanIcon, divider: true },
     { label: 'Profil', Icon: GameProfileIcon },
     { label: 'Obavijesti', Icon: GameMailboxIcon, unread: true },
@@ -33,7 +38,15 @@ export function GameAccountMenuPreview() {
             <h2 className="text-sm font-semibold">Izbornik vrta</h2>
             <ul className="w-80 max-w-full rounded-md border bg-popover p-4 text-popover-foreground shadow-md">
                 {entries.map(
-                    ({ label, Icon, submenu, external, unread, divider }) => (
+                    ({
+                        label,
+                        Icon,
+                        submenu,
+                        create,
+                        external,
+                        unread,
+                        divider,
+                    }) => (
                         <li
                             key={label}
                             className={
@@ -46,10 +59,18 @@ export function GameAccountMenuPreview() {
                                 {unread && (
                                     <span className="size-2 rounded-full bg-green-500" />
                                 )}
+                                {create && (
+                                    <Add
+                                        aria-hidden
+                                        className="ml-auto size-4"
+                                    />
+                                )}
                                 {submenu && (
                                     <Navigate
                                         aria-hidden
-                                        className="ml-auto size-4"
+                                        className={
+                                            create ? 'size-4' : 'ml-auto size-4'
+                                        }
                                     />
                                 )}
                                 {external && (

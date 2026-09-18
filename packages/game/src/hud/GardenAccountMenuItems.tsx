@@ -13,7 +13,7 @@ import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { useQueryClient } from '@tanstack/react-query';
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCreateGarden } from '../hooks/useCreateGarden';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
@@ -44,7 +44,6 @@ export function GardenAccountMenuItems({
     const queryClient = useQueryClient();
     const [sandboxGardenToDelete, setSandboxGardenToDelete] =
         useState<SandboxGardenToDelete | null>(null);
-    const [useSandboxSubmenu, setUseSandboxSubmenu] = useState(false);
     const [selectedGardenId, setSelectedGardenId] = useCurrentGardenIdParam();
     const { track } = useGameAnalytics();
     const { data: currentGarden } = useCurrentGarden();
@@ -105,16 +104,6 @@ export function GardenAccountMenuItems({
         sandboxGardenGroups.length > 1 ||
         sandboxGardenGroups.some((accountGroup) => !accountGroup.isCurrent);
     const isLoading = currentGardensLoading || accountGroupsLoading;
-
-    useEffect(() => {
-        const mediaQuery = window.matchMedia('(min-width: 768px)');
-        const handleChange = (event: MediaQueryListEvent) =>
-            setUseSandboxSubmenu(event.matches);
-
-        setUseSandboxSubmenu(mediaQuery.matches);
-        mediaQuery.addEventListener('change', handleChange);
-        return () => mediaQuery.removeEventListener('change', handleChange);
-    }, []);
 
     async function handleGardenSelect(
         accountGroup: (typeof gardenGroups)[number],
@@ -350,23 +339,31 @@ export function GardenAccountMenuItems({
                         ))}
                     </Fragment>
                 ))}
-                {sandboxGardenGroups.length > 0 && canCreateSandboxGarden && (
-                    <DropdownMenuSeparator className="my-2" />
-                )}
-                {canCreateSandboxGarden && (
-                    <DropdownMenuItem
-                        className="gap-3"
-                        disabled={createGarden.isPending}
-                        onSelect={(event) => {
-                            event.preventDefault();
-                            void handleCreateSandboxGarden();
-                        }}
-                    >
-                        <Add className="size-4" />
-                        <span>Kreiraj vrt za igru</span>
-                    </DropdownMenuItem>
-                )}
             </>
+        );
+    }
+
+    function renderCreateSandboxGardenButton(className?: string) {
+        return (
+            <IconButton
+                title="Kreiraj vrt za igru"
+                type="button"
+                variant="plain"
+                size="sm"
+                disabled={createGarden.isPending}
+                className={cx('size-7 shrink-0 rounded-full p-0', className)}
+                onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    void handleCreateSandboxGarden();
+                }}
+                onPointerDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }}
+            >
+                <Add aria-hidden className="size-4" />
+            </IconButton>
         );
     }
 
@@ -450,35 +447,41 @@ export function GardenAccountMenuItems({
             {normalGardenGroups.length > 0 && showSandboxMenu && (
                 <DropdownMenuSeparator className="my-2" />
             )}
-            {showSandboxMenu && useSandboxSubmenu && (
-                <DropdownMenuSub>
-                    <DropdownMenuSubTrigger className="gap-3">
-                        <GameGardenIcon
-                            aria-hidden
-                            className="size-6 shrink-0"
-                        />
-                        <span>Vrtovi za igru</span>
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent
-                        className="w-80 max-w-[calc(100vw-1rem)] p-2"
-                        collisionPadding={8}
-                    >
-                        {renderSandboxGardenItems()}
-                    </DropdownMenuSubContent>
-                </DropdownMenuSub>
-            )}
-            {showSandboxMenu && !useSandboxSubmenu && (
-                <>
-                    <DropdownMenuLabel className="flex items-center gap-3 px-2 py-1.5 text-sm font-normal text-muted-foreground">
-                        <GameGardenIcon
-                            aria-hidden
-                            className="size-6 shrink-0"
-                        />
-                        <span>Vrtovi za igru</span>
-                    </DropdownMenuLabel>
-                    {renderSandboxGardenItems()}
-                </>
-            )}
+            {showSandboxMenu &&
+                (sandboxGardenGroups.length > 0 ? (
+                    <DropdownMenuSub>
+                        <DropdownMenuSubTrigger
+                            className="w-full gap-3"
+                            textValue="Vrtovi za igru"
+                        >
+                            <GameGardenIcon
+                                aria-hidden
+                                className="size-6 shrink-0"
+                            />
+                            <span>Vrtovi za igru</span>
+                            {canCreateSandboxGarden &&
+                                renderCreateSandboxGardenButton('ml-auto')}
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent
+                            className="w-80 max-w-[calc(100vw-1rem)] p-2"
+                            collisionPadding={8}
+                        >
+                            {renderSandboxGardenItems()}
+                        </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                ) : (
+                    <div className="flex items-center gap-1">
+                        <DropdownMenuLabel className="flex min-w-0 flex-1 items-center gap-3 px-2 py-1.5 text-sm font-normal">
+                            <GameGardenIcon
+                                aria-hidden
+                                className="size-6 shrink-0"
+                            />
+                            <span>Vrtovi za igru</span>
+                        </DropdownMenuLabel>
+                        {canCreateSandboxGarden &&
+                            renderCreateSandboxGardenButton()}
+                    </div>
+                ))}
             <ModalConfirm
                 open={sandboxGardenToDelete !== null}
                 onOpenChange={(open) => {
