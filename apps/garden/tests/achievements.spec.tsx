@@ -56,7 +56,16 @@ test('shows a known first requirement for an empty account and fits a 320px view
     await page.setViewportSize({ width: 320, height: 740 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await mount(<AchievementCollectionShowcase state="empty" dark />);
-    await expect(page.locator('[data-achievement-family]')).toHaveCount(5);
+    await expect(page.locator('[data-achievement-family]')).toHaveCount(8);
+    await expect(
+        page.getByRole('button', { name: /^Raznolik vrt/ }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: /^Od sjemena do stola/ }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: /^Sezona za pamćenje/ }),
+    ).toBeVisible();
     const watering = page.getByRole('button', { name: /^Zalijevanje/ });
     await expect(watering).toContainText('Sljedeće: Prvo zalijevanje');
     await watering.click();
@@ -143,7 +152,7 @@ test('shows loading and recovers from an HTTP error using the real query', async
         'Postignuća trenutno nisu dostupna.',
     );
     await page.getByRole('button', { name: 'Pokušaj ponovno' }).click();
-    await expect(page.locator('[data-achievement-family]')).toHaveCount(5);
+    await expect(page.locator('[data-achievement-family]')).toHaveCount(8);
     expect(requests).toBe(2);
 });
 

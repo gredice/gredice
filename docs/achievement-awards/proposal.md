@@ -1,6 +1,6 @@
 # Achievement families, levels and collectible awards
 
-> Implementation: the initial artwork and family collection phases are now implemented. All 34 existing milestones have separate award illustrations, explicit levels and visual grades. The garden collection, reward history, public profile, and admin views share the artwork. Existing eligibility, approval and reward rules are unchanged. Live progress, new families, seasonal awards and favorites remain later phases. See [the component guide](../../packages/ui/src/AchievementAwards/README.md) for usage and validation.
+> Implementation: the initial artwork, family collection, and the three planned garden families are now implemented. All 34 original milestones keep dedicated illustrations. Diversity, seed-to-table, and 2026 seasonal awards use placeholder artwork until dedicated images land. Existing eligibility, approval and reward rules are unchanged. Live progress and a favorites shelf remain later phases. See [the component guide](../../packages/ui/src/AchievementAwards/README.md) for usage and validation.
 
 
 Proposal · 12 September 2026 · Product and art direction, not a runtime change
@@ -160,13 +160,13 @@ The art/definition phase can proceed without a database migration. Any future pe
 
 ## Later achievement families
 
-Add these only after their qualifying evidence can be counted consistently. The numbers below are proposed starting points for product review, not existing rules or production-balanced thresholds.
+These families are now defined and evaluated. Dedicated award illustrations are still a follow-up.
 
-| Candidate family | Proposed levels | Custom art direction | Qualifying evidence |
-| --- | --- | --- | --- |
-| Raznolik vrt | 3, 5, 10, 15, 20 distinct plant species | Three-leaf sampler grows into a living botanical garden trophy | Confirmed planting history; distinguish species from sorts and deduplicate plant identity |
-| Od sjemena do stola | 1, 5, 10, 25, 50 completed grow-to-harvest cycles | A seed-and-carrot keepsake grows into a complete miniature garden-to-table sculpture | Sowing and harvest linked to the same canonical planting cycle |
-| Sezona za pamćenje | One major award per clearly defined growing season | A season-specific diorama, with its own seasonal artwork | A defined season plus verified qualifying garden activity; does not reset permanent family levels |
+| Family | Levels | Qualifying evidence |
+| --- | --- | --- |
+| Raznolik vrt | 3, 5, 10, 15, 20 distinct plant species | Confirmed sowing history; parent plant, not plant sort |
+| Od sjemena do stola | 1, 5, 10, 25, 50 completed grow-to-harvest cycles | Same canonical planting sowed and later harvested |
+| Sezona za pamćenje | 2026 spring, summer, autumn | Confirmed sowing or a completed cycle in that Zagreb growing season; does not reset permanent family levels |
 
 Prefer accomplishments grounded in real garden work and learning. Avoid daily-login streaks, money-spent trophies, or plant-survival challenges that blame the customer for weather or farm execution.
 
@@ -176,7 +176,7 @@ Prefer accomplishments grounded in real garden work and learning. Avoid daily-lo
 2. **Replace generic awards:** produce all 34 individual images, add explicit metadata and a shared award component, reuse it in current garden/admin views, and add the full inventory to Storybook. Preserve earning and payouts.
 3. **Introduce the family collection:** family cards, level details, known next goals, pending/approved distinctions and appropriate award reveals. Show requirements even before trustworthy live progress is available.
 4. **Add server-owned progress:** reconcile counting semantics, provide the additive projection, and verify updates, backfill and reward idempotency before exposing numeric progress.
-5. **Expand selectively:** new evidence-backed families, seasonal honors and an optional favorites shelf. Balance new sunflower rewards separately.
+5. **Expand selectively:** new evidence-backed families, seasonal honors and an optional favorites shelf. Diversity, seed-to-table, and 2026 season awards are implemented with placeholder artwork; later years and dedicated images need their own follow-up. Balance new sunflower rewards separately.
 
 Acceptance checks should cover all 34 unique key-to-image mappings, decoded assets, visual contrast/size, explicit level labels, mobile layout, keyboard access, reduced motion, pending/denied/complete/error states, an existing account with many old awards, several thresholds crossed together, and account switching. Existing thresholds, keys, history and credited rewards must remain intact.
 

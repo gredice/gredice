@@ -94,6 +94,71 @@ const presentation = {
         level: 6,
         visualGrade: 'legendary',
     },
+    garden_diversity_3: {
+        familyKey: 'garden_diversity',
+        level: 1,
+        visualGrade: 'first_steps',
+    },
+    garden_diversity_5: {
+        familyKey: 'garden_diversity',
+        level: 2,
+        visualGrade: 'growing',
+    },
+    garden_diversity_10: {
+        familyKey: 'garden_diversity',
+        level: 3,
+        visualGrade: 'experienced',
+    },
+    garden_diversity_15: {
+        familyKey: 'garden_diversity',
+        level: 4,
+        visualGrade: 'mastery',
+    },
+    garden_diversity_20: {
+        familyKey: 'garden_diversity',
+        level: 5,
+        visualGrade: 'legendary',
+    },
+    seed_to_table_1: {
+        familyKey: 'seed_to_table',
+        level: 1,
+        visualGrade: 'first_steps',
+    },
+    seed_to_table_5: {
+        familyKey: 'seed_to_table',
+        level: 2,
+        visualGrade: 'growing',
+    },
+    seed_to_table_10: {
+        familyKey: 'seed_to_table',
+        level: 3,
+        visualGrade: 'experienced',
+    },
+    seed_to_table_25: {
+        familyKey: 'seed_to_table',
+        level: 4,
+        visualGrade: 'mastery',
+    },
+    seed_to_table_50: {
+        familyKey: 'seed_to_table',
+        level: 5,
+        visualGrade: 'legendary',
+    },
+    season_2026_spring: {
+        familyKey: 'seasonal',
+        level: 1,
+        visualGrade: 'first_steps',
+    },
+    season_2026_summer: {
+        familyKey: 'seasonal',
+        level: 2,
+        visualGrade: 'growing',
+    },
+    season_2026_autumn: {
+        familyKey: 'seasonal',
+        level: 3,
+        visualGrade: 'experienced',
+    },
 } satisfies Record<
     string,
     {

@@ -9,7 +9,10 @@ export type AchievementCategory =
     | 'planting'
     | 'watering'
     | 'harvest'
-    | 'community_editing';
+    | 'community_editing'
+    | 'garden_diversity'
+    | 'seed_to_table'
+    | 'seasonal';
 
 export type AchievementStatus = 'pending' | 'approved' | 'denied';
 
@@ -77,6 +80,53 @@ const communityEditingThresholds: Array<[threshold: number, reward: number]> = [
     [100, 5_000],
 ];
 
+// TODO: Balance the rewards
+const gardenDiversityThresholds: Array<[threshold: number, reward: number]> = [
+    [3, 150],
+    [5, 300],
+    [10, 600],
+    [15, 1_200],
+    [20, 2_500],
+];
+
+// TODO: Balance the rewards
+const seedToTableThresholds: Array<[threshold: number, reward: number]> = [
+    [1, 200],
+    [5, 500],
+    [10, 1_000],
+    [25, 2_500],
+    [50, 8_000],
+];
+
+const seasonalAwards: Array<{
+    key: string;
+    title: string;
+    description: string;
+    rewardSunflowers: number;
+}> = [
+    {
+        key: 'season_2026_spring',
+        title: 'Proljeće 2026',
+        description:
+            'Ostvari potvrđenu sadnju ili berbu od sjemena do stola u proljeće 2026. (1. ožujka – 31. svibnja).',
+        rewardSunflowers: 1_000,
+    },
+    {
+        key: 'season_2026_summer',
+        title: 'Ljeto 2026',
+        description:
+            'Ostvari potvrđenu sadnju ili berbu od sjemena do stola u ljeto 2026. (1. lipnja – 31. kolovoza).',
+        rewardSunflowers: 1_000,
+    },
+    {
+        key: 'season_2026_autumn',
+        title: 'Jesen 2026',
+        description:
+            'Ostvari potvrđenu sadnju ili berbu od sjemena do stola u jesen 2026. (1. rujna – 30. studenoga).',
+        rewardSunflowers: 1_000,
+    },
+];
+
 function plantingTitle(threshold: number) {
     if (threshold === 1) {
         return 'Prvo sjeme';
@@ -112,6 +162,36 @@ function communityEditingTitle(threshold: number) {
             return 'Majstor sadržaja';
         default:
             return `${threshold} prihvaćenih izmjena`;
+    }
+}
+
+function gardenDiversityTitle(threshold: number) {
+    switch (threshold) {
+        case 3:
+            return 'Tri kulture';
+        case 5:
+            return 'Mali povrtnjak';
+        case 10:
+            return 'Raznolik vrt';
+        case 15:
+            return 'Botanička zbirka';
+        default:
+            return 'Živi vrt';
+    }
+}
+
+function seedToTableTitle(threshold: number) {
+    switch (threshold) {
+        case 1:
+            return 'Od sjemena do stola';
+        case 5:
+            return 'Pet punih ciklusa';
+        case 10:
+            return 'Vrt na stolu';
+        case 25:
+            return 'Sezonski stol';
+        default:
+            return 'Majstor uzgoja';
     }
 }
 
@@ -167,6 +247,35 @@ const baseDefinitions: Omit<
                 ? 'Neka tvoj prvi prijedlog izmjene sadržaja bude prihvaćen.'
                 : `Neka ${threshold} tvojih prijedloga izmjene sadržaja bude prihvaćeno.`,
         sortOrder: 400 + index,
+    })),
+    ...gardenDiversityThresholds.map(([threshold, reward], index) => ({
+        key: `garden_diversity_${threshold}`,
+        category: 'garden_diversity' as const,
+        threshold,
+        rewardSunflowers: reward,
+        title: gardenDiversityTitle(threshold),
+        description: `Posadi ${threshold} različitih vrsta biljaka u svojim gredicama.`,
+        sortOrder: 500 + index,
+    })),
+    ...seedToTableThresholds.map(([threshold, reward], index) => ({
+        key: `seed_to_table_${threshold}`,
+        category: 'seed_to_table' as const,
+        threshold,
+        rewardSunflowers: reward,
+        title: seedToTableTitle(threshold),
+        description:
+            threshold === 1
+                ? 'Dovedi jednu sadnju od sjetve do berbe.'
+                : `Dovedi ${threshold} sadnji od sjetve do berbe.`,
+        sortOrder: 600 + index,
+    })),
+    ...seasonalAwards.map((award, index) => ({
+        key: award.key,
+        category: 'seasonal' as const,
+        rewardSunflowers: award.rewardSunflowers,
+        title: award.title,
+        description: award.description,
+        sortOrder: 700 + index,
     })),
 ];
 

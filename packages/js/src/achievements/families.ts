@@ -19,6 +19,9 @@ export const achievementFamilyLabels: Record<AchievementCategory, string> = {
     watering: 'Zalijevanje',
     harvest: 'Berba',
     community_editing: 'Doprinos zajednici',
+    garden_diversity: 'Raznolik vrt',
+    seed_to_table: 'Od sjemena do stola',
+    seasonal: 'Sezona za pamćenje',
 };
 
 /** Award snapshots describe earned milestones, never live action totals. */

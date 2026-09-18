@@ -21,6 +21,12 @@ import {
     type SelectAccountAchievement,
     storage,
 } from '..';
+import {
+    gardenAchievementEventTypes,
+    gardenFamilyAchievementPlans,
+    getGardenAchievementPlantings,
+    getPlantIdBySortId,
+} from '../helpers/gardenAchievementEvaluation';
 import { isCanonicalSelectedPlantingSowedEvent } from '../helpers/selectedPlantingSowedEvent';
 import { getEntitiesFormatted } from './entitiesRepo';
 import type { RaisedBedFieldPlantEventsPayload } from './events/types';
@@ -581,14 +587,14 @@ export async function evaluateAchievements() {
     const harvestCounters = new Map<string, number>();
     const wateringCounters = new Map<string, number>();
 
-    const plantEvents = await storage().query.events.findMany({
-        where: inArray(events.type, [
-            knownEventTypes.raisedBedFields.plantUpdate,
-            knownEventTypes.raisedBedPlantings.taskCompleted,
-            knownEventTypes.raisedBedPlantings.taskVerified,
-        ]),
-        orderBy: [asc(events.createdAt), asc(events.id)],
-    });
+    const [plantEvents, gardenPlantings, plantIdBySortId] = await Promise.all([
+        storage().query.events.findMany({
+            where: inArray(events.type, [...gardenAchievementEventTypes]),
+            orderBy: [asc(events.createdAt), asc(events.id)],
+        }),
+        getGardenAchievementPlantings(),
+        getPlantIdBySortId(),
+    ]);
 
     const selectedPlantings = await storage()
         .select({
@@ -771,6 +777,25 @@ export async function evaluateAchievements() {
             skipReward,
         });
         ensureAccountSet(plannedByAccount, account.id).add('registration');
+    }
+
+    const gardenPlans = gardenFamilyAchievementPlans({
+        events: plantEvents,
+        plantings: gardenPlantings,
+        raisedBedAccountId: raisedBedAccountMap,
+        plantIdBySortId,
+    });
+    for (const plan of gardenPlans) {
+        const existing = existingByAccount.get(plan.accountId) ?? new Set();
+        const planned = ensureAccountSet(plannedByAccount, plan.accountId);
+        if (
+            existing.has(plan.definition.key) ||
+            planned.has(plan.definition.key)
+        ) {
+            continue;
+        }
+        plans.push(plan);
+        planned.add(plan.definition.key);
     }
 
     return createPlannedAchievements(plans, existingByAccount);

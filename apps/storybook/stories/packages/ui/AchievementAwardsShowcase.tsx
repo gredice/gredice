@@ -1,4 +1,7 @@
-import { getAchievementFamilies } from '@gredice/js/achievements';
+import {
+    getAchievementDefinitions,
+    getAchievementFamilies,
+} from '@gredice/js/achievements';
 import {
     AchievementAward,
     AchievementLevelLabel,
@@ -19,9 +22,11 @@ export function AchievementAwardsShowcase({
                         Achievement awards
                     </h1>
                     <p className="text-foreground/75">
-                        34 individual awards. Starter keepsakes grow into garden
-                        trophies with distinct silhouettes. Compare every level
-                        at 32, 64 and 160 pixels.
+                        {getAchievementDefinitions().length} awards across eight
+                        families. Existing trophies stay dedicated; new families
+                        use a placeholder until artwork lands. Starter keepsakes
+                        grow into garden trophies with distinct silhouettes.
+                        Compare every level at 32, 64 and 160 pixels.
                     </p>
                 </header>
                 {getAchievementFamilies([]).map((family) => (
