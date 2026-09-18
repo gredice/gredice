@@ -83,13 +83,24 @@ export function SunflowerPackageCard({
             key={pkg.code}
             data-sunflower-package={pkg.code}
             className={cx(
-                '@container/package min-w-0 border-tertiary/30 p-1',
+                '@container/package relative min-w-0 border-tertiary/30 p-1',
                 featured && 'col-span-3',
                 featured && 'border-primary/40 bg-primary/5',
                 isPopular &&
                     'border-amber-300 bg-amber-50/70 dark:border-amber-800 dark:bg-amber-950/40',
             )}
         >
+            {pkg.tag ? (
+                <Chip
+                    data-package-tag
+                    size="sm"
+                    variant="soft"
+                    color={isPopular ? 'warning' : 'neutral'}
+                    className="absolute left-1/2 top-0 z-10 min-h-5 w-max max-w-[calc(100%-0.5rem)] -translate-x-1/2 -translate-y-1/2 justify-center whitespace-normal break-words px-1 py-0 text-center text-[9px] leading-tight @[12rem]/package:min-h-6 @[12rem]/package:whitespace-nowrap @[12rem]/package:px-1.5 @[12rem]/package:py-0.5 @[12rem]/package:text-xs"
+                >
+                    {pkg.tag}
+                </Chip>
+            ) : null}
             <CardContent noHeader className="h-full p-1.5 @[12rem]/package:p-2">
                 <div className="flex h-full flex-col">
                     <SunflowerPackageVisual
@@ -98,29 +109,13 @@ export function SunflowerPackageCard({
                         aria-hidden
                     />
                     <div className="min-w-0">
-                        <Row
-                            justifyContent="space-between"
-                            alignItems="start"
-                            className="min-w-0 flex-col gap-1 @[12rem]/package:flex-row @[12rem]/package:gap-2"
+                        <Typography
+                            level="body1"
+                            bold
+                            className="min-w-0 text-xs leading-tight @[12rem]/package:text-base"
                         >
-                            <Typography
-                                level="body1"
-                                bold
-                                className="min-w-0 text-xs leading-tight @[12rem]/package:text-base"
-                            >
-                                {pkg.name}
-                            </Typography>
-                            {pkg.tag ? (
-                                <Chip
-                                    size="sm"
-                                    variant="soft"
-                                    color={isPopular ? 'warning' : 'neutral'}
-                                    className="min-h-5 whitespace-normal break-words px-1 py-0 text-left text-[9px] leading-tight @[12rem]/package:min-h-6 @[12rem]/package:whitespace-nowrap @[12rem]/package:px-1.5 @[12rem]/package:py-0.5 @[12rem]/package:text-xs"
-                                >
-                                    {pkg.tag}
-                                </Chip>
-                            ) : null}
-                        </Row>
+                            {pkg.name}
+                        </Typography>
                         {pkg.descriptionShort ? (
                             <Typography
                                 level="body3"
