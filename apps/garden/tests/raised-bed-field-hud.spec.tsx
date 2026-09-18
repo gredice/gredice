@@ -13,6 +13,8 @@ import {
     RaisedBedInfoModalStory,
 } from './RaisedBedFieldHudStory';
 import {
+    allPlants,
+    allSorts,
     buildCartItem,
     buildOperation,
     type FieldConfig,
@@ -816,6 +818,117 @@ function plantedHarvestedScenario(): RaisedBedScenario {
     };
 }
 
+function harvestedWithoutCleanHarvestPlant() {
+    const plant = {
+        ...testSorts.tomato.information.plant,
+        attributes: {
+            ...testSorts.tomato.information.plant.attributes,
+            cleanHarvest: false,
+        },
+    };
+    const sort = {
+        ...testSorts.tomato,
+        information: {
+            ...testSorts.tomato.information,
+            plant,
+        },
+    };
+    return { plant, sort };
+}
+
+function neverSproutedFieldScenario(): RaisedBedScenario {
+    return {
+        fields: [
+            {
+                positionIndex: 0,
+                plantSortId: testSorts.tomato.id,
+                plantStatus: 'notSprouted',
+                toBeRemoved: true,
+                plantSowDate: daysAgoIso(20),
+                plantDeadDate: daysAgoIso(1),
+                statusChanges: [
+                    { status: 'sowed', occurredAt: daysAgoIso(20) },
+                    { status: 'notSprouted', occurredAt: daysAgoIso(1) },
+                ],
+            },
+        ],
+    };
+}
+
+function harvestedCleanHarvestFieldScenario(): RaisedBedScenario {
+    return {
+        fields: [
+            {
+                positionIndex: 0,
+                plantSortId: testSorts.tomato.id,
+                plantStatus: 'harvested',
+                toBeRemoved: true,
+                plantSowDate: daysAgoIso(80),
+                plantGrowthDate: daysAgoIso(70),
+                plantReadyDate: daysAgoIso(20),
+                plantHarvestedDate: daysAgoIso(5),
+            },
+        ],
+    };
+}
+
+function harvestedWithoutCleanHarvestFieldScenario(): RaisedBedScenario {
+    const { plant, sort } = harvestedWithoutCleanHarvestPlant();
+    return {
+        plants: [plant, ...allPlants.slice(1)],
+        sorts: [sort, ...allSorts.filter((item) => item.id !== sort.id)],
+        fields: [
+            {
+                positionIndex: 0,
+                plantSortId: sort.id,
+                plantStatus: 'harvested',
+                toBeRemoved: true,
+                plantSowDate: daysAgoIso(80),
+                plantGrowthDate: daysAgoIso(70),
+                plantReadyDate: daysAgoIso(20),
+                plantHarvestedDate: daysAgoIso(5),
+            },
+        ],
+    };
+}
+
+function diedFieldRequiresPaidRemovalScenario(): RaisedBedScenario {
+    return {
+        fields: [
+            {
+                positionIndex: 0,
+                plantSortId: testSorts.tomato.id,
+                plantStatus: 'died',
+                toBeRemoved: true,
+                plantSowDate: daysAgoIso(40),
+                plantGrowthDate: daysAgoIso(30),
+                plantDeadDate: daysAgoIso(1),
+            },
+        ],
+    };
+}
+
+function sproutedThenMarkedNotSproutedScenario(): RaisedBedScenario {
+    return {
+        fields: [
+            {
+                positionIndex: 0,
+                plantSortId: testSorts.tomato.id,
+                plantStatus: 'notSprouted',
+                toBeRemoved: true,
+                plantSowDate: daysAgoIso(20),
+                plantGrowthDate: daysAgoIso(10),
+                plantDeadDate: daysAgoIso(1),
+                statusChanges: [
+                    { status: 'sowed', occurredAt: daysAgoIso(20) },
+                    { status: 'sprouted', occurredAt: daysAgoIso(10) },
+                    { status: 'notSprouted', occurredAt: daysAgoIso(1) },
+                ],
+            },
+        ],
+    };
+}
+
 function plantedWithHistoryScenario(historyCount = 2): RaisedBedScenario {
     const history = Array.from({ length: historyCount }).map((_, index) => ({
         positionIndex: 0,
@@ -1392,6 +1505,106 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(
             stack.locator('button.bg-green-600 svg.lucide-check'),
         ).toBeVisible();
+    });
+
+    test('never sprouted field can be removed without a paid operation', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={neverSproutedFieldScenario()}
+                positionIndex={0}
+                searchParams="polje=1"
+            />,
+        );
+
+        const dialog = page.getByRole('dialog');
+        await expect(
+            dialog.getByRole('button', { name: 'Ukloni biljku' }),
+        ).toBeVisible();
+    });
+
+    test('clean harvest field can be removed without a paid operation', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={harvestedCleanHarvestFieldScenario()}
+                positionIndex={0}
+                searchParams="polje=1"
+            />,
+        );
+
+        const dialog = page.getByRole('dialog');
+        await expect(
+            dialog.getByRole('button', { name: 'Ukloni biljku' }),
+        ).toBeVisible();
+    });
+
+    test('harvested plants without clean harvest require the paid removal operation', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={harvestedWithoutCleanHarvestFieldScenario()}
+                positionIndex={0}
+                searchParams="polje=1"
+            />,
+        );
+
+        const dialog = page.getByRole('dialog');
+        await expect(
+            dialog.getByRole('button', { name: 'Ukloni biljku' }),
+        ).toHaveCount(0);
+        await expect(
+            dialog.getByText(
+                'Nakon berbe biljka može ostati u polju i tada je uklanjanje zasebna radnja.',
+            ),
+        ).toBeVisible();
+    });
+
+    test('dead plants require the paid removal operation', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={diedFieldRequiresPaidRemovalScenario()}
+                positionIndex={0}
+                searchParams="polje=1"
+            />,
+        );
+
+        const dialog = page.getByRole('dialog');
+        await expect(
+            dialog.getByRole('button', { name: 'Ukloni biljku' }),
+        ).toHaveCount(0);
+        await expect(
+            dialog.getByText(
+                'Uklanjanje ove biljke zasebna je radnja. Naruči je u kartici Radnje.',
+            ),
+        ).toBeVisible();
+    });
+
+    test('changing a sprouted plant to not sprouted still requires paid removal', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={sproutedThenMarkedNotSproutedScenario()}
+                positionIndex={0}
+                searchParams="polje=1"
+            />,
+        );
+
+        const dialog = page.getByRole('dialog');
+        await expect(
+            dialog.getByRole('button', { name: 'Ukloni biljku' }),
+        ).toHaveCount(0);
     });
 
     test('empty field with 2 historical plants stacks avatar indicators', async ({

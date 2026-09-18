@@ -155,6 +155,7 @@ export type FieldConfig = {
     toBeRemoved?: boolean;
     active?: boolean;
     stoppedDate?: string;
+    statusChanges?: Array<{ status: string; occurredAt: string }>;
     plantCycles?: Array<{
         active?: boolean;
         aggregateId?: string;
@@ -252,6 +253,7 @@ export function buildField(config: FieldConfig, id: number) {
                           config.plantSowDate ??
                           config.plantScheduledDate ??
                           now,
+                      statusChanges: config.statusChanges,
                       stoppedDate: config.stoppedDate,
                       toBeRemoved: config.toBeRemoved ?? false,
                   },

@@ -7,6 +7,8 @@
  * Growth progresses through sprouting, optional flowering/fruiting, harvest
  * readiness and harvest. Failures and existing correction paths remain
  * available. Sowing verification and plant removal use separate workflows.
+ * Garden owners can skip the paid plant-removal operation only for clean
+ * harvests and fields that never sprouted.
  */
 export const userAllowedPlantStatusTransitions: Record<string, string[]> = {
     sowed: ['sprouted', 'notSprouted'],

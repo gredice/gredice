@@ -6,6 +6,7 @@ export * from './isPlantRecommended';
 export * from './plantFieldStatusEmoji';
 export * from './plantFieldStatusLabel';
 export * from './plantFieldStatusTransitions';
+export * from './plantRemovalEligibility';
 export * from './plantStages';
 export * from './raisedBedFieldGroups';
 
