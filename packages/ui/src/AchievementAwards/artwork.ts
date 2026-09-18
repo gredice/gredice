@@ -36,7 +36,9 @@ import award16 from './assets/watering-200.webp';
 import award17 from './assets/watering-300.webp';
 import award18 from './assets/watering-500.webp';
 
-export const achievementArtwork = {
+export const achievementArtwork: Partial<
+    Record<AchievementArtworkKey, string | StaticImageData>
+> = {
     registration: award0,
     planting_1: award1,
     planting_10: award2,
@@ -71,4 +73,4 @@ export const achievementArtwork = {
     community_edit_25: award31,
     community_edit_50: award32,
     community_edit_100: award33,
-} satisfies Record<AchievementArtworkKey, string | StaticImageData>;
+};

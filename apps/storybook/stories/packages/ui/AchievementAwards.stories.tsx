@@ -1,3 +1,4 @@
+import { getAchievementDefinitions } from '@gredice/js/achievements';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { expect } from 'storybook/test';
 import { AchievementAwardsShowcase } from './AchievementAwardsShowcase';
@@ -8,13 +9,15 @@ const meta = {
     tags: ['autodocs'],
     parameters: { layout: 'fullscreen' },
     play: async ({ canvasElement }) => {
+        const definitions = getAchievementDefinitions();
         await expect(
             canvasElement.querySelectorAll('[data-award-example]'),
-        ).toHaveLength(34);
+        ).toHaveLength(definitions.length);
+        const dedicatedImages = canvasElement.querySelectorAll(
+            '[data-award-example] svg:not([data-achievement-placeholder]) image',
+        );
         const urls = new Set(
-            Array.from(canvasElement.querySelectorAll('image'), (image) =>
-                image.getAttribute('href'),
-            ),
+            Array.from(dedicatedImages, (image) => image.getAttribute('href')),
         );
         await expect(urls.size).toBe(34);
         await Promise.all(
