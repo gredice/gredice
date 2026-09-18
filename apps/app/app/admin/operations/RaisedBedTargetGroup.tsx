@@ -5,10 +5,7 @@ import { IconButton } from '@gredice/ui/IconButton';
 import { ExpandDown } from '@gredice/ui/icons';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { useState } from 'react';
-import {
-    isAdvancedSowingPlantOperationTargetBlocked,
-    type OperationTargetScope,
-} from './operationScope';
+import type { OperationTargetScope } from './operationScope';
 
 export type OperationTargetRaisedBed = {
     id: number;
@@ -139,24 +136,16 @@ export function RaisedBedTargetGroup({
                         const fieldValue = `${raisedBed.accountId}|${
                             raisedBed.gardenId ?? ''
                         }|${raisedBed.id}|${field.id}`;
-                        const blocked =
-                            isAdvancedSowingPlantOperationTargetBlocked({
-                                application: mode,
-                                hasActiveSelectedPlanting:
-                                    field.hasActiveSelectedPlanting,
-                            });
 
                         return (
                             <label
                                 key={field.id}
-                                className={`flex items-start gap-2 ${
-                                    blocked ? 'text-muted-foreground' : ''
-                                }`}
+                                className="flex items-start gap-2"
                             >
                                 <input
                                     type={inputType}
                                     name={name}
-                                    disabled={!selectableField || blocked}
+                                    disabled={!selectableField}
                                     value={fieldValue}
                                     checked={
                                         selectionType === 'single'
@@ -175,10 +164,10 @@ export function RaisedBedTargetGroup({
                                 />
                                 <span>
                                     {`Polje ${field.positionIndex + 1}`}
-                                    {blocked ? (
+                                    {field.hasActiveSelectedPlanting ? (
                                         <>
                                             {' '}
-                                            <span className="block text-xs">
+                                            <span className="block text-xs text-muted-foreground">
                                                 Napredna sjetva
                                             </span>
                                         </>

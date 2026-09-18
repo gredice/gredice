@@ -91,6 +91,10 @@ export const SELECTED_PLANTING_PLANT_OPERATION_CONFLICT_MESSAGE =
 
 export type OperationTargetConflictErrorCode = 'selected_planting_conflict';
 
+export type OperationTargetGuardOptions = {
+    allowSelectedPlantingFieldOperations?: boolean;
+};
+
 export class OperationTargetConflictError extends Error {
     override readonly name = 'OperationTargetConflictError';
 
@@ -1014,6 +1018,7 @@ async function lockRaisedBedFieldsForOperationGuard(
 export async function assertOperationTargetAllowsDefinition(
     operation: OperationTarget,
     db: DatabaseClient,
+    options: OperationTargetGuardOptions = {},
 ) {
     if (operation.plantingId != null) {
         if (
@@ -1101,7 +1106,10 @@ export async function assertOperationTargetAllowsDefinition(
         operation.entityId,
         operation.entityTypeName,
     );
-    if (application !== 'plant') {
+    if (
+        application !== 'plant' ||
+        options.allowSelectedPlantingFieldOperations
+    ) {
         return;
     }
 
@@ -2176,7 +2184,8 @@ export async function createOperation(
         raisedBedFieldId,
         plantingId,
         timestamp,
-    }: InsertOperation,
+        allowSelectedPlantingFieldOperations,
+    }: InsertOperation & OperationTargetGuardOptions,
     db?: DatabaseClient,
 ) {
     const operation: InsertOperation = {
@@ -2191,7 +2200,9 @@ export async function createOperation(
         timestamp: timestamp ?? new Date(),
     };
     const insertOperation = async (client: DatabaseClient) => {
-        await assertOperationTargetAllowsDefinition(operation, client);
+        await assertOperationTargetAllowsDefinition(operation, client, {
+            allowSelectedPlantingFieldOperations,
+        });
         const [result] = await client
             .insert(operations)
             .values(operation)
@@ -2716,6 +2727,7 @@ export async function switchOperationEntity(
     id: number,
     entity: Pick<InsertOperation, 'entityId' | 'entityTypeName'>,
     db?: DatabaseClient,
+    options: OperationTargetGuardOptions = {},
 ) {
     const updateEntity = async (client: DatabaseClient) => {
         const [currentOperation] = await client
@@ -2742,6 +2754,7 @@ export async function switchOperationEntity(
                 ...entity,
             },
             client,
+            options,
         );
         await client
             .update(operations)

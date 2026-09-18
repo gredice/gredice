@@ -1,8 +1,5 @@
 export type OperationTargetScope = 'farm' | 'garden' | 'raisedBed' | 'plant';
 
-export const ADVANCED_SOWING_PLANT_OPERATION_TARGET_MESSAGE =
-    'Radnja za pojedinu biljku nije dostupna na polju s naprednom sjetvom. Odaberi radnju za cijelo polje ili gredicu.';
-
 type OperationLocation = {
     farmId?: number | null;
     gardenId?: number | null;
@@ -44,13 +41,6 @@ export function activeSelectedPlantingFieldIds(
             );
         }),
     );
-}
-
-export function isAdvancedSowingPlantOperationTargetBlocked(input: {
-    application: string | null | undefined;
-    hasActiveSelectedPlanting: boolean;
-}) {
-    return input.application === 'plant' && input.hasActiveSelectedPlanting;
 }
 
 export function operationTargetScope(
