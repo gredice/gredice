@@ -1,10 +1,28 @@
 import { expect, test } from '@playwright/experimental-ct-react';
+import type { Locator } from '@playwright/test';
 import {
     SunflowerPackagesPanelStory,
     SunflowersHudLoadingStory,
     SunflowersHudStory,
     SunflowersPendingDetailsStory,
 } from './SunflowersHudStory';
+
+async function expectTagCenteredOnTopEdge(card: Locator) {
+    const [cardBox, tagBox] = await Promise.all([
+        card.boundingBox(),
+        card.locator('[data-package-tag]').boundingBox(),
+    ]);
+    if (!cardBox || !tagBox) {
+        throw new Error('Expected the package card and tag to be visible.');
+    }
+
+    const cardCenterX = cardBox.x + cardBox.width / 2;
+    const tagCenterX = tagBox.x + tagBox.width / 2;
+    const tagCenterY = tagBox.y + tagBox.height / 2;
+
+    expect(Math.abs(tagCenterX - cardCenterX)).toBeLessThanOrEqual(1);
+    expect(Math.abs(tagCenterY - cardBox.y)).toBeLessThanOrEqual(1);
+}
 
 test.describe('Sunflowers HUD', () => {
     test('keeps the HUD visible with an amount skeleton while the account loads', async ({
@@ -156,6 +174,7 @@ test.describe('Sunflowers HUD', () => {
         const initialOffer = page.locator(
             '[data-sunflower-package="puna_gredica"]',
         );
+        await expectTagCenteredOnTopEdge(initialOffer);
         const [
             initialOfferHeaderBox,
             initialOfferBreakdownBox,
@@ -196,6 +215,10 @@ test.describe('Sunflowers HUD', () => {
 
         const popularPackage = mainPackageCards[1];
         const bestValuePackage = mainPackageCards[2];
+        await Promise.all([
+            expectTagCenteredOnTopEdge(popularPackage),
+            expectTagCenteredOnTopEdge(bestValuePackage),
+        ]);
         await expect(popularPackage).toHaveClass(/bg-amber-50\/70/u);
         await expect(bestValuePackage).not.toHaveClass(/bg-amber-50\/70/u);
         await expect(
@@ -248,6 +271,14 @@ test.describe('Sunflowers HUD', () => {
         expect(popularPackageBox?.y).toBe(bestValuePackageBox?.y);
         expect(smallPackageBox?.x).toBeLessThan(popularPackageBox?.x ?? 0);
         expect(popularPackageBox?.x).toBeLessThan(bestValuePackageBox?.x ?? 0);
+
+        await Promise.all([
+            expectTagCenteredOnTopEdge(
+                page.locator('[data-sunflower-package="puna_gredica"]'),
+            ),
+            expectTagCenteredOnTopEdge(mainPackageCards[1]),
+            expectTagCenteredOnTopEdge(mainPackageCards[2]),
+        ]);
 
         const panelOverflow = await page
             .locator('[data-sunflower-packages-panel]')
