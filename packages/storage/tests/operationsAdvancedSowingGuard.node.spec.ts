@@ -291,6 +291,54 @@ test('legacy-only fields allow plant operations and selected fields allow all-ta
     );
 });
 
+test('admin opt-in creates and switches plant operations on selected fields', async () => {
+    const fixture = await createFixture([0]);
+    const field = fixture.fields.get(0);
+    assert.ok(field);
+    await createSelectedPlanting({
+        fieldId: field.id,
+        positionIndex: 0,
+        raisedBedId: fixture.raisedBedId,
+        plantSortId: fixture.plantSortId,
+    });
+    const plantOperationEntityId = await createOperationDefinition('plant');
+    const physicalOperationEntityId =
+        await createOperationDefinition('raisedBedFull');
+
+    const createdOperationId = await createOperation({
+        ...operationInput({
+            ...fixture,
+            entityId: plantOperationEntityId,
+            fieldId: field.id,
+        }),
+        allowSelectedPlantingFieldOperations: true,
+    });
+    const createdOperation = await getOperationById(createdOperationId);
+    assert.equal(createdOperation.raisedBedFieldId, field.id);
+    assert.equal(createdOperation.plantingId ?? null, null);
+
+    const switchableOperationId = await createOperation(
+        operationInput({
+            ...fixture,
+            entityId: physicalOperationEntityId,
+            fieldId: field.id,
+        }),
+    );
+    await switchOperationEntity(
+        switchableOperationId,
+        {
+            entityId: plantOperationEntityId,
+            entityTypeName: 'operation',
+        },
+        storage(),
+        { allowSelectedPlantingFieldOperations: true },
+    );
+    assert.equal(
+        (await getOperationById(switchableOperationId)).entityId,
+        plantOperationEntityId,
+    );
+});
+
 test('switching a selected-field operation to plant scope is rejected', async () => {
     const fixture = await createFixture([0]);
     const field = fixture.fields.get(0);

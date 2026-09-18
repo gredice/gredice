@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     activeSelectedPlantingFieldIds,
-    isAdvancedSowingPlantOperationTargetBlocked,
     operationApplicationScope,
     operationDefinitionMatchesTargetScope,
     operationTargetScope,
@@ -61,37 +60,6 @@ test('activeSelectedPlantingFieldIds ignores inactive, deleted, and legacy membe
         },
     ]);
     assert.deepEqual([...fieldIds], [5]);
-});
-
-test('only plant-scoped operations are disabled on selected planting fields', () => {
-    assert.equal(
-        isAdvancedSowingPlantOperationTargetBlocked({
-            application: 'plant',
-            hasActiveSelectedPlanting: true,
-        }),
-        true,
-    );
-    for (const application of [
-        'raisedBedFull',
-        'raisedBed1m',
-        'garden',
-        'farm',
-    ]) {
-        assert.equal(
-            isAdvancedSowingPlantOperationTargetBlocked({
-                application,
-                hasActiveSelectedPlanting: true,
-            }),
-            false,
-        );
-    }
-    assert.equal(
-        isAdvancedSowingPlantOperationTargetBlocked({
-            application: 'plant',
-            hasActiveSelectedPlanting: false,
-        }),
-        false,
-    );
 });
 
 test('operationTargetScope infers target from the stored operation location', () => {

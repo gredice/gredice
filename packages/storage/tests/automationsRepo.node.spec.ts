@@ -4008,6 +4008,11 @@ test('default plant-removal automation marks the operation target removed after 
             scheduledDate: '2026-04-01T08:00:00.000Z',
         }),
     );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'sowed',
+        }),
+    );
     const raisedBed = await getRaisedBed(raisedBedId);
     const field = raisedBed?.fields[0];
     assert.ok(field);
@@ -4065,13 +4070,89 @@ test('default plant-removal automation marks the operation target removed after 
     assert.strictEqual(updatedField?.plantStatus, 'removed');
     assert.strictEqual(updatedField?.active, false);
     assert.ok(updatedField?.plantRemovedDate);
-    assert.strictEqual(
+    assert.deepStrictEqual(
         (
             await getEvents(knownEventTypes.raisedBedFields.plantUpdate, [
                 fieldAggregateId,
             ])
-        ).length,
-        1,
+        ).map(
+            (updateEvent) =>
+                (updateEvent.data as Record<string, unknown> | null)?.status,
+        ),
+        ['sowed', 'removed'],
+    );
+});
+
+test('default plant-removal automation does not clear unsown planned plants', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-04-01T08:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'planned',
+        }),
+    );
+    const raisedBed = await getRaisedBed(raisedBedId);
+    const field = raisedBed?.fields[0];
+    assert.ok(field);
+    assert.strictEqual(field.plantStatus, 'planned');
+
+    await ensureDefaultAutomationDefinitions();
+    const definition = await getAutomationDefinitionByKey(
+        plantRemovalOperationStatusAutomationKey,
+    );
+    assert.ok(definition);
+
+    const operationId = await createOperation({
+        accountId,
+        entityId: 346,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+        raisedBedFieldId: field.id,
+    });
+    await createEvent(
+        knownEvents.operations.verifiedV1(operationId.toString(), {
+            verifiedBy: 'automations-test',
+        }),
+    );
+    const event = await getLatestEvent(
+        knownEventTypes.operations.verify,
+        operationId.toString(),
+    );
+    const run = await getAutomationRunForEvent(definition.id, event.id);
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+
+    assert.strictEqual(result.status, 'skipped');
+    const updatedField = (await getRaisedBed(raisedBedId))?.fields.find(
+        (candidate) => candidate.id === field.id,
+    );
+    assert.strictEqual(updatedField?.plantStatus, 'planned');
+    assert.strictEqual(updatedField?.active, true);
+    assert.equal(updatedField?.plantRemovedDate, undefined);
+    assert.deepStrictEqual(
+        (
+            await getEvents(knownEventTypes.raisedBedFields.plantUpdate, [
+                fieldAggregateId,
+            ])
+        ).map(
+            (updateEvent) =>
+                (updateEvent.data as Record<string, unknown> | null)?.status,
+        ),
+        ['planned'],
     );
 });
 

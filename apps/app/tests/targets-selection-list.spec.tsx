@@ -54,11 +54,15 @@ test('collapses raised beds by default for plant-field targets', async ({
     await expect(
         component.getByRole('checkbox', { name: 'Polje 1' }),
     ).toBeVisible();
+    const advancedSowingField = component.getByRole('checkbox', {
+        name: /Polje 2 Napredna sjetva/,
+    });
+    await expect(advancedSowingField).toBeEnabled();
+    await advancedSowingField.check();
+    await expect(advancedSowingField).toBeChecked();
     await expect(
-        component.getByRole('checkbox', {
-            name: /Polje 2 Napredna sjetva/,
-        }),
-    ).toBeDisabled();
+        component.getByText(/nije dostupna na polju s naprednom sjetvom/i),
+    ).toHaveCount(0);
 });
 
 test('keeps raised-bed fields collapsible while allowing multiple targets', async ({
