@@ -124,25 +124,53 @@ test.describe('Garden account menu items', () => {
         ]);
     });
 
-    test('shows sandbox gardens inline on mobile', async ({ mount, page }) => {
+    test('keeps sandbox gardens in a submenu with create on the trigger row', async ({
+        mount,
+        page,
+    }) => {
         await page.setViewportSize({ width: 600, height: 800 });
         await mount(<GardenAccountMenuItemsStory />);
 
         await page.getByRole('button', { name: 'Otvori izbornik' }).click();
 
-        await expect(
-            page.getByText('Vrtovi za igru').filter({ visible: true }),
-        ).toBeVisible();
-        await expect(page.getByText('Vrt za igru 1')).toBeVisible();
+        const sandboxMenuTrigger = page.getByRole('menuitem', {
+            name: 'Vrtovi za igru',
+        });
+        const createSandboxGarden = page.getByRole('menuitem', {
+            name: 'Kreiraj vrt za igru',
+        });
+
+        await expect(sandboxMenuTrigger).toBeVisible();
+        await expect(createSandboxGarden).toBeVisible();
+        await expect(page.getByText('Vrt za igru 1')).toHaveCount(0);
         await expect(
             page.getByRole('menuitem', { name: /Računi/ }),
         ).toHaveCount(0);
-        await expect(page.getByText('Kreiraj vrt za igru')).toBeVisible();
+
+        const sandboxMenuBox = await sandboxMenuTrigger.boundingBox();
+        const createSandboxBox = await createSandboxGarden.boundingBox();
+        expect(sandboxMenuBox).not.toBeNull();
+        expect(createSandboxBox).not.toBeNull();
+        expect(createSandboxBox?.x ?? 0).toBeGreaterThan(
+            sandboxMenuBox?.x ?? 0,
+        );
+        expect(
+            Math.abs(
+                (createSandboxBox?.y ?? 0) +
+                    (createSandboxBox?.height ?? 0) / 2 -
+                    ((sandboxMenuBox?.y ?? 0) +
+                        (sandboxMenuBox?.height ?? 0) / 2),
+            ),
+        ).toBeLessThan(8);
+
+        await sandboxMenuTrigger.hover();
+        await expect(page.getByText('Vrt za igru 1')).toBeVisible();
 
         const sandboxGardenBox = await page
             .getByText('Vrt za igru 1')
             .boundingBox();
         expect(sandboxGardenBox).not.toBeNull();
+        expect(sandboxGardenBox?.x ?? 0).toBeGreaterThanOrEqual(0);
         expect(
             (sandboxGardenBox?.x ?? 0) + (sandboxGardenBox?.width ?? 0),
         ).toBeLessThanOrEqual(600);
