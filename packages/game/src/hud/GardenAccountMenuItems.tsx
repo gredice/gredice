@@ -343,6 +343,30 @@ export function GardenAccountMenuItems({
         );
     }
 
+    function renderCreateSandboxGardenButton(className?: string) {
+        return (
+            <IconButton
+                title="Kreiraj vrt za igru"
+                type="button"
+                variant="plain"
+                size="sm"
+                disabled={createGarden.isPending}
+                className={cx('size-7 shrink-0 rounded-full p-0', className)}
+                onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    void handleCreateSandboxGarden();
+                }}
+                onPointerDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }}
+            >
+                <Add aria-hidden className="size-4" />
+            </IconButton>
+        );
+    }
+
     return (
         <>
             {normalGardenGroups.map((accountGroup, groupIndex) => (
@@ -423,15 +447,20 @@ export function GardenAccountMenuItems({
             {normalGardenGroups.length > 0 && showSandboxMenu && (
                 <DropdownMenuSeparator className="my-2" />
             )}
-            {showSandboxMenu && (
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1">
+            {showSandboxMenu &&
+                (sandboxGardenGroups.length > 0 ? (
                     <DropdownMenuSub>
-                        <DropdownMenuSubTrigger className="w-full gap-3">
+                        <DropdownMenuSubTrigger
+                            className="w-full gap-3"
+                            textValue="Vrtovi za igru"
+                        >
                             <GameGardenIcon
                                 aria-hidden
                                 className="size-6 shrink-0"
                             />
                             <span>Vrtovi za igru</span>
+                            {canCreateSandboxGarden &&
+                                renderCreateSandboxGardenButton('ml-auto')}
                         </DropdownMenuSubTrigger>
                         <DropdownMenuSubContent
                             className="w-80 max-w-[calc(100vw-1rem)] p-2"
@@ -440,26 +469,19 @@ export function GardenAccountMenuItems({
                             {renderSandboxGardenItems()}
                         </DropdownMenuSubContent>
                     </DropdownMenuSub>
-                    {canCreateSandboxGarden && (
-                        <DropdownMenuItem
-                            aria-label="Kreiraj vrt za igru"
-                            className="size-7 shrink-0 justify-center rounded-full p-0"
-                            closeOnClick={false}
-                            disabled={createGarden.isPending}
-                            onPointerDown={(event) => {
-                                event.stopPropagation();
-                            }}
-                            onSelect={(event) => {
-                                event.preventDefault();
-                                void handleCreateSandboxGarden();
-                            }}
-                            title="Kreiraj vrt za igru"
-                        >
-                            <Add aria-hidden className="size-4" />
-                        </DropdownMenuItem>
-                    )}
-                </div>
-            )}
+                ) : (
+                    <div className="flex items-center gap-1">
+                        <DropdownMenuLabel className="flex min-w-0 flex-1 items-center gap-3 px-2 py-1.5 text-sm font-normal">
+                            <GameGardenIcon
+                                aria-hidden
+                                className="size-6 shrink-0"
+                            />
+                            <span>Vrtovi za igru</span>
+                        </DropdownMenuLabel>
+                        {canCreateSandboxGarden &&
+                            renderCreateSandboxGardenButton()}
+                    </div>
+                ))}
             <ModalConfirm
                 open={sandboxGardenToDelete !== null}
                 onOpenChange={(open) => {

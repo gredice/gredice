@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import {
+    CreateOnlySandboxGardenAccountMenuItemsStory,
     DefaultGardenMutationGateStory,
     DefaultGardenSelectionGateStory,
     EmptyGardenAccountMenuItemsStory,
@@ -136,9 +137,7 @@ test.describe('Garden account menu items', () => {
         const sandboxMenuTrigger = page.getByRole('menuitem', {
             name: 'Vrtovi za igru',
         });
-        const createSandboxGarden = page.getByRole('menuitem', {
-            name: 'Kreiraj vrt za igru',
-        });
+        const createSandboxGarden = page.getByTitle('Kreiraj vrt za igru');
 
         await expect(sandboxMenuTrigger).toBeVisible();
         await expect(createSandboxGarden).toBeVisible();
@@ -174,6 +173,55 @@ test.describe('Garden account menu items', () => {
         expect(
             (sandboxGardenBox?.x ?? 0) + (sandboxGardenBox?.width ?? 0),
         ).toBeLessThanOrEqual(600);
+    });
+
+    test('keeps the playground submenu off the create action', async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize({ width: 1000, height: 800 });
+        await mount(<GardenAccountMenuItemsStory />);
+
+        await page.getByRole('button', { name: 'Otvori izbornik' }).click();
+
+        const sandboxMenuTrigger = page.getByRole('menuitem', {
+            name: 'Vrtovi za igru',
+        });
+        const createSandboxGarden = page.getByTitle('Kreiraj vrt za igru');
+
+        await sandboxMenuTrigger.hover();
+        await expect(page.getByText('Vrt za igru 1')).toBeVisible();
+
+        const createSandboxBox = await createSandboxGarden.boundingBox();
+        const submenuBox = await page.getByRole('menu').nth(1).boundingBox();
+        expect(createSandboxBox).not.toBeNull();
+        expect(submenuBox).not.toBeNull();
+        expect(
+            (createSandboxBox?.x ?? 0) + (createSandboxBox?.width ?? 0),
+        ).toBeLessThanOrEqual(submenuBox?.x ?? 0);
+
+        await createSandboxGarden.click();
+    });
+
+    test('does not open an empty playground submenu', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<CreateOnlySandboxGardenAccountMenuItemsStory />);
+
+        await page.getByRole('button', { name: 'Otvori izbornik' }).click();
+
+        const playgroundGardensLabel = page
+            .locator('span')
+            .filter({ hasText: 'Vrtovi za igru' });
+        await expect(playgroundGardensLabel).toBeVisible();
+        await expect(
+            page.getByRole('menuitem', { name: 'Vrtovi za igru' }),
+        ).toHaveCount(0);
+        await expect(page.getByTitle('Kreiraj vrt za igru')).toBeVisible();
+
+        await playgroundGardensLabel.hover();
+        await expect(page.getByRole('menu')).toHaveCount(1);
     });
 
     test('does not show billing when no gardens are available', async ({
