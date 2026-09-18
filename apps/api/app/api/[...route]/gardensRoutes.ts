@@ -12,7 +12,12 @@ import {
     isGardenPreviewPhase,
 } from '@gredice/js/gardenPreviews';
 import { detailedRaisedBedInspectionNotificationType } from '@gredice/js/notifications';
-import { userAllowedPlantStatusTransitions } from '@gredice/js/plants';
+import {
+    canRemovePlantWithoutOperation,
+    getActivePlantCycleStatusChanges,
+    plantRemovalRequiresOperationError,
+    userAllowedPlantStatusTransitions,
+} from '@gredice/js/plants';
 import {
     isRaisedBedAbandoned,
     RAISED_BED_ABANDON_OPERATION_ENTITY_ID,
@@ -43,6 +48,7 @@ import {
     createEvent,
     createSandboxGarden,
     deleteSandboxGardenCompletely,
+    type EntityStandardized,
     GardenDiaryCancelError,
     GardenDiaryRescheduleError,
     type GardenPreviewBlobDeletionReason,
@@ -52,6 +58,7 @@ import {
     getAccountGardensMetadata,
     getAllEvents,
     getAppliedRaisedBedOperationsForGarden,
+    getEntityFormatted,
     getGarden,
     getGardenBlocks,
     getGardenLikeCounts,
@@ -3851,13 +3858,33 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 409,
                             );
                         }
-                        if (status === 'removed' && !field.toBeRemoved) {
-                            return context.json(
-                                {
-                                    error: 'Plant cannot be removed at this time. Only plants that are dead, harvested, or failed to sprout can be removed.',
-                                },
-                                400,
-                            );
+                        if (status === 'removed') {
+                            const plantSort =
+                                field.plantStatus === 'harvested' &&
+                                typeof field.plantSortId === 'number'
+                                    ? await getEntityFormatted<EntityStandardized>(
+                                          field.plantSortId,
+                                      )
+                                    : undefined;
+                            if (
+                                !canRemovePlantWithoutOperation({
+                                    plantStatus: field.plantStatus,
+                                    statusChanges:
+                                        getActivePlantCycleStatusChanges(
+                                            field.plantCycles,
+                                        ),
+                                    cleanHarvest:
+                                        plantSort?.information?.plant
+                                            ?.attributes?.cleanHarvest,
+                                })
+                            ) {
+                                return context.json(
+                                    {
+                                        error: plantRemovalRequiresOperationError,
+                                    },
+                                    400,
+                                );
+                            }
                         }
                         if (
                             allowedFromStates.length > 0 &&

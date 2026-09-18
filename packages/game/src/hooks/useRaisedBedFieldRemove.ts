@@ -1,4 +1,9 @@
 import { clientAuthenticated } from '@gredice/client';
+import {
+    canRemovePlantWithoutOperation,
+    getActivePlantCycleStatusChanges,
+    plantRemovalRequiresOperationError,
+} from '@gredice/js/plants';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { useGameState } from '../useGameState';
@@ -20,12 +25,14 @@ export function useRaisedBedFieldRemove() {
     return useMutation({
         mutationKey,
         mutationFn: async ({
+            cleanHarvest,
             expectedPlantCycleEventId,
             expectedPlantCycleVersionEventId,
             expectedPlantSortId,
             raisedBedId,
             positionIndex,
         }: {
+            cleanHarvest?: boolean;
             expectedPlantCycleEventId: number;
             expectedPlantCycleVersionEventId: number;
             expectedPlantSortId: number;
@@ -52,11 +59,16 @@ export function useRaisedBedFieldRemove() {
                 throw new Error('Field not found');
             }
 
-            // Check if the field is marked for removal (toBeRemoved)
-            if (!field.toBeRemoved) {
-                throw new Error(
-                    'Plant cannot be removed at this time. Only plants that are dead, harvested, or failed to sprout can be removed.',
-                );
+            if (
+                !canRemovePlantWithoutOperation({
+                    plantStatus: field.plantStatus,
+                    statusChanges: getActivePlantCycleStatusChanges(
+                        field.plantCycles,
+                    ),
+                    cleanHarvest,
+                })
+            ) {
+                throw new Error(plantRemovalRequiresOperationError);
             }
 
             // Call the backend API to update the plant status to 'removed'
