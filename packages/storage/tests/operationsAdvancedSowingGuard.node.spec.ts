@@ -313,10 +313,9 @@ test('admin opt-in creates and switches plant operations on selected fields', as
         }),
         allowSelectedPlantingFieldOperations: true,
     });
-    assert.equal(
-        (await getOperationById(createdOperationId)).raisedBedFieldId,
-        field.id,
-    );
+    const createdOperation = await getOperationById(createdOperationId);
+    assert.equal(createdOperation.raisedBedFieldId, field.id);
+    assert.equal(createdOperation.plantingId ?? null, null);
 
     const switchableOperationId = await createOperation(
         operationInput({

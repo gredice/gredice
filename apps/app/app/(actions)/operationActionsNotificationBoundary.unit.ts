@@ -52,3 +52,25 @@ test('completed assignment corrections do not notify farmers about new work', ()
         /await revalidateOperationPaths\(operation\)/,
     );
 });
+
+test('admin operation mutations opt into selected-planting field targets', () => {
+    const createBlock = sourceBetween(
+        'export async function createOperationAction',
+        'type ParsedOperationTarget',
+    );
+    const bulkCreateBlock = sourceBetween(
+        'export async function bulkCreateOperationsAction',
+        'export type SwitchOperationEntityActionState',
+    );
+    const switchBlock = sourceBetween(
+        'export async function switchOperationEntityAction',
+        'export async function rescheduleOperationAction',
+    );
+
+    assert.match(createBlock, /allowSelectedPlantingFieldOperations:\s*true/);
+    assert.match(
+        bulkCreateBlock,
+        /allowSelectedPlantingFieldOperations:\s*true/,
+    );
+    assert.match(switchBlock, /allowSelectedPlantingFieldOperations:\s*true/);
+});
