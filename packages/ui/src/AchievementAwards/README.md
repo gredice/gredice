@@ -1,6 +1,6 @@
 # Achievement awards
 
-Shared artwork and family presentation for the garden, public profiles, and admin achievement views. The original 34 milestone keys map to distinct illustrations in `artwork.ts`. New garden-diversity, seed-to-table, and 2026 seasonal keys use the unknown-award fallback until dedicated artwork lands. Shared domain definitions in `@gredice/js/achievements` contain no image imports.
+Shared artwork and family presentation for the garden, public profiles, and admin achievement views. All 47 milestone keys map to distinct illustrations in `artwork.ts`, including five garden-diversity awards, five seed-to-table awards and three 2026 seasonal awards. The registry requires artwork for every known key at compile time. Shared domain definitions in `@gredice/js/achievements` contain no image imports.
 
 ## Usage
 
@@ -18,14 +18,16 @@ The garden announces approvals observed after the collection's initial load. It 
 
 ## Artwork
 
-- One standalone illustration per existing achievement; no recolored duplicates or crops from the concept board. New families may render the information-icon fallback until their images are supplied.
+- One standalone illustration per achievement; no recolored duplicates or crops from the concept board. Only unknown keys use the information-icon fallback.
 - 512px square WebP, with a fixed reserved area and a shared bottom alignment. Larger visual grades fill more of that area without changing the clickable layout.
-- Original images were generated with the built-in `image_gen` tool. Exact prompts are in `assets/prompts.json`; the approved direction is in `docs/achievement-awards/proposal.md`.
-- Transparent backgrounds were extracted locally with macOS Vision, then the masks were inset to remove the generator’s painted checkerboard fringe. Exports are checked for distinct hashes, decoded dimensions, transparent borders and clean rendering on light and dark backgrounds.
+- Images were generated with the built-in `image_gen` tool. Original prompts are in `assets/prompts.json`; the 13 garden-family prompts, source hashes and export details are in `assets/garden-families-prompts.json`. The approved direction is in `docs/achievement-awards/proposal.md`.
+- The original 34 images used local macOS Vision background extraction. The 13 garden-family images preserve generated transparency and are resized with consistent padding. Exports are checked for distinct hashes, decoded dimensions, transparent borders and clean rendering on light and dark backgrounds.
+
+Garden diversity progresses from a terracotta mixed planter to a tiered botanical garden with a butterfly arbor. Seed-to-table progresses from a carrot and seedling keepsake to a garden banquet pavilion. Spring, summer and autumn use fresh shoots and dew, ripe tomatoes and sunshine, and a pumpkin harvest respectively. Higher levels change the structure and silhouette; teal, leafy green, terracotta, purple and orange carry the palette, with restrained metal details.
 
 ## Coverage
 
-Storybook: `packages/ui/AchievementAwards` (all current awards, three sizes, light/dark) and `packages/game/Achievements/Collection` (empty, starter, experienced, complete, dark). The GardenWorkspace showcase also includes the real collection.
+Storybook: `packages/ui/AchievementAwards` (all current awards plus focused `NewFamilies` / `NewFamiliesDark` views, three sizes, light/dark) and `packages/game/Achievements/Collection` (empty, starter, experienced, complete, dark). The GardenWorkspace showcase also includes the real collection.
 
 Domain checks: `pnpm --filter @gredice/js exec node --import tsx --test src/achievements/families.unit.ts`.
 
@@ -33,4 +35,4 @@ Garden browser checks: `pnpm --filter garden exec playwright test --config playw
 
 Public profile checks: `pnpm --filter www exec playwright test --config playwright.profile.config.ts` and `pnpm --filter www exec node --import tsx --test tests/publicProfile.node.spec.ts`.
 
-Existing keys, artwork, approval requirements and sunflower balances are preserved. No storage migration is needed. Dedicated artwork for the new families, live progress projections, and a favorites shelf remain later work.
+Existing keys, artwork, approval requirements and sunflower balances are preserved. No storage migration is needed. Live progress projections and a favorites shelf remain later work.

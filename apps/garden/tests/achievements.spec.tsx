@@ -1,6 +1,54 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import { AchievementCollectionShowcase } from '../../../packages/game/src/shared-ui/achievements/AchievementCollection.fixture';
 
+for (const { name: family, count } of [
+    { name: 'Raznolik vrt', count: 5 },
+    { name: 'Od sjemena do stola', count: 5 },
+    { name: 'Sezona za pamćenje', count: 3 },
+]) {
+    test(`loads distinct artwork for every level in ${family}`, async ({
+        mount,
+        page,
+    }) => {
+        await mount(<AchievementCollectionShowcase state="empty" />);
+        await page
+            .getByRole('button', { name: new RegExp(`^${family}`) })
+            .click();
+        const dialog = page.getByRole('dialog', { name: family });
+        await expect(dialog.locator('[data-achievement-level]')).toHaveCount(
+            count,
+        );
+        await expect(
+            dialog.locator('[data-achievement-placeholder]'),
+        ).toHaveCount(0);
+        const artwork = await dialog
+            .locator('[data-achievement-level] image')
+            .evaluateAll(async (images) =>
+                Promise.all(
+                    images.map(async (element) => {
+                        const image = new Image();
+                        image.src = element.getAttribute('href') ?? '';
+                        await image.decode();
+                        return {
+                            url: image.src,
+                            width: image.naturalWidth,
+                            height: image.naturalHeight,
+                        };
+                    }),
+                ),
+            );
+        expect(new Set(artwork.map((image) => image.url)).size).toBe(count);
+        expect(
+            artwork.every(
+                (image) => image.width === 512 && image.height === 512,
+            ),
+        ).toBe(true);
+        await expect(
+            dialog.locator('[data-achievement-state="approved"]'),
+        ).toHaveCount(0);
+    });
+}
+
 test('opens all levels, distinguishes pending awards and restores keyboard focus', async ({
     mount,
     page,

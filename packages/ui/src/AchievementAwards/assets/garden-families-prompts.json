@@ -1,0 +1,131 @@
+{
+    "generator": "Built-in image_gen",
+    "referenceArtwork": "packages/ui/src/AchievementAwards/assets/harvest-100.webp",
+    "export": {
+        "width": 512,
+        "height": 512,
+        "format": "webp",
+        "quality": 90,
+        "alphaQuality": 100
+    },
+    "awards": [
+        {
+            "key": "garden_diversity_3",
+            "filename": "garden-diversity-3",
+            "grade": "first_steps",
+            "prompt": "Use case: stylized-concept. Asset type: ONE standalone 3D achievement award for the Gredice gardening game. Match the attached existing award ONLY as a rendering style reference; create the completely different subject specified below. Same faceted low-poly modeled volumes, broad bevels, chunky toy-like forms, warm upper-left studio light, darker right-facing surfaces, matte wood/terracotta/painted metal and lush faceted green leaves. Slightly elevated three-quarter camera. Clear readable silhouette at 32, 64 and 160 pixels. Each object is physically coherent and attached to its own small base, with no loose floating decorations. Colorful natural palette, no all-gold trophy treatment. Centered square canvas, entire object visible with 8 percent transparent padding. True TRANSPARENT ALPHA background including holes; NO checkerboard pattern, ground plane, detached cast shadow or background color. No text, letters, numerals, plaque, UI, generic medal border, watermark, confetti, people or sunflower mascot. Visual grade: first_steps. Subject: A humble shallow triangular terracotta planter with three visibly different crops: leafy lettuce, upright carrot leaves with an orange root shoulder, and one small tomato plant with a red tomato. One compact coherent object with visible dark soil. No trophy pedestal.",
+            "sourceFile": "exec-7b180f6a-72c3-49a4-96a8-485c12749e02.png",
+            "sourceSha256": "4f087248a5947ae5671ec7c008e427c8a5f3cf4023ffb5a6408ea87d5e6933f1",
+            "outputSha256": "e9aa56dff061841ba3a498433641a269499b7431f6d4d14decd3750ca5ee53d3"
+        },
+        {
+            "key": "garden_diversity_5",
+            "filename": "garden-diversity-5",
+            "grade": "growing",
+            "prompt": "Use case: stylized-concept. Asset type: ONE standalone 3D achievement award for the Gredice gardening game. Match the attached existing award ONLY as a rendering style reference; create the completely different subject specified below. Same faceted low-poly modeled volumes, broad bevels, chunky toy-like forms, warm upper-left studio light, darker right-facing surfaces, matte wood/terracotta/painted metal and lush faceted green leaves. Slightly elevated three-quarter camera. Clear readable silhouette at 32, 64 and 160 pixels. Each object is physically coherent and attached to its own small base, with no loose floating decorations. Colorful natural palette, no all-gold trophy treatment. Centered square canvas, entire object visible with 8 percent transparent padding. True TRANSPARENT ALPHA background including holes; NO checkerboard pattern, ground plane, detached cast shadow or background color. No text, letters, numerals, plaque, UI, generic medal border, watermark, confetti, people or sunflower mascot. Visual grade: growing. Subject: A low hexagonal wooden herb-and-vegetable garden planter with modest copper corners, broad leaf shapes, a red tomato, orange carrot shoulder and a purple eggplant. A cheerful diverse mini garden, clearly more developed than a simple pot.",
+            "sourceFile": "exec-b6e4dce8-90f2-41f7-8dc3-2f93cc8edfdf.png",
+            "sourceSha256": "a7a36d7ef5c2a3da718f449c777925ab46434fd115e4d8adbd057f2e02112950",
+            "outputSha256": "96c6997d9ff9d68b77fc20c31f466d5001c2ebf1e5d055a1ab73278fb75673b3"
+        },
+        {
+            "key": "garden_diversity_10",
+            "filename": "garden-diversity-10",
+            "grade": "experienced",
+            "prompt": "Use case: stylized-concept. Asset type: ONE standalone 3D achievement award for the Gredice gardening game. Match the attached existing award ONLY as a rendering style reference; create the completely different subject specified below. Same faceted low-poly modeled volumes, broad bevels, chunky toy-like forms, warm upper-left studio light, darker right-facing surfaces, matte wood/terracotta/painted metal and lush faceted green leaves. Slightly elevated three-quarter camera. Clear readable silhouette at 32, 64 and 160 pixels. Each object is physically coherent and attached to its own small base, with no loose floating decorations. Colorful natural palette, no all-gold trophy treatment. Centered square canvas, entire object visible with 8 percent transparent padding. True TRANSPARENT ALPHA background including holes; NO checkerboard pattern, ground plane, detached cast shadow or background color. No text, letters, numerals, plaque, UI, generic medal border, watermark, confetti, people or sunflower mascot. Visual grade: experienced. Subject: A substantial two-tier teal ceramic garden planter with silver edge details. Upper tier a small tomato vine; lower broad tier distinct purple eggplant, orange carrots and leafy lettuce. A single coherent tiered mini garden sculpture on a small gray stone foot.",
+            "sourceFile": "exec-733d86f0-e9ef-4f20-ada6-1db56dcc04ed.png",
+            "sourceSha256": "5f32e5e1f11a93fb53528689431ddc84d9d4aea41d0d0a0549c4608539769bfb",
+            "outputSha256": "2bc7982495b5c4a2c06297d02b544d4635d91b7ca44172e2eee32a49ec2840f7"
+        },
+        {
+            "key": "garden_diversity_15",
+            "filename": "garden-diversity-15",
+            "grade": "mastery",
+            "prompt": "Use case: stylized-concept. Asset type: ONE standalone 3D achievement award for the Gredice gardening game. Match the attached existing award ONLY as a rendering style reference; create the completely different subject specified below. Same faceted low-poly modeled volumes, broad bevels, chunky toy-like forms, warm upper-left studio light, darker right-facing surfaces, matte wood/terracotta/painted metal and lush faceted green leaves. Slightly elevated three-quarter camera. Clear readable silhouette at 32, 64 and 160 pixels. Each object is physically coherent and attached to its own small base, with no loose floating decorations. Colorful natural palette, no all-gold trophy treatment. Centered square canvas, entire object visible with 8 percent transparent padding. True TRANSPARENT ALPHA background including holes; NO checkerboard pattern, ground plane, detached cast shadow or background color. No text, letters, numerals, plaque, UI, generic medal border, watermark, confetti, people or sunflower mascot. Visual grade: mastery. Subject: A miniature botanical garden with three terraced planting beds around a sturdy pale stone central stair, a slim green trellis supporting a tomato vine, and distinct orange carrots, purple eggplant, cabbage and herbs. Painted teal wood and tiny restrained brass corner caps. Strong stepped silhouette.",
+            "sourceFile": "exec-28881f1e-6d4f-4c12-8bef-6272f70094a2.png",
+            "sourceSha256": "d311d136fe44c4e7b20583be3b3ff19402bb5e099168dd7a1ef272c2b052576d",
+            "outputSha256": "2010e5f5d58933ea4203c2e0f40896f80e943d54f75ec7ead9e2a02194877600"
+        },
+        {
+            "key": "garden_diversity_20",
+            "filename": "garden-diversity-20",
+            "grade": "legendary",
+            "prompt": "Use case: stylized-concept. Asset type: ONE standalone 3D achievement award for the Gredice gardening game. Match the attached existing award ONLY as a rendering style reference; create the completely different subject specified below. Same faceted low-poly modeled volumes, broad bevels, chunky toy-like forms, warm upper-left studio light, darker right-facing surfaces, matte wood/terracotta/painted metal and lush faceted green leaves. Slightly elevated three-quarter camera. Clear readable silhouette at 32, 64 and 160 pixels. Each object is physically coherent and attached to its own small base, with no loose floating decorations. Colorful natural palette, no all-gold trophy treatment. Centered square canvas, entire object visible with 8 percent transparent padding. True TRANSPARENT ALPHA background including holes; NO checkerboard pattern, ground plane, detached cast shadow or background color. No text, letters, numerals, plaque, UI, generic medal border, watermark, confetti, people or sunflower mascot. Visual grade: legendary. Subject: A magnificent collectible miniature biodiversity garden: broad circular teal-and-stone raised terraces, a substantial green leafy arbor framing a flowering tomato plant, distinctive large purple eggplants, orange carrots and cabbages at the base. A sculpted blue butterfly perched on the arbor. Gold used only as small structural joining details, mostly vivid crops, teal and natural stone. An unmistakable grand garden centerpiece with clear bold silhouette, no sunflower.",
+            "sourceFile": "exec-2cc265f5-f430-4a9b-b0fc-85ea6ad7a519.png",
+            "sourceSha256": "a4a68b776c2d25324397b82f3f207d06c0cf0782ecbadc53492ba9dea05f80e3",
+            "outputSha256": "6d2719a1d0a0ccf40980f293fae60d057bf43dc811d3d816a8c7562e80566d3b"
+        },
+        {
+            "key": "seed_to_table_1",
+            "filename": "seed-to-table-1",
+            "grade": "first_steps",
+            "prompt": "Use case: stylized-concept. Asset type: ONE standalone 3D achievement award for the Gredice gardening game. Match the attached existing award ONLY as a rendering style reference; create the completely different subject specified below. Same faceted low-poly modeled volumes, broad bevels, chunky toy-like forms, warm upper-left studio light, darker right-facing surfaces, matte wood/terracotta/painted metal and lush faceted green leaves. Slightly elevated three-quarter camera. Clear readable silhouette at 32, 64 and 160 pixels. Each object is physically coherent and attached to its own small base, with no loose floating decorations. Colorful natural palette, no all-gold trophy treatment. Centered square canvas, entire object visible with 8 percent transparent padding. True TRANSPARENT ALPHA background including holes; NO checkerboard pattern, ground plane, detached cast shadow or background color. No text, letters, numerals, plaque, UI, generic medal border, watermark, confetti, people or sunflower mascot. Visual grade: first_steps. Subject: A humble thick round wooden cutting board holding one freshly picked orange carrot with green leaves and one tiny terracotta seedling pot beside it. Bold simple shapes that connect growing to food. No knife, no eating utensils, no badge.",
+            "sourceFile": "exec-3b79fe5a-dd27-4a17-a66f-5eba02b69a42.png",
+            "sourceSha256": "147fb59a429988cca6ca1f3b8b893c1ad3ad226f43fbc37e1b94480725599469",
+            "outputSha256": "7eb078b3ad9c0228d0f5df23ab7febc419f3314e887e43502e07b9b1050fb4c5"
+        },
+        {
+            "key": "seed_to_table_5",
+            "filename": "seed-to-table-5",
+            "grade": "growing",
+            "prompt": "Use case: stylized-concept. Asset type: ONE standalone 3D achievement award for the Gredice gardening game. Match the attached existing award ONLY as a rendering style reference; create the completely different subject specified below. Same faceted low-poly modeled volumes, broad bevels, chunky toy-like forms, warm upper-left studio light, darker right-facing surfaces, matte wood/terracotta/painted metal and lush faceted green leaves. Slightly elevated three-quarter camera. Clear readable silhouette at 32, 64 and 160 pixels. Each object is physically coherent and attached to its own small base, with no loose floating decorations. Colorful natural palette, no all-gold trophy treatment. Centered square canvas, entire object visible with 8 percent transparent padding. True TRANSPARENT ALPHA background including holes; NO checkerboard pattern, ground plane, detached cast shadow or background color. No text, letters, numerals, plaque, UI, generic medal border, watermark, confetti, people or sunflower mascot. Visual grade: growing. Subject: A small wooden harvest serving tray with sturdy teal handles, containing a red tomato, a carrot and a leafy lettuce, and a small rooted seedling in a terracotta cup at the back corner. A compact keepsake that connects plant to produce.",
+            "sourceFile": "exec-5d0e4738-1c6b-4f15-baab-c543d5d445f0.png",
+            "sourceSha256": "488adcc1096394b437fcf5e46310e7e7d72dd79dfc266a360b896e0e66f8b0ac",
+            "outputSha256": "b53117530b6578ce99678999bc58563452549c1ae1ef953ce34d3b3a70b29ec6"
+        },
+        {
+            "key": "seed_to_table_10",
+            "filename": "seed-to-table-10",
+            "grade": "experienced",
+            "prompt": "Use case: stylized-concept. Asset type: ONE standalone 3D achievement award for the Gredice gardening game. Match the attached existing award ONLY as a rendering style reference; create the completely different subject specified below. Same faceted low-poly modeled volumes, broad bevels, chunky toy-like forms, warm upper-left studio light, darker right-facing surfaces, matte wood/terracotta/painted metal and lush faceted green leaves. Slightly elevated three-quarter camera. Clear readable silhouette at 32, 64 and 160 pixels. Each object is physically coherent and attached to its own small base, with no loose floating decorations. Colorful natural palette, no all-gold trophy treatment. Centered square canvas, entire object visible with 8 percent transparent padding. True TRANSPARENT ALPHA background including holes; NO checkerboard pattern, ground plane, detached cast shadow or background color. No text, letters, numerals, plaque, UI, generic medal border, watermark, confetti, people or sunflower mascot. Visual grade: experienced. Subject: A sturdy miniature round garden table with green legs and a blue ceramic serving bowl of whole fresh tomatoes, carrots and lettuce, paired with a little terracotta seedling planter on the same tabletop. Silver rim on the bowl. A clear freestanding table silhouette.",
+            "sourceFile": "exec-400b0953-7a1a-446b-9ba1-28f2826ab64d.png",
+            "sourceSha256": "cfdfe6cf5926a06a22f3fa9c5bf8986df92dd11d7815d0d9b5319af10543b1e0",
+            "outputSha256": "f8f5ed9796009254917154a42c0ce690291efbc6eb81c27ae5b4ad1992f8c71f"
+        },
+        {
+            "key": "seed_to_table_25",
+            "filename": "seed-to-table-25",
+            "grade": "mastery",
+            "prompt": "Use case: stylized-concept. Asset type: ONE standalone 3D achievement award for the Gredice gardening game. Match the attached existing award ONLY as a rendering style reference; create the completely different subject specified below. Same faceted low-poly modeled volumes, broad bevels, chunky toy-like forms, warm upper-left studio light, darker right-facing surfaces, matte wood/terracotta/painted metal and lush faceted green leaves. Slightly elevated three-quarter camera. Clear readable silhouette at 32, 64 and 160 pixels. Each object is physically coherent and attached to its own small base, with no loose floating decorations. Colorful natural palette, no all-gold trophy treatment. Centered square canvas, entire object visible with 8 percent transparent padding. True TRANSPARENT ALPHA background including holes; NO checkerboard pattern, ground plane, detached cast shadow or background color. No text, letters, numerals, plaque, UI, generic medal border, watermark, confetti, people or sunflower mascot. Visual grade: mastery. Subject: A substantial miniature rustic garden serving cart with two large dark wheels, teal wooden shelves and handles, full orange carrots, purple eggplant and red tomatoes in a ceramic bowl on the top shelf, and a green seedling growing in a terracotta planter on the bottom shelf. Restrained brass axle and corner details. A structurally coherent garden-to-kitchen award.",
+            "sourceFile": "exec-c6e17a48-91b6-49bf-a123-5ad1327c8e3f.png",
+            "sourceSha256": "33ada4d7e89c26ef394ec7d87ce056e0f00c343518af5830cebdbe502f491f03",
+            "outputSha256": "acfb77adddd6935b25a266030c42821600e8e11c85dfdc31daa4c08031a99f50"
+        },
+        {
+            "key": "seed_to_table_50",
+            "filename": "seed-to-table-50",
+            "grade": "legendary",
+            "prompt": "Use case: stylized-concept. Asset type: ONE standalone 3D achievement award for the Gredice gardening game. Match the attached existing award ONLY as a rendering style reference; create the completely different subject specified below. Same faceted low-poly modeled volumes, broad bevels, chunky toy-like forms, warm upper-left studio light, darker right-facing surfaces, matte wood/terracotta/painted metal and lush faceted green leaves. Slightly elevated three-quarter camera. Clear readable silhouette at 32, 64 and 160 pixels. Each object is physically coherent and attached to its own small base, with no loose floating decorations. Colorful natural palette, no all-gold trophy treatment. Centered square canvas, entire object visible with 8 percent transparent padding. True TRANSPARENT ALPHA background including holes; NO checkerboard pattern, ground plane, detached cast shadow or background color. No text, letters, numerals, plaque, UI, generic medal border, watermark, confetti, people or sunflower mascot. Visual grade: legendary. Subject: A grand miniature garden banquet pavilion collectible: a broad rustic wooden table laden with three bold blue ceramic dishes of colorful fresh vegetables, a simple sturdy green vine arch rising from two terracotta planted supports behind the table, on a pale stone base with one low step. Tomato vine and large leaves connect growing and serving. Elegant small brass joints, majority green, teal, orange and red. Monumental compact silhouette, no people, no sunflower.",
+            "sourceFile": "exec-8cc4e3a5-92f7-4465-a699-696cbca42bad.png",
+            "sourceSha256": "dbd7a228159f47294ab07d30be27e4c282c56655fe361997ca4ecf46bfdc22f5",
+            "outputSha256": "c1edf9e3ccca02d6868f82b78dcba8a396e1a089ffa948838ed20ab2a4769e68"
+        },
+        {
+            "key": "season_2026_spring",
+            "filename": "season-2026-spring",
+            "grade": "first_steps",
+            "prompt": "Use case: stylized-concept. Asset type: ONE standalone 3D achievement award for the Gredice gardening game. Match the attached existing award ONLY as a rendering style reference; create the completely different subject specified below. Same faceted low-poly modeled volumes, broad bevels, chunky toy-like forms, warm upper-left studio light, darker right-facing surfaces, matte wood/terracotta/painted metal and lush faceted green leaves. Slightly elevated three-quarter camera. Clear readable silhouette at 32, 64 and 160 pixels. Each object is physically coherent and attached to its own small base, with no loose floating decorations. Colorful natural palette, no all-gold trophy treatment. Centered square canvas, entire object visible with 8 percent transparent padding. True TRANSPARENT ALPHA background including holes; NO checkerboard pattern, ground plane, detached cast shadow or background color. No text, letters, numerals, plaque, UI, generic medal border, watermark, confetti, people or sunflower mascot. Visual grade: first_steps. Subject: A small fresh spring garden keepsake: one terracotta seedling bed with bright lime-green young shoots and two pale pink flowers, sheltered by a broad curled green leaf arch with one sculpted clear blue dew droplet. Simple compact organic silhouette, spring growth, no writing.",
+            "sourceFile": "exec-c00d4c3e-6bbd-4233-bf81-a3f1d62d327b.png",
+            "sourceSha256": "3427c1163797e9848708a33318935b43cdcc06f0634705fb470d9e21b57717ea",
+            "outputSha256": "8225c082c678fa0b22a1d29d4c8b6dd3f66f1c19af0dc9da547f85293640a612"
+        },
+        {
+            "key": "season_2026_summer",
+            "filename": "season-2026-summer",
+            "grade": "growing",
+            "prompt": "Use case: stylized-concept. Asset type: ONE standalone 3D achievement award for the Gredice gardening game. Match the attached existing award ONLY as a rendering style reference; create the completely different subject specified below. Same faceted low-poly modeled volumes, broad bevels, chunky toy-like forms, warm upper-left studio light, darker right-facing surfaces, matte wood/terracotta/painted metal and lush faceted green leaves. Slightly elevated three-quarter camera. Clear readable silhouette at 32, 64 and 160 pixels. Each object is physically coherent and attached to its own small base, with no loose floating decorations. Colorful natural palette, no all-gold trophy treatment. Centered square canvas, entire object visible with 8 percent transparent padding. True TRANSPARENT ALPHA background including holes; NO checkerboard pattern, ground plane, detached cast shadow or background color. No text, letters, numerals, plaque, UI, generic medal border, watermark, confetti, people or sunflower mascot. Visual grade: growing. Subject: A sunny summer garden keepsake: a warm wooden raised planter with a ripe red tomato vine and one plump yellow pepper, beside a small blue watering vessel. A small attached sculpted warm yellow sun disk rises behind the broad green foliage on a discreet support. Bold ripe produce, no faces.",
+            "sourceFile": "exec-03e6c225-07fe-461f-bdf0-fc6c7dff2424.png",
+            "sourceSha256": "58f2ba4e1c34d0da6959a3a1467c46748ecafbe19ea65d46747d3b77b96a5f8f",
+            "outputSha256": "bdf1f671eecc590512249d76191c166da8a2149e530594c0852268edd055b71c"
+        },
+        {
+            "key": "season_2026_autumn",
+            "filename": "season-2026-autumn",
+            "grade": "experienced",
+            "prompt": "Use case: stylized-concept. Asset type: ONE standalone 3D achievement award for the Gredice gardening game. Match the attached existing award ONLY as a rendering style reference; create the completely different subject specified below. Same faceted low-poly modeled volumes, broad bevels, chunky toy-like forms, warm upper-left studio light, darker right-facing surfaces, matte wood/terracotta/painted metal and lush faceted green leaves. Slightly elevated three-quarter camera. Clear readable silhouette at 32, 64 and 160 pixels. Each object is physically coherent and attached to its own small base, with no loose floating decorations. Colorful natural palette, no all-gold trophy treatment. Centered square canvas, entire object visible with 8 percent transparent padding. True TRANSPARENT ALPHA background including holes; NO checkerboard pattern, ground plane, detached cast shadow or background color. No text, letters, numerals, plaque, UI, generic medal border, watermark, confetti, people or sunflower mascot. Visual grade: experienced. Subject: A cozy autumn garden keepsake: one broad orange pumpkin and purple beetroot in a low dark teal harvest basket, on a simple gray stone foot surrounded by two attached broad russet-red and ochre maple leaves. Rich orange, plum, teal and warm wood, substantial faceted sculptural harvest object, no text.",
+            "sourceFile": "exec-d5f48a4f-23a2-4331-b279-b3540ab9351b.png",
+            "sourceSha256": "be69521d5107df34d0dda9e2e4de5aa71fb6f9e429476c38fc2c91cb1a26cacb",
+            "outputSha256": "c743825aa7fdcd778fe598b7b8e0d33346dc699cce10b81fbfd043ab96820bda"
+        }
+    ],
+    "postProcessing": "Preserved generated alpha; trimmed transparent outer padding and resized to fit 480px, bottom aligned inside a 512px WebP with 16px padding. No background extraction or recoloring."
+}

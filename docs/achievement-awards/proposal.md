@@ -160,13 +160,21 @@ The art/definition phase can proceed without a database migration. Any future pe
 
 ## Later achievement families
 
-These families are now defined and evaluated. Dedicated award illustrations are still a follow-up.
+These families are now defined and evaluated, with 13 dedicated illustrations in addition to the original 34 awards.
 
 | Family | Levels | Qualifying evidence |
 | --- | --- | --- |
 | Raznolik vrt | 3, 5, 10, 15, 20 distinct plant species | Confirmed sowing history; parent plant, not plant sort |
 | Od sjemena do stola | 1, 5, 10, 25, 50 completed grow-to-harvest cycles | Same canonical planting sowed and later harvested |
 | Sezona za pamćenje | 2026 spring, summer, autumn | Confirmed sowing or a completed cycle in that Zagreb growing season; does not reset permanent family levels |
+
+| Family | Production artwork progression |
+| --- | --- |
+| Raznolik vrt | Terracotta mixed planter; copper-cornered wooden garden; teal two-tier planter; terraced garden and trellis; botanical garden with butterfly arbor |
+| Od sjemena do stola | Carrot and seedling on a wooden board; harvest serving tray; garden table and bowl; produce serving cart; garden banquet pavilion |
+| Sezona za pamćenje | Spring shoots, flowers and dew; summer tomatoes, pepper and sun; autumn pumpkin, beetroot and leaves |
+
+Each milestone has its own transparent 512px WebP. The colorful garden materials and increasing structural complexity carry the progression, with small metal accents on higher levels. Prompts, source hashes and export settings are recorded in `packages/ui/src/AchievementAwards/assets/garden-families-prompts.json`. Storybook's `NewFamilies` and `NewFamiliesDark` views compare all 13 at 32, 64 and 160 pixels.
 
 Prefer accomplishments grounded in real garden work and learning. Avoid daily-login streaks, money-spent trophies, or plant-survival challenges that blame the customer for weather or farm execution.
 
@@ -176,9 +184,9 @@ Prefer accomplishments grounded in real garden work and learning. Avoid daily-lo
 2. **Replace generic awards:** produce all 34 individual images, add explicit metadata and a shared award component, reuse it in current garden/admin views, and add the full inventory to Storybook. Preserve earning and payouts.
 3. **Introduce the family collection:** family cards, level details, known next goals, pending/approved distinctions and appropriate award reveals. Show requirements even before trustworthy live progress is available.
 4. **Add server-owned progress:** reconcile counting semantics, provide the additive projection, and verify updates, backfill and reward idempotency before exposing numeric progress.
-5. **Expand selectively:** new evidence-backed families, seasonal honors and an optional favorites shelf. Diversity, seed-to-table, and 2026 season awards are implemented with placeholder artwork; later years and dedicated images need their own follow-up. Balance new sunflower rewards separately.
+5. **Expand selectively:** new evidence-backed families, seasonal honors and an optional favorites shelf. Diversity, seed-to-table, and 2026 season awards have dedicated artwork; later years need their own follow-up. Balance new sunflower rewards separately.
 
-Acceptance checks should cover all 34 unique key-to-image mappings, decoded assets, visual contrast/size, explicit level labels, mobile layout, keyboard access, reduced motion, pending/denied/complete/error states, an existing account with many old awards, several thresholds crossed together, and account switching. Existing thresholds, keys, history and credited rewards must remain intact.
+Acceptance checks should cover all 47 unique key-to-image mappings, decoded assets, visual contrast/size, explicit level labels, mobile layout, keyboard access, reduced motion, pending/denied/complete/error states, an existing account with many old awards, several thresholds crossed together, and account switching. Existing thresholds, keys, history and credited rewards must remain intact.
 
 ## Source map
 

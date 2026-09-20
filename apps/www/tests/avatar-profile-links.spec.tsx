@@ -98,6 +98,11 @@ test('links the displayed garden owner and updates the link when the garden chan
         page.getByRole('link', { name: 'Otvori profil: Marko Marić' }),
     ).toHaveAttribute('href', '/korisnici/u_marko');
     await expect(ownerLink).toHaveCount(0);
+    // Measure contrast after the garden has finished fading in.
+    await expect(page.locator('[data-scene-visible="true"]')).toHaveCSS(
+        'opacity',
+        '1',
+    );
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
