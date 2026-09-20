@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createGardenStructureTemplateSeed } from '@gredice/js/gardenStructures';
 import { createActiveDragPreviewTarget } from './dragPreviewIdentity';
+import { getSeasonState } from './scene/seasonState';
 import {
     confirmGardenStructureTemplatePlacement,
     createNewGardenStructureEditorState,
@@ -670,6 +671,106 @@ test('syncTimeOfDay refreshes time of day for a new garden location', () => {
             sunrise.getTime(),
         );
         assert.equal(store.getState().sunsetTime?.getTime(), sunset.getTime());
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('createGameState resolves the season slice from the frozen clock', () => {
+    const referenceTime = new Date(2026, 9, 15, 12, 0);
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: referenceTime,
+        isMock: true,
+    });
+
+    try {
+        assert.deepEqual(
+            store.getState().seasonState,
+            getSeasonState(referenceTime),
+        );
+        assert.equal(store.getState().seasonState.season, 'autumn');
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('setFreezeTime moves the season slice to the frozen date', () => {
+    const referenceTime = new Date(2026, 6, 4, 9, 30);
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date(2026, 0, 10, 12, 0),
+        isMock: true,
+    });
+
+    try {
+        assert.equal(store.getState().seasonState.season, 'winter');
+
+        store.getState().setFreezeTime(referenceTime);
+        const frozen = store.getState().seasonState;
+
+        assert.deepEqual(frozen, getSeasonState(referenceTime));
+        assert.equal(frozen.season, 'summer');
+
+        // Freezing the same date again keeps the state, and its identity, stable.
+        store.getState().setFreezeTime(new Date(referenceTime));
+        assert.equal(store.getState().seasonState, frozen);
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('syncTimeOfDay keeps the season slice on the same clock as the lighting', () => {
+    const referenceTime = new Date(2026, 3, 18, 8, 0);
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: null,
+        isMock: true,
+    });
+
+    try {
+        store.getState().syncTimeOfDay(undefined, referenceTime);
+
+        assert.deepEqual(
+            store.getState().seasonState,
+            getSeasonState(referenceTime),
+        );
+        assert.equal(store.getState().seasonState.season, 'spring');
+
+        const frozenTime = new Date(2026, 10, 2, 8, 0);
+        store.getState().setFreezeTime(frozenTime);
+        store.getState().syncTimeOfDay(undefined, referenceTime);
+
+        // A frozen date wins over the live clock, exactly as the time of day does.
+        assert.deepEqual(
+            store.getState().seasonState,
+            getSeasonState(frozenTime),
+        );
+        assert.equal(store.getState().seasonState.season, 'autumn');
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('clearEnvironmentOverrides returns the season slice to the live clock', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date(2026, 0, 10, 12, 0),
+        isMock: true,
+    });
+
+    try {
+        assert.equal(store.getState().seasonState.season, 'winter');
+
+        store.getState().clearEnvironmentOverrides();
+        const live = getSeasonState(new Date());
+
+        assert.equal(store.getState().freezeTime, null);
+        assert.equal(store.getState().seasonState.season, live.season);
+        assert.ok(
+            Math.abs(store.getState().seasonState.progress - live.progress) <
+                0.000_01,
+        );
     } finally {
         store.getState().audio.dispose();
     }
