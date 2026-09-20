@@ -18,6 +18,7 @@ import {
     appRouterHubPaths,
     collectSitemapSourceEntries,
     collectSitemapSourcePaths,
+    defaultGardenBlockCount,
     defaultGardenBlockNameCount,
     isIndexableCmsPage,
     isIndexablePublicGarden,
@@ -239,27 +240,39 @@ test('public gardens are kept unless the page is still the starter garden', () =
     const starterGarden = {
         id: 1,
         updatedAt,
+        blockCount: defaultGardenBlockCount,
         distinctBlockNameCount: defaultGardenBlockNameCount,
         activePlantingCount: 0,
     };
     const decoratedGarden = {
         id: 2,
         updatedAt,
+        blockCount: defaultGardenBlockCount,
         distinctBlockNameCount: defaultGardenBlockNameCount + 1,
         activePlantingCount: 0,
     };
     const plantedGarden = {
         id: 3,
         updatedAt,
+        blockCount: defaultGardenBlockCount,
         distinctBlockNameCount: defaultGardenBlockNameCount,
         activePlantingCount: 4,
     };
     const emptyGarden = { id: 4, updatedAt };
+    // Expanded a long way, but still only grass and raised beds.
+    const expandedGarden = {
+        id: 5,
+        updatedAt,
+        blockCount: defaultGardenBlockCount + 40,
+        distinctBlockNameCount: defaultGardenBlockNameCount,
+        activePlantingCount: 0,
+    };
 
     assert.equal(isIndexablePublicGarden(starterGarden), false);
     assert.equal(isIndexablePublicGarden(decoratedGarden), true);
     assert.equal(isIndexablePublicGarden(plantedGarden), true);
     assert.equal(isIndexablePublicGarden(emptyGarden), false);
+    assert.equal(isIndexablePublicGarden(expandedGarden), true);
 
     const paths = collectSitemapSourcePaths({
         cmsPages: [],
@@ -268,13 +281,37 @@ test('public gardens are kept unless the page is still the starter garden', () =
             decoratedGarden,
             plantedGarden,
             emptyGarden,
+            expandedGarden,
         ],
     });
 
     assert.ok(paths.includes('/vrtovi/2'));
     assert.ok(paths.includes('/vrtovi/3'));
+    assert.ok(paths.includes('/vrtovi/5'));
     assert.equal(paths.includes('/vrtovi/1'), false);
     assert.equal(paths.includes('/vrtovi/4'), false);
+});
+
+test('garden timestamps follow every table the public page renders', () => {
+    const repoSource = readFileSync(
+        new URL(
+            '../../../packages/storage/src/repositories/gardensRepo.ts',
+            import.meta.url,
+        ),
+        'utf8',
+    );
+    const sitemapSources = repoSource.slice(
+        repoSource.indexOf(
+            'export async function getPublicGardenSitemapSources',
+        ),
+    );
+
+    // Moving a block writes only `garden_stacks`, so the stack timestamps have
+    // to be part of the aggregate.
+    assert.match(sitemapSources, /max\(gardenBlocks\.updatedAt\)/u);
+    assert.match(sitemapSources, /max\(gardenStacks\.updatedAt\)/u);
+    assert.match(sitemapSources, /max\(raisedBedPlantings\.updatedAt\)/u);
+    assert.match(sitemapSources, /stacks\?\.updatedAt/u);
 });
 
 test('lastmod carries content timestamps and is omitted when unavailable', () => {

@@ -304,7 +304,7 @@ export async function getPublicGardenSitemapSources(): Promise<
         return [];
     }
 
-    const [blockStats, plantingStats] = await Promise.all([
+    const [blockStats, stackStats, plantingStats] = await Promise.all([
         storage()
             .select({
                 gardenId: gardenBlocks.gardenId,
@@ -320,6 +320,22 @@ export async function getPublicGardenSitemapSources(): Promise<
                 ),
             )
             .groupBy(gardenBlocks.gardenId),
+        // Moving a block writes only `garden_stacks.blocks`, so without this
+        // the layout the public page renders could change without the page
+        // reporting a new `lastmod`.
+        storage()
+            .select({
+                gardenId: gardenStacks.gardenId,
+                updatedAt: max(gardenStacks.updatedAt),
+            })
+            .from(gardenStacks)
+            .where(
+                and(
+                    inArray(gardenStacks.gardenId, gardenIds),
+                    eq(gardenStacks.isDeleted, false),
+                ),
+            )
+            .groupBy(gardenStacks.gardenId),
         storage()
             .select({
                 gardenId: raisedBeds.gardenId,
@@ -345,6 +361,9 @@ export async function getPublicGardenSitemapSources(): Promise<
     const blockStatsByGardenId = new Map(
         blockStats.map((stats) => [stats.gardenId, stats]),
     );
+    const stackStatsByGardenId = new Map(
+        stackStats.map((stats) => [stats.gardenId, stats]),
+    );
     const plantingStatsByGardenId = new Map<
         number,
         (typeof plantingStats)[number]
@@ -357,6 +376,7 @@ export async function getPublicGardenSitemapSources(): Promise<
 
     return publicGardens.map((garden) => {
         const blocks = blockStatsByGardenId.get(garden.id);
+        const stacks = stackStatsByGardenId.get(garden.id);
         const plantings = plantingStatsByGardenId.get(garden.id);
 
         return {
@@ -365,6 +385,7 @@ export async function getPublicGardenSitemapSources(): Promise<
                 latestDate(
                     garden.updatedAt,
                     blocks?.updatedAt,
+                    stacks?.updatedAt,
                     plantings?.updatedAt,
                 ) ?? garden.updatedAt,
             blockCount: blocks?.blockCount ?? 0,

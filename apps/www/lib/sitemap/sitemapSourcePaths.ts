@@ -153,12 +153,13 @@ export const dynamicRouteSitemapPolicy: Record<
 };
 
 /**
- * A freshly created garden holds a grass grid and one empty raised bed, so two
- * distinct block names still mean "nothing has been built here yet". Such
- * gardens are near-identical to each other and carry no page-level content;
- * anything above that threshold, or any active planting, is a real showcase.
+ * The starter garden `createDefaultGardenForAccount` builds: a 4x3 grass grid
+ * plus one raised bed, so 13 blocks across 2 distinct block names. A public
+ * garden still matching that shape is near-identical to every other untouched
+ * garden and has no page-level content of its own.
  */
 export const defaultGardenBlockNameCount = 2;
+export const defaultGardenBlockCount = 13;
 
 export type CmsSitemapPage = {
     slug: string;
@@ -172,6 +173,8 @@ export type CmsSitemapPage = {
 export type PublicGardenSitemapSource = {
     id: number;
     updatedAt?: Date | string | null;
+    /** Number of blocks placed in the garden. */
+    blockCount?: number;
     /** Number of distinct block names placed in the garden. */
     distinctBlockNameCount?: number;
     /** Number of active, non-deleted plantings across the garden. */
@@ -208,9 +211,17 @@ export function isIndexableCmsPage(page: CmsSitemapPage) {
 /**
  * Public gardens are kept unless the page would be empty: no blanket removal,
  * only the documented "still the starter garden" rule.
+ *
+ * Block-type diversity alone is not enough to make that call - a garden can be
+ * expanded a long way using only grass and raised beds - so growing past the
+ * starter garden's block count counts as built too.
  */
 export function isIndexablePublicGarden(garden: PublicGardenSitemapSource) {
     if ((garden.activePlantingCount ?? 0) > 0) {
+        return true;
+    }
+
+    if ((garden.blockCount ?? 0) > defaultGardenBlockCount) {
         return true;
     }
 

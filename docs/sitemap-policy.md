@@ -45,10 +45,12 @@ generator stamped identical values on every URL.
   are not `noIndex` and are canonical to themselves. A page whose
   `canonicalPath` points elsewhere stays crawlable but is not advertised.
 - **Public gardens** are published unless the garden is still the starter
-  garden: a new garden ships a grass grid plus one empty raised bed, so
-  "at most `defaultGardenBlockNameCount` distinct block names and no active
-  planting" means nothing has been built yet. Those pages are near-identical to
-  one another. Every other public garden - including small ones - stays in.
+  garden `createDefaultGardenForAccount` builds: a 4x3 grass grid plus one
+  raised bed, so `defaultGardenBlockCount` (13) blocks across
+  `defaultGardenBlockNameCount` (2) block names, with no active planting. Those
+  pages are near-identical to one another. Growing past either threshold counts
+  as built, because a garden can be expanded a long way using only grass and
+  raised beds. Every other public garden - including small ones - stays in.
 - **Game content is not removed.** Block pages describe in-app items and remain
   indexable; `apps/www/lib/blocks/blockPagePresentation.ts` makes that explicit
   in the title and the opening paragraph, for example
@@ -88,7 +90,9 @@ in the sitemap, and publishing them needs a per-profile opt-in signal.
 `lastModified` comes from the content source:
 
 - CMS pages: `updatedAt`, falling back to `publishedAt`.
-- Public gardens: the newest of the garden row, its blocks and its plantings.
+- Public gardens: the newest of the garden row, its blocks, its stacks and its
+  plantings. Stacks matter because moving a block writes only
+  `garden_stacks.blocks`, and that layout is what the public page renders.
 - Catalogue pages: the directory entity's `updatedAt`.
 
 Anything without a reliable timestamp - static marketing, legal and hub pages -
