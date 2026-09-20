@@ -1,34 +1,32 @@
-import type { IConfig } from 'next-sitemap';
-import { getSitemapSourcePaths } from './lib/sitemap/getSitemapSourcePaths';
-import { excludedSitemapRoutes } from './lib/sitemap/sitemapSourcePaths';
+import type { IConfig, ISitemapField } from 'next-sitemap';
+import {
+    getSitemapLastmodIndex,
+    getSitemapSourcePaths,
+} from './lib/sitemap/getSitemapSourcePaths';
+import {
+    excludedSitemapRoutes,
+    isExcludedSitemapPath,
+    normalizeSitemapPath,
+    sitemapPathKey,
+} from './lib/sitemap/sitemapPolicy';
 
-function decodeUriComponentSafe(value: string) {
-    try {
-        return decodeURIComponent(value.replace(/%(?![0-9a-fA-F]{2})/g, '%25'));
-    } catch {
-        return value;
-    }
-}
-
-function normalizeSitemapPath(path: string) {
-    const [pathname, search = ''] = path.split('?');
-    const normalizedPathname = pathname
-        .split('/')
-        .map((segment, index) =>
-            index === 0
-                ? segment
-                : encodeURIComponent(decodeUriComponentSafe(segment)),
-        )
-        .join('/');
-
-    return search ? `${normalizedPathname}?${search}` : normalizedPathname;
-}
+// `next-sitemap` appends `additionalPaths` to the routes discovered from the
+// build output without deduplicating them, and its `exclude` globs only apply
+// to the discovered set. Gating every URL through `transform` keeps one policy
+// for both sources and publishes each page exactly once.
+const emittedPathKeys = new Set<string>();
 
 const config: IConfig = {
     siteUrl: process.env.SITE_URL || 'https://www.gredice.com',
     generateRobotsTxt: true,
-    exclude: excludedSitemapRoutes,
+    // Timestamps come from the content source, never from the build clock: an
+    // unchanged page must not acquire a new `lastmod` on every deployment.
+    autoLastmod: false,
+    exclude: [...excludedSitemapRoutes],
     robotsTxtOptions: {
+        // Pages dropped from the sitemap stay crawlable so robots can read
+        // their `noindex` directive. Only personalised tracking links are
+        // disallowed.
         policies: [
             {
                 userAgent: 'Googlebot',
@@ -47,21 +45,33 @@ const config: IConfig = {
             },
         ],
     },
-    transform: async (sitemapConfig, path) => ({
-        loc: normalizeSitemapPath(path),
-        changefreq: sitemapConfig.changefreq,
-        priority: sitemapConfig.priority,
-        lastmod: sitemapConfig.autoLastmod
-            ? new Date().toISOString()
-            : undefined,
-        alternateRefs: sitemapConfig.alternateRefs ?? [],
-    }),
+    transform: async (sitemapConfig, path) => {
+        const loc = normalizeSitemapPath(path);
+        if (isExcludedSitemapPath(loc)) {
+            return undefined;
+        }
+
+        const pathKey = sitemapPathKey(loc);
+        if (emittedPathKeys.has(pathKey)) {
+            return undefined;
+        }
+        emittedPathKeys.add(pathKey);
+
+        const lastmod = (await getSitemapLastmodIndex()).get(pathKey);
+        return {
+            loc,
+            changefreq: sitemapConfig.changefreq,
+            priority: sitemapConfig.priority,
+            ...(lastmod ? { lastmod } : {}),
+            alternateRefs: sitemapConfig.alternateRefs ?? [],
+        };
+    },
     additionalPaths: async (sitemapConfig) => {
         const paths = await getSitemapSourcePaths();
-        const transformedPaths = await Promise.all(
+        const fields = await Promise.all(
             paths.map((path) => sitemapConfig.transform(sitemapConfig, path)),
         );
-        return transformedPaths.filter((path) => path !== null);
+        return fields.filter((field): field is ISitemapField => Boolean(field));
     },
 };
 

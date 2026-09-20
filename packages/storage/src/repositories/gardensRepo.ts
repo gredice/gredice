@@ -1,6 +1,15 @@
 import 'server-only';
 import { userIdToPublicId } from '@gredice/js/publicId';
-import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
+import {
+    and,
+    asc,
+    count,
+    countDistinct,
+    desc,
+    eq,
+    inArray,
+    max,
+} from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { storage } from '..';
 import { bustScheduleCache } from '../cache/scheduleCache';
@@ -11,6 +20,7 @@ import {
     gardenStacks,
     gardens,
     type InsertGarden,
+    raisedBedPlantings,
     raisedBeds,
     type SelectGardenLike,
     type UpdateGarden,
@@ -254,6 +264,112 @@ export async function getPublicGardens() {
             owner: ownerByAccountId.get(garden.accountId) ?? null,
             previewImage: previewImages.day,
             previewImages,
+        };
+    });
+}
+
+export type PublicGardenSitemapSource = {
+    id: number;
+    /** Most recent meaningful content change for the public garden page. */
+    updatedAt: Date;
+    blockCount: number;
+    distinctBlockNameCount: number;
+    activePlantingCount: number;
+};
+
+function latestDate(...values: Array<Date | null | undefined>) {
+    return values.reduce<Date | null>((latest, value) => {
+        if (!value) {
+            return latest;
+        }
+        return !latest || value > latest ? value : latest;
+    }, null);
+}
+
+/**
+ * Public garden records used to build the sitemap: the eligibility signals
+ * (how much has actually been built) plus the last content update, so page
+ * `lastmod` values describe the garden instead of the deployment time.
+ */
+export async function getPublicGardenSitemapSources(): Promise<
+    PublicGardenSitemapSource[]
+> {
+    const publicGardens = await storage()
+        .select({ id: gardens.id, updatedAt: gardens.updatedAt })
+        .from(gardens)
+        .where(and(eq(gardens.isDeleted, false), eq(gardens.isPublic, true)));
+
+    const gardenIds = publicGardens.map((garden) => garden.id);
+    if (gardenIds.length === 0) {
+        return [];
+    }
+
+    const [blockStats, plantingStats] = await Promise.all([
+        storage()
+            .select({
+                gardenId: gardenBlocks.gardenId,
+                blockCount: count(),
+                distinctBlockNameCount: countDistinct(gardenBlocks.name),
+                updatedAt: max(gardenBlocks.updatedAt),
+            })
+            .from(gardenBlocks)
+            .where(
+                and(
+                    inArray(gardenBlocks.gardenId, gardenIds),
+                    eq(gardenBlocks.isDeleted, false),
+                ),
+            )
+            .groupBy(gardenBlocks.gardenId),
+        storage()
+            .select({
+                gardenId: raisedBeds.gardenId,
+                activePlantingCount: count(),
+                updatedAt: max(raisedBedPlantings.updatedAt),
+            })
+            .from(raisedBedPlantings)
+            .innerJoin(
+                raisedBeds,
+                eq(raisedBedPlantings.raisedBedId, raisedBeds.id),
+            )
+            .where(
+                and(
+                    inArray(raisedBeds.gardenId, gardenIds),
+                    eq(raisedBeds.isDeleted, false),
+                    eq(raisedBedPlantings.isDeleted, false),
+                    eq(raisedBedPlantings.isActive, true),
+                ),
+            )
+            .groupBy(raisedBeds.gardenId),
+    ]);
+
+    const blockStatsByGardenId = new Map(
+        blockStats.map((stats) => [stats.gardenId, stats]),
+    );
+    const plantingStatsByGardenId = new Map<
+        number,
+        (typeof plantingStats)[number]
+    >();
+    for (const stats of plantingStats) {
+        if (stats.gardenId !== null) {
+            plantingStatsByGardenId.set(stats.gardenId, stats);
+        }
+    }
+
+    return publicGardens.map((garden) => {
+        const blocks = blockStatsByGardenId.get(garden.id);
+        const plantings = plantingStatsByGardenId.get(garden.id);
+
+        return {
+            id: garden.id,
+            updatedAt:
+                latestDate(
+                    garden.updatedAt,
+                    blocks?.updatedAt,
+                    plantings?.updatedAt,
+                ) ?? garden.updatedAt,
+            blockCount: blocks?.blockCount ?? 0,
+            distinctBlockNameCount: blocks?.distinctBlockNameCount ?? 0,
+            activePlantingCount: plantings?.activePlantingCount ?? 0,
         };
     });
 }

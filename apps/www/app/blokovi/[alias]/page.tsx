@@ -12,6 +12,11 @@ import { notFound } from 'next/navigation';
 import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import {
+    blockPageDescription,
+    blockPageTitle,
+    blockVirtualItemNote,
+} from '../../../lib/blocks/blockPagePresentation';
+import {
     getBlockRouteAlias,
     getBlockStaticParams,
     resolveBlockRoute,
@@ -35,8 +40,8 @@ export async function generateMetadata(
         notFound();
     }
     return createPublicMetadata({
-        title: block.information.label,
-        description: block.information.shortDescription,
+        title: blockPageTitle(block),
+        description: blockPageDescription(block),
         path: KnownPages.Block(getBlockRouteAlias(block)),
         category: 'Vrtni blok',
         imageUrl: block.image?.cover?.url,
@@ -92,6 +97,9 @@ export default async function BlockPage(props: PageProps<'/blokovi/[alias]'>) {
                             />
                         </Row>
                     </PageHeader>
+                    <Typography level="body1" className="text-muted-foreground">
+                        {blockVirtualItemNote}
+                    </Typography>
                     <Markdown>{entity.information.fullDescription}</Markdown>
                     <Row className="justify-end">
                         <CommunityEditButton

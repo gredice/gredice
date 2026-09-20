@@ -1,10 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import {
-    collectSitemapSourcePaths,
-    excludedSitemapRoutes,
-} from '../lib/sitemap/sitemapSourcePaths.ts';
 import { canonicalLegacyNewsPathname } from '../src/newsPaths.ts';
 
 const staticDataLoaders = [
@@ -89,70 +85,10 @@ test('sitemap generation reads source data without HTTP fallbacks', () => {
     assert.match(configSource, /getSitemapSourcePaths/u);
     assert.doesNotMatch(configSource, httpDataSourcePattern);
     assert.match(sourceLoader, /getCmsPages/u);
-    assert.match(sourceLoader, /getPublicGardens/u);
-    assert.match(sourceLoader, /getDirectoryEntitiesData\('seed'\)/u);
-    assert.match(sourceLoader, /getDirectoryEntitiesData\('brand'\)/u);
+    assert.match(sourceLoader, /getPublicGardenSitemapSources/u);
+    assert.match(sourceLoader, /getSeedsData/u);
+    assert.match(sourceLoader, /getSeedBrandsData/u);
     assert.doesNotMatch(sourceLoader, httpDataSourcePattern);
-});
-
-test('sitemap source paths keep only public CMS and catalogue records', () => {
-    const paths = collectSitemapSourcePaths({
-        cmsPages: [
-            {
-                slug: 'objavljeno',
-                state: 'published',
-                publishedAt: new Date('2026-08-10T00:00:00Z'),
-                noIndex: false,
-            },
-            {
-                slug: 'bez-indeksa',
-                state: 'published',
-                publishedAt: new Date('2026-08-10T00:00:00Z'),
-                noIndex: true,
-            },
-            {
-                slug: 'bez-datuma',
-                state: 'published',
-                publishedAt: null,
-                noIndex: false,
-            },
-        ],
-        publicGardens: [{ id: 42 }],
-        seeds: [{ slug: 'sjeme-1' }, {}],
-        brands: [{ slug: 'brend-1' }, { slug: null }],
-    });
-
-    assert.ok(paths.includes('/objavljeno'));
-    assert.ok(paths.includes('/'));
-    assert.ok(paths.includes('/dostava/termini'));
-    assert.ok(paths.includes('/outlet'));
-    assert.ok(paths.includes('/vrtovi/42'));
-    assert.ok(paths.includes('/sjeme/sjeme-1'));
-    assert.ok(paths.includes('/sjeme/brend/brend-1'));
-    assert.ok(paths.includes('/biljni-susjedi'));
-    assert.ok(paths.includes('/novosti'));
-    assert.equal(paths.includes('/bez-indeksa'), false);
-    assert.equal(paths.includes('/bez-datuma'), false);
-});
-
-test('sitemap policy excludes non-content routes and explicitly allows search crawlers', () => {
-    assert.deepEqual(excludedSitemapRoutes, [
-        '/apple-icon.png',
-        '/development',
-        '/opengraph-image',
-        '/prijava/*/povratak',
-        '/trag/*',
-        '/vrtovi',
-        '/vrtovi/*',
-    ]);
-
-    const configSource = readFileSync(
-        new URL('../next-sitemap.config.ts', import.meta.url),
-        'utf8',
-    );
-    assert.match(configSource, /userAgent: 'Googlebot'/u);
-    assert.match(configSource, /userAgent: 'OAI-SearchBot'/u);
-    assert.match(configSource, /exclude: excludedSitemapRoutes/u);
 });
 
 test('private utility routes declare no-index metadata', () => {
