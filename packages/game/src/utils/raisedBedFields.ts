@@ -19,21 +19,23 @@ type RaisedBedFieldPlantLifecycleLike = {
     updatedAt?: Date | string | null;
 };
 
-export type RaisedBedFieldPlantHistoryEntry =
-    RaisedBedFieldPlantLifecycleLike & {
-        active?: boolean | null;
-        plantPlaceEventId?: number | null;
-        plantSortId?: number | null;
-        positionIndex: number;
-    };
-
 type RaisedBedFieldPlantCycleLike = RaisedBedFieldPlantLifecycleLike & {
     active?: boolean | null;
     endedEventId?: number | null;
     plantPlaceEventId?: number | null;
     plantSortId?: number | null;
     positionIndex?: number | null;
+    statusChanges?: ReadonlyArray<{ status?: string | null }> | null;
 };
+
+export type RaisedBedFieldPlantHistoryEntry =
+    RaisedBedFieldPlantLifecycleLike & {
+        active?: boolean | null;
+        plantCycles?: RaisedBedFieldPlantCycleLike[] | null;
+        plantPlaceEventId?: number | null;
+        plantSortId?: number | null;
+        positionIndex: number;
+    };
 
 type RaisedBedFieldLike = RaisedBedFieldPlantLifecycleLike & {
     active?: boolean | null;

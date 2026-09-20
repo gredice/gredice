@@ -2,6 +2,7 @@ import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
@@ -303,7 +304,7 @@ export function RaisedBedDiaryAiAction({
                     }}
                     startDecorator={
                         <Image
-                            src="https://cdn.gredice.com/sunflower-large.svg"
+                            src={sunflowerMascotArtwork}
                             alt="Suncokret"
                             width={18}
                             height={18}
@@ -424,7 +425,7 @@ export function RaisedBedDiaryAiAction({
                                 } relative flex size-16 shrink-0 items-center justify-center`}
                             >
                                 <Image
-                                    src="https://cdn.gredice.com/sunflower-large.svg"
+                                    src={sunflowerMascotArtwork}
                                     alt="Suncokret koji razmišlja"
                                     width={56}
                                     height={56}
@@ -509,7 +510,7 @@ export function RaisedBedDiaryAiAction({
                                         className="px-3"
                                         startDecorator={
                                             <Image
-                                                src="https://cdn.gredice.com/sunflower-large.svg"
+                                                src={sunflowerMascotArtwork}
                                                 alt=""
                                                 aria-hidden="true"
                                                 width={16}

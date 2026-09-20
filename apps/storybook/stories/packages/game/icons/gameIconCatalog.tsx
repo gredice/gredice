@@ -2,10 +2,16 @@ import { plantFieldStatusLabel } from '@gredice/js/plants';
 import { ArchiveIcon } from '@gredice/ui/ArchiveIcon';
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import {
+    GameBirthdayIcon,
     GamePlantStatusIcon,
+    GameRefundIcon,
     GameRaisedBedIcon as RaisedBedIcon,
 } from '@gredice/ui/GameIcons';
 import { PlantGridIcon } from '@gredice/ui/GridIcons';
+import {
+    SunflowerPackageVisual,
+    sunflowerMascotArtwork,
+} from '@gredice/ui/SunflowerVisuals';
 import { MoveIndicator } from '@packages/game/controls/components/MoveIndicator';
 import { RainIcon } from '@packages/game/hud/components/weather/icons/RainIcon';
 import { weatherDefinitions } from '@packages/game/hud/components/weather/icons/weatherDefinitions';
@@ -31,6 +37,7 @@ import recycleSrc from '../../../../../garden/public/assets/textures/recycle.png
 import { publicVisualIcons } from '../../../apps/www/publicVisualIcons';
 import { gameIconComparisons } from '../../ui/gameIconComparisons';
 import { plantStatusIconExamples } from '../../ui/plantStatusIconExamples';
+import { sunflowerVisualPackages } from '../hud/sunflowerEconomyFixtures';
 import { gameIconUsage } from './gameIconUsage';
 
 export type GameIconEntry = {
@@ -93,8 +100,8 @@ const artwork = [
     },
     {
         name: 'Sunflower',
-        src: '/game-icons/sunflower-large.svg',
-        source: 'https://cdn.gredice.com/sunflower-large.svg',
+        src: sunflowerMascotArtwork,
+        source: 'packages/ui/src/SunflowerVisuals/assets/mascot-3d.webp',
         usage: 'packages/game/src/hud/SunflowersHud.tsx',
         description: 'Currency, rewards and Suncokret assistant identity.',
     },
@@ -138,6 +145,34 @@ const artwork = [
 
 export const gameIconCatalog: GameIconEntry[] = [
     ...artwork,
+    ...[GameBirthdayIcon, GameRefundIcon].map((Icon, index) => ({
+        name: index === 0 ? 'GameBirthdayIcon' : 'GameRefundIcon',
+        group: 'Sunflower activity',
+        description:
+            index === 0
+                ? 'Birthday reward cake.'
+                : 'Returned funds; mint return arrow.',
+        sources: ['packages/game/src/shared-ui/sunflowers/SunflowersList.tsx'],
+        preview: <Icon className="size-12" aria-hidden />,
+    })),
+    ...sunflowerVisualPackages.map((pkg) => ({
+        name: `Sunflower package · ${pkg.name}`,
+        group: 'Sunflower packages',
+        description:
+            'Shared package illustration in game, transaction history and public website.',
+        sources: [
+            'packages/ui/src/SunflowerVisuals/SunflowerPackageVisual.tsx',
+            'packages/game/src/shared-ui/sunflowers/SunflowerPackageCard.tsx',
+            'apps/www/app/suncokreti/page.tsx',
+        ],
+        preview: (
+            <SunflowerPackageVisual
+                packageCode={pkg.code}
+                className="size-20"
+                aria-hidden
+            />
+        ),
+    })),
     ...publicVisualIcons.map(({ name, Icon, usage, path }) => ({
         name,
         group: 'Public-site artwork',

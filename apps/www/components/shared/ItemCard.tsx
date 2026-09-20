@@ -1,6 +1,6 @@
-import { Card, CardHeader, CardOverflow } from '@gredice/ui/Card';
 import type { Route } from 'next';
 import type { PropsWithChildren, ReactElement } from 'react';
+import { Card, CardHeader, CardOverflow } from './Card';
 
 export function ItemCard({
     children,

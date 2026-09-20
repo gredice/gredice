@@ -1,9 +1,9 @@
-import { Card } from '@gredice/ui/Card';
 import { GameGardenIcon, GameSeedlingIcon } from '@gredice/ui/GameIcons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
+import { Card } from '../../components/shared/Card';
 import { PublicEmptyState } from '../../components/shared/placeholders/PublicEmptyState';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';

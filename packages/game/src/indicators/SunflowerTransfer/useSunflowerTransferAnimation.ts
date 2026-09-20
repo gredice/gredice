@@ -1,3 +1,4 @@
+import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import { useCallback, useEffect, useState } from 'react';
 
 type Point = {
@@ -126,10 +127,22 @@ function createParticle({
 }) {
     const particle = document.createElement('span');
     particle.setAttribute('data-sunflower-transfer-particle', 'true');
-    particle.textContent =
-        index === 0 && amount > 0
-            ? `${formatSunflowersCompact(amount)} 🌻`
-            : '🌻';
+    if (index === 0 && amount > 0) {
+        particle.append(
+            document.createTextNode(formatSunflowersCompact(amount)),
+        );
+    }
+    const mascot = document.createElement('img');
+    mascot.src =
+        typeof sunflowerMascotArtwork === 'string'
+            ? sunflowerMascotArtwork
+            : sunflowerMascotArtwork.src;
+    mascot.alt = '';
+    mascot.width = 24;
+    mascot.height = 24;
+    mascot.style.flexShrink = '0';
+    particle.style.gap = '0.25rem';
+    particle.append(mascot);
     particle.style.position = 'absolute';
     particle.style.left = `${from.x}px`;
     particle.style.top = `${from.y}px`;

@@ -43,8 +43,9 @@ function makeHistory(days = 7): WeatherHistoryPoint[] {
                 recordedAt: new Date(ts).toISOString(),
                 temperature: hourTemp(h, days - d),
                 rain,
-                windSpeed: Math.round((3 + ((d * 3 + h) % 7)) * 10) / 10,
-                windDirection: windDir(d + h),
+                windSpeed: (d + Math.floor(h / 6)) % 5,
+                windDirection:
+                    (d + Math.floor(h / 6)) % 5 === 0 ? null : windDir(d + h),
                 symbol: rain > 0 ? 3 : 1,
             });
         }
@@ -71,14 +72,15 @@ function makeForecast(days = 3): WeatherForecastDay[] {
             minTemp: hourTemp(5, d),
             maxTemp: hourTemp(15, d),
             windDirection: windDir(d),
-            windStrength: 4 + d,
+            windStrength: 4,
             rain: d === 2 ? 2.5 : 0,
             entries: Array.from({ length: 24 }, (_, h) => ({
                 time: h,
                 temperature: hourTemp(h, d),
                 rain: d === 2 && (h === 14 || h === 15) ? 1.2 : 0,
-                windStrength: Math.round((4 + ((d * 3 + h) % 6)) * 10) / 10,
-                windDirection: windDir(d + h),
+                windStrength: (d + Math.floor(h / 6)) % 5,
+                windDirection:
+                    (d + Math.floor(h / 6)) % 5 === 0 ? null : windDir(d + h),
                 symbol: d === 2 ? 3 : 1,
             })),
         });
@@ -132,10 +134,10 @@ const meta = {
                 component:
                     'Recharts-based weather visualization combining historical observations ' +
                     'and forecast data into a unified time series. Supports temperature, ' +
-                    'rain/precipitation, and wind-speed/direction views with an icon metric ' +
+                    'rain/precipitation, and wind-category/direction views with an icon metric ' +
                     'selector, date-range picker, and preset toggle groups. A shaded region marks the forecast window ' +
                     'and a dashed "now" reference line is drawn when it falls inside the ' +
-                    'visible range. Narrow mobile layouts aggregate chart points into 8-hour buckets.',
+                    'visible range. Narrow mobile layouts aggregate temperature and rain into 8-hour buckets; wind retains discrete source categories.',
             },
         },
     },
@@ -207,8 +209,48 @@ export const WindTab: Story = {
         docs: {
             description: {
                 story:
-                    'Line chart for wind speed in m/s. Hovering a data point shows the ' +
-                    'wind direction as a rotated arrow and compass label.',
+                    'Step chart on the fixed DHMZ category scale: Tišina, Slab, Umjeren, Jak, Olujan. Hovering a data point shows the ' +
+                    'category and wind direction. These source symbols are not measured speeds.',
+            },
+        },
+    },
+};
+
+export const CalmAndLightWind: Story = {
+    args: {
+        metric: 'wind',
+        history: HISTORY.map((point) => ({
+            ...point,
+            windSpeed: (point.windSpeed ?? 0) % 2,
+        })),
+        forecast: FORECAST.map((day) => ({
+            ...day,
+            entries: day.entries?.map((entry) => ({
+                ...entry,
+                windStrength: (entry.windStrength ?? 0) % 2,
+            })),
+        })),
+    },
+    parameters: {
+        docs: {
+            description: {
+                story: 'A calm week keeps the full named scale instead of stretching categories 0 and 1 to the full chart height.',
+            },
+        },
+    },
+};
+
+export const MobileWind: Story = {
+    args: { metric: 'wind', compact: true },
+    render: (args) => (
+        <div className="max-w-[360px]">
+            <ControlledWeatherCharts {...args} />
+        </div>
+    ),
+    parameters: {
+        docs: {
+            description: {
+                story: 'Mobile wind preserves every category change, including brief strong winds, without averaging categories into fractional speeds.',
             },
         },
     },

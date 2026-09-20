@@ -10,10 +10,11 @@ import type {
 export const POSTHOG_LOG_BATCH_DELAY_MS = 1_000;
 export const POSTHOG_LOG_EXPORT_TIMEOUT_MS = 5_000;
 export const POSTHOG_LOG_FALLBACK_DELAY_MS = 5 * 60_000;
-export const POSTHOG_LOG_PROCESSOR_TIMEOUT_MS = 6_000;
-export const POSTHOG_LOG_FLUSH_TIMEOUT_MS = 7_000;
+export const POSTHOG_LOG_PROCESSOR_TIMEOUT_MS = 12_000;
+export const POSTHOG_LOG_FLUSH_TIMEOUT_MS = 13_000;
 export const POSTHOG_LOG_INITIAL_FAILURE_BACKOFF_MS = 30_000;
 export const POSTHOG_LOG_MAX_FAILURE_BACKOFF_MS = 5 * 60_000;
+const POSTHOG_LOG_TIMEOUT_RETRY_COUNT = 1;
 
 type PostHogLogFlushErrorContext = {
     consecutiveFailures: number;
@@ -45,6 +46,24 @@ function waitFor(delayMs: number): Promise<void> {
     });
 }
 
+function isAbortError(error: unknown): boolean {
+    let currentError = error;
+
+    for (let depth = 0; depth < 3; depth += 1) {
+        if (typeof currentError !== 'object' || currentError === null) {
+            return false;
+        }
+
+        if ('name' in currentError && currentError.name === 'AbortError') {
+            return true;
+        }
+
+        currentError = 'cause' in currentError ? currentError.cause : undefined;
+    }
+
+    return false;
+}
+
 /**
  * Uses OpenTelemetry's fetch transport so its AbortController deadline covers
  * connection setup as well as response inactivity in short-lived runtimes.
@@ -70,9 +89,30 @@ export class FetchOTLPLogExporter
         items: ReadableLogRecord[],
         resultCallback: (result: ExportResult) => void,
     ): void {
+        this.exportWithTimeoutRetry(
+            items,
+            POSTHOG_LOG_TIMEOUT_RETRY_COUNT,
+            resultCallback,
+        );
+    }
+
+    private exportWithTimeoutRetry(
+        items: ReadableLogRecord[],
+        timeoutRetriesRemaining: number,
+        resultCallback: (result: ExportResult) => void,
+    ): void {
         super.export(items, (result) => {
             if (result.code === ExportResultCode.SUCCESS) {
                 resultCallback(result);
+                return;
+            }
+
+            if (timeoutRetriesRemaining > 0 && isAbortError(result.error)) {
+                this.exportWithTimeoutRetry(
+                    items,
+                    timeoutRetriesRemaining - 1,
+                    resultCallback,
+                );
                 return;
             }
 

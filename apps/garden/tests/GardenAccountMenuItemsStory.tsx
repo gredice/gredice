@@ -49,6 +49,7 @@ type GardenAccountMenuStoryOptions = {
     defaultGardenId?: number;
     emptyCurrentAccount?: boolean;
     includeOtherAccount?: boolean;
+    includeSandbox?: boolean;
     initialGardenId?: number;
     sandboxFirst?: boolean;
     seedOtherGardenDetails?: boolean;
@@ -58,6 +59,7 @@ function createGardenAccountMenuQueryClient({
     defaultGardenId,
     emptyCurrentAccount = false,
     includeOtherAccount = true,
+    includeSandbox = true,
     sandboxFirst = false,
     seedOtherGardenDetails = true,
 }: GardenAccountMenuStoryOptions = {}) {
@@ -77,7 +79,9 @@ function createGardenAccountMenuQueryClient({
         ? []
         : (sandboxFirst
               ? [sandboxGarden, currentGarden]
-              : [currentGarden, sandboxGarden]
+              : includeSandbox
+                ? [currentGarden, sandboxGarden]
+                : [currentGarden]
           ).map(withDefaultState);
     const currentAccountGroup = {
         accountId: 'test-account',
@@ -99,7 +103,9 @@ function createGardenAccountMenuQueryClient({
     ]);
     const seededGardens = emptyCurrentAccount
         ? []
-        : [currentGarden, sandboxGarden];
+        : includeSandbox
+          ? [currentGarden, sandboxGarden]
+          : [currentGarden];
     if (seedOtherGardenDetails) {
         seededGardens.push(otherAccountGarden);
     }
@@ -129,6 +135,7 @@ function GardenAccountMenuItemsTestProviders({
         defaultGardenId,
         emptyCurrentAccount,
         includeOtherAccount,
+        includeSandbox,
         initialGardenId,
         sandboxFirst,
         seedOtherGardenDetails,
@@ -139,6 +146,7 @@ function GardenAccountMenuItemsTestProviders({
                 defaultGardenId,
                 emptyCurrentAccount,
                 includeOtherAccount,
+                includeSandbox,
                 initialGardenId,
                 sandboxFirst,
                 seedOtherGardenDetails,
@@ -147,6 +155,7 @@ function GardenAccountMenuItemsTestProviders({
             defaultGardenId,
             emptyCurrentAccount,
             includeOtherAccount,
+            includeSandbox,
             initialGardenId,
             sandboxFirst,
             seedOtherGardenDetails,
@@ -290,6 +299,28 @@ export function SandboxFirstGardenAccountMenuItemsStory() {
 export function SingleRealGardenAccountMenuItemsStory() {
     const options = {
         includeOtherAccount: false,
+    };
+
+    return (
+        <div className="min-h-96 p-4">
+            <GardenAccountMenuItemsTestProviders options={options}>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button>Otvori izbornik</Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-80 p-4" align="start">
+                        <GardenAccountMenuItems />
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </GardenAccountMenuItemsTestProviders>
+        </div>
+    );
+}
+
+export function CreateOnlySandboxGardenAccountMenuItemsStory() {
+    const options = {
+        includeOtherAccount: false,
+        includeSandbox: false,
     };
 
     return (

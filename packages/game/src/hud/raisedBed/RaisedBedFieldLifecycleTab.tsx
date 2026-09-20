@@ -1,4 +1,7 @@
 import {
+    canRemovePlantWithoutOperation,
+    getActivePlantCycleStatusChanges,
+    getHarvestPlantRemovalDisclaimer,
     plantFieldStatusLabel,
     userAllowedPlantStatusTransitions,
 } from '@gredice/js/plants';
@@ -95,14 +98,21 @@ export function RaisedBedFieldLifecycleTab({
     const currentPlantIdentity = disableFieldActions
         ? undefined
         : getRaisedBedFieldActivePlantIdentity(field);
+    const plantAttributes = plantSort.information.plant.attributes;
+    const canRemoveWithoutOperation = canRemovePlantWithoutOperation({
+        plantStatus: field.plantStatus,
+        statusChanges: getActivePlantCycleStatusChanges(field.plantCycles),
+        cleanHarvest: plantAttributes?.cleanHarvest,
+    });
 
     const handleRemovePlant = async () => {
-        if (!field.toBeRemoved || !currentPlantIdentity) {
+        if (!canRemoveWithoutOperation || !currentPlantIdentity) {
             return;
         }
 
         try {
             await removeFieldMutation.mutateAsync({
+                cleanHarvest: plantAttributes?.cleanHarvest,
                 expectedPlantCycleEventId:
                     currentPlantIdentity.plantPlaceEventId,
                 expectedPlantCycleVersionEventId:
@@ -126,7 +136,6 @@ export function RaisedBedFieldLifecycleTab({
             userAllowedPlantStatusTransitions[field.plantStatus]?.length,
     );
 
-    const plantAttributes = plantSort.information.plant.attributes;
     const plantDetailsUrl = KnownPages.GredicePlantSort(
         plantSort.information.plant.information?.name ??
             plantSort.information.name,
@@ -135,6 +144,11 @@ export function RaisedBedFieldLifecycleTab({
     const plantStatus = isPlantFieldStatus(field.plantStatus)
         ? field.plantStatus
         : undefined;
+    const showPaidPlantRemovalHint =
+        !disableFieldActions &&
+        field.active &&
+        Boolean(field.toBeRemoved) &&
+        !canRemoveWithoutOperation;
     const showPlantOperationRecommendations =
         shouldShowPlantOperationRecommendations(plantStatus);
     const statusContent = (
@@ -215,21 +229,31 @@ export function RaisedBedFieldLifecycleTab({
                     />
                 )}
 
-            {field.active && field.toBeRemoved && currentPlantIdentity && (
-                <Row>
-                    <Button
-                        variant="solid"
-                        fullWidth
-                        loading={removeFieldMutation.isPending}
-                        disabled={removeFieldMutation.isPending}
-                        onClick={handleRemovePlant}
-                        startDecorator={
-                            <ShovelIcon className="size-5 shrink-0" />
-                        }
-                    >
-                        Ukloni biljku
-                    </Button>
-                </Row>
+            {field.active &&
+                canRemoveWithoutOperation &&
+                currentPlantIdentity && (
+                    <Row>
+                        <Button
+                            variant="solid"
+                            fullWidth
+                            loading={removeFieldMutation.isPending}
+                            disabled={removeFieldMutation.isPending}
+                            onClick={handleRemovePlant}
+                            startDecorator={
+                                <ShovelIcon className="size-5 shrink-0" />
+                            }
+                        >
+                            Ukloni biljku
+                        </Button>
+                    </Row>
+                )}
+
+            {showPaidPlantRemovalHint && (
+                <Typography level="body2" secondary>
+                    {field.plantStatus === 'harvested'
+                        ? getHarvestPlantRemovalDisclaimer(false)
+                        : 'Uklanjanje ove biljke zasebna je radnja. Naruči je u kartici Radnje.'}
+                </Typography>
             )}
         </Stack>
     );

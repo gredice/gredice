@@ -12,6 +12,7 @@ import { Link } from '@gredice/ui/Link';
 import { Popper } from '@gredice/ui/Popper';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { SunflowerText } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
@@ -1008,13 +1009,15 @@ function PlaceEntityButton({
                             !isSandbox && !sunflowerPrice && 'pl-2',
                         )}
                     >
-                        {isSandbox
-                            ? '🌻 0'
-                            : hasSunflowerPrice && isAvailableNow
-                              ? `🌻 ${sunflowerPrice}`
-                              : availabilityMessage
-                                ? 'Noću'
-                                : 'Nedostupno'}
+                        <SunflowerText>
+                            {isSandbox
+                                ? '🌻 0'
+                                : hasSunflowerPrice && isAvailableNow
+                                  ? `🌻 ${sunflowerPrice}`
+                                  : availabilityMessage
+                                    ? 'Noću'
+                                    : 'Nedostupno'}
+                        </SunflowerText>
                     </Row>
                 }
             >

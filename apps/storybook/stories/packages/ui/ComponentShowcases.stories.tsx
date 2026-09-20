@@ -206,6 +206,7 @@ import { PublicAttributeExamples } from '../../apps/www/PublicAttributeExamples'
 import { PublicCatalogVisualExamples } from '../../apps/www/PublicCatalogVisualExamples';
 import { PublicVisualExamples } from '../../apps/www/PublicVisualExamples';
 import { StyledPlantTabsExample } from '../../apps/www/StyledPlantTabsExample';
+import { SunflowerPackageExamples } from '../game/hud/SunflowerPackageExamples';
 import { OverviewNavigationPreview } from '../game/settings/OverviewNavigationPreview';
 import { FarmerAvatarsPreview } from './FarmerAvatarsPreview';
 import { GameAccountMenuPreview } from './GameAccountMenuPreview';
@@ -1456,6 +1457,7 @@ function GardenWorkspaceShowcase() {
                 </PageHeader>
 
                 <GameAccountMenuPreview />
+                <SunflowerPackageExamples />
                 <OverviewNavigationPreview />
                 <FarmerAvatarsPreview
                     heading="Avatari za igru"

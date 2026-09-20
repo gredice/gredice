@@ -1,7 +1,7 @@
-import { Card } from '@gredice/ui/Card';
 import { Navigate } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
 import type { ReactNode } from 'react';
+import { Card } from '../shared/Card';
 
 export type SocialCardProps = {
     href: string;

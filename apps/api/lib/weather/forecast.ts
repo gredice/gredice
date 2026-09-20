@@ -143,7 +143,8 @@ function parseWind(value: string | null): {
 
     return {
         windDirection: direction,
-        windStrength: Number.isFinite(strength) ? Math.min(strength, 3) : 0,
+        // DHMZ symbols range from calm (C0) through stormy wind (e.g. N4).
+        windStrength: Number.isFinite(strength) ? Math.min(strength, 4) : 0,
     };
 }
 

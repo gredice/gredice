@@ -59,9 +59,12 @@ are offered according to the current stage:
 Sowed plants must sprout before later growth or harvest stages. Flowering and
 fruiting are optional because some crops are harvested without those stages.
 Harvest completion requires harvest readiness. Planning, sowing verification,
-and removal retain their separate controls; harvested plants use the existing
-removal action. Changes retain date confirmation and active-cycle identity and
-version checks.
+and plant removal retain their separate controls. Garden owners can clear a
+field without the paid plant-removal operation only after a clean harvest or
+when the field never sprouted. Changing a sprouted plant to failed-to-sprout
+does not skip that charge. Other harvested or dead plants stay in the field
+until the plant-removal operation is scheduled and paid. Changes retain date
+confirmation and active-cycle identity and version checks.
 
 ## Verification
 

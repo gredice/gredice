@@ -195,7 +195,10 @@ export async function createOperationAction(formData: FormData) {
             : undefined,
     };
     await assertRaisedBedAllowsNewOperation(operation.raisedBedId ?? undefined);
-    const operationId = await createOperation(operation);
+    const operationId = await createOperation({
+        ...operation,
+        allowSelectedPlantingFieldOperations: true,
+    });
     if (scheduledDate) {
         await createEvent(
             knownEvents.operations.scheduledV1(operationId.toString(), {
@@ -375,7 +378,10 @@ export async function bulkCreateOperationsAction(
                 raisedBedFieldId: parsedTarget.raisedBedFieldId,
                 timestamp: undefined,
             };
-            const operationId = await createOperation(operation);
+            const operationId = await createOperation({
+                ...operation,
+                allowSelectedPlantingFieldOperations: true,
+            });
             if (scheduledDate) {
                 await createEvent(
                     knownEvents.operations.scheduledV1(operationId.toString(), {
@@ -549,6 +555,7 @@ export async function switchOperationEntityAction(
                         entityTypeName: 'operation',
                     },
                     transaction,
+                    { allowSelectedPlantingFieldOperations: true },
                 );
                 return { changed: true, operation };
             },

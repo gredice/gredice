@@ -1,9 +1,9 @@
 'use client';
 
-import { Card, CardContent } from '@gredice/ui/Card';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useEffect, useMemo, useState } from 'react';
+import { Card, CardContent } from '../../components/shared/Card';
 import {
     DEFAULT_DEPLOYMENT_STATS_PERIOD,
     type DeploymentDayStats,

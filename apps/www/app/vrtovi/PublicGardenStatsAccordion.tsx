@@ -1,6 +1,7 @@
 import { Accordion } from '@gredice/ui/Accordion';
 import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { LayoutGrid, Ruler } from '@gredice/ui/icons';
+import { SunflowerText } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import {
     formatGardenAreaSquareMeters,
@@ -71,7 +72,7 @@ export function PublicGardenStatsAccordion({
                                     level="body2"
                                     className="truncate font-medium"
                                 >
-                                    {value}
+                                    <SunflowerText>{value}</SunflowerText>
                                 </Typography>
                             </div>
                         </div>

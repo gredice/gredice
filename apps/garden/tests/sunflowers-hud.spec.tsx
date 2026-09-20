@@ -1,10 +1,28 @@
 import { expect, test } from '@playwright/experimental-ct-react';
+import type { Locator } from '@playwright/test';
 import {
     SunflowerPackagesPanelStory,
     SunflowersHudLoadingStory,
     SunflowersHudStory,
     SunflowersPendingDetailsStory,
 } from './SunflowersHudStory';
+
+async function expectTagCenteredOnTopEdge(card: Locator) {
+    const [cardBox, tagBox] = await Promise.all([
+        card.boundingBox(),
+        card.locator('[data-package-tag]').boundingBox(),
+    ]);
+    if (!cardBox || !tagBox) {
+        throw new Error('Expected the package card and tag to be visible.');
+    }
+
+    const cardCenterX = cardBox.x + cardBox.width / 2;
+    const tagCenterX = tagBox.x + tagBox.width / 2;
+    const tagCenterY = tagBox.y + tagBox.height / 2;
+
+    expect(Math.abs(tagCenterX - cardCenterX)).toBeLessThanOrEqual(1);
+    expect(Math.abs(tagCenterY - cardBox.y)).toBeLessThanOrEqual(1);
+}
 
 test.describe('Sunflowers HUD', () => {
     test('keeps the HUD visible with an amount skeleton while the account loads', async ({
@@ -70,6 +88,50 @@ test.describe('Sunflowers HUD', () => {
         await expect(page.getByText('Nepoznato')).toHaveCount(0);
     });
 
+    test('keeps grouped spending and earned amounts beside the new artwork', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <SunflowersPendingDetailsStory
+                cartSunflowers={0}
+                history={[
+                    {
+                        id: 1,
+                        amount: -3000,
+                        createdAt: '2026-09-17T08:00:00.000Z',
+                        reason: 'shoppingCart:1',
+                    },
+                    {
+                        id: 2,
+                        amount: -3000,
+                        createdAt: '2026-09-17T08:00:00.000Z',
+                        reason: 'shoppingCart:2',
+                    },
+                    {
+                        id: 3,
+                        amount: 200,
+                        createdAt: '2026-09-17T08:00:00.000Z',
+                        reason: 'refund:operation:1',
+                    },
+                    {
+                        id: 4,
+                        amount: 1000,
+                        createdAt: '2026-09-17T08:00:00.000Z',
+                        reason: 'birthday:2026',
+                    },
+                ]}
+            />,
+        );
+        await expect(page.getByText('Kupnja')).toBeVisible();
+        await expect(page.getByText('x2')).toBeVisible();
+        await expect(page.getByText(/[\u2212-]6\.000/u)).toBeVisible();
+        await expect(page.getByText('+200', { exact: true })).toBeVisible();
+        await expect(page.getByText('+1.000', { exact: true })).toBeVisible();
+        await expect(page.locator('image[href*="refund"]')).toHaveCount(1);
+        await expect(page.locator('image[href*="birthday"]')).toHaveCount(1);
+    });
+
     test('shows sunflower packages and master upsell in the purchase panel', async ({
         mount,
         page,
@@ -91,13 +153,28 @@ test.describe('Sunflowers HUD', () => {
         await expect(
             page.getByText('Mirna sezona', { exact: true }),
         ).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Odaberi' })).toHaveCount(
-            4,
-        );
+        await expect(page.locator('[data-package-cta]')).toHaveCount(4);
+
+        for (const [code, filename] of Object.entries({
+            mali_zalogaj: 'package-small',
+            vrtna_kosarica: 'package-basket',
+            mirna_sezona: 'package-season',
+            puna_gredica: 'package-starter',
+        })) {
+            await expect(
+                page.locator(
+                    `[data-sunflower-package="${code}"] [data-sunflower-package-artwork="${code}"] image`,
+                ),
+            ).toHaveAttribute(
+                'href',
+                new RegExp(`/${filename}(?:-[\\w-]+)?\\.webp$`, 'u'),
+            );
+        }
 
         const initialOffer = page.locator(
             '[data-sunflower-package="puna_gredica"]',
         );
+        await expectTagCenteredOnTopEdge(initialOffer);
         const [
             initialOfferHeaderBox,
             initialOfferBreakdownBox,
@@ -109,7 +186,7 @@ test.describe('Sunflowers HUD', () => {
             initialOffer
                 .locator('[data-package-breakdown="desktop"]')
                 .boundingBox(),
-            initialOffer.getByRole('button', { name: 'Odaberi' }).boundingBox(),
+            initialOffer.locator('[data-package-cta]').boundingBox(),
         ]);
         expect(initialOfferHeaderBox?.y).toBeLessThan(
             initialOfferBreakdownBox?.y ?? 0,
@@ -136,13 +213,35 @@ test.describe('Sunflowers HUD', () => {
         expect(smallPackageBox?.x).toBeLessThan(popularPackageBox?.x ?? 0);
         expect(popularPackageBox?.x).toBeLessThan(bestValuePackageBox?.x ?? 0);
 
+        const popularPackage = mainPackageCards[1];
+        const bestValuePackage = mainPackageCards[2];
+        await Promise.all([
+            expectTagCenteredOnTopEdge(popularPackage),
+            expectTagCenteredOnTopEdge(bestValuePackage),
+        ]);
+        await expect(popularPackage).toHaveClass(/bg-amber-50\/70/u);
+        await expect(bestValuePackage).not.toHaveClass(/bg-amber-50\/70/u);
+        await expect(
+            popularPackage.locator('[data-package-price]'),
+        ).toContainText('39,99');
+        await expect(
+            bestValuePackage.locator('[data-package-price]'),
+        ).toContainText('99,99');
+
         await page
             .locator('[data-sunflower-package="mirna_sezona"]')
-            .getByRole('button', { name: 'Odaberi' })
+            .getByRole('button', {
+                name: /Odaberi Mirna sezona za 99,99/u,
+            })
             .click();
 
         await expect(page.getByText('Želiš veći saldo?')).toBeVisible();
         await expect(page.getByText('Majstor vrtlar')).toBeVisible();
+        await expect(
+            page.locator(
+                '[data-sunflower-package-artwork="majstor_vrtlar"] image',
+            ),
+        ).toHaveAttribute('href', /\/package-master(?:-[\w-]+)?\.webp$/u);
         await expect(
             page.getByRole('button', { name: 'Odaberi majstor paket' }),
         ).toBeVisible();
@@ -152,12 +251,46 @@ test.describe('Sunflowers HUD', () => {
         mount,
         page,
     }) => {
-        await page.setViewportSize({ width: 390, height: 844 });
-        await mount(<SunflowerPackagesPanelStory />);
+        await page.setViewportSize({ width: 320, height: 844 });
+        await mount(<SunflowerPackagesPanelStory panelWidth={320} />);
 
-        const smallPackage = page.locator(
-            '[data-sunflower-package="mali_zalogaj"]',
+        const mainPackageCards = [
+            page.locator('[data-sunflower-package="mali_zalogaj"]'),
+            page.locator('[data-sunflower-package="vrtna_kosarica"]'),
+            page.locator('[data-sunflower-package="mirna_sezona"]'),
+        ];
+        const mainPackageBoxes = await Promise.all(
+            mainPackageCards.map((card) => card.boundingBox()),
         );
+        if (mainPackageBoxes.some((box) => box === null)) {
+            throw new Error('Expected every main package card to be visible.');
+        }
+        const [smallPackageBox, popularPackageBox, bestValuePackageBox] =
+            mainPackageBoxes;
+        expect(smallPackageBox?.y).toBe(popularPackageBox?.y);
+        expect(popularPackageBox?.y).toBe(bestValuePackageBox?.y);
+        expect(smallPackageBox?.x).toBeLessThan(popularPackageBox?.x ?? 0);
+        expect(popularPackageBox?.x).toBeLessThan(bestValuePackageBox?.x ?? 0);
+
+        await Promise.all([
+            expectTagCenteredOnTopEdge(
+                page.locator('[data-sunflower-package="puna_gredica"]'),
+            ),
+            expectTagCenteredOnTopEdge(mainPackageCards[1]),
+            expectTagCenteredOnTopEdge(mainPackageCards[2]),
+        ]);
+
+        const panelOverflow = await page
+            .locator('[data-sunflower-packages-panel]')
+            .evaluate((panel) => ({
+                clientWidth: panel.clientWidth,
+                scrollWidth: panel.scrollWidth,
+            }));
+        expect(panelOverflow.scrollWidth).toBeLessThanOrEqual(
+            panelOverflow.clientWidth + 1,
+        );
+
+        const smallPackage = mainPackageCards[0];
         await expect(
             smallPackage.locator('[data-package-total]'),
         ).toBeVisible();
@@ -165,15 +298,14 @@ test.describe('Sunflowers HUD', () => {
             smallPackage.locator('[data-package-breakdown]'),
         ).toHaveCount(0);
 
-        const popularPackage = page.locator(
-            '[data-sunflower-package="vrtna_kosarica"]',
-        );
+        const popularPackage = mainPackageCards[1];
         const mobileBreakdown = popularPackage.locator(
             '[data-package-breakdown="compact"]',
         );
+        await expect(mobileBreakdown).not.toHaveClass(/border|bg-/u);
         await expect(mobileBreakdown).not.toHaveAttribute('open', '');
         await expect(
-            mobileBreakdown.getByText('42.000 🌻', { exact: true }),
+            mobileBreakdown.getByText('42.000 Suncokreti', { exact: true }),
         ).toBeVisible();
         await expect(page.getByText('Prikaži raščlambu')).toHaveCount(0);
         await expect(page.getByText('Sakrij raščlambu')).toHaveCount(0);
@@ -212,10 +344,10 @@ test.describe('Sunflowers HUD', () => {
         }
         const [smallPackageBox, popularPackageBox, bestValuePackageBox] =
             mainPackageBoxes;
-        expect(smallPackageBox?.x).toBe(popularPackageBox?.x);
-        expect(popularPackageBox?.x).toBe(bestValuePackageBox?.x);
-        expect(smallPackageBox?.y).toBeLessThan(popularPackageBox?.y ?? 0);
-        expect(popularPackageBox?.y).toBeLessThan(bestValuePackageBox?.y ?? 0);
+        expect(smallPackageBox?.y).toBe(popularPackageBox?.y);
+        expect(popularPackageBox?.y).toBe(bestValuePackageBox?.y);
+        expect(smallPackageBox?.x).toBeLessThan(popularPackageBox?.x ?? 0);
+        expect(popularPackageBox?.x).toBeLessThan(bestValuePackageBox?.x ?? 0);
 
         const bestValuePackage = mainPackageCards[2];
         await expect(
@@ -227,7 +359,7 @@ test.describe('Sunflowers HUD', () => {
         await expect(
             bestValuePackage
                 .locator('[data-package-breakdown="compact"]')
-                .getByText('110.000 🌻', { exact: true }),
+                .getByText('110.000 Suncokreti', { exact: true }),
         ).toBeVisible();
 
         const panelOverflow = await page
@@ -251,8 +383,6 @@ test.describe('Sunflowers HUD', () => {
             page.getByText('Puna gredica', { exact: true }),
         ).toHaveCount(0);
         await expect(page.getByText('Jednokratna ponuda')).toHaveCount(0);
-        await expect(page.getByRole('button', { name: 'Odaberi' })).toHaveCount(
-            3,
-        );
+        await expect(page.locator('[data-package-cta]')).toHaveCount(3);
     });
 });

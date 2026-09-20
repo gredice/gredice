@@ -3,12 +3,14 @@
 import {
     buildWeatherSeries,
     clampRangeToBounds,
+    formatWindStrength,
     type WeatherForecastDay,
     type WeatherHistoryPoint,
     type WeatherMetricKey,
     type WeatherSeriesPoint,
     weatherMetrics,
     windDirectionToDegrees,
+    windStrengthLabels,
 } from '@gredice/js/weather';
 import {
     type ComponentType,
@@ -220,6 +222,7 @@ function createBridgeMetricChartPoint(
     previous: MetricChartPoint,
     next: MetricChartPoint,
     timestamp: number,
+    interpolate: boolean,
 ): MetricChartPoint | null {
     if (previous.historyValue == null || next.forecastValue == null) {
         return null;
@@ -228,10 +231,9 @@ function createBridgeMetricChartPoint(
     const duration = next.timestamp - previous.timestamp;
     if (duration <= 0) return null;
 
-    const ratio = Math.min(
-        1,
-        Math.max(0, (timestamp - previous.timestamp) / duration),
-    );
+    const ratio = interpolate
+        ? Math.min(1, Math.max(0, (timestamp - previous.timestamp) / duration))
+        : 0;
     const bridgedValue =
         previous.historyValue +
         (next.forecastValue - previous.historyValue) * ratio;
@@ -248,8 +250,12 @@ function createBridgeMetricChartPoint(
             0,
             interpolateNumber(previous.windSpeed, next.windSpeed, ratio),
         ),
-        windDirection: next.windDirection ?? previous.windDirection,
-        symbol: next.symbol ?? previous.symbol,
+        windDirection: interpolate
+            ? (next.windDirection ?? previous.windDirection)
+            : previous.windDirection,
+        symbol: interpolate
+            ? (next.symbol ?? previous.symbol)
+            : previous.symbol,
         source: 'forecast',
         historyValue: bridgedValue,
         forecastValue: bridgedValue,
@@ -259,6 +265,7 @@ function createBridgeMetricChartPoint(
 function stitchMetricChartData(
     points: MetricChartPoint[],
     nowTs: number,
+    interpolate = true,
 ): MetricChartPoint[] {
     let lastHistoryIndex = -1;
     let firstForecastIndex = -1;
@@ -310,6 +317,7 @@ function stitchMetricChartData(
         lastHistory,
         firstForecast,
         bridgeTimestamp,
+        interpolate,
     );
     if (!bridgePoint) return points;
 
@@ -482,9 +490,11 @@ function WeatherTooltip({
             </Typography>
             <Row spacing={1} className="pt-0.5">
                 <Typography level="body2" semiBold>
-                    {Number.isFinite(value)
-                        ? `${value.toFixed(1)} ${unit}`
-                        : '—'}
+                    {showDirection
+                        ? formatWindStrength(value)
+                        : Number.isFinite(value)
+                          ? `${value.toFixed(1)} ${unit}`
+                          : '—'}
                 </Typography>
                 {showDirection && degrees != null && (
                     <ArrowUp
@@ -616,10 +626,14 @@ export function WeatherCharts({
         const { color, unit, dataKey } = definition;
         const isRain = metricKey === 'rain';
         const isWind = metricKey === 'wind';
-        const rawMetricChartData = toMetricChartData(data, metricKey);
+        // Wind symbols are categories: averaging them invents fractional values.
+        const rawMetricChartData = toMetricChartData(
+            isWind ? rawData : data,
+            metricKey,
+        );
         const metricChartData = isRain
             ? rawMetricChartData
-            : stitchMetricChartData(rawMetricChartData, nowTs);
+            : stitchMetricChartData(rawMetricChartData, nowTs, !isWind);
         const hasMetricData = metricChartData.length > 0;
         const chartData = hasMetricData
             ? metricChartData
@@ -691,9 +705,20 @@ export function WeatherCharts({
                         <YAxis
                             tick={{ fontSize: 11 }}
                             tickMargin={4}
-                            width={48}
+                            width={isWind ? 64 : 48}
                             unit={isWind ? '' : ` ${unit}`}
-                            allowDecimals={!isRain}
+                            allowDecimals={!isRain && !isWind}
+                            domain={isWind ? [0, 4] : undefined}
+                            ticks={
+                                isWind
+                                    ? windStrengthLabels.map(
+                                          (_, index) => index,
+                                      )
+                                    : undefined
+                            }
+                            tickFormatter={
+                                isWind ? formatWindStrength : undefined
+                            }
                         />
                         {hasMetricData && (
                             <Tooltip
@@ -754,7 +779,7 @@ export function WeatherCharts({
                             ) : isWind ? (
                                 <>
                                     <Line
-                                        type="monotone"
+                                        type="stepAfter"
                                         dataKey="historyValue"
                                         stroke={color}
                                         strokeWidth={2}
@@ -762,7 +787,7 @@ export function WeatherCharts({
                                         isAnimationActive={false}
                                     />
                                     <Line
-                                        type="monotone"
+                                        type="stepAfter"
                                         dataKey="forecastValue"
                                         stroke={color}
                                         strokeDasharray="5 5"

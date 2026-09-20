@@ -1113,6 +1113,8 @@ const plantingEvidenceStatuses = new Set([
     'removed',
 ]);
 
+const unsownPlantStatuses = new Set(['new', 'planned']);
+
 function canAutomationUpdatePlantStatus(
     currentStatus: string | null | undefined,
     targetStatus: string,
@@ -1122,6 +1124,9 @@ function canAutomationUpdatePlantStatus(
     }
     if (currentStatus === targetStatus) {
         return true;
+    }
+    if (unsownPlantStatuses.has(currentStatus) && targetStatus === 'removed') {
+        return false;
     }
     if (
         plantingEvidenceStatuses.has(currentStatus) &&

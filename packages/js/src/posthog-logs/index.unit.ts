@@ -4,7 +4,24 @@ import {
     BatchLogRecordProcessor,
     LoggerProvider,
 } from '@opentelemetry/sdk-logs';
-import { createPostHogLogFlushScheduler, FetchOTLPLogExporter } from './index';
+import {
+    createPostHogLogFlushScheduler,
+    FetchOTLPLogExporter,
+    POSTHOG_LOG_EXPORT_TIMEOUT_MS,
+    POSTHOG_LOG_FLUSH_TIMEOUT_MS,
+    POSTHOG_LOG_PROCESSOR_TIMEOUT_MS,
+} from './index';
+
+test('keeps enough timeout budget for one bounded export retry', () => {
+    assert.ok(
+        POSTHOG_LOG_PROCESSOR_TIMEOUT_MS >=
+            POSTHOG_LOG_EXPORT_TIMEOUT_MS * 2 + 1_000,
+    );
+    assert.ok(
+        POSTHOG_LOG_FLUSH_TIMEOUT_MS >=
+            POSTHOG_LOG_PROCESSOR_TIMEOUT_MS + 1_000,
+    );
+});
 
 test('coalesces log flushes during the batch window', async () => {
     let flushCount = 0;
@@ -177,16 +194,24 @@ test('preserves OTLP JSON log bodies, attributes, and authorization', async () =
     }
 });
 
-test('aborts a hanging OTLP request before the provider flush deadline', async () => {
+test('retries one timed-out OTLP request with the same log batch', async () => {
     const originalFetch = globalThis.fetch;
-    let requestWasAborted = false;
+    const requestBodies: Uint8Array[] = [];
+    let requestCount = 0;
 
     globalThis.fetch = (_input, init) => {
+        requestCount += 1;
+        assert.ok(init?.body instanceof Uint8Array);
+        requestBodies.push(init.body);
+
+        if (requestCount === 2) {
+            return Promise.resolve(new Response(null, { status: 200 }));
+        }
+
         return new Promise<Response>((_resolve, reject) => {
             init?.signal?.addEventListener(
                 'abort',
                 () => {
-                    requestWasAborted = true;
                     reject(init.signal?.reason);
                 },
                 { once: true },
@@ -213,13 +238,98 @@ test('aborts a hanging OTLP request before the provider flush deadline', async (
         });
 
         provider.getLogger('test').emit({ body: 'test log' });
+        await exporter.forceFlushWithErrorPropagation(() =>
+            provider.forceFlush(),
+        );
+
+        assert.equal(requestCount, 2);
+        assert.deepEqual(requestBodies[1], requestBodies[0]);
+    } finally {
+        globalThis.fetch = originalFetch;
+    }
+});
+
+test('stops after one retry when OTLP requests keep timing out', async () => {
+    const originalFetch = globalThis.fetch;
+    let requestCount = 0;
+
+    globalThis.fetch = (_input, init) => {
+        requestCount += 1;
+        return new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener(
+                'abort',
+                () => reject(init.signal?.reason),
+                { once: true },
+            );
+        });
+    };
+
+    try {
+        const exporter = new FetchOTLPLogExporter({
+            headers: {
+                Authorization: 'Bearer test',
+            },
+            timeoutMillis: 20,
+            url: 'https://eu.i.posthog.com/i/v1/logs',
+        });
+        const processor = new BatchLogRecordProcessor({
+            exporter,
+            exportTimeoutMillis: 80,
+            scheduledDelayMillis: 1_000,
+        });
+        const provider = new LoggerProvider({
+            forceFlushTimeoutMillis: 100,
+            processors: [processor],
+        });
+
+        provider.getLogger('test').emit({ body: 'test log' });
         await assert.rejects(() =>
             exporter.forceFlushWithErrorPropagation(() =>
                 provider.forceFlush(),
             ),
         );
 
-        assert.equal(requestWasAborted, true);
+        assert.equal(requestCount, 2);
+    } finally {
+        globalThis.fetch = originalFetch;
+    }
+});
+
+test('does not retry non-transient OTLP response failures', async () => {
+    const originalFetch = globalThis.fetch;
+    let requestCount = 0;
+
+    globalThis.fetch = async () => {
+        requestCount += 1;
+        return new Response(null, { status: 400 });
+    };
+
+    try {
+        const exporter = new FetchOTLPLogExporter({
+            headers: {
+                Authorization: 'Bearer test',
+            },
+            timeoutMillis: 20,
+            url: 'https://eu.i.posthog.com/i/v1/logs',
+        });
+        const processor = new BatchLogRecordProcessor({
+            exporter,
+            exportTimeoutMillis: 80,
+            scheduledDelayMillis: 1_000,
+        });
+        const provider = new LoggerProvider({
+            forceFlushTimeoutMillis: 100,
+            processors: [processor],
+        });
+
+        provider.getLogger('test').emit({ body: 'test log' });
+        await assert.rejects(() =>
+            exporter.forceFlushWithErrorPropagation(() =>
+                provider.forceFlush(),
+            ),
+        );
+
+        assert.equal(requestCount, 1);
     } finally {
         globalThis.fetch = originalFetch;
     }

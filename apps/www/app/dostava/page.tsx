@@ -1,7 +1,6 @@
 import { deliveryPricePerKilometre } from '@gredice/js/delivery';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Container } from '@gredice/ui/Container';
 import {
     GameCalendarIcon,
@@ -17,6 +16,12 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '../../components/shared/Card';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
 import { PublicGardenIllustration } from '../../components/visuals/PublicGardenIllustration';

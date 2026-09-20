@@ -111,7 +111,7 @@ export async function grantBirthdayReward({
             userId: user.id,
             header,
             content,
-            iconUrl: 'https://cdn.gredice.com/sunflower-large.svg',
+            iconUrl: 'https://www.gredice.com/assets/sunflower-3d.webp',
             timestamp: new Date(),
         });
     } catch (error) {

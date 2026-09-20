@@ -1,5 +1,4 @@
 import { orderBy } from '@gredice/js/arrays';
-import { Card, CardOverflow } from '@gredice/ui/Card';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -8,6 +7,7 @@ import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
+import { Card, CardOverflow } from '../../components/shared/Card';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoSSR';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';

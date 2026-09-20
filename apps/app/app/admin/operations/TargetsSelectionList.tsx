@@ -1,6 +1,5 @@
 'use client';
 
-import { ADVANCED_SOWING_PLANT_OPERATION_TARGET_MESSAGE } from './operationScope';
 import {
     type OperationTargetRaisedBed,
     RaisedBedTargetGroup,
@@ -62,16 +61,6 @@ export function TargetsSelectionList({
     const inputType = selectionType === 'single' ? 'radio' : 'checkbox';
     return (
         <div className="space-y-2">
-            {mode === 'plant' &&
-            raisedBeds.some((raisedBed) =>
-                raisedBed.fields.some(
-                    (field) => field.hasActiveSelectedPlanting,
-                ),
-            ) ? (
-                <p className="text-sm text-muted-foreground">
-                    {ADVANCED_SOWING_PLANT_OPERATION_TARGET_MESSAGE}
-                </p>
-            ) : null}
             <div
                 className={className ? `${baseClass} ${className}` : baseClass}
             >
