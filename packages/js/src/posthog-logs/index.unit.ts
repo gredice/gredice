@@ -7,10 +7,42 @@ import {
 import {
     createPostHogLogFlushScheduler,
     FetchOTLPLogExporter,
+    getPostHogLogsUrl,
     POSTHOG_LOG_EXPORT_TIMEOUT_MS,
     POSTHOG_LOG_FLUSH_TIMEOUT_MS,
     POSTHOG_LOG_PROCESSOR_TIMEOUT_MS,
 } from './index';
+
+test('uses the regional PostHog ingestion host for cloud log exports', () => {
+    assert.equal(
+        getPostHogLogsUrl('https://eu.posthog.com'),
+        'https://eu.i.posthog.com/i/v1/logs',
+    );
+    assert.equal(
+        getPostHogLogsUrl('https://us.posthog.com/'),
+        'https://us.i.posthog.com/i/v1/logs',
+    );
+    assert.equal(
+        getPostHogLogsUrl('https://app.posthog.com'),
+        'https://us.i.posthog.com/i/v1/logs',
+    );
+    assert.equal(
+        getPostHogLogsUrl('https://eu.i.posthog.com'),
+        'https://eu.i.posthog.com/i/v1/logs',
+    );
+});
+
+test('preserves custom PostHog hosts and path prefixes', () => {
+    assert.equal(
+        getPostHogLogsUrl('https://posthog.example.com/ingest/'),
+        'https://posthog.example.com/ingest/i/v1/logs',
+    );
+    assert.equal(
+        getPostHogLogsUrl('https://eu.posthog.com.example/'),
+        'https://eu.posthog.com.example/i/v1/logs',
+    );
+    assert.equal(getPostHogLogsUrl(undefined), null);
+});
 
 test('keeps enough timeout budget for one bounded export retry', () => {
     assert.ok(

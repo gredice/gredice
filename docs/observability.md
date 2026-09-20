@@ -41,7 +41,9 @@ high-signal records. The OTLP fetch transport aborts exports after five seconds
 so DNS, connection, and response stalls are bounded. A timeout retries the same
 batch once because OpenTelemetry treats its own fetch abort as non-retryable;
 the processor's 12-second bound and provider's 13-second deadline cover both
-attempts without delaying the response.
+attempts without delaying the response. Cloud UI hosts are normalized to their
+regional ingestion hosts for OTLP exports; custom hosts and path prefixes are
+preserved.
 
 Failed exports propagate through the forced-flush scheduler, which uses
 exponential backoff from 30 seconds to five minutes. The batch processor's own
