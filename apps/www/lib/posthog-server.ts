@@ -16,6 +16,7 @@ import {
     BatchLogRecordProcessor,
     LoggerProvider,
 } from '@opentelemetry/sdk-logs';
+import { waitUntil } from '@vercel/functions';
 
 type PostHogCaptureClient = {
     capture: (payload: {
@@ -141,6 +142,7 @@ const schedulePostHogLogFlush = createPostHogLogFlushScheduler({
             error,
         });
     },
+    registerBackgroundTask: waitUntil,
 });
 
 export function registerPostHogConsoleForwarding(): void {

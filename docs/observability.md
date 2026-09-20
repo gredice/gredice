@@ -47,8 +47,11 @@ Failed exports propagate through the forced-flush scheduler, which uses
 exponential backoff from 30 seconds to five minutes. The batch processor's own
 timer is a five-minute fallback, so it cannot bypass that backoff. A runtime
 warns only after a repeated failure and only once until a successful flush
-resets the failure streak. Error-hook and Proxy flushes use Vercel's
-post-response `waitUntil` lifecycle, so telemetry does not delay the response.
+resets the failure streak. WWW registers every scheduled flush with Vercel's
+post-response `waitUntil` lifecycle, including flushes triggered by forwarded
+console warnings. Telemetry therefore remains non-blocking without leaving its
+batch timer or export request detached when the response completes. Error-hook
+and Proxy callers also register their flushes explicitly.
 
 ## Cron schedules
 
