@@ -52,6 +52,40 @@ test('coalesces log flushes during the batch window', async () => {
     assert.equal(flushCount, 1);
 });
 
+test('registers each scheduled flush with the request lifecycle', async () => {
+    let flushCount = 0;
+    let releaseBatchWindow = () => {};
+    const batchWindow = new Promise<void>((resolve) => {
+        releaseBatchWindow = resolve;
+    });
+    const backgroundTasks: Promise<void>[] = [];
+    const scheduleFlush = createPostHogLogFlushScheduler({
+        batchDelayMs: 1_000,
+        flush: async () => {
+            flushCount += 1;
+        },
+        initialFailureBackoffMs: 30_000,
+        maxFailureBackoffMs: 300_000,
+        onPersistentError: () => {},
+        registerBackgroundTask: (task) => {
+            backgroundTasks.push(task);
+        },
+        wait: () => batchWindow,
+    });
+
+    const firstFlush = scheduleFlush();
+    const secondFlush = scheduleFlush();
+
+    assert.equal(firstFlush, secondFlush);
+    assert.deepEqual(backgroundTasks, [firstFlush]);
+    assert.equal(flushCount, 0);
+
+    releaseBatchWindow();
+    await firstFlush;
+
+    assert.equal(flushCount, 1);
+});
+
 test('uses capped exponential backoff and reports one persistent failure', async () => {
     const flushError = new Error('Operation timed out');
     const reportedErrors: Array<{

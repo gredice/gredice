@@ -31,6 +31,7 @@ type PostHogLogFlushSchedulerOptions = {
         error: unknown,
         context: PostHogLogFlushErrorContext,
     ) => void;
+    registerBackgroundTask?: (task: Promise<void>) => void;
     wait?: (delayMs: number) => Promise<void>;
 };
 
@@ -160,6 +161,7 @@ export function createPostHogLogFlushScheduler({
     maxFailureBackoffMs,
     now = Date.now,
     onPersistentError,
+    registerBackgroundTask,
     wait = waitFor,
 }: PostHogLogFlushSchedulerOptions): () => Promise<void> {
     let consecutiveFailures = 0;
@@ -205,6 +207,8 @@ export function createPostHogLogFlushScheduler({
             .finally(() => {
                 pendingFlush = null;
             });
+
+        registerBackgroundTask?.(pendingFlush);
 
         return pendingFlush;
     };
