@@ -7,6 +7,11 @@ import award30 from './assets/community-edit-10.webp';
 import award31 from './assets/community-edit-25.webp';
 import award32 from './assets/community-edit-50.webp';
 import award33 from './assets/community-edit-100.webp';
+import diversity3 from './assets/garden-diversity-3.webp';
+import diversity5 from './assets/garden-diversity-5.webp';
+import diversity10 from './assets/garden-diversity-10.webp';
+import diversity15 from './assets/garden-diversity-15.webp';
+import diversity20 from './assets/garden-diversity-20.webp';
 import award19 from './assets/harvest-1.webp';
 import award20 from './assets/harvest-10.webp';
 import award21 from './assets/harvest-20.webp';
@@ -26,6 +31,14 @@ import award7 from './assets/planting-200.webp';
 import award8 from './assets/planting-300.webp';
 import award9 from './assets/planting-500.webp';
 import award0 from './assets/registration.webp';
+import autumn2026 from './assets/season-2026-autumn.webp';
+import spring2026 from './assets/season-2026-spring.webp';
+import summer2026 from './assets/season-2026-summer.webp';
+import seedToTable1 from './assets/seed-to-table-1.webp';
+import seedToTable5 from './assets/seed-to-table-5.webp';
+import seedToTable10 from './assets/seed-to-table-10.webp';
+import seedToTable25 from './assets/seed-to-table-25.webp';
+import seedToTable50 from './assets/seed-to-table-50.webp';
 import award10 from './assets/watering-1.webp';
 import award11 from './assets/watering-10.webp';
 import award12 from './assets/watering-20.webp';
@@ -36,7 +49,10 @@ import award16 from './assets/watering-200.webp';
 import award17 from './assets/watering-300.webp';
 import award18 from './assets/watering-500.webp';
 
-export const achievementArtwork = {
+export const achievementArtwork: Record<
+    AchievementArtworkKey,
+    string | StaticImageData
+> = {
     registration: award0,
     planting_1: award1,
     planting_10: award2,
@@ -71,4 +87,17 @@ export const achievementArtwork = {
     community_edit_25: award31,
     community_edit_50: award32,
     community_edit_100: award33,
-} satisfies Record<AchievementArtworkKey, string | StaticImageData>;
+    garden_diversity_3: diversity3,
+    garden_diversity_5: diversity5,
+    garden_diversity_10: diversity10,
+    garden_diversity_15: diversity15,
+    garden_diversity_20: diversity20,
+    seed_to_table_1: seedToTable1,
+    seed_to_table_5: seedToTable5,
+    seed_to_table_10: seedToTable10,
+    seed_to_table_25: seedToTable25,
+    seed_to_table_50: seedToTable50,
+    season_2026_spring: spring2026,
+    season_2026_summer: summer2026,
+    season_2026_autumn: autumn2026,
+};

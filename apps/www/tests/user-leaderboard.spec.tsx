@@ -1,4 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
+import { getAchievementDefinitions } from '@gredice/js/achievements';
 import { UserAchievementProgress } from '@gredice/ui/UserAvatar';
 import { expect, test } from '@playwright/experimental-ct-react';
 import UsersError from '../app/korisnici/error';
@@ -29,7 +30,11 @@ test('completing every available achievement celebrates completion', async ({
     mount,
     page,
 }) => {
-    await mount(<UserAchievementProgress achievementCount={34} />);
+    await mount(
+        <UserAchievementProgress
+            achievementCount={getAchievementDefinitions().length}
+        />,
+    );
     await expect(page.getByRole('progressbar')).toHaveAttribute(
         'aria-valuenow',
         '100',

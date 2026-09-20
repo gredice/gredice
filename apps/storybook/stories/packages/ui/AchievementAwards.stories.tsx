@@ -1,3 +1,4 @@
+import { getAchievementDefinitions } from '@gredice/js/achievements';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { expect } from 'storybook/test';
 import { AchievementAwardsShowcase } from './AchievementAwardsShowcase';
@@ -7,16 +8,27 @@ const meta = {
     component: AchievementAwardsShowcase,
     tags: ['autodocs'],
     parameters: { layout: 'fullscreen' },
-    play: async ({ canvasElement }) => {
+    play: async ({ canvasElement, args }) => {
+        const definitions = getAchievementDefinitions().filter(
+            (definition) =>
+                !args.newFamiliesOnly ||
+                ['garden_diversity', 'seed_to_table', 'seasonal'].includes(
+                    definition.familyKey,
+                ),
+        );
         await expect(
             canvasElement.querySelectorAll('[data-award-example]'),
-        ).toHaveLength(34);
-        const urls = new Set(
-            Array.from(canvasElement.querySelectorAll('image'), (image) =>
-                image.getAttribute('href'),
-            ),
+        ).toHaveLength(definitions.length);
+        const dedicatedImages = canvasElement.querySelectorAll(
+            '[data-award-example] svg:not([data-achievement-placeholder]) image',
         );
-        await expect(urls.size).toBe(34);
+        const urls = new Set(
+            Array.from(dedicatedImages, (image) => image.getAttribute('href')),
+        );
+        await expect(urls.size).toBe(definitions.length);
+        await expect(
+            canvasElement.querySelectorAll('[data-achievement-placeholder]'),
+        ).toHaveLength(0);
         await Promise.all(
             Array.from(urls, async (url) => {
                 if (!url) throw new Error('Missing achievement artwork');
@@ -32,3 +44,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 export const Light: Story = {};
 export const Dark: Story = { args: { dark: true } };
+export const NewFamilies: Story = { args: { newFamiliesOnly: true } };
+export const NewFamiliesDark: Story = {
+    args: { newFamiliesOnly: true, dark: true },
+};

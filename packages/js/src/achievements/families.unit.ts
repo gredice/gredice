@@ -9,15 +9,28 @@ import { getAchievementPresentation } from './presentation';
 
 test('every existing milestone has distinct artwork and a contiguous family level', () => {
     const definitions = getAchievementDefinitions();
-    assert.equal(definitions.length, 34);
+    assert.equal(definitions.length, 47);
     assert.equal(
         new Set(definitions.map((award) => award.artworkKey)).size,
-        34,
+        47,
     );
     const families = getAchievementFamilies([]);
     assert.deepEqual(
+        families.map((family) => family.key),
+        [
+            'registration',
+            'planting',
+            'watering',
+            'harvest',
+            'community_editing',
+            'garden_diversity',
+            'seed_to_table',
+            'seasonal',
+        ],
+    );
+    assert.deepEqual(
         families.map((family) => family.levels.length),
-        [1, 9, 9, 9, 6],
+        [1, 9, 9, 9, 6, 5, 5, 3],
     );
     for (const family of families) {
         assert.deepEqual(
@@ -77,7 +90,7 @@ test('keeps existing thresholds, rewards and approval semantics', () => {
     );
     assert.deepEqual(
         getAchievementFamilies([])
-            .at(-1)
+            .find((family) => family.key === 'community_editing')
             ?.levels.map(({ definition }) => [
                 definition.threshold,
                 definition.rewardSunflowers,
@@ -90,6 +103,33 @@ test('keeps existing thresholds, rewards and approval semantics', () => {
             [50, 2000],
             [100, 5000],
         ],
+    );
+    assert.deepEqual(
+        getAchievementFamilies([])
+            .find((family) => family.key === 'garden_diversity')
+            ?.levels.map(({ definition }) => definition.threshold),
+        [3, 5, 10, 15, 20],
+    );
+    assert.deepEqual(
+        getAchievementFamilies([])
+            .find((family) => family.key === 'seed_to_table')
+            ?.levels.map(({ definition }) => definition.threshold),
+        [1, 5, 10, 25, 50],
+    );
+    assert.deepEqual(
+        getAchievementFamilies([])
+            .find((family) => family.key === 'seasonal')
+            ?.levels.map(({ definition }) => definition.key),
+        ['season_2026_spring', 'season_2026_summer', 'season_2026_autumn'],
+    );
+    assert.ok(
+        getAchievementDefinitions()
+            .filter((award) =>
+                ['garden_diversity', 'seed_to_table', 'seasonal'].includes(
+                    award.familyKey,
+                ),
+            )
+            .every((award) => !award.autoApprove),
     );
 });
 
