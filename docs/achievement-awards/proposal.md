@@ -1,6 +1,6 @@
 # Achievement families, levels and collectible awards
 
-> Implementation: the initial artwork, family collection, and the three planned garden families are now implemented. All 34 original milestones keep dedicated illustrations. Diversity, seed-to-table, and 2026 seasonal awards use placeholder artwork until dedicated images land. Existing eligibility, approval and reward rules are unchanged. Live progress and a favorites shelf remain later phases. See [the component guide](../../packages/ui/src/AchievementAwards/README.md) for usage and validation.
+> Implementation: the artwork, family collection, and the three planned garden families are now implemented. All 47 milestones have dedicated illustrations, including diversity, seed-to-table, and the 2026 seasonal awards. Existing eligibility, approval and reward rules are unchanged. Live progress and a favorites shelf remain later phases. See [the component guide](../../packages/ui/src/AchievementAwards/README.md) for usage and validation.
 
 
 Proposal · 12 September 2026 · Product and art direction, not a runtime change
@@ -15,7 +15,7 @@ Use the established backpack, shopping basket and plant-status artwork as the vi
 
 ## What exists today
 
-The checked-in definitions contain **34 awards** across five categories:
+The initial artwork release covered **34 awards** across five categories:
 
 | Family | Existing milestones | Awards |
 | --- | --- | ---: |
