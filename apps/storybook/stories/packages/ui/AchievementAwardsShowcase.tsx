@@ -6,9 +6,22 @@ import {
 
 export function AchievementAwardsShowcase({
     dark = false,
+    newFamiliesOnly = false,
 }: {
     dark?: boolean;
+    newFamiliesOnly?: boolean;
 }) {
+    const families = getAchievementFamilies([]).filter(
+        (family) =>
+            !newFamiliesOnly ||
+            ['garden_diversity', 'seed_to_table', 'seasonal'].includes(
+                family.key,
+            ),
+    );
+    const awardCount = families.reduce(
+        (total, family) => total + family.levels.length,
+        0,
+    );
     return (
         <div
             className={`${dark ? 'dark' : ''} min-h-screen bg-background p-4 text-foreground sm:p-8`}
@@ -19,12 +32,13 @@ export function AchievementAwardsShowcase({
                         Achievement awards
                     </h1>
                     <p className="text-foreground/75">
-                        34 individual awards. Starter keepsakes grow into garden
-                        trophies with distinct silhouettes. Compare every level
-                        at 32, 64 and 160 pixels.
+                        {awardCount} distinct awards across {families.length}{' '}
+                        families. Starter keepsakes grow into garden trophies
+                        with distinct silhouettes and colorful materials.
+                        Compare every level at 32, 64 and 160 pixels.
                     </p>
                 </header>
-                {getAchievementFamilies([]).map((family) => (
+                {families.map((family) => (
                     <section key={family.key} className="space-y-4">
                         <h2 className="text-xl font-semibold">
                             {family.label}

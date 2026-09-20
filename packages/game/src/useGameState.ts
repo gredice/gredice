@@ -34,6 +34,7 @@ import {
     setGameQualityCustomProfile as persistGameQualityCustomProfile,
     setGameQualitySetting as persistGameQualitySetting,
 } from './scene/gameQuality';
+import { resolveSeasonState, type SeasonState } from './scene/seasonState';
 import { defaultWaterColors, type WaterColors } from './scene/waterColorState';
 import type { GardenStructureEditorState } from './structures/editor';
 import type { Block } from './types/Block';
@@ -435,6 +436,11 @@ export type GameState = {
     timeOfDay: number;
     sunsetTime: Date | null;
     sunriseTime: Date | null;
+    /**
+     * Time-of-year state every seasonal effect reads, derived from the same
+     * clock as the lighting so a frozen date stays deterministic.
+     */
+    seasonState: SeasonState;
 
     // Pickup system
     pickupBlock: Block | null;
@@ -637,6 +643,7 @@ export function createGameState({
         timeLocation,
     );
     const { sunrise, sunset } = getGameSunriseSunset(timeLocation, now);
+    const seasonState = resolveSeasonState(now);
     let nextBlockPlacementDropAnimationRenderId = 0;
     return createStore<GameState>((set, get) => ({
         authenticatedGardenQueriesEnabled,
@@ -672,6 +679,10 @@ export function createGameState({
                 ),
                 sunriseTime: sunrise,
                 sunsetTime: sunset,
+                seasonState: resolveSeasonState(
+                    referenceTime,
+                    get().seasonState,
+                ),
             });
         },
         dayNightCycleDisabled,
@@ -765,11 +776,16 @@ export function createGameState({
                 ),
                 sunriseTime: sunrise,
                 sunsetTime: sunset,
+                seasonState: resolveSeasonState(
+                    referenceTime,
+                    get().seasonState,
+                ),
             });
         },
         timeOfDay,
         sunriseTime: sunrise,
         sunsetTime: sunset,
+        seasonState,
 
         // Pickup system
         pickupBlock: null,
@@ -1360,6 +1376,10 @@ export function createGameState({
                 ),
                 sunriseTime: sunrise,
                 sunsetTime: sunset,
+                seasonState: resolveSeasonState(
+                    referenceTime,
+                    get().seasonState,
+                ),
             });
         },
         rainSurfaceIntensity: 0,

@@ -18,6 +18,7 @@ import {
     appRouterHubPaths,
     collectSitemapSourceEntries,
     collectSitemapSourcePaths,
+    conditionalHubPaths,
     defaultGardenBlockCount,
     defaultGardenBlockNameCount,
     isIndexableCmsPage,
@@ -394,6 +395,40 @@ test('catalogue detail pages are published with their entity timestamp', () => {
     assert.ok(entryByPath.has('/biljke/rajcica'));
     assert.equal(entryByPath.get('/biljke/rajcica')?.lastmod, undefined);
     assert.equal(entryByPath.has('/api/og/public'), false);
+});
+
+test('the sowing calendar is published only once its reviews are current', () => {
+    const calendarPath = conditionalHubPaths.regionalCalendar;
+    const cmsPages = [
+        {
+            // A CMS record with the same slug must not open the gate early.
+            slug: calendarPath.slice(1),
+            state: 'published',
+            publishedAt,
+            noIndex: false,
+        },
+    ];
+
+    const notReady = collectSitemapSourcePaths({
+        cmsPages,
+        publicGardens: [],
+    });
+    assert.equal(notReady.includes(calendarPath), false);
+
+    const ready = collectSitemapSourcePaths({
+        cmsPages,
+        publicGardens: [],
+        regionalCalendarReady: true,
+    });
+    assert.equal(ready.filter((path) => path === calendarPath).length, 1);
+
+    // The page stays crawlable and says so itself while it waits.
+    const calendarPage = readFileSync(
+        new URL('../app/kalendar-sjetve/page.tsx', import.meta.url),
+        'utf8',
+    );
+    assert.match(calendarPage, /index: calendar\.ready/u);
+    assert.match(calendarPage, /follow: true/u);
 });
 
 test('the sitemap route never reports build time and owns no URL of its own', () => {

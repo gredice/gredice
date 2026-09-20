@@ -2,6 +2,7 @@ import { shouldForwardPostHogConsoleMethod } from '@gredice/js/observability';
 import {
     createPostHogLogFlushScheduler,
     FetchOTLPLogExporter,
+    getPostHogLogsUrl,
     POSTHOG_LOG_BATCH_DELAY_MS,
     POSTHOG_LOG_EXPORT_TIMEOUT_MS,
     POSTHOG_LOG_FALLBACK_DELAY_MS,
@@ -16,6 +17,7 @@ import {
     BatchLogRecordProcessor,
     LoggerProvider,
 } from '@opentelemetry/sdk-logs';
+import { waitUntil } from '@vercel/functions';
 
 type PostHogCaptureClient = {
     capture: (payload: {
@@ -41,9 +43,7 @@ const postHogServerHost =
     process.env.NEXT_PUBLIC_POSTHOG_UI_HOST ??
     process.env.NEXT_PUBLIC_POSTHOG_HOST;
 
-const postHogLogsUrl = postHogServerHost
-    ? `${postHogServerHost.replace(/\/$/, '')}/i/v1/logs`
-    : null;
+const postHogLogsUrl = getPostHogLogsUrl(postHogServerHost);
 
 const noopPostHogClient: PostHogCaptureClient = {
     capture: () => undefined,
@@ -141,6 +141,7 @@ const schedulePostHogLogFlush = createPostHogLogFlushScheduler({
             error,
         });
     },
+    registerBackgroundTask: waitUntil,
 });
 
 export function registerPostHogConsoleForwarding(): void {

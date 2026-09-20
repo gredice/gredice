@@ -240,12 +240,12 @@ export const gameIconCatalog: GameIconEntry[] = [
             />
         ),
     })),
-    ...[1, 4, 9, 16].map((totalPlants) => ({
+    ...[1, 4, 9, 16, 25, 36].map((totalPlants) => ({
         name: `PlantGridIcon · ${totalPlants}`,
-        group: 'Custom monochrome',
-        description: `Plant density: Grid${totalPlants}Icon.`,
+        group: 'Styled game illustrations',
+        description: `Exact plant density: ${totalPlants} planting spots.`,
         sources: [
-            `packages/ui/src/GridIcons/Grid${totalPlants}Icon.tsx`,
+            'packages/ui/src/GridIcons/PlantGridIcon.tsx',
             'packages/game/src/hud/raisedBed/AdvancedSowingPickerPreview.tsx',
         ],
         preview: (

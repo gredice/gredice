@@ -7,10 +7,42 @@ import {
 import {
     createPostHogLogFlushScheduler,
     FetchOTLPLogExporter,
+    getPostHogLogsUrl,
     POSTHOG_LOG_EXPORT_TIMEOUT_MS,
     POSTHOG_LOG_FLUSH_TIMEOUT_MS,
     POSTHOG_LOG_PROCESSOR_TIMEOUT_MS,
 } from './index';
+
+test('uses the regional PostHog ingestion host for cloud log exports', () => {
+    assert.equal(
+        getPostHogLogsUrl('https://eu.posthog.com'),
+        'https://eu.i.posthog.com/i/v1/logs',
+    );
+    assert.equal(
+        getPostHogLogsUrl('https://us.posthog.com/'),
+        'https://us.i.posthog.com/i/v1/logs',
+    );
+    assert.equal(
+        getPostHogLogsUrl('https://app.posthog.com'),
+        'https://us.i.posthog.com/i/v1/logs',
+    );
+    assert.equal(
+        getPostHogLogsUrl('https://eu.i.posthog.com'),
+        'https://eu.i.posthog.com/i/v1/logs',
+    );
+});
+
+test('preserves custom PostHog hosts and path prefixes', () => {
+    assert.equal(
+        getPostHogLogsUrl('https://posthog.example.com/ingest/'),
+        'https://posthog.example.com/ingest/i/v1/logs',
+    );
+    assert.equal(
+        getPostHogLogsUrl('https://eu.posthog.com.example/'),
+        'https://eu.posthog.com.example/i/v1/logs',
+    );
+    assert.equal(getPostHogLogsUrl(undefined), null);
+});
 
 test('keeps enough timeout budget for one bounded export retry', () => {
     assert.ok(
@@ -44,6 +76,40 @@ test('coalesces log flushes during the batch window', async () => {
     const secondFlush = scheduleFlush();
 
     assert.equal(firstFlush, secondFlush);
+    assert.equal(flushCount, 0);
+
+    releaseBatchWindow();
+    await firstFlush;
+
+    assert.equal(flushCount, 1);
+});
+
+test('registers each scheduled flush with the request lifecycle', async () => {
+    let flushCount = 0;
+    let releaseBatchWindow = () => {};
+    const batchWindow = new Promise<void>((resolve) => {
+        releaseBatchWindow = resolve;
+    });
+    const backgroundTasks: Promise<void>[] = [];
+    const scheduleFlush = createPostHogLogFlushScheduler({
+        batchDelayMs: 1_000,
+        flush: async () => {
+            flushCount += 1;
+        },
+        initialFailureBackoffMs: 30_000,
+        maxFailureBackoffMs: 300_000,
+        onPersistentError: () => {},
+        registerBackgroundTask: (task) => {
+            backgroundTasks.push(task);
+        },
+        wait: () => batchWindow,
+    });
+
+    const firstFlush = scheduleFlush();
+    const secondFlush = scheduleFlush();
+
+    assert.equal(firstFlush, secondFlush);
+    assert.deepEqual(backgroundTasks, [firstFlush]);
     assert.equal(flushCount, 0);
 
     releaseBatchWindow();

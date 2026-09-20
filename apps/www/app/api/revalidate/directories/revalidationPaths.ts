@@ -32,6 +32,7 @@ const revalidationPathsByEntityType: Record<
         { path: '/sjeme/brend/[slug]', type: 'page' },
     ],
     plant: [
+        { path: '/kalendar-sjetve' },
         { path: '/' },
         { path: '/biljke' },
         { path: '/biljke/[alias]', type: 'page' },
@@ -56,6 +57,7 @@ const revalidationPathsByEntityType: Record<
         { path: '/biljke/[alias]', type: 'page' },
     ],
     plantSort: [
+        { path: '/kalendar-sjetve' },
         { path: '/cjenik' },
         { path: '/' },
         { path: '/biljke/[alias]', type: 'page' },

@@ -21,9 +21,10 @@ export function AchievementAward({
     ...props
 }: SVGProps<SVGSVGElement> & { achievementKey: string }) {
     const definition = getAchievementDefinition(achievementKey);
-    const source = definition
+    const dedicatedArtwork = definition
         ? achievementArtwork[definition.artworkKey]
-        : unknownArtwork;
+        : undefined;
+    const source = dedicatedArtwork ?? unknownArtwork;
     const size = definition ? artworkSizes[definition.visualGrade] : 400;
     const label = definition
         ? `${definition.title.trim()} · Razina ${formatAchievementLevel(definition.level)}`
@@ -41,6 +42,9 @@ export function AchievementAward({
             aria-label={decorative ? undefined : label}
             data-achievement-key={achievementKey}
             data-visual-grade={definition?.visualGrade}
+            {...(dedicatedArtwork
+                ? {}
+                : { 'data-achievement-placeholder': '' })}
             {...props}
         >
             {!decorative && <title>{props['aria-label'] ?? label}</title>}

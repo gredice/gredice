@@ -23,6 +23,7 @@ Use this guide for visual and interaction design decisions.
 ## Interaction standards
 
 - Use icons for common tool actions when an established icon exists.
+- Within a tab group, keep icon treatment consistent. If one tab uses illustrated game artwork, use matching artwork for every icon-bearing tab in that group.
 - Use segmented controls for modes, toggles or checkboxes for binary settings, sliders or numeric inputs for numbers, menus for option sets, and tabs for sibling views.
 - Text in controls must fit at mobile and desktop widths.
 - Layout dimensions should be stable for boards, grids, toolbars, counters, and tiles so hover states and dynamic labels do not shift the interface.

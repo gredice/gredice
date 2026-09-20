@@ -1,10 +1,8 @@
 import { orderBy } from '@gredice/js/arrays';
-import { GameCalendarIcon } from '@gredice/ui/GameIcons';
-import { LayoutGrid } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
+import { Tabs, TabsContent } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -21,7 +19,7 @@ import { CalendarInfoChip } from './CalendarInfoChip';
 import { PlantsCalendar } from './PlantsCalendar';
 import { PlantsGallery } from './PlantsGallery';
 import { PlantsSeedTimeFilterToggle } from './PlantsSeedTimeFilterToggle';
-import { plantArchivePath } from './plantArchivePath';
+import { PlantsViewTabs } from './PlantsViewTabs';
 
 export const metadata: Metadata = createPublicMetadata({
     title: 'Biljke',
@@ -92,49 +90,10 @@ export default async function PlantsPage({
             <Suspense>
                 <Tabs value={view} defaultValue="popis" className="w-full">
                     <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center">
-                        <TabsList className="grid grid-cols-2 w-fit border">
-                            <TabsTrigger
-                                value="popis"
-                                className="w-full"
-                                asChild
-                            >
-                                <Link
-                                    href={plantArchivePath({
-                                        search,
-                                        seedTimeOnly: isSeedTimeFilterEnabled,
-                                        view: 'popis',
-                                    })}
-                                    prefetch
-                                >
-                                    <Row spacing={2} className="cursor-default">
-                                        <LayoutGrid className="size-5" />
-                                        <span>Popis</span>
-                                    </Row>
-                                </Link>
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="kalendar"
-                                className="w-full"
-                                asChild
-                            >
-                                <Link
-                                    href={plantArchivePath({
-                                        search,
-                                        seedTimeOnly: isSeedTimeFilterEnabled,
-                                        view: 'kalendar',
-                                    })}
-                                    prefetch
-                                >
-                                    <Row spacing={2} className="cursor-default">
-                                        <GameCalendarIcon
-                                            aria-hidden
-                                            className="size-5"
-                                        />
-                                        <span>Kalendar</span>
-                                    </Row>
-                                </Link>
-                            </TabsTrigger>
-                        </TabsList>
+                        <PlantsViewTabs
+                            search={search}
+                            seedTimeOnly={isSeedTimeFilterEnabled}
+                        />
                         {view === 'kalendar' && <CalendarInfoChip />}
                         <div className="flex flex-col gap-2 md:ml-auto md:flex-row md:items-center">
                             <Suspense>
@@ -165,6 +124,16 @@ export default async function PlantsPage({
                     </TabsContent>
                 </Tabs>
             </Suspense>
+            <Typography level="body1" className="mt-6">
+                Za objašnjenja radnji i regionalnih termina otvori{' '}
+                <Link
+                    href={KnownPages.SowingCalendar}
+                    className="font-medium text-primary underline"
+                >
+                    kalendar sjetve i sadnje za kontinentalnu Hrvatsku
+                </Link>
+                .
+            </Typography>
             <Typography level="body1" className="mt-8">
                 Odaberi što želiš uzgajati, a zatim provjeri kako funkcionira{' '}
                 <Link

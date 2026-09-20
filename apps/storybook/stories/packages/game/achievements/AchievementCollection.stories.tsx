@@ -11,7 +11,7 @@ const meta = {
         const canvas = within(canvasElement);
         await expect(
             canvasElement.querySelectorAll('[data-achievement-family]'),
-        ).toHaveLength(5);
+        ).toHaveLength(8);
         await userEvent.click(canvas.getByRole('button', { name: /^Sadnja/ }));
         const dialog = await within(
             canvasElement.ownerDocument.body,

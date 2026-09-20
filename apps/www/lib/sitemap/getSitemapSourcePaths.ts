@@ -14,6 +14,7 @@ import {
 } from '../plants/getPlantHealthIssuesData';
 import { getPlantSortsData } from '../plants/getPlantSortsData';
 import { getPlantsData } from '../plants/getPlantsData';
+import { getRegionalCalendarData } from '../plants/getRegionalCalendarData';
 import { getSeedBrandsData } from '../seeds/getSeedBrandsData';
 import { getSeedsData } from '../seeds/getSeedsData';
 import {
@@ -148,16 +149,19 @@ async function loadDirectorySources(): Promise<DirectorySitemapSource[]> {
  * catalogue detail pages, each with its content timestamp where one exists.
  */
 export async function getSitemapEntries() {
-    const [cmsPages, publicGardens, directoryEntries] = await Promise.all([
-        getCmsPages({ state: 'published' }),
-        getPublicGardenSitemapSources(),
-        loadDirectorySources(),
-    ]);
+    const [cmsPages, publicGardens, directoryEntries, regionalCalendar] =
+        await Promise.all([
+            getCmsPages({ state: 'published' }),
+            getPublicGardenSitemapSources(),
+            loadDirectorySources(),
+            getRegionalCalendarData(),
+        ]);
 
     return collectSitemapSourceEntries({
         cmsPages,
         publicGardens,
         directoryEntries,
+        regionalCalendarReady: regionalCalendar.ready,
     });
 }
 

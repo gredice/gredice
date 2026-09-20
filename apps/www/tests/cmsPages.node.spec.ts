@@ -74,6 +74,11 @@ test('public CMS catch-all keeps outlet route reserved', () => {
     assert.equal(hasReservedFirstSegment('outlet/sezonska-ponuda'), true);
 });
 
+test('public CMS catch-all reserves the regional sowing calendar', () => {
+    assert.equal(hasReservedFirstSegment('kalendar-sjetve'), true);
+    assert.equal(hasReservedFirstSegment('kalendar-sjetve/rujan'), true);
+});
+
 test('public CMS catch-all keeps wallpaper studio route reserved', () => {
     assert.equal(hasReservedFirstSegment('pozadine'), true);
 });

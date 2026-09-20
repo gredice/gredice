@@ -37,6 +37,11 @@ generator stamped identical values on every URL.
 ## Inclusion rules
 
 - **Hubs** (`sitemapHubPaths`) are listed explicitly, every one of them.
+- **Conditional hubs** (`conditionalHubPaths`) have a real route but are
+  published only once their content is ready. `/kalendar-sjetve` waits for the
+  five regional calendar reviews to be current; until then the page declares
+  `robots: { index: false, follow: true }` itself, so the sitemap and the page
+  agree. A CMS record with the same slug cannot open the gate early.
 - **Catalogue detail pages** (plants, sorts, blocks, operations, diseases,
   pests, seeds, brands, occasions) are built from the directory entities, using
   the same route-alias helpers the pages use in `generateStaticParams` so the

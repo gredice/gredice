@@ -58,6 +58,21 @@ export const appRouterHubPaths = [
     '/vrtovi',
 ] as const;
 
+/**
+ * Hubs whose route exists but which belong in the sitemap only once their
+ * content is ready. They are published through the gate in
+ * `collectSitemapSourceEntries`, and the page itself carries the matching
+ * `robots` directive so it stays crawlable while it waits.
+ */
+export const conditionalHubPaths = {
+    /** Published once the five regional calendar reviews are current. */
+    regionalCalendar: '/kalendar-sjetve',
+} as const;
+
+const conditionalHubPathSet = new Set<string>(
+    Object.values(conditionalHubPaths),
+);
+
 /** Hubs served from `apps/news` through the `/novosti` rewrite. */
 export const newsHubPaths = ['/novosti', '/novosti/sto-je-novo'] as const;
 
@@ -200,6 +215,12 @@ export function isIndexableCmsPage(page: CmsSitemapPage) {
         return false;
     }
 
+    // A conditional hub is owned by its app route and gated on readiness, so a
+    // CMS record with the same slug must not publish it early.
+    if (conditionalHubPathSet.has(canonicalCmsPagePath(page))) {
+        return false;
+    }
+
     const canonicalPath = page.canonicalPath?.trim();
     if (canonicalPath && canonicalPath !== canonicalCmsPagePath(page)) {
         return false;
@@ -241,12 +262,18 @@ export function collectSitemapSourceEntries({
     cmsPages,
     publicGardens,
     directoryEntries = [],
+    regionalCalendarReady = false,
 }: {
     cmsPages: ReadonlyArray<CmsSitemapPage>;
     publicGardens: ReadonlyArray<PublicGardenSitemapSource>;
     directoryEntries?: ReadonlyArray<DirectorySitemapSource>;
+    regionalCalendarReady?: boolean;
 }): SitemapEntry[] {
     const entries: SitemapEntry[] = sitemapHubPaths.map((path) => ({ path }));
+
+    if (regionalCalendarReady) {
+        entries.push({ path: conditionalHubPaths.regionalCalendar });
+    }
 
     for (const page of cmsPages) {
         if (!isIndexableCmsPage(page)) {

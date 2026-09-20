@@ -14,6 +14,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { isExcludedSitemapPath } from '../lib/sitemap/sitemapPolicy.ts';
 import {
+    conditionalHubPaths,
     dynamicRouteSitemapPolicy,
     sitemapHubPaths,
 } from '../lib/sitemap/sitemapSourcePaths.ts';
@@ -56,7 +57,11 @@ function collectRoutes(directory: string, prefix = ''): string[] {
 }
 
 const routes = collectRoutes(appDirectory);
-const hubPaths = new Set<string>(sitemapHubPaths);
+// A conditional hub has a real route; it is published once its gate opens.
+const hubPaths = new Set<string>([
+    ...sitemapHubPaths,
+    ...Object.values(conditionalHubPaths),
+]);
 
 test('the route tree has routes to check', () => {
     assert.ok(routes.length > 40, `found ${routes.length.toString()} routes`);
@@ -110,6 +115,17 @@ test('every dynamic route family declares how it reaches the sitemap', () => {
             policy.source === 'excluded',
             route,
         );
+    }
+});
+
+test('conditional hubs are real routes that are not excluded by policy', () => {
+    const routeSet = new Set(routes);
+
+    for (const hubPath of Object.values(conditionalHubPaths)) {
+        assert.ok(routeSet.has(hubPath), `${hubPath} has no route`);
+        // The gate decides when it is published; an exclusion would make the
+        // gate unreachable.
+        assert.equal(isExcludedSitemapPath(hubPath), false, hubPath);
     }
 });
 

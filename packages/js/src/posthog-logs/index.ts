@@ -16,6 +16,19 @@ export const POSTHOG_LOG_INITIAL_FAILURE_BACKOFF_MS = 30_000;
 export const POSTHOG_LOG_MAX_FAILURE_BACKOFF_MS = 5 * 60_000;
 const POSTHOG_LOG_TIMEOUT_RETRY_COUNT = 1;
 
+export function getPostHogLogsUrl(host: string | undefined): string | null {
+    if (!host) {
+        return null;
+    }
+
+    const ingestHost = host
+        .replace(/:\/\/app\.posthog\.com(?=\/|$)/, '://us.i.posthog.com')
+        .replace(/:\/\/us\.posthog\.com(?=\/|$)/, '://us.i.posthog.com')
+        .replace(/:\/\/eu\.posthog\.com(?=\/|$)/, '://eu.i.posthog.com');
+
+    return `${ingestHost.replace(/\/+$/, '')}/i/v1/logs`;
+}
+
 type PostHogLogFlushErrorContext = {
     consecutiveFailures: number;
     retryInMs: number;
@@ -31,6 +44,7 @@ type PostHogLogFlushSchedulerOptions = {
         error: unknown,
         context: PostHogLogFlushErrorContext,
     ) => void;
+    registerBackgroundTask?: (task: Promise<void>) => void;
     wait?: (delayMs: number) => Promise<void>;
 };
 
@@ -160,6 +174,7 @@ export function createPostHogLogFlushScheduler({
     maxFailureBackoffMs,
     now = Date.now,
     onPersistentError,
+    registerBackgroundTask,
     wait = waitFor,
 }: PostHogLogFlushSchedulerOptions): () => Promise<void> {
     let consecutiveFailures = 0;
@@ -205,6 +220,8 @@ export function createPostHogLogFlushScheduler({
             .finally(() => {
                 pendingFlush = null;
             });
+
+        registerBackgroundTask?.(pendingFlush);
 
         return pendingFlush;
     };
