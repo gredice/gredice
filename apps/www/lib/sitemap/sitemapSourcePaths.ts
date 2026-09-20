@@ -1,8 +1,6 @@
 import {
-    isExcludedSitemapPath,
     mergeSitemapEntries,
     type SitemapEntry,
-    sitemapPathKey,
     toSitemapLastmod,
 } from './sitemapPolicy.ts';
 
@@ -14,12 +12,13 @@ export {
     type SitemapEntry,
     sitemapPathKey,
     toSitemapLastmod,
+    toSitemapUrl,
 } from './sitemapPolicy.ts';
 
 /**
- * Public hubs rendered by `apps/www`. They are listed explicitly because a hub
- * that reads `searchParams` (or opts into `force-dynamic`) is never part of the
- * build output `next-sitemap` scans, which is how `/biljke` went missing.
+ * Public hubs rendered by `apps/www`. Nothing crawls the route tree for us, so
+ * every hub is listed here; `sitemapRouteCoverage.node.spec.ts` fails when a
+ * public page in `app/` is neither listed nor excluded by policy.
  */
 export const appRouterHubPaths = [
     '/',
@@ -77,6 +76,81 @@ export const sitemapHubPaths = [
     ...newsHubPaths,
     ...sourceCmsPagePaths,
 ] as const;
+
+/**
+ * How each dynamic route family reaches the sitemap. Nothing enumerates routes
+ * for us any more, so every `[param]` route in `app/` is classified here and
+ * `sitemapRouteCoverage.node.spec.ts` fails when a new one appears unclassified.
+ */
+export const dynamicRouteSitemapPolicy: Record<
+    string,
+    {
+        source: 'cms' | 'directory' | 'gardens' | 'excluded' | 'not-published';
+        reason: string;
+    }
+> = {
+    '/[...slug]': {
+        source: 'cms',
+        reason: 'Published CMS pages, including /novosti articles.',
+    },
+    '/biljke/[alias]': {
+        source: 'directory',
+        reason: 'Plant catalogue entries.',
+    },
+    '/biljke/[alias]/sorte/[sortAlias]': {
+        source: 'directory',
+        reason: 'Plant sort entries.',
+    },
+    '/blokovi/[alias]': {
+        source: 'directory',
+        reason: 'Block entries; in-app items, kept indexable.',
+    },
+    '/blokovi/biljke/[alias]': {
+        source: 'directory',
+        reason: 'Plants with a procedural block model.',
+    },
+    '/bolesti/[alias]': {
+        source: 'directory',
+        reason: 'Plant disease guides.',
+    },
+    '/stetnici/[alias]': {
+        source: 'directory',
+        reason: 'Plant pest guides.',
+    },
+    '/radnje/[alias]': {
+        source: 'directory',
+        reason: 'Garden operation guides.',
+    },
+    '/sjeme/[slug]': { source: 'directory', reason: 'Seed catalogue entries.' },
+    '/sjeme/brend/[slug]': {
+        source: 'directory',
+        reason: 'Seed brand pages.',
+    },
+    '/legalno/natjecaji/[occasionSlug]': {
+        source: 'directory',
+        reason: 'Official contest rules.',
+    },
+    '/vrtovi/[gardenId]': {
+        source: 'gardens',
+        reason: 'Public gardens that are past the starter garden.',
+    },
+    '/korisnici/[publicId]': {
+        source: 'not-published',
+        reason: 'Public profiles are rendered on demand and were never in the sitemap. Publishing them needs an opt-in signal per profile, which is out of scope here.',
+    },
+    '/pozdrav/[slug]': {
+        source: 'excluded',
+        reason: 'Redirects to the landing page.',
+    },
+    '/trag/[token]': {
+        source: 'excluded',
+        reason: 'Per-recipient tracking links.',
+    },
+    '/cjenik/preuzimanje/[id]': {
+        source: 'excluded',
+        reason: 'Signed CSV downloads.',
+    },
+};
 
 /**
  * A freshly created garden holds a grass grid and one empty raised bed, so two
@@ -148,17 +222,18 @@ export function publicGardenSitemapPath(garden: PublicGardenSitemapSource) {
 }
 
 /**
- * Build the sitemap entries that cannot be discovered from the build output:
- * dynamic hubs, CMS pages and public gardens. Catalogue detail pages are
- * prerendered, so the build output already lists them; they only contribute
- * timestamps through `collectSitemapLastmodIndex`.
+ * Build every sitemap entry: the public hubs, CMS pages, eligible public
+ * gardens and the catalogue detail pages. This is the complete URL set that
+ * `app/sitemap.ts` publishes.
  */
 export function collectSitemapSourceEntries({
     cmsPages,
     publicGardens,
+    directoryEntries = [],
 }: {
     cmsPages: ReadonlyArray<CmsSitemapPage>;
     publicGardens: ReadonlyArray<PublicGardenSitemapSource>;
+    directoryEntries?: ReadonlyArray<DirectorySitemapSource>;
 }): SitemapEntry[] {
     const entries: SitemapEntry[] = sitemapHubPaths.map((path) => ({ path }));
 
@@ -186,6 +261,13 @@ export function collectSitemapSourceEntries({
         });
     }
 
+    for (const directoryEntry of directoryEntries) {
+        entries.push({
+            path: directoryEntry.path,
+            lastmod: toSitemapLastmod(directoryEntry.updatedAt),
+        });
+    }
+
     return mergeSitemapEntries(entries);
 }
 
@@ -194,42 +276,4 @@ export function collectSitemapSourcePaths(
     sources: Parameters<typeof collectSitemapSourceEntries>[0],
 ) {
     return collectSitemapSourceEntries(sources).map((entry) => entry.path);
-}
-
-/**
- * `path -> lastmod` lookup used while transforming every sitemap URL, including
- * the prerendered catalogue pages `next-sitemap` discovers from the build
- * output. Paths without a reliable timestamp stay out of the index so their
- * `lastmod` is omitted rather than reported as build time.
- */
-export function collectSitemapLastmodIndex({
-    sourceEntries = [],
-    directoryEntries = [],
-}: {
-    sourceEntries?: ReadonlyArray<SitemapEntry>;
-    directoryEntries?: ReadonlyArray<DirectorySitemapSource>;
-}): Map<string, string> {
-    const index = new Map<string, string>();
-    const candidates: SitemapEntry[] = [
-        ...sourceEntries,
-        ...directoryEntries.map((entry) => ({
-            path: entry.path,
-            lastmod: toSitemapLastmod(entry.updatedAt),
-        })),
-    ];
-
-    for (const entry of candidates) {
-        const lastmod = toSitemapLastmod(entry.lastmod);
-        if (!lastmod || isExcludedSitemapPath(entry.path)) {
-            continue;
-        }
-
-        const key = sitemapPathKey(entry.path);
-        const existing = index.get(key);
-        if (!existing || existing < lastmod) {
-            index.set(key, lastmod);
-        }
-    }
-
-    return index;
 }

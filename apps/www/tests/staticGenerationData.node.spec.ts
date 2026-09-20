@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { canonicalLegacyNewsPathname } from '../src/newsPaths.ts';
 
@@ -73,8 +73,8 @@ test('plant detail pages remain compatible with static generation', () => {
 });
 
 test('sitemap generation reads source data without HTTP fallbacks', () => {
-    const configSource = readFileSync(
-        new URL('../next-sitemap.config.ts', import.meta.url),
+    const sitemapRoute = readFileSync(
+        new URL('../app/sitemap.ts', import.meta.url),
         'utf8',
     );
     const sourceLoader = readFileSync(
@@ -82,13 +82,40 @@ test('sitemap generation reads source data without HTTP fallbacks', () => {
         'utf8',
     );
 
-    assert.match(configSource, /getSitemapSourcePaths/u);
-    assert.doesNotMatch(configSource, httpDataSourcePattern);
+    assert.match(sitemapRoute, /getSitemapEntries/u);
+    assert.doesNotMatch(sitemapRoute, httpDataSourcePattern);
     assert.match(sourceLoader, /getCmsPages/u);
     assert.match(sourceLoader, /getPublicGardenSitemapSources/u);
     assert.match(sourceLoader, /getSeedsData/u);
     assert.match(sourceLoader, /getSeedBrandsData/u);
     assert.doesNotMatch(sourceLoader, httpDataSourcePattern);
+});
+
+test('the sitemap is a Next.js route, not a generated file', () => {
+    const packageJson = JSON.parse(
+        readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+    );
+    const dependencies = {
+        ...packageJson.dependencies,
+        ...packageJson.devDependencies,
+    };
+
+    assert.equal('next-sitemap' in dependencies, false);
+    assert.equal('postbuild' in packageJson.scripts, false);
+    assert.equal(
+        existsSync(new URL('../next-sitemap.config.ts', import.meta.url)),
+        false,
+    );
+    assert.ok(existsSync(new URL('../app/sitemap.ts', import.meta.url)));
+    assert.ok(existsSync(new URL('../app/robots.ts', import.meta.url)));
+
+    // The previously submitted sitemap URL must not start returning 404.
+    const nextConfig = readFileSync(
+        new URL('../next.config.ts', import.meta.url),
+        'utf8',
+    );
+    assert.match(nextConfig, /source: '\/sitemap-0\.xml'/u);
+    assert.match(nextConfig, /destination: '\/sitemap\.xml'/u);
 });
 
 test('private utility routes declare no-index metadata', () => {

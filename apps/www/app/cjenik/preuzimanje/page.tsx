@@ -8,6 +8,13 @@ export const metadata = createPublicMetadata({
     title: 'Preuzimanje cjenika',
     description: 'CSV cjenik Gredica i arhiva objavljenih cjenika.',
     path: '/cjenik/preuzimanje',
+    // A listing of CSV downloads rather than a content page. It stays
+    // crawlable so robots can read this directive, but out of the index and
+    // out of the sitemap.
+    robots: {
+        index: false,
+        follow: true,
+    },
 });
 
 export default async function PriceListDownloadsPage() {

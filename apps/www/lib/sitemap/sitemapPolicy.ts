@@ -1,12 +1,11 @@
 /**
- * Sitemap policy shared by the `next-sitemap` config, the database-driven
- * source model and the inventory report.
+ * Sitemap policy shared by `app/sitemap.ts`, the database-driven source model
+ * and the inventory report.
  *
  * The sitemap must describe canonical, indexable public pages and nothing else.
- * Keeping the rules in one dependency-free module is what stops the generator,
- * the source model and the tests from drifting apart: a glob handed to
- * `next-sitemap` only filters routes discovered from the build output, while
- * `additionalPaths` entries bypass it entirely.
+ * Nothing discovers routes for us: `app/sitemap.ts` publishes exactly what the
+ * source model returns, so this module is the single gate every candidate path
+ * passes through.
  */
 
 export type SitemapEntry = {
@@ -20,9 +19,9 @@ export type SitemapEntry = {
 };
 
 /**
- * Patterns for routes that must never appear in a page sitemap. They are handed
- * to `next-sitemap`'s `exclude` option and enforced again by
- * `isExcludedSitemapPath` so source-driven paths follow the same policy.
+ * Patterns for routes that must never appear in a page sitemap. They also
+ * document the policy for the route-coverage test, which checks every public
+ * page in `app/` against this list.
  *
  * `*` matches a single path segment, `**` matches any number of segments.
  */
@@ -47,8 +46,10 @@ export const excludedSitemapRoutes = [
     // Personalised tracking links and sign-in round trips.
     '/trag/*',
     '/prijava/**',
-    // Raw CSV exports and per-snapshot downloads are files, not pages.
+    // Raw CSV exports, the download index and per-snapshot downloads are
+    // files and file listings, not content pages.
     '/cjenik/cjenik.csv',
+    '/cjenik/preuzimanje',
     '/cjenik/preuzimanje/*',
     // Search and filter permutations of catalogue hubs.
     '/pretraga',
@@ -145,6 +146,12 @@ export function isExcludedSitemapPath(path: string) {
     return excludedSitemapRoutePatterns.some((patternSegments) =>
         matchesSegments(segments, patternSegments),
     );
+}
+
+/** Absolute URL for a sitemap entry. */
+export function toSitemapUrl(origin: string, path: string) {
+    const normalized = normalizeSitemapPath(path);
+    return normalized === '/' ? origin : `${origin}${normalized}`;
 }
 
 /** Convert a content timestamp into a sitemap `lastmod`, or `undefined`. */

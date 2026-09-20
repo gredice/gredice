@@ -12,10 +12,10 @@ import {
     mergeSitemapEntries,
     normalizeSitemapPath,
     toSitemapLastmod,
+    toSitemapUrl,
 } from '../lib/sitemap/sitemapPolicy.ts';
 import {
     appRouterHubPaths,
-    collectSitemapLastmodIndex,
     collectSitemapSourceEntries,
     collectSitemapSourcePaths,
     defaultGardenBlockNameCount,
@@ -333,60 +333,99 @@ test('lastmod carries content timestamps and is omitted when unavailable', () =>
     assert.equal(toSitemapLastmod(null), undefined);
 });
 
-test('the lastmod index covers prerendered catalogue pages', () => {
-    const index = collectSitemapLastmodIndex({
-        sourceEntries: [
-            { path: '/vrtovi/7', lastmod: updatedAt.toISOString() },
-        ],
+test('catalogue detail pages are published with their entity timestamp', () => {
+    const entries = sourceEntries({
         directoryEntries: [
             { path: '/blokovi/pijesak', updatedAt: publishedAt },
+            // The same page seen twice keeps the newest timestamp, once.
             { path: '/blokovi/pijesak/', updatedAt },
             { path: '/biljke/rajcica' },
             { path: '/api/og/public', updatedAt },
         ],
     });
+    const entryByPath = new Map(entries.map((entry) => [entry.path, entry]));
 
-    assert.equal(index.get('/vrtovi/7'), updatedAt.toISOString());
-    // The newest known timestamp wins for the same normalised path.
-    assert.equal(index.get('/blokovi/pijesak'), updatedAt.toISOString());
-    assert.equal(index.has('/biljke/rajcica'), false);
-    assert.equal(index.has('/api/og/public'), false);
+    assert.equal(
+        entries.filter((entry) => entry.path === '/blokovi/pijesak').length,
+        1,
+    );
+    assert.equal(
+        entryByPath.get('/blokovi/pijesak')?.lastmod,
+        updatedAt.toISOString(),
+    );
+    // Present, but with no timestamp to report.
+    assert.ok(entryByPath.has('/biljke/rajcica'));
+    assert.equal(entryByPath.get('/biljke/rajcica')?.lastmod, undefined);
+    assert.equal(entryByPath.has('/api/og/public'), false);
 });
 
-test('the generator never reports build time and keeps one policy for both sources', () => {
-    const configSource = readFileSync(
-        new URL('../next-sitemap.config.ts', import.meta.url),
+test('the sitemap route never reports build time and owns no URL of its own', () => {
+    const sitemapRoute = readFileSync(
+        new URL('../app/sitemap.ts', import.meta.url),
         'utf8',
     );
 
-    assert.match(configSource, /autoLastmod: false/u);
-    assert.doesNotMatch(configSource, /new Date\(\)/u);
-    assert.match(configSource, /exclude: \[\.\.\.excludedSitemapRoutes\]/u);
-    assert.match(configSource, /isExcludedSitemapPath\(loc\)/u);
-    assert.match(configSource, /getSitemapLastmodIndex/u);
+    // Every URL comes from the source model, with the timestamp it carries.
+    assert.match(sitemapRoute, /getSitemapEntries\(\)/u);
+    assert.match(
+        sitemapRoute,
+        /entry\.lastmod \? \{ lastModified: entry\.lastmod \}/u,
+    );
+    assert.doesNotMatch(sitemapRoute, /new Date\(\)/u);
+    assert.doesNotMatch(sitemapRoute, /Date\.now\(\)/u);
+});
+
+test('sitemap URLs are absolute and built from the canonical origin', () => {
+    const origin = 'https://www.gredice.com';
+
+    assert.equal(toSitemapUrl(origin, '/'), origin);
+    assert.equal(toSitemapUrl(origin, '/biljke'), `${origin}/biljke`);
+    assert.equal(toSitemapUrl(origin, '/biljke/'), `${origin}/biljke`);
+    assert.equal(
+        toSitemapUrl(origin, '/biljke/rajčica'),
+        `${origin}/biljke/raj%C4%8Dica`,
+    );
+
+    const sitemapRoute = readFileSync(
+        new URL('../app/sitemap.ts', import.meta.url),
+        'utf8',
+    );
+    assert.match(sitemapRoute, /PUBLIC_SITE_ORIGIN/u);
+    assert.match(sitemapRoute, /toSitemapUrl/u);
 });
 
 test('pages dropped from the sitemap stay crawlable', () => {
-    const configSource = readFileSync(
-        new URL('../next-sitemap.config.ts', import.meta.url),
+    const robotsRoute = readFileSync(
+        new URL('../app/robots.ts', import.meta.url),
         'utf8',
     );
-    const disallowMatches = configSource.match(/disallow: \[[^\]]*\]/gu) ?? [];
+    const disallowMatches = robotsRoute.match(/disallow: \[[^\]]*\]/gu) ?? [];
 
     assert.ok(disallowMatches.length > 0);
     for (const disallow of disallowMatches) {
         assert.equal(disallow, "disallow: ['/trag/']");
     }
-
-    const generatorSource = readFileSync(
-        new URL('../app/blokovi/biljke/generator/page.tsx', import.meta.url),
-        'utf8',
+    assert.match(robotsRoute, /'Googlebot'/u);
+    assert.match(robotsRoute, /'OAI-SearchBot'/u);
+    assert.match(
+        robotsRoute,
+        /sitemap: `\$\{PUBLIC_SITE_ORIGIN\}\/sitemap\.xml`/u,
     );
-    assert.match(generatorSource, /index: false/u);
-    assert.match(generatorSource, /follow: true/u);
+
+    for (const routePath of [
+        '../app/blokovi/biljke/generator/page.tsx',
+        '../app/cjenik/preuzimanje/page.tsx',
+    ]) {
+        const source = readFileSync(
+            new URL(routePath, import.meta.url),
+            'utf8',
+        );
+        assert.match(source, /index: false/u, routePath);
+        assert.match(source, /follow: true/u, routePath);
+    }
 });
 
-test('the excluded route policy is the one handed to next-sitemap', () => {
+test('the exclusion policy is well formed', () => {
     for (const pattern of excludedSitemapRoutes) {
         assert.ok(pattern.startsWith('/'), pattern);
     }

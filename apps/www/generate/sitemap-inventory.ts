@@ -1,12 +1,16 @@
 /**
  * Build the sitemap URL inventory by route family.
  *
- * Usage (from `apps/www`, after `pnpm build`):
+ * Usage (from `apps/www`):
  *
  *   pnpm run sitemap:inventory
  *   pnpm run sitemap:inventory -- --probe --base-url=https://www.gredice.com
  *   pnpm run sitemap:inventory -- --impressions=./search-console.csv
+ *   pnpm run sitemap:inventory -- --sitemap=./downloaded-sitemap.xml
  *
+ * By default the URLs come from the same source model `app/sitemap.ts`
+ * publishes, so no build is needed; `--sitemap` reads a downloaded sitemap
+ * instead, which is how a live deployment is audited.
  * Without `--probe` the report covers the URL set and its `lastmod` coverage.
  * With `--probe` every URL is fetched so the report also carries HTTP status,
  * the rendered robots directive, the rendered canonical and whether the page
@@ -17,6 +21,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parseStringPromise } from 'xml2js';
+import { getSitemapEntries } from '../lib/sitemap/getSitemapSourcePaths.ts';
 import {
     formatSitemapInventoryMarkdown,
     type SitemapInventoryRecord,
@@ -164,8 +169,16 @@ async function probeAll(
     await Promise.all(workers);
 }
 
+async function readSourceModelUrls() {
+    const entries = await getSitemapEntries();
+    return entries.map((entry) => ({
+        path: entry.path,
+        lastmod: entry.lastmod ?? null,
+    }));
+}
+
 async function main() {
-    const sitemapPath = readArgument('sitemap') ?? './public/sitemap.xml';
+    const sitemapPath = readArgument('sitemap');
     const outputDirectory = readArgument('out-dir') ?? './sitemap-inventory';
     const impressionsPath = readArgument('impressions');
     const baseUrl =
@@ -173,19 +186,21 @@ async function main() {
         process.env.SITE_URL ??
         'https://www.gredice.com';
 
-    const urls = await readSitemapUrls(sitemapPath);
+    const urls = sitemapPath
+        ? (await readSitemapUrls(sitemapPath)).map((url) => ({
+              path: new URL(url.loc).pathname,
+              lastmod: url.lastmod,
+          }))
+        : await readSourceModelUrls();
     const impressions = impressionsPath
         ? await readImpressions(impressionsPath)
         : new Map<string, number>();
 
-    const records: SitemapInventoryRecord[] = urls.map((url) => {
-        const pathname = new URL(url.loc).pathname;
-        return {
-            path: pathname,
-            lastmod: url.lastmod,
-            impressions: impressions.get(pathname) ?? null,
-        };
-    });
+    const records: SitemapInventoryRecord[] = urls.map((url) => ({
+        path: url.path,
+        lastmod: url.lastmod,
+        impressions: impressions.get(url.path) ?? null,
+    }));
 
     if (hasFlag('probe')) {
         await probeAll(

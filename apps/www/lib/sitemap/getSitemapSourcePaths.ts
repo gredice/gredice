@@ -17,7 +17,6 @@ import { getPlantsData } from '../plants/getPlantsData';
 import { getSeedBrandsData } from '../seeds/getSeedBrandsData';
 import { getSeedsData } from '../seeds/getSeedsData';
 import {
-    collectSitemapLastmodIndex,
     collectSitemapSourceEntries,
     type DirectorySitemapSource,
 } from './sitemapSourcePaths';
@@ -31,9 +30,12 @@ function directoryAlias(entity: SluggedDirectoryEntity, fallback: string) {
     return entity.slug || toPageAlias(fallback);
 }
 
-async function loadDirectoryLastmodSources(): Promise<
-    DirectorySitemapSource[]
-> {
+/**
+ * Catalogue detail pages, with the timestamp of the entity they render. Route
+ * aliases are resolved with the same helpers the pages use in
+ * `generateStaticParams`, so the sitemap cannot advertise a 404.
+ */
+async function loadDirectorySources(): Promise<DirectorySitemapSource[]> {
     const [
         plants,
         plantSorts,
@@ -142,37 +144,23 @@ async function loadDirectoryLastmodSources(): Promise<
 }
 
 /**
- * Sitemap entries that `next-sitemap` cannot discover from the build output:
- * dynamic public hubs, CMS pages and eligible public gardens.
+ * Every public URL in the sitemap: hubs, CMS pages, eligible public gardens and
+ * catalogue detail pages, each with its content timestamp where one exists.
  */
-export async function getSitemapSourceEntries() {
-    const [cmsPages, publicGardens] = await Promise.all([
+export async function getSitemapEntries() {
+    const [cmsPages, publicGardens, directoryEntries] = await Promise.all([
         getCmsPages({ state: 'published' }),
         getPublicGardenSitemapSources(),
+        loadDirectorySources(),
     ]);
 
-    return collectSitemapSourceEntries({ cmsPages, publicGardens });
+    return collectSitemapSourceEntries({
+        cmsPages,
+        publicGardens,
+        directoryEntries,
+    });
 }
 
 export async function getSitemapSourcePaths() {
-    return (await getSitemapSourceEntries()).map((entry) => entry.path);
-}
-
-let lastmodIndexPromise: Promise<Map<string, string>> | null = null;
-
-/**
- * `path -> lastmod` lookup for every sitemap URL. Built once per generator run
- * because `transform` is called for each discovered route.
- */
-export function getSitemapLastmodIndex() {
-    lastmodIndexPromise ??= (async () => {
-        const [sourceEntries, directoryEntries] = await Promise.all([
-            getSitemapSourceEntries(),
-            loadDirectoryLastmodSources(),
-        ]);
-
-        return collectSitemapLastmodIndex({ sourceEntries, directoryEntries });
-    })();
-
-    return lastmodIndexPromise;
+    return (await getSitemapEntries()).map((entry) => entry.path);
 }

@@ -65,7 +65,7 @@ Existing public structured data includes products for plants, plant sorts, and o
 
 ## Sitemap And Public Tests
 
-`apps/www` runs `next-sitemap` in `postbuild`. CMS pages are added by `apps/www/next-sitemap.config.cjs` from the directories API, filtered to published pages with `publishedAt` and no `noIndex`.
+`apps/www` serves the sitemap from `app/sitemap.ts`, built entirely by the source model in `apps/www/lib/sitemap/`. CMS pages are filtered to published, dated, indexable and self-canonical records. Adding a public page means adding it to that source model (or excluding it on purpose) - `pnpm --filter www test:sitemap` fails otherwise. See `docs/sitemap-policy.md`.
 
 Public tests use sitemap-generated cases:
 
