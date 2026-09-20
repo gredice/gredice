@@ -118,6 +118,22 @@ test('the sitemap is a Next.js route, not a generated file', () => {
     assert.match(nextConfig, /destination: '\/sitemap\.xml'/u);
 });
 
+test('source-model scripts load the env files the app build reads', () => {
+    const packageJson = JSON.parse(
+        readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+    );
+
+    // These scripts reach the database outside Next.js. CI gets its credentials
+    // from `vercel env pull`, which writes `.env.local`: `next build` loads that
+    // file itself, a bare node process does not.
+    for (const scriptName of ['test:prepare:routes', 'sitemap:inventory']) {
+        const script = packageJson.scripts[scriptName];
+        assert.ok(script, scriptName);
+        assert.match(script, /--env-file-if-exists=\.env\.local/u, scriptName);
+        assert.match(script, /--conditions=react-server/u, scriptName);
+    }
+});
+
 test('private utility routes declare no-index metadata', () => {
     const routePaths = [
         '../app/development/page.tsx',
