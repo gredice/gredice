@@ -32,6 +32,7 @@ import {
     getGardenStacks,
     getGardens,
     getPublicGarden,
+    getPublicGardenSitemapSources,
     getPublicGardens,
     getRaisedBedFieldsWithEvents,
     getRaisedBedFieldsWithEventsForBeds,
@@ -55,7 +56,7 @@ import {
     users,
 } from '@gredice/storage';
 import { and, eq } from 'drizzle-orm';
-import { gardenStacks } from '../src/schema';
+import { gardenBlocks, gardenStacks } from '../src/schema';
 import {
     createTestBlock,
     createTestGarden,
@@ -258,6 +259,42 @@ test('public garden owners do not expose usernames as display names', async () =
         displayName: 'Korisnik Gredica',
         achievementCount: 1,
     });
+});
+
+test('sitemap sources count visible blocks but time-stamp their removal', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    await updateGarden({ id: gardenId, isPublic: true });
+
+    await createTestBlock(gardenId, 'Block_Grass');
+    const removedBlockId = await createTestBlock(gardenId, 'Raised_Bed');
+
+    const sitemapSource = async () =>
+        (await getPublicGardenSitemapSources()).find(
+            (garden) => garden.id === gardenId,
+        );
+
+    const before = await sitemapSource();
+    assert.strictEqual(before?.blockCount, 2);
+    assert.strictEqual(before?.distinctBlockNameCount, 2);
+
+    await deleteGardenBlock(gardenId, removedBlockId);
+
+    const [removedBlock] = await storage()
+        .select({ updatedAt: gardenBlocks.updatedAt })
+        .from(gardenBlocks)
+        .where(eq(gardenBlocks.id, removedBlockId));
+
+    const after = await sitemapSource();
+    assert.strictEqual(after?.blockCount, 1);
+    assert.strictEqual(after?.distinctBlockNameCount, 1);
+
+    // Removing a block changes the public page, so `lastmod` follows the
+    // removal instead of falling back to a surviving block's timestamp.
+    assert.deepEqual(after?.updatedAt, removedBlock?.updatedAt);
+    assert.ok(before && after.updatedAt >= before.updatedAt);
 });
 
 test('garden previews replace atomically and reject older captures', async () => {

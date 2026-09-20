@@ -1,15 +1,6 @@
 import 'server-only';
 import { userIdToPublicId } from '@gredice/js/publicId';
-import {
-    and,
-    asc,
-    count,
-    countDistinct,
-    desc,
-    eq,
-    inArray,
-    max,
-} from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, max, sql } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { storage } from '..';
 import { bustScheduleCache } from '../cache/scheduleCache';
@@ -304,21 +295,28 @@ export async function getPublicGardenSitemapSources(): Promise<
         return [];
     }
 
+    // Visibility belongs in the counts, not in the timestamps. Removing a block
+    // or a planting is itself a change to the page, and every soft delete
+    // touches the row's `updated_at`, so filtering deleted rows out of
+    // `max(updated_at)` would hide the removal and could move `lastmod`
+    // backwards to the previous surviving row.
+    const visibleBlock = eq(gardenBlocks.isDeleted, false);
+    const activePlanting = and(
+        eq(raisedBeds.isDeleted, false),
+        eq(raisedBedPlantings.isDeleted, false),
+        eq(raisedBedPlantings.isActive, true),
+    );
+
     const [blockStats, stackStats, plantingStats] = await Promise.all([
         storage()
             .select({
                 gardenId: gardenBlocks.gardenId,
-                blockCount: count(),
-                distinctBlockNameCount: countDistinct(gardenBlocks.name),
+                blockCount: sql<number>`count(*) filter (where ${visibleBlock})::int`,
+                distinctBlockNameCount: sql<number>`count(distinct ${gardenBlocks.name}) filter (where ${visibleBlock})::int`,
                 updatedAt: max(gardenBlocks.updatedAt),
             })
             .from(gardenBlocks)
-            .where(
-                and(
-                    inArray(gardenBlocks.gardenId, gardenIds),
-                    eq(gardenBlocks.isDeleted, false),
-                ),
-            )
+            .where(inArray(gardenBlocks.gardenId, gardenIds))
             .groupBy(gardenBlocks.gardenId),
         // Moving a block writes only `garden_stacks.blocks`, so without this
         // the layout the public page renders could change without the page
@@ -329,17 +327,12 @@ export async function getPublicGardenSitemapSources(): Promise<
                 updatedAt: max(gardenStacks.updatedAt),
             })
             .from(gardenStacks)
-            .where(
-                and(
-                    inArray(gardenStacks.gardenId, gardenIds),
-                    eq(gardenStacks.isDeleted, false),
-                ),
-            )
+            .where(inArray(gardenStacks.gardenId, gardenIds))
             .groupBy(gardenStacks.gardenId),
         storage()
             .select({
                 gardenId: raisedBeds.gardenId,
-                activePlantingCount: count(),
+                activePlantingCount: sql<number>`count(*) filter (where ${activePlanting})::int`,
                 updatedAt: max(raisedBedPlantings.updatedAt),
             })
             .from(raisedBedPlantings)
@@ -347,14 +340,7 @@ export async function getPublicGardenSitemapSources(): Promise<
                 raisedBeds,
                 eq(raisedBedPlantings.raisedBedId, raisedBeds.id),
             )
-            .where(
-                and(
-                    inArray(raisedBeds.gardenId, gardenIds),
-                    eq(raisedBeds.isDeleted, false),
-                    eq(raisedBedPlantings.isDeleted, false),
-                    eq(raisedBedPlantings.isActive, true),
-                ),
-            )
+            .where(inArray(raisedBeds.gardenId, gardenIds))
             .groupBy(raisedBeds.gardenId),
     ]);
 

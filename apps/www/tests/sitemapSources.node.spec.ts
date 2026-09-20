@@ -553,3 +553,28 @@ test('the inventory groups URLs by route family', () => {
     assert.equal(gardens?.impressions, 15);
     assert.match(formatSitemapInventoryMarkdown(rows), /Javni vrtovi/u);
 });
+
+test('a canonical pointing at another origin counts as a mismatch', () => {
+    const [row] = summarizeSitemapInventory([
+        {
+            path: '/vrtovi/42',
+            status: 200,
+            canonical: 'https://staging.example.com/vrtovi/42',
+        },
+    ]);
+
+    assert.equal(row?.canonicalMismatch, 1);
+
+    // A relative canonical resolves against the page itself, and the site
+    // origin is what the canonical must carry - not the probed host.
+    const [matching] = summarizeSitemapInventory([
+        { path: '/vrtovi/42', status: 200, canonical: '/vrtovi/42' },
+        {
+            path: '/vrtovi/43',
+            status: 200,
+            canonical: 'https://www.gredice.com/vrtovi/43',
+        },
+    ]);
+
+    assert.equal(matching?.canonicalMismatch, 0);
+});

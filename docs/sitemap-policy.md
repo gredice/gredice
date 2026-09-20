@@ -98,6 +98,10 @@ in the sitemap, and publishing them needs a per-profile opt-in signal.
 - Public gardens: the newest of the garden row, its blocks, its stacks and its
   plantings. Stacks matter because moving a block writes only
   `garden_stacks.blocks`, and that layout is what the public page renders.
+  Visibility filters apply to the eligibility counts, not to the timestamps:
+  removing a block or a planting is itself a change to the page, and every soft
+  delete touches the row's `updated_at`, so excluding deleted rows from the
+  aggregate would hide the removal and could move `lastmod` backwards.
 - Catalogue pages: the directory entity's `updatedAt`.
 
 Anything without a reliable timestamp - static marketing, legal and hub pages -

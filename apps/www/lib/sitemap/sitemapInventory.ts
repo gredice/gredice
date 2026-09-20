@@ -1,3 +1,4 @@
+import { PUBLIC_SITE_ORIGIN } from '../seo/publicMetadata.ts';
 import { normalizeSitemapPath } from './sitemapPolicy.ts';
 
 /**
@@ -135,20 +136,38 @@ export function resolveSitemapRouteFamily(path: string) {
     return family ?? sitemapRouteFamilies[sitemapRouteFamilies.length - 1];
 }
 
-function canonicalPathOf(canonical: string | null | undefined) {
-    if (!canonical) {
+/**
+ * The target of a rendered `<link rel="canonical">`. An absolute canonical
+ * keeps its origin, because a canonical pointing at another host is a mismatch
+ * even when the path matches. A relative canonical resolves against the page
+ * itself, so it carries no origin of its own.
+ */
+function canonicalTargetOf(canonical: string | null | undefined) {
+    const value = canonical?.trim();
+    if (!value) {
         return null;
     }
 
     try {
-        return normalizeSitemapPath(new URL(canonical).pathname);
+        const url = new URL(value);
+        return { origin: url.origin, path: normalizeSitemapPath(url.pathname) };
     } catch {
-        return normalizeSitemapPath(canonical);
+        return { origin: null, path: normalizeSitemapPath(value) };
     }
 }
 
 export function summarizeSitemapInventory(
     records: ReadonlyArray<SitemapInventoryRecord>,
+    {
+        canonicalOrigin = PUBLIC_SITE_ORIGIN,
+    }: {
+        /**
+         * The origin every canonical must point at. It is the site origin, not
+         * the probed host: probing a preview deployment still expects the
+         * production canonical.
+         */
+        canonicalOrigin?: string;
+    } = {},
 ): SitemapInventoryRow[] {
     const rowsByFamily = new Map<SitemapRouteFamilyId, SitemapInventoryRow>();
 
@@ -191,10 +210,12 @@ export function summarizeSitemapInventory(
             row.noIndex += 1;
         }
 
-        const canonicalPath = canonicalPathOf(record.canonical);
+        const canonicalTarget = canonicalTargetOf(record.canonical);
         if (
-            canonicalPath &&
-            canonicalPath !== normalizeSitemapPath(record.path)
+            canonicalTarget &&
+            (canonicalTarget.path !== normalizeSitemapPath(record.path) ||
+                (canonicalTarget.origin !== null &&
+                    canonicalTarget.origin !== canonicalOrigin))
         ) {
             row.canonicalMismatch += 1;
         }
