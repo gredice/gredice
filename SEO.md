@@ -48,7 +48,12 @@ SEO usually does not apply to authenticated `garden`, `farm`, `app`, or API rout
 
 ## Sitemaps and tests
 
-- `apps/www` runs `next-sitemap` in `postbuild`.
+- `apps/www` serves the sitemap from `app/sitemap.ts` and robots rules from `app/robots.ts`. There is no generator and no file in `public/`.
+- Nothing discovers routes automatically: a new public page must be added to the sitemap source model, or excluded by policy, or `pnpm --filter www test:sitemap` fails.
+- Sitemap inclusion, exclusion and `lastmod` rules live in `apps/www/lib/sitemap/`; see `docs/sitemap-policy.md` for the policy and the page-level reasons (GRE-930).
+- `lastModified` must come from content timestamps. Omit it when no reliable timestamp exists; never report build time.
+- Removing a URL from the sitemap does not deindex it. Keep the page crawlable and declare `robots: { index: false, follow: true }` in its metadata instead.
+- Run `pnpm --filter www test:sitemap` for the sitemap source and policy tests, and `pnpm --filter www sitemap:inventory` for the route-family inventory.
 - Sitemap-driven test cases are populated by `apps/www/tests/populate-test-cases.ts`.
 - Public route changes may require checking:
 

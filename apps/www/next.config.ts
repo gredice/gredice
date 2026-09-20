@@ -93,6 +93,14 @@ const nextConfig: NextConfig = {
                 destination: '/blokovi/kutne-kamene-stube',
                 permanent: true,
             },
+            {
+                // The previous generator published a sitemap index plus
+                // `/sitemap-0.xml`. Search Console still knows that URL, so
+                // point it at the single canonical sitemap instead of a 404.
+                source: '/sitemap-0.xml',
+                destination: '/sitemap.xml',
+                permanent: true,
+            },
         ];
     },
     async rewrites() {

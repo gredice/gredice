@@ -1,10 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
-import {
-    collectSitemapSourcePaths,
-    excludedSitemapRoutes,
-} from '../lib/sitemap/sitemapSourcePaths.ts';
 import { canonicalLegacyNewsPathname } from '../src/newsPaths.ts';
 
 const staticDataLoaders = [
@@ -77,8 +73,8 @@ test('plant detail pages remain compatible with static generation', () => {
 });
 
 test('sitemap generation reads source data without HTTP fallbacks', () => {
-    const configSource = readFileSync(
-        new URL('../next-sitemap.config.ts', import.meta.url),
+    const sitemapRoute = readFileSync(
+        new URL('../app/sitemap.ts', import.meta.url),
         'utf8',
     );
     const sourceLoader = readFileSync(
@@ -86,74 +82,56 @@ test('sitemap generation reads source data without HTTP fallbacks', () => {
         'utf8',
     );
 
-    assert.match(configSource, /getSitemapSourcePaths/u);
-    assert.doesNotMatch(configSource, httpDataSourcePattern);
+    assert.match(sitemapRoute, /getSitemapEntries/u);
+    assert.doesNotMatch(sitemapRoute, httpDataSourcePattern);
     assert.match(sourceLoader, /getCmsPages/u);
-    assert.match(sourceLoader, /getPublicGardens/u);
-    assert.match(sourceLoader, /getDirectoryEntitiesData\('seed'\)/u);
-    assert.match(sourceLoader, /getDirectoryEntitiesData\('brand'\)/u);
+    assert.match(sourceLoader, /getPublicGardenSitemapSources/u);
+    assert.match(sourceLoader, /getSeedsData/u);
+    assert.match(sourceLoader, /getSeedBrandsData/u);
     assert.doesNotMatch(sourceLoader, httpDataSourcePattern);
 });
 
-test('sitemap source paths keep only public CMS and catalogue records', () => {
-    const paths = collectSitemapSourcePaths({
-        cmsPages: [
-            {
-                slug: 'objavljeno',
-                state: 'published',
-                publishedAt: new Date('2026-08-10T00:00:00Z'),
-                noIndex: false,
-            },
-            {
-                slug: 'bez-indeksa',
-                state: 'published',
-                publishedAt: new Date('2026-08-10T00:00:00Z'),
-                noIndex: true,
-            },
-            {
-                slug: 'bez-datuma',
-                state: 'published',
-                publishedAt: null,
-                noIndex: false,
-            },
-        ],
-        publicGardens: [{ id: 42 }],
-        seeds: [{ slug: 'sjeme-1' }, {}],
-        brands: [{ slug: 'brend-1' }, { slug: null }],
-    });
+test('the sitemap is a Next.js route, not a generated file', () => {
+    const packageJson = JSON.parse(
+        readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+    );
+    const dependencies = {
+        ...packageJson.dependencies,
+        ...packageJson.devDependencies,
+    };
 
-    assert.ok(paths.includes('/objavljeno'));
-    assert.ok(paths.includes('/'));
-    assert.ok(paths.includes('/dostava/termini'));
-    assert.ok(paths.includes('/outlet'));
-    assert.ok(paths.includes('/vrtovi/42'));
-    assert.ok(paths.includes('/sjeme/sjeme-1'));
-    assert.ok(paths.includes('/sjeme/brend/brend-1'));
-    assert.ok(paths.includes('/biljni-susjedi'));
-    assert.ok(paths.includes('/novosti'));
-    assert.equal(paths.includes('/bez-indeksa'), false);
-    assert.equal(paths.includes('/bez-datuma'), false);
-});
+    assert.equal('next-sitemap' in dependencies, false);
+    assert.equal('postbuild' in packageJson.scripts, false);
+    assert.equal(
+        existsSync(new URL('../next-sitemap.config.ts', import.meta.url)),
+        false,
+    );
+    assert.ok(existsSync(new URL('../app/sitemap.ts', import.meta.url)));
+    assert.ok(existsSync(new URL('../app/robots.ts', import.meta.url)));
 
-test('sitemap policy excludes non-content routes and explicitly allows search crawlers', () => {
-    assert.deepEqual(excludedSitemapRoutes, [
-        '/kalendar-sjetve',
-        '/apple-icon.png',
-        '/development',
-        '/opengraph-image',
-        '/prijava/*/povratak',
-        '/trag/*',
-        '/vrtovi',
-        '/vrtovi/*',
-    ]);
-
-    const configSource = readFileSync(
-        new URL('../next-sitemap.config.ts', import.meta.url),
+    // The previously submitted sitemap URL must not start returning 404.
+    const nextConfig = readFileSync(
+        new URL('../next.config.ts', import.meta.url),
         'utf8',
     );
-    assert.match(configSource, /userAgent: 'Googlebot'/u);
-    assert.match(configSource, /userAgent: 'OAI-SearchBot'/u);
-    assert.match(configSource, /exclude: excludedSitemapRoutes/u);
+    assert.match(nextConfig, /source: '\/sitemap-0\.xml'/u);
+    assert.match(nextConfig, /destination: '\/sitemap\.xml'/u);
+});
+
+test('source-model scripts load the env files the app build reads', () => {
+    const packageJson = JSON.parse(
+        readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+    );
+
+    // These scripts reach the database outside Next.js. CI gets its credentials
+    // from `vercel env pull`, which writes `.env.local`: `next build` loads that
+    // file itself, a bare node process does not.
+    for (const scriptName of ['test:prepare:routes', 'sitemap:inventory']) {
+        const script = packageJson.scripts[scriptName];
+        assert.ok(script, scriptName);
+        assert.match(script, /--env-file-if-exists=\.env\.local/u, scriptName);
+        assert.match(script, /--conditions=react-server/u, scriptName);
+    }
 });
 
 test('private utility routes declare no-index metadata', () => {

@@ -1,8 +1,9 @@
 import 'server-only';
 import { userIdToPublicId } from '@gredice/js/publicId';
-import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, max, sql } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { storage } from '..';
+import { grediceCached, grediceCacheKeys } from '../cache/grediceCached';
 import { bustScheduleCache } from '../cache/scheduleCache';
 import {
     accountUsers,
@@ -11,6 +12,7 @@ import {
     gardenStacks,
     gardens,
     type InsertGarden,
+    raisedBedPlantings,
     raisedBeds,
     type SelectGardenLike,
     type UpdateGarden,
@@ -256,6 +258,175 @@ export async function getPublicGardens() {
             previewImages,
         };
     });
+}
+
+export type PublicGardenSitemapSource = {
+    id: number;
+    /** Most recent meaningful content change for the public garden page. */
+    updatedAt: Date;
+    blockCount: number;
+    distinctBlockNameCount: number;
+    activePlantingCount: number;
+};
+
+function latestDate(...values: Array<Date | null | undefined>) {
+    return values.reduce<Date | null>((latest, value) => {
+        if (!value) {
+            return latest;
+        }
+        return !latest || value > latest ? value : latest;
+    }, null);
+}
+
+/**
+ * One hour, matching the directory entity cache. The sitemap route revalidates
+ * every 12 hours, so this does not make `lastmod` meaningfully staler; what it
+ * absorbs is the burst - a deployment, several Vercel regions warming their own
+ * ISR entry, or the inventory script - where the same four aggregates would
+ * otherwise run against the database once per build.
+ */
+const publicGardenSitemapSourcesCacheTtl = 60 * 60;
+
+async function loadPublicGardenSitemapSources(): Promise<
+    PublicGardenSitemapSource[]
+> {
+    const publicGardens = await storage()
+        .select({ id: gardens.id, updatedAt: gardens.updatedAt })
+        .from(gardens)
+        .where(and(eq(gardens.isDeleted, false), eq(gardens.isPublic, true)));
+
+    const gardenIds = publicGardens.map((garden) => garden.id);
+    if (gardenIds.length === 0) {
+        return [];
+    }
+
+    // Visibility belongs in the counts, not in the timestamps. Removing a block
+    // or a planting is itself a change to the page, and every soft delete
+    // touches the row's `updated_at`, so filtering deleted rows out of
+    // `max(updated_at)` would hide the removal and could move `lastmod`
+    // backwards to the previous surviving row.
+    const visibleBlock = eq(gardenBlocks.isDeleted, false);
+    const activePlanting = and(
+        eq(raisedBeds.isDeleted, false),
+        eq(raisedBedPlantings.isDeleted, false),
+        eq(raisedBedPlantings.isActive, true),
+    );
+
+    const [blockStats, stackStats, raisedBedStats, plantingStats] =
+        await Promise.all([
+            storage()
+                .select({
+                    gardenId: gardenBlocks.gardenId,
+                    blockCount: sql<number>`count(*) filter (where ${visibleBlock})::int`,
+                    distinctBlockNameCount: sql<number>`count(distinct ${gardenBlocks.name}) filter (where ${visibleBlock})::int`,
+                    updatedAt: max(gardenBlocks.updatedAt),
+                })
+                .from(gardenBlocks)
+                .where(inArray(gardenBlocks.gardenId, gardenIds))
+                .groupBy(gardenBlocks.gardenId),
+            // Moving a block writes only `garden_stacks.blocks`, so without this
+            // the layout the public page renders could change without the page
+            // reporting a new `lastmod`.
+            storage()
+                .select({
+                    gardenId: gardenStacks.gardenId,
+                    updatedAt: max(gardenStacks.updatedAt),
+                })
+                .from(gardenStacks)
+                .where(inArray(gardenStacks.gardenId, gardenIds))
+                .groupBy(gardenStacks.gardenId),
+            // Soft-deleting a raised bed writes only `raised_beds`: the bed's
+            // plantings leave `activePlantingCount` without their own row being
+            // touched, and the bed's block is not touched either, so this is the
+            // only table that records the change. It is queried on its own because
+            // a bed that never had a planting is missing from the join below.
+            storage()
+                .select({
+                    gardenId: raisedBeds.gardenId,
+                    updatedAt: max(raisedBeds.updatedAt),
+                })
+                .from(raisedBeds)
+                .where(inArray(raisedBeds.gardenId, gardenIds))
+                .groupBy(raisedBeds.gardenId),
+            storage()
+                .select({
+                    gardenId: raisedBeds.gardenId,
+                    activePlantingCount: sql<number>`count(*) filter (where ${activePlanting})::int`,
+                    updatedAt: max(raisedBedPlantings.updatedAt),
+                })
+                .from(raisedBedPlantings)
+                .innerJoin(
+                    raisedBeds,
+                    eq(raisedBedPlantings.raisedBedId, raisedBeds.id),
+                )
+                .where(inArray(raisedBeds.gardenId, gardenIds))
+                .groupBy(raisedBeds.gardenId),
+        ]);
+
+    const blockStatsByGardenId = new Map(
+        blockStats.map((stats) => [stats.gardenId, stats]),
+    );
+    const stackStatsByGardenId = new Map(
+        stackStats.map((stats) => [stats.gardenId, stats]),
+    );
+    const raisedBedStatsByGardenId = new Map<
+        number,
+        (typeof raisedBedStats)[number]
+    >();
+    for (const stats of raisedBedStats) {
+        if (stats.gardenId !== null) {
+            raisedBedStatsByGardenId.set(stats.gardenId, stats);
+        }
+    }
+    const plantingStatsByGardenId = new Map<
+        number,
+        (typeof plantingStats)[number]
+    >();
+    for (const stats of plantingStats) {
+        if (stats.gardenId !== null) {
+            plantingStatsByGardenId.set(stats.gardenId, stats);
+        }
+    }
+
+    return publicGardens.map((garden) => {
+        const blocks = blockStatsByGardenId.get(garden.id);
+        const stacks = stackStatsByGardenId.get(garden.id);
+        const raisedBedsStats = raisedBedStatsByGardenId.get(garden.id);
+        const plantings = plantingStatsByGardenId.get(garden.id);
+
+        return {
+            id: garden.id,
+            updatedAt:
+                latestDate(
+                    garden.updatedAt,
+                    blocks?.updatedAt,
+                    stacks?.updatedAt,
+                    raisedBedsStats?.updatedAt,
+                    plantings?.updatedAt,
+                ) ?? garden.updatedAt,
+            blockCount: blocks?.blockCount ?? 0,
+            distinctBlockNameCount: blocks?.distinctBlockNameCount ?? 0,
+            activePlantingCount: plantings?.activePlantingCount ?? 0,
+        };
+    });
+}
+
+/**
+ * Public garden records used to build the sitemap: the eligibility signals
+ * (how much has actually been built) plus the last content update, so page
+ * `lastmod` values describe the garden instead of the deployment time.
+ *
+ * Cached in Redis like the directory entities and CMS pages the sitemap also
+ * reads, so building it never depends on the database being able to take four
+ * aggregates per build. A miss still falls through to the database, and
+ * `redisCached` de-duplicates concurrent misses for the same key.
+ */
+export async function getPublicGardenSitemapSources() {
+    return grediceCached(
+        grediceCacheKeys.publicGardenSitemapSources,
+        loadPublicGardenSitemapSources,
+        publicGardenSitemapSourcesCacheTtl,
+    );
 }
 
 export async function getAccountGardensMetadata(accountId: string) {

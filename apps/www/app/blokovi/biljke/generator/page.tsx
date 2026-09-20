@@ -16,6 +16,13 @@ export const metadata: Metadata = {
     alternates: {
         canonical: KnownPages.BlockPlantGenerator,
     },
+    // The generator renders one model per query permutation, so it stays
+    // crawlable (robots must be able to read this directive) but out of the
+    // index and out of the sitemap.
+    robots: {
+        index: false,
+        follow: true,
+    },
 };
 
 export default async function BlockPlantGeneratorPage(props: {
