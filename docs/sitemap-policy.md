@@ -95,9 +95,12 @@ in the sitemap, and publishing them needs a per-profile opt-in signal.
 `lastModified` comes from the content source:
 
 - CMS pages: `updatedAt`, falling back to `publishedAt`.
-- Public gardens: the newest of the garden row, its blocks, its stacks and its
-  plantings. Stacks matter because moving a block writes only
-  `garden_stacks.blocks`, and that layout is what the public page renders.
+- Public gardens: the newest of the garden row, its blocks, its stacks, its
+  raised beds and its plantings. Stacks matter because moving a block writes
+  only `garden_stacks.blocks`, and that layout is what the public page renders.
+  Raised beds matter because a soft delete writes only `raised_beds`: the bed's
+  plantings leave the active count without their own row being touched, and the
+  bed's block is not touched either.
   Visibility filters apply to the eligibility counts, not to the timestamps:
   removing a block or a planting is itself a change to the page, and every soft
   delete touches the row's `updated_at`, so excluding deleted rows from the

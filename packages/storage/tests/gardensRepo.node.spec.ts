@@ -19,6 +19,7 @@ import {
     deleteGardenBlock,
     deleteGardenIfNoActiveRaisedBeds,
     deleteGardenStack,
+    deleteRaisedBed,
     getAccountGardens,
     getAccountGardensMetadata,
     getAllEvents,
@@ -58,7 +59,11 @@ import {
     users,
 } from '@gredice/storage';
 import { and, eq } from 'drizzle-orm';
-import { gardenBlocks, gardenStacks } from '../src/schema';
+import {
+    gardenBlocks,
+    gardenStacks,
+    raisedBeds as raisedBedsTable,
+} from '../src/schema';
 import {
     createTestBlock,
     createTestGarden,
@@ -301,6 +306,41 @@ test('sitemap sources count visible blocks but time-stamp their removal', async 
     // removal instead of falling back to a surviving block's timestamp.
     assert.deepEqual(after?.updatedAt, removedBlock?.updatedAt);
     assert.ok(before && after.updatedAt >= before.updatedAt);
+});
+
+test('sitemap timestamps follow a raised bed removal', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    await updateGarden({ id: gardenId, isPublic: true });
+
+    const blockId = await createTestBlock(gardenId, 'Raised_Bed');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+
+    const sitemapSource = async () => {
+        await bustGrediceCached(grediceCacheKeys.publicGardenSitemapSources);
+        return (await getPublicGardenSitemapSources()).find(
+            (garden) => garden.id === gardenId,
+        );
+    };
+
+    const before = await sitemapSource();
+    assert.ok(before);
+
+    // Soft-deleting a raised bed writes only `raised_beds`: neither the bed's
+    // block nor its plantings are touched, so that table is the only record of
+    // a change the public page renders.
+    await deleteRaisedBed(raisedBedId);
+
+    const [removedRaisedBed] = await storage()
+        .select({ updatedAt: raisedBedsTable.updatedAt })
+        .from(raisedBedsTable)
+        .where(eq(raisedBedsTable.id, raisedBedId));
+
+    const after = await sitemapSource();
+    assert.deepEqual(after?.updatedAt, removedRaisedBed?.updatedAt);
+    assert.ok(after && after.updatedAt >= before.updatedAt);
 });
 
 test('garden previews replace atomically and reject older captures', async () => {

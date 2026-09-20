@@ -150,7 +150,12 @@ function canonicalTargetOf(canonical: string | null | undefined) {
 
     try {
         const url = new URL(value);
-        return { origin: url.origin, path: normalizeSitemapPath(url.pathname) };
+        // The query is part of the canonical target: a canonical carrying one
+        // points at a different URL than the query-free path in the sitemap.
+        return {
+            origin: url.origin,
+            path: normalizeSitemapPath(`${url.pathname}${url.search}`),
+        };
     } catch {
         return { origin: null, path: normalizeSitemapPath(value) };
     }

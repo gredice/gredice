@@ -310,7 +310,11 @@ test('garden timestamps follow every table the public page renders', () => {
     assert.match(sitemapSources, /max\(gardenBlocks\.updatedAt\)/u);
     assert.match(sitemapSources, /max\(gardenStacks\.updatedAt\)/u);
     assert.match(sitemapSources, /max\(raisedBedPlantings\.updatedAt\)/u);
+    // Soft-deleting a raised bed writes only `raised_beds`, while its
+    // plantings leave the active count without being touched themselves.
+    assert.match(sitemapSources, /max\(raisedBeds\.updatedAt\)/u);
     assert.match(sitemapSources, /stacks\?\.updatedAt/u);
+    assert.match(sitemapSources, /raisedBedsStats\?\.updatedAt/u);
 });
 
 test('every sitemap data source is cached, not queried per build', () => {
@@ -621,4 +625,17 @@ test('a canonical pointing at another origin counts as a mismatch', () => {
     ]);
 
     assert.equal(matching?.canonicalMismatch, 0);
+
+    // A canonical carrying a query points at a different URL than the
+    // query-free path the sitemap lists, whether it is absolute or relative.
+    const [withQuery] = summarizeSitemapInventory([
+        {
+            path: '/vrtovi/42',
+            status: 200,
+            canonical: 'https://www.gredice.com/vrtovi/42?stranica=2',
+        },
+        { path: '/vrtovi/43', status: 200, canonical: '/vrtovi/43?stranica=2' },
+    ]);
+
+    assert.equal(withQuery?.canonicalMismatch, 2);
 });

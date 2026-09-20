@@ -312,42 +312,56 @@ async function loadPublicGardenSitemapSources(): Promise<
         eq(raisedBedPlantings.isActive, true),
     );
 
-    const [blockStats, stackStats, plantingStats] = await Promise.all([
-        storage()
-            .select({
-                gardenId: gardenBlocks.gardenId,
-                blockCount: sql<number>`count(*) filter (where ${visibleBlock})::int`,
-                distinctBlockNameCount: sql<number>`count(distinct ${gardenBlocks.name}) filter (where ${visibleBlock})::int`,
-                updatedAt: max(gardenBlocks.updatedAt),
-            })
-            .from(gardenBlocks)
-            .where(inArray(gardenBlocks.gardenId, gardenIds))
-            .groupBy(gardenBlocks.gardenId),
-        // Moving a block writes only `garden_stacks.blocks`, so without this
-        // the layout the public page renders could change without the page
-        // reporting a new `lastmod`.
-        storage()
-            .select({
-                gardenId: gardenStacks.gardenId,
-                updatedAt: max(gardenStacks.updatedAt),
-            })
-            .from(gardenStacks)
-            .where(inArray(gardenStacks.gardenId, gardenIds))
-            .groupBy(gardenStacks.gardenId),
-        storage()
-            .select({
-                gardenId: raisedBeds.gardenId,
-                activePlantingCount: sql<number>`count(*) filter (where ${activePlanting})::int`,
-                updatedAt: max(raisedBedPlantings.updatedAt),
-            })
-            .from(raisedBedPlantings)
-            .innerJoin(
-                raisedBeds,
-                eq(raisedBedPlantings.raisedBedId, raisedBeds.id),
-            )
-            .where(inArray(raisedBeds.gardenId, gardenIds))
-            .groupBy(raisedBeds.gardenId),
-    ]);
+    const [blockStats, stackStats, raisedBedStats, plantingStats] =
+        await Promise.all([
+            storage()
+                .select({
+                    gardenId: gardenBlocks.gardenId,
+                    blockCount: sql<number>`count(*) filter (where ${visibleBlock})::int`,
+                    distinctBlockNameCount: sql<number>`count(distinct ${gardenBlocks.name}) filter (where ${visibleBlock})::int`,
+                    updatedAt: max(gardenBlocks.updatedAt),
+                })
+                .from(gardenBlocks)
+                .where(inArray(gardenBlocks.gardenId, gardenIds))
+                .groupBy(gardenBlocks.gardenId),
+            // Moving a block writes only `garden_stacks.blocks`, so without this
+            // the layout the public page renders could change without the page
+            // reporting a new `lastmod`.
+            storage()
+                .select({
+                    gardenId: gardenStacks.gardenId,
+                    updatedAt: max(gardenStacks.updatedAt),
+                })
+                .from(gardenStacks)
+                .where(inArray(gardenStacks.gardenId, gardenIds))
+                .groupBy(gardenStacks.gardenId),
+            // Soft-deleting a raised bed writes only `raised_beds`: the bed's
+            // plantings leave `activePlantingCount` without their own row being
+            // touched, and the bed's block is not touched either, so this is the
+            // only table that records the change. It is queried on its own because
+            // a bed that never had a planting is missing from the join below.
+            storage()
+                .select({
+                    gardenId: raisedBeds.gardenId,
+                    updatedAt: max(raisedBeds.updatedAt),
+                })
+                .from(raisedBeds)
+                .where(inArray(raisedBeds.gardenId, gardenIds))
+                .groupBy(raisedBeds.gardenId),
+            storage()
+                .select({
+                    gardenId: raisedBeds.gardenId,
+                    activePlantingCount: sql<number>`count(*) filter (where ${activePlanting})::int`,
+                    updatedAt: max(raisedBedPlantings.updatedAt),
+                })
+                .from(raisedBedPlantings)
+                .innerJoin(
+                    raisedBeds,
+                    eq(raisedBedPlantings.raisedBedId, raisedBeds.id),
+                )
+                .where(inArray(raisedBeds.gardenId, gardenIds))
+                .groupBy(raisedBeds.gardenId),
+        ]);
 
     const blockStatsByGardenId = new Map(
         blockStats.map((stats) => [stats.gardenId, stats]),
@@ -355,6 +369,15 @@ async function loadPublicGardenSitemapSources(): Promise<
     const stackStatsByGardenId = new Map(
         stackStats.map((stats) => [stats.gardenId, stats]),
     );
+    const raisedBedStatsByGardenId = new Map<
+        number,
+        (typeof raisedBedStats)[number]
+    >();
+    for (const stats of raisedBedStats) {
+        if (stats.gardenId !== null) {
+            raisedBedStatsByGardenId.set(stats.gardenId, stats);
+        }
+    }
     const plantingStatsByGardenId = new Map<
         number,
         (typeof plantingStats)[number]
@@ -368,6 +391,7 @@ async function loadPublicGardenSitemapSources(): Promise<
     return publicGardens.map((garden) => {
         const blocks = blockStatsByGardenId.get(garden.id);
         const stacks = stackStatsByGardenId.get(garden.id);
+        const raisedBedsStats = raisedBedStatsByGardenId.get(garden.id);
         const plantings = plantingStatsByGardenId.get(garden.id);
 
         return {
@@ -377,6 +401,7 @@ async function loadPublicGardenSitemapSources(): Promise<
                     garden.updatedAt,
                     blocks?.updatedAt,
                     stacks?.updatedAt,
+                    raisedBedsStats?.updatedAt,
                     plantings?.updatedAt,
                 ) ?? garden.updatedAt,
             blockCount: blocks?.blockCount ?? 0,
