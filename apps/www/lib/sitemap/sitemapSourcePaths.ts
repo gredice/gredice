@@ -8,6 +8,8 @@ const dynamicPublicPagePaths = [
 ];
 
 export const excludedSitemapRoutes = [
+    // Added explicitly only after the five regional calendar reviews are current.
+    '/kalendar-sjetve',
     '/apple-icon.png',
     '/development',
     '/opengraph-image',
@@ -37,11 +39,13 @@ export function collectSitemapSourcePaths({
     publicGardens,
     seeds,
     brands,
+    regionalCalendarReady = false,
 }: {
     cmsPages: ReadonlyArray<CmsSitemapPage>;
     publicGardens: ReadonlyArray<PublicGardenSitemapSource>;
     seeds: ReadonlyArray<SluggedSitemapSource>;
     brands: ReadonlyArray<SluggedSitemapSource>;
+    regionalCalendarReady?: boolean;
 }) {
     const paths = new Set([
         ...dynamicPublicPagePaths,
@@ -50,10 +54,17 @@ export function collectSitemapSourcePaths({
     ]);
 
     for (const page of cmsPages) {
-        if (page.state === 'published' && page.publishedAt && !page.noIndex) {
+        if (
+            page.slug !== 'kalendar-sjetve' &&
+            page.state === 'published' &&
+            page.publishedAt &&
+            !page.noIndex
+        ) {
             paths.add(`/${page.slug}`);
         }
     }
+
+    if (regionalCalendarReady) paths.add('/kalendar-sjetve');
 
     paths.add('/vrtovi');
     for (const garden of publicGardens) {

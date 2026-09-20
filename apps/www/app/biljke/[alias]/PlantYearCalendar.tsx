@@ -1,24 +1,9 @@
 import type { PlantData } from '@gredice/client';
+import {
+    calendarActivities,
+    calendarActivityKeys,
+} from '../../../lib/plants/calendarActivities';
 import { PlantMonthCalendar } from '../PlantMonthCalendar';
-
-const calendarActivityTypes = {
-    propagating: {
-        name: 'Sijanje unutra',
-        color: 'bg-blue-400',
-    },
-    sowing: {
-        name: 'Sijanje vani',
-        color: 'bg-yellow-400',
-    },
-    planting: {
-        name: 'Presađivanje',
-        color: 'bg-amber-600',
-    },
-    harvest: {
-        name: 'Berba',
-        color: 'bg-lime-400',
-    },
-} as const;
 
 export type PlantYearCalendarProps = {
     activities: PlantData['calendar'];
@@ -26,17 +11,14 @@ export type PlantYearCalendarProps = {
 };
 
 export function PlantYearCalendar({ activities, now }: PlantYearCalendarProps) {
-    const rows = Object.entries(calendarActivityTypes)
-        .filter(([activityTypeName]) =>
-            Object.keys(activities).some((name) => name === activityTypeName),
-        )
-        .map(([activityTypeName, activityType]) => ({
-            color: activityType.color,
-            key: activityTypeName,
-            label: activityType.name,
-            ranges: activities[
-                activityTypeName as keyof typeof calendarActivityTypes
-            ],
+    const rows = calendarActivityKeys
+        .filter((activity) => activities[activity] !== undefined)
+        .map((activity) => ({
+            color: calendarActivities[activity].color,
+            key: activity,
+            label: calendarActivities[activity].shortName,
+            title: calendarActivities[activity].name,
+            ranges: activities[activity],
         }));
 
     return <PlantMonthCalendar rows={rows} now={now} />;

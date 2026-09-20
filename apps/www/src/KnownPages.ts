@@ -38,6 +38,7 @@ export const KnownPages = {
     RaisedBeds: '/podignuta-gredica',
     Outlet: '/outlet',
     Sowing: '/sjetva',
+    SowingCalendar: '/kalendar-sjetve',
     FirstRaisedBedGuide: '/vodic-za-prvu-gredicu',
     Operations: PublicDirectoryPaths.Operations as Route,
     Operation: (alias: string) =>
