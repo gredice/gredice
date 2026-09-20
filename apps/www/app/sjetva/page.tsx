@@ -115,6 +115,13 @@ export default async function SowingPage() {
                         razmacima i potrebnoj njezi za svaku biljku.
                     </p>
                     <SowingCalendarPreview />
+                    <p>
+                        Za regionalne preporuke i objašnjenja radnji otvori{' '}
+                        <a href={KnownPages.SowingCalendar}>
+                            kalendar sjetve i sadnje za kontinentalnu Hrvatsku
+                        </a>
+                        .
+                    </p>
                     <p>Legenda kalendara aktivnosti:</p>
                     <ul>
                         <li>

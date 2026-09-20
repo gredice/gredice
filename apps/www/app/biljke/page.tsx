@@ -124,6 +124,16 @@ export default async function PlantsPage({
                     </TabsContent>
                 </Tabs>
             </Suspense>
+            <Typography level="body1" className="mt-6">
+                Za objašnjenja radnji i regionalnih termina otvori{' '}
+                <Link
+                    href={KnownPages.SowingCalendar}
+                    className="font-medium text-primary underline"
+                >
+                    kalendar sjetve i sadnje za kontinentalnu Hrvatsku
+                </Link>
+                .
+            </Typography>
             <Typography level="body1" className="mt-8">
                 Odaberi što želiš uzgajati, a zatim provjeri kako funkcionira{' '}
                 <Link

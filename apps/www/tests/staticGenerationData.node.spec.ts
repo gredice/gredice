@@ -137,6 +137,7 @@ test('sitemap source paths keep only public CMS and catalogue records', () => {
 
 test('sitemap policy excludes non-content routes and explicitly allows search crawlers', () => {
     assert.deepEqual(excludedSitemapRoutes, [
+        '/kalendar-sjetve',
         '/apple-icon.png',
         '/development',
         '/opengraph-image',

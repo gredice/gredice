@@ -68,6 +68,7 @@ const reservedFirstSegments = new Set([
     'development',
     'dostava',
     'kontakt',
+    'kalendar-sjetve',
     'legalno',
     'mcp',
     'novosti',

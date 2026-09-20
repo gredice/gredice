@@ -2,7 +2,7 @@ import { Chip } from '@gredice/ui/Chip';
 import { Info } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
 
-const sowingCalendarHref = '/sjetva#kalendar-sjetve';
+const sowingCalendarHref = '/kalendar-sjetve';
 
 export function CalendarInfoChip({ className }: { className?: string }) {
     return (
