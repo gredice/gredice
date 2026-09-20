@@ -108,6 +108,35 @@ Anything without a reliable timestamp - static marketing, legal and hub pages -
 omits `lastModified` entirely. A page that did not change must not acquire a new
 timestamp after a deployment.
 
+## Caching
+
+Building the sitemap must not put its queries on the database. All four sources
+are cached in Redis, so a build normally costs cache reads only:
+
+| Source | Cache | TTL |
+| --- | --- | --- |
+| CMS pages (`getCmsPages`) | `directoriesCached`, `cms:pages:list:published` | 5 min |
+| Catalogue entities (`getEntitiesFormatted`, 9 types) | `directoriesCached`, per entity type | 1 hour |
+| Public gardens (`getPublicGardenSitemapSources`) | `grediceCached`, `publicGardenSitemapSources` | 1 hour |
+| Regional calendar (`getRegionalCalendarData`) | none of its own - derived from the cached plant and sort data | - |
+
+The route itself revalidates every 12 hours, so the caches are not there to make
+the steady state cheaper; they bound the burst. A deployment, several Vercel
+regions warming their own ISR entry, a crawler arriving just after an entry
+expires, or the inventory script would otherwise each pay full price. The public
+garden entry is the expensive one: one query for the public gardens plus three
+grouped aggregates over `garden_blocks`, `garden_stacks` and
+`raised_bed_plantings`.
+
+A miss falls through to the database rather than failing, and `redisCached`
+de-duplicates concurrent misses for the same key within an instance. Garden
+layouts change constantly, so the entry is TTL-only - no mutation busts it;
+`bustGrediceCached(grediceCacheKeys.publicGardenSitemapSources)` clears it when
+a sitemap has to reflect a change immediately.
+
+`sitemapRouteCoverage.node.spec.ts` and `sitemapSources.node.spec.ts` pin this:
+a source that stops going through its cache fails the suite.
+
 ## Inventory report
 
 ```bash

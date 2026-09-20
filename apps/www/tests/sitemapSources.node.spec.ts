@@ -302,9 +302,7 @@ test('garden timestamps follow every table the public page renders', () => {
         'utf8',
     );
     const sitemapSources = repoSource.slice(
-        repoSource.indexOf(
-            'export async function getPublicGardenSitemapSources',
-        ),
+        repoSource.indexOf('async function loadPublicGardenSitemapSources'),
     );
 
     // Moving a block writes only `garden_stacks`, so the stack timestamps have
@@ -313,6 +311,52 @@ test('garden timestamps follow every table the public page renders', () => {
     assert.match(sitemapSources, /max\(gardenStacks\.updatedAt\)/u);
     assert.match(sitemapSources, /max\(raisedBedPlantings\.updatedAt\)/u);
     assert.match(sitemapSources, /stacks\?\.updatedAt/u);
+});
+
+test('every sitemap data source is cached, not queried per build', () => {
+    const read = (path: string) =>
+        readFileSync(new URL(path, import.meta.url), 'utf8');
+
+    // Building the sitemap reads four sources. Three of them were already
+    // Redis-cached; the garden aggregates are the one this PR added, and
+    // leaving them uncached would put four queries on the database for every
+    // sitemap build - the cache miss we hit when the catalogue pages moved to
+    // ISR.
+    const gardensRepo = read(
+        '../../../packages/storage/src/repositories/gardensRepo.ts',
+    );
+    assert.match(
+        gardensRepo.slice(
+            gardensRepo.indexOf(
+                'export async function getPublicGardenSitemapSources',
+            ),
+        ),
+        /grediceCached\(\s*grediceCacheKeys\.publicGardenSitemapSources/u,
+    );
+
+    const cmsPagesRepo = read(
+        '../../../packages/storage/src/repositories/cmsPagesRepo.ts',
+    );
+    assert.match(
+        cmsPagesRepo,
+        /directoriesCached\(\s*cacheKeys\.cmsPagesList/u,
+    );
+
+    const entitiesRepo = read(
+        '../../../packages/storage/src/repositories/entitiesRepo.ts',
+    );
+    assert.match(
+        entitiesRepo.slice(
+            entitiesRepo.indexOf('export async function getEntitiesFormatted'),
+        ),
+        /directoriesCached\(\s*cacheKeys\.entityTypeName/u,
+    );
+
+    // The regional calendar is derived from the cached catalogue data rather
+    // than from its own query.
+    const regionalCalendar = read('../lib/plants/getRegionalCalendarData.ts');
+    assert.match(regionalCalendar, /getPlantsData\(\)/u);
+    assert.match(regionalCalendar, /getPlantSortsData\(\)/u);
 });
 
 test('lastmod carries content timestamps and is omitted when unavailable', () => {

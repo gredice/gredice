@@ -4,6 +4,7 @@ export const grediceCacheKeys = {
     forecastBjelovar: 'forecastBjelovar',
     weatherAlertsCroatia: 'weatherAlertsCroatia',
     airSensorOpgIb: 'airSensorOpgIb',
+    publicGardenSitemapSources: 'publicGardenSitemapSources:v1',
 };
 
 export async function grediceCached<T>(

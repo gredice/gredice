@@ -5,6 +5,7 @@ import { userIdToPublicId } from '@gredice/js/publicId';
 import {
     accountHasActiveRaisedBed,
     accountUsers,
+    bustGrediceCached,
     CannotLikeOwnGardenError,
     countActiveRaisedBedsForGarden,
     countRaisedBedsByAccount,
@@ -39,6 +40,7 @@ import {
     getRaisedBedMetadataByIds,
     getRaisedBeds,
     getUserLikedGardenIds,
+    grediceCacheKeys,
     knownEvents,
     knownEventTypes,
     listUserGardenLikes,
@@ -271,10 +273,14 @@ test('sitemap sources count visible blocks but time-stamp their removal', async 
     await createTestBlock(gardenId, 'Block_Grass');
     const removedBlockId = await createTestBlock(gardenId, 'Raised_Bed');
 
-    const sitemapSource = async () =>
-        (await getPublicGardenSitemapSources()).find(
+    // The sources are Redis-cached, so this reads what the database holds now
+    // rather than whatever a previous call left in the cache.
+    const sitemapSource = async () => {
+        await bustGrediceCached(grediceCacheKeys.publicGardenSitemapSources);
+        return (await getPublicGardenSitemapSources()).find(
             (garden) => garden.id === gardenId,
         );
+    };
 
     const before = await sitemapSource();
     assert.strictEqual(before?.blockCount, 2);

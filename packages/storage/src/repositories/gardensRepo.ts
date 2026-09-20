@@ -3,6 +3,7 @@ import { userIdToPublicId } from '@gredice/js/publicId';
 import { and, asc, count, desc, eq, inArray, max, sql } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { storage } from '..';
+import { grediceCached, grediceCacheKeys } from '../cache/grediceCached';
 import { bustScheduleCache } from '../cache/scheduleCache';
 import {
     accountUsers,
@@ -278,11 +279,15 @@ function latestDate(...values: Array<Date | null | undefined>) {
 }
 
 /**
- * Public garden records used to build the sitemap: the eligibility signals
- * (how much has actually been built) plus the last content update, so page
- * `lastmod` values describe the garden instead of the deployment time.
+ * One hour, matching the directory entity cache. The sitemap route revalidates
+ * every 12 hours, so this does not make `lastmod` meaningfully staler; what it
+ * absorbs is the burst - a deployment, several Vercel regions warming their own
+ * ISR entry, or the inventory script - where the same four aggregates would
+ * otherwise run against the database once per build.
  */
-export async function getPublicGardenSitemapSources(): Promise<
+const publicGardenSitemapSourcesCacheTtl = 60 * 60;
+
+async function loadPublicGardenSitemapSources(): Promise<
     PublicGardenSitemapSource[]
 > {
     const publicGardens = await storage()
@@ -379,6 +384,24 @@ export async function getPublicGardenSitemapSources(): Promise<
             activePlantingCount: plantings?.activePlantingCount ?? 0,
         };
     });
+}
+
+/**
+ * Public garden records used to build the sitemap: the eligibility signals
+ * (how much has actually been built) plus the last content update, so page
+ * `lastmod` values describe the garden instead of the deployment time.
+ *
+ * Cached in Redis like the directory entities and CMS pages the sitemap also
+ * reads, so building it never depends on the database being able to take four
+ * aggregates per build. A miss still falls through to the database, and
+ * `redisCached` de-duplicates concurrent misses for the same key.
+ */
+export async function getPublicGardenSitemapSources() {
+    return grediceCached(
+        grediceCacheKeys.publicGardenSitemapSources,
+        loadPublicGardenSitemapSources,
+        publicGardenSitemapSourcesCacheTtl,
+    );
 }
 
 export async function getAccountGardensMetadata(accountId: string) {
