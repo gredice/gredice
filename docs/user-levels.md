@@ -18,6 +18,15 @@ accounts can earn:
 - **Sezona za pamćenje:** qualifying sowing or a completed cycle in a defined
   2026 growing season (spring, summer, autumn in `Europe/Zagreb`)
 
+The API achievement cron runs hourly at minute zero and replays the full
+available planting history, including soft-deleted plantings, catalogue links,
+and activity from before these families were introduced. It creates missing
+awards as pending for admin approval, preserving
+existing pending, approved, and denied rows; no manual data backfill is needed.
+Seasonal dates use selected lifecycle `effectiveAt` or legacy `effectiveDate`,
+falling back to the event creation date when missing or invalid. Milestone
+awards store the threshold count and the date that threshold was reached.
+
 Each achievement earns 100 XP. Level L starts at `100 × L × (L − 1) / 2` XP:
 levels 1–8 begin at 0, 100, 300, 600, 1000, 1500, 2100, and 2800 XP. The shared
 calculation lives in `packages/js/src/achievements/progression.ts`. Existing

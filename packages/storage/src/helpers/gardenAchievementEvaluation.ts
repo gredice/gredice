@@ -57,6 +57,12 @@ function eventStatus(data: unknown) {
     return typeof status === 'string' ? status.toLowerCase() : undefined;
 }
 
+function effectiveEventDate(value: unknown, fallback: Date) {
+    if (typeof value !== 'string') return fallback;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? fallback : date;
+}
+
 export function parsePlantSortId(value: unknown) {
     if (typeof value === 'number' && Number.isFinite(value)) {
         return Math.trunc(value);
@@ -231,6 +237,7 @@ export function mapGardenAchievementCommands(input: {
             event.type ===
             knownEventTypes.raisedBedPlantings.lifecycleStatusChanged
         ) {
+            const at = effectiveEventDate(data.effectiveAt, event.createdAt);
             const cycleId = ensureSelectedCycle(
                 event.aggregateId,
                 event.createdAt,
@@ -241,13 +248,13 @@ export function mapGardenAchievementCommands(input: {
                 commands.push({
                     kind: 'sow',
                     cycleId,
-                    at: event.createdAt,
+                    at,
                 });
             } else if (status === 'harvested') {
                 commands.push({
                     kind: 'harvest',
                     cycleId,
-                    at: event.createdAt,
+                    at,
                 });
             }
             continue;
@@ -257,6 +264,7 @@ export function mapGardenAchievementCommands(input: {
         }
         const status = eventStatus(event.data);
         if (status !== 'sowed' && status !== 'harvested') continue;
+        const at = effectiveEventDate(data.effectiveDate, event.createdAt);
         const planting = plantingsByAggregate.get(event.aggregateId);
         if (planting?.configurationSource === 'selected') {
             if (status === 'sowed') continue;
@@ -268,7 +276,7 @@ export function mapGardenAchievementCommands(input: {
             commands.push({
                 kind: 'harvest',
                 cycleId,
-                at: event.createdAt,
+                at,
             });
             continue;
         }
@@ -277,7 +285,7 @@ export function mapGardenAchievementCommands(input: {
         commands.push({
             kind: status === 'sowed' ? 'sow' : 'harvest',
             cycleId,
-            at: event.createdAt,
+            at,
         });
     }
 
@@ -300,13 +308,13 @@ export async function getPlantIdBySortId() {
                 eq(attributeDefinitions.entityTypeName, 'plantSort'),
                 eq(attributeDefinitions.category, 'information'),
                 eq(attributeDefinitions.name, 'plant'),
-                eq(attributeDefinitions.isDeleted, false),
                 eq(attributeValues.entityTypeName, 'plantSort'),
-                eq(attributeValues.isDeleted, false),
             ),
         )
         .orderBy(asc(attributeValues.id));
 
+    // Historical sowings still count after catalogue links are soft-deleted.
+    // Ascending IDs let the latest stored mapping for each sort win.
     const plantIdBySortId = new Map<number, number>();
     for (const row of rows) {
         const plantId = parsePlantSortId(row.plantValue);
@@ -326,8 +334,8 @@ export async function getGardenAchievementPlantings(): Promise<
             raisedBedId: raisedBedPlantings.raisedBedId,
             configurationSource: raisedBedPlantings.configurationSource,
         })
-        .from(raisedBedPlantings)
-        .where(eq(raisedBedPlantings.isDeleted, false));
+        // Immutable lifecycle events still belong to soft-deleted plantings.
+        .from(raisedBedPlantings);
     return rows.map((row) => ({
         ...row,
         configurationSource:
@@ -374,7 +382,7 @@ export function gardenFamilyAchievementPlans(input: {
                               accountId,
                               definition,
                               earnedAt,
-                              progressValue: progress.distinctPlants.length,
+                              progressValue: definition.threshold ?? 0,
                           },
                       ]
                     : [];
@@ -390,7 +398,7 @@ export function gardenFamilyAchievementPlans(input: {
                               accountId,
                               definition,
                               earnedAt,
-                              progressValue: progress.completedCycles.length,
+                              progressValue: definition.threshold ?? 0,
                           },
                       ]
                     : [];

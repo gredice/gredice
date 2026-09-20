@@ -25,7 +25,7 @@ The initial artwork release covered **34 awards** across five categories:
 | Harvest | 1, 10, 20, 50, 100, 150, 200, 300, 500 | 9 |
 | Community contributions | 1, 5, 10, 25, 50, 100 applied edits | 6 |
 
-These are already separate threshold awards, but they have no explicit family/level/artwork metadata. The garden shows the same trophy emoji for every recorded award and question marks for unearned ones. Registration is auto-approved; the other definitions default to approval by an admin. Awards belong to an **account**, which can have multiple users.
+Before the artwork release, these were already separate threshold awards, but they had no explicit family/level/artwork metadata. The garden showed the same trophy emoji for every recorded award and question marks for unearned ones. Registration is auto-approved; the other definitions default to approval by an admin. Awards belong to an **account**, which can have multiple users.
 
 The proposal preserves all 34 keys, thresholds, recorded approvals and sunflower rewards. In particular, the 1,000-sunflower welcome reward remains a starter award visually. Prestige describes accomplishment, not the currency payout. Reward balancing is a separate decision; the existing source already marks it as unfinished.
 

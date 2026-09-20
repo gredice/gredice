@@ -254,7 +254,7 @@ const baseDefinitions: Omit<
         threshold,
         rewardSunflowers: reward,
         title: gardenDiversityTitle(threshold),
-        description: `Posadi ${threshold} različitih vrsta biljaka u svojim gredicama.`,
+        description: `Posadi ${threshold} ${threshold === 3 ? 'različite vrste' : 'različitih vrsta'} biljaka u svojim gredicama.`,
         sortOrder: 500 + index,
     })),
     ...seedToTableThresholds.map(([threshold, reward], index) => ({

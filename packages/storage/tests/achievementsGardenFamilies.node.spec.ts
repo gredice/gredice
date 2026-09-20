@@ -18,9 +18,17 @@ import {
     upsertEntityType,
     upsertRaisedBedField,
 } from '@gredice/storage';
-import { and, desc, eq, gt } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray } from 'drizzle-orm';
 import { mapGardenAchievementCommands } from '../src/helpers/gardenAchievementEvaluation';
-import { attributeDefinitions } from '../src/schema';
+import {
+    attributeDefinitions,
+    attributeValues,
+    entities,
+    entityTypes,
+    farms,
+    raisedBedPlantings,
+    raisedBeds,
+} from '../src/schema';
 import { closeStorage } from '../src/storage';
 import { createSelectedTaskFixture } from './helpers/selectedPlantingFixture';
 import {
@@ -31,6 +39,10 @@ import {
 import { createTestDb } from './testDb';
 
 let initialEventId = 0;
+let initialEntityTypeId = 0;
+let initialEntityId = 0;
+let initialAttributeDefinitionId = 0;
+const fixtures: { farmId: number; raisedBedId: number }[] = [];
 let disposableFixtureInitialized = false;
 
 before(async () => {
@@ -38,12 +50,64 @@ before(async () => {
     initialEventId =
         (await storage().query.events.findFirst({ orderBy: desc(events.id) }))
             ?.id ?? 0;
+    initialEntityTypeId =
+        (
+            await storage().query.entityTypes.findFirst({
+                orderBy: desc(entityTypes.id),
+            })
+        )?.id ?? 0;
+    initialEntityId =
+        (
+            await storage().query.entities.findFirst({
+                orderBy: desc(entities.id),
+            })
+        )?.id ?? 0;
+    initialAttributeDefinitionId =
+        (
+            await storage().query.attributeDefinitions.findFirst({
+                orderBy: desc(attributeDefinitions.id),
+            })
+        )?.id ?? 0;
     disposableFixtureInitialized = true;
 });
 
 after(async () => {
     if (!disposableFixtureInitialized) return;
+    // Later specs share this DB and query all active farms and plantings.
+    // Retire our rows before removing the events needed to project them.
+    if (fixtures.length) {
+        const bedIds = fixtures.map((fixture) => fixture.raisedBedId);
+        await storage()
+            .update(raisedBedPlantings)
+            .set({ isDeleted: true, isActive: false })
+            .where(inArray(raisedBedPlantings.raisedBedId, bedIds));
+        await storage()
+            .update(raisedBeds)
+            .set({ isDeleted: true })
+            .where(inArray(raisedBeds.id, bedIds));
+        await storage()
+            .update(farms)
+            .set({ isDeleted: true })
+            .where(
+                inArray(
+                    farms.id,
+                    fixtures.map((fixture) => fixture.farmId),
+                ),
+            );
+    }
     await storage().delete(events).where(gt(events.id, initialEventId));
+    await storage()
+        .update(entities)
+        .set({ isDeleted: true })
+        .where(gt(entities.id, initialEntityId));
+    await storage()
+        .update(attributeDefinitions)
+        .set({ isDeleted: true })
+        .where(gt(attributeDefinitions.id, initialAttributeDefinitionId));
+    // Type names are shared; remove only this spec's inserted label rows.
+    await storage()
+        .delete(entityTypes)
+        .where(gt(entityTypes.id, initialEntityTypeId));
     await closeStorage();
 });
 
@@ -164,6 +228,7 @@ async function createLegacyGarden() {
     const gardenId = await createTestGarden({ accountId, farmId });
     const blockId = await createTestBlock(gardenId, `ach-${randomUUID()}`);
     const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    fixtures.push({ farmId, raisedBedId });
     await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
     await upsertRaisedBedField({ raisedBedId, positionIndex: 1 });
     await upsertRaisedBedField({ raisedBedId, positionIndex: 2 });
@@ -298,6 +363,7 @@ test('counts distinct parent plants, completed cycles, and 2026 seasons', async 
 
 test('selected sow-to-harvest earns one seed-to-table cycle and stays idempotent', async () => {
     const fixture = await createSelectedTaskFixture();
+    fixtures.push(fixture);
     const sowed = await completeSelectedRaisedBedPlantingTask({
         ...fixture.task.identity,
         actor: { role: 'admin', userId: fixture.adminId },
@@ -319,4 +385,113 @@ test('selected sow-to-harvest earns one seed-to-table cycle and stays idempotent
     assert.equal(cycles.length, 1);
     assert.equal(cycles[0]?.achievementKey, 'seed_to_table_1');
     assert.equal(cycles[0]?.progressValue, 1);
+});
+
+test('historical diversity survives deleted catalogue links and uses the latest mapping', async () => {
+    const { accountId, raisedBedId } = await createLegacyGarden();
+    const definitionId = await ensurePlantSortParentDefinition();
+    const plantIds = await Promise.all([
+        createEntity('plant'),
+        createEntity('plant'),
+        createEntity('plant'),
+    ]);
+    const sortIds: number[] = [];
+    for (const [index, plantId] of plantIds.entries()) {
+        const sortId = await createLinkedSort(plantId);
+        sortIds.push(sortId);
+        await sowLegacy({
+            raisedBedId,
+            positionIndex: index,
+            plantSortId: sortId,
+            sowedAt: new Date(Date.UTC(2025, 3, index + 1)),
+        });
+    }
+    // A newer historical link supersedes this sort's original parent plant.
+    await storage()
+        .insert(attributeValues)
+        .values({
+            attributeDefinitionId: definitionId,
+            entityTypeName: 'plantSort',
+            entityId: sortIds[2],
+            value: String(plantIds[0]),
+            isDeleted: true,
+        });
+    await storage()
+        .update(attributeValues)
+        .set({ isDeleted: true })
+        .where(inArray(attributeValues.entityId, sortIds));
+    await storage()
+        .update(attributeDefinitions)
+        .set({ isDeleted: true })
+        .where(eq(attributeDefinitions.id, definitionId));
+    await evaluateAchievements();
+    assert.equal(
+        (await awardsByPrefix(accountId, 'garden_diversity_')).length,
+        0,
+    );
+
+    await storage()
+        .insert(attributeValues)
+        .values({
+            attributeDefinitionId: definitionId,
+            entityTypeName: 'plantSort',
+            entityId: sortIds[2],
+            value: String(plantIds[2]),
+            isDeleted: true,
+        });
+    await evaluateAchievements();
+    const awards = await awardsByPrefix(accountId, 'garden_diversity_');
+    assert.deepEqual(
+        awards.map((award) => [
+            award.achievementKey,
+            award.status,
+            award.progressValue,
+        ]),
+        [['garden_diversity_3', 'pending', 3]],
+    );
+    assert.deepEqual(awards[0]?.earnedAt, new Date('2025-04-03T00:00:00.000Z'));
+    await evaluateAchievements();
+    assert.deepEqual(
+        await awardsByPrefix(accountId, 'garden_diversity_'),
+        awards,
+    );
+});
+
+test('first evaluation queues historical awards for deleted selected plantings only once', async () => {
+    const fixture = await createSelectedTaskFixture();
+    fixtures.push(fixture);
+    const sowed = await completeSelectedRaisedBedPlantingTask({
+        ...fixture.task.identity,
+        actor: { role: 'admin', userId: fixture.adminId },
+        commandId: randomUUID(),
+    });
+    let identity = sowed.task.identity;
+    for (const status of ['sprouted', 'ready', 'harvested'] as const) {
+        const result = await updateSelectedRaisedBedPlantingLifecycleStatus({
+            ...identity,
+            status,
+            actor: { role: 'admin', userId: fixture.adminId },
+            commandId: randomUUID(),
+        });
+        identity = result.task.identity;
+    }
+    await storage()
+        .update(raisedBedPlantings)
+        .set({ isDeleted: true, isActive: false })
+        .where(eq(raisedBedPlantings.id, fixture.plantingId));
+    await evaluateAchievements();
+    const awards = await awardsByPrefix(fixture.accountId, 'seed_to_table_');
+    assert.deepEqual(
+        awards.map((award) => [
+            award.achievementKey,
+            award.status,
+            award.progressValue,
+        ]),
+        [['seed_to_table_1', 'pending', 1]],
+    );
+    await evaluateAchievements();
+    assert.deepEqual(
+        await awardsByPrefix(fixture.accountId, 'seed_to_table_'),
+        awards,
+    );
 });
