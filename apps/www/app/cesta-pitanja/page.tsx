@@ -1,10 +1,9 @@
-import { orderBy } from '@gredice/js/arrays';
-import { Accordion } from '@gredice/ui/Accordion';
-import { Markdown } from '@gredice/ui/Markdown';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { FaqCategorySection } from '../../components/faq/FaqCategorySection';
+import { groupFaqCategories } from '../../components/faq/groupFaqCategories';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { NoDataPlaceholder } from '../../components/shared/placeholders/NoDataPlaceholder';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
@@ -22,16 +21,7 @@ export const metadata = createPublicMetadata({
 
 export default async function FaqPage() {
     const faq = await getFaqData();
-    const categories = orderBy(
-        [
-            ...new Set(
-                faq?.map(
-                    (item) => item.attributes?.category?.information?.label,
-                ),
-            ),
-        ],
-        (a, b) => (a && b ? a.localeCompare(b) : 0),
-    );
+    const sections = groupFaqCategories(faq);
 
     return (
         <Stack>
@@ -48,36 +38,17 @@ export default async function FaqPage() {
                         </NoDataPlaceholder>
                     </div>
                 )}
-                {categories.map((category) => (
-                    <Stack key={category} spacing={4}>
-                        <Typography level="h4">{category}</Typography>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {faq
-                                ?.filter(
-                                    (item) =>
-                                        item.attributes?.category?.information
-                                            ?.label === category,
-                                )
-                                .map((item) => (
-                                    <Accordion
-                                        key={item.information.name}
-                                        className="h-min border-tertiary border-b-4"
-                                    >
-                                        <Typography className="px-3" semiBold>
-                                            {item.information.header}
-                                        </Typography>
-                                        <div className="px-3">
-                                            <Markdown>
-                                                {item.information.content}
-                                            </Markdown>
-                                        </div>
-                                    </Accordion>
-                                ))}
-                        </div>
-                    </Stack>
+                {sections.map(({ category, entries }) => (
+                    <FaqCategorySection
+                        key={category.information.name}
+                        category={category}
+                        entries={entries}
+                    />
                 ))}
                 <Stack spacing={4}>
-                    <Typography level="h4">Nema tvojeg pitanja?</Typography>
+                    <Typography level="h4" component="h2">
+                        Nema tvojeg pitanja?
+                    </Typography>
                     <WhatsAppCard />
                 </Stack>
             </Stack>

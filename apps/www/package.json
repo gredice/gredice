@@ -31,7 +31,7 @@
         "test:pets": "node --import tsx --test ./lib/pets/gardenPetSearch.node.spec.ts",
         "test:delivery-summary": "node --import tsx --test ./app/dostava/deliverySummary.node.spec.ts",
         "test:seo": "node --experimental-strip-types --test ./components/shared/seo/structuredDataValidation.node.spec.ts ./lib/seo/cmsPageMetadata.node.spec.ts ./lib/seo/publicMetadata.node.spec.ts ./lib/seo/publicOgSignature.node.spec.ts ./lib/seo/resolvePublicOgImage.node.spec.ts",
-        "test:cms-pages": "node --experimental-strip-types --test ./tests/cmsPages.node.spec.ts ./lib/plants/qualityHarvestSafetyFaq.node.spec.ts && pnpm run test:regional-calendar",
+        "test:cms-pages": "node --experimental-strip-types --test ./tests/cmsPages.node.spec.ts ./lib/plants/qualityHarvestSafetyFaq.node.spec.ts ./components/faq/faqCategoryArtwork.node.spec.ts && pnpm run test:regional-calendar",
         "test-ui": "pnpm run test:prepare && playwright test --project=chromium --ui",
         "generate-playwright": "node ./generate/populate-test-cases.js && playwright test --config playwright-generate.config.ts",
         "generate-playwright:blocks": "node ./generate/populate-test-cases.js && playwright test --config playwright-generate.config.ts generate/blocks-snapshots.specgen.tsx",
@@ -44,7 +44,8 @@
         "operation-covers:verify-public": "pnpm run test:prepare && OPERATION_COVER_PUBLIC_QA=1 playwright test --project=chromium tests/operation-cover-public.spec.ts",
         "test:local": "pnpm run test:prepare && pnpm run test:run",
         "test:llms": "node --experimental-strip-types --test ./app/llms-routes.spec.ts",
-        "test:public-profile": "node --import tsx --test ./tests/publicProfile.node.spec.ts && playwright test --config playwright.profile.config.ts"
+        "test:public-profile": "node --import tsx --test ./tests/publicProfile.node.spec.ts && playwright test --config playwright.profile.config.ts",
+        "faq-categories:sync-images": "node --import tsx --conditions=react-server --env-file=../../packages/storage/.env ./generate/sync-faq-category-images.ts"
     },
     "dependencies": {
         "@googlemaps/js-api-loader": "2.1.1",

@@ -2572,6 +2572,10 @@ export interface components {
             attributes: {
                 category: {
                     id: number;
+                    image?: {
+                        /** @description Ilustracija kategorije za naslove i istaknute točke čestih pitanja. */
+                        cover?: components["schemas"]["image"];
+                    };
                     information: {
                         name: string;
                         label: string;
@@ -2595,6 +2599,10 @@ export interface components {
                 label: string;
             };
             slug: string;
+            image?: {
+                /** @description Ilustracija kategorije za naslove i istaknute točke čestih pitanja. */
+                cover?: components["schemas"]["image"];
+            };
             information: {
                 name: string;
                 label: string;
