@@ -3,9 +3,9 @@ import { Timeline, TimelineEntry, TimelineGroup } from '@gredice/ui/Timeline';
 import type { Metadata, Route } from 'next';
 import { permanentRedirect } from 'next/navigation';
 import { EmptyNewsState } from '../components/EmptyNewsState';
-import { FilterPills } from '../components/FilterPills';
 import { NewsArchiveNavigation } from '../components/NewsArchiveNavigation';
 import { NewsCard } from '../components/NewsCard';
+import { NewsCategoryFilter } from '../components/NewsCategoryFilter';
 import { WeeklyChangelogCard } from '../components/WeeklyChangelogCard';
 import {
     formatNewsDate,
@@ -60,7 +60,6 @@ export default async function NewsHomePage({
         getBlogPosts(),
         getChangelogEntries(),
     ]);
-    const currentFilters = { category: activeCategory };
     const categories = uniqueNewsValues(allPosts, (item) => item.category);
     if (!isKnownNewsFilter(categories, activeCategory)) {
         permanentRedirect('/');
@@ -90,29 +89,19 @@ export default async function NewsHomePage({
     return (
         <Container className="grid gap-8 py-10">
             <section className="grid gap-3">
-                <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    Novosti
-                </p>
                 <h1 className="max-w-3xl text-3xl font-bold leading-tight md:text-4xl">
                     Novosti iz Gredica
                 </h1>
                 <p className="max-w-2xl text-lg text-muted-foreground">
-                    Blog objave i tjedni pregledi novih mogućnosti, poboljšanja
-                    i promjena u Gredicama.
+                    Priče, korisni vodiči i tjedni pregled razvoja Gredica.
                 </p>
             </section>
-            <NewsArchiveNavigation active="news" />
-            {categories.length > 0 ? (
-                <aside className="grid gap-4 rounded-md border bg-muted/15 p-4">
-                    <FilterPills
-                        active={activeCategory}
-                        currentFilters={currentFilters}
-                        label="Blog kategorije"
-                        param="category"
-                        values={categories}
-                    />
-                </aside>
-            ) : null}
+            <NewsArchiveNavigation active={activeCategory ? undefined : 'news'}>
+                <NewsCategoryFilter
+                    activeCategory={activeCategory}
+                    categories={categories}
+                />
+            </NewsArchiveNavigation>
             {totalItems > 0 ? (
                 <Timeline>
                     {timelineGroups.map((group, groupIndex) => (
