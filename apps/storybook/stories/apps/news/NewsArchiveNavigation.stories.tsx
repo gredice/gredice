@@ -17,7 +17,12 @@ const meta = {
     ],
     render: (args) => (
         <NewsArchiveNavigation {...args}>
-            <NewsCategoryFilter categories={['Dostava', 'Uzgoj']} />
+            <NewsCategoryFilter
+                categories={[
+                    { name: 'Dostava', count: 3 },
+                    { name: 'Uzgoj', count: 12 },
+                ]}
+            />
         </NewsArchiveNavigation>
     ),
 } satisfies Meta<typeof NewsArchiveNavigation>;
@@ -33,7 +38,10 @@ export const FilteredBlog: Story = {
         <NewsArchiveNavigation {...args}>
             <NewsCategoryFilter
                 activeCategory="dostava"
-                categories={['Dostava', 'Uzgoj']}
+                categories={[
+                    { name: 'Dostava', count: 3 },
+                    { name: 'Uzgoj', count: 12 },
+                ]}
             />
         </NewsArchiveNavigation>
     ),
@@ -65,7 +73,10 @@ export const MobileLongTopic: Story = {
         <NewsArchiveNavigation {...args}>
             <NewsCategoryFilter
                 activeCategory="Savjeti za uzgoj povrća u malom vrtu"
-                categories={['Dostava', 'Savjeti za uzgoj povrća u malom vrtu']}
+                categories={[
+                    { name: 'Dostava', count: 3 },
+                    { name: 'Savjeti za uzgoj povrća u malom vrtu', count: 12 },
+                ]}
             />
         </NewsArchiveNavigation>
     ),

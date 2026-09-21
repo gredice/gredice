@@ -99,7 +99,15 @@ export default async function NewsHomePage({
             <NewsArchiveNavigation active={activeCategory ? undefined : 'news'}>
                 <NewsCategoryFilter
                     activeCategory={activeCategory}
-                    categories={categories}
+                    categories={categories.map((name) => ({
+                        name,
+                        count: allPosts.filter(
+                            (post) =>
+                                normalizeNewsFilterValue(
+                                    post.category ?? undefined,
+                                ) === normalizeNewsFilterValue(name),
+                        ).length,
+                    }))}
                 />
             </NewsArchiveNavigation>
             {totalItems > 0 ? (
