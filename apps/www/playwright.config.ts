@@ -22,6 +22,7 @@ export const config: PlaywrightTestConfig = {
         'pricing-display.spec.tsx',
         'public-profile.spec.tsx',
         'avatar-profile-links.spec.tsx',
+        'public-garden-members.spec.tsx',
         'user-leaderboard.spec.tsx',
     ],
     snapshotDir: './__snapshots__',

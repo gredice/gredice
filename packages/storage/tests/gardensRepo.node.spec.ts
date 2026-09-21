@@ -268,6 +268,117 @@ test('public garden owners do not expose usernames as display names', async () =
     });
 });
 
+test('public gardens expose distinct account members in membership order', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const unrelatedAccountId = await createAccount();
+    const firstUserId = await createTestUser({ displayName: '  Ana  ' });
+    const secondUserId = await createTestUser({
+        displayName: 'private@example.com',
+    });
+    const temporaryUserId = await createTestUser({ displayName: 'Guest' });
+    const unrelatedUserId = await createTestUser({
+        displayName: 'Other account',
+    });
+    await storage()
+        .update(users)
+        .set({ isTemporary: true })
+        .where(eq(users.id, temporaryUserId));
+    await storage()
+        .insert(accountUsers)
+        .values([
+            {
+                accountId,
+                userId: firstUserId,
+                createdAt: new Date('2026-01-01'),
+            },
+            {
+                accountId,
+                userId: secondUserId,
+                createdAt: new Date('2026-01-02'),
+            },
+            {
+                accountId,
+                userId: firstUserId,
+                createdAt: new Date('2026-01-03'),
+            },
+            { accountId, userId: temporaryUserId },
+            { accountId: unrelatedAccountId, userId: unrelatedUserId },
+        ]);
+    const gardenId = await createTestGarden({
+        accountId,
+        farmId: await ensureFarmId(),
+    });
+    const otherGardenId = await createTestGarden({
+        accountId: unrelatedAccountId,
+        farmId: await ensureFarmId(),
+    });
+    const gardens = await getPublicGardens();
+    const listGarden = gardens.find((garden) => garden.id === gardenId);
+    const detailGarden = await getPublicGarden(gardenId);
+    const expectedMembers = [
+        {
+            publicId: userIdToPublicId(firstUserId),
+            displayName: 'Ana',
+            avatarUrl: null,
+            achievementCount: 1,
+        },
+        {
+            publicId: userIdToPublicId(secondUserId),
+            displayName: 'Korisnik Gredica',
+            avatarUrl: null,
+            achievementCount: 1,
+        },
+    ];
+    assert.deepEqual(listGarden?.members, expectedMembers);
+    assert.deepEqual(detailGarden?.members, expectedMembers);
+    assert.deepEqual(listGarden?.owner, expectedMembers[0]);
+    assert.deepEqual(
+        gardens
+            .find((garden) => garden.id === otherGardenId)
+            ?.members.map((member) => member.publicId),
+        [userIdToPublicId(unrelatedUserId)],
+    );
+
+    await storage()
+        .delete(accountUsers)
+        .where(
+            and(
+                eq(accountUsers.accountId, accountId),
+                eq(accountUsers.userId, secondUserId),
+            ),
+        );
+    assert.deepEqual((await getPublicGarden(gardenId))?.members, [
+        expectedMembers[0],
+    ]);
+    assert.deepEqual(
+        (await getPublicGardens()).find((garden) => garden.id === gardenId)
+            ?.members,
+        [expectedMembers[0]],
+    );
+    await updateGarden({ id: gardenId, isPublic: false });
+    assert.equal(await getPublicGarden(gardenId), null);
+    assert.equal(
+        (await getPublicGardens()).some((garden) => garden.id === gardenId),
+        false,
+    );
+});
+
+test('public gardens without registered members return an empty member list', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const gardenId = await createTestGarden({
+        accountId,
+        farmId: await ensureFarmId(),
+    });
+    const garden = (await getPublicGardens()).find(
+        (candidate) => candidate.id === gardenId,
+    );
+    assert.deepEqual(garden?.members, []);
+    assert.equal(garden?.owner, null);
+    assert.deepEqual((await getPublicGarden(gardenId))?.members, []);
+});
+
 test('sitemap sources count visible blocks but time-stamp their removal', async () => {
     createTestDb();
     const accountId = await createAccount();

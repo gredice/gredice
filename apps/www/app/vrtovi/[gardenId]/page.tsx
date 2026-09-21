@@ -6,6 +6,7 @@ import { Card } from '../../../components/shared/Card';
 import { PublicBreadcrumbs } from '../../../components/shared/seo/PublicBreadcrumbs';
 import { KnownPages } from '../../../src/KnownPages';
 import { PublicGardenExplorer } from '../PublicGardenExplorer';
+import { PublicGardenMembers } from '../PublicGardenMembers';
 import { PublicGardenStatsAccordion } from '../PublicGardenStatsAccordion';
 import { PublicGardenSummary } from '../PublicGardenSummary';
 import {
@@ -132,6 +133,10 @@ export default async function PublicGardenPage({
                                 detaljima iz ovog zelenog kutka.
                             </Typography>
                         </div>
+                        <PublicGardenMembers
+                            gardenId={garden.id}
+                            members={garden.members}
+                        />
                     </div>
                     <PublicGardenSummary
                         garden={garden}
