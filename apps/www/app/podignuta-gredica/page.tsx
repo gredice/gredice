@@ -31,7 +31,7 @@ export default function RaisedBedPage() {
                             width={192}
                             height={192}
                             sizes="192px"
-                            className="size-48 shrink-0 object-contain"
+                            className="h-auto w-48 shrink-0 object-contain"
                         />
                     }
                     header="Podignuta gredica"
