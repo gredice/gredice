@@ -4,37 +4,10 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { Suspense } from 'react';
-import { CommunityEntitySuggestionButton } from '../../../components/community-edits/CommunityEntitySuggestionButton';
 import { Card } from '../../../components/shared/Card';
 import { getPlantSortsData } from '../../../lib/plants/getPlantSortsData';
 import { KnownPages } from '../../../src/KnownPages';
-
-function PlantSortsHeading({
-    basePlantId,
-    basePlantName,
-}: {
-    basePlantId: number;
-    basePlantName: string;
-}) {
-    return (
-        <Row
-            alignItems="center"
-            justifyContent="between"
-            spacing={3}
-            className="flex-wrap"
-        >
-            <Typography level="h2" className="text-2xl" id={slug('Sorte')}>
-                Sorte
-            </Typography>
-            <CommunityEntitySuggestionButton
-                kind="plantSort"
-                parentPlantId={basePlantId}
-                parentPlantName={basePlantName}
-                publicPath={KnownPages.Plant(basePlantName)}
-            />
-        </Row>
-    );
-}
+import { PlantSortSuggestionCard } from './PlantSortSuggestionCard';
 
 async function PlantSortsListContent({
     basePlantName,
@@ -49,25 +22,16 @@ async function PlantSortsListContent({
             (sort) => sort.information.plant?.id === basePlantId,
         ) ?? []
     ).sort((a, b) => a.information.name.localeCompare(b.information.name));
-    if (!sorts.length) {
-        return (
-            <Stack spacing={4}>
-                <PlantSortsHeading
-                    basePlantId={basePlantId}
-                    basePlantName={basePlantName}
-                />
+    return (
+        <Stack spacing={4}>
+            <Typography level="h2" className="text-2xl" id={slug('Sorte')}>
+                Sorte
+            </Typography>
+            {!sorts.length && (
                 <Typography level="body2" className="text-gray-500 italic">
                     Nema dostupnih sorti
                 </Typography>
-            </Stack>
-        );
-    }
-    return (
-        <Stack spacing={4}>
-            <PlantSortsHeading
-                basePlantId={basePlantId}
-                basePlantName={basePlantName}
-            />
+            )}
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
                 {sorts.map((sort) => {
                     const isAvailable =
@@ -112,6 +76,10 @@ async function PlantSortsListContent({
                         </Card>
                     );
                 })}
+                <PlantSortSuggestionCard
+                    basePlantId={basePlantId}
+                    basePlantName={basePlantName}
+                />
             </div>
         </Stack>
     );

@@ -44,7 +44,8 @@ test('submits a new plant sort suggestion for the current plant', async ({
         />,
     );
 
-    await page.getByRole('button', { name: 'Predloži novu sortu' }).click();
+    await page.getByRole('button', { name: /Predloži novu sortu/ }).focus();
+    await page.keyboard.press('Enter');
     await expect(page.getByText('Biljka: Blitva')).toBeVisible();
     await page.getByLabel('Naziv sorte').fill('Blitva rubin');
     await page

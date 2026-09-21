@@ -9,7 +9,14 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { type FormEvent, useEffect, useId, useMemo, useState } from 'react';
+import {
+    type FormEvent,
+    type ReactElement,
+    useEffect,
+    useId,
+    useMemo,
+    useState,
+} from 'react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { InlineLoginDialog } from '../auth/InlineLoginDialog';
 import { PlantReferencePicker } from './PlantReferencePicker';
@@ -40,6 +47,7 @@ export type CommunitySuggestionPlantOption = {
 type CommonProps = {
     className?: string;
     publicPath: string;
+    trigger?: ReactElement;
 };
 
 export type CommunityEntitySuggestionButtonProps = CommonProps &
@@ -332,15 +340,17 @@ export function CommunityEntitySuggestionButton(
             open={open}
             title={labels.title}
             trigger={
-                <Button
-                    className={props.className}
-                    size="sm"
-                    startDecorator={<Add className="size-4" />}
-                    type="button"
-                    variant="outlined"
-                >
-                    {labels.trigger}
-                </Button>
+                props.trigger ?? (
+                    <Button
+                        className={props.className}
+                        size="sm"
+                        startDecorator={<Add className="size-4" />}
+                        type="button"
+                        variant="outlined"
+                    >
+                        {labels.trigger}
+                    </Button>
+                )
             }
         >
             <Stack spacing={5}>
