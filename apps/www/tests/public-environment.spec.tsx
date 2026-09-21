@@ -5,6 +5,11 @@ import type { Page } from '@playwright/test';
 import '../app/globals.css';
 import { PublicEnvironmentHarness } from './PublicEnvironmentHarness';
 
+test.afterEach(async ({ page }) => {
+    // Let in-flight image responses finish before Playwright closes the page.
+    await page.unrouteAll({ behavior: 'wait' });
+});
+
 async function mockPublicEnvironmentRequests(page: Page) {
     // Keep Next's image component in both the full suite and focused CT run.
     // Vite serves the real assets but has no Next image optimizer endpoint.
@@ -285,4 +290,14 @@ test('uses the night garden in dark mode with ambient disabled', async ({
     });
     await expect(page.locator('html')).not.toHaveClass(/dark/u);
     await expect(landscape).toHaveAttribute('data-footer-phase', 'day');
+    await expect
+        .poll(() =>
+            landscape
+                .locator('img')
+                .evaluate(
+                    (element: HTMLImageElement) =>
+                        element.complete && element.naturalWidth > 0,
+                ),
+        )
+        .toBe(true);
 });
