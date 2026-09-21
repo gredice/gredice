@@ -257,6 +257,7 @@ export function SandboxEnvironmentHud() {
     );
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const setFreezeTime = useGameState((state) => state.setFreezeTime);
+    const setSceneDate = useGameState((state) => state.setSceneDate);
     const setDayNightCycleDisabled = useGameState(
         (state) => state.setDayNightCycleDisabled,
     );
@@ -306,8 +307,10 @@ export function SandboxEnvironmentHud() {
             return;
         }
 
+        // The scene date moves while the clock stays where it is, so scrubbing
+        // through the year does not drag the sun back to the old time of day.
         setDayNightCycleDisabled(false);
-        setFreezeTime(createDateForGameTimeOfDay(nextDate, timeOfDay));
+        setSceneDate(nextDate);
     };
 
     const resetTime = () => {

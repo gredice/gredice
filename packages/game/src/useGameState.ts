@@ -46,6 +46,8 @@ import {
 } from './utils/dayNightCycle';
 import { triggerSelectionHaptic } from './utils/haptics';
 import {
+    createDateForGameDate,
+    createDateForGameDayOfYear,
     defaultGameLocation,
     type GameLocation,
     getGameSunriseSunset,
@@ -416,6 +418,30 @@ export type GameState = {
     localSandboxInitialStacks: Stack[] | null;
     freezeTime?: Date | null;
     setFreezeTime: (freezeTime: Date | null) => void;
+    /**
+     * Debug-only scene date override. Moves the frozen scene date while keeping
+     * the clock time that is on screen, and clears the override back to live
+     * time when given `null`.
+     *
+     * The override is presentation-only and routes through `setFreezeTime`, so
+     * there is no second clock: `timeOfDay`, `sunriseTime`, `sunsetTime` and
+     * `seasonState` all stay derived from the one scene date. It never writes to
+     * garden, raised bed, operation, inventory or economy state.
+     *
+     * It is visible beyond the seasonal effects: `useSnapshotTime` also feeds
+     * raised bed rendering (`entities/RaisedBed.tsx`,
+     * `entities/raisedBed/RaisedBedPlantField.tsx`,
+     * `entities/raisedBed/RaisedBedGeneratedPlantFieldBatches.tsx`) and the
+     * quick seed suggestions, so plant growth visuals and seed suggestions move
+     * with the date too.
+     */
+    setSceneDate: (sceneDate: Date | null) => void;
+    /**
+     * Debug-only scene date override by day of the year, for controls that scrub
+     * across the whole year. Shares every guarantee of {@link setSceneDate},
+     * including the reset path when given `null`.
+     */
+    setSceneDayOfYear: (dayOfYear: number | null) => void;
     dayNightCycleDisabled: boolean;
     setDayNightCycleDisabled: (disabled: boolean) => void;
     gameQualityCustomProfile: GameQualityCustomProfile;
@@ -684,6 +710,27 @@ export function createGameState({
                     get().seasonState,
                 ),
             });
+        },
+        setSceneDate: (sceneDate) => {
+            if (!sceneDate) {
+                get().setFreezeTime(null);
+                return;
+            }
+
+            // The clock the scene shows right now, frozen or live.
+            const currentTime = get().freezeTime ?? new Date();
+            get().setFreezeTime(createDateForGameDate(currentTime, sceneDate));
+        },
+        setSceneDayOfYear: (dayOfYear) => {
+            if (dayOfYear === null) {
+                get().setFreezeTime(null);
+                return;
+            }
+
+            const currentTime = get().freezeTime ?? new Date();
+            get().setFreezeTime(
+                createDateForGameDayOfYear(currentTime, dayOfYear),
+            );
         },
         dayNightCycleDisabled,
         setDayNightCycleDisabled: (disabled) => {

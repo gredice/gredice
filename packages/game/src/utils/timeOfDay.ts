@@ -125,3 +125,130 @@ export function createDateForGameTimeOfDay(
     );
     return nextDate;
 }
+
+const daysPerCommonYear = 365;
+const daysPerLeapYear = 366;
+const millisecondsPerDay = minutesPerDay * 60 * 1000;
+
+function isReadableDate(date: Date) {
+    return Boolean(date) && Number.isFinite(date.getTime());
+}
+
+/** Whether the given calendar year carries a 29 February. */
+export function isGameLeapYear(year: number) {
+    return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+/** Days the given calendar year holds, 366 in a leap year. */
+export function getGameYearLengthDays(year: number) {
+    return isGameLeapYear(year) ? daysPerLeapYear : daysPerCommonYear;
+}
+
+/**
+ * Midnight of a calendar day on a UTC timeline. `setUTCFullYear` keeps years 0
+ * to 99 as written, where `Date.UTC` and `new Date(year, ...)` would remap them
+ * into the 1900s and take that century's leap rule with them.
+ */
+function utcTimestampForCalendarDay(
+    year: number,
+    monthIndex: number,
+    day: number,
+) {
+    const projected = new Date(0);
+    projected.setUTCFullYear(year, monthIndex, day);
+    return projected.getTime();
+}
+
+/**
+ * Day of the year for a date, 1 on 1 January. Local calendar parts are projected
+ * onto a UTC timeline so the count never drifts across a daylight saving jump.
+ */
+export function getGameDayOfYear(date: Date) {
+    if (!isReadableDate(date)) {
+        return 1;
+    }
+
+    const yearStart = utcTimestampForCalendarDay(date.getFullYear(), 0, 1);
+    const day = utcTimestampForCalendarDay(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+    );
+    return Math.round((day - yearStart) / millisecondsPerDay) + 1;
+}
+
+/** Wraps a day index into the given year so scrubbing past 31 December returns to 1 January. */
+function wrapDayOfYear(dayOfYear: number, yearLengthDays: number) {
+    const rounded = Math.round(dayOfYear);
+    return (((rounded - 1) % yearLengthDays) + yearLengthDays) % yearLengthDays;
+}
+
+/**
+ * Move a date to another day of the calendar while keeping its clock time.
+ *
+ * This is the debug scene date override counterpart of
+ * {@link createDateForGameTimeOfDay}: that one rewrites the clock for a
+ * normalized time of day, this one rewrites the calendar date and leaves the
+ * clock alone. The clock time is preserved rather than the time of day, because
+ * sunrise and sunset shift through the year - scrubbing from June to December
+ * must keep 18:00 at 18:00 instead of dragging the sun back to where noon sat in
+ * June. Year, month and day are set in a single call so a short target month
+ * cannot overflow into the next one (31 March to 15 February stays in February).
+ *
+ * Feed the result to `setFreezeTime` so `timeOfDay`, `sunriseTime`, `sunsetTime`
+ * and the season slice are all recomputed from the one scene clock.
+ */
+export function createDateForGameDate(currentDate: Date, targetDate: Date) {
+    if (!isReadableDate(currentDate)) {
+        return new Date(Number.NaN);
+    }
+    if (!isReadableDate(targetDate)) {
+        return new Date(currentDate);
+    }
+
+    const nextDate = new Date(currentDate);
+    nextDate.setFullYear(
+        targetDate.getFullYear(),
+        targetDate.getMonth(),
+        targetDate.getDate(),
+    );
+    return nextDate;
+}
+
+/**
+ * Move a date to a day of the year while keeping its clock time, so a debug
+ * control can scrub the scene across the whole year.
+ *
+ * The day index is resolved against the target year, so leap years land on the
+ * right calendar date without drifting by a day (day 60 is 29 February in a leap
+ * year and 1 March otherwise). Indexes outside the year wrap inside that same
+ * year, keeping a scrub continuous at the year boundary instead of jumping the
+ * scene into another year.
+ */
+export function createDateForGameDayOfYear(
+    currentDate: Date,
+    dayOfYear: number,
+    year?: number,
+) {
+    if (!isReadableDate(currentDate)) {
+        return new Date(Number.NaN);
+    }
+    if (!Number.isFinite(dayOfYear)) {
+        return new Date(currentDate);
+    }
+
+    const targetYear =
+        year !== undefined && Number.isFinite(year)
+            ? Math.trunc(year)
+            : currentDate.getFullYear();
+    const wrappedDayOfYear = wrapDayOfYear(
+        dayOfYear,
+        getGameYearLengthDays(targetYear),
+    );
+
+    const targetDate = new Date(currentDate);
+    // January plus the day offset normalizes into the right month for us, and
+    // keeps two digit years out of the 1900s that `new Date(year, ...)` maps to.
+    targetDate.setFullYear(targetYear, 0, 1 + wrappedDayOfYear);
+    return targetDate;
+}

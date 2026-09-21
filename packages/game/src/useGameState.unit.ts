@@ -7,14 +7,19 @@ import {
     confirmGardenStructureTemplatePlacement,
     createNewGardenStructureEditorState,
 } from './structures/editor';
-import type { ActiveDragPreview } from './useGameState';
+import type { ActiveDragPreview, GameState } from './useGameState';
 import {
     activeDragPreviewsEqual,
     createGameState,
     getBlockPlacementDropAnimationRenderIdForBlockId,
     resolveBlockPlacementDropAnimationRenderIdentity,
 } from './useGameState';
-import { getGameSunriseSunset, getGameTimeOfDay } from './utils/timeOfDay';
+import {
+    createDateForGameDayOfYear,
+    getGameDayOfYear,
+    getGameSunriseSunset,
+    getGameTimeOfDay,
+} from './utils/timeOfDay';
 
 function createPreview(): ActiveDragPreview {
     return {
@@ -771,6 +776,174 @@ test('clearEnvironmentOverrides returns the season slice to the live clock', () 
             Math.abs(store.getState().seasonState.progress - live.progress) <
                 0.000_01,
         );
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('setSceneDate moves the scene date and keeps the clock time', () => {
+    const frozenTime = new Date(2026, 5, 21, 20, 30);
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: frozenTime,
+        isMock: true,
+    });
+
+    try {
+        store.getState().setSceneDate(new Date(2026, 11, 3));
+        const state = store.getState();
+        const sceneDate = state.freezeTime;
+        assert.ok(sceneDate);
+
+        assert.equal(sceneDate.getFullYear(), 2026);
+        assert.equal(sceneDate.getMonth(), 11);
+        assert.equal(sceneDate.getDate(), 3);
+        assert.equal(sceneDate.getHours(), 20);
+        assert.equal(sceneDate.getMinutes(), 30);
+
+        // Time of day, sunrise, sunset and the season slice all follow the new date.
+        const { sunrise, sunset } = getGameSunriseSunset(
+            state.timeLocation,
+            sceneDate,
+        );
+        assert.equal(
+            state.timeOfDay,
+            getGameTimeOfDay(state.timeLocation, sceneDate),
+        );
+        assert.equal(state.sunriseTime?.getTime(), sunrise.getTime());
+        assert.equal(state.sunsetTime?.getTime(), sunset.getTime());
+        assert.deepEqual(state.seasonState, getSeasonState(sceneDate));
+        assert.equal(state.seasonState.season, 'autumn');
+
+        // The same winter evening resolves a different time of day than in June.
+        assert.notEqual(
+            state.timeOfDay,
+            getGameTimeOfDay(state.timeLocation, frozenTime),
+        );
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('setSceneDayOfYear scrubs across the year from the frozen clock', () => {
+    const frozenTime = new Date(2024, 0, 10, 7, 15);
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: frozenTime,
+        isMock: true,
+    });
+
+    try {
+        // Day 60 of a leap year is 29 February.
+        store.getState().setSceneDayOfYear(60);
+        const leapDay = store.getState().freezeTime;
+        assert.ok(leapDay);
+        assert.equal(leapDay.getMonth(), 1);
+        assert.equal(leapDay.getDate(), 29);
+        assert.equal(getGameDayOfYear(leapDay), 60);
+        assert.equal(leapDay.getHours(), 7);
+        assert.equal(leapDay.getMinutes(), 15);
+
+        // Scrubbing on from the moved date keeps the clock and the year.
+        store.getState().setSceneDayOfYear(200);
+        const summerDay = store.getState().freezeTime;
+        assert.ok(summerDay);
+        assert.equal(
+            summerDay.getTime(),
+            createDateForGameDayOfYear(leapDay, 200).getTime(),
+        );
+        assert.equal(summerDay.getHours(), 7);
+        assert.equal(summerDay.getMinutes(), 15);
+        assert.deepEqual(
+            store.getState().seasonState,
+            getSeasonState(summerDay),
+        );
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('clearing the scene date override returns the scene to live time', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date(2026, 5, 21, 20, 30),
+        isMock: true,
+    });
+
+    try {
+        store.getState().setSceneDate(new Date(2026, 11, 3));
+        assert.ok(store.getState().freezeTime);
+
+        store.getState().setSceneDate(null);
+        assert.equal(store.getState().freezeTime, null);
+
+        store.getState().setSceneDayOfYear(200);
+        assert.ok(store.getState().freezeTime);
+
+        store.getState().setSceneDayOfYear(null);
+        assert.equal(store.getState().freezeTime, null);
+
+        const live = getSeasonState(new Date());
+        assert.equal(store.getState().seasonState.season, live.season);
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('the scene date override leaves the day night cycle toggle alone', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        dayNightCycleDisabled: true,
+        freezeTime: new Date(2026, 5, 21, 20, 30),
+        isMock: true,
+    });
+
+    try {
+        const alwaysDayTimeOfDay = store.getState().timeOfDay;
+
+        store.getState().setSceneDate(new Date(2026, 11, 3));
+
+        assert.equal(store.getState().dayNightCycleDisabled, true);
+        assert.equal(store.getState().timeOfDay, alwaysDayTimeOfDay);
+        assert.equal(store.getState().freezeTime?.getMonth(), 11);
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('the scene date override does not write farmer visible state', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date(2026, 5, 21, 20, 30),
+        isMock: true,
+    });
+    const timeKeys = new Set([
+        'freezeTime',
+        'seasonState',
+        'sunriseTime',
+        'sunsetTime',
+        'timeOfDay',
+    ]);
+
+    const nonTimeSlices = (state: GameState) =>
+        Object.fromEntries(
+            Object.entries(state).filter(([key]) => !timeKeys.has(key)),
+        );
+
+    try {
+        const before = nonTimeSlices(store.getState());
+        store.getState().setSceneDayOfYear(340);
+        const after = nonTimeSlices(store.getState());
+
+        assert.deepEqual(Object.keys(after), Object.keys(before));
+        for (const [key, slice] of Object.entries(before)) {
+            // Identity, so a slice replaced with an equal value still fails.
+            assert.equal(
+                after[key],
+                slice,
+                `${key} changed with the scene date override`,
+            );
+        }
     } finally {
         store.getState().audio.dispose();
     }
