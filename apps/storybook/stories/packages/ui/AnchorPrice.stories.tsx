@@ -21,6 +21,10 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Unchanged: Story = { name: 'Unchanged (no note)' };
+export const PriceListUnchanged: Story = {
+    name: 'Price list (always show known reference)',
+    args: { showUnchanged: true },
+};
 export const Increased: Story = { args: { currentPrice: 7 } };
 export const Decreased: Story = { args: { currentPrice: 4 } };
 export const MissingHistory: Story = { args: { anchor: null } };
