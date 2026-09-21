@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import type { BlockData } from '@gredice/client';
 import { getGardenBlockSpan } from '@gredice/js/gardenBlocks';
-import { test } from '@playwright/experimental-ct-react';
+import { expect, test } from '@playwright/experimental-ct-react';
 import sharp from 'sharp';
 import { allGameAssetNames } from '../../../packages/game/src/data/models';
 import { gameQualityProfiles } from '../../../packages/game/src/scene/gameQuality';
@@ -163,6 +163,8 @@ const CLOSEUP_ENTITY_ZOOM = new Map<string, number>([
 const NORMAL_ENTITY_ZOOM = new Map<string, number>([
     ['CowShelter', 56],
     ['FishingBoat', 58],
+    // Fit the complete 1 x 2 bed before trimming and padding the snapshot.
+    ['Raised_Bed', 60],
     ['SheepFold', 56],
 ]);
 const FAR_ENTITY_ZOOM = new Map<string, number>([['HorseStable', 52]]);
@@ -369,6 +371,14 @@ test.describe('block screenshots', async () => {
                 // first, then let the model load and any animations settle.
                 const canvas = component.locator('canvas').first();
                 await canvas.waitFor({ state: 'visible' });
+                await expect(canvas).toHaveAttribute(
+                    'width',
+                    `${SNAPSHOT_SIZE}`,
+                );
+                await expect(canvas).toHaveAttribute(
+                    'height',
+                    `${SNAPSHOT_SIZE}`,
+                );
                 await new Promise((resolve) => setTimeout(resolve, 1000));
 
                 console.debug('Taking screenshot now...');

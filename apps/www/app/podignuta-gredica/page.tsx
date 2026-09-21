@@ -1,5 +1,4 @@
 import { FIELD_SIZE_LABEL } from '@gredice/js/plants';
-import { BlockImage } from '@gredice/ui/BlockImage';
 import { Container } from '@gredice/ui/Container';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
@@ -9,6 +8,7 @@ import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
+import raisedBedImage from '../../public/assets/blocks/Raised_Bed.webp';
 import { KnownPages } from '../../src/KnownPages';
 
 export const metadata = createPublicMetadata({
@@ -25,10 +25,13 @@ export default function RaisedBedPage() {
             <Stack>
                 <PageHeader
                     visual={
-                        <BlockImage
-                            blockName="Raised_Bed"
-                            width={160}
-                            height={160}
+                        <Image
+                            src={raisedBedImage}
+                            alt="Podignuta gredica"
+                            width={192}
+                            height={192}
+                            sizes="192px"
+                            className="h-auto w-48 shrink-0 object-contain"
                         />
                     }
                     header="Podignuta gredica"
