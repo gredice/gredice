@@ -18,6 +18,19 @@ function clockParts(date: Date) {
     };
 }
 
+/** Builds a local date for years the `Date` constructor would remap into the 1900s. */
+function localDateAt(
+    year: number,
+    monthIndex: number,
+    day: number,
+    hours = 0,
+    minutes = 0,
+) {
+    const date = new Date(2000, 0, 1, hours, minutes);
+    date.setFullYear(year, monthIndex, day);
+    return date;
+}
+
 function calendarParts(date: Date) {
     return {
         day: date.getDate(),
@@ -52,6 +65,23 @@ test('getGameDayOfYear counts from 1 January and follows leap years', () => {
 
     // An unreadable date falls back to the first day instead of NaN.
     assert.equal(getGameDayOfYear(new Date(Number.NaN)), 1);
+});
+
+test('a year before 100 keeps its own leap rule instead of the 1900s', () => {
+    // `Date.UTC` and `new Date(year, ...)` would read year 0 as 1900, which is
+    // not a leap year, and drop 29 December onwards by a day.
+    const lastDayOfYearZero = localDateAt(0, 11, 31, 8, 30);
+    assert.equal(getGameYearLengthDays(0), 366);
+    assert.equal(getGameDayOfYear(lastDayOfYearZero), 366);
+    assert.equal(getGameDayOfYear(localDateAt(0, 1, 29, 8, 30)), 60);
+
+    const moved = createDateForGameDayOfYear(lastDayOfYearZero, 60);
+    assert.deepEqual(calendarParts(moved), {
+        day: 29,
+        monthIndex: 1,
+        year: 0,
+    });
+    assert.deepEqual(clockParts(moved), clockParts(lastDayOfYearZero));
 });
 
 test('createDateForGameDate moves the calendar date and keeps the clock time', () => {

@@ -134,6 +134,7 @@ function isReadableDate(date: Date) {
     return Boolean(date) && Number.isFinite(date.getTime());
 }
 
+/** Whether the given calendar year carries a 29 February. */
 export function isGameLeapYear(year: number) {
     return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 }
@@ -141,6 +142,21 @@ export function isGameLeapYear(year: number) {
 /** Days the given calendar year holds, 366 in a leap year. */
 export function getGameYearLengthDays(year: number) {
     return isGameLeapYear(year) ? daysPerLeapYear : daysPerCommonYear;
+}
+
+/**
+ * Midnight of a calendar day on a UTC timeline. `setUTCFullYear` keeps years 0
+ * to 99 as written, where `Date.UTC` and `new Date(year, ...)` would remap them
+ * into the 1900s and take that century's leap rule with them.
+ */
+function utcTimestampForCalendarDay(
+    year: number,
+    monthIndex: number,
+    day: number,
+) {
+    const projected = new Date(0);
+    projected.setUTCFullYear(year, monthIndex, day);
+    return projected.getTime();
 }
 
 /**
@@ -152,8 +168,12 @@ export function getGameDayOfYear(date: Date) {
         return 1;
     }
 
-    const yearStart = Date.UTC(date.getFullYear(), 0, 1);
-    const day = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+    const yearStart = utcTimestampForCalendarDay(date.getFullYear(), 0, 1);
+    const day = utcTimestampForCalendarDay(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+    );
     return Math.round((day - yearStart) / millisecondsPerDay) + 1;
 }
 
