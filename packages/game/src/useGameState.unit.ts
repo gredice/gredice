@@ -7,7 +7,7 @@ import {
     confirmGardenStructureTemplatePlacement,
     createNewGardenStructureEditorState,
 } from './structures/editor';
-import type { ActiveDragPreview } from './useGameState';
+import type { ActiveDragPreview, GameState } from './useGameState';
 import {
     activeDragPreviewsEqual,
     createGameState,
@@ -925,20 +925,23 @@ test('the scene date override does not write farmer visible state', () => {
         'timeOfDay',
     ]);
 
+    const nonTimeSlices = (state: GameState) =>
+        Object.fromEntries(
+            Object.entries(state).filter(([key]) => !timeKeys.has(key)),
+        );
+
     try {
-        const before = store.getState();
+        const before = nonTimeSlices(store.getState());
         store.getState().setSceneDayOfYear(340);
-        const after = store.getState();
+        const after = nonTimeSlices(store.getState());
 
-        for (const key of Object.keys(before) as (keyof typeof before)[]) {
-            if (timeKeys.has(key)) {
-                continue;
-            }
-
+        assert.deepEqual(Object.keys(after), Object.keys(before));
+        for (const [key, slice] of Object.entries(before)) {
+            // Identity, so a slice replaced with an equal value still fails.
             assert.equal(
                 after[key],
-                before[key],
-                `${String(key)} changed with the scene date override`,
+                slice,
+                `${key} changed with the scene date override`,
             );
         }
     } finally {
