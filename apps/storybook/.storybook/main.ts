@@ -17,6 +17,10 @@ const config: StorybookConfig = {
             to: '/assets/structures',
         },
         { from: '../../www/public/assets/plants', to: '/assets/plants' },
+        {
+            from: '../../www/public/assets/faq-categories',
+            to: '/assets/faq-categories',
+        },
     ],
     addons: [
         '@storybook/addon-docs',
