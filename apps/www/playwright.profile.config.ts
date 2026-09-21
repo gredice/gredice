@@ -7,6 +7,7 @@ export default defineConfig({
     testMatch: [
         'public-profile.spec.tsx',
         'avatar-profile-links.spec.tsx',
+        'public-garden-members.spec.tsx',
         'user-leaderboard.spec.tsx',
     ],
     testIgnore: [],

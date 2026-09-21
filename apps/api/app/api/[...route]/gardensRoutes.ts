@@ -1138,7 +1138,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .get(
         '/public',
         describeRoute({
-            description: 'Get public gardens visible on the public website',
+            description:
+                'Get public gardens with the public profiles of their account members.',
             security: publicSecurity,
         }),
         async (context) => {
@@ -1158,6 +1159,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         name: garden.name,
                         isSandbox: garden.isSandbox,
                         owner: garden.owner,
+                        members: garden.members,
                         backgroundPalette: garden.backgroundPalette,
                         homeCamera: garden.homeCamera ?? null,
                         previewImage: serializePublicGardenPreviewImage(
@@ -2157,7 +2159,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .get(
         '/:gardenId/public',
         describeRoute({
-            description: 'Get public garden information',
+            description:
+                'Get public garden information and the public profiles of its account members.',
             security: publicSecurity,
         }),
         zValidator(
@@ -2205,6 +2208,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             return context.json({
                 ...publicGardenDetails,
+                members: garden.members,
                 previewImage:
                     serializePublicGardenPreviewImage(ownerPreviewImage),
                 previewImages:

@@ -200,60 +200,80 @@ export async function getGardens() {
     });
 }
 
-export async function getPublicGardens() {
-    const publicGardens = await storage().query.gardens.findMany({
-        where: and(eq(gardens.isDeleted, false), eq(gardens.isPublic, true)),
-        orderBy: desc(gardens.updatedAt),
-    });
-    const [previews, gardenOwners] = await Promise.all([
-        getGardenPreviewsForGardenIds(publicGardens.map((garden) => garden.id)),
-        publicGardens.length > 0
-            ? storage()
-                  .select({
-                      accountId: accountUsers.accountId,
-                      userId: users.id,
-                      avatarUrl: users.avatarUrl,
-                      achievementCount: userAchievementCount(users.id),
-                      displayName: users.displayName,
-                  })
-                  .from(accountUsers)
-                  .innerJoin(users, eq(accountUsers.userId, users.id))
-                  .where(
-                      inArray(
-                          accountUsers.accountId,
-                          publicGardens.map((garden) => garden.accountId),
-                      ),
-                  )
-                  .orderBy(asc(accountUsers.createdAt), asc(accountUsers.id))
-            : Promise.resolve([]),
-    ]);
-    const previewImagesByGardenId = gardenPreviewImagesByGardenId(previews);
-    const ownerByAccountId = new Map<
+async function getPublicGardenMembersByAccountIds(accountIds: string[]) {
+    const membersByAccountId = new Map<
         string,
         {
             publicId: string;
             avatarUrl: string | null;
             displayName: string;
             achievementCount: number;
-        }
+        }[]
     >();
-    for (const owner of gardenOwners) {
-        if (!ownerByAccountId.has(owner.accountId)) {
-            ownerByAccountId.set(owner.accountId, {
-                publicId: userIdToPublicId(owner.userId),
-                avatarUrl: owner.avatarUrl,
-                achievementCount: owner.achievementCount,
-                displayName: owner.displayName ?? 'Korisnik Gredica',
-            });
-        }
+    if (accountIds.length === 0) {
+        return membersByAccountId;
     }
+
+    const memberships = await storage()
+        .select({
+            accountId: accountUsers.accountId,
+            userId: users.id,
+            avatarUrl: users.avatarUrl,
+            achievementCount: userAchievementCount(users.id),
+            displayName: users.displayName,
+        })
+        .from(accountUsers)
+        .innerJoin(users, eq(accountUsers.userId, users.id))
+        .where(
+            and(
+                inArray(accountUsers.accountId, [...new Set(accountIds)]),
+                eq(users.isTemporary, false),
+            ),
+        )
+        .orderBy(asc(accountUsers.createdAt), asc(accountUsers.id));
+
+    for (const membership of memberships) {
+        const members = membersByAccountId.get(membership.accountId) ?? [];
+        const publicId = userIdToPublicId(membership.userId);
+        if (members.some((member) => member.publicId === publicId)) {
+            continue;
+        }
+        const displayName = membership.displayName?.trim();
+        members.push({
+            publicId,
+            avatarUrl: membership.avatarUrl,
+            achievementCount: membership.achievementCount,
+            displayName:
+                displayName && !/\S+@\S+/u.test(displayName)
+                    ? displayName
+                    : 'Korisnik Gredica',
+        });
+        membersByAccountId.set(membership.accountId, members);
+    }
+    return membersByAccountId;
+}
+
+export async function getPublicGardens() {
+    const publicGardens = await storage().query.gardens.findMany({
+        where: and(eq(gardens.isDeleted, false), eq(gardens.isPublic, true)),
+        orderBy: desc(gardens.updatedAt),
+    });
+    const [previews, membersByAccountId] = await Promise.all([
+        getGardenPreviewsForGardenIds(publicGardens.map((garden) => garden.id)),
+        getPublicGardenMembersByAccountIds(
+            publicGardens.map((garden) => garden.accountId),
+        ),
+    ]);
+    const previewImagesByGardenId = gardenPreviewImagesByGardenId(previews);
 
     return publicGardens.map((garden) => {
         const previewImages =
             previewImagesByGardenId.get(garden.id) ?? toGardenPreviewImages([]);
+        const members = membersByAccountId.get(garden.accountId) ?? [];
         return {
             ...garden,
-            owner: ownerByAccountId.get(garden.accountId) ?? null,
+            owner: members.at(0) ?? null,
+            members,
             previewImage: previewImages.day,
             previewImages,
         };
@@ -552,9 +572,13 @@ export async function getPublicGarden(gardenId: number) {
     }
 
     const previewImages = toGardenPreviewImages(previews);
+    const membersByAccountId = await getPublicGardenMembersByAccountIds([
+        garden.accountId,
+    ]);
 
     return {
         ...garden,
+        members: membersByAccountId.get(garden.accountId) ?? [],
         previewImage: previewImages.day,
         previewImages,
         raisedBeds,
