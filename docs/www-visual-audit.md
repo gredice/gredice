@@ -310,3 +310,36 @@ in both themes with no browser errors. The carrot page fits 360/1280px and its
 information dialog retains the detail link and restores focus on Escape.
 The tab changes also retain their verified mouse/keyboard navigation, search
 and sowing-filter preservation in both themes.
+
+## Footer garden panorama — 21 September 2026
+
+The shared `PublicFooter` now ends with the approved panoramic raised-bed garden,
+used by both WWW and News. `PublicFooterLandscape` has matching sunrise, day,
+sunset and night artwork; `PublicEnvironmentFooterLandscape` selects the phase
+from the existing public environment provider. Ambient mode uses the same solar
+altitude, twilight thresholds and Zagreb clock as the sky palette. Without
+ambient mode, the resolved light/dark theme selects day/night.
+
+The four 2172×724 WebPs live in `packages/ui/src/PublicChrome/assets/`, alongside
+`footer-prompts.json` with the built-in imagegen prompts and encoding details.
+Each file is 161–206 kB. Only the selected image is rendered, using lazy-loaded
+`next/image` with responsive sizes. Reserved height prevents layout shifts while
+preferences hydrate. A CSS mask blends the upper edge into the actual page
+background, and narrow screens use a centered crop. The artwork is decorative,
+has empty alt text and introduces no motion or interactive controls.
+
+Storybook includes all four phases, a loading state and a mobile crop. The public
+environment stories and public-content showcase also include the landscape.
+The targeted browser command is:
+
+```sh
+pnpm --filter www exec playwright test --config playwright.environment.config.ts --workers=2
+```
+
+Seven Chromium checks passed, including ambient phase switching, normal dark
+mode, disabling the day/night cycle, image decoding, stable dimensions, no
+horizontal overflow at 360/768/1280px and WCAG A/AA checks after theme transitions
+settle. All 15 shared UI unit tests, UI/WWW/News/Storybook typechecks and the
+Storybook production build passed. The WWW production compiler and TypeScript
+phase passed; full page-data collection could not finish because the local
+worktree has no `POSTGRES_URL`.

@@ -1,5 +1,6 @@
 import {
     type PublicEnvironmentWeatherKind,
+    PublicFooterLandscape,
     PublicSkyBackdrop,
     publicEnvironmentWeatherPresets,
     resolvePublicEnvironmentDateAtMinutes,
@@ -32,7 +33,7 @@ function PublicEnvironmentPreview({
                 snapshot={snapshot}
                 weather={weather}
             />
-            <div className="grid min-h-[36rem] content-between gap-12 p-6 sm:p-10">
+            <div className="grid min-h-[20rem] content-between gap-12 p-6 sm:p-10">
                 <div className="max-w-xl rounded-2xl border border-border/70 bg-background/80 p-6 shadow-lg backdrop-blur-xl">
                     <p className="text-sm font-semibold text-muted-foreground">
                         Gredice
@@ -49,6 +50,7 @@ function PublicEnvironmentPreview({
                     {hour.toString().padStart(2, '0')}:00 · {weatherKind}
                 </div>
             </div>
+            <PublicFooterLandscape phase={snapshot.phase} />
         </div>
     );
 }
@@ -62,7 +64,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Time-of-day sky used behind the public www and News surfaces. The preview includes astronomical sun/moon placement, moon phase, weather tone, and the contrast veil.',
+                    'Time-of-day sky and matching footer garden used on the public www and News surfaces. The preview includes astronomical sun/moon placement, moon phase, weather tone, and the contrast veil.',
             },
         },
     },
@@ -86,6 +88,14 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Dusk: Story = {};
+
+export const Sunrise: Story = {
+    args: { hour: 6, weatherKind: 'clear' },
+};
+
+export const Day: Story = {
+    args: { hour: 13, weatherKind: 'clear' },
+};
 
 export const RainyDay: Story = {
     args: { hour: 13, weatherKind: 'rain' },

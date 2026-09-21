@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import * as SunCalc from 'suncalc';
 import {
     createMoonIlluminationPath,
     getPublicEnvironmentMinutes,
     parsePublicEnvironmentWeather,
+    publicEnvironmentDefaultLocation,
     resolvePublicEnvironmentDateAtMinutes,
     resolvePublicEnvironmentSnapshot,
 } from './publicEnvironment';
@@ -15,6 +17,30 @@ const clearWeather = {
     snowy: 0,
     thundery: 0,
 };
+
+test('matches garden phases to seasonal sunrise and sunset, not fixed hours', () => {
+    const { lat, lon } = publicEnvironmentDefaultLocation;
+    for (const day of ['2026-06-21', '2026-12-21']) {
+        const times = SunCalc.getTimes(new Date(`${day}T12:00:00Z`), lat, lon);
+        assert.ok(times.sunrise);
+        assert.ok(times.sunset);
+        for (const { date, phase } of [
+            { date: times.sunrise, phase: 'sunrise' },
+            { date: new Date(`${day}T12:00:00Z`), phase: 'day' },
+            { date: times.sunset, phase: 'sunset' },
+            { date: new Date(`${day}T23:00:00Z`), phase: 'night' },
+        ]) {
+            assert.equal(
+                resolvePublicEnvironmentSnapshot({
+                    date,
+                    weather: clearWeather,
+                }).phase,
+                phase,
+                `${day} ${phase}`,
+            );
+        }
+    }
+});
 
 test('resolves real sun positions into the visible Zagreb sky', () => {
     const noon = resolvePublicEnvironmentSnapshot({
@@ -55,6 +81,7 @@ test('uses Zagreb civil time independently of the viewer time zone', () => {
         assert.equal(westOfZagreb.horizon, eastOfZagreb.horizon);
         assert.equal(westOfZagreb.themeHue, eastOfZagreb.themeHue);
         assert.equal(westOfZagreb.zenith, eastOfZagreb.zenith);
+        assert.equal(westOfZagreb.phase, eastOfZagreb.phase);
     } finally {
         if (originalTimeZone === undefined) {
             delete process.env.TZ;

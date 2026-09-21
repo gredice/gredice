@@ -160,7 +160,10 @@ import { PaperNote } from '@gredice/ui/PaperNote';
 import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { Popper } from '@gredice/ui/Popper';
 import { Progress } from '@gredice/ui/Progress';
-import { PublicFooterOrigin } from '@gredice/ui/PublicChrome';
+import {
+    PublicFooterLandscape,
+    PublicFooterOrigin,
+} from '@gredice/ui/PublicChrome';
 import {
     PlantOrSortImage,
     PlantYieldTooltip,
@@ -1408,6 +1411,7 @@ function PublicContentShowcase() {
                     />
                 </Stack>
             </Container>
+            <PublicFooterLandscape />
         </div>
     );
 }

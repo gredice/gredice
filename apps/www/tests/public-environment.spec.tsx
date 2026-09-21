@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { PublicChromeProvider, PublicFooter } from '@gredice/ui/PublicChrome';
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
@@ -5,6 +6,20 @@ import '../app/globals.css';
 import { PublicEnvironmentHarness } from './PublicEnvironmentHarness';
 
 async function mockPublicEnvironmentRequests(page: Page) {
+    // Keep Next's image component in both the full suite and focused CT run.
+    // Vite serves the real assets but has no Next image optimizer endpoint.
+    await page.route('**/_next/image?**', async (route) => {
+        const requestUrl = new URL(route.request().url());
+        const source = requestUrl.searchParams.get('url');
+        if (!source?.startsWith('/assets/footer-')) {
+            await route.continue();
+            return;
+        }
+        const response = await route.fetch({
+            url: new URL(source, requestUrl.origin).toString(),
+        });
+        await route.fulfill({ response });
+    });
     await page.route('**/api/auth/current-claims', async (route) => {
         await route.fulfill({ status: 401, json: { error: 'Unauthorized' } });
     });
@@ -153,4 +168,121 @@ test('keeps the ambient switch compact above the footer social links', async ({
 
     expect(toggleBox.height).toBeLessThanOrEqual(24);
     expect(toggleBox.y).toBeLessThan(instagramBox.y);
+});
+
+for (const width of [360, 768, 1280]) {
+    test(`footer garden follows all ambient phases at ${width}px`, async ({
+        mount,
+        page,
+    }, testInfo) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.clock.setFixedTime(new Date('2026-08-24T11:00:00Z'));
+        await mockPublicEnvironmentRequests(page);
+        await mount(
+            <PublicChromeProvider>
+                <PublicFooter />
+            </PublicChromeProvider>,
+        );
+
+        const landscape = page.getByTestId('public-footer-landscape');
+        const image = landscape.locator('img');
+        await expect(landscape).toHaveAttribute('data-footer-phase', 'day');
+        await expect(image).toHaveAttribute('alt', '');
+        await expect(image).toHaveAttribute('loading', 'lazy');
+        await expect(landscape).toHaveAttribute('aria-hidden', 'true');
+        const initialHeight = (await landscape.boundingBox())?.height;
+
+        await page
+            .getByRole('switch', { name: 'Ambijentalna pozadina' })
+            .click();
+        await page.getByText('Debug prikaza').click();
+        await page.getByLabel('Fiksiraj vrijeme').check();
+
+        for (const { minutes, phase } of [
+            { minutes: 360, phase: 'sunrise' },
+            { minutes: 780, phase: 'day' },
+            { minutes: 1200, phase: 'sunset' },
+            { minutes: 1380, phase: 'night' },
+        ]) {
+            await page.getByLabel('Vrijeme dana').fill(String(minutes));
+            await expect(landscape).toHaveAttribute('data-footer-phase', phase);
+            await expect(image).toHaveAttribute(
+                'src',
+                new RegExp(`footer-${phase}`),
+            );
+            await landscape.scrollIntoViewIfNeeded();
+            await expect
+                .poll(() =>
+                    image.evaluate(
+                        (element: HTMLImageElement) =>
+                            element.complete && element.naturalWidth > 0,
+                    ),
+                )
+                .toBe(true);
+            expect((await landscape.boundingBox())?.height).toBe(initialHeight);
+            expect(
+                await page.evaluate(() => document.documentElement.scrollWidth),
+            ).toBeLessThanOrEqual(width);
+            await landscape.screenshot({
+                path: testInfo.outputPath(`${phase}.png`),
+            });
+        }
+
+        await page
+            .getByRole('switch', { name: 'Ambijentalna pozadina' })
+            .click();
+        await expect(landscape).toHaveAttribute('data-footer-phase', 'day');
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    () =>
+                        document
+                            .getAnimations()
+                            .filter(
+                                (animation) =>
+                                    animation instanceof CSSTransition &&
+                                    animation.playState === 'running',
+                            ).length,
+                ),
+            )
+            .toBe(0);
+        const accessibility = await new AxeBuilder({ page })
+            .include('.site-footer')
+            .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+            .analyze();
+        expect(accessibility.violations).toEqual([]);
+    });
+}
+
+test('uses the night garden in dark mode with ambient disabled', async ({
+    mount,
+    page,
+}) => {
+    await page.clock.setFixedTime(new Date('2026-08-24T21:00:00Z'));
+    await mockPublicEnvironmentRequests(page);
+    await mount(
+        <PublicChromeProvider>
+            <PublicFooter />
+        </PublicChromeProvider>,
+    );
+
+    const landscape = page.getByTestId('public-footer-landscape');
+    await expect(
+        page.getByRole('switch', { name: 'Ambijentalna pozadina' }),
+    ).not.toBeChecked();
+    await expect(page.locator('html')).toHaveClass(/dark/u);
+    await expect(landscape).toHaveAttribute('data-footer-phase', 'night');
+    await landscape.scrollIntoViewIfNeeded();
+    await expect(landscape.locator('img')).toHaveAttribute(
+        'src',
+        /footer-night/u,
+    );
+
+    // The existing day/night preference must continue to control the footer.
+    await page.evaluate(() => {
+        localStorage.setItem('game-day-night-cycle-disabled', 'true');
+        window.dispatchEvent(new Event('game-day-night-cycle-disabled-change'));
+    });
+    await expect(page.locator('html')).not.toHaveClass(/dark/u);
+    await expect(landscape).toHaveAttribute('data-footer-phase', 'day');
 });

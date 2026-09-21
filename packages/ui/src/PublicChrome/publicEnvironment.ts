@@ -45,6 +45,7 @@ export type PublicEnvironmentSnapshot = {
         phase: number;
     };
     nightAmount: number;
+    phase: 'sunrise' | 'day' | 'sunset' | 'night';
     sun: PublicEnvironmentCelestialBody;
     themeHue: number;
     upper: string;
@@ -411,6 +412,15 @@ export function resolvePublicEnvironmentSnapshot({
     const moonIllumination = SunCalc.getMoonIllumination(date);
     const palette = resolveBaseSkyPalette(date, sunPosition.altitude);
     const nightAmount = 1 - smoothstep(-9, 1, sunPosition.altitude);
+    // Use the same twilight range and Zagreb clock as the ambient sky palette.
+    const phase =
+        sunPosition.altitude < -10
+            ? 'night'
+            : sunPosition.altitude >= 12
+              ? 'day'
+              : getPublicEnvironmentMinutes(date) < 12 * 60
+                ? 'sunrise'
+                : 'sunset';
     const weatherHueShift =
         weather.snowy * 6 - weather.rainy * 5 - weather.thundery * 5;
 
@@ -428,6 +438,7 @@ export function resolvePublicEnvironmentSnapshot({
             phase: moonIllumination.phase,
         },
         nightAmount,
+        phase,
         sun: celestialPosition(sunPosition.altitude, sunPosition.azimuth),
         themeHue: Math.round((palette.hue + weatherHueShift + 360) % 360),
         upper: rgbToCss(weatherTone(palette.upper, weather)),

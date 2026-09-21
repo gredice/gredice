@@ -7,6 +7,7 @@ export * from './PublicChromeProvider';
 export * from './PublicEnvironmentFooterControls';
 export * from './PublicEnvironmentProvider';
 export * from './PublicFooter';
+export * from './PublicFooterLandscape';
 export * from './PublicFooterOrigin';
 export * from './PublicHeader';
 export * from './PublicSkyBackdrop';
