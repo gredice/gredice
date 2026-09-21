@@ -103,7 +103,7 @@ export default async function NewsHomePage({
                 />
             </NewsArchiveNavigation>
             {totalItems > 0 ? (
-                <Timeline>
+                <Timeline className="isolate">
                     {timelineGroups.map((group, groupIndex) => (
                         <TimelineGroup
                             hasItems={group.items.length > 0}
