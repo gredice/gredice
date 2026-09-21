@@ -14,6 +14,7 @@ import {
     publicChromeHref,
 } from './links';
 import { PublicEnvironmentFooterControls } from './PublicEnvironmentFooterControls';
+import { PublicEnvironmentFooterLandscape } from './PublicEnvironmentFooterLandscape';
 import { PublicFooterOrigin } from './PublicFooterOrigin';
 
 const publicFooterComponentRegistry = {
@@ -352,6 +353,7 @@ export function PublicFooter({
                 sectionsData={sectionsData(linkMode)}
                 componentsRegistry={publicFooterComponentRegistry}
             />
+            <PublicEnvironmentFooterLandscape />
         </div>
     );
 }
