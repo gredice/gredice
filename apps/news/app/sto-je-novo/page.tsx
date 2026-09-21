@@ -31,9 +31,6 @@ export default async function WhatsNewPage() {
     return (
         <Container className="grid gap-8 py-10">
             <section className="grid gap-3">
-                <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    Što je novo
-                </p>
                 <h1 className="max-w-3xl text-3xl font-bold leading-tight md:text-4xl">
                     Promjene i nove mogućnosti
                 </h1>
