@@ -1278,7 +1278,7 @@ function FooterSocialLinks({ ctas }: { ctas: SectionData['ctas'] }) {
 }
 
 export function Footer1(props: SectionData) {
-    const { asset, ctas, features, tagline } = props;
+    const { asset, ctas, description, features, tagline } = props;
     const linkGroups = features?.filter(
         (feature) =>
             feature.ctas?.length &&
@@ -1349,9 +1349,12 @@ export function Footer1(props: SectionData) {
                         </div>
                         <Divider />
                         <div className="flex flex-col items-center gap-8 text-center @[48rem]/cms:flex-row @[48rem]/cms:justify-between">
-                            <div>{systemStatus?.asset}</div>
+                            <div className="flex flex-col items-center gap-3 @[48rem]/cms:flex-row">
+                                {systemStatus?.asset}
+                                {description}
+                            </div>
                             <Typography level="body3">
-                                {`© ${new Date().getFullYear()} ${tagline}. Sva prava pridržana.`}
+                                {`© ${new Date().getFullYear()} ${tagline}.`}
                             </Typography>
                         </div>
                     </Stack>

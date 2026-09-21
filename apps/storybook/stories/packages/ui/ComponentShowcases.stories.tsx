@@ -160,6 +160,7 @@ import { PaperNote } from '@gredice/ui/PaperNote';
 import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { Popper } from '@gredice/ui/Popper';
 import { Progress } from '@gredice/ui/Progress';
+import { PublicFooterOrigin } from '@gredice/ui/PublicChrome';
 import {
     PlantOrSortImage,
     PlantYieldTooltip,
@@ -1352,6 +1353,7 @@ function PublicContentShowcase() {
 
                     <Footer1
                         tagline="Gredice"
+                        description={<PublicFooterOrigin />}
                         asset={
                             <Typography level="h6" semiBold>
                                 Gredice
