@@ -11,7 +11,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Public footer with Croatian and EU SVG flags identifying the company’s origin beside the copyright notice.',
+                    'Public footer with a prominent Croatian and EU origin sign-off above the garden artwork. Flags are 40 × 30 px with 18 px text on narrow footers, stacking above the message; wide footers use 48 × 36 px flags beside 20 px text. The copyright stays separate.',
             },
         },
     },
