@@ -1,8 +1,9 @@
+import { AnchorPrice } from '@gredice/ui/AnchorPrice';
 import { expect, test } from '@playwright/experimental-ct-react';
 import { PricingDisplayTestStory } from './PricingDisplayTestStory';
 
 for (const width of [360, 1280]) {
-    test(`unchanged price has no reference note at ${width}px`, async ({
+    test(`price list shows unchanged anchor price and date at ${width}px`, async ({
         mount,
         page,
     }) => {
@@ -12,8 +13,8 @@ for (const width of [360, 1280]) {
             component.getByText('5,00 €', { exact: true }),
         ).toHaveCount(1);
         await expect(
-            component.getByText('Ista cijena kao 10. 9. 2026.'),
-        ).toHaveCount(0);
+            component.getByText('Cijena 10. 9. 2026.: 5,00 €'),
+        ).toBeVisible();
         await expect(component.getByText('Najniža u 30 dana')).toHaveCount(0);
         expect(
             await page.evaluate(
@@ -22,6 +23,18 @@ for (const width of [360, 1280]) {
         ).toBe(true);
     });
 }
+
+test('other price displays still hide unchanged anchor prices', async ({
+    mount,
+}) => {
+    const component = await mount(
+        <AnchorPrice
+            currentPrice={5}
+            anchor={{ price: 5, date: '2026-09-10' }}
+        />,
+    );
+    await expect(component).toBeEmpty();
+});
 
 test('changed prices show both amounts with the historical date', async ({
     mount,

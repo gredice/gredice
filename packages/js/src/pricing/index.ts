@@ -16,6 +16,7 @@ const priceFormatter = new Intl.NumberFormat('hr-HR', {
 export function anchorPriceLabel(
     currentPrice: number,
     anchor: AnchorPrice | null | undefined,
+    { showUnchanged = false }: { showUnchanged?: boolean } = {},
 ) {
     if (
         !anchor ||
@@ -32,7 +33,7 @@ export function anchorPriceLabel(
     const [year, month, day] = anchor.date.split('-');
     const date = `${Number(day)}. ${Number(month)}. ${year}.`;
     const price = priceFormatter.format(anchor.price);
-    return priceFormatter.format(currentPrice) === price
+    return !showUnchanged && priceFormatter.format(currentPrice) === price
         ? null
         : `Cijena ${date}: ${price}`;
 }

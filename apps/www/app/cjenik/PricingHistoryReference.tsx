@@ -12,7 +12,9 @@ export function PricingHistoryReference({
     history: EntityPriceHistorySummary | undefined;
 }) {
     const showAnchorPrice =
-        anchorPriceLabel(currentPrice, history?.anchorPrice) !== null;
+        anchorPriceLabel(currentPrice, history?.anchorPrice, {
+            showUnchanged: true,
+        }) !== null;
     const showThirtyDayLowestPrice =
         history !== undefined &&
         shouldShowThirtyDayLowestPrice(
@@ -28,6 +30,7 @@ export function PricingHistoryReference({
     return (
         <span className="block">
             <AnchorPrice
+                showUnchanged
                 currentPrice={currentPrice}
                 anchor={history?.anchorPrice}
             />

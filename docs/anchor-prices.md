@@ -39,7 +39,10 @@ source Git commit beside the constant.
 
 `AnchorPrice` is shared by WWW and Garden. It compares EUR amounts as formatted
 to cents and renders a dated reference amount only when it differs from the
-current amount. Equal amounts and unknown history render no note. A matching
+current amount by default. The public `/cjenik` page opts into `showUnchanged`
+so every known anchor amount and date remains visible, including unchanged
+prices across sunflower packages, plants, sorts, operations and delivery.
+Unknown history still renders no anchor note. A matching
 reference price also suppresses an older 30-day minimum. For changed or unknown
 references, the public price list retains a separate 30-day minimum only when
 it differs from the current amount.
