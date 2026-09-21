@@ -14,6 +14,7 @@ import {
     publicChromeHref,
 } from './links';
 import { PublicEnvironmentFooterControls } from './PublicEnvironmentFooterControls';
+import { PublicFooterOrigin } from './PublicFooterOrigin';
 
 const publicFooterComponentRegistry = {
     Footer1: memo(Footer1),
@@ -48,6 +49,7 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
         {
             component: 'Footer1',
             tagline: 'Gredice d.o.o',
+            description: <PublicFooterOrigin />,
             asset: <Logotype className="w-[320px] h-[87px]" />,
             features: [
                 {
