@@ -1,4 +1,8 @@
 import Link from 'next/link';
+import {
+    resolveGameProfileDate,
+    serializeGameProfileDate,
+} from '../../profile/game/profileDate';
 import { SandboxDebugActions } from '../../sandbox/SandboxDebugActions';
 import { getEntitySandboxStorageKey } from '../entitySandboxStorage';
 import { EntityViewerDynamic } from './EntityViewerDynamic';
@@ -62,6 +66,9 @@ export default async function DebugEntityPage({
             <div className="relative min-h-0 flex-1">
                 <EntityViewerDynamic
                     entityName={entityName}
+                    freezeTime={serializeGameProfileDate(
+                        resolveGameProfileDate(firstValue(query.date)),
+                    )}
                     rotation={rotation}
                     storageKey={storageKey}
                     variant={variant}

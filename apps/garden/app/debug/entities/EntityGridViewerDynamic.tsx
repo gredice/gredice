@@ -1,15 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { restoreGameProfileDate } from '../profile/game/profileDate';
 
 type EntityGridViewerComponent =
     typeof import('@gredice/game').EntityGridViewer;
 
 export function EntityGridViewerDynamic({
     storageKey,
+    freezeTime,
 }: {
     storageKey: string;
+    freezeTime?: string;
 }) {
+    const date = useMemo(
+        () => restoreGameProfileDate(freezeTime),
+        [freezeTime],
+    );
     const [EntityGridViewer, setEntityGridViewer] =
         useState<EntityGridViewerComponent | null>(null);
 
@@ -38,6 +45,7 @@ export function EntityGridViewerDynamic({
     return (
         <EntityGridViewer
             className="h-full w-full"
+            freezeTime={date}
             debugHud
             localSandboxStorageKey={storageKey}
             showBackground
