@@ -82,9 +82,11 @@ typechecks, Game lint, and both targeted WebGL tests passed. The Game suite
 contains 2,064 passing tests.
 
 For paired comparison, run the same clean harness commit against both served
-production builds. A separate baseline checkout can serve its already-built
-app while the candidate harness uses `profile:game:existing` with
-`GAME_PROFILE_BASE_URL` pointing to that server. The report's served-build
+production builds. Start each already-built app separately, then run both
+captures with `profile:game:existing` and `GAME_PROFILE_BASE_URL` pointing to
+the appropriate external server, without the build/start-server flags. Both
+reports must have identical harness, runtime, server-mode, and build-performed
+provenance. The report's served-build
 marker must identify the baseline source, while harness provenance stays equal
 to the candidate capture. `compare-game-profile-reports.mjs --allow-partial`
 compares this cross-tier subset diagnostically; the full canonical release gate
