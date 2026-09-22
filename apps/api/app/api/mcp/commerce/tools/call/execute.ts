@@ -15,6 +15,7 @@ import {
     upsertOrRemoveCartItem,
 } from '@gredice/storage';
 import { z } from 'zod';
+import { applyDefaultNewCartItemCurrency } from '../../../../../../lib/checkout/defaultCartItemCurrency';
 import {
     assertOperationCartTarget,
     resolveOperationCartTarget,
@@ -379,6 +380,21 @@ export async function executeCommerceTool(
                 location.positionIndex,
                 additionalData,
             );
+            await applyDefaultNewCartItemCurrency({
+                accountId: authContext.accountId,
+                cartItemId,
+                existingCartItemIds: cart.items.map((item) => item.id),
+                mutation: {
+                    additionalData,
+                    amount: input.quantity,
+                    cartId: cart.id,
+                    entityId: entityId.toString(),
+                    entityTypeName: 'plantSort',
+                    gardenId: location.gardenId,
+                    positionIndex: location.positionIndex,
+                    raisedBedId: location.raisedBedId,
+                },
+            });
             const refreshedCart = await getOrCreateShoppingCart(
                 authContext.accountId,
             );
@@ -446,6 +462,21 @@ export async function executeCommerceTool(
                 location.positionIndex,
                 additionalData,
             );
+            await applyDefaultNewCartItemCurrency({
+                accountId: authContext.accountId,
+                cartItemId,
+                existingCartItemIds: cart.items.map((item) => item.id),
+                mutation: {
+                    additionalData,
+                    amount: input.quantity,
+                    cartId: cart.id,
+                    entityId: input.operationId.toString(),
+                    entityTypeName: 'operation',
+                    gardenId: location.gardenId,
+                    positionIndex: location.positionIndex,
+                    raisedBedId: location.raisedBedId,
+                },
+            });
             const refreshedCart = await getOrCreateShoppingCart(
                 authContext.accountId,
             );
