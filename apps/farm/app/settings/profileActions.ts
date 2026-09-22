@@ -4,6 +4,7 @@ import { getUser, updateUser } from '@gredice/storage';
 import { AVATAR_OPTIONS } from '@gredice/ui/AvatarSelectionMenu';
 import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
+import { getPostHogClient } from '../../lib/posthog-server';
 
 export type FarmProfileActionState =
     | {
@@ -40,6 +41,7 @@ export async function updateFarmProfile(
 
     const displayName = nameValue.trim();
     const avatarUrl = avatarValue || null;
+    const updatedFields: string[] = [];
 
     try {
         const user = await getUser(userId);
@@ -56,6 +58,13 @@ export async function updateFarmProfile(
             return { success: false, message: 'Odaberi valjan avatar.' };
         }
 
+        if (displayName !== user.displayName) {
+            updatedFields.push('display_name');
+        }
+        if (avatarUrl !== user.avatarUrl) {
+            updatedFields.push('avatar_url');
+        }
+
         await updateUser({ id: userId, displayName, avatarUrl });
     } catch {
         return {
@@ -66,6 +75,24 @@ export async function updateFarmProfile(
 
     // The greeting and assigned-user avatars appear throughout the farm app.
     revalidatePath('/', 'layout');
+
+    if (updatedFields.length > 0) {
+        try {
+            await (await getPostHogClient()).capture({
+                distinctId: userId,
+                event: 'user_profile_updated',
+                properties: {
+                    updated_fields: updatedFields,
+                    birthday_reward_granted: false,
+                    birthday_reward_late: false,
+                    surface: 'farm',
+                },
+            });
+        } catch {
+            // Analytics failures must not turn a saved profile into an error.
+            console.warn('Farm profile update analytics unavailable.');
+        }
+    }
 
     return {
         success: true,
