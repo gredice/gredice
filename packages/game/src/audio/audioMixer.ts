@@ -8,6 +8,7 @@ import {
 type LoopAudioOptions = {
     loop?: boolean;
     volume?: number;
+    silentFailure?: boolean;
 };
 
 type SoundEffectOptions = {
@@ -30,6 +31,12 @@ type LoopRequest = {
     isRequested: boolean;
     source: AudioBufferSourceNode | null;
     gain: GainNode | null;
+    fadeSeconds: number;
+    stopTimer: ReturnType<typeof setTimeout> | null;
+    failedToLoad: boolean;
+    silentFailure: boolean;
+    /** Bumped when src/channel/loop change so in-flight loads for the old asset go stale. */
+    generation: number;
 };
 
 type ChannelState = {
@@ -51,7 +58,7 @@ const unlockEvents = ['pointerdown', 'mousedown', 'touchstart', 'keydown'];
 const maxQueuedEffects = 16;
 
 function clampVolume(value: number) {
-    return Math.min(1, Math.max(0, value));
+    return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
 }
 
 function isPageVisible() {
@@ -113,6 +120,7 @@ function useLoopingAudio(
     const id = useId();
     const loop = options?.loop ?? true;
     const volume = options?.volume ?? 1;
+    const silentFailure = options?.silentFailure ?? false;
 
     useEffect(() => {
         manager.registerLoop({
@@ -121,17 +129,26 @@ function useLoopingAudio(
             src,
             loop,
             volume,
+            silentFailure,
         });
 
         return () => {
             manager.unregisterLoop(id);
         };
-    }, [channel, id, loop, manager, src, volume]);
+    }, [channel, id, loop, manager, src, volume, silentFailure]);
 
     const play = useCallback(() => manager.playLoop(id), [id, manager]);
     const stop = useCallback(() => manager.stopLoop(id), [id, manager]);
+    const setTargetVolume = useCallback(
+        (target: number, fadeSeconds = 0.3) =>
+            manager.setLoopTargetVolume(id, target, fadeSeconds),
+        [id, manager],
+    );
 
-    return useMemo(() => ({ play, stop }), [play, stop]);
+    return useMemo(
+        () => ({ play, stop, setTargetVolume }),
+        [play, stop, setTargetVolume],
+    );
 }
 
 class GameAudioManager {
@@ -341,12 +358,14 @@ class GameAudioManager {
         src,
         loop,
         volume,
+        silentFailure = false,
     }: {
         id: string;
         channel: GameAudioChannelName;
         src: string;
         loop: boolean;
         volume: number;
+        silentFailure?: boolean;
     }) => {
         const existing = this.loops.get(id);
         if (existing) {
@@ -359,6 +378,11 @@ class GameAudioManager {
             existing.channel = channel;
             existing.loop = loop;
             existing.volume = clampVolume(volume);
+            existing.silentFailure = silentFailure;
+            if (needsRestart) {
+                existing.failedToLoad = false;
+                existing.generation++;
+            }
 
             if (needsRestart && existing.isRequested) {
                 this.stopLoopSource(existing);
@@ -378,8 +402,60 @@ class GameAudioManager {
             isRequested: false,
             source: null,
             gain: null,
+            fadeSeconds: 0,
+            stopTimer: null,
+            failedToLoad: false,
+            silentFailure,
+            generation: 0,
         });
     };
+
+    /** Update an ambient layer without replacing its registered loop or source. */
+    setLoopTargetVolume = (id: string, volume: number, fadeSeconds = 0.3) => {
+        const loop = this.loops.get(id);
+        if (!loop) return;
+        const clamped = clampVolume(volume);
+        const target = clamped < 0.001 ? 0 : clamped;
+        const requested = target > 0;
+        if (
+            Math.abs(target - loop.volume) < 0.001 &&
+            loop.isRequested === requested
+        )
+            return;
+        if (loop.stopTimer) clearTimeout(loop.stopTimer);
+        loop.stopTimer = null;
+        loop.volume = target;
+        loop.fadeSeconds = Number.isFinite(fadeSeconds)
+            ? Math.min(2, Math.max(0, fadeSeconds))
+            : 0.3;
+        loop.isRequested = requested;
+        this.applyLoopTarget(loop);
+        if (target > 0) {
+            void this.startLoop(id);
+        } else if (loop.source && loop.fadeSeconds > 0) {
+            loop.stopTimer = setTimeout(() => {
+                loop.stopTimer = null;
+                if (!loop.isRequested) this.stopLoopSource(loop);
+            }, loop.fadeSeconds * 5000);
+        } else {
+            this.stopLoopSource(loop);
+        }
+    };
+
+    private applyLoopTarget(loop: LoopRequest) {
+        const parameter = loop.gain?.gain;
+        if (!parameter) return;
+        const time = this.context?.currentTime ?? 0;
+        if (typeof parameter.cancelAndHoldAtTime === 'function') {
+            parameter.cancelAndHoldAtTime(time);
+        } else {
+            parameter.cancelScheduledValues(time);
+            parameter.setValueAtTime(parameter.value, time);
+        }
+        if (loop.fadeSeconds > 0)
+            parameter.setTargetAtTime(loop.volume, time, loop.fadeSeconds);
+        else parameter.setValueAtTime(loop.volume, time);
+    }
 
     unregisterLoop = (id: string) => {
         const loop = this.loops.get(id);
@@ -554,7 +630,12 @@ class GameAudioManager {
 
     private async startLoop(id: string) {
         const loop = this.loops.get(id);
-        if (!loop?.isRequested || loop.source || !isPageVisible()) {
+        if (
+            !loop?.isRequested ||
+            loop.source ||
+            loop.failedToLoad ||
+            !isPageVisible()
+        ) {
             return;
         }
 
@@ -576,13 +657,18 @@ class GameAudioManager {
         }
 
         this.startingLoops.add(id);
+        const generation = loop.generation;
+        let isStale = false;
         try {
             const buffer = await this.loadBuffer(loop.src);
+            isStale = loop.generation !== generation;
             if (
+                isStale ||
                 context.state !== 'running' ||
                 !isPageVisible() ||
                 !loop.isRequested ||
-                loop.source
+                loop.source ||
+                this.loops.get(id) !== loop
             ) {
                 return;
             }
@@ -591,7 +677,7 @@ class GameAudioManager {
             const gain = context.createGain();
             source.buffer = buffer;
             source.loop = loop.loop;
-            gain.gain.value = loop.volume;
+            gain.gain.value = loop.fadeSeconds > 0 ? 0 : loop.volume;
             source.connect(gain);
             gain.connect(this.getChannelGain(loop.channel));
             source.addEventListener('ended', () => {
@@ -604,29 +690,38 @@ class GameAudioManager {
             });
             loop.source = source;
             loop.gain = gain;
+            if (loop.fadeSeconds > 0) this.applyLoopTarget(loop);
             source.start();
         } catch (error) {
-            console.warn('Failed to play looping audio', loop.src, error);
+            isStale = loop.generation !== generation;
+            if (isStale) return;
+            // Opt-in silent layers do not retry a missing asset on every weather update.
+            loop.failedToLoad = loop.silentFailure;
+            if (!loop.silentFailure)
+                console.warn('Failed to play looping audio', loop.src, error);
         } finally {
             this.startingLoops.delete(id);
+            // A replacement registered mid-load was skipped while this attempt held the slot.
+            if (isStale) void this.startLoop(id);
         }
     }
 
     private stopLoopSource(loop: LoopRequest) {
-        if (loop.source) {
+        if (loop.stopTimer) clearTimeout(loop.stopTimer);
+        loop.stopTimer = null;
+        const source = loop.source;
+        const gain = loop.gain;
+        loop.source = null;
+        loop.gain = null;
+        if (source) {
             try {
-                loop.source.stop();
+                source.stop();
             } catch {
                 // Already stopped sources can throw in Web Audio.
             }
-            loop.source.disconnect();
-            loop.source = null;
+            source.disconnect();
         }
-
-        if (loop.gain) {
-            loop.gain.disconnect();
-            loop.gain = null;
-        }
+        gain?.disconnect();
     }
 
     private startRequestedLoops() {

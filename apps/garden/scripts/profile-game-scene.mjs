@@ -1640,7 +1640,20 @@ const weatherTransitionScenarios = [
     },
 ];
 
+const autumnScenarios = ['low', 'medium', 'high'].map((tier) => ({
+    name: `game-autumn-accumulation-${tier}`,
+    path: `/debug/profile/game?mode=windy&profile=dense-autumn&quality=${tier}&date=2024-11-21&details=1&hud=0&debugHud=0`,
+    viewport:
+        tier === 'low'
+            ? { width: 390, height: 844 }
+            : { width: 1440, height: 1000 },
+    dpr: 1,
+    isMobile: tier === 'low',
+    budget: tier === 'low' ? 'gameDenseWeatherMobile' : 'gameDenseWeather',
+}));
+
 const scenarioSets = {
+    autumn: autumnScenarios,
     'adaptive-high': adaptiveHighScenarios,
     'auto-quality': autoQualityScenarios,
     core: coreScenarios,
@@ -9301,6 +9314,10 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
                 element.dataset.gameProfileFixedTimeSeconds ?? '',
             );
             return {
+                sceneDate: element.dataset.gameProfileDate
+                    ? new Date(element.dataset.gameProfileDate).toISOString()
+                    : null,
+                sceneTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 controls: element.dataset.gameProfileControls ?? null,
                 debugHud: element.dataset.gameProfileDebugHud ?? null,
                 details: element.dataset.gameProfileDetails ?? null,
@@ -9318,6 +9335,8 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             };
         });
         const requested = {
+            sceneDate: profileMetadata?.sceneDate ?? null,
+            sceneTimezone: profileMetadata?.sceneTimezone ?? null,
             controls: profileMetadata?.controls ?? request.controls,
             debugHud: profileMetadata?.debugHud ?? request.debugHud,
             details: profileMetadata?.details ?? request.details,
@@ -9888,6 +9907,10 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             },
             continuousRenderLeases:
                 element.dataset.gameProfileContinuousRenderLeases ?? null,
+            sceneDate: element.dataset.gameProfileDate
+                ? new Date(element.dataset.gameProfileDate).toISOString()
+                : null,
+            sceneTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             controls: element.dataset.gameProfileControls ?? null,
             closeupRaisedBedId:
                 Number.parseInt(
@@ -9980,6 +10003,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 closeupRaisedBedId:
                     profileMetadata?.closeupRaisedBedId ??
                     request.closeupRaisedBedId,
+                sceneDate: profileMetadata?.sceneDate ?? null,
+                sceneTimezone: profileMetadata?.sceneTimezone ?? null,
                 controls: profileMetadata?.controls ?? request.controls,
                 details: profileMetadata?.details ?? request.details,
                 debugHud: profileMetadata?.debugHud ?? request.debugHud,
@@ -11682,6 +11707,25 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.groundDecorationChunkCount === 'number'
                     ? metadata.groundDecorationChunkCount
                     : null,
+            autumnLeafCount:
+                typeof metadata.autumnLeafCount === 'number'
+                    ? metadata.autumnLeafCount
+                    : null,
+            autumnLeafCapacity:
+                typeof metadata.autumnLeafCapacity === 'number'
+                    ? metadata.autumnLeafCapacity
+                    : null,
+            autumnGroundLeafClusters:
+                typeof metadata.autumnGroundLeafClusters === 'number'
+                    ? metadata.autumnGroundLeafClusters
+                    : null,
+            autumnRustleTargetGain: numberOrNull(
+                metadata.autumnRustleTargetGain,
+            ),
+            autumnEntityLeafClusters:
+                typeof metadata.autumnEntityLeafClusters === 'number'
+                    ? metadata.autumnEntityLeafClusters
+                    : null,
             groundDecorationCount:
                 typeof metadata.groundDecorationCount === 'number'
                     ? metadata.groundDecorationCount
@@ -12616,6 +12660,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         comparisonPair: scenario.comparisonPair ?? null,
         comparisonRole: scenario.comparisonRole ?? null,
         continuousRenderLeases: profileMetadata?.continuousRenderLeases ?? null,
+        sceneDate: profileMetadata?.sceneDate ?? null,
+        sceneTimezone: profileMetadata?.sceneTimezone ?? null,
         controls: profileMetadata?.controls ?? request.controls,
         building: profileMetadata?.building ?? request.building,
         buildingFixture:

@@ -261,7 +261,10 @@ function getDenseMockDetailBlockName(x: number, z: number) {
     return null;
 }
 
-function createDenseMockStacks(winterMode: WinterMode): {
+function createDenseMockStacks(
+    winterMode: WinterMode,
+    autumnSurfaces = false,
+): {
     stackByPosition: Map<string, GardenStack>;
     stacks: GardenStack[];
 } {
@@ -278,7 +281,11 @@ function createDenseMockStacks(winterMode: WinterMode): {
             z <= denseMockGardenBounds.max;
             z += 1
         ) {
-            const groundName = getDenseMockGroundBlockName(x, z, winterMode);
+            const inAutumnGrid =
+                autumnSurfaces && Math.abs(x) <= 7 && Math.abs(z) <= 7;
+            const groundName = inAutumnGrid
+                ? 'Block_Grass'
+                : getDenseMockGroundBlockName(x, z, winterMode);
             const stack: GardenStack = {
                 position: createGardenPosition(x, 0, z),
                 blocks: [
@@ -289,7 +296,15 @@ function createDenseMockStacks(winterMode: WinterMode): {
                     },
                 ],
             };
-            const detailName = getDenseMockDetailBlockName(x, z);
+            const detailName = inAutumnGrid
+                ? x % 3 === 0 && z % 3 === 0
+                    ? 'Tree'
+                    : (x - 1) % 3 === 0 && z % 3 === 0
+                      ? 'Stool'
+                      : x % 3 === 0 && (z - 1) % 3 === 0
+                        ? 'GiftBox_BlueWhite'
+                        : null
+                : getDenseMockDetailBlockName(x, z);
             if (detailName) {
                 stack.blocks.push({
                     id: `profile-detail:${detailName}:${x}:${z}`,
@@ -741,10 +756,16 @@ function addOperationRewardDebugRaisedBed({
 
 function denseMockGarden(
     winterMode: WinterMode,
-    profile: Extract<MockGardenProfile, 'dense' | 'plant-heavy'>,
+    profile: Extract<
+        MockGardenProfile,
+        'dense' | 'dense-autumn' | 'plant-heavy'
+    >,
 ): useCurrentGardenResponse {
     const now = resolveMockGardenProfileReferenceDate(profile);
-    const { stackByPosition, stacks } = createDenseMockStacks(winterMode);
+    const { stackByPosition, stacks } = createDenseMockStacks(
+        winterMode,
+        profile === 'dense-autumn',
+    );
     const raisedBeds: useCurrentGardenResponse['raisedBeds'] = [];
 
     if (profile === 'plant-heavy') {
@@ -1002,7 +1023,11 @@ export function createMockGarden(
         return faunaHeavyMockGarden();
     }
 
-    if (profile === 'dense' || profile === 'plant-heavy') {
+    if (
+        profile === 'dense' ||
+        profile === 'dense-autumn' ||
+        profile === 'plant-heavy'
+    ) {
         return denseMockGarden(winterMode, profile);
     }
 

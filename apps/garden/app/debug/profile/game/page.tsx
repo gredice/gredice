@@ -5,7 +5,13 @@ import {
     operationVisualRewardDebugProfile,
     operationVisualRewardDebugScenarios,
 } from '@gredice/game';
+import { getSeasonDebugDates } from '@gredice/game/seasonal-debug';
 import { ProfileGameScene } from './ProfileGameScene';
+import { resolveGameProfileLeafWind } from './profileAudio';
+import {
+    resolveGameProfileDate,
+    serializeGameProfileDate,
+} from './profileDate';
 import {
     highTargetOperationVisualHighlightTarget,
     resolveGameProfileAdaptiveHigh,
@@ -117,6 +123,7 @@ function resolveMockGardenProfile(
 ): GameProfileMockGardenProfile {
     if (
         value === 'dense' ||
+        value === 'dense-autumn' ||
         value === faunaHeavyMockGardenProfile ||
         value === 'high-target' ||
         value === operationVisualRewardDebugProfile ||
@@ -229,19 +236,12 @@ function resolveWeather(
 }
 
 function resolveFreezeTime(mode: GameProfileMode) {
-    if (mode === 'night') {
-        return new Date(2024, 5, 21, 22, 30, 0);
-    }
-
-    if (mode === 'storm') {
-        return new Date(2024, 5, 21, 18, 30, 0);
-    }
-
-    if (mode === 'autumn') {
-        return new Date(2024, 8, 22, 16, 30, 0);
-    }
-
-    return new Date(2024, 5, 21, 12, 0, 0);
+    const dates = getSeasonDebugDates();
+    const date = mode === 'autumn' ? dates.earlyAutumn : dates.summer;
+    if (mode === 'night') date.setHours(22, 30);
+    if (mode === 'storm') date.setHours(18, 30);
+    if (mode === 'autumn') date.setHours(16, 30);
+    return date;
 }
 
 function OperationRewardDebugOverlay() {
@@ -304,6 +304,8 @@ export default async function GameProfilePage({
     const mode = resolveMode(firstValue(params.mode));
     const renderDetails = firstValue(params.details) !== '0';
     const showLegend = firstValue(params.legend) !== '0';
+    const soundEnabled = firstValue(params.sound) === '1';
+    const leafWind = resolveGameProfileLeafWind(firstValue(params.leafWind));
     const showHud = firstValue(params.hud) === '1';
     const showDebugHud = firstValue(params.debugHud) === '1';
     const enableControls = firstValue(params.controls) === '1';
@@ -379,12 +381,16 @@ export default async function GameProfilePage({
         isOperationVisualRewardDebugProfile(mockGardenProfile);
     const quality = resolveQuality(firstValue(params.quality));
     const weather = resolveWeather(mode);
-    const freezeTime = resolveFreezeTime(mode);
+    const freezeTime = resolveGameProfileDate(
+        firstValue(params.date),
+        resolveFreezeTime(mode),
+    );
 
     return (
         <main
             className="relative h-screen w-screen overflow-hidden bg-[#e7e2cc]"
             data-game-profile-mode={mode}
+            data-game-profile-date={serializeGameProfileDate(freezeTime)}
             data-game-profile-comparison-contract-version={
                 process.env.NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION
             }
@@ -408,6 +414,7 @@ export default async function GameProfilePage({
                 closeupRaisedBedId ?? undefined
             }
             data-game-profile-outline={outlineProfile ? '1' : '0'}
+            data-game-profile-sound={soundEnabled ? '1' : '0'}
             data-game-profile-placement={placementProfile ? '1' : '0'}
             data-game-profile-operation-visuals={operationVisuals ? '1' : '0'}
             data-game-profile-static-scene-cache={staticSceneCacheMode}
@@ -449,7 +456,7 @@ export default async function GameProfilePage({
                 dayNightCycleDisabled={false}
                 flags={debugGameFlags}
                 fixedTimeSeconds={fixedTimeSeconds ?? undefined}
-                freezeTime={freezeTime}
+                freezeTime={serializeGameProfileDate(freezeTime)}
                 debugHud={showDebugHud}
                 gardenSwitchEnabled={gardenSwitchProfile}
                 hideHud={!showHud}
@@ -487,10 +494,14 @@ export default async function GameProfilePage({
                 mockGarden
                 mockGardenProfile={mockGardenProfile}
                 noControls={!enableControls}
-                noSound
+                noSound={!soundEnabled}
                 renderDetails={renderDetails}
                 staticOpaqueSceneCache={staticSceneCacheMode === 'cache'}
-                weather={weather}
+                weather={
+                    leafWind === undefined
+                        ? weather
+                        : { ...weather, windSpeed: leafWind }
+                }
                 winterMode={mode === 'snow' ? 'winter' : 'summer'}
                 zoom={isOperationRewardDebug ? 'far' : 'normal'}
             />

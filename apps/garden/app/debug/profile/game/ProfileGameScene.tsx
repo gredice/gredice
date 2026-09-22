@@ -1,7 +1,8 @@
 'use client';
 
 import { GameScene, type GameSceneProps } from '@gredice/game';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { restoreGameProfileDate } from './profileDate';
 import {
     gameProfileGardenSwitchEventName,
     readGameProfileGardenSwitchProfile,
@@ -12,16 +13,22 @@ import {
     resolveGameProfileWeatherTransition,
 } from './profileWeather';
 
-type ProfileGameSceneProps = GameSceneProps & {
+type ProfileGameSceneProps = Omit<GameSceneProps, 'freezeTime'> & {
+    freezeTime?: string;
     gardenSwitchEnabled?: boolean;
 };
 
 export function ProfileGameScene({
     gardenSwitchEnabled = false,
+    freezeTime,
     mockGardenProfile: initialMockGardenProfile,
     weather: initialWeather,
     ...gameSceneProps
 }: ProfileGameSceneProps) {
+    const date = useMemo(
+        () => restoreGameProfileDate(freezeTime),
+        [freezeTime],
+    );
     const [mockGardenProfile, setMockGardenProfile] = useState(
         initialMockGardenProfile,
     );
@@ -80,6 +87,7 @@ export function ProfileGameScene({
     return (
         <GameScene
             {...gameSceneProps}
+            freezeTime={date}
             mockGardenProfile={mockGardenProfile}
             weather={weather}
         />

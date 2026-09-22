@@ -10,6 +10,7 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
@@ -166,6 +167,7 @@ export default function FirstRaisedBedGuidePage() {
                     </Stack>
                 </section>
 
+                <RelatedFaq placement="firstGarden" />
                 <Row spacing={4} className="mt-2">
                     <Typography level="body1">
                         Je li ti vodič za prvu gredicu bio koristan?

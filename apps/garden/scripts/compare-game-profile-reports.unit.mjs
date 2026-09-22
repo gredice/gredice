@@ -1750,6 +1750,21 @@ test('legacy continuous-render lease compatibility is limited to cross-tier and 
             },
             pattern: /scenario\.requested differs/,
         },
+        ...['sceneDate', 'sceneTimezone'].map((field) => ({
+            name: `seasonal capture ${field} mismatch`,
+            mutate: ({ baseline, candidate }) => {
+                baseline.scenarios[0].requested.sceneDate =
+                    '2024-10-22T10:00:00.000Z';
+                candidate.scenarios[0].requested.sceneDate =
+                    '2024-10-22T10:00:00.000Z';
+                baseline.scenarios[0].requested.sceneTimezone = 'Europe/Zagreb';
+                candidate.scenarios[0].requested.sceneTimezone =
+                    'Europe/Zagreb';
+                candidate.scenarios[0].requested[field] =
+                    field === 'sceneDate' ? '2024-11-21T11:00:00.000Z' : 'UTC';
+            },
+            pattern: /scenario\.requested differs/,
+        })),
         {
             name: 'other cross-tier request mismatch',
             mutate: ({ candidate }) => {

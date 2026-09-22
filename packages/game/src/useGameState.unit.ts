@@ -919,6 +919,7 @@ test('the scene date override does not write farmer visible state', () => {
     });
     const timeKeys = new Set([
         'freezeTime',
+        'autumnState',
         'seasonState',
         'sunriseTime',
         'sunsetTime',

@@ -429,7 +429,16 @@ export const cmsPageSectionComponents = [
                 label: 'Pitanja i odgovori',
                 type: 'feature-list',
                 itemLabel: 'Pitanje',
-                required: true,
+                helperText:
+                    'Koristi samo za pitanja specifična za ovu stranicu. Zajednička pitanja imaju prednost kada su odabrana.',
+            },
+            {
+                key: 'faqSlugs',
+                label: 'Zajednička FAQ pitanja',
+                type: 'textarea',
+                rows: 4,
+                helperText:
+                    'Upiši slugove objavljenih FAQ zapisa, svaki u novi redak, željenim redoslijedom. Odgovori se preuzimaju iz direktorija FAQ.',
             },
             {
                 key: 'ctas',

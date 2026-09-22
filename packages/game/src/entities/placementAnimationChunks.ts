@@ -20,7 +20,7 @@ export type PlacementAnimationChunkAddress = {
 export type AddressedPlacementAnimationChunks<
     T extends PlacementAnimationInstance,
 > = {
-    addressByBlockId: ReadonlyMap<string, PlacementAnimationChunkAddress>;
+    addressByBlockId: ReadonlyMap<string, PlacementAnimationChunkAddress[]>;
     chunks: MeshInstanceChunk<T>[];
 };
 
@@ -95,7 +95,10 @@ export function addressPlacementAnimationChunks<
 >(instances: T[]): AddressedPlacementAnimationChunks<T> {
     const chunks = chunkMeshInstances(instances);
     const orderByInstance = new Map<T, number>();
-    const addressByBlockId = new Map<string, PlacementAnimationChunkAddress>();
+    const addressByBlockId = new Map<
+        string,
+        PlacementAnimationChunkAddress[]
+    >();
 
     instances.forEach((instance, order) => {
         orderByInstance.set(instance, order);
@@ -107,11 +110,9 @@ export function addressPlacementAnimationChunks<
                 return;
             }
 
-            addressByBlockId.set(instance.block.id, {
-                chunkIndex,
-                instanceIndex,
-                order,
-            });
+            const addresses = addressByBlockId.get(instance.block.id) ?? [];
+            addresses.push({ chunkIndex, instanceIndex, order });
+            addressByBlockId.set(instance.block.id, addresses);
         });
     });
 
@@ -135,27 +136,25 @@ export function localizePlacementDropAnimationChunks<
     chunkCache: PlacementAnimationChunkCache<T>,
 ) {
     const animatedAddresses: Array<
-        PlacementAnimationChunkAddress & { renderId: number }
+        PlacementAnimationChunkAddress & { renderId: number; partIndex: number }
     > = [];
     const animatedBlockIdsByChunkIndex = new Map<number, Set<string>>();
 
     for (const [blockId, renderId] of animatedRenderIds) {
-        const address = addressed.addressByBlockId.get(blockId);
-        if (!address) {
-            continue;
-        }
-
-        animatedAddresses.push({ ...address, renderId });
-        const chunkBlockIds = animatedBlockIdsByChunkIndex.get(
-            address.chunkIndex,
-        );
-        if (chunkBlockIds) {
-            chunkBlockIds.add(blockId);
-        } else {
-            animatedBlockIdsByChunkIndex.set(
+        const addresses = addressed.addressByBlockId.get(blockId) ?? [];
+        for (const [partIndex, address] of [...addresses]
+            .sort((a, b) => a.order - b.order)
+            .entries()) {
+            animatedAddresses.push({ ...address, renderId, partIndex });
+            const chunkBlockIds = animatedBlockIdsByChunkIndex.get(
                 address.chunkIndex,
-                new Set([blockId]),
             );
+            if (chunkBlockIds) chunkBlockIds.add(blockId);
+            else
+                animatedBlockIdsByChunkIndex.set(
+                    address.chunkIndex,
+                    new Set([blockId]),
+                );
         }
     }
 
@@ -164,6 +163,7 @@ export function localizePlacementDropAnimationChunks<
             animatedInstances: [] as Array<{
                 instance: T;
                 renderId: number;
+                partIndex: number;
             }>,
             chunks: addressed.chunks,
             placementSignatureByChunkKey: emptyPlacementSignatures,
@@ -214,6 +214,7 @@ export function localizePlacementDropAnimationChunks<
     const animatedInstances: Array<{
         instance: T;
         renderId: number;
+        partIndex: number;
     }> = [];
     for (const address of animatedAddresses) {
         const instance =
@@ -224,6 +225,7 @@ export function localizePlacementDropAnimationChunks<
             animatedInstances.push({
                 instance,
                 renderId: address.renderId,
+                partIndex: address.partIndex,
             });
         }
     }

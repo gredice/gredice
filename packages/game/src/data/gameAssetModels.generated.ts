@@ -47,7 +47,7 @@ export const gameAssetModels = {
     GiftBox: { url: '/assets/models/GiftBox.glb' },
     Seed: { url: '/assets/models/Seed.glb' },
     Stick: { url: '/assets/models/Stick.glb' },
-    Tree: { url: '/assets/models/Tree.glb' },
+    Tree: { url: '/assets/models/Tree.glb?v=autumn-canopy-v1' },
     Pine: { url: '/assets/models/Pine.glb' },
     DeadTreeTall: { url: '/assets/models/DeadTreeTall.glb' },
     DeadTreeStump: { url: '/assets/models/DeadTreeStump.glb' },

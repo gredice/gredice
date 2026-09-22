@@ -12,12 +12,16 @@ import {
 } from 'react';
 import * as SunCalc from 'suncalc';
 import { Color, type DirectionalLight } from 'three';
+import { AutumnRustle } from '../audio/AutumnRustle';
 import { PlantShaderPrewarm } from '../generators/plant/PlantShaderPrewarm';
+import { useAutumnState } from '../hooks/useAutumnState';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useSyncGameTime } from '../hooks/useSyncGameTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import { type GameState, useGameState } from '../useGameState';
+import { AutumnLeaves } from './AutumnLeaves';
+import { getAutumnCanopyShadowKey } from './autumnCanopy';
 import { defaultGameBackgroundPaletteIndex } from './backgroundPalettes';
 import { CloudLayer } from './CloudLayer';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
@@ -667,6 +671,7 @@ export function Environment({
         (state) => state.weatherVisualizationDisabled,
     );
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
+    const autumn = useAutumnState();
 
     const { data: garden } = useCurrentGarden();
     const location = useMemo(
@@ -967,6 +972,7 @@ export function Environment({
         `view:${view}:${closeupBlockId ?? ''}`,
         `pickup:${pickupBlockId ?? ''}`,
         `winter:${winterMode}`,
+        `canopy:${getAutumnCanopyShadowKey(garden?.stacks, weatherDisabled ? 1 : autumn.leafRetention)}`,
     ].join('||');
     const shadowMapSize = qualityProfile.shadows
         ? qualityProfile.shadowMapSize
@@ -1147,6 +1153,16 @@ export function Environment({
                     enabled={qualityProfile.shadows}
                 />
             </directionalLight>
+            <AutumnRustle
+                windSpeed={blendedWeather?.windSpeed ?? 0}
+                enabled={!noSound && !weatherDisabled && sceneRuntimeVisible}
+            />
+            <AutumnLeaves
+                tier={qualityProfile.tier}
+                enabled={!weatherDisabled}
+                windSpeed={blendedWeather?.windSpeed ?? 0}
+                windDirection={windDirection}
+            />
             {!weatherDisabled && blendedWeather && (
                 <CloudLayer
                     cloudy={blendedWeather.cloudy ?? 0}

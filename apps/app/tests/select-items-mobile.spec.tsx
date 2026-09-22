@@ -33,7 +33,7 @@ test.describe('coarse pointer', () => {
         const trigger = component.getByRole('combobox', { name: 'Status' });
         await trigger.tap();
 
-        const search = page.getByRole('searchbox', {
+        const search = page.getByRole('combobox', {
             name: 'Pretraži opcije...',
         });
 
@@ -65,7 +65,7 @@ test('autofocuses search on a fine pointer and clears it before closing', async 
     const trigger = component.getByRole('combobox', { name: 'Status' });
     await trigger.click();
 
-    const search = page.getByRole('searchbox', {
+    const search = page.getByRole('combobox', {
         name: 'Pretraži opcije...',
     });
     await expect(search).toBeFocused();
@@ -137,7 +137,7 @@ test('keeps externally filtered results without filtering them twice', async ({
     );
 
     await page.getByRole('combobox', { name: 'Account' }).click();
-    const search = page.getByRole('searchbox', {
+    const search = page.getByRole('combobox', {
         name: 'Pretraži opcije...',
     });
     await expect(search).toHaveValue('remote query');

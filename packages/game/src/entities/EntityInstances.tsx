@@ -27,8 +27,10 @@ import {
     hasIndexedEntityBlocks,
     useEntityBlockInstanceIndex,
 } from './entityBlockInstanceIndex';
+import { AutumnGroundLeaves } from './groundDecorations/AutumnGroundLeaves';
 import { GroundBlockDecorations } from './groundDecorations/GroundBlockDecorations';
 import type { GroundDecorationWeather } from './groundDecorations/GroundDecorationInstances';
+import { AutumnEntityLeaves } from './helpers/AutumnEntityLeaves';
 import {
     type GroundPatchSurface,
     useGroundPatchMaterial,
@@ -36,6 +38,7 @@ import {
 import { MulchPatchInstances } from './raisedBed/MulchPatch';
 import { RaisedBedGeneratedPlantFieldBatches } from './raisedBed/RaisedBedGeneratedPlantFieldBatches';
 import { RAISED_BED_SUPPORT_SCALE } from './raisedBed/raisedBedDimensions';
+import { TreeCanopyInstances } from './TreeCanopyInstances';
 import { tulipBouquetStems } from './tulipBouquet';
 
 export const instancedBlockNames = [
@@ -557,6 +560,20 @@ export function EntityInstances({
                 {...mergedTerrainChunkProps}
                 {...commonSnowProps}
             />
+            {renderDetails && (
+                <AutumnEntityLeaves
+                    stacks={stacks}
+                    tier={qualityProfile.tier}
+                />
+            )}
+            {renderDetails && (
+                <AutumnGroundLeaves
+                    farmId={farmId}
+                    stacks={stacks}
+                    tier={qualityProfile.tier}
+                    weather={weather}
+                />
+            )}
             {shouldRenderGroundDecorations && (
                 <GroundBlockDecorations
                     density={qualityProfile.groundDecorationDensity}
@@ -576,30 +593,9 @@ export function EntityInstances({
                 material={(gltf) => gltf.nodes.Tree_1_1.material}
                 {...commonSnowProps}
             />
-            <EntityInstancesAssetBlock
-                assetName="Tree"
-                stacks={stacks}
-                name="Tree"
-                staticOpaqueCacheGroup="static-props"
-                yOffset={0.5}
-                scale={[0.125, 0.5, 0.125]}
-                geometry={(gltf) => gltf.nodes.Tree_1_2.geometry}
-                material={(gltf) => gltf.nodes.Tree_1_2.material}
-                snow={snowPresets.treeCanopyInner}
-                snowLift={0.002}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="Tree"
-                stacks={stacks}
-                name="Tree"
-                staticOpaqueCacheGroup="static-props"
-                yOffset={0.5}
-                scale={[0.125, 0.5, 0.125]}
-                geometry={(gltf) => gltf.nodes.Tree_1_3.geometry}
-                material={(gltf) => gltf.nodes.Tree_1_3.material}
-                {...commonSnowProps}
-            />
+            <Suspense fallback={null}>
+                <TreeCanopyInstances stacks={stacks} {...commonSnowProps} />
+            </Suspense>
             <EntityInstancesAssetBlock
                 assetName="Pine"
                 stacks={stacks}

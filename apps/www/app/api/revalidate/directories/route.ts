@@ -9,6 +9,8 @@ function publicDirectoryEntityType(
     value: unknown,
 ): PublicDirectoryEntityType | null {
     switch (value) {
+        case 'faq':
+        case 'faq-category':
         case 'block':
         case 'brand':
         case 'hqLocations':

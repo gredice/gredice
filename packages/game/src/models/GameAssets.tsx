@@ -623,6 +623,9 @@ export type GLTFResult = GLTF & {
         Tree_1_1: THREE.Mesh;
         Tree_1_2: THREE.Mesh;
         Tree_1_3: THREE.Mesh;
+        Tree_AutumnThinning: THREE.Mesh;
+        Tree_AutumnSparse: THREE.Mesh;
+        Tree_AutumnBranches: THREE.Mesh;
         Tree_2: THREE.Mesh;
         DeadTreeTall_Trunk: THREE.Mesh;
         DeadTreeTall_LeftBranch: THREE.Mesh;

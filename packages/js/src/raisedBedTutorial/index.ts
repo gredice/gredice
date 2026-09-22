@@ -18,7 +18,7 @@ export const firstRaisedBedTutorialTasks: FirstRaisedBedTutorialTask[] = [
             'Prvi odabir govori aplikaciji kakav vrt želiš otvoriti. Ne tražimo savršen plan, nego smjer: hoćeš li više svježih listova, povrće za umake i roštilj, brze zalogaje ili mirniji raspored s robusnijim kulturama.',
         steps: [
             'Pročitaj četiri ponuđena cilja i odaberi onaj koji najbolje opisuje obroke koje najčešće želiš.',
-            'Ako nisi siguran, odaberi cilj koji zvuči najbliže tjednu koji stvarno kuhaš ili jedeš.',
+            'Ako trebaš pomoć s odabirom, odaberi cilj koji zvuči najbliže tjednu koji stvarno kuhaš ili jedeš.',
             'Odabir možeš promijeniti prije nego otvoriš rasporede, pa slobodno isprobaj više kombinacija.',
         ],
     },
@@ -41,11 +41,11 @@ export const firstRaisedBedTutorialTasks: FirstRaisedBedTutorialTask[] = [
         shortDescription:
             'Pogledaj gdje ide svaka biljka i zašto šest polja ostaje prazno.',
         guideDescription:
-            'Svaki prijedlog popunjava 12 od 18 polja. Preostalih 6 polja ostaje prazno kako bi ih mogao popuniti kasnije, vlastitim odabirom ili sezonskom idejom.',
+            'Svaki prijedlog popunjava 12 od 18 polja. Preostalih 6 polja ostaje prazno pa ih možeš popuniti kasnije, vlastitim odabirom ili sezonskom idejom.',
         steps: [
             'Otvori rasporede i pogledaj malu mrežu gredice.',
             'Usporedi nazive prijedloga, kratke opise i oznake biljaka u mreži.',
-            'Odaberi raspored koji najbolje odgovara obrocima i ritmu koji si izabrao.',
+            'Odaberi raspored koji najbolje odgovara obrocima i odabranom ritmu.',
         ],
     },
     {
@@ -71,14 +71,14 @@ export const firstRaisedBedTutorialTasks: FirstRaisedBedTutorialTask[] = [
         steps: [
             'Otvori košaru i pregledaj dodane stavke sjetve.',
             'Ako nešto ne želiš, ukloni tu stavku prije potvrde.',
-            'Dovrši narudžbu kada si zadovoljan rasporedom.',
+            'Dovrši narudžbu kada ti raspored odgovara.',
         ],
     },
     {
         id: 'customize-empty-fields',
         title: 'Uredi preostalih šest polja',
         shortDescription:
-            'U closeup prikazu popuni prazna polja vlastitim idejama kad budeš spreman.',
+            'U closeup prikazu popuni prazna polja vlastitim idejama kada ti odgovara.',
         guideDescription:
             'Prazna polja su namjerno ostavljena za kasnije. Možeš ih popuniti omiljenom sortom, nečim što bolje odgovara sezoni ili biljkom koju želiš probati nakon prvog plana.',
         steps: [

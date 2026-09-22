@@ -1,4 +1,6 @@
 export type PublicDirectoryEntityType =
+    | 'faq'
+    | 'faq-category'
     | 'block'
     | 'brand'
     | 'hqLocations'
@@ -19,6 +21,8 @@ const revalidationPathsByEntityType: Record<
     PublicDirectoryEntityType,
     RevalidationPath[]
 > = {
+    faq: [{ path: '/', type: 'layout' }],
+    'faq-category': [{ path: '/', type: 'layout' }],
     block: [
         { path: '/blokovi' },
         { path: '/blokovi/ljubimci' },
@@ -50,11 +54,13 @@ const revalidationPathsByEntityType: Record<
         { path: '/bolesti' },
         { path: '/bolesti/[alias]', type: 'page' },
         { path: '/biljke/[alias]', type: 'page' },
+        { path: '/biljke/[alias]/sorte/[sortAlias]', type: 'page' },
     ],
     plantPest: [
         { path: '/stetnici' },
         { path: '/stetnici/[alias]', type: 'page' },
         { path: '/biljke/[alias]', type: 'page' },
+        { path: '/biljke/[alias]/sorte/[sortAlias]', type: 'page' },
     ],
     plantSort: [
         { path: '/kalendar-sjetve' },

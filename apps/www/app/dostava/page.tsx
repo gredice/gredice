@@ -16,6 +16,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
+import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import {
     Card,
     CardContent,
@@ -397,6 +398,7 @@ export default function DeliveryPage() {
                 <Typography level="h5">Imaš dodatna pitanja?</Typography>
                 <WhatsAppCard />
             </Stack>
+            <RelatedFaq placement="delivery" />
             <Row spacing={4} className="mt-8">
                 <Typography level="body1">
                     Jesu li ti informacije korisne?

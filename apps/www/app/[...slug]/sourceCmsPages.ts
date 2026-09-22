@@ -125,27 +125,11 @@ export const companionPlantingCmsPage: SourceCmsPage = {
             header: 'Česta pitanja o biljnim susjedima',
             description:
                 'Kratki odgovori za planiranje gredice bez pretjerivanja s pravilima.',
-            features: [
-                {
-                    header: 'Moram li uvijek saditi dobre susjede zajedno?',
-                    description:
-                        'Ne. Dobar susjed je prijedlog koji može pomoći pri rasporedu. Ako biljci više odgovara drugo mjesto zbog sunca, razmaka ili termina sadnje, taj kontekst ima prednost.',
-                },
-                {
-                    header: 'Znači li loš susjed da biljke nikako ne smiju biti blizu?',
-                    description:
-                        'Ne nužno. To je signal za oprez. U maloj gredici često je dovoljno ostaviti razmak, ne saditi ih u isto polje ili ih razdvojiti drugom kulturom.',
-                },
-                {
-                    header: 'Zašto neke biljke nemaju prikazane susjede?',
-                    description:
-                        'Za neke biljke nemamo dovoljno pouzdano mapirane podatke ili se izvori previše razilaze. Tada je bolje prikazati manje informacija nego sigurnije zvučati nego što podaci dopuštaju.',
-                },
-                {
-                    header: 'Kako Gredice koriste ove podatke?',
-                    description:
-                        'Prikazujemo dobre i loše susjede na javnim stranicama biljaka te ih koristimo kao signal u vrtu kada biraš što posaditi pokraj postojećih biljaka.',
-                },
+            faqSlugs:
+                'companion-planting-choice companion-planting-distance companion-planting-missing companion-planting-use',
+            ctas: [
+                { label: 'Sva česta pitanja', href: '/cesta-pitanja' },
+                { label: 'Zatraži pomoć', href: '/kontakt', secondary: true },
             ],
         },
         {
@@ -265,27 +249,11 @@ export const qualityHarvestSafetyCmsPage: SourceCmsPage = {
             header: 'Česta pitanja o kvaliteti i sigurnosti',
             description:
                 'Najkraći odgovori na pitanja o načinu rada, higijeni i granici javnih tvrdnji.',
-            features: [
-                {
-                    header: 'Postoji li formalna HACCP certifikacija?',
-                    description:
-                        'Ne. Trenutno govorimo o internim postupcima temeljenima na dobroj praksi, sljedivosti, evidencijama, korektivnim radnjama i načelima HACCP-a.',
-                },
-                {
-                    header: 'Znači li to da se sigurnost uroda ne prati?',
-                    description:
-                        'Ne. Pratimo rizike, čistoću, rukovanje, berbu, dostavu i prigovore kako bi se svaka sumnja mogla procijeniti i zapisati.',
-                },
-                {
-                    header: 'Može li se urod jesti bez pranja?',
-                    description:
-                        'Ne komuniciramo takvu tvrdnju. Urod je svježe ubrano povrće i bilje koje prije konzumacije treba oprati i pripremiti.',
-                },
-                {
-                    header: 'Što radite ako postoji sumnja na problem?',
-                    description:
-                        'Urod se zadržava ili izdvaja dok se situacija ne procijeni. Problem se zapisuje, provodi se korektivna radnja i po potrebi šaljemo jasnu uputu.',
-                },
+            faqSlugs:
+                'kvaliteta-haccp-certifikacija kvaliteta-pracenje-sigurnosti kvaliteta-pranje-uroda kvaliteta-sumnja-na-problem',
+            ctas: [
+                { label: 'Sva česta pitanja', href: '/cesta-pitanja' },
+                { label: 'Zatraži pomoć', href: '/kontakt', secondary: true },
             ],
         },
         {
