@@ -144,6 +144,111 @@ const presentation = {
         level: 5,
         visualGrade: 'legendary',
     },
+    watering_750: {
+        familyKey: 'watering',
+        level: 10,
+        visualGrade: 'legendary',
+    },
+    watering_1000: {
+        familyKey: 'watering',
+        level: 11,
+        visualGrade: 'legendary',
+    },
+    watering_1500: {
+        familyKey: 'watering',
+        level: 12,
+        visualGrade: 'legendary',
+    },
+    watering_2000: {
+        familyKey: 'watering',
+        level: 13,
+        visualGrade: 'legendary',
+    },
+    community_edit_150: {
+        familyKey: 'community_editing',
+        level: 7,
+        visualGrade: 'legendary',
+    },
+    community_edit_200: {
+        familyKey: 'community_editing',
+        level: 8,
+        visualGrade: 'legendary',
+    },
+    community_edit_300: {
+        familyKey: 'community_editing',
+        level: 9,
+        visualGrade: 'legendary',
+    },
+    community_edit_500: {
+        familyKey: 'community_editing',
+        level: 10,
+        visualGrade: 'legendary',
+    },
+    community_edit_750: {
+        familyKey: 'community_editing',
+        level: 11,
+        visualGrade: 'legendary',
+    },
+    community_edit_1000: {
+        familyKey: 'community_editing',
+        level: 12,
+        visualGrade: 'legendary',
+    },
+    community_edit_1500: {
+        familyKey: 'community_editing',
+        level: 13,
+        visualGrade: 'legendary',
+    },
+    garden_diversity_25: {
+        familyKey: 'garden_diversity',
+        level: 6,
+        visualGrade: 'legendary',
+    },
+    garden_diversity_30: {
+        familyKey: 'garden_diversity',
+        level: 7,
+        visualGrade: 'legendary',
+    },
+    garden_diversity_35: {
+        familyKey: 'garden_diversity',
+        level: 8,
+        visualGrade: 'legendary',
+    },
+    garden_diversity_40: {
+        familyKey: 'garden_diversity',
+        level: 9,
+        visualGrade: 'legendary',
+    },
+    garden_diversity_45: {
+        familyKey: 'garden_diversity',
+        level: 10,
+        visualGrade: 'legendary',
+    },
+    seed_to_table_75: {
+        familyKey: 'seed_to_table',
+        level: 6,
+        visualGrade: 'legendary',
+    },
+    seed_to_table_100: {
+        familyKey: 'seed_to_table',
+        level: 7,
+        visualGrade: 'legendary',
+    },
+    seed_to_table_150: {
+        familyKey: 'seed_to_table',
+        level: 8,
+        visualGrade: 'legendary',
+    },
+    seed_to_table_200: {
+        familyKey: 'seed_to_table',
+        level: 9,
+        visualGrade: 'legendary',
+    },
+    seed_to_table_300: {
+        familyKey: 'seed_to_table',
+        level: 10,
+        visualGrade: 'legendary',
+    },
     season_2026_spring: {
         familyKey: 'seasonal',
         level: 1,
@@ -179,7 +284,21 @@ export function getAchievementPresentation(key: string) {
     return { ...presentation[key], artworkKey: key };
 }
 
-const levelNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'];
+const levelNumerals = [
+    'I',
+    'II',
+    'III',
+    'IV',
+    'V',
+    'VI',
+    'VII',
+    'VIII',
+    'IX',
+    'X',
+    'XI',
+    'XII',
+    'XIII',
+];
 export function formatAchievementLevel(level: number) {
     return levelNumerals[level - 1] ?? String(level);
 }

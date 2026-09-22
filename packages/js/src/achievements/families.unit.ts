@@ -5,14 +5,17 @@ import {
     getAchievementDefinitions,
 } from './definitions';
 import { type AchievementRecord, getAchievementFamilies } from './families';
-import { getAchievementPresentation } from './presentation';
+import {
+    formatAchievementLevel,
+    getAchievementPresentation,
+} from './presentation';
 
 test('every existing milestone has distinct artwork and a contiguous family level', () => {
     const definitions = getAchievementDefinitions();
-    assert.equal(definitions.length, 47);
+    assert.equal(definitions.length, 68);
     assert.equal(
         new Set(definitions.map((award) => award.artworkKey)).size,
-        47,
+        68,
     );
     const families = getAchievementFamilies([]);
     assert.deepEqual(
@@ -30,7 +33,7 @@ test('every existing milestone has distinct artwork and a contiguous family leve
     );
     assert.deepEqual(
         families.map((family) => family.levels.length),
-        [1, 9, 9, 9, 6, 5, 5, 3],
+        [1, 9, 13, 9, 13, 10, 10, 3],
     );
     for (const family of families) {
         assert.deepEqual(
@@ -66,7 +69,8 @@ test('keeps existing thresholds, rewards and approval semantics', () => {
     };
     for (const [family, amounts] of Object.entries(rewards)) {
         const definitions = getAchievementDefinitions().filter(
-            (award) => award.familyKey === family,
+            (award) =>
+                award.familyKey === family && (award.threshold ?? 0) <= 500,
         );
         assert.deepEqual(
             definitions.map((award) => award.threshold),
@@ -91,7 +95,8 @@ test('keeps existing thresholds, rewards and approval semantics', () => {
     assert.deepEqual(
         getAchievementFamilies([])
             .find((family) => family.key === 'community_editing')
-            ?.levels.map(({ definition }) => [
+            ?.levels.slice(0, 6)
+            .map(({ definition }) => [
                 definition.threshold,
                 definition.rewardSunflowers,
             ]),
@@ -108,13 +113,13 @@ test('keeps existing thresholds, rewards and approval semantics', () => {
         getAchievementFamilies([])
             .find((family) => family.key === 'garden_diversity')
             ?.levels.map(({ definition }) => definition.threshold),
-        [3, 5, 10, 15, 20],
+        [3, 5, 10, 15, 20, 25, 30, 35, 40, 45],
     );
     assert.deepEqual(
         getAchievementFamilies([])
             .find((family) => family.key === 'seed_to_table')
             ?.levels.map(({ definition }) => definition.threshold),
-        [1, 5, 10, 25, 50],
+        [1, 5, 10, 25, 50, 75, 100, 150, 200, 300],
     );
     assert.deepEqual(
         getAchievementFamilies([])
@@ -180,11 +185,70 @@ test('a complete family and a new account are derived independently', () => {
         (item) => item.key === 'watering',
     );
     assert.equal(complete?.isComplete, true);
-    assert.equal(complete?.approvedCount, 9);
+    assert.equal(complete?.approvedCount, 13);
     assert.equal(complete?.nextLevel, undefined);
     assert.equal(
         getAchievementFamilies([]).find((item) => item.key === 'watering')
             ?.highestApproved,
         undefined,
     );
+});
+
+test('advanced families keep at least three unreached milestones above the audited leaders', () => {
+    const leaders = {
+        garden_diversity: 32,
+        community_editing: 427,
+        watering: 266,
+        seed_to_table: 27,
+    };
+    for (const [familyKey, total] of Object.entries(leaders)) {
+        const definitions = getAchievementDefinitions().filter(
+            (definition) => definition.familyKey === familyKey,
+        );
+        assert.ok(
+            definitions.filter(
+                (definition) => (definition.threshold ?? 0) > total,
+            ).length >= 3,
+        );
+        assert.ok(definitions.every((definition) => !definition.autoApprove));
+        assert.ok(
+            definitions.every(
+                (definition) =>
+                    Number.isSafeInteger(definition.rewardSunflowers) &&
+                    definition.rewardSunflowers > 0,
+            ),
+        );
+        for (let index = 1; index < definitions.length; index++) {
+            assert.ok(
+                (definitions[index].threshold ?? 0) >
+                    (definitions[index - 1].threshold ?? 0),
+            );
+            assert.ok(
+                definitions[index].rewardSunflowers >=
+                    definitions[index - 1].rewardSunflowers,
+            );
+        }
+    }
+    const formerlyComplete = getAchievementDefinitions()
+        .filter(
+            (definition) =>
+                definition.familyKey === 'garden_diversity' &&
+                (definition.threshold ?? 0) <= 20,
+        )
+        .map((definition) => ({
+            key: definition.key,
+            status: 'approved' satisfies AchievementRecord['status'],
+        }));
+    const family = getAchievementFamilies(formerlyComplete).find(
+        (family) => family.key === 'garden_diversity',
+    );
+    assert.equal(
+        family?.highestApproved?.definition.key,
+        'garden_diversity_20',
+    );
+    assert.equal(family?.approvedCount, 5);
+    assert.equal(family?.nextLevel?.definition.key, 'garden_diversity_25');
+    assert.equal(family?.isComplete, false);
+    assert.equal(formatAchievementLevel(10), 'X');
+    assert.equal(formatAchievementLevel(13), 'XIII');
 });
