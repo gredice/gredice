@@ -108,6 +108,26 @@ for (const viewport of [
         await expect(
             modal.getByAltText('Fotografija unosa Fotografiranje gredice'),
         ).toBeVisible();
+        const layout = modal.locator('[data-review-layout]');
+        await expect(layout).toHaveAttribute('data-review-layout', 'review');
+        const layoutBounds = await layout.boundingBox();
+        const chatBounds = await chat.boundingBox();
+        const photoBounds = await modal
+            .locator('[data-review-layout-part="photo"]')
+            .boundingBox();
+        expect(layoutBounds).not.toBeNull();
+        expect(chatBounds).not.toBeNull();
+        expect(photoBounds).not.toBeNull();
+        expect(
+            Math.abs((chatBounds?.width ?? 0) - (layoutBounds?.width ?? 0)),
+        ).toBeLessThan(2);
+        expect(
+            Math.abs((chatBounds?.x ?? 0) - (layoutBounds?.x ?? 0)),
+        ).toBeLessThan(2);
+        expect(photoBounds?.width).toBeLessThanOrEqual(96);
+        expect((photoBounds?.y ?? 0) + (photoBounds?.height ?? 0)).toBeLessThan(
+            chatBounds?.y ?? 0,
+        );
         await expect(chat).toContainText('Grah ima zrele mahune.');
         await expect(page.locator('[data-suncokret-placement]')).toHaveCount(0);
         await expect(
@@ -233,4 +253,202 @@ test('a freshly completed analysis uses its saved review identity', async ({
             .getByRole('region', { name: 'Razgovor sa Suncokretom' })
             .getByRole('textbox'),
     ).toBeEnabled();
+});
+
+const motionPreferences: Array<'no-preference' | 'reduce'> = [
+    'no-preference',
+    'reduce',
+];
+for (const reducedMotion of motionPreferences) {
+    test(`scanning photo moves into the header with ${reducedMotion} motion`, async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize({ width: 1280, height: 900 });
+        await page.emulateMedia({ reducedMotion });
+        let finishAnalysis: (() => void) | undefined;
+        await page.route('**/api/ai/suncokret/status?*', (route) =>
+            route.fulfill({ json: status }),
+        );
+        await page.route('**/api/ai/suncokret/conversations/*', (route) =>
+            route.fulfill({ status: 404, json: {} }),
+        );
+        await page.route('**/analyze-image', async (route) => {
+            await new Promise<void>((resolve) => {
+                finishAnalysis = resolve;
+            });
+            await route.fulfill({
+                body: '## Sažetak stanja\nGrah ima zrele mahune.',
+                contentType: 'text/plain',
+            });
+        });
+        await page.route('**/ai-history', (route) =>
+            route.fulfill({
+                json: [
+                    {
+                        id: 501,
+                        description:
+                            '## Sažetak stanja\nGrah ima zrele mahune.',
+                        timestamp: '2026-09-22T12:00:00Z',
+                        imageUrls: ['/web-app-manifest-192x192.png'],
+                    },
+                ],
+            }),
+        );
+        await mount(<SuncokretChatHudStory review freshReview />);
+        await page
+            .getByRole('button', { name: 'Pitaj suncokret za savjete' })
+            .click();
+        const layout = page.locator('[data-review-layout]');
+        await expect(layout).toHaveAttribute('data-review-layout', 'scanning');
+        await expect.poll(() => Boolean(finishAnalysis)).toBe(true);
+        expect(
+            (
+                await layout
+                    .locator('[data-review-layout-part="photo"]')
+                    .boundingBox()
+            )?.width,
+        ).toBeGreaterThan(300);
+        // Observe the actual layout animations at the moment React commits the new layout.
+        await layout.evaluate((element) => {
+            const observer = new MutationObserver(() => {
+                if (element.getAttribute('data-review-layout') !== 'review')
+                    return;
+                observer.disconnect();
+                const animations = Array.from(
+                    element.querySelectorAll('[data-review-layout-part]'),
+                ).flatMap((part) =>
+                    part
+                        .getAnimations()
+                        .filter(
+                            (animation) =>
+                                animation.id === 'raised-bed-review-layout',
+                        ),
+                );
+                element.setAttribute(
+                    'data-animation-count',
+                    String(animations.length),
+                );
+                element.setAttribute(
+                    'data-animation-durations',
+                    animations
+                        .map(
+                            (animation) =>
+                                animation.effect?.getTiming().duration,
+                        )
+                        .join(','),
+                );
+                const effect = animations[0]?.effect;
+                element.setAttribute(
+                    'data-animation-transform',
+                    effect instanceof KeyframeEffect
+                        ? String(effect.getKeyframes()[0]?.transform)
+                        : '',
+                );
+            });
+            observer.observe(element, {
+                attributes: true,
+                attributeFilter: ['data-review-layout'],
+            });
+        });
+        finishAnalysis?.();
+        await expect(layout).toHaveAttribute(
+            'data-animation-count',
+            reducedMotion === 'reduce' ? '0' : '3',
+        );
+        if (reducedMotion !== 'reduce') {
+            await expect(layout).toHaveAttribute(
+                'data-animation-durations',
+                '300,300,300',
+            );
+            await expect(layout).toHaveAttribute(
+                'data-animation-transform',
+                /scale\(/,
+            );
+        }
+        await expect(
+            page
+                .getByRole('region', { name: 'Razgovor sa Suncokretom' })
+                .getByRole('textbox'),
+        ).toBeEnabled();
+        await expect
+            .poll(
+                async () =>
+                    (
+                        await layout
+                            .locator('[data-review-layout-part="photo"]')
+                            .boundingBox()
+                    )?.width,
+            )
+            .toBeLessThanOrEqual(96);
+        await expect
+            .poll(() =>
+                layout.evaluate(
+                    (element) =>
+                        element
+                            .getAnimations({ subtree: true })
+                            .filter(
+                                (animation) =>
+                                    animation.id === 'raised-bed-review-layout',
+                            ).length,
+                ),
+            )
+            .toBe(0);
+    });
+}
+
+test('compact header keeps all photos selectable and opens the full-size gallery without losing the draft', async ({
+    mount,
+    page,
+}) => {
+    await page.route('**/api/ai/suncokret/status?*', (route) =>
+        route.fulfill({ json: status }),
+    );
+    await page.route('**/api/ai/suncokret/conversations/*', (route) =>
+        route.fulfill({ status: 404, json: {} }),
+    );
+    await mount(
+        <SuncokretChatHudStory
+            review
+            reviewImageUrls={[
+                '/web-app-manifest-192x192.png',
+                '/web-app-manifest-512x512.png',
+            ]}
+        />,
+    );
+    await page
+        .getByRole('button', { name: 'Pregledaj savjete suncokreta' })
+        .click();
+    const modal = page.getByRole('dialog', {
+        name: 'AI analiza fotografije',
+        exact: true,
+    });
+    const composer = modal.getByRole('textbox', { name: 'Pitaj Suncokret' });
+    await expect(composer).toBeEnabled();
+    await composer.fill('Što vidiš na drugoj fotografiji?');
+    await modal
+        .getByRole('button', { name: 'Prikaži fotografiju 2', exact: true })
+        .click();
+    await expect(
+        modal.getByRole('button', {
+            name: 'Prikaži fotografiju 2',
+            exact: true,
+        }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await expect(
+        modal.getByAltText('Fotografija unosa Fotografiranje gredice'),
+    ).toHaveAttribute('src', /512x512/);
+    await modal
+        .getByRole('button', {
+            name: 'Otvori sliku 1 u punoj veličini: Fotografija unosa Fotografiranje gredice',
+        })
+        .click();
+    const gallery = page.getByRole('dialog', { name: 'Pregled galerije' });
+    await expect(gallery).toBeVisible();
+    await gallery
+        .getByRole('button', { name: 'Zatvori pregled galerije', exact: true })
+        .click();
+    await expect(gallery).not.toBeVisible();
+    await expect(modal).toBeVisible();
+    await expect(composer).toHaveValue('Što vidiš na drugoj fotografiji?');
 });

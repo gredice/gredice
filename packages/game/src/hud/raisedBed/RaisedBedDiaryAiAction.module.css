@@ -1,3 +1,78 @@
+.analysisLayout {
+    display: grid;
+    grid-template-areas: "photo" "status" "content";
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 1rem;
+}
+
+.media {
+    grid-area: photo;
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.photo {
+    grid-area: photo;
+    min-width: 0;
+}
+
+.photoGallery > div {
+    height: 100%;
+    overflow: hidden;
+    padding-bottom: 0;
+}
+
+.photoGallery > div > button {
+    min-width: 100%;
+    max-width: 100%;
+    min-height: 100%;
+    max-height: 100%;
+}
+
+.photoChoices {
+    grid-area: thumbnails;
+    min-width: 0;
+}
+
+.reviewStatus {
+    grid-area: status;
+    min-width: 0;
+}
+
+.reviewBody {
+    grid-area: content;
+    min-width: 0;
+}
+
+.analysisLayout[data-review-layout="review"] {
+    grid-template-areas: "photo status" "thumbnails thumbnails" "content content";
+    grid-template-columns: 5rem minmax(0, 1fr);
+    row-gap: 0;
+}
+
+.analysisLayout[data-review-layout="review"] .media {
+    display: contents;
+}
+
+.analysisLayout[data-review-layout="review"] .photoChoices,
+.analysisLayout[data-review-layout="review"] .reviewBody {
+    margin-top: 1rem;
+}
+
+@media (min-width: 768px) {
+    .analysisLayout {
+        grid-template-areas: "photo status" "photo content";
+        grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+    }
+
+    .analysisLayout[data-review-layout="review"] {
+        grid-template-columns: 6rem minmax(0, 1fr);
+    }
+}
+
 .sunflowerThinking {
     animation: sunflowerBob 1.8s ease-in-out infinite;
 }
@@ -103,5 +178,14 @@
     50%,
     100% {
         opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sunflowerThinking,
+    .sunflowerPulse img,
+    .scanBeam,
+    .cursorBlink {
+        animation: none;
     }
 }
