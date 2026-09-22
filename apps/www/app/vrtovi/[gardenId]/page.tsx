@@ -2,6 +2,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { RelatedFaq } from '../../../components/faq/RelatedFaq';
 import { Card } from '../../../components/shared/Card';
 import { PublicBreadcrumbs } from '../../../components/shared/seo/PublicBreadcrumbs';
 import { KnownPages } from '../../../src/KnownPages';
@@ -154,6 +155,7 @@ export default async function PublicGardenPage({
                 Tvoj vrtni lik slobodno šeće dok ne odabereš „Prošetaj vrtom”.
                 Tijekom posjeta možeš vidjeti i druge posjetitelje uživo.
             </Typography>
+            <RelatedFaq placement="publicGardens" />
         </Stack>
     );
 }

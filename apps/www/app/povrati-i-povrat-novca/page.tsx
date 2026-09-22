@@ -2,13 +2,14 @@ import { Container } from '@gredice/ui/Container';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
+import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 
 export const metadata = createPublicMetadata({
     title: 'Povrat novca',
     description:
-        'Informacije o povratu novca, suncokretima, rezervacijama i korekcijama Gredice salda.',
+        'Informacije o povratu novca, suncokretima, otkazivanjima i korekcijama Gredice salda.',
     path: KnownPages.Refunds,
     eyebrow: 'Povrati',
 });
@@ -20,7 +21,7 @@ export default function RefundsPage() {
                 <PageHeader
                     padded
                     header="Povrat novca"
-                    subHeader="Ako nisi zadovoljan uslugom ili proizvodom, možeš zatražiti povrat novca u roku od 30 dana."
+                    subHeader="Ako usluga ili proizvod ne ispuni tvoja očekivanja, možeš zatražiti povrat novca u roku od 30 dana."
                 />
                 <StyledHtml>
                     <h2>Naša politika</h2>
@@ -50,16 +51,15 @@ export default function RefundsPage() {
                     </p>
                     <p>
                         Kada naručiš akciju u vrtu, potreban broj suncokreta
-                        najprije se rezervira. Ako se akcija otkaže prije
-                        obrade, rezervacija se otpušta i suncokreti se vraćaju
-                        na raspoloživi saldo.
+                        oduzima se sa salda odmah pri potvrdi narudžbe. Ako se
+                        akcija otkaže prije obrade, suncokreti se vraćaju na
+                        saldo kao povrat.
                     </p>
                     <p>
-                        Nakon što je akcija izvršena i naplaćena iz salda,
-                        eventualni povrat ili korekcija rješava se kroz
-                        korisničku podršku. Bonus suncokreti iz paketa ne
-                        predstavljaju zaseban novčani iznos i ne obećavaju
-                        automatski gotovinski povrat.
+                        Nakon što je akcija izvršena, eventualni povrat ili
+                        korekcija rješava se kroz korisničku podršku. Bonus
+                        suncokreti iz paketa ne predstavljaju zaseban novčani
+                        iznos i ne obećavaju automatski gotovinski povrat.
                     </p>
                     <h2>Kako zatražiti povrat</h2>
                     <p>
@@ -89,6 +89,7 @@ export default function RefundsPage() {
                     </p>
                 </StyledHtml>
             </Stack>
+            <RelatedFaq placement="refunds" />
         </Container>
     );
 }

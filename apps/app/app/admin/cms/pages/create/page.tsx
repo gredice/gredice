@@ -1,4 +1,6 @@
+import { getEntitiesFormatted } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import type { SharedFaqEntry } from '@gredice/ui/cms';
 import { Stack } from '@gredice/ui/Stack';
 import { AdminBreadcrumbLevelSelector } from '../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../lib/auth/auth';
@@ -94,6 +96,7 @@ export default async function CreateCmsPagePage({
     return (
         <Stack spacing={8}>
             <CmsPageForm
+                faqEntries={await getEntitiesFormatted<SharedFaqEntry>('faq')}
                 action={createCmsPageAction}
                 formId="cms-page-create-form"
                 template={template}

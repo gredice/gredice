@@ -19,6 +19,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import {
     Card,
     CardContent,
@@ -433,7 +434,7 @@ export default async function PricingPage() {
 
                 <Card className="scroll-mt-28" id="dostava">
                     <CatalogSectionHeader
-                        description="Za svaku lokaciju prikazane su besplatna zona, maksimalna zona i cijena po kilometru."
+                        description="Dostava unutar Grada Zagreba je besplatna. Za ostale adrese provjeri udaljenost i konačnu cijenu prije narudžbe."
                         headingId="dostava-naslov"
                         icon={<GameDeliveryIcon aria-hidden />}
                         title="Dostava"
@@ -463,7 +464,7 @@ export default async function PricingPage() {
                                                 }
                                             />
                                         }
-                                        subtitle={`Prvih ${row.freeRadius} km bez naknade · dostupno do ${row.zoneRadius} km`}
+                                        subtitle={`Grad Zagreb bez naknade · izvan Zagreba do ${row.zoneRadius} km vožnje`}
                                         title={row.label}
                                         visual={
                                             <GameDeliveryIcon
@@ -528,6 +529,7 @@ export default async function PricingPage() {
                     </CardContent>
                 </Card>
 
+                <RelatedFaq placement="pricing" />
                 <Row spacing={4} className="pt-4">
                     <Typography level="body1">
                         Jesu li ti informacije u cjeniku korisne?

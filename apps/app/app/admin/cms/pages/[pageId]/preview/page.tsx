@@ -1,5 +1,10 @@
-import { getCmsPage } from '@gredice/storage';
-import { parseCmsPageContentJson, SectionsView } from '@gredice/ui/cms';
+import { getCmsPage, getEntitiesFormatted } from '@gredice/storage';
+import {
+    parseCmsPageContentJson,
+    resolveFaqSections,
+    SectionsView,
+    type SharedFaqEntry,
+} from '@gredice/ui/cms';
 import { notFound } from 'next/navigation';
 import { sectionsComponentRegistry } from '../../../../../../components/shared/sectionsComponentRegistry';
 import { auth } from '../../../../../../lib/auth/auth';
@@ -28,7 +33,10 @@ export default async function CmsPagePreviewPage({
     return (
         <main>
             <SectionsView
-                sectionsData={content.sectionsData}
+                sectionsData={resolveFaqSections(
+                    content.sectionsData,
+                    await getEntitiesFormatted<SharedFaqEntry>('faq'),
+                )}
                 componentsRegistry={sectionsComponentRegistry}
                 renderMode={content.renderMode}
                 renderMaxWidth={content.renderMaxWidth}
