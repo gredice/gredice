@@ -95,10 +95,19 @@ export function PublicSkyBackdrop({
     const celestialVisibility = clamp01(
         1 - weather.cloudy * 0.58 - weather.foggy * 0.66,
     );
+    const twilight =
+        snapshot.phase === 'sunrise' || snapshot.phase === 'sunset';
+    const contrastBoost = Math.max(
+        twilight ? 0.1 : 0,
+        Math.max(weather.cloudy, weather.foggy, weather.thundery) * 0.06,
+    );
     const style = {
+        '--public-environment-contrast-boost': contrastBoost,
         background: `linear-gradient(180deg, ${snapshot.zenith} 0%, ${snapshot.upper} 32%, ${snapshot.horizon} 72%, ${snapshot.lower} 100%)`,
         position,
-    } satisfies CSSProperties;
+    } satisfies CSSProperties & {
+        '--public-environment-contrast-boost': number;
+    };
 
     return (
         <div
