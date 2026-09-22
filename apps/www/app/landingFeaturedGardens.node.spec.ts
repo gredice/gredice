@@ -104,8 +104,8 @@ test('keeps featured gardens enabled without stale rollout flag metadata', () =>
         loaderSource,
         /landingFeaturedGardenDetailsTimeoutMs = 5_000/u,
     );
-    assert.match(loaderSource, /init: \{ signal: listSignal \}/u);
-    assert.match(loaderSource, /init: \{ signal: detailSignal \}/u);
+    assert.match(loaderSource, /signal: listSignal, cache: 'no-store'/u);
+    assert.match(loaderSource, /signal: detailSignal, cache: 'no-store'/u);
     assert.match(loaderSource, /GREDICE_PLAYWRIGHT_FEATURED_GARDENS_FIXTURE/u);
     assert.match(
         playwrightConfigSource,
