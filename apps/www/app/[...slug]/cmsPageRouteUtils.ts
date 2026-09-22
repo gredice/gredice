@@ -87,6 +87,7 @@ const reservedFirstSegments = new Set([
     'stetnici',
     'sjetva',
     'suncokreti',
+    'iskustvo-i-razine',
     'vodic-za-prvu-gredicu',
     'vrtovi',
 ]);

@@ -160,6 +160,13 @@ test('CMS page slugs reject reserved static route conflicts', async () => {
         /reserved route/,
     );
 
+    for (const slug of ['iskustvo-i-razine', 'iskustvo-i-razine/primjer']) {
+        assert.match(
+            getCmsPageSlugValidationError(slug) ?? '',
+            /reserved route/,
+        );
+    }
+
     assert.equal(normalizeCmsPageSlug('/Česta pitanja/'), 'cesta-pitanja');
     assert.equal(
         normalizeCmsPageSlug('test123---dsadase21321!@#$%^&*(fdsfdsdq'),

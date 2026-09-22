@@ -105,6 +105,12 @@ export function UserLeaderboard({
                     svaku sljedeću razinu potrebno je više iskustva. XP ostaje
                     uz tvoja postignuća i ne troši se kupnjom suncokreta.
                 </p>
+                <Link
+                    href={KnownPages.Experience}
+                    className="mt-4 inline-block text-sm underline underline-offset-4"
+                >
+                    Kako skupljati XP i prijeći na novu razinu
+                </Link>
                 <ul
                     className="mt-5 flex flex-wrap gap-x-6 gap-y-4"
                     aria-label="Primjeri razina"

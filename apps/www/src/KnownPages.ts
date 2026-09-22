@@ -35,6 +35,7 @@ export const KnownPages = {
     BlockPets: PublicDirectoryPaths.BlockPets as Route,
     BlockPlantGenerator: '/blokovi/biljke/generator' as Route,
     Sunflowers: '/suncokreti',
+    Experience: '/iskustvo-i-razine',
     RaisedBeds: '/podignuta-gredica',
     Outlet: '/outlet',
     Sowing: '/sjetva',

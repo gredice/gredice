@@ -57,6 +57,11 @@ for (const width of [390, 1280]) {
         await expect(page.getByRole('heading', { level: 1 })).toHaveText(
             'Vrtlari koji rastu zajedno',
         );
+        await expect(
+            page.getByRole('link', {
+                name: 'Kako skupljati XP i prijeći na novu razinu',
+            }),
+        ).toHaveAttribute('href', '/iskustvo-i-razine');
         const rows = page.locator('ol > li');
         await expect(rows).toHaveCount(10);
         await expect(rows.first().getByRole('link')).toHaveAttribute(

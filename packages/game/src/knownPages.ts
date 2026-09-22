@@ -14,6 +14,7 @@ export const KnownPages = {
     GrediceBlock: (alias: string) =>
         `https://www.gredice.com/blokovi/${slugify(alias)}`,
     GrediceAchievements: 'https://www.gredice.com/postignuca',
+    GrediceExperience: 'https://www.gredice.com/iskustvo-i-razine',
     GrediceSunflowers: 'https://www.gredice.com/suncokreti',
     GrediceReferrals: 'https://www.gredice.com/preporuke',
     GrediceContact: 'https://www.gredice.com/kontakt',

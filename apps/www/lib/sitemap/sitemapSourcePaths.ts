@@ -55,6 +55,7 @@ export const appRouterHubPaths = [
     '/sjetva',
     '/stetnici',
     '/suncokreti',
+    '/iskustvo-i-razine',
     '/vodic-za-prvu-gredicu',
     '/vrtovi',
 ] as const;
