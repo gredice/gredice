@@ -62,6 +62,7 @@ export function OperationsListItem({
         operation: OperationData,
         scheduledDate?: Date,
         useInventoryItem?: boolean,
+        requestNote?: string,
     ) {
         onOperationPicked?.(operation);
         await setShoppingCartItem.mutateAsync({
@@ -72,11 +73,12 @@ export function OperationsListItem({
             raisedBedId,
             positionIndex,
             additionalData:
-                scheduledDate || plantingTarget
+                scheduledDate || plantingTarget || requestNote
                     ? JSON.stringify({
                           ...(scheduledDate
                               ? { scheduledDate: scheduledDate.toISOString() }
                               : {}),
+                          ...(requestNote ? { requestNote } : {}),
                           ...(plantingTarget ? { plantingTarget } : {}),
                       })
                     : null,
@@ -165,8 +167,13 @@ export function OperationsListItem({
             <OperationScheduleModal
                 gardenId={gardenId}
                 operation={operation}
-                onConfirm={async (date) => {
-                    await handleOperationPicked(operation, date);
+                onConfirm={async (date, requestNote) => {
+                    await handleOperationPicked(
+                        operation,
+                        date,
+                        false,
+                        requestNote,
+                    );
                 }}
                 positionIndex={positionIndex}
                 raisedBedId={raisedBedId}
@@ -178,11 +185,12 @@ export function OperationsListItem({
                         <OperationScheduleModal
                             gardenId={gardenId}
                             operation={operation}
-                            onConfirm={async (date) => {
+                            onConfirm={async (date, requestNote) => {
                                 await handleOperationPicked(
                                     operation,
                                     date,
                                     true,
+                                    requestNote,
                                 );
                             }}
                             positionIndex={positionIndex}

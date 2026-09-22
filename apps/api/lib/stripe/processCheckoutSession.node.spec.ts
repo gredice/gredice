@@ -5725,6 +5725,7 @@ describe('selected planting operation purchases', () => {
         additionalData: JSON.stringify({
             plantingTarget,
             scheduledDate: '2026-09-15T00:00:00.000Z',
+            requestNote: 'Molim provjerite listove.',
         }),
     };
     it('persists an explicit target without resolving a legacy field', async () => {
@@ -5746,6 +5747,7 @@ describe('selected planting operation purchases', () => {
         });
         assert.ok(isRecord(call?.args[2]));
         assert.deepEqual(call.args[2].plantingTarget, plantingTarget);
+        assert.equal(call.args[2].requestNote, 'Molim provjerite listove.');
         assert.equal(
             callsNamed(calls, 'getRaisedBedFieldsWithEvents').length,
             0,
@@ -5783,4 +5785,43 @@ describe('selected planting operation purchases', () => {
             null,
         );
     });
+});
+
+describe('customer operation request notes', () => {
+    for (const currency of ['eur', 'sunflower', 'inventory']) {
+        for (const positionIndex of [null, 2]) {
+            it(`forwards ${currency} request notes for ${positionIndex === null ? 'beds' : 'fields'}`, async () => {
+                const calls: RecordedCall[] = [];
+                const result = await processItem(
+                    {
+                        accountId: 'account-1',
+                        amount_total: 2500,
+                        additionalData: {
+                            scheduledDate: '2099-07-01',
+                            requestNote: '  Molim sačuvajte listove.  ',
+                        },
+                        cartId: 100,
+                        cartItemId: 1,
+                        currency,
+                        entityId: '42',
+                        entityTypeName: 'operation',
+                        gardenId: 200,
+                        positionIndex,
+                        raisedBedId: 300,
+                    },
+                    makeDependencies(calls),
+                );
+                assert.equal(result.status, 'fulfilled');
+                const call = callsNamed(
+                    calls,
+                    'getOrCreateCheckoutOperation',
+                )[0];
+                assert.ok(isRecord(call?.args[2]));
+                assert.equal(
+                    call.args[2].requestNote,
+                    'Molim sačuvajte listove.',
+                );
+            });
+        }
+    }
 });

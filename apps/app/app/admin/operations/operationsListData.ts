@@ -44,6 +44,7 @@ type RawOperation = {
     createdAt?: Date | string | null;
     scheduledDate?: Date | string | null;
     completedAt?: Date | string | null;
+    requestNote?: string | null;
     completionNotes?: string | null;
     blockedAt?: Date | string | null;
     assignedUsers?: Array<{
@@ -394,6 +395,7 @@ function serializeOperation(
         createdAt: toIsoString(operation.createdAt),
         scheduledDate: toIsoString(operation.scheduledDate),
         completedAt: toIsoString(operation.completedAt),
+        requestNote: operation.requestNote?.trim() || null,
         completionNotes: operation.completionNotes?.trim() || null,
     };
 }

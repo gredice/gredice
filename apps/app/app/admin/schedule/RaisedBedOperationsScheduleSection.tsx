@@ -6,6 +6,7 @@ import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Calendar, Close, Edit } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { OperationRequestNote } from '@gredice/ui/OperationRequestNote';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -983,6 +984,10 @@ export function RaisedBedOperationsScheduleSection({
                                     />
                                 </Row>
                             </Row>
+                            <OperationRequestNote
+                                note={operation.requestNote}
+                                className="mx-2 mb-2"
+                            />
                         </div>
                     );
                 })}

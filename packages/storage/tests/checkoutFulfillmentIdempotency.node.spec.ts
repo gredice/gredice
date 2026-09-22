@@ -10,6 +10,7 @@ import {
     consumeInventoryItem,
     createAccount,
     createDeliveryRequest,
+    createEvent,
     createOperation,
     createPickupLocation,
     createTimeSlot,
@@ -22,9 +23,12 @@ import {
     getCheckoutOperationMappings,
     getCheckoutOperationProvenance,
     getInventory,
+    getOperationById,
+    getOperations,
     getOrCreateCheckoutOperation,
     getOrCreateDeliveryRequest,
     InventoryConsumptionSourceConflictError,
+    knownEvents,
     knownEventTypes,
     operations,
     storage,
@@ -494,4 +498,68 @@ test('checkout inventory lookup surfaces duplicate requested source rows', async
         getCheckoutInventorySnapshot(accountId, [cartItemId]),
         InventoryConsumptionSourceConflictError,
     );
+});
+
+test('customer request notes survive approval, rescheduling and checkout replay for beds and fields', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    for (const raisedBedFieldId of [undefined, 31]) {
+        const cartItemId = uniqueCartItemId();
+        const input = {
+            accountId,
+            entityId: 17,
+            entityTypeName: 'operation',
+            gardenId: 23,
+            raisedBedId: 29,
+            raisedBedFieldId,
+        };
+        const options = {
+            delivery: null,
+            paymentCurrency: 'eur',
+            scheduledDate: new Date('2099-04-05T00:00:00.000Z'),
+            requestNote: '  Sačuvajte listove.\nMolim zaliti.  ',
+        } satisfies Parameters<typeof getOrCreateCheckoutOperation>[2];
+        const result = await getOrCreateCheckoutOperation(
+            cartItemId,
+            input,
+            options,
+        );
+        const note = 'Sačuvajte listove.\nMolim zaliti.';
+        assert.equal(
+            (await getOperationById(result.operationId)).requestNote,
+            note,
+        );
+        assert.equal(
+            (await getOperationById(result.operationId)).isAccepted,
+            false,
+        );
+        await acceptOperation(result.operationId);
+        await createEvent(
+            knownEvents.operations.scheduledV1(result.operationId.toString(), {
+                scheduledDate: '2099-04-06T00:00:00.000Z',
+            }),
+        );
+        const operation = await getOperationById(result.operationId);
+        assert.equal(operation.requestNote, note);
+        assert.equal(operation.completionNotes, undefined);
+        assert.equal(operation.isAccepted, true);
+        assert.equal(
+            (await getOperations(accountId)).find(
+                (item) => item.id === result.operationId,
+            )?.requestNote,
+            note,
+        );
+        assert.equal(
+            (await getOrCreateCheckoutOperation(cartItemId, input, options))
+                .created,
+            false,
+        );
+        await assert.rejects(
+            getOrCreateCheckoutOperation(cartItemId, input, {
+                ...options,
+                requestNote: 'Different request',
+            }),
+            CheckoutOperationConflictError,
+        );
+    }
 });

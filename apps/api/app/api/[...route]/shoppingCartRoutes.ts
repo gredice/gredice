@@ -1,3 +1,4 @@
+import { readOperationRequestNote } from '@gredice/js/operations';
 import {
     type AdvancedSowingCartAuthorizationV1,
     advancedSowingSelectionRequestKind,
@@ -293,12 +294,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 gardenId,
                 raisedBedId,
                 positionIndex,
-                additionalData,
+                additionalData: rawAdditionalData,
                 currency,
                 outletOfferId,
                 forceCreate,
             } = context.req.valid('json');
             const { accountId } = context.get('authContext');
+            let additionalData = rawAdditionalData;
             try {
                 assertNoReservedAdvancedSowingAdditionalData(additionalData);
             } catch (error) {
@@ -323,6 +325,35 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 !cart.items.some((item) => item.id === id)
             ) {
                 return context.json({ error: 'Cart item not found' }, 404);
+            }
+            if (entityTypeName === 'operation') {
+                try {
+                    const requestNote =
+                        readOperationRequestNote(additionalData);
+                    if (additionalData) {
+                        const data: unknown = JSON.parse(additionalData);
+                        if (
+                            data &&
+                            typeof data === 'object' &&
+                            !Array.isArray(data) &&
+                            'requestNote' in data
+                        ) {
+                            if (requestNote) data.requestNote = requestNote;
+                            else delete data.requestNote;
+                            additionalData = JSON.stringify(data);
+                        }
+                    }
+                } catch (error) {
+                    return context.json(
+                        {
+                            error:
+                                error instanceof Error
+                                    ? error.message
+                                    : 'Neispravna napomena za vrtlara.',
+                        },
+                        400,
+                    );
+                }
             }
             const existingItem =
                 typeof id === 'number'
