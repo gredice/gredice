@@ -6,8 +6,10 @@ import { useSceneTimeInvalidation } from '../src/scene/SceneTime';
 export function AutumnSceneProbe({
     onReady,
     onLeafCount,
+    onGroundCount,
 }: {
     onReady: (value: string) => void;
+    onGroundCount?: (count: number) => void;
     onLeafCount?: (count: number) => void;
 }) {
     const camera = useThree((state) => state.camera);
@@ -23,7 +25,13 @@ export function AutumnSceneProbe({
         const leaves = scene.getObjectByName('Weather:AutumnLeaves');
         if (leaves instanceof InstancedMesh) onLeafCount?.(leaves.count);
         const canopies: string[] = [];
+        let groundCount = 0;
         scene.traverse((object) => {
+            if (
+                object.name.startsWith('BlockInstances:Autumn:ground:') &&
+                object instanceof InstancedMesh
+            )
+                groundCount += object.count;
             if (
                 (object.name.startsWith('Autumn:Canopy:') ||
                     object.name.startsWith('BlockInstances:Tree:canopy:')) &&
@@ -41,6 +49,7 @@ export function AutumnSceneProbe({
                     );
             }
         });
+        onGroundCount?.(groundCount);
         if (canopies.length === 3) onReady(canopies.join(','));
     });
     return null;

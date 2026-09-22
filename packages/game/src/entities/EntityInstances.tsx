@@ -27,6 +27,7 @@ import {
     hasIndexedEntityBlocks,
     useEntityBlockInstanceIndex,
 } from './entityBlockInstanceIndex';
+import { AutumnGroundLeaves } from './groundDecorations/AutumnGroundLeaves';
 import { GroundBlockDecorations } from './groundDecorations/GroundBlockDecorations';
 import type { GroundDecorationWeather } from './groundDecorations/GroundDecorationInstances';
 import {
@@ -558,6 +559,13 @@ export function EntityInstances({
                 {...mergedTerrainChunkProps}
                 {...commonSnowProps}
             />
+            {renderDetails && (
+                <AutumnGroundLeaves
+                    stacks={stacks}
+                    tier={qualityProfile.tier}
+                    weather={weather}
+                />
+            )}
             {shouldRenderGroundDecorations && (
                 <GroundBlockDecorations
                     density={qualityProfile.groundDecorationDensity}

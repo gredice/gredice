@@ -91,3 +91,39 @@ test('summer has no ambient leaf pool activity', async ({ mount }) => {
     await expect(fixture).toHaveAttribute('data-canopies', /.+/);
     await expect(fixture).toHaveAttribute('data-leaves', '0');
 });
+
+for (const tier of ['low', 'high'] as const) {
+    test(`settled ground leaves on flat and rotated sloped blocks at ${tier}`, async ({
+        mount,
+        page,
+    }) => {
+        const fixture = await mount(
+            <AutumnVisualFixture
+                instanced
+                ground
+                stage="lateAutumn"
+                tier={tier}
+            />,
+        );
+        await expect(fixture).toHaveAttribute('data-ground-leaves', /^[1-9]/);
+        await expect(fixture).toHaveAttribute('data-canopies', /.+/);
+        await expect(page.locator('canvas')).toHaveScreenshot(
+            `autumn-ground-${tier}.png`,
+            { maxDiffPixelRatio: 0.005 },
+        );
+        await fixture.update(
+            <AutumnVisualFixture instanced ground stage="summer" tier={tier} />,
+        );
+        await expect(fixture).toHaveAttribute('data-ground-leaves', '0');
+        await fixture.update(
+            <AutumnVisualFixture
+                instanced
+                ground
+                stage="lateAutumn"
+                snow={1}
+                tier={tier}
+            />,
+        );
+        await expect(fixture).toHaveAttribute('data-ground-leaves', '0');
+    });
+}

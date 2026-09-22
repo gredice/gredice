@@ -79,3 +79,20 @@ exposes `autumnLeafCount` and `autumnLeafCapacity`.
 dense garden in wind at the shared mid-autumn fixture date on low/medium/high.
 Use `fixedTimeSeconds` in a debug link for reproducible still captures; omit it
 when measuring animation cost.
+
+## Settled ground leaves
+
+Exposed grass, sand and swamp terrain reuse the ground-decoration surface and
+slope contract. Water, mulch, raised-bed covers and higher terrain blocks suppress
+covered surfaces. Density combines the shared settled-leaf curve with deciduous
+trees within four tiles and a wind bias bounded to 15%. Garden/block/year/tree IDs
+seed an ordered candidate set; density changes reveal a prefix of that set. The
+winter seed belongs to the preceding autumn.
+
+Three small low-poly leaves form each cluster. The existing block-instance path
+preserves rotation, stack height, drag previews and placement/drop animation.
+Batches are grouped by slope and rotation variant, with no leaf raycasts. Rain
+darkens the leaf material and lowers roughness; snow suppresses density quadratically.
+Scene cluster caps are 48/96/256/512/384 for low/constrained/medium/high/custom
+(12 triangles per cluster). `autumnGroundLeafClusters` is included in profile
+metadata. Frozen low/high WebGL fixtures cover flat and rotated sloped terrain.
