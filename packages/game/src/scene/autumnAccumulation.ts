@@ -41,7 +41,7 @@ export function getAutumnTreeInfluence(
                     (1 +
                         Math.min(0.15, Math.max(0, windSpeed) * 0.05) *
                             Math.cos(
-                                Math.atan2(z - tree.z, x - tree.x) -
+                                Math.atan2(x - tree.x, -(z - tree.z)) -
                                     (windDirection * Math.PI) / 180,
                             )),
             0,
@@ -62,4 +62,37 @@ export function resolveSettledLeafCount(
             Math.min(1, Math.max(0, influence)) *
             (1 - Math.min(1, Math.max(0, snow))) ** 2,
     );
+}
+
+type AutumnWind = {
+    windSpeed?: number | null;
+    windDirection?: number | string | null;
+};
+const compassDegrees: Record<string, number> = {
+    N: 0,
+    NE: 45,
+    E: 90,
+    SE: 135,
+    S: 180,
+    SW: 225,
+    W: 270,
+    NW: 315,
+};
+
+/** Match ground-decoration fallback while accepting forecast compass bearings. */
+export function resolveAutumnAccumulationWind(
+    override?: AutumnWind | null,
+    live?: AutumnWind | null,
+) {
+    const speed = override?.windSpeed ?? live?.windSpeed ?? 0;
+    const direction = override?.windDirection ?? live?.windDirection ?? 0;
+    return {
+        windSpeed: Number.isFinite(speed) ? speed : 0,
+        windDirection:
+            typeof direction === 'number'
+                ? Number.isFinite(direction)
+                    ? direction
+                    : 0
+                : (compassDegrees[direction] ?? 0),
+    };
 }

@@ -133,6 +133,7 @@ export function AutumnVisualFixture({
                                             ground ? tier : 'low'
                                         ]
                                     }
+                                    weather={{ windSpeed: 0, windDirection: 0 }}
                                     renderGroundDecorations={false}
                                 />
                             ) : (

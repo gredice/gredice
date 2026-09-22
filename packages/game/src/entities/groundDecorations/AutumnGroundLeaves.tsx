@@ -3,8 +3,12 @@ import { Vector3 } from 'three';
 import { useAutumnState } from '../../hooks/useAutumnState';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useLiveTime } from '../../hooks/useLiveTime';
+import { useWeatherNow } from '../../hooks/useWeatherNow';
 import { useAutumnSources } from '../../scene/AutumnSources';
-import { getAutumnAccumulationYear } from '../../scene/autumnAccumulation';
+import {
+    getAutumnAccumulationYear,
+    resolveAutumnAccumulationWind,
+} from '../../scene/autumnAccumulation';
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
 import type { GameQualityProfileTier } from '../../scene/gameQuality';
 import type { Stack } from '../../types/Stack';
@@ -19,10 +23,12 @@ import type { GroundDecorationWeather } from './GroundDecorationInstances';
 
 export function AutumnGroundLeaves({
     stacks,
+    farmId,
     tier,
     weather,
 }: {
     weather?: GroundDecorationWeather;
+    farmId?: number | null;
     stacks: Stack[] | undefined;
     tier: GameQualityProfileTier;
 }) {
@@ -42,6 +48,16 @@ export function AutumnGroundLeaves({
     const disabled = useGameState(
         (state) => state.weatherVisualizationDisabled,
     );
+    const gameWeather = useGameState((state) => state.weather);
+    const override = gameWeather ?? weather;
+    const { data: liveWeather } = useWeatherNow(
+        !disabled && override == null,
+        farmId ?? garden?.farmId,
+    );
+    const { windSpeed, windDirection } = resolveAutumnAccumulationWind(
+        override,
+        liveWeather,
+    );
     const batches = useMemo(() => {
         const allowed = new Set(blocks.map(({ block }) => block.id));
         const position = new Vector3();
@@ -58,8 +74,8 @@ export function AutumnGroundLeaves({
             tier,
             year,
             gardenId: garden?.id,
-            windDirection: weather?.windDirection,
-            windSpeed: weather?.windSpeed,
+            windDirection,
+            windSpeed,
         });
     }, [
         blocks,
@@ -71,8 +87,8 @@ export function AutumnGroundLeaves({
         tier,
         year,
         garden?.id,
-        weather?.windDirection,
-        weather?.windSpeed,
+        windDirection,
+        windSpeed,
     ]);
     const count = batches.reduce(
         (sum, batch) => sum + batch.instances.length,

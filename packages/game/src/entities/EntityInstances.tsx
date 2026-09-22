@@ -561,6 +561,7 @@ export function EntityInstances({
             />
             {renderDetails && (
                 <AutumnGroundLeaves
+                    farmId={farmId}
                     stacks={stacks}
                     tier={qualityProfile.tier}
                     weather={weather}

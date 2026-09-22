@@ -5,6 +5,7 @@ import {
     autumnGroundCaps,
     getAutumnAccumulationYear,
     getAutumnTreeInfluence,
+    resolveAutumnAccumulationWind,
 } from '../../scene/autumnAccumulation';
 import type { EntityBlockInstance } from '../EntityInstancesBlock';
 import {
@@ -92,11 +93,11 @@ test('density reveals a stable ordered subset and winter preserves autumn seed',
 test('wind only changes bounded density influence, never candidate positions', () => {
     const trees = [{ id: 'tree', x: -1, z: 0 }];
     assert(
-        getAutumnTreeInfluence(0, 0, trees, 0, 3) >
-            getAutumnTreeInfluence(0, 0, trees, 180, 3),
+        getAutumnTreeInfluence(0, 0, trees, 90, 3) >
+            getAutumnTreeInfluence(0, 0, trees, 270, 3),
     );
     const calm = placements({ trees });
-    const wind = placements({ trees, windSpeed: 3, windDirection: 0 });
+    const wind = placements({ trees, windSpeed: 3, windDirection: 90 });
     assert.deepEqual(wind.slice(0, calm.length), calm);
 });
 test('sloped clusters rotate with block and follow stack height and drag offsets', () => {
@@ -149,4 +150,34 @@ test('scene quality caps bound batched clusters', () => {
                 (tier === 'low' || tier === 'auto-constrained' ? 1 : 4),
         );
     }
+});
+
+test('live and overridden wind share compass bearings and bounded influence', () => {
+    assert.deepEqual(
+        resolveAutumnAccumulationWind(undefined, {
+            windSpeed: 3,
+            windDirection: 'NE',
+        }),
+        { windSpeed: 3, windDirection: 45 },
+    );
+    assert.deepEqual(
+        resolveAutumnAccumulationWind(
+            { windSpeed: 0, windDirection: 270 },
+            { windSpeed: 3, windDirection: 'N' },
+        ),
+        { windSpeed: 0, windDirection: 270 },
+    );
+    const trees = [{ id: 'tree', x: 0, z: 0 }];
+    assert(
+        getAutumnTreeInfluence(0, -1, trees, 0, 3) >
+            getAutumnTreeInfluence(0, 1, trees, 0, 3),
+    );
+    assert(
+        getAutumnTreeInfluence(1, 0, trees, 90, 3) >
+            getAutumnTreeInfluence(-1, 0, trees, 90, 3),
+    );
+    assert(
+        getAutumnTreeInfluence(1, -1, trees, 45, 3) >
+            getAutumnTreeInfluence(-1, 1, trees, 45, 3),
+    );
 });
