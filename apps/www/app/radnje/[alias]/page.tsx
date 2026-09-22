@@ -1,7 +1,9 @@
+import { gardenActionUrl } from '@gredice/js/gardenActions';
 import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
 import { decodeRouteParam } from '@gredice/js/uri';
 import { GameReceiptIcon } from '@gredice/ui/GameIcons';
 import { Markdown } from '@gredice/ui/Markdown';
+import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
@@ -142,6 +144,19 @@ export default async function OperationPage(
                     }
                     header={operation.information.label}
                     subHeader={operation.information.shortDescription}
+                    headerChildren={
+                        operation.attributes.internal !== true ? (
+                            <NavigatingButton
+                                href={gardenActionUrl(KnownPages.GardenApp, {
+                                    type: 'operation',
+                                    operationId: operation.id,
+                                })}
+                                className="bg-green-800 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white"
+                            >
+                                Moj vrt
+                            </NavigatingButton>
+                        ) : undefined
+                    }
                 >
                     <Stack>
                         <Typography level="h5" component="h2" gutterBottom>

@@ -31,6 +31,9 @@ function parseLocalDateInput(value: string) {
 }
 
 export function OperationScheduleModal({
+    defaultOpen = false,
+    onClose,
+    targetLabel,
     gardenId,
     initialScheduledDate,
     operation,
@@ -40,6 +43,9 @@ export function OperationScheduleModal({
     showHistory = true,
     trigger,
 }: {
+    defaultOpen?: boolean;
+    onClose?: () => void;
+    targetLabel?: string;
     gardenId: number;
     initialScheduledDate?: string;
     operation: OperationData;
@@ -47,9 +53,9 @@ export function OperationScheduleModal({
     positionIndex?: number;
     raisedBedId?: number;
     showHistory?: boolean;
-    trigger: React.ReactElement;
+    trigger?: React.ReactElement;
 }) {
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(defaultOpen);
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [scheduledDateInput, setScheduledDateInput] = useState<string | null>(
@@ -102,6 +108,7 @@ export function OperationScheduleModal({
         try {
             await onConfirm(scheduledDate);
             setOpen(false);
+            onClose?.();
         } catch {
             setErrorMessage('Zakazivanje nije uspjelo. Pokušaj ponovno.');
         } finally {
@@ -117,12 +124,14 @@ export function OperationScheduleModal({
         <GameModal
             trigger={trigger}
             title={`Zakaži radnju: ${operation.information.label}`}
+            headerDescription={targetLabel}
             open={open}
             onOpenChange={(nextOpen) => {
                 setOpen(nextOpen);
                 if (!nextOpen) {
                     setErrorMessage(null);
                     setScheduledDateInput(null);
+                    onClose?.();
                 }
             }}
         >

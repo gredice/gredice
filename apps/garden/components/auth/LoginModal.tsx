@@ -68,7 +68,7 @@ export default function LoginModal({
     onOpenChange,
     open = true,
     registrationSuccessHref = '/prijava/registracija-uspijesna',
-    returnTo = '/',
+    returnTo,
     showBanner = true,
     title = 'Prijava',
 }: LoginModalProps = {}) {
@@ -214,6 +214,8 @@ export default function LoginModal({
     };
 
     const handleOAuthLogin = (provider: GardenOAuthProvider) => {
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.delete('prijava');
         posthog?.capture('user_oauth_started', {
             provider,
             surface: 'garden',
@@ -222,7 +224,7 @@ export default function LoginModal({
             apiOrigin: getBrowserGrediceAppOrigin('api'),
             gardenOrigin: window.location.origin,
             provider,
-            returnTo,
+            returnTo: returnTo ?? `${currentUrl.pathname}${currentUrl.search}`,
         });
     };
 

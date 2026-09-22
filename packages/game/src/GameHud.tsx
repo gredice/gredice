@@ -15,6 +15,7 @@ import { CameraHud } from './hud/CameraHud';
 import { ControlsTooltipHud } from './hud/ControlsTooltipHud';
 import { HudListItemPresence } from './hud/components/HudListItemPresence';
 import { DebugHudDynamic } from './hud/DebugHudDynamic';
+import { GardenActionHud } from './hud/GardenActionHud';
 import { GardenAvatarHud } from './hud/GardenAvatarHud';
 import { GardenTargetHighlightHud } from './hud/GardenTargetHighlightHud';
 import { InventoryHud } from './hud/InventoryHud';
@@ -165,6 +166,9 @@ export function GameHud({
 
     return (
         <SuncokretChatProvider>
+            {!isLocalSandbox && (
+                <GardenActionHud enabled={openingFlowComplete} />
+            )}
             {!isLocalSandbox && currentUser?.isTemporary ? (
                 <TemporaryAccountAuthHud />
             ) : null}
