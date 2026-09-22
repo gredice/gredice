@@ -5,6 +5,7 @@ import { PLANT_STAGES } from '@gredice/js/plants';
 import {
     accountUsers,
     approveCommunityEditRequest,
+    attributeDefinitions,
     CommunityEditRequestError,
     createAccount,
     createAttributeDefinition,
@@ -27,6 +28,7 @@ import {
     upsertEntityType,
     users,
 } from '@gredice/storage';
+import { eq } from 'drizzle-orm';
 import { createTestDb } from './testDb';
 
 type CommunityEditFixture = {
@@ -2218,7 +2220,7 @@ test('community edit creation rejects stale base hashes', async () => {
 });
 
 for (const entityTypeName of ['plantDisease', 'plantPest']) {
-    test(`existing ${entityTypeName} links remain pending until approval and retain other plants`, async () => {
+    test(`existing ${entityTypeName} links remain pending until approval and retain other plants`, async (t) => {
         const data = await fixture();
         const existingPlantId = await createPublishedPlant();
         const addedPlantId = await createPublishedPlant();
@@ -2233,6 +2235,16 @@ for (const entityTypeName of ['plantDisease', 'plantPest']) {
             label: 'Pogođene biljke',
             dataType: 'ref:plant',
             multiple: true,
+        });
+        // Storage specs share one database and read-model invalidation follows
+        // every ref definition, including retired ones. Neutralize this
+        // plant reference so later specs do not inherit plant health as a
+        // dependent of plant mutations.
+        t.after(async () => {
+            await storage()
+                .update(attributeDefinitions)
+                .set({ dataType: 'text', isDeleted: true })
+                .where(eq(attributeDefinitions.id, definitionId));
         });
         const entityId = await createEntity(entityTypeName);
         await upsertAttributeValue({

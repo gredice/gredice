@@ -68,6 +68,9 @@ for (const kind of ['disease', 'pest'] as const) {
             mount,
             page,
         }, testInfo) => {
+            // Two dialog Axe scans plus a full-page screenshot exceed the
+            // default 10s budget when the suite runs on loaded CI workers.
+            test.slow();
             await page.setViewportSize({
                 width: sort ? 375 : 1280,
                 height: 900,
