@@ -3,7 +3,7 @@ import {
     SunflowerText,
 } from '@gredice/ui/SunflowerVisuals';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
-import { SunflowerMascotComparison } from '../game/hud/SunflowerMascotComparison';
+import { SunflowerMascotExpressions } from '../game/hud/SunflowerMascotExpressions';
 
 const meta = {
     title: 'packages/ui/Icons/SunflowerVisuals',
@@ -30,7 +30,15 @@ type Story = StoryObj<typeof meta>;
 export const Package: Story = {};
 export const UnknownPackage: Story = { args: { packageCode: 'unknown' } };
 export const Mascot: Story = {
-    render: () => <SunflowerMascotComparison />,
+    render: () => <SunflowerMascotExpressions />,
+};
+
+export const MascotDark: Story = {
+    render: () => (
+        <div className="dark bg-background p-6 text-foreground">
+            <SunflowerMascotExpressions />
+        </div>
+    ),
 };
 
 export const CurrencyLabels: Story = {

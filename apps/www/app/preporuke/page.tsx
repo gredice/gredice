@@ -10,9 +10,8 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
-import { SunflowerText } from '@gredice/ui/SunflowerVisuals';
+import { SunflowerMascot3D, SunflowerText } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
-import Image from 'next/image';
 import {
     Card,
     CardContent,
@@ -98,12 +97,12 @@ export default function ReferralsLandingPage() {
                     subHeader={`Podijeli svoj kod, pozovi nekoga u Gredice i zajedno ostvarite ukupno ${formattedCombinedReferralReward} suncokreta kada pozvani račun posadi svoje prvo povrće u gredici.`}
                     padded
                     visual={
-                        <Image
-                            src="https://cdn.gredice.com/sunflower-gift-sunflowers.webp"
-                            alt="Poklon sa suncokretima"
+                        <SunflowerMascot3D
+                            expression="gift"
+                            aria-label="Poklon sa suncokretima"
+                            className="size-48 shrink-0"
                             width={192}
                             height={192}
-                            priority
                         />
                     }
                 />
