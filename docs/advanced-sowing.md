@@ -2,6 +2,26 @@
 
 ## Status and scope
 
+### Public garden shortcuts
+
+Public plant and variety pages link to the Garden with `/?sijanje=<plantId>`
+and an optional `sorta=<sortId>`. Operation pages use `/?radnja=<operationId>`.
+The shared `@gredice/js/gardenActions` contract builds and validates these links.
+OAuth sign-in preserves the validated action.
+
+After the Garden opening flow, `GardenActionHud` selects the first active,
+valid raised bed with an available field, respecting planted crops and pending
+cart footprints. If the current garden has no compatible target, it checks the
+other non-sandbox gardens in the current account and switches before opening
+the dialog. Plant links open variety selection; variety links also select
+the requested variety. Operation links open the existing scheduling dialog for
+the first compatible garden, bed, field, or versioned selected-planting target.
+Opening a link never submits a cart mutation; users confirm in the existing
+dialog. Successful intents are removed from the URL so refresh does not reopen
+them. Missing targets and unavailable catalogue entries show an explanation.
+
+### Advanced sowing contract
+
 This document locks the domain contract and release boundary for Advanced
 Sowing. It is the source of truth for the compatible storage foundation and
 the live Garden, checkout, Admin, and Farm sowing slice.
