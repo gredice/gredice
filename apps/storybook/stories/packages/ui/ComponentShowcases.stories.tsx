@@ -185,6 +185,7 @@ import { SplitButton } from '@gredice/ui/SplitButton';
 import { SplitView } from '@gredice/ui/SplitView';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
+import { sunflowerSadMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import {
     type SurveyAnswerState,
     type SurveyAnswerValue,
@@ -211,6 +212,7 @@ import { PublicAttributeExamples } from '../../apps/www/PublicAttributeExamples'
 import { PublicCatalogVisualExamples } from '../../apps/www/PublicCatalogVisualExamples';
 import { PublicVisualExamples } from '../../apps/www/PublicVisualExamples';
 import { StyledPlantTabsExample } from '../../apps/www/StyledPlantTabsExample';
+import { SunflowerMascotExpressions } from '../game/hud/SunflowerMascotExpressions';
 import { SunflowerPackageExamples } from '../game/hud/SunflowerPackageExamples';
 import { OverviewNavigationPreview } from '../game/settings/OverviewNavigationPreview';
 import { FarmerAvatarsPreview } from './FarmerAvatarsPreview';
@@ -219,7 +221,10 @@ import { PlantCareHudPreview } from './PlantCareHudPreview';
 
 const sampleImages = [
     {
-        src: 'https://cdn.gredice.com/sunflower-sad-500x500.png',
+        src:
+            typeof sunflowerSadMascotArtwork === 'string'
+                ? sunflowerSadMascotArtwork
+                : sunflowerSadMascotArtwork.src,
         alt: 'Suncokret',
     },
     {
@@ -339,7 +344,10 @@ const galleryPlants: GalleryPlant[] = [
         id: 'tomato',
         name: 'Rajcica',
         state: 'Sjetva',
-        imageUrl: 'https://cdn.gredice.com/sunflower-sad-500x500.png',
+        imageUrl:
+            typeof sunflowerSadMascotArtwork === 'string'
+                ? sunflowerSadMascotArtwork
+                : sunflowerSadMascotArtwork.src,
     },
     {
         id: 'basil',
@@ -1463,6 +1471,7 @@ function GardenWorkspaceShowcase() {
                 </PageHeader>
 
                 <GameAccountMenuPreview />
+                <SunflowerMascotExpressions />
                 <SunflowerPackageExamples />
                 <OverviewNavigationPreview />
                 <FarmerAvatarsPreview
