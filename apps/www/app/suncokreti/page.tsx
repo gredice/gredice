@@ -198,6 +198,39 @@ export default async function SunflowersPage() {
                     </Card>
                 </section>
 
+                <section
+                    className="rounded-2xl border bg-muted/30 p-6"
+                    aria-labelledby="achievement-rewards-title"
+                >
+                    <h2
+                        id="achievement-rewards-title"
+                        className="text-xl font-semibold"
+                    >
+                        Suncokreti za tvoja postignuća
+                    </h2>
+                    <p className="mt-2 text-muted-foreground">
+                        Sadnja, zalijevanje, berba i doprinos zajednici donose
+                        značke i nagrade nakon odobrenja postignuća.
+                    </p>
+                    <Link
+                        href={KnownPages.Achievements}
+                        className="mt-4 inline-block font-semibold underline underline-offset-4"
+                    >
+                        Pogledaj sva postignuća i nagrade
+                    </Link>
+                    <p className="mt-4 text-muted-foreground">
+                        Suncokrete trošiš na vrtne akcije, a XP skupljaš
+                        odobrenim postignućima. Kupnja i trošenje suncokreta ne
+                        mijenjaju tvoju razinu.
+                    </p>
+                    <Link
+                        href={KnownPages.Experience}
+                        className="mt-4 inline-block underline underline-offset-4"
+                    >
+                        Saznaj kako skupljati XP i napredovati kroz razine
+                    </Link>
+                </section>
+
                 <section className="space-y-4">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                         <Stack spacing={1}>

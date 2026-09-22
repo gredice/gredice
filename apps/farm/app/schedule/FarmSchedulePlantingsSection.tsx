@@ -10,6 +10,7 @@ import { FarmSchedulePlantingTaskCard } from './FarmSchedulePlantingTaskCard';
 import { FarmScheduleSelectedPlantingTaskCard } from './FarmScheduleSelectedPlantingTaskCard';
 import { RaisedBedScheduleGroupHeader } from './RaisedBedScheduleGroupHeader';
 import { RaisedBedScheduleGroupHeaderWithPhotos } from './RaisedBedScheduleGroupHeaderWithPhotos';
+import { ScheduleSectionHeader } from './ScheduleSectionHeader';
 import { ScheduleSectionSummaryBadges } from './ScheduleSectionSummaryBadges';
 import type {
     FarmScheduleDayData,
@@ -102,6 +103,7 @@ export function FarmSchedulePlantingsSection({
 
     return (
         <Stack spacing={6}>
+            <ScheduleSectionHeader section="sowing" />
             {raisedBedGroups.map(
                 ({ key, physicalId, raisedBeds: groupedRaisedBeds }) => {
                     const dayFields = scheduledFields

@@ -1295,7 +1295,7 @@ export function Footer1(props: SectionData) {
     return (
         <CmsSectionContainer>
             <footer className="self-stretch">
-                <CmsSectionContent className="pb-8 pt-16" section={props}>
+                <CmsSectionContent className="pb-3 pt-16" section={props}>
                     <Stack spacing={8}>
                         {linkGroups?.length ? (
                             <div
@@ -1335,28 +1335,37 @@ export function Footer1(props: SectionData) {
                                 ))}
                             </div>
                         ) : null}
-                        <div className="flex flex-col items-center gap-4 @[48rem]/cms:flex-row @[48rem]/cms:justify-between">
-                            <Stack
-                                alignItems="center"
-                                className="@[48rem]/cms:items-start"
-                            >
-                                {asset}
-                            </Stack>
-                            <div className="flex w-full flex-col items-center gap-3 @[48rem]/cms:w-auto @[48rem]/cms:items-end">
-                                {footerUtility?.asset}
-                                <FooterSocialLinks ctas={ctas} />
+                        <Stack
+                            spacing={5}
+                            className={cx(
+                                linkGroups?.length && 'border-t pt-6',
+                            )}
+                        >
+                            <div className="flex flex-col items-center gap-4 @[48rem]/cms:flex-row @[48rem]/cms:justify-between">
+                                <Stack
+                                    alignItems="center"
+                                    className="max-w-full @[48rem]/cms:items-start"
+                                >
+                                    {asset}
+                                </Stack>
+                                <div className="flex w-full flex-col items-center gap-3 @[48rem]/cms:w-auto @[48rem]/cms:items-end">
+                                    {footerUtility?.asset}
+                                    <FooterSocialLinks ctas={ctas} />
+                                </div>
                             </div>
-                        </div>
-                        <Divider />
-                        <div className="flex flex-col items-center gap-8 text-center @[48rem]/cms:flex-row @[48rem]/cms:justify-between">
-                            <div className="flex flex-col items-center gap-3 @[48rem]/cms:flex-row">
-                                {systemStatus?.asset}
-                                {description}
+                            <div className="flex flex-col items-center gap-3 text-center @[48rem]/cms:flex-row @[48rem]/cms:justify-between">
+                                <div className="flex flex-col items-center gap-3 @[48rem]/cms:flex-row">
+                                    {systemStatus?.asset}
+                                    {description}
+                                </div>
+                                <Typography
+                                    className="text-foreground/70"
+                                    level="body3"
+                                >
+                                    {`© ${new Date().getFullYear()} ${tagline}.`}
+                                </Typography>
                             </div>
-                            <Typography level="body3">
-                                {`© ${new Date().getFullYear()} ${tagline}.`}
-                            </Typography>
-                        </div>
+                        </Stack>
                     </Stack>
                 </CmsSectionContent>
             </footer>

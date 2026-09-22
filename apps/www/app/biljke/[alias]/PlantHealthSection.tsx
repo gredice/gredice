@@ -1,87 +1,35 @@
 import type { PlantData } from '@gredice/client';
-import { Stack } from '@gredice/ui/Stack';
-import { Typography } from '@gredice/ui/Typography';
-import { PlantHealthIssueCard } from '../../../components/plant-health/PlantHealthIssueCard';
-import { plantHealthOperationCount } from '../../../components/plant-health/PlantHealthIssueOperations';
-import { plantHealthIssueDetailPath } from '../../../components/plant-health/plantHealthIssueContent';
-
-type PlantHealth = PlantData['health'];
-type PlantHealthIssueSummary = NonNullable<
-    NonNullable<PlantHealth>['diseases']
->[number];
-
-function hasPlantHealth(health: PlantHealth | null | undefined) {
-    return (
-        (health?.diseases?.length ?? 0) > 0 || (health?.pests?.length ?? 0) > 0
-    );
-}
-
-function PlantHealthIssueGroup({
-    title,
-    kind,
-    issues,
-}: {
-    title: string;
-    kind: 'disease' | 'pest';
-    issues: PlantHealthIssueSummary[] | undefined;
-}) {
-    if (!issues?.length) {
-        return null;
-    }
-
-    return (
-        <Stack spacing={3}>
-            <Typography level="h2" className="text-xl">
-                {title}
-            </Typography>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                {issues.map((issue) => (
-                    <PlantHealthIssueCard
-                        key={issue.id}
-                        issue={{
-                            id: issue.id,
-                            href: plantHealthIssueDetailPath(
-                                kind,
-                                issue.slug || issue.name,
-                            ),
-                            kind,
-                            title: issue.name,
-                            shortDescription: issue.shortDescription,
-                            symptoms: issue.symptoms,
-                            operationCount: plantHealthOperationCount(
-                                issue.operations,
-                            ),
-                        }}
-                    />
-                ))}
-            </div>
-        </Stack>
-    );
-}
+import { PlantHealthIssueGroup } from './PlantHealthIssueGroup';
 
 export function PlantHealthSection({
     health,
+    plantId,
+    plantName,
+    publicPath,
 }: {
-    health: PlantHealth | null | undefined;
+    health: PlantData['health'] | null | undefined;
+    plantId: number;
+    plantName: string;
+    publicPath: string;
 }) {
-    if (!hasPlantHealth(health)) {
-        return null;
-    }
-
     return (
-        <Stack spacing={4}>
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <PlantHealthIssueGroup
-                    title="Poznate bolesti"
-                    kind="disease"
-                    issues={health?.diseases}
-                />
-                <PlantHealthIssueGroup
-                    title="Poznati štetnici"
-                    kind="pest"
-                    issues={health?.pests}
-                />
-            </div>
-        </Stack>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <PlantHealthIssueGroup
+                title="Poznate bolesti"
+                kind="disease"
+                issues={health?.diseases}
+                plantId={plantId}
+                plantName={plantName}
+                publicPath={publicPath}
+            />
+            <PlantHealthIssueGroup
+                title="Poznati štetnici"
+                kind="pest"
+                issues={health?.pests}
+                plantId={plantId}
+                plantName={plantName}
+                publicPath={publicPath}
+            />
+        </div>
     );
 }

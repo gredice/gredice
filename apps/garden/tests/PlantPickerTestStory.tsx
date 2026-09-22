@@ -234,7 +234,7 @@ export type TestShoppingCartItem = Record<string, unknown> & {
     status: 'new';
 };
 
-function createPlantPickerQueryClient({
+export function createPlantPickerQueryClient({
     advancedSowingRange,
     cartItems = [],
     favorites = [],

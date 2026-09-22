@@ -3,6 +3,7 @@ import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
 import { Typography } from '@gredice/ui/Typography';
 import LoginDialog from '../../components/auth/LoginDialog';
 import { auth } from '../../lib/auth/auth';
+import { FarmProfileSettings } from './_components/FarmProfileSettings';
 import { FarmSchedulePreferences } from './_components/FarmSchedulePreferences';
 import { NotificationSettings } from './_components/NotificationSettings';
 import { OperationCompletionSyncSettings } from './_components/OperationCompletionSyncSettings';
@@ -14,10 +15,16 @@ async function FarmSettingsContent() {
     const user = await getUser(userId);
 
     return (
-        <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
+        <main className="max-w-5xl mx-auto w-full p-4 space-y-4">
             <Typography component="h1" level="h5" semiBold>
                 Postavke
             </Typography>
+            {user && (
+                <FarmProfileSettings
+                    displayName={user.displayName ?? user.userName}
+                    avatarUrl={user.avatarUrl}
+                />
+            )}
             <FarmSchedulePreferences
                 groupWateringOperations={
                     user?.farmScheduleGroupedWateringEnabled ?? true
@@ -25,7 +32,7 @@ async function FarmSettingsContent() {
             />
             <OperationCompletionSyncSettings />
             <NotificationSettings />
-        </div>
+        </main>
     );
 }
 

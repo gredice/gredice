@@ -343,3 +343,23 @@ settle. All 15 shared UI unit tests, UI/WWW/News/Storybook typechecks and the
 Storybook production build passed. The WWW production compiler and TypeScript
 phase passed; full page-data collection could not finish because the local
 worktree has no `POSTGRES_URL`.
+
+## Ambient reading contrast — 22 September 2026
+
+The shared sky uses a continuous contrast veil with extra coverage through the
+central reading area. Its minimum opacity protects text at the viewport edges;
+twilight and cloudy, foggy or stormy weather strengthen it. Ambient secondary
+and tertiary text use stronger semantic colors, and public page descriptions
+use the primary foreground. The same treatment applies to WWW and News.
+
+The environment provider applies the theme before painting a new sky. WWW and
+News skip foreground/background color fades while ambient mode is enabled, so
+reading colors do not pass through low-contrast intermediate shades. Sky and
+weather motion remain independent; turning ambient off restores normal styles.
+
+The focused environment Playwright suite samples the rendered sky pixels and
+checks public typography against them at 360/768/1280px, across all six weather
+presets, both sides of dawn/dusk theme changes, daytime and nighttime. It also
+checks scrolling, ambient-off restoration and theme transitions with motion
+enabled. Storybook's public environment stories and AmbientPublicContent
+showcase include unframed descriptions, breadcrumbs and growing instructions.

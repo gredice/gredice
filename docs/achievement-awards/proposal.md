@@ -194,7 +194,7 @@ Prefer accomplishments grounded in real garden work and learning. Avoid daily-lo
 4. **Add server-owned progress:** reconcile counting semantics, provide the additive projection, and verify updates, backfill and reward idempotency before exposing numeric progress.
 5. **Expand selectively:** new evidence-backed families, seasonal honors and an optional favorites shelf. Diversity, seed-to-table, and 2026 season awards have dedicated artwork; later years need their own follow-up. Balance new sunflower rewards separately.
 
-Acceptance checks should cover all 47 unique key-to-image mappings, decoded assets, visual contrast/size, explicit level labels, mobile layout, keyboard access, reduced motion, pending/denied/complete/error states, an existing account with many old awards, several thresholds crossed together, and account switching. Existing thresholds, keys, history and credited rewards must remain intact.
+Acceptance checks should cover all 68 unique key-to-image mappings, decoded assets, visual contrast/size, explicit level labels, mobile layout, keyboard access, reduced motion, pending/denied/complete/error states, an existing account with many old awards, several thresholds crossed together, and account switching. Existing thresholds, keys, history and credited rewards must remain intact.
 
 ## Source map
 
@@ -209,3 +209,23 @@ Acceptance checks should cover all 47 unique key-to-image mappings, decoded asse
 - Existing art conventions: [GameIcons README](../../packages/ui/src/GameIcons/README.md).
 
 Validation for this proposal: checked against the source files above; `git diff --check`. No application behavior, approval rules, reward balances or database state is changed by this document.
+
+
+## Advanced milestone expansion (September 2026)
+
+The catalogue now contains 68 awards. Existing keys, levels, rewards and pending-approval rules are unchanged. The additional milestones are:
+
+| Family | Added thresholds | Sunflower rewards, in threshold order |
+| --- | --- | --- |
+| Raznolik vrt | 25, 30, 35, 40, 45 species | 3,500; 4,500; 6,000; 8,000; 10,000 |
+| Doprinos zajednici | 150, 200, 300, 500, 750, 1,000, 1,500 applied edits | 7,500; 10,000; 15,000; 25,000; 37,500; 50,000; 75,000 |
+| Zalijevanje | 750, 1,000, 1,500, 2,000 completed operations | 15,000; 20,000; 30,000; 40,000 |
+| Od sjemena do stola | 75, 100, 150, 200, 300 completed cycles | 12,000; 16,000; 24,000; 32,000; 48,000 |
+
+Each new award has its own legendary-grade illustration, a continuing family level and a distinct label. Artwork provenance is in `headroom-prompts.json`; Storybook `AdvancedLevels` and `AdvancedLevelsDark` isolate the 21 new awards. Levels beyond IX continue as Roman numerals.
+
+The September 22 production audit found leaders at 32 species, 427 applied edits, 266 watering operations and 27 completed cycles. These thresholds leave at least three unreached milestones in each family. The directory contained 46 published parent plants with published sorts available in the store; diversity counts accumulate across seasons, not only the current sowing window. Recheck assortment reachability when changing this cap.
+
+Keep at least three attainable numeric milestones beyond current account activity. Review the remaining milestones after each growing season and before adding families. Planting and harvest retain their existing thresholds because they still have three and five unreached milestones above their leaders. Seasonal honors retain the three 2026 keys; introduce each later year's dated awards before that growing season, without awarding future participation.
+
+New rewards increase from existing top rewards; old payouts are never recalculated. The existing evaluator queues every qualifying new milestone for approval, including historical activity, without regranting existing keys. XP remains 100 per approved award. No migration, manual production grant or XP backfill is needed.

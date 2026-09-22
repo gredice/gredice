@@ -1,10 +1,34 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import { AchievementCollectionShowcase } from '../../../packages/game/src/shared-ui/achievements/AchievementCollection.fixture';
 
+test('the public guide stays accessible when personal achievements cannot load', async ({
+    mount,
+    page,
+}) => {
+    await page.route('**/api/accounts/current/achievements', (route) =>
+        route.fulfill({ status: 503, json: {} }),
+    );
+    await mount(<AchievementCollectionShowcase unseeded showGuide />);
+    await expect(
+        page.getByText('Postignuća trenutno nisu dostupna.'),
+    ).toBeVisible();
+    const guide = page.getByRole('link', { name: /Vodič kroz sva postignuća/ });
+    await expect(guide).toBeVisible();
+    await expect(guide).toHaveAttribute(
+        'href',
+        'https://www.gredice.com/postignuca',
+    );
+    await expect(guide).toHaveAttribute('target', '_blank');
+    await guide.focus();
+    await expect(guide).toBeFocused();
+});
+
 for (const { name: family, count } of [
-    { name: 'Raznolik vrt', count: 5 },
-    { name: 'Od sjemena do stola', count: 5 },
+    { name: 'Raznolik vrt', count: 10 },
+    { name: 'Od sjemena do stola', count: 10 },
     { name: 'Sezona za pamćenje', count: 3 },
+    { name: 'Doprinos zajednici', count: 13 },
+    { name: 'Zalijevanje', count: 13 },
 ]) {
     test(`loads distinct artwork for every level in ${family}`, async ({
         mount,
@@ -158,7 +182,7 @@ test('announces the highest new approval once and clears it on account change', 
     await expect(page.locator('[data-achievement-reveal]')).toHaveCount(0);
     await page.getByRole('button', { name: 'Potvrdi nove razine' }).click();
     await expect(
-        page.locator('[data-achievement-reveal="harvest_500"]'),
+        page.locator('[data-achievement-reveal="community_edit_1500"]'),
     ).toBeVisible();
     await expect(page.getByRole('status')).toContainText(
         'Još novih postignuća:',

@@ -17,6 +17,7 @@ import {
     getOperationById,
     getOperations,
     getOperationsPage,
+    getRaisedBedPhotoPreviews,
     knownEvents,
     knownEventTypes,
     operations,
@@ -512,6 +513,70 @@ test('pending operation completion evidence updates can clear notes and images',
     assert.deepStrictEqual(operation.imageUrls, []);
     assert.strictEqual(operation.completionNotes, '');
     assert.equal(operation.completionNotesEdited, true);
+});
+
+test('raised bed photo previews use current completion evidence', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createOperationsPageTestContext();
+    const createOperationForBed = () =>
+        createOperation({
+            entityId: 1,
+            entityTypeName: 'operation',
+            accountId,
+            gardenId,
+            raisedBedId,
+        });
+    const complete = (operationId: number, images: string[]) =>
+        createEvent(
+            knownEvents.operations.completedV1(operationId.toString(), {
+                completedBy: randomUUID(),
+                images,
+            }),
+        );
+    const updateEvidence = (operationId: number, images: string[]) =>
+        createEvent(
+            knownEvents.operations.completionEvidenceUpdatedV1(
+                operationId.toString(),
+                { updatedBy: randomUUID(), images, notes: '' },
+            ),
+        );
+
+    const replacedOperationId = await createOperationForBed();
+    await complete(replacedOperationId, [
+        'https://cdn.gredice.com/mistake.jpg',
+    ]);
+    await updateEvidence(replacedOperationId, [
+        'https://cdn.gredice.com/replacement.jpg',
+    ]);
+
+    const clearedOperationId = await createOperationForBed();
+    await complete(clearedOperationId, ['https://cdn.gredice.com/cleared.jpg']);
+    await updateEvidence(clearedOperationId, []);
+
+    const rescheduledOperationId = await createOperationForBed();
+    await complete(rescheduledOperationId, [
+        'https://cdn.gredice.com/rescheduled.jpg',
+    ]);
+    await createEvent(
+        knownEvents.operations.scheduledV1(rescheduledOperationId.toString(), {
+            scheduledDate: '2026-09-16T08:00:00Z',
+        }),
+    );
+
+    const latestOperationId = await createOperationForBed();
+    await complete(latestOperationId, ['https://cdn.gredice.com/latest.jpg']);
+
+    const [preview] = await getRaisedBedPhotoPreviews([raisedBedId], 20);
+
+    assert.deepStrictEqual(preview, {
+        raisedBedId,
+        imageUrls: [
+            'https://cdn.gredice.com/latest.jpg',
+            'https://cdn.gredice.com/replacement.jpg',
+        ],
+        photoCount: 2,
+    });
 });
 
 test('note edit history ignores photo changes, survives text reversion and resets on rescheduling', async () => {

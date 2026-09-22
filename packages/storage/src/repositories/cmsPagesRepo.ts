@@ -86,6 +86,7 @@ const reservedCmsPageFirstSegments = new Set([
     'kontakt',
     'kalendar-sjetve',
     'korisnici',
+    'postignuca',
     'legalno',
     'logout',
     'manifest.json',
@@ -106,6 +107,7 @@ const reservedCmsPageFirstSegments = new Set([
     'stetnici',
     'sjetva',
     'suncokreti',
+    'iskustvo-i-razine',
     'vodic-za-prvu-gredicu',
     'vrtovi',
 ]);

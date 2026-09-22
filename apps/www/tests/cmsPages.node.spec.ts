@@ -69,6 +69,11 @@ test('quality harvest safety source CMS page is published and canonical', () => 
     assert.ok(getSourceCmsPageBySlug(QUALITY_HARVEST_SAFETY_SLUG));
 });
 
+test('public CMS catch-all protects the experience guide and its descendants', () => {
+    assert.equal(hasReservedFirstSegment('iskustvo-i-razine'), true);
+    assert.equal(hasReservedFirstSegment('iskustvo-i-razine/primjer'), true);
+});
+
 test('public CMS catch-all keeps outlet route reserved', () => {
     assert.equal(hasReservedFirstSegment('outlet'), true);
     assert.equal(hasReservedFirstSegment('outlet/sezonska-ponuda'), true);
@@ -81,6 +86,11 @@ test('public CMS catch-all reserves the regional sowing calendar', () => {
 
 test('public CMS catch-all keeps wallpaper studio route reserved', () => {
     assert.equal(hasReservedFirstSegment('pozadine'), true);
+});
+
+test('public CMS catch-all reserves the achievements guide', () => {
+    assert.equal(hasReservedFirstSegment('postignuca'), true);
+    assert.equal(hasReservedFirstSegment('postignuca/sadnja'), true);
 });
 
 test('public CMS catch-all keeps Vercel platform routes reserved', () => {

@@ -24,6 +24,8 @@ export const config: PlaywrightTestConfig = {
         'avatar-profile-links.spec.tsx',
         'public-garden-members.spec.tsx',
         'user-leaderboard.spec.tsx',
+        'achievement-catalog.spec.tsx',
+        'experience-guide.spec.tsx',
     ],
     snapshotDir: './__snapshots__',
     timeout: 10 * 1000,

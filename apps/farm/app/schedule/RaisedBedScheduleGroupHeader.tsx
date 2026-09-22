@@ -1,6 +1,6 @@
 import { MapPin } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
-import { RaisedBedPhotoPreview } from './RaisedBedPhotoPreview';
+import { RaisedBedPhotoPreview } from '../../components/raised-beds/RaisedBedPhotoPreview';
 import type { FarmScheduleRaisedBedPhotoPreview } from './scheduleData';
 
 interface RaisedBedScheduleGroupHeaderProps {

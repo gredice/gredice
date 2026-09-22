@@ -8,6 +8,7 @@ import {
     useCallback,
     useContext,
     useEffect,
+    useLayoutEffect,
     useMemo,
     useState,
 } from 'react';
@@ -186,7 +187,9 @@ export function PublicEnvironmentProvider({
         [date, weather],
     );
 
-    useEffect(() => {
+    // Apply reading colors before the new sky is painted. ThemeProvider also
+    // suppresses transitions when switching between the light/dark palettes.
+    useLayoutEffect(() => {
         if (enabled === null || isWinter === null) return;
 
         const root = document.documentElement;

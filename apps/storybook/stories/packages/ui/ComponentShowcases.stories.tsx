@@ -161,6 +161,7 @@ import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { Popper } from '@gredice/ui/Popper';
 import { Progress } from '@gredice/ui/Progress';
 import {
+    Logotype,
     PublicFooterLandscape,
     PublicFooterOrigin,
 } from '@gredice/ui/PublicChrome';
@@ -184,6 +185,7 @@ import { SplitButton } from '@gredice/ui/SplitButton';
 import { SplitView } from '@gredice/ui/SplitView';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
+import { sunflowerSadMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import {
     type SurveyAnswerState,
     type SurveyAnswerValue,
@@ -210,15 +212,20 @@ import { PublicAttributeExamples } from '../../apps/www/PublicAttributeExamples'
 import { PublicCatalogVisualExamples } from '../../apps/www/PublicCatalogVisualExamples';
 import { PublicVisualExamples } from '../../apps/www/PublicVisualExamples';
 import { StyledPlantTabsExample } from '../../apps/www/StyledPlantTabsExample';
+import { SunflowerMascotExpressions } from '../game/hud/SunflowerMascotExpressions';
 import { SunflowerPackageExamples } from '../game/hud/SunflowerPackageExamples';
 import { OverviewNavigationPreview } from '../game/settings/OverviewNavigationPreview';
 import { FarmerAvatarsPreview } from './FarmerAvatarsPreview';
 import { GameAccountMenuPreview } from './GameAccountMenuPreview';
 import { PlantCareHudPreview } from './PlantCareHudPreview';
+import { PublicEnvironmentPreview } from './PublicEnvironmentPreview';
 
 const sampleImages = [
     {
-        src: 'https://cdn.gredice.com/sunflower-sad-500x500.png',
+        src:
+            typeof sunflowerSadMascotArtwork === 'string'
+                ? sunflowerSadMascotArtwork
+                : sunflowerSadMascotArtwork.src,
         alt: 'Suncokret',
     },
     {
@@ -338,7 +345,10 @@ const galleryPlants: GalleryPlant[] = [
         id: 'tomato',
         name: 'Rajcica',
         state: 'Sjetva',
-        imageUrl: 'https://cdn.gredice.com/sunflower-sad-500x500.png',
+        imageUrl:
+            typeof sunflowerSadMascotArtwork === 'string'
+                ? sunflowerSadMascotArtwork
+                : sunflowerSadMascotArtwork.src,
     },
     {
         id: 'basil',
@@ -1359,9 +1369,7 @@ function PublicContentShowcase() {
                         tagline="Gredice"
                         description={<PublicFooterOrigin />}
                         asset={
-                            <Typography level="h6" semiBold>
-                                Gredice
-                            </Typography>
+                            <Logotype className="h-auto w-[210px] max-w-full" />
                         }
                         ctas={[
                             {
@@ -1464,6 +1472,7 @@ function GardenWorkspaceShowcase() {
                 </PageHeader>
 
                 <GameAccountMenuPreview />
+                <SunflowerMascotExpressions />
                 <SunflowerPackageExamples />
                 <OverviewNavigationPreview />
                 <FarmerAvatarsPreview
@@ -2147,4 +2156,8 @@ export const SurveyForm: Story = {
 
 export const RaisedBedPlantings: Story = {
     render: () => <RaisedBedFieldsGridFixture compact />,
+};
+
+export const AmbientPublicContent: Story = {
+    render: () => <PublicEnvironmentPreview hour={6.5} weatherKind="clear" />,
 };

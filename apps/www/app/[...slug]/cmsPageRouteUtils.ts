@@ -76,6 +76,7 @@ const reservedFirstSegments = new Set([
     'outlet',
     'podignuta-gredica',
     'pozadine',
+    'postignuca',
     'pozdrav',
     'preporuke',
     'prijava',
@@ -86,6 +87,7 @@ const reservedFirstSegments = new Set([
     'stetnici',
     'sjetva',
     'suncokreti',
+    'iskustvo-i-razine',
     'vodic-za-prvu-gredicu',
     'vrtovi',
 ]);

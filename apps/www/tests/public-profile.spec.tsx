@@ -76,6 +76,9 @@ test('shows custom award milestones and visible gardens without exposing the log
 }) => {
     await mount(<PublicProfileHarness />);
     await expect(
+        page.getByRole('link', { name: 'Kako funkcioniraju XP i razine?' }),
+    ).toHaveAttribute('href', '/iskustvo-i-razine');
+    await expect(
         page.getByRole('heading', { name: 'Veseli vrtlar' }),
     ).toBeVisible();
     await expect(page.getByText('private@example.com')).toHaveCount(0);
@@ -93,7 +96,8 @@ test('shows custom award milestones and visible gardens without exposing the log
     await expect(
         achievements.locator('[data-achievement-key="harvest_50"]'),
     ).toHaveCount(0);
-    await expect(achievements.getByText('Razina III / IX')).toHaveCount(3);
+    await expect(achievements.getByText('Razina III / IX')).toHaveCount(2);
+    await expect(achievements.getByText('Razina III / XIII')).toHaveCount(1);
     expect(
         await achievements.locator('svg image').evaluateAll(async (images) =>
             Promise.all(

@@ -51,7 +51,7 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
             component: 'Footer1',
             tagline: 'Gredice d.o.o',
             description: <PublicFooterOrigin />,
-            asset: <Logotype className="w-[320px] h-[87px]" />,
+            asset: <Logotype className="h-auto w-[210px] max-w-full" />,
             features: [
                 {
                     tagline: 'FooterUtility',
@@ -157,6 +157,13 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             ),
                         },
                         {
+                            label: 'Postignuća',
+                            href: publicChromeHref(
+                                PublicPagePaths.Achievements,
+                                linkMode,
+                            ),
+                        },
+                        {
                             label: 'Pozadine',
                             href: publicChromeHref(
                                 PublicPagePaths.Wallpapers,
@@ -223,6 +230,13 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             label: 'Suncokreti',
                             href: publicChromeHref(
                                 PublicPagePaths.Sunflowers,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'XP i razine',
+                            href: publicChromeHref(
+                                PublicPagePaths.Experience,
                                 linkMode,
                             ),
                         },

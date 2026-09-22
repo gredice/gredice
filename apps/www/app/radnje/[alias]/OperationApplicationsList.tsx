@@ -1,3 +1,4 @@
+import { gardenActionUrl } from '@gredice/js/gardenActions';
 import { isOperationApplicableToPlant } from '@gredice/js/operations';
 import { getHarvestBehaviorOverviewDisclaimer } from '@gredice/js/plants';
 import { BlockImage } from '@gredice/ui/BlockImage';
@@ -49,7 +50,10 @@ export async function OperationApplicationsList({
                         <Row justifyContent="space-between">
                             <Typography>Dostupno u tvom vrtu</Typography>
                             <NavigatingButton
-                                href={KnownPages.GardenApp}
+                                href={gardenActionUrl(KnownPages.GardenApp, {
+                                    type: 'operation',
+                                    operationId,
+                                })}
                                 className="bg-green-800 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white"
                             >
                                 Moj vrt

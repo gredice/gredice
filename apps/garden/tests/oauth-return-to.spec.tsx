@@ -9,6 +9,11 @@ import {
 import { UrlAuthForwardStory } from './UrlAuthForwardStory';
 
 test('allows only canonical Garden and Outlet authentication returns', () => {
+    expect(getSafeGardenAuthReturnPath('/?sijanje=1')).toBe('/?sijanje=1');
+    expect(getSafeGardenAuthReturnPath('/?sorta=101&sijanje=1')).toBe(
+        '/?sijanje=1&sorta=101',
+    );
+    expect(getSafeGardenAuthReturnPath('/?radnja=501')).toBe('/?radnja=501');
     expect(getSafeGardenAuthReturnPath('/')).toBe('/');
     expect(getSafeGardenAuthReturnPath('/outlet')).toBe('/outlet');
     expect(getSafeGardenAuthReturnPath('/outlet?ponuda=302')).toBe(
@@ -22,6 +27,10 @@ test('allows only canonical Garden and Outlet authentication returns', () => {
 test('falls back for external, malformed, duplicate, and unsupported returns', () => {
     for (const candidate of [
         null,
+        '/?sijanje=1&sijanje=2',
+        '/?sijanje=1&sorta=invalid',
+        '/?sijanje=1&radnja=501',
+        '/?sijanje=1&redirect=https://example.com',
         '',
         ' /outlet?ponuda=302',
         '/outlet?ponuda=302 ',
@@ -135,39 +144,47 @@ test('accepts one bounded OAuth token pair and rejects ambiguous fragments', () 
     }
 });
 
-test('exchanges OAuth tokens once and resumes the selected Outlet intent', async ({
-    mount,
-    page,
-}) => {
-    const requestBodies: unknown[] = [];
-    await page.route('**/api/oauth-callback', async (route) => {
-        requestBodies.push(route.request().postDataJSON());
-        await route.fulfill({
-            body: JSON.stringify({ success: true }),
-            contentType: 'application/json',
-            status: 200,
+for (const returnTo of [
+    '/outlet?ponuda=302&rezervacija=1',
+    '/?sijanje=1&sorta=101',
+    '/?radnja=501',
+]) {
+    test(`exchanges OAuth tokens once and resumes ${returnTo}`, async ({
+        mount,
+        page,
+    }) => {
+        const requestBodies: unknown[] = [];
+        await page.route('**/api/oauth-callback', async (route) => {
+            requestBodies.push(route.request().postDataJSON());
+            await route.fulfill({
+                body: JSON.stringify({ success: true }),
+                contentType: 'application/json',
+                status: 200,
+            });
         });
-    });
-    await page.evaluate(() => {
-        window.location.hash = 'token=access&refreshToken=refresh';
-    });
+        await page.evaluate(() => {
+            window.location.hash = 'token=access&refreshToken=refresh';
+        });
 
-    await mount(
-        <UrlAuthForwardStory search="returnTo=%2Foutlet%3Fponuda%3D302%26rezervacija%3D1" />,
-    );
+        await mount(
+            <UrlAuthForwardStory
+                search={`returnTo=${encodeURIComponent(returnTo)}`}
+            />,
+        );
 
-    await expect(page.getByTestId('oauth-callback-route')).toHaveText(
-        '/outlet?ponuda=302&rezervacija=1',
-    );
-    await expect(page.getByTestId('oauth-callback-replace-count')).toHaveText(
-        '1',
-    );
-    await expect.poll(() => requestBodies).toHaveLength(1);
-    expect(requestBodies).toEqual([
-        { refreshToken: 'refresh', token: 'access' },
-    ]);
-    expect(await page.evaluate(() => window.location.hash)).toBe('');
-});
+        await expect(page.getByTestId('oauth-callback-route')).toHaveText(
+            returnTo,
+        );
+        await expect(
+            page.getByTestId('oauth-callback-replace-count'),
+        ).toHaveText('1');
+        await expect.poll(() => requestBodies).toHaveLength(1);
+        expect(requestBodies).toEqual([
+            { refreshToken: 'refresh', token: 'access' },
+        ]);
+        expect(await page.evaluate(() => window.location.hash)).toBe('');
+    });
+}
 
 test('scrubs callback tokens and preserves offer selection on provider error', async ({
     mount,

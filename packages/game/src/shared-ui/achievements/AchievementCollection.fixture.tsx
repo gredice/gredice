@@ -6,6 +6,7 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { accountAchievementsKeys } from '../../hooks/useAccountAchievements';
+import { AchievementsTab } from '../../modals/components/AchievementsTab';
 import { AchievementsOverview } from './AchievementsOverview';
 
 export type CollectionState =
@@ -87,6 +88,7 @@ export function AchievementCollectionShowcase({
     allowApproval = false,
     unseeded = false,
     activity,
+    showGuide = false,
 }: {
     state?: CollectionState;
     dark?: boolean;
@@ -94,6 +96,7 @@ export function AchievementCollectionShowcase({
     allowApproval?: boolean;
     unseeded?: boolean;
     activity?: AchievementActivity | null;
+    showGuide?: boolean;
 }) {
     useEffect(() => {
         if (!dark) return;
@@ -132,7 +135,7 @@ export function AchievementCollectionShowcase({
                         Svaka nova razina donosi posebnu nagradu za tvoju
                         zbirku.
                     </p>
-                    <AchievementsOverview />
+                    {showGuide ? <AchievementsTab /> : <AchievementsOverview />}
                     {allowApproval && (
                         <button
                             type="button"
