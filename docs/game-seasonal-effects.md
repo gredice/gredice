@@ -60,3 +60,22 @@ Blender 5.1.2 export counts: full tree 1,170 triangles (124 trunk, 80 canopy,
 966 sprigs), thinning 284 (124 trunk, 80 canopy, 80 branches), sparse 244
 (124 trunk, 40 canopy, 80 branches). All stages use three opaque meshes plus
 the optional snow pass; no transparent duplicate canopy is mounted.
+
+## Falling leaves
+
+A scene-local registry receives only mounted deciduous tree anchors, including
+batched trees. The ambient pool is separate from interaction particles and uses
+closed-form seeded trajectories on the shared animation clock. Wind is clamped
+to the existing 0–3 weather scale. Leaves drift, flutter and shrink at ground
+contact; no particle landing is persisted. Camera-frustum culling works with the
+orthographic garden camera, and scene visibility suspends the animation lease.
+
+Active-leaf caps: low 24, auto-constrained 40, medium 80, high 160, custom 120.
+At most eight leaves are sampled per tree, with intensity-dependent occupancy.
+The mesh and its geometry/material are disposed on unmount. Profile metadata
+exposes `autumnLeafCount` and `autumnLeafCapacity`.
+
+`GAME_PROFILE_SCENARIO_SET=autumn pnpm --filter garden profile:game` profiles the
+dense garden in wind at the shared mid-autumn fixture date on low/medium/high.
+Use `fixedTimeSeconds` in a debug link for reproducible still captures; omit it
+when measuring animation cost.

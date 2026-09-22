@@ -1640,7 +1640,20 @@ const weatherTransitionScenarios = [
     },
 ];
 
+const autumnScenarios = ['low', 'medium', 'high'].map((tier) => ({
+    name: `game-autumn-dense-${tier}`,
+    path: `/debug/profile/game?mode=windy&profile=dense&quality=${tier}&date=2024-10-22&details=1&hud=0&debugHud=0`,
+    viewport:
+        tier === 'low'
+            ? { width: 390, height: 844 }
+            : { width: 1440, height: 1000 },
+    dpr: 1,
+    isMobile: tier === 'low',
+    budget: tier === 'low' ? 'gameDenseWeatherMobile' : 'gameDenseWeather',
+}));
+
 const scenarioSets = {
+    autumn: autumnScenarios,
     'adaptive-high': adaptiveHighScenarios,
     'auto-quality': autoQualityScenarios,
     core: coreScenarios,

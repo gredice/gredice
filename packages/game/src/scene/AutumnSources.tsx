@@ -1,0 +1,63 @@
+import {
+    createContext,
+    type PropsWithChildren,
+    type RefObject,
+    useCallback,
+    useContext,
+    useLayoutEffect,
+    useMemo,
+    useState,
+} from 'react';
+import type { Group } from 'three';
+
+type AutumnSource = { id: string; object: Group };
+const emptySources: AutumnSource[] = [];
+const AutumnSourcesContext = createContext({
+    sources: emptySources,
+    register:
+        (_source: AutumnSource): (() => void) =>
+        () => {},
+});
+
+/** Scene-local anchors: only mounted deciduous trees participate. */
+export function AutumnSourcesProvider({ children }: PropsWithChildren) {
+    const [sources, setSources] = useState<AutumnSource[]>([]);
+    const register = useCallback((source: AutumnSource) => {
+        setSources((previous) =>
+            [
+                ...previous.filter((entry) => entry.id !== source.id),
+                source,
+            ].sort((a, b) => a.id.localeCompare(b.id)),
+        );
+        return () =>
+            setSources((previous) =>
+                previous.filter((entry) => entry !== source),
+            );
+    }, []);
+    const value = useMemo(() => ({ sources, register }), [sources, register]);
+    return (
+        <AutumnSourcesContext.Provider value={value}>
+            {children}
+        </AutumnSourcesContext.Provider>
+    );
+}
+
+export function useAutumnSources() {
+    return useContext(AutumnSourcesContext).sources;
+}
+
+export function useRegisterAutumnSources() {
+    return useContext(AutumnSourcesContext).register;
+}
+
+export function useRegisterAutumnSource(
+    id: string,
+    ref: RefObject<Group | null>,
+    enabled: boolean,
+) {
+    const { register } = useContext(AutumnSourcesContext);
+    useLayoutEffect(() => {
+        if (enabled && ref.current)
+            return register({ id, object: ref.current });
+    }, [enabled, id, ref, register]);
+}

@@ -3,6 +3,8 @@ import { Suspense, useMemo, useState } from 'react';
 import { Vector3 } from 'three';
 import { EntityInstances } from '../src/entities/EntityInstances';
 import { Tree } from '../src/entities/Tree';
+import { AutumnLeaves } from '../src/scene/AutumnLeaves';
+import type { GameQualityTier } from '../src/scene/gameQuality';
 import { gameQualityProfiles } from '../src/scene/gameQuality';
 import { Scene } from '../src/scene/Scene';
 import { getSeasonDebugDates } from '../src/scene/seasonDebugDates';
@@ -20,15 +22,22 @@ export function AutumnVisualFixture({
     lighting = 'day',
     instanced = false,
     zoom = 95,
+    leaves = false,
+    wind = 3,
+    tier = 'high',
 }: {
     stage?: keyof ReturnType<typeof getSeasonDebugDates>;
     disabled?: boolean;
     snow?: number;
     lighting?: 'day' | 'twilight' | 'cloudy';
     zoom?: number;
+    leaves?: boolean;
+    wind?: number;
+    tier?: GameQualityTier;
     instanced?: boolean;
 }) {
     const [ready, setReady] = useState('');
+    const [leafCount, setLeafCount] = useState(0);
     const stacks = useMemo(
         () =>
             [-1.4, 0, 1.4].map((x, index) => ({
@@ -63,6 +72,7 @@ export function AutumnVisualFixture({
                 <div
                     data-testid="autumn-scene"
                     data-canopies={ready}
+                    data-leaves={leafCount}
                     style={{ width: 640, height: 420 }}
                 >
                     <Scene
@@ -90,6 +100,14 @@ export function AutumnVisualFixture({
                                 lighting === 'twilight' ? '#efac78' : '#ffffff'
                             }
                         />
+                        {leaves && (
+                            <AutumnLeaves
+                                tier={tier}
+                                windSpeed={wind}
+                                windDirection={90}
+                                enabled={!disabled}
+                            />
+                        )}
                         <Suspense fallback={null}>
                             {instanced ? (
                                 <EntityInstances
@@ -107,7 +125,10 @@ export function AutumnVisualFixture({
                                     />
                                 ))
                             )}
-                            <AutumnSceneProbe onReady={setReady} />
+                            <AutumnSceneProbe
+                                onReady={setReady}
+                                onLeafCount={setLeafCount}
+                            />
                         </Suspense>
                     </Scene>
                 </div>
