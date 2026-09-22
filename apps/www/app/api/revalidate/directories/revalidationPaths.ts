@@ -50,11 +50,13 @@ const revalidationPathsByEntityType: Record<
         { path: '/bolesti' },
         { path: '/bolesti/[alias]', type: 'page' },
         { path: '/biljke/[alias]', type: 'page' },
+        { path: '/biljke/[alias]/sorte/[sortAlias]', type: 'page' },
     ],
     plantPest: [
         { path: '/stetnici' },
         { path: '/stetnici/[alias]', type: 'page' },
         { path: '/biljke/[alias]', type: 'page' },
+        { path: '/biljke/[alias]/sorte/[sortAlias]', type: 'page' },
     ],
     plantSort: [
         { path: '/kalendar-sjetve' },

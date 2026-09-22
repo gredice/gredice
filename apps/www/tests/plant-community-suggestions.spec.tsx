@@ -27,8 +27,8 @@ for (const width of [375, 768, 1280]) {
         await mount(<PlantCommunitySuggestionsHarness />);
         for (const name of [
             'Predloži novi savjet',
-            'Predloži novu bolest',
-            'Predloži novog štetnika',
+            'Predloži bolest',
+            'Predloži štetnika',
         ]) {
             const button = page.getByRole('button', { name });
             await expect(button).toBeVisible();
@@ -122,12 +122,17 @@ for (const kind of ['disease', 'pest']) {
         );
         await mount(<PlantCommunitySuggestionsHarness />);
         const trigger = page.getByRole('button', {
-            name:
-                kind === 'disease'
-                    ? 'Predloži novu bolest'
-                    : 'Predloži novog štetnika',
+            name: kind === 'disease' ? 'Predloži bolest' : 'Predloži štetnika',
         });
         await trigger.click();
+        await page
+            .getByRole('radio', {
+                name:
+                    kind === 'disease'
+                        ? 'Predloži novu bolest'
+                        : 'Predloži novog štetnika',
+            })
+            .check();
         await expect(
             page.getByRole('button', { name: 'Ukloni biljku Bob' }),
         ).toBeVisible();
@@ -154,6 +159,14 @@ for (const kind of ['disease', 'pest']) {
         });
         await page.keyboard.press('Escape');
         await trigger.click();
+        await page
+            .getByRole('radio', {
+                name:
+                    kind === 'disease'
+                        ? 'Predloži novu bolest'
+                        : 'Predloži novog štetnika',
+            })
+            .check();
         await expect(
             page.getByRole('button', { name: 'Ukloni biljku Bob' }),
         ).toBeVisible();
@@ -197,7 +210,7 @@ for (const width of [375, 1280]) {
             page.getByRole('link', { name: /Lisne uši/ }),
         ).toBeVisible();
         await expect(
-            page.getByRole('button', { name: /Predloži nov/ }),
+            page.getByRole('button', { name: /Predloži/ }),
         ).toHaveCount(3);
         expect(
             await page.evaluate(() => document.documentElement.scrollWidth),
@@ -228,7 +241,8 @@ test('changing the plant resets the health suggestion draft and selected plant',
         },
     );
     const component = await mount(<PlantCommunitySuggestionsHarness />);
-    await page.getByRole('button', { name: 'Predloži novu bolest' }).click();
+    await page.getByRole('button', { name: 'Predloži bolest' }).click();
+    await page.getByRole('radio', { name: 'Predloži novu bolest' }).check();
     await expect(
         page.getByRole('button', { name: 'Ukloni biljku Bob' }),
     ).toBeVisible();
@@ -241,7 +255,8 @@ test('changing the plant resets the health suggestion draft and selected plant',
         />,
     );
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await page.getByRole('button', { name: 'Predloži novu bolest' }).click();
+    await page.getByRole('button', { name: 'Predloži bolest' }).click();
+    await page.getByRole('radio', { name: 'Predloži novu bolest' }).check();
     await expect(
         page.getByRole('button', { name: 'Ukloni biljku Grašak' }),
     ).toBeVisible();

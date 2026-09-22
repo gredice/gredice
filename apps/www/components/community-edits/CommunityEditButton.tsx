@@ -34,6 +34,11 @@ import { type ReactNode, useEffect, useId, useMemo, useState } from 'react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { InlineLoginDialog } from '../auth/InlineLoginDialog';
 import {
+    inputControlClassName,
+    selectControlClassName,
+    textareaControlClassName,
+} from './communityControlStyles';
+import {
     PlantReferencePicker,
     type ReferencePickerNoun,
 } from './PlantReferencePicker';
@@ -155,12 +160,6 @@ export type CommunityEditButtonProps = {
 
 const fieldPanelClassName =
     'rounded-lg border border-border/70 bg-muted/30 p-3 shadow-sm';
-const inputControlClassName =
-    'w-full border-border/80 bg-card shadow-sm transition-colors hover:border-primary/40 focus-within:border-primary/50';
-const selectControlClassName =
-    'h-10 w-full rounded-md border border-border/80 bg-card px-3 text-sm text-foreground shadow-sm ring-offset-background transition-colors hover:border-primary/40 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted/70 disabled:text-muted-foreground';
-const textareaControlClassName =
-    'w-full rounded-md border border-border/80 bg-card px-3 py-2 text-sm text-foreground shadow-sm ring-offset-background transition-colors placeholder:text-muted-foreground/70 hover:border-primary/40 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted/70 disabled:text-muted-foreground';
 const attributeIconClassName = 'size-4';
 
 type CommunityEditFieldGroup =
