@@ -47,7 +47,7 @@ export function GardenOperationsDayBubbles({
     }
 
     return (
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <>
             {bubbles.map((bubble) => (
                 <Chip
                     key={bubble.key}
@@ -71,6 +71,6 @@ export function GardenOperationsDayBubbles({
                     +{overflowCount}
                 </Chip>
             ) : null}
-        </div>
+        </>
     );
 }

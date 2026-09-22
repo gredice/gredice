@@ -66,8 +66,11 @@ export function GardenOperationsDayGroup({
                     isExpanded && 'bg-muted/30',
                 )}
             >
-                <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <Stack spacing={0.5} className="min-w-0 flex-1">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                    <Stack
+                        spacing={0.5}
+                        className="min-w-0 max-w-full flex-auto"
+                    >
                         <Typography
                             level="body2"
                             semiBold

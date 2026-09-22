@@ -359,6 +359,11 @@ test.describe('Garden operations HUD', () => {
             const days = page.locator(
                 'button[aria-controls^="garden-operations-day-"]',
             );
+            const dayLabel = days.first().getByText('subota, 30. svibnja');
+            const dayBubble = days
+                .first()
+                .getByTitle('Površinsko zalijevanje gredice (1)');
+            await expectSameControlRow(dayLabel.locator('..'), dayBubble);
             await days.nth(0).click();
             await days.nth(1).click();
 
@@ -446,6 +451,19 @@ test.describe('Garden operations HUD', () => {
             await expect(
                 page.getByRole('tooltip').getByText('Statusi radnje'),
             ).toBeVisible();
+
+            // Wrapping follows the header's available width, even on desktop.
+            await days.first().evaluate((element) => {
+                element.style.width = '180px';
+            });
+            await expect
+                .poll(async () => {
+                    const labelBox = await dayLabel.boundingBox();
+                    const bubbleBox = await dayBubble.boundingBox();
+                    if (!labelBox || !bubbleBox) return false;
+                    return bubbleBox.y >= labelBox.y + labelBox.height;
+                })
+                .toBe(true);
         });
     }
 
