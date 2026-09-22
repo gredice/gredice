@@ -2,6 +2,7 @@ import type { Vector3 } from 'three';
 import {
     type AnimalMovementCell,
     type AnimalMovementSurface,
+    createAnimalMovementSurfaceQuery,
     getAnimalMovementSurfaceAt,
 } from '../animals/animalMovementTerrain';
 import {
@@ -36,6 +37,7 @@ function pathStaysOnGround(
     points: RabbitNavigationPoint[],
     surfaces: AnimalMovementSurface[],
 ) {
+    const querySurface = createAnimalMovementSurfaceQuery(surfaces);
     for (let index = 1; index < points.length; index += 1) {
         const from = points[index - 1];
         const to = points[index];
@@ -47,13 +49,10 @@ function pathStaysOnGround(
         const steps = Math.max(1, Math.ceil(distance / rabbitPathSampleStep));
         for (let step = 0; step <= steps; step += 1) {
             const progress = step / steps;
-            const surface = getAnimalMovementSurfaceAt(
-                {
-                    x: from.x + (to.x - from.x) * progress,
-                    z: from.z + (to.z - from.z) * progress,
-                },
-                surfaces,
-            );
+            const surface = querySurface({
+                x: from.x + (to.x - from.x) * progress,
+                z: from.z + (to.z - from.z) * progress,
+            });
             if (surface?.kind !== 'ground') {
                 return false;
             }

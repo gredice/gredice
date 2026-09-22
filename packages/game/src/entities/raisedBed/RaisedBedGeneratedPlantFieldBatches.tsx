@@ -49,6 +49,8 @@ import {
     recordGeneratedPlantProfileFields,
     recordGeneratedPlantProfileLodEvaluation,
 } from '../../scene/generatedPlantProfileMetrics';
+import type { CameraFrame } from '../../spatial/cameraFrame';
+import { useCameraFrame } from '../../spatial/useCameraFrame';
 import { useGameState } from '../../useGameState';
 import { findRaisedBedByBlockId } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
@@ -252,18 +254,18 @@ function getOrthographicCameraZoom(camera: THREE.Camera) {
 
 function resolveGeneratedFieldVisibility({
     approximatePlantHeight,
-    camera,
+    frame,
     projectedPosition,
     viewportHeight,
     worldPosition,
 }: {
     approximatePlantHeight: number;
-    camera: THREE.Camera;
+    frame: CameraFrame;
     projectedPosition: THREE.Vector3;
     viewportHeight: number;
     worldPosition: THREE.Vector3;
 }) {
-    projectedPosition.copy(worldPosition).project(camera);
+    frame.project(worldPosition, projectedPosition);
     if (
         !Number.isFinite(projectedPosition.x) ||
         !Number.isFinite(projectedPosition.y) ||
@@ -303,8 +305,11 @@ function useGeneratedPlantFieldLods({
     const gameCamera = useGameState((state) => state.gameCamera);
     const worldPosition = useMemo(() => new THREE.Vector3(), []);
     const projectedPosition = useMemo(() => new THREE.Vector3(), []);
-    const projectionViewMatrix = useMemo(() => new THREE.Matrix4(), []);
-    const frustum = useMemo(() => new THREE.Frustum(), []);
+    const readCameraFrame = useCameraFrame();
+    const evaluatedFrameRef = useRef<{
+        frame: CameraFrame;
+        version: number;
+    } | null>(null);
     const raisedBedGroups = useMemo(() => {
         const groupedFields = new Map<number, GeneratedPlantField[]>();
 
@@ -341,6 +346,8 @@ function useGeneratedPlantFieldLods({
     }, [lodSnapshot.lodByFieldKey]);
 
     const updateLods = useCallback(() => {
+        const frame = readCameraFrame();
+        evaluatedFrameRef.current = { frame, version: frame.version };
         if (generatedFields.length === 0) {
             const detailBudget = allocateGeneratedPlantDetailBudget([], {
                 instanceBudget: detailInstanceBudget,
@@ -383,11 +390,6 @@ function useGeneratedPlantFieldLods({
             viewport.getCurrentViewport(camera).height,
             0.001,
         );
-        projectionViewMatrix.multiplyMatrices(
-            camera.projectionMatrix,
-            camera.matrixWorldInverse,
-        );
-        frustum.setFromProjectionMatrix(projectionViewMatrix);
         let evaluatedFieldCount = 0;
         let fieldProjectionTestCount = 0;
         let groupRejectionCount = 0;
@@ -402,7 +404,7 @@ function useGeneratedPlantFieldLods({
             const groupVisible = isGeneratedPlantRaisedBedGroupVisible({
                 bounds: group.bounds,
                 focusActive,
-                frustum,
+                frustum: frame,
                 isSelectedRaisedBed,
             });
 
@@ -461,7 +463,7 @@ function useGeneratedPlantFieldLods({
                     }
                     visible = resolveGeneratedFieldVisibility({
                         approximatePlantHeight: field.approximatePlantHeight,
-                        camera,
+                        frame,
                         projectedPosition,
                         viewportHeight,
                         worldPosition,
@@ -602,13 +604,12 @@ function useGeneratedPlantFieldLods({
         camera,
         detailInstanceBudget,
         focusActive,
-        frustum,
+        readCameraFrame,
         generatedFields.length,
         interactingRaisedBedId,
         nearHysteresis,
         nearThreshold,
         projectedPosition,
-        projectionViewMatrix,
         raisedBedGroups,
         selectedRaisedBedId,
         viewport,
@@ -626,12 +627,15 @@ function useGeneratedPlantFieldLods({
     }, [gameCamera, updateLods]);
 
     useFrame(() => {
-        if (gameCamera) {
+        const frame = readCameraFrame();
+        if (
+            gameCamera &&
+            evaluatedFrameRef.current?.frame === frame &&
+            evaluatedFrameRef.current.version === frame.version
+        )
             return;
-        }
-
         updateLods();
-    });
+    }, -90);
 
     return lodSnapshot;
 }

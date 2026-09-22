@@ -11,6 +11,7 @@ import {
     useSceneRenderRequest,
     useSceneTimeInvalidation,
 } from '../scene/SceneTime';
+import { getCameraFrame } from '../spatial/cameraFrame';
 import { useGameState } from '../useGameState';
 import {
     findRaisedBedByBlockId,
@@ -481,11 +482,12 @@ export function GameCameraRig({
             version: snapshotVersionRef.current,
             zoom: camera.zoom,
         });
+        getCameraFrame(camera, size, snapshot.target);
         setGameCameraSnapshot(snapshot);
         for (const listener of cameraListenersRef.current) {
             listener(snapshot);
         }
-    }, [camera, isOrthographicCamera, setGameCameraSnapshot]);
+    }, [camera, isOrthographicCamera, setGameCameraSnapshot, size]);
 
     const publishSnapshot = useCallback(() => {
         if (!isOrthographicCamera) {
@@ -503,9 +505,10 @@ export function GameCameraRig({
         camera.lookAt(targetRef.current);
         camera.updateProjectionMatrix();
         camera.updateMatrixWorld();
+        getCameraFrame(camera, size, targetRef.current.toArray());
         publishSnapshot();
         requestRender('camera-change');
-    }, [camera, isOrthographicCamera, publishSnapshot, requestRender]);
+    }, [camera, isOrthographicCamera, publishSnapshot, requestRender, size]);
 
     const saveNormalCamera = useCallback(() => {
         if (!isOrthographicCamera || view !== 'normal') {
@@ -742,7 +745,10 @@ export function GameCameraRig({
                     return null;
                 }
 
-                const projected = position.clone().project(camera);
+                const projected = getCameraFrame(camera).project(
+                    position,
+                    new Vector3(),
+                );
                 return {
                     x: rect.left + ((projected.x + 1) / 2) * rect.width,
                     y: rect.top + ((-projected.y + 1) / 2) * rect.height,
