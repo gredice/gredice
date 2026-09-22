@@ -40,6 +40,17 @@ export const config: PlaywrightTestConfig = {
                     enforce: 'pre',
                     resolveId(source, importer) {
                         if (
+                            source === '../profileActions' &&
+                            importer?.includes('/app/settings/_components/')
+                        ) {
+                            return fileURLToPath(
+                                new URL(
+                                    './playwright/profileActionsMock.ts',
+                                    import.meta.url,
+                                ),
+                            );
+                        }
+                        if (
                             source === './actions' &&
                             importer?.includes(
                                 '/app/raised-beds/[raisedBedId]/',
