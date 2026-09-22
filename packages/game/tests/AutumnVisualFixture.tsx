@@ -41,6 +41,7 @@ export function AutumnVisualFixture({
     entities?: boolean;
 }) {
     const [ready, setReady] = useState('');
+    const [sprigColors, setSprigColors] = useState('');
     const [leafCount, setLeafCount] = useState(0);
     const [groundCount, setGroundCount] = useState(0);
     const [entityCount, setEntityCount] = useState(0);
@@ -109,6 +110,7 @@ export function AutumnVisualFixture({
                 <div
                     data-testid="autumn-scene"
                     data-canopies={ready}
+                    data-sprigs={sprigColors}
                     data-leaves={leafCount}
                     data-ground-leaves={groundCount}
                     data-entity-leaves={entityCount}
@@ -171,6 +173,7 @@ export function AutumnVisualFixture({
                             )}
                             <AutumnSceneProbe
                                 onReady={setReady}
+                                onSprigColors={setSprigColors}
                                 onLeafCount={setLeafCount}
                                 onGroundCount={setGroundCount}
                                 onEntityCount={setEntityCount}
