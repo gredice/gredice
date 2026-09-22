@@ -1,6 +1,19 @@
 import { Color } from 'three';
 import { autumnSeed } from './autumnState';
 
+export const autumnPaletteSeeds = [
+    'autumn:gold',
+    'autumn:amber',
+    'autumn:copper',
+    'autumn:russet',
+];
+
+export function getAutumnPaletteSeed(blockId: string) {
+    return autumnPaletteSeeds[
+        Math.floor(autumnSeed(blockId) * autumnPaletteSeeds.length)
+    ];
+}
+
 const autumnPaletteStops = ['#d6b83f', '#d78335', '#b94e32', '#79563c'];
 
 /** Per-tree HSL interpolation; never changes the cached GLTF leaf material. */

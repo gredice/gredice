@@ -51,3 +51,16 @@ test('winter canopy preserves snow layering', async ({ mount, page }) => {
         maxDiffPixelRatio: 0.005,
     });
 });
+
+for (const stage of ['summer', 'midAutumn', 'lateAutumn', 'winter'] as const) {
+    test(`batched garden trees at ${stage}`, async ({ mount, page }) => {
+        const fixture = await mount(
+            <AutumnVisualFixture instanced stage={stage} />,
+        );
+        await expect(fixture).toHaveAttribute('data-canopies', /.+/);
+        await expect(page.locator('canvas')).toHaveScreenshot(
+            `autumn-instanced-${stage}.png`,
+            { maxDiffPixelRatio: 0.005 },
+        );
+    });
+}

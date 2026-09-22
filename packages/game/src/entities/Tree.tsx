@@ -1,7 +1,10 @@
 import { MeshDistortMaterial, MeshWobbleMaterial } from '@react-three/drei';
 import { useMemo } from 'react';
 import { useAutumnState } from '../hooks/useAutumnState';
-import { getAutumnLeafColor } from '../scene/autumnPalette';
+import {
+    getAutumnLeafColor,
+    getAutumnPaletteSeed,
+} from '../scene/autumnPalette';
 import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
@@ -35,7 +38,7 @@ export function Tree({
             getAutumnLeafColor(
                 materials['Material.Leaves'].color,
                 progress,
-                block.id,
+                getAutumnPaletteSeed(block.id),
             ),
         [materials, progress, block.id],
     );

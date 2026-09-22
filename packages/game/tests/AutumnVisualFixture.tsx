@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Suspense, useMemo, useState } from 'react';
 import { Vector3 } from 'three';
+import { EntityInstances } from '../src/entities/EntityInstances';
 import { Tree } from '../src/entities/Tree';
 import { gameQualityProfiles } from '../src/scene/gameQuality';
 import { Scene } from '../src/scene/Scene';
@@ -17,6 +18,7 @@ export function AutumnVisualFixture({
     disabled = false,
     snow = 0,
     lighting = 'day',
+    instanced = false,
     zoom = 95,
 }: {
     stage?: keyof ReturnType<typeof getSeasonDebugDates>;
@@ -24,8 +26,23 @@ export function AutumnVisualFixture({
     snow?: number;
     lighting?: 'day' | 'twilight' | 'cloudy';
     zoom?: number;
+    instanced?: boolean;
 }) {
     const [ready, setReady] = useState('');
+    const stacks = useMemo(
+        () =>
+            [-1.4, 0, 1.4].map((x, index) => ({
+                position: new Vector3(x, 0, 0),
+                blocks: [
+                    {
+                        name: 'Tree',
+                        id: `autumn-fixture:${index}`,
+                        rotation: 0,
+                    },
+                ],
+            })),
+        [],
+    );
     const client = useMemo(() => new QueryClient(), []);
     const store = useMemo(() => {
         const next = createGameState({
@@ -74,24 +91,22 @@ export function AutumnVisualFixture({
                             }
                         />
                         <Suspense fallback={null}>
-                            {[-1.4, 0, 1.4].map((x, index) => {
-                                const block = {
-                                    name: 'Tree',
-                                    id: `autumn-fixture:${index}`,
-                                    rotation: 0,
-                                };
-                                return (
+                            {instanced ? (
+                                <EntityInstances
+                                    stacks={stacks}
+                                    quality={gameQualityProfiles.low}
+                                    renderGroundDecorations={false}
+                                />
+                            ) : (
+                                stacks.map((stack) => (
                                     <Tree
-                                        key={block.id}
-                                        stack={{
-                                            position: new Vector3(x, 0, 0),
-                                            blocks: [block],
-                                        }}
-                                        block={block}
+                                        key={stack.blocks[0].id}
+                                        stack={stack}
+                                        block={stack.blocks[0]}
                                         rotation={0}
                                     />
-                                );
-                            })}
+                                ))
+                            )}
                             <AutumnSceneProbe onReady={setReady} />
                         </Suspense>
                     </Scene>

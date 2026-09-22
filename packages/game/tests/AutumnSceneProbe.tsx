@@ -1,6 +1,6 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useLayoutEffect, useRef } from 'react';
-import { Mesh, MeshStandardMaterial } from 'three';
+import { InstancedMesh, Mesh, MeshStandardMaterial } from 'three';
 import { useSceneTimeInvalidation } from '../src/scene/SceneTime';
 
 export function AutumnSceneProbe({
@@ -21,13 +21,20 @@ export function AutumnSceneProbe({
         const canopies: string[] = [];
         scene.traverse((object) => {
             if (
-                object.name.startsWith('Autumn:Canopy:') &&
+                (object.name.startsWith('Autumn:Canopy:') ||
+                    object.name.startsWith('BlockInstances:Tree:canopy:')) &&
                 object instanceof Mesh &&
                 object.material instanceof MeshStandardMaterial
             ) {
-                canopies.push(
-                    `${object.material.color.getHexString()}:${object.geometry.index?.count ?? object.geometry.attributes.position.count}`,
-                );
+                for (
+                    let index = 0;
+                    index <
+                    (object instanceof InstancedMesh ? object.count : 1);
+                    index++
+                )
+                    canopies.push(
+                        `${object.material.color.getHexString()}:${object.geometry.index?.count ?? object.geometry.attributes.position.count}`,
+                    );
             }
         });
         if (canopies.length === 3) onReady(canopies.join(','));
