@@ -2701,6 +2701,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         mount,
         page,
     }) => {
+        await page.clock.setFixedTime(new Date('2026-05-13T12:00:00.000Z'));
         const scenario = plantedGrowingWithOperationHistoryScenario();
         const operation = scenario.operationHistoryItems?.[0];
 
@@ -2744,7 +2745,9 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             dialog.locator('[data-operation-media-badge]').first(),
         ).toBeVisible();
 
-        await dialog.getByRole('button', { name: '20. svibnja 2026.' }).click();
+        await dialog
+            .getByRole('button', { name: '20. svibnja', exact: true })
+            .click();
 
         await expect(
             page.getByText('Novi datum', { exact: true }),
@@ -2758,6 +2761,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         mount,
         page,
     }) => {
+        await page.clock.setFixedTime(new Date('2026-05-13T12:00:00.000Z'));
         const scenario = plantedGrowingWithOperationHistoryScenario();
         const operation = scenario.operationHistoryItems?.[0];
 
@@ -2802,7 +2806,8 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await dialog.getByRole('tab', { name: /Dnevnik/ }).click();
 
         const scheduleButton = dialog.getByRole('button', {
-            name: '13. svibnja 2026.',
+            name: '13. svibnja',
+            exact: true,
         });
         await expect(scheduleButton).toBeDisabled();
 
@@ -2872,6 +2877,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         mount,
         page,
     }) => {
+        await page.clock.setFixedTime(new Date('2026-05-13T12:00:00.000Z'));
         const scenario = plantedGrowingWithOperationHistoryScenario();
         const operation = scenario.operationHistoryItems?.[0];
 
@@ -2908,10 +2914,14 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         const dialog = page.getByRole('dialog');
         await dialog.getByRole('tab', { name: /Dnevnik/ }).click();
 
-        await expect(dialog.getByText('12. svibnja 2026.')).toBeVisible();
-        await expect(dialog.getByText('10. svibnja 2026.')).toHaveCount(0);
         await expect(
-            dialog.getByRole('button', { name: '12. svibnja 2026.' }),
+            dialog.getByText('12. svibnja', { exact: true }),
+        ).toBeVisible();
+        await expect(
+            dialog.getByText('10. svibnja', { exact: true }),
+        ).toHaveCount(0);
+        await expect(
+            dialog.getByRole('button', { name: '12. svibnja', exact: true }),
         ).toHaveCount(0);
     });
 
