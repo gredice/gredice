@@ -32,3 +32,14 @@ incompatible. Use a fixed browser timezone when comparing captures across machin
 
 Run the HUD browser checks with
 `pnpm --filter garden exec playwright test --config playwright.season.config.ts`.
+
+## Deciduous canopy
+
+`autumnState` is resolved alongside the shared season state at every scene-clock
+write. It exposes foliage colour, retention, shedding and settled-leaf curves.
+Winter keeps the brown/low-retention endpoint; spring gradually regrows foliage.
+`Tree` alone opts into the colour curve. Its existing canopy material receives a
+memoized HSL colour derived from the stable block ID; cached GLTF materials,
+trunk, palms, crops and grass materials stay unchanged. Weather visualization
+disablement restores the base canopy. Frozen seasonal stories and WebGL captures
+cover summer, early/mid/late autumn, winter, cloudy/twilight light and snow.

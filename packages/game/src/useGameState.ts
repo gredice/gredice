@@ -20,6 +20,7 @@ import {
     defaultGardenAvatarCameraZoom,
     scaleGardenAvatarCameraZoom,
 } from './entities/avatar/gardenAvatarCameraZoom';
+import { type AutumnState, getAutumnState } from './scene/autumnState';
 import {
     getGameBackgroundPaletteIndexByKey,
     getGameBackgroundPaletteKey,
@@ -467,6 +468,7 @@ export type GameState = {
      * clock as the lighting so a frozen date stays deterministic.
      */
     seasonState: SeasonState;
+    autumnState: AutumnState;
 
     // Pickup system
     pickupBlock: Block | null;
@@ -705,6 +707,7 @@ export function createGameState({
                 ),
                 sunriseTime: sunrise,
                 sunsetTime: sunset,
+                autumnState: getAutumnState(resolveSeasonState(referenceTime)),
                 seasonState: resolveSeasonState(
                     referenceTime,
                     get().seasonState,
@@ -823,6 +826,7 @@ export function createGameState({
                 ),
                 sunriseTime: sunrise,
                 sunsetTime: sunset,
+                autumnState: getAutumnState(resolveSeasonState(referenceTime)),
                 seasonState: resolveSeasonState(
                     referenceTime,
                     get().seasonState,
@@ -833,6 +837,7 @@ export function createGameState({
         sunriseTime: sunrise,
         sunsetTime: sunset,
         seasonState,
+        autumnState: getAutumnState(seasonState),
 
         // Pickup system
         pickupBlock: null,
@@ -1423,6 +1428,7 @@ export function createGameState({
                 ),
                 sunriseTime: sunrise,
                 sunsetTime: sunset,
+                autumnState: getAutumnState(resolveSeasonState(referenceTime)),
                 seasonState: resolveSeasonState(
                     referenceTime,
                     get().seasonState,
