@@ -17,7 +17,6 @@ const featuredGardens: LandingGardenCandidate[] = [
             longitude: 15.982,
             raisedBeds: [],
             stacks: {},
-            structures: [],
             updatedAt: '2026-09-12T00:00:00.000Z',
         },
         owner: { publicId: 'u_ana', displayName: 'Ana Kovač', avatarUrl: null },

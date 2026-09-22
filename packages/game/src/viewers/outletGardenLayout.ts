@@ -1136,7 +1136,6 @@ export function buildOutletGardenDetail(
         stacks: outletGardenResponseStacks(
             buildOutletGardenStacks(offers, assignments),
         ),
-        structures: [],
         updatedAt: outletGardenUpdatedAt,
     } satisfies PublicGardenDetail;
 }

@@ -40,22 +40,7 @@ export type GardenAvatarPoint = {
 export type GardenAvatarCollisionWorld = {
     blockedCells: AnimalMovementCell[];
     surfaces: GardenAvatarMovementSurface[];
-    spatialIndex?: GardenAvatarCollisionSpatialIndex;
 };
-
-export type GardenAvatarCollisionSpatialIndex = Readonly<{
-    bucketSize: number;
-    blockedCellsByBucket: ReadonlyMap<string, readonly AnimalMovementCell[]>;
-    surfacesByBucket: ReadonlyMap<
-        string,
-        readonly GardenAvatarMovementSurface[]
-    >;
-}>;
-
-export type GardenAvatarCollisionCandidates = Readonly<{
-    blockedCells: readonly AnimalMovementCell[];
-    surfaces: readonly GardenAvatarMovementSurface[];
-}>;
 
 export type GardenAvatarMovementSurface = AnimalMovementSurface & {
     debugLabel?: string;
@@ -77,7 +62,6 @@ export const gardenAvatarMaxJumpClimbHeight = 0.95;
 const terrainHalfSize = 0.5;
 const collisionEpsilon = 0.0001;
 const maxMovementSubstep = 0.08;
-const gardenAvatarCollisionBucketSize = 2;
 const dynamicGardenActorBlockNames = new Set(['Cow']);
 const diagonalSample = gardenAvatarRadius * Math.SQRT1_2;
 const collisionSamples = [
@@ -94,152 +78,6 @@ const collisionSamples = [
 
 function cellKey(cell: Pick<AnimalMovementCell, 'x' | 'z'>) {
     return `${Math.round(cell.x)}:${Math.round(cell.z)}`;
-}
-
-function collisionBucketKey(x: number, z: number, bucketSize: number) {
-    return `${Math.floor(x / bucketSize)}:${Math.floor(z / bucketSize)}`;
-}
-
-function appendCollisionBucketValue<T>(
-    buckets: Map<string, T[]>,
-    key: string,
-    value: T,
-) {
-    const bucket = buckets.get(key);
-    if (bucket) {
-        bucket.push(value);
-        return;
-    }
-    buckets.set(key, [value]);
-}
-
-function getSurfaceAxisAlignedExtents(surface: GardenAvatarMovementSurface) {
-    const halfWidth = surface.halfWidth ?? terrainHalfSize;
-    const halfDepth = surface.halfDepth ?? terrainHalfSize;
-    const rotation = surface.rotation ?? 0;
-    const cos = Math.abs(Math.cos(rotation));
-    const sin = Math.abs(Math.sin(rotation));
-    return {
-        x: halfWidth * cos + halfDepth * sin,
-        z: halfWidth * sin + halfDepth * cos,
-    };
-}
-
-export function createGardenAvatarCollisionSpatialIndex({
-    blockedCells,
-    bucketSize = gardenAvatarCollisionBucketSize,
-    surfaces,
-}: {
-    blockedCells: readonly AnimalMovementCell[];
-    bucketSize?: number;
-    surfaces: readonly GardenAvatarMovementSurface[];
-}): GardenAvatarCollisionSpatialIndex {
-    const blockedCellsByBucket = new Map<string, AnimalMovementCell[]>();
-    const surfacesByBucket = new Map<string, GardenAvatarMovementSurface[]>();
-
-    for (const cell of blockedCells) {
-        const minBucketX = Math.floor(
-            (cell.x - terrainHalfSize - gardenAvatarRadius) / bucketSize,
-        );
-        const maxBucketX = Math.floor(
-            (cell.x + terrainHalfSize + gardenAvatarRadius) / bucketSize,
-        );
-        const minBucketZ = Math.floor(
-            (cell.z - terrainHalfSize - gardenAvatarRadius) / bucketSize,
-        );
-        const maxBucketZ = Math.floor(
-            (cell.z + terrainHalfSize + gardenAvatarRadius) / bucketSize,
-        );
-        for (let bucketX = minBucketX; bucketX <= maxBucketX; bucketX += 1) {
-            for (
-                let bucketZ = minBucketZ;
-                bucketZ <= maxBucketZ;
-                bucketZ += 1
-            ) {
-                appendCollisionBucketValue(
-                    blockedCellsByBucket,
-                    `${bucketX}:${bucketZ}`,
-                    cell,
-                );
-            }
-        }
-    }
-
-    for (const surface of surfaces) {
-        const extents = getSurfaceAxisAlignedExtents(surface);
-        const minBucketX = Math.floor(
-            (surface.x - extents.x - gardenAvatarRadius) / bucketSize,
-        );
-        const maxBucketX = Math.floor(
-            (surface.x + extents.x + gardenAvatarRadius) / bucketSize,
-        );
-        const minBucketZ = Math.floor(
-            (surface.z - extents.z - gardenAvatarRadius) / bucketSize,
-        );
-        const maxBucketZ = Math.floor(
-            (surface.z + extents.z + gardenAvatarRadius) / bucketSize,
-        );
-        for (let bucketX = minBucketX; bucketX <= maxBucketX; bucketX += 1) {
-            for (
-                let bucketZ = minBucketZ;
-                bucketZ <= maxBucketZ;
-                bucketZ += 1
-            ) {
-                appendCollisionBucketValue(
-                    surfacesByBucket,
-                    `${bucketX}:${bucketZ}`,
-                    surface,
-                );
-            }
-        }
-    }
-
-    return { bucketSize, blockedCellsByBucket, surfacesByBucket };
-}
-
-export function getGardenAvatarCollisionCandidates(
-    world: GardenAvatarCollisionWorld,
-    position: Pick<GardenAvatarPoint, 'x' | 'z'>,
-): GardenAvatarCollisionCandidates {
-    const index = world.spatialIndex;
-    if (!index) {
-        return {
-            blockedCells: world.blockedCells,
-            surfaces: world.surfaces,
-        };
-    }
-
-    const key = collisionBucketKey(position.x, position.z, index.bucketSize);
-    return {
-        blockedCells: index.blockedCellsByBucket.get(key) ?? [],
-        surfaces: index.surfacesByBucket.get(key) ?? [],
-    };
-}
-
-export function createIndexedGardenAvatarCollisionWorld({
-    blockedCells,
-    surfaces,
-}: {
-    blockedCells: AnimalMovementCell[];
-    surfaces: GardenAvatarMovementSurface[];
-}): GardenAvatarCollisionWorld {
-    return {
-        blockedCells,
-        surfaces,
-        spatialIndex: createGardenAvatarCollisionSpatialIndex({
-            blockedCells,
-            surfaces,
-        }),
-    };
-}
-
-export function mergeGardenAvatarCollisionWorlds(
-    ...worlds: readonly (GardenAvatarCollisionWorld | null | undefined)[]
-) {
-    return createIndexedGardenAvatarCollisionWorld({
-        blockedCells: worlds.flatMap((world) => world?.blockedCells ?? []),
-        surfaces: worlds.flatMap((world) => world?.surfaces ?? []),
-    });
 }
 
 export function getGardenAvatarSurfaceY(
@@ -270,17 +108,13 @@ export function getGardenAvatarSurfaceY(
 
 function getHighestSurfaceYAt(
     position: Pick<GardenAvatarPoint, 'x' | 'z'>,
-    surfaces: readonly GardenAvatarMovementSurface[],
+    surfaces: GardenAvatarMovementSurface[],
     currentGroundY: number,
     collisionHeight: number,
-    allowNonRoamableSupport: boolean,
 ) {
     let selectedY: number | null = null;
 
     for (const surface of surfaces) {
-        if (!allowNonRoamableSupport && surface.roamable === false) {
-            continue;
-        }
         const rotation = surface.rotation ?? 0;
         const cos = Math.cos(rotation);
         const sin = Math.sin(rotation);
@@ -357,9 +191,8 @@ export function getGardenAvatarCeilingY({
     world: GardenAvatarCollisionWorld;
 }) {
     let ceilingY: number | null = null;
-    const candidates = getGardenAvatarCollisionCandidates(world, position);
 
-    for (const surface of candidates.surfaces) {
+    for (const surface of world.surfaces) {
         if (
             surface.bottomY === undefined ||
             surface.bottomY <=
@@ -378,25 +211,20 @@ export function getGardenAvatarCeilingY({
 }
 
 export function getGardenAvatarGroundY({
-    allowNonRoamableSupport = true,
     collisionHeight = gardenAvatarStandingCollisionHeight,
     currentGroundY,
     maxStepHeight = gardenAvatarMaxStepHeight,
     position,
     world,
 }: {
-    allowNonRoamableSupport?: boolean;
     collisionHeight?: number;
     currentGroundY: number;
     maxStepHeight?: number;
     position: Pick<GardenAvatarPoint, 'x' | 'z'>;
     world: GardenAvatarCollisionWorld;
 }) {
-    const candidates = getGardenAvatarCollisionCandidates(world, position);
     if (
-        candidates.blockedCells.some((cell) =>
-            circleIntersectsCell(position, cell),
-        )
+        world.blockedCells.some((cell) => circleIntersectsCell(position, cell))
     ) {
         return null;
     }
@@ -408,10 +236,9 @@ export function getGardenAvatarGroundY({
                 x: position.x + sample.x,
                 z: position.z + sample.z,
             },
-            candidates.surfaces,
+            world.surfaces,
             currentGroundY,
             collisionHeight,
-            allowNonRoamableSupport,
         );
         sampleHeights.push(surfaceY ?? 0);
     }
@@ -421,7 +248,7 @@ export function getGardenAvatarGroundY({
         return null;
     }
 
-    const slopedCenterHeight = candidates.surfaces.reduce<number | null>(
+    const slopedCenterHeight = world.surfaces.reduce<number | null>(
         (selectedY, surface) => {
             if (
                 !surface.slopeBlockName ||
@@ -446,53 +273,6 @@ export function getGardenAvatarGroundY({
         : Math.max(sampleHeights[0] ?? 0, slopedCenterHeight);
 }
 
-/**
- * Checks the actor's live vertical collision envelope rather than treating
- * every horizontally overlapping proxy as a full-height blocker.
- */
-export function doesGardenAvatarCollisionEnvelopeOverlap({
-    collisionHeight = gardenAvatarStandingCollisionHeight,
-    position,
-    world,
-}: {
-    collisionHeight?: number;
-    position: GardenAvatarPoint;
-    world: GardenAvatarCollisionWorld;
-}) {
-    const candidates = getGardenAvatarCollisionCandidates(world, position);
-    if (
-        candidates.blockedCells.some((cell) =>
-            circleIntersectsCell(position, cell),
-        )
-    ) {
-        // Blocked cells do not carry vertical bounds, so retain their existing
-        // full-column collision contract.
-        return true;
-    }
-
-    const actorBottomY = position.y;
-    const actorTopY = actorBottomY + collisionHeight;
-    return candidates.surfaces.some((surface) => {
-        if (
-            surface.roamable !== false ||
-            surface.bottomY === undefined ||
-            !circleIntersectsSurface(position, surface)
-        ) {
-            return false;
-        }
-        const surfaceY = getGardenAvatarSurfaceY(position, surface);
-        const surfaceBottomY = Math.min(surface.bottomY, surfaceY);
-        const surfaceTopY = Math.max(surface.bottomY, surfaceY);
-        if (surfaceTopY - surfaceBottomY <= collisionEpsilon) {
-            return false;
-        }
-        return (
-            actorBottomY < surfaceTopY - collisionEpsilon &&
-            actorTopY > surfaceBottomY + collisionEpsilon
-        );
-    });
-}
-
 function tryMove(
     position: GardenAvatarPoint,
     x: number,
@@ -511,15 +291,6 @@ function tryMove(
     return groundY === null ? null : { x, y: groundY, z };
 }
 
-export type GardenAvatarHorizontalMovementInput = Readonly<{
-    collisionHeight?: number;
-    deltaX: number;
-    deltaZ: number;
-    maxStepHeight?: number;
-    position: GardenAvatarPoint;
-    world: GardenAvatarCollisionWorld;
-}>;
-
 export function resolveGardenAvatarHorizontalMovement({
     collisionHeight = gardenAvatarStandingCollisionHeight,
     deltaX,
@@ -527,7 +298,14 @@ export function resolveGardenAvatarHorizontalMovement({
     maxStepHeight = gardenAvatarMaxStepHeight,
     position,
     world,
-}: GardenAvatarHorizontalMovementInput) {
+}: {
+    collisionHeight?: number;
+    deltaX: number;
+    deltaZ: number;
+    maxStepHeight?: number;
+    position: GardenAvatarPoint;
+    world: GardenAvatarCollisionWorld;
+}) {
     const distance = Math.hypot(deltaX, deltaZ);
     const steps = Math.max(1, Math.ceil(distance / maxMovementSubstep));
     const stepX = deltaX / steps;
@@ -1188,10 +966,10 @@ export function createGardenAvatarCollisionWorld({
         }
     }
 
-    return createIndexedGardenAvatarCollisionWorld({
+    return {
         blockedCells: [],
         surfaces,
-    });
+    };
 }
 
 export function getGardenAvatarRoamBlockedCells(
@@ -1431,34 +1209,25 @@ export function findGardenAvatarSpawnPoint(
 ) {
     const surfaces = [...createWalkableSurfaceMap(world).values()];
 
-    if (preferredPosition) {
+    if (
+        preferredPosition &&
+        !world.surfaces.some(
+            (surface) =>
+                surface.roamable === false &&
+                circleIntersectsSurface(preferredPosition, surface),
+        )
+    ) {
         const preferredGroundY = getGardenAvatarGroundY({
-            allowNonRoamableSupport: false,
             currentGroundY: 0,
             position: preferredPosition,
             world,
         });
-        const preferredPose =
-            preferredGroundY === null
-                ? null
-                : {
-                      x: preferredPosition.x,
-                      y: preferredGroundY,
-                      z: preferredPosition.z,
-                  };
-        if (
-            preferredPose &&
-            !world.surfaces.some(
-                (surface) =>
-                    surface.kind === 'water' &&
-                    circleIntersectsSurface(preferredPose, surface),
-            ) &&
-            !doesGardenAvatarCollisionEnvelopeOverlap({
-                position: preferredPose,
-                world,
-            })
-        ) {
-            return preferredPose;
+        if (preferredGroundY !== null) {
+            return {
+                x: preferredPosition.x,
+                y: preferredGroundY,
+                z: preferredPosition.z,
+            };
         }
     }
 

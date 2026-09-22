@@ -6,7 +6,6 @@ import {
     getGardenDeletionTargetForUpdate,
     getGardenPlacementSnapshotForUpdate,
     listGardenRaisedBedMetadataForUpdate,
-    listGardenStructuresForUpdate,
     softDeleteGardenOnce,
     withAccountDeletionFenceTransaction,
     withGardenPlacementTransaction,
@@ -53,10 +52,6 @@ type GardenDeletionDependencies<Transaction> = Readonly<{
         gardenId: number,
         transaction: Transaction,
     ) => Promise<readonly Readonly<{ status: string }>[]>;
-    listGardenStructuresForUpdate: (
-        gardenId: number,
-        transaction: Transaction,
-    ) => Promise<readonly Readonly<{ id: string }>[]>;
     softDeleteGardenOnce: (
         gardenId: number,
         transaction: Transaction,
@@ -84,13 +79,11 @@ export type DeleteRealGardenResult =
           code:
               | 'ACCOUNT_DELETION_IN_PROGRESS'
               | 'ACTIVE_RAISED_BEDS'
-              | 'ACTIVE_STRUCTURES'
               | 'GARDEN_NOT_FOUND'
               | 'INVALID_GARDEN';
           error: string;
           status: 400 | 404 | 409;
           activeRaisedBedCount?: number;
-          activeStructureCount?: number;
       }>;
 
 function assertCommand(command: DeleteRealGardenCommand) {
@@ -167,11 +160,6 @@ export function createGardenDeletionService<Transaction>(
                                     );
                                 }
 
-                                const structures =
-                                    await dependencies.listGardenStructuresForUpdate(
-                                        command.gardenId,
-                                        gardenTransaction,
-                                    );
                                 const raisedBeds =
                                     await dependencies.listGardenRaisedBedMetadataForUpdate(
                                         command.gardenId,
@@ -190,16 +178,6 @@ export function createGardenDeletionService<Transaction>(
                                         activeRaisedBedCount,
                                     } as const;
                                 }
-                                if (structures.length > 0) {
-                                    return {
-                                        ok: false,
-                                        code: 'ACTIVE_STRUCTURES',
-                                        error: 'Garden cannot be deleted while it has active structures',
-                                        status: 409,
-                                        activeStructureCount: structures.length,
-                                    } as const;
-                                }
-
                                 const deletion =
                                     await dependencies.softDeleteGardenOnce(
                                         command.gardenId,
@@ -254,7 +232,6 @@ export const deleteRealGardenForAccount = createGardenDeletionService({
     getGardenDeletionTargetForUpdate,
     getGardenPlacementSnapshotForUpdate,
     listGardenRaisedBedMetadataForUpdate,
-    listGardenStructuresForUpdate,
     softDeleteGardenOnce,
     withAccountDeletionFenceTransaction,
     withGardenPlacementTransaction,

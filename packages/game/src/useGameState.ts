@@ -37,7 +37,6 @@ import {
 } from './scene/gameQuality';
 import { resolveSeasonState, type SeasonState } from './scene/seasonState';
 import { defaultWaterColors, type WaterColors } from './scene/waterColorState';
-import type { GardenStructureEditorState } from './structures/editor';
 import type { Block } from './types/Block';
 import type { Stack } from './types/Stack';
 import { getAudioConfig } from './utils/audioConfig';
@@ -65,18 +64,6 @@ export type GardenAvatarMoveInput = {
     forward: number;
     right: number;
 };
-export type GardenStructureBuildCategory =
-    | 'footprint'
-    | 'structure'
-    | 'roof'
-    | 'interior';
-export type GardenStructureBuildSession = Readonly<{
-    editor: GardenStructureEditorState;
-    persistence: 'fixture' | 'remote';
-    category: GardenStructureBuildCategory;
-    roofCutaway: boolean;
-    selectedPartId: string | null;
-}>;
 export type MockGardenProfile =
     | 'default'
     | 'dense'
@@ -539,7 +526,6 @@ export type GameState = {
 
     // Camera
     view: 'normal' | 'closeup';
-    structureBuildSession: GardenStructureBuildSession | null;
     gardenAvatarView: GardenAvatarView;
     gardenAvatarMoveInput: GardenAvatarMoveInput;
     gardenAvatarSprintInput: boolean;
@@ -561,9 +547,6 @@ export type GameState = {
         options:
             | { view: 'normal'; block?: Block }
             | { view: 'closeup'; block: Block },
-    ) => void;
-    setStructureBuildSession: (
-        session: GardenStructureBuildSession | null,
     ) => void;
     setGardenAvatarView: (view: GardenAvatarView) => void;
     setGardenAvatarMoveInput: (input: GardenAvatarMoveInput) => void;
@@ -1216,7 +1199,6 @@ export function createGameState({
 
         // Camera
         view: 'normal',
-        structureBuildSession: null,
         gardenAvatarView: 'overview',
         gardenAvatarMoveInput: { forward: 0, right: 0 },
         gardenAvatarSprintInput: false,
@@ -1244,45 +1226,10 @@ export function createGameState({
             }
 
             if (view === 'closeup') {
-                set({
-                    view,
-                    closeupBlock: block,
-                    structureBuildSession: null,
-                });
+                set({ view, closeupBlock: block });
             } else {
                 set({ view });
             }
-        },
-        setStructureBuildSession: (structureBuildSession) => {
-            if (get().structureBuildSession !== structureBuildSession) {
-                triggerSelectionHaptic();
-            }
-            set(
-                structureBuildSession
-                    ? {
-                          structureBuildSession,
-                          activeDragPreview: null,
-                          hudPlacementDrag: null,
-                          isDragging: false,
-                          itemsHudDropTargetActive: false,
-                          pickupBlock: null,
-                          pickupSelectionTargets: [],
-                          stationaryPickupOutlineTarget: null,
-                          view: 'normal',
-                          closeupBlock: null,
-                          closeupCameraActive: false,
-                          closeupCameraSettled: false,
-                          gardenAvatarView: 'overview',
-                          gardenAvatarMoveInput: { forward: 0, right: 0 },
-                          gardenAvatarSprintInput: false,
-                          gardenAvatarCrouchInput: false,
-                          gardenAvatarBoatId: null,
-                          gardenAvatarAimedBoatId: null,
-                          gardenAvatarSeatId: null,
-                          gardenAvatarPresence: null,
-                      }
-                    : { structureBuildSession },
-            );
         },
         setGardenAvatarView: (gardenAvatarView) => {
             const currentGardenAvatarView = get().gardenAvatarView;
@@ -1309,7 +1256,6 @@ export function createGameState({
                           closeupBlock: null,
                           closeupCameraActive: false,
                           closeupCameraSettled: false,
-                          structureBuildSession: null,
                       },
             );
         },

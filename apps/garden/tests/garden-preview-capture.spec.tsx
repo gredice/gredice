@@ -51,13 +51,8 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
     const blockData = getLocalSandboxBlockData();
     const authenticatedViewerRequests: string[] = [];
     const browserErrors: string[] = [];
-    const buildingAssetRequests: string[] = [];
     const apiRequests: string[] = [];
     const apiResponses: string[] = [];
-    let releaseBuildingAsset: (() => void) | undefined;
-    const buildingAssetGate = new Promise<void>((resolve) => {
-        releaseBuildingAsset = resolve;
-    });
 
     page.on('console', (message) => {
         if (message.type() === 'error' && browserErrors.length < 20) {
@@ -71,9 +66,6 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
     });
     page.on('request', (request) => {
         const url = request.url();
-        if (new URL(url).pathname.endsWith('/GardenStructureKitV1.glb')) {
-            buildingAssetRequests.push(url);
-        }
         if (url.includes('/api/gredice/')) {
             apiRequests.push(new URL(url).pathname);
         }
@@ -179,10 +171,6 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
             },
         }),
     );
-    await page.route('**/GardenStructureKitV1.glb*', async (route) => {
-        await buildingAssetGate;
-        await route.continue();
-    });
 
     await mount(<GardenPreviewCaptureStory />);
 
@@ -190,33 +178,6 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
     const captureScene = page.locator(
         '[data-public-garden-capture-blocks-ready]',
     );
-    try {
-        await expect.poll(() => buildingAssetRequests.length).toBe(1);
-        await expect(captureScene).toHaveAttribute(
-            'data-public-garden-capture-structures-ready',
-            'false',
-        );
-        await expect
-            .poll(async () => {
-                const result = JSON.parse(
-                    (await resultOutput.textContent()) ?? '{}',
-                );
-                return result.status;
-            })
-            .toBe('waiting');
-        const blockedResult = JSON.parse(
-            (await resultOutput.textContent()) ?? '{}',
-        );
-        expect(blockedResult).toMatchObject({
-            activeRootMounted: false,
-            activeRootSubmittedFrameCount: 0,
-            captureAfterRenderPassCount: 0,
-            captureFrameReceiptCount: 0,
-        });
-        await expect(page.locator('canvas')).toHaveCount(1);
-    } finally {
-        releaseBuildingAsset?.();
-    }
     try {
         await expect
             .poll(
@@ -251,9 +212,6 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
                           plants: await captureScene.getAttribute(
                               'data-public-garden-capture-plants-ready',
                           ),
-                          structures: await captureScene.getAttribute(
-                              'data-public-garden-capture-structures-ready',
-                          ),
                       },
             webgl,
         };
@@ -283,16 +241,7 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
     expect(result.captureFrameReceiptCount).toBe(
         result.captureAfterRenderPassCount,
     );
-    expect(buildingAssetRequests).toHaveLength(1);
     expect(await page.locator('canvas').count()).toBe(2);
-    await expect(captureScene).toHaveAttribute(
-        'data-public-garden-capture-structures-ready',
-        'true',
-    );
-    await expect(captureScene).toHaveAttribute(
-        'data-garden-structure-rendered-count',
-        '1',
-    );
 
     await page.waitForTimeout(1_000);
     expect(authenticatedViewerRequests).toEqual([]);

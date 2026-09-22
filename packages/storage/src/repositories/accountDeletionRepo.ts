@@ -13,8 +13,6 @@ import {
     raisedBeds as dbRaisedBeds,
     gardenBlocks,
     gardenStacks,
-    gardenStructureOperations,
-    gardenStructures,
     gardenVisitStates,
     raisedBedSensors,
 } from '../schema/gardenSchema';
@@ -453,20 +451,6 @@ export async function deleteAccountWithDependencies(
         }
 
         for (const garden of gardens) {
-            console.info('[AccountDelete] Deleting garden structure receipts', {
-                gardenId: garden.id,
-            });
-            await storage()
-                .delete(gardenStructureOperations)
-                .where(eq(gardenStructureOperations.gardenId, garden.id));
-
-            console.info('[AccountDelete] Deleting garden structures', {
-                gardenId: garden.id,
-            });
-            await storage()
-                .delete(gardenStructures)
-                .where(eq(gardenStructures.gardenId, garden.id));
-
             // Delete garden stacks, blocks, gardens, garden events
             console.info(
                 `[AccountDelete] Deleting garden stacks for gardenId=${garden.id}`,

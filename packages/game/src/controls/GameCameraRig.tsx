@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MathUtils, OrthographicCamera, Vector2, Vector3 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useSceneCurrentGarden } from '../hooks/useSceneCurrentGarden';
-import { updateGameProfileMetadata } from '../scene/gameProfileMetadata';
 import {
     sceneFrameRates,
     useSceneRenderRequest,
@@ -851,12 +850,6 @@ export function GameCameraRig({
             setIsDragging(dragging);
         };
 
-        const publishActivePointerCount = () =>
-            updateGameProfileMetadata({
-                gardenStructureCameraActivePointerCount:
-                    activePointersRef.current.size,
-            });
-
         const clearPointers = () => {
             for (const pointerId of activePointersRef.current.keys()) {
                 if (element.hasPointerCapture(pointerId)) {
@@ -866,7 +859,6 @@ export function GameCameraRig({
             activePointersRef.current.clear();
             pointerStateRef.current = null;
             setCameraDragging(false);
-            publishActivePointerCount();
         };
 
         const updatePointerState = () => {
@@ -907,7 +899,6 @@ export function GameCameraRig({
                 event.pointerId,
                 new Vector2(event.clientX, event.clientY),
             );
-            publishActivePointerCount();
             updatePointerState();
             if (
                 shouldGameCameraOwnPointerGesture(
@@ -1018,7 +1009,6 @@ export function GameCameraRig({
                 singlePointerPanEnabled,
             );
             activePointersRef.current.delete(event.pointerId);
-            publishActivePointerCount();
             const releaseRemainingPointerCapture =
                 shouldReleaseGameCameraPointerCapture(
                     activePointersRef.current.size,

@@ -7,10 +7,6 @@ import {
     type ValidateRotatedBlockPlacementInput,
     type ValidateRotatedBlockPlacementResult,
 } from './gardenBlockMutationService';
-import type {
-    GardenOccupancyStorageSnapshotLike,
-    ValidatePersistedStructuresAfterBlockMutationResult,
-} from './gardenOccupancyService';
 
 const timestamp = '2026-08-30T00:00:00.000Z';
 
@@ -44,9 +40,6 @@ function directoryBlock(
 
 type HarnessOptions = Readonly<{
     blockName?: string;
-    combinedValidation?: (
-        snapshot: GardenOccupancyStorageSnapshotLike,
-    ) => ValidatePersistedStructuresAfterBlockMutationResult;
     failRefund?: boolean;
     failCacheBust?: boolean;
     gardenAccountId?: string;
@@ -206,12 +199,6 @@ function makeHarness(options: HarnessOptions = {}) {
                     ...raisedBed,
                 }));
         },
-        listGardenStructures: async (receivedGardenId, receivedTransaction) => {
-            assert.equal(receivedGardenId, gardenId);
-            assertTransaction(receivedTransaction);
-            calls.push('structures');
-            return [];
-        },
         softDeleteGardenBlockOnce: async (
             receivedGardenId,
             receivedBlockId,
@@ -291,10 +278,6 @@ function makeHarness(options: HarnessOptions = {}) {
             raisedBed.orientation = orientation;
             return true;
         },
-        validatePersistedStructuresAfterBlockMutation: ({ snapshot }) => {
-            calls.push('combined-validation');
-            return options.combinedValidation?.(snapshot) ?? { valid: true };
-        },
         validateRotatedBlockPlacement:
             options.rotationValidation ??
             (async () => {
@@ -369,8 +352,6 @@ describe('recycleGardenBlockForAccount', () => {
             'garden-lock',
             'snapshot',
             'raised-beds',
-            'structures',
-            'combined-validation',
             'stack-update',
             'raised-bed-delete',
             'block-delete',
@@ -453,40 +434,6 @@ describe('recycleGardenBlockForAccount', () => {
         });
         assert.equal(harness.calls.includes('stack-update'), false);
         assert.equal(harness.calls.includes('block-delete'), false);
-        assert.equal(harness.calls.includes('refund'), false);
-    });
-
-    it('returns bounded combined-occupancy conflicts without writing', async () => {
-        const issues = Array.from({ length: 30 }, (_, index) => ({
-            code: 'missing-support' as const,
-            path: `structures[0].worldFootprint.${index.toString()}|0`,
-            structureId: 'structure-1',
-        }));
-        const harness = makeHarness({
-            combinedValidation: () => ({
-                valid: false,
-                error: {
-                    code: 'GARDEN_OCCUPANCY_CONFLICT',
-                    issues,
-                    message: 'Structure loses support.',
-                    status: 409,
-                    truncated: false,
-                },
-            }),
-        });
-
-        const result = await harness.service.recycleGardenBlockForAccount({
-            accountId: harness.accountId,
-            blockId: harness.blockId,
-            gardenId: harness.gardenId,
-        });
-
-        assert.equal(result.ok, false);
-        if (result.ok) return;
-        assert.equal(result.code, 'GARDEN_OCCUPANCY_CONFLICT');
-        assert.equal(result.status, 409);
-        assert.equal(result.issues?.length, 24);
-        assert.equal(harness.calls.includes('stack-update'), false);
         assert.equal(harness.calls.includes('refund'), false);
     });
 
@@ -620,7 +567,7 @@ describe('updateGardenBlockForAccount', () => {
         );
     });
 
-    it('normalizes wooden-sign messages without loading or validating occupancy', async () => {
+    it('normalizes wooden-sign messages without loading or validating placement', async () => {
         const harness = makeHarness({ blockName: woodenSignBlockName });
 
         const result = await harness.service.updateGardenBlockForAccount({
@@ -642,10 +589,9 @@ describe('updateGardenBlockForAccount', () => {
         assert.equal(block?.variant, 3);
         assert.equal(harness.calls.includes('catalog'), false);
         assert.equal(harness.calls.includes('rotation-validation'), false);
-        assert.equal(harness.calls.includes('combined-validation'), false);
     });
 
-    it('validates candidate rotation, combined structures, block write, and raised-bed projection in one transaction', async () => {
+    it('validates candidate rotation, block write, and raised-bed projection in one transaction', async () => {
         const rotatedInputs: ValidateRotatedBlockPlacementInput[] = [];
         const harness = makeHarness({
             blockName: 'Raised_Bed',
@@ -653,13 +599,6 @@ describe('updateGardenBlockForAccount', () => {
             rotationValidation: async (input) => {
                 harness.calls.push('rotation-validation');
                 rotatedInputs.push(input);
-                return { valid: true };
-            },
-            combinedValidation: (snapshot) => {
-                const candidate = snapshot.blocks.find(
-                    (block) => block.id === 'block-1',
-                );
-                assert.equal(candidate?.rotation, 1);
                 return { valid: true };
             },
         });
@@ -677,9 +616,8 @@ describe('updateGardenBlockForAccount', () => {
         });
         assert.equal(rotatedInputs[0]?.candidateRotation, 1);
         assert.equal(rotatedInputs[0]?.placement.stackIndex, 1);
-        assert.deepEqual(harness.calls.slice(-5), [
+        assert.deepEqual(harness.calls.slice(-4), [
             'rotation-validation',
-            'combined-validation',
             'block-update',
             'raised-bed-orientation',
             'cache-bust',
@@ -717,6 +655,5 @@ describe('updateGardenBlockForAccount', () => {
             status: 503,
         });
         assert.equal(harness.calls.includes('block-update'), false);
-        assert.equal(harness.calls.includes('combined-validation'), false);
     });
 });

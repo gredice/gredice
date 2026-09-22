@@ -10,13 +10,11 @@ const command = { accountId: 'account-1', gardenId: 7 } as const;
 
 function makeHarness({
     activeRaisedBedCount = 0,
-    activeStructureCount = 0,
     accountId = command.accountId,
     isDeleted = false,
     isSandbox = false,
 }: Readonly<{
     activeRaisedBedCount?: number;
-    activeStructureCount?: number;
     accountId?: string;
     isDeleted?: boolean;
     isSandbox?: boolean;
@@ -62,17 +60,6 @@ function makeHarness({
             calls.push('raised-beds');
             return Array.from({ length: activeRaisedBedCount }, () => ({
                 status: 'active',
-            }));
-        },
-        listGardenStructuresForUpdate: async (
-            gardenId,
-            receivedTransaction,
-        ) => {
-            assert.equal(gardenId, command.gardenId);
-            assert.equal(receivedTransaction, transaction);
-            calls.push('structures');
-            return Array.from({ length: activeStructureCount }, (_, index) => ({
-                id: `structure-${index.toString()}`,
             }));
         },
         softDeleteGardenOnce: async (gardenId, receivedTransaction) => {
@@ -137,26 +124,10 @@ describe('deleteRealGardenForAccount', () => {
             'garden-lock',
             'target',
             'snapshot',
-            'structures',
             'raised-beds',
             'delete',
             'cache',
         ]);
-    });
-
-    test('rejects deletion while a structure could retain paid principal', async () => {
-        const harness = makeHarness({ activeStructureCount: 2 });
-
-        assert.deepEqual(await harness.service(command), {
-            ok: false,
-            code: 'ACTIVE_STRUCTURES',
-            error: 'Garden cannot be deleted while it has active structures',
-            status: 409,
-            activeStructureCount: 2,
-        });
-        assert.equal(harness.deleted, false);
-        assert.equal(harness.calls.includes('delete'), false);
-        assert.equal(harness.calls.includes('cache'), false);
     });
 
     test('replays an already-deleted garden without another side effect', async () => {
@@ -206,7 +177,6 @@ describe('deleteRealGardenForAccount', () => {
             getGardenDeletionTargetForUpdate: async () => null,
             getGardenPlacementSnapshotForUpdate: async () => null,
             listGardenRaisedBedMetadataForUpdate: async () => [],
-            listGardenStructuresForUpdate: async () => [],
             softDeleteGardenOnce: async () => 'not-found' as const,
             withAccountDeletionFenceTransaction: async () => {
                 throw new AccountDeletionInProgressError(command.accountId);
