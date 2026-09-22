@@ -11719,6 +11719,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.autumnGroundLeafClusters === 'number'
                     ? metadata.autumnGroundLeafClusters
                     : null,
+            autumnRustleTargetGain: numberOrNull(
+                metadata.autumnRustleTargetGain,
+            ),
             autumnEntityLeafClusters:
                 typeof metadata.autumnEntityLeafClusters === 'number'
                     ? metadata.autumnEntityLeafClusters

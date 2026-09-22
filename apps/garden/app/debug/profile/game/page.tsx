@@ -7,6 +7,7 @@ import {
 } from '@gredice/game';
 import { getSeasonDebugDates } from '@gredice/game/seasonal-debug';
 import { ProfileGameScene } from './ProfileGameScene';
+import { resolveGameProfileLeafWind } from './profileAudio';
 import {
     resolveGameProfileDate,
     serializeGameProfileDate,
@@ -303,6 +304,8 @@ export default async function GameProfilePage({
     const mode = resolveMode(firstValue(params.mode));
     const renderDetails = firstValue(params.details) !== '0';
     const showLegend = firstValue(params.legend) !== '0';
+    const soundEnabled = firstValue(params.sound) === '1';
+    const leafWind = resolveGameProfileLeafWind(firstValue(params.leafWind));
     const showHud = firstValue(params.hud) === '1';
     const showDebugHud = firstValue(params.debugHud) === '1';
     const enableControls = firstValue(params.controls) === '1';
@@ -411,6 +414,7 @@ export default async function GameProfilePage({
                 closeupRaisedBedId ?? undefined
             }
             data-game-profile-outline={outlineProfile ? '1' : '0'}
+            data-game-profile-sound={soundEnabled ? '1' : '0'}
             data-game-profile-placement={placementProfile ? '1' : '0'}
             data-game-profile-operation-visuals={operationVisuals ? '1' : '0'}
             data-game-profile-static-scene-cache={staticSceneCacheMode}
@@ -490,10 +494,14 @@ export default async function GameProfilePage({
                 mockGarden
                 mockGardenProfile={mockGardenProfile}
                 noControls={!enableControls}
-                noSound
+                noSound={!soundEnabled}
                 renderDetails={renderDetails}
                 staticOpaqueSceneCache={staticSceneCacheMode === 'cache'}
-                weather={weather}
+                weather={
+                    leafWind === undefined
+                        ? weather
+                        : { ...weather, windSpeed: leafWind }
+                }
                 winterMode={mode === 'snow' ? 'winter' : 'summer'}
                 zoom={isOperationRewardDebug ? 'far' : 'normal'}
             />
