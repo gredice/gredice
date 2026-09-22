@@ -1,8 +1,8 @@
 import {
-    BatteryChargeLevel,
     type HeartbeatData,
     ImageEncoder,
     NiimbotBluetoothClient,
+    PageColorType,
     type PrinterInfo,
     type RfidInfo,
 } from '@mmote/niimbluelib';
@@ -37,21 +37,18 @@ function cloneSnapshot(snapshot: LabelPrinterSnapshot): LabelPrinterSnapshot {
     };
 }
 
-function batteryChargeLevelToPercent(level?: BatteryChargeLevel) {
-    switch (level) {
-        case BatteryChargeLevel.Charge0:
-            return 0;
-        case BatteryChargeLevel.Charge25:
-            return 25;
-        case BatteryChargeLevel.Charge50:
-            return 50;
-        case BatteryChargeLevel.Charge75:
-            return 75;
-        case BatteryChargeLevel.Charge100:
-            return 100;
-        default:
-            return undefined;
+// niimbluelib already scales legacy 0-4 charge levels to 0-100 percent.
+function normalizeBatteryPercent(percent?: number) {
+    if (
+        percent === undefined ||
+        !Number.isFinite(percent) ||
+        percent < 0 ||
+        percent > 100
+    ) {
+        return undefined;
     }
+
+    return percent;
 }
 
 function getErrorMessage(error: unknown) {
@@ -203,7 +200,7 @@ export class GrediceLabelPrinter {
             hardwareVersion: info.hardwareVersion,
             softwareVersion: info.softwareVersion,
             batteryPercent:
-                batteryChargeLevelToPercent(info.charge) ??
+                normalizeBatteryPercent(info.batteryPercents) ??
                 this.snapshot.batteryPercent,
         });
     }
@@ -211,7 +208,7 @@ export class GrediceLabelPrinter {
     private applyHeartbeat(data: HeartbeatData) {
         this.updateSnapshot({
             batteryPercent:
-                batteryChargeLevelToPercent(data.chargeLevel) ??
+                normalizeBatteryPercent(data.batteryPercents) ??
                 this.snapshot.batteryPercent,
             paperInserted: data.paperInserted,
             paperRfidDetected: data.paperRfidSuccess,
@@ -221,10 +218,10 @@ export class GrediceLabelPrinter {
 
     private async readConsumableInfo() {
         try {
-            return await this.client.abstraction.rfidInfo2();
+            return await this.client.protocol.rfidInfo2();
         } catch {
             try {
-                return await this.client.abstraction.rfidInfo();
+                return await this.client.protocol.rfidInfo();
             } catch {
                 return undefined;
             }
@@ -320,7 +317,7 @@ export class GrediceLabelPrinter {
         const [printerInfoResult, heartbeatResult, consumableInfoResult] =
             await Promise.allSettled([
                 this.client.fetchPrinterInfo(),
-                this.client.abstraction.heartbeat(),
+                this.client.protocol.heartbeat(),
                 this.readConsumableInfo(),
             ]);
 
@@ -374,9 +371,10 @@ export class GrediceLabelPrinter {
 
         const encoded = ImageEncoder.encodeCanvas(
             canvas,
+            PageColorType.SingleColor,
             preset.printDirection,
         );
-        const printTask = this.client.abstraction.newPrintTask(
+        const printTask = this.client.protocol.newPrintTask(
             HARVEST_LABEL_PRINT_TASK_TYPE,
             {
                 totalPages: quantity,
@@ -437,7 +435,7 @@ export class GrediceLabelPrinter {
 
         const preset = options?.preset ?? DEFAULT_HARVEST_LABEL_PRESET;
         const canvas = document.createElement('canvas');
-        const printTask = this.client.abstraction.newPrintTask(
+        const printTask = this.client.protocol.newPrintTask(
             HARVEST_LABEL_PRINT_TASK_TYPE,
             {
                 totalPages: renderLabels.length,
@@ -463,6 +461,7 @@ export class GrediceLabelPrinter {
                 renderLabel(canvas, preset);
                 const encoded = ImageEncoder.encodeCanvas(
                     canvas,
+                    PageColorType.SingleColor,
                     preset.printDirection,
                 );
                 await printTask.printPage(encoded, 1);

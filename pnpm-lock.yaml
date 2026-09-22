@@ -1456,8 +1456,8 @@ importers:
   packages/label-printer:
     dependencies:
       '@mmote/niimbluelib':
-        specifier: 0.0.1-alpha.40
-        version: 0.0.1-alpha.40
+        specifier: 0.47.0
+        version: 0.47.0
       qrcode:
         specifier: 1.5.4
         version: 1.5.4
@@ -2144,13 +2144,13 @@ packages:
   '@braintree/sanitize-url@7.1.2':
     resolution: {integrity: sha512-jigsZK+sMF/cuiB7sERuo9V7N9jx+dhmHHnQyDSVdpZwVutaBu7WvNYqMDLSgFgfB30n452TP3vjDAvFC973mA==}
 
-  '@capacitor-community/bluetooth-le@8.2.0':
-    resolution: {integrity: sha512-wsy2h9sVcXaynyb3Nf9fVZklnQHDtIfT4fc6iL9McZvi19rDJ5aCoEBqa4wch5RywbF3Ic1W/StKuHJuWUumiQ==}
+  '@capacitor-community/bluetooth-le@8.3.0':
+    resolution: {integrity: sha512-bjI+m8mZ2AB9xIgwPu9T40QoAC7NErYt6q13zMHBzW3hIAITqQKFiElKOUsX813ItXzb81GoRqjlbSeHlKEzQg==}
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
-  '@capacitor/core@8.4.1':
-    resolution: {integrity: sha512-xqhOGLbTAYeOWK+IDUNSjQJAPapQjRHrIcgk9PYp52or9zFTaaMko31uNi16N6W+CRJ8VrRram6fOYILkBG2Hg==}
+  '@capacitor/core@8.5.2':
+    resolution: {integrity: sha512-agnQbGdhGw/KZFuLf7H9SY2o+oE7upkr/WPQsYaokXP6f9chaE8iVmbKkfN6SVl4w3pmz7oZ3Ur1hbkmy1hx+w==}
 
   '@chevrotain/types@11.1.2':
     resolution: {integrity: sha512-U+HFai5+zmJCkK86QsaJtoITlboZHBqrVketcO2ROv865xfCMSFpELQoz1GkX5GzME8pTa+3kbKrZHQtI0gdbw==}
@@ -3784,8 +3784,8 @@ packages:
   '@microsoft/tsdoc@0.16.0':
     resolution: {integrity: sha512-xgAyonlVVS+q7Vc7qLW0UrJU7rSFcETRWsqdXZtjzRU8dF+6CkozTK4V4y1LwOX7j8r/vHphjDeMeGI4tNGeGA==}
 
-  '@mmote/niimbluelib@0.0.1-alpha.40':
-    resolution: {integrity: sha512-3y4u4GT5T9rDi3FOdF7MnI6muYC+gEscyp14MiBs1tFqS3zd9E5bprHphm9wJeWQbttKue9o7IQrLn6bbTFpww==}
+  '@mmote/niimbluelib@0.47.0':
+    resolution: {integrity: sha512-mcJco+GypEk7uCJWgqJYU73nAmMlpQ2fPD4pgvOdED9X1ypjTXizjuk5/EofThGcXrKZoTDGtThAqXEHh5BKLA==}
 
   '@modelcontextprotocol/sdk@1.29.0':
     resolution: {integrity: sha512-zo37mZA9hJWpULgkRpowewez1y6ML5GsXJPY8FI0tBBCd77HEvza4jDqRKOXgHNn867PVGCyTdzqpz0izu5ZjQ==}
@@ -3969,12 +3969,6 @@ packages:
     engines: {node: ^18.19.0 || >=20.6.0}
     peerDependencies:
       '@opentelemetry/api': '>=1.0.0 <1.10.0'
-
-  '@opentelemetry/exporter-logs-otlp-http@0.220.0':
-    resolution: {integrity: sha512-8186thl+pTw64iz/qEEen5oJZoZ/gO73XruChdaGlYdWOdBIQ42r+vHLf6a7vIDqTD4b8ZOoMlyxptanECaI9A==}
-    engines: {node: ^18.19.0 || >=20.6.0}
-    peerDependencies:
-      '@opentelemetry/api': ^1.3.0
 
   '@opentelemetry/otlp-exporter-base@0.220.0':
     resolution: {integrity: sha512-CXYo8UD5Mn9YbgebO2EL4wejtA+gxLmLiu6HCk2KH2BR7XhFN6/6p1UlCb23DYCjeYkndevLHuejCCN1yx4+OQ==}
@@ -11512,12 +11506,12 @@ snapshots:
 
   '@braintree/sanitize-url@7.1.2': {}
 
-  '@capacitor-community/bluetooth-le@8.2.0(@capacitor/core@8.4.1)':
+  '@capacitor-community/bluetooth-le@8.3.0(@capacitor/core@8.5.2)':
     dependencies:
-      '@capacitor/core': 8.4.1
+      '@capacitor/core': 8.5.2
       '@types/web-bluetooth': 0.0.20
 
-  '@capacitor/core@8.4.1':
+  '@capacitor/core@8.5.2':
     dependencies:
       tslib: 2.8.1
 
@@ -13140,10 +13134,10 @@ snapshots:
 
   '@microsoft/tsdoc@0.16.0': {}
 
-  '@mmote/niimbluelib@0.0.1-alpha.40':
+  '@mmote/niimbluelib@0.47.0':
     dependencies:
-      '@capacitor-community/bluetooth-le': 8.2.0(@capacitor/core@8.4.1)
-      '@capacitor/core': 8.4.1
+      '@capacitor-community/bluetooth-le': 8.3.0(@capacitor/core@8.5.2)
+      '@capacitor/core': 8.5.2
       async-mutex: 0.5.0
       crc-32: 1.2.2
       eventemitter3: 5.0.4
@@ -13277,15 +13271,6 @@ snapshots:
     dependencies:
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/semantic-conventions': 1.43.0
-
-  '@opentelemetry/exporter-logs-otlp-http@0.220.0(@opentelemetry/api@1.9.1)':
-    dependencies:
-      '@opentelemetry/api': 1.9.1
-      '@opentelemetry/api-logs': 0.220.0
-      '@opentelemetry/core': 2.9.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/otlp-exporter-base': 0.220.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/otlp-transformer': 0.220.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/sdk-logs': 0.220.0(@opentelemetry/api@1.9.1)
 
   '@opentelemetry/otlp-exporter-base@0.220.0(@opentelemetry/api@1.9.1)':
     dependencies:

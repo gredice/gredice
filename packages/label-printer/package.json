@@ -11,10 +11,11 @@
     "scripts": {
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
         "lint": "biome check --write",
-        "lint:migrate": "biome migrate --write"
+        "lint:migrate": "biome migrate --write",
+        "typecheck": "tsc --noEmit --pretty false"
     },
     "dependencies": {
-        "@mmote/niimbluelib": "0.0.1-alpha.40",
+        "@mmote/niimbluelib": "0.47.0",
         "qrcode": "1.5.4"
     },
     "devDependencies": {
