@@ -35,6 +35,8 @@ type LoopRequest = {
     stopTimer: ReturnType<typeof setTimeout> | null;
     failedToLoad: boolean;
     silentFailure: boolean;
+    /** Bumped when src/channel/loop change so in-flight loads for the old asset go stale. */
+    generation: number;
 };
 
 type ChannelState = {
@@ -377,7 +379,10 @@ class GameAudioManager {
             existing.loop = loop;
             existing.volume = clampVolume(volume);
             existing.silentFailure = silentFailure;
-            if (needsRestart) existing.failedToLoad = false;
+            if (needsRestart) {
+                existing.failedToLoad = false;
+                existing.generation++;
+            }
 
             if (needsRestart && existing.isRequested) {
                 this.stopLoopSource(existing);
@@ -401,6 +406,7 @@ class GameAudioManager {
             stopTimer: null,
             failedToLoad: false,
             silentFailure,
+            generation: 0,
         });
     };
 
@@ -651,9 +657,13 @@ class GameAudioManager {
         }
 
         this.startingLoops.add(id);
+        const generation = loop.generation;
+        let isStale = false;
         try {
             const buffer = await this.loadBuffer(loop.src);
+            isStale = loop.generation !== generation;
             if (
+                isStale ||
                 context.state !== 'running' ||
                 !isPageVisible() ||
                 !loop.isRequested ||
@@ -683,12 +693,16 @@ class GameAudioManager {
             if (loop.fadeSeconds > 0) this.applyLoopTarget(loop);
             source.start();
         } catch (error) {
+            isStale = loop.generation !== generation;
+            if (isStale) return;
             // Opt-in silent layers do not retry a missing asset on every weather update.
             loop.failedToLoad = loop.silentFailure;
             if (!loop.silentFailure)
                 console.warn('Failed to play looping audio', loop.src, error);
         } finally {
             this.startingLoops.delete(id);
+            // A replacement registered mid-load was skipped while this attempt held the slot.
+            if (isStale) void this.startLoop(id);
         }
     }
 

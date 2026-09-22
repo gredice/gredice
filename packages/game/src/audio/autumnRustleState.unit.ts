@@ -12,26 +12,26 @@ const autumn = getAutumnState({
     phase: 'mid',
     yearPhase: 0.8,
 });
+type RustleInput = Parameters<typeof resolveAutumnRustleTarget>[0];
 const defaults = {
     windSpeed: 1,
     season: 'autumn',
     autumn,
     hasTrees: true,
     enabled: true,
-} as const;
-const gain = (
-    options: Partial<Parameters<typeof resolveAutumnRustleTarget>[0]> = {},
-) => resolveAutumnRustleTarget({ ...defaults, ...options });
+} satisfies RustleInput;
+const gain = (options: Partial<RustleInput> = {}) =>
+    resolveAutumnRustleTarget({ ...defaults, ...options });
 
 test('summer, no foliage, absent trees, calm and disabled audio are silent', () => {
     for (const options of [
-        { season: 'summer' as const },
+        { season: 'summer' },
         { hasTrees: false },
         { windSpeed: 0 },
         { windSpeed: Number.NaN },
         { enabled: false },
         { autumn: { ...autumn, leafRetention: 0, settledLeafAmount: 0 } },
-    ])
+    ] satisfies Partial<RustleInput>[])
         assert.equal(gain(options), 0);
 });
 test('wind and seasonal presence map into a quiet bounded mixer target', () => {

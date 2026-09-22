@@ -94,8 +94,10 @@ function harness(t: TestContext, missing = false) {
         AudioContext: Context,
     };
     const descriptors = Object.keys(globals).map(
-        (key) =>
-            [key, Object.getOwnPropertyDescriptor(globalThis, key)] as const,
+        (key): [string, PropertyDescriptor | undefined] => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ],
     );
     for (const [key, value] of Object.entries(globals))
         Object.defineProperty(globalThis, key, { value, configurable: true });
@@ -206,3 +208,36 @@ test('unregister while loading cannot leave an orphaned audible source', async (
     await setImmediate();
     assert.equal(sources.length, 0);
 });
+for (const outcome of ['fails', 'succeeds']) {
+    test(`replacing a loop while its previous load ${outcome} starts the replacement`, async (t) => {
+        const { audio, sources, fetch } = harness(t);
+        const { promise: previous, resolve } =
+            Promise.withResolvers<Response>();
+        fetch.mock.mockImplementation(async (input) =>
+            String(input) === '/rustle.wav'
+                ? previous
+                : new Response(new Uint8Array(4)),
+        );
+        audio.setLoopTargetVolume('rustle', 0.1);
+        audio.registerLoop({
+            id: 'rustle',
+            channel: 'ambient',
+            src: '/rustle-v2.wav',
+            loop: true,
+            volume: 0.1,
+            silentFailure: true,
+        });
+        resolve(
+            new Response(new Uint8Array(4), {
+                status: outcome === 'fails' ? 404 : 200,
+            }),
+        );
+        for (let tick = 0; tick < 5; tick++) await setImmediate();
+        assert.deepEqual(
+            fetch.mock.calls.map(({ arguments: [input] }) => String(input)),
+            ['/rustle.wav', '/rustle-v2.wav'],
+        );
+        assert.equal(sources.length, 1);
+        assert.equal(sources[0].starts, 1);
+    });
+}
