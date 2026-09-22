@@ -80,6 +80,7 @@ export type GardenStructureBuildSession = Readonly<{
 export type MockGardenProfile =
     | 'default'
     | 'dense'
+    | 'dense-autumn'
     | 'fauna-heavy'
     | 'high-target'
     | 'operation-rewards'

@@ -76,7 +76,7 @@ The mesh and its geometry/material are disposed on unmount. Profile metadata
 exposes `autumnLeafCount` and `autumnLeafCapacity`.
 
 `GAME_PROFILE_SCENARIO_SET=autumn pnpm --filter garden profile:game` profiles the
-dense garden in wind at the shared mid-autumn fixture date on low/medium/high.
+dense autumn-surface garden in wind at the shared late-autumn fixture date on low/medium/high.
 Use `fixedTimeSeconds` in a debug link for reproducible still captures; omit it
 when measuring animation cost.
 
@@ -121,3 +121,6 @@ Standalone WoodenBench/OutletDisplayTable need integration with their animated
 world transforms; GardenBox needs its articulated lid tracked. These and other
 unreviewed tools, gates/extensions, broad stones and large props remain follow-up
 work in [#4921](https://github.com/gredice/gredice/issues/4921). There is no automatic fallback that decorates arbitrary meshes.
+
+The `dense-autumn` mock profile places 25 trees beside 50 supported props to
+exercise both accumulation layers and their scene caps in production profiling.

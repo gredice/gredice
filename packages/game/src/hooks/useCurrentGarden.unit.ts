@@ -33,3 +33,27 @@ test('fauna-heavy mock garden reuses the deterministic all-animal fixture', () =
     assert.notStrictEqual(secondGarden.stacks, garden.stacks);
     assert.notStrictEqual(secondGarden.stacks[0], garden.stacks[0]);
 });
+
+test('dense autumn profile places eligible static props beside deciduous trees', () => {
+    const garden = createMockGarden('summer', 'dense-autumn');
+    const props = garden.stacks.filter((stack) =>
+        stack.blocks.some((block) =>
+            ['Stool', 'GiftBox_BlueWhite'].includes(block.name),
+        ),
+    );
+    const trees = garden.stacks.filter((stack) =>
+        stack.blocks.some((block) => block.name === 'Tree'),
+    );
+    assert.equal(props.length, 50);
+    assert(trees.length >= 25);
+    for (const prop of props)
+        assert(
+            trees.some(
+                (tree) =>
+                    Math.hypot(
+                        tree.position.x - prop.position.x,
+                        tree.position.z - prop.position.z,
+                    ) <= 1,
+            ),
+        );
+});
