@@ -14,7 +14,7 @@ export type SuncokretModelConfig = AiChatPricing & {
     enabled: boolean;
 };
 
-const DEFAULT_MODEL_ID = 'openai/gpt-5.6-luna';
+const DEFAULT_MODEL_ID = 'openai/gpt-6-luna';
 
 type SuncokretModelUsdConfig = {
     id: string;
@@ -30,12 +30,12 @@ type SuncokretModelUsdConfig = {
 // these values with Gateway catalog pricing and persist the billed request cost.
 const MODEL_REGISTRY_USD: SuncokretModelUsdConfig[] = [
     {
-        id: 'openai/gpt-5.6-luna',
-        label: 'OpenAI GPT-5.6 Luna',
-        inputUsdPerMillionTokens: 0.2,
-        outputUsdPerMillionTokens: 1.2,
-        cachedInputUsdPerMillionTokens: 0.02,
-        cacheWriteInputUsdPerMillionTokens: 0.25,
+        id: 'openai/gpt-6-luna',
+        label: 'OpenAI GPT-6 Luna',
+        inputUsdPerMillionTokens: 0.1,
+        outputUsdPerMillionTokens: 0.5,
+        cachedInputUsdPerMillionTokens: 0.01,
+        cacheWriteInputUsdPerMillionTokens: 0.125,
         enabled: true,
     },
     {

@@ -41,23 +41,23 @@ function withModelEnv(
     }
 }
 
-test('getSuncokretModel defaults to OpenAI GPT-5.6 Luna', () => {
+test('getSuncokretModel defaults to OpenAI GPT-6 Luna', () => {
     withModelEnv({}, () => {
-        assert.equal(getSuncokretModel()?.id, 'openai/gpt-5.6-luna');
+        assert.equal(getSuncokretModel()?.id, 'openai/gpt-6-luna');
     });
 });
 
 test('getSuncokretModel falls back to the first enabled model for automatic selection', () => {
     withModelEnv(
         {
-            allowlist: 'openai/gpt-5.6-luna',
+            allowlist: 'openai/gpt-6-luna',
         },
         () => {
             const model = getSuncokretModel();
 
-            assert.equal(model?.id, 'openai/gpt-5.6-luna');
-            assert.equal(model?.inputEurPerMillionTokens, 0.176);
-            assert.equal(model?.outputEurPerMillionTokens, 1.056);
+            assert.equal(model?.id, 'openai/gpt-6-luna');
+            assert.equal(model?.inputEurPerMillionTokens, 0.088);
+            assert.equal(model?.outputEurPerMillionTokens, 0.44);
         },
     );
 });
@@ -65,15 +65,15 @@ test('getSuncokretModel falls back to the first enabled model for automatic sele
 test('getSuncokretModel applies the configured USD to EUR rate', () => {
     withModelEnv(
         {
-            allowlist: 'openai/gpt-5.6-luna',
-            defaultModel: 'openai/gpt-5.6-luna',
+            allowlist: 'openai/gpt-6-luna',
+            defaultModel: 'openai/gpt-6-luna',
             usdToEurRate: '0.9',
         },
         () => {
             const model = getSuncokretModel();
 
-            assert.equal(model?.inputEurPerMillionTokens, 0.18);
-            assert.equal(model?.outputEurPerMillionTokens, 1.08);
+            assert.equal(model?.inputEurPerMillionTokens, 0.09);
+            assert.equal(model?.outputEurPerMillionTokens, 0.45);
         },
     );
 });
@@ -81,7 +81,7 @@ test('getSuncokretModel applies the configured USD to EUR rate', () => {
 test('getSuncokretModel keeps explicit unavailable model requests invalid', () => {
     withModelEnv(
         {
-            allowlist: 'openai/gpt-5.6-luna',
+            allowlist: 'openai/gpt-6-luna',
         },
         () => {
             assert.equal(getSuncokretModel('deepseek/deepseek-v4-flash'), null);
@@ -92,16 +92,16 @@ test('getSuncokretModel keeps explicit unavailable model requests invalid', () =
 test('getSuncokretPricedModel uses current AI Gateway catalog pricing', async () => {
     await withModelEnvAsync(
         {
-            allowlist: 'openai/gpt-5.6-luna',
+            allowlist: 'openai/gpt-6-luna',
         },
         async () => {
             const model = await getSuncokretPricedModel(
-                'openai/gpt-5.6-luna',
+                'openai/gpt-6-luna',
                 async () => ({
                     models: [
                         {
-                            id: 'openai/gpt-5.6-luna',
-                            name: 'GPT 5.6 Luna',
+                            id: 'openai/gpt-6-luna',
+                            name: 'GPT-6 Luna',
                             pricing: {
                                 input: '0.00000015',
                                 output: '0.0000009',
@@ -111,7 +111,7 @@ test('getSuncokretPricedModel uses current AI Gateway catalog pricing', async ()
                             specification: {
                                 specificationVersion: 'v4',
                                 provider: 'gateway',
-                                modelId: 'openai/gpt-5.6-luna',
+                                modelId: 'openai/gpt-6-luna',
                             },
                             modelType: 'language',
                         },
@@ -157,7 +157,7 @@ test('Suncokret Gateway billed cost sums unique generation costs', async () => {
             upstreamInferenceCost: 0,
             usage: 0,
             createdAt: '2026-08-05T00:00:00.000Z',
-            model: 'openai/gpt-5.6-luna',
+            model: 'openai/gpt-6-luna',
             isByok: false,
             providerName: 'openai',
             streamed: true,
