@@ -179,14 +179,14 @@ export default async function SunflowersPage() {
                         <CardContent>
                             <Stack spacing={3}>
                                 <Typography level="body2" secondary>
-                                    Pri naručivanju vrtne akcije suncokreti se
-                                    najprije rezerviraju. Ako se akcija otkaže
-                                    prije obrade, rezervacija se vraća na saldo.
+                                    Pri potvrdi narudžbe vrtne akcije suncokreti
+                                    se odmah oduzimaju sa salda. Ako se akcija
+                                    otkaže prije obrade, iznos se vraća na saldo.
                                 </Typography>
                                 <Typography level="body2" secondary>
-                                    Nakon izvršene akcije rezervirani iznos se
-                                    naplaćuje iz salda, a dokumenti su dostupni
-                                    u korisničkom profilu.
+                                    Nakon izvršene akcije eventualni povrat ili
+                                    korekciju rješava podrška, a dokumenti su
+                                    dostupni u korisničkom profilu.
                                 </Typography>
                                 <Link
                                     className="font-medium text-primary underline-offset-4 hover:underline"

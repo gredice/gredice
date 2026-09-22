@@ -115,9 +115,9 @@ export const publicFaqEntries = [
     {
         name: 'sunflower-reservation',
         category: 'pricing',
-        header: 'Kada se suncokreti rezerviraju, a kada naplaćuju?',
+        header: 'Kada se suncokreti naplaćuju, a kada vraćaju?',
         content:
-            'Pri naručivanju radnje potreban iznos najprije se rezervira. Nakon izvršenja radnje iznos se naplaćuje iz salda. Ako se radnja otkaže prije obrade, rezervacija se otpušta i iznos ponovno postaje raspoloživ. [Pravila salda i povrata](/povrati-i-povrat-novca).',
+            'Potreban iznos oduzima se sa salda odmah pri potvrdi narudžbe radnje, a ne tek nakon izvršenja. Ako se radnja otkaže prije obrade, suncokreti se vraćaju na saldo kao povrat. Za već izvršenu radnju povrat ili korekciju dogovaraš s podrškom. [Pravila salda i povrata](/povrati-i-povrat-novca).',
     },
     {
         name: 'sunflower-bonus',
@@ -194,7 +194,7 @@ export const publicFaqEntries = [
         category: 'maintenance',
         header: 'Mogu li otkazati naručenu radnju?',
         content:
-            'Mogućnost otkazivanja ovisi o trenutačnom statusu radnje. Ako je otkazivanje dostupno u aplikaciji, koristi tu mogućnost i provjeri potvrdu. Za radnju koja je već u obradi ili izvršena javi se podršci. Kod otkazivanja prije obrade rezervirani suncokreti vraćaju se na raspoloživi saldo. [Pravila povrata](/povrati-i-povrat-novca).',
+            'Mogućnost otkazivanja ovisi o trenutačnom statusu radnje. Ako je otkazivanje dostupno u aplikaciji, koristi tu mogućnost i provjeri potvrdu. Za radnju koja je već u obradi ili izvršena javi se podršci. Kod otkazivanja prije obrade plaćeni suncokreti vraćaju se na saldo. [Pravila povrata](/povrati-i-povrat-novca).',
     },
     {
         name: 'operation-scope',

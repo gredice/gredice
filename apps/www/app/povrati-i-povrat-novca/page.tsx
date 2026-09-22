@@ -9,7 +9,7 @@ import { KnownPages } from '../../src/KnownPages';
 export const metadata = createPublicMetadata({
     title: 'Povrat novca',
     description:
-        'Informacije o povratu novca, suncokretima, rezervacijama i korekcijama Gredice salda.',
+        'Informacije o povratu novca, suncokretima, otkazivanjima i korekcijama Gredice salda.',
     path: KnownPages.Refunds,
     eyebrow: 'Povrati',
 });
@@ -51,16 +51,15 @@ export default function RefundsPage() {
                     </p>
                     <p>
                         Kada naručiš akciju u vrtu, potreban broj suncokreta
-                        najprije se rezervira. Ako se akcija otkaže prije
-                        obrade, rezervacija se otpušta i suncokreti se vraćaju
-                        na raspoloživi saldo.
+                        oduzima se sa salda odmah pri potvrdi narudžbe. Ako se
+                        akcija otkaže prije obrade, suncokreti se vraćaju na
+                        saldo kao povrat.
                     </p>
                     <p>
-                        Nakon što je akcija izvršena i naplaćena iz salda,
-                        eventualni povrat ili korekcija rješava se kroz
-                        korisničku podršku. Bonus suncokreti iz paketa ne
-                        predstavljaju zaseban novčani iznos i ne obećavaju
-                        automatski gotovinski povrat.
+                        Nakon što je akcija izvršena, eventualni povrat ili
+                        korekcija rješava se kroz korisničku podršku. Bonus
+                        suncokreti iz paketa ne predstavljaju zaseban novčani
+                        iznos i ne obećavaju automatski gotovinski povrat.
                     </p>
                     <h2>Kako zatražiti povrat</h2>
                     <p>
