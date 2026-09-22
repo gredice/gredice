@@ -2,6 +2,7 @@ import type { OperationData } from '@gredice/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { useMemo } from 'react';
+import { outletGardenTargetGardenQueryKey } from '../../../packages/game/src/hooks/useOutletGardenTargetGarden';
 import { GardenActionHud } from '../../../packages/game/src/hud/GardenActionHud';
 import type { RaisedBedFieldTargetGarden } from '../../../packages/game/src/hud/raisedBed/plantPickerNavigation';
 import { createGardenPosition } from '../../../packages/game/src/types/Stack';
@@ -45,11 +46,15 @@ export const shortcutOperation = {
 
 export function GardenActionStory({
     searchParams = 'sijanje=1',
+    anotherGarden = false,
+    inactive = false,
     full = false,
     unavailableSort = false,
     application = 'raisedBedFull',
 }: {
     searchParams?: string;
+    anotherGarden?: boolean;
+    inactive?: boolean;
     full?: boolean;
     unavailableSort?: boolean;
     application?: OperationData['attributes']['application'];
@@ -89,7 +94,7 @@ export function GardenActionStory({
                           ],
                           raisedBeds: garden.raisedBeds.map((bed) => ({
                               ...bed,
-                              status: 'active',
+                              status: inactive ? 'new' : 'active',
                               fields: full
                                   ? Array.from(
                                         { length: 18 },
@@ -118,8 +123,54 @@ export function GardenActionStory({
                 },
             ],
         );
+        if (anotherGarden) {
+            const current = client.getQueryData<RaisedBedFieldTargetGarden>([
+                'gardens',
+                'current',
+                'summer',
+                1,
+            ]);
+            if (current) {
+                const alternative = {
+                    ...current,
+                    id: 2,
+                    name: 'Drugi vrt',
+                    raisedBeds: current.raisedBeds.map((bed) => ({
+                        ...bed,
+                        id: 2,
+                        name: 'Druga gredica',
+                        status: 'active',
+                        fields: [],
+                    })),
+                };
+                client.setQueryData(
+                    ['gardens', 'current', 'summer', 2],
+                    alternative,
+                );
+                client.setQueryData(
+                    outletGardenTargetGardenQueryKey(2),
+                    alternative,
+                );
+                const gardens = [
+                    { id: 1, name: 'Mock vrt', isSandbox: false },
+                    { id: 2, name: 'Drugi vrt', isSandbox: false },
+                ];
+                client.setQueryData(['gardens'], gardens);
+                client.setQueryData(
+                    ['gardens', 'accountGroups'],
+                    [
+                        {
+                            accountId: 'account-1',
+                            name: 'Račun',
+                            isCurrent: true,
+                            gardens,
+                        },
+                    ],
+                );
+            }
+        }
         return client;
-    }, [application, full, unavailableSort]);
+    }, [anotherGarden, application, full, inactive, unavailableSort]);
     const store = useMemo(
         () =>
             createGameState({

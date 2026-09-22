@@ -4,6 +4,17 @@ export type GardenAction =
 
 export const gardenActionQueryKeys = ['sijanje', 'sorta', 'radnja'];
 
+export function isGardenOperationApplication(
+    application: string | null | undefined,
+) {
+    return (
+        typeof application === 'string' &&
+        ['garden', 'raisedBedFull', 'raisedBed1m', 'plant'].includes(
+            application,
+        )
+    );
+}
+
 function readId(value: string | null) {
     if (!value || !/^[1-9]\d*$/u.test(value)) return null;
     const id = Number(value);

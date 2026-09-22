@@ -11,7 +11,9 @@ OAuth sign-in preserves the validated action.
 
 After the Garden opening flow, `GardenActionHud` selects the first active,
 valid raised bed with an available field, respecting planted crops and pending
-cart footprints. Plant links open variety selection; variety links also select
+cart footprints. If the current garden has no compatible target, it checks the
+other non-sandbox gardens in the current account and switches before opening
+the dialog. Plant links open variety selection; variety links also select
 the requested variety. Operation links open the existing scheduling dialog for
 the first compatible garden, bed, field, or versioned selected-planting target.
 Opening a link never submits a cart mutation; users confirm in the existing

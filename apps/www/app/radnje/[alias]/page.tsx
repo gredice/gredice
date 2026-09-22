@@ -1,4 +1,7 @@
-import { gardenActionUrl } from '@gredice/js/gardenActions';
+import {
+    gardenActionUrl,
+    isGardenOperationApplication,
+} from '@gredice/js/gardenActions';
 import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
 import { decodeRouteParam } from '@gredice/js/uri';
 import { GameReceiptIcon } from '@gredice/ui/GameIcons';
@@ -145,7 +148,10 @@ export default async function OperationPage(
                     header={operation.information.label}
                     subHeader={operation.information.shortDescription}
                     headerChildren={
-                        operation.attributes.internal !== true ? (
+                        operation.attributes.internal !== true &&
+                        isGardenOperationApplication(
+                            operation.attributes.application,
+                        ) ? (
                             <NavigatingButton
                                 href={gardenActionUrl(KnownPages.GardenApp, {
                                     type: 'operation',

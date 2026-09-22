@@ -1,6 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { gardenActionPath, gardenActionUrl, readGardenAction } from './index';
+import {
+    gardenActionPath,
+    gardenActionUrl,
+    isGardenOperationApplication,
+    readGardenAction,
+} from './index';
+
+test('public operation shortcuts exclude farm-only and unknown scopes', () => {
+    for (const scope of ['garden', 'raisedBedFull', 'raisedBed1m', 'plant'])
+        assert.equal(isGardenOperationApplication(scope), true);
+    for (const scope of ['farm', '', null, undefined])
+        assert.equal(isGardenOperationApplication(scope), false);
+});
 
 test('plant, variety and operation links round-trip through the shared contract', () => {
     for (const action of [

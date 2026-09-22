@@ -153,3 +153,44 @@ test('mismatched plant and variety links are rejected', async ({
         page.getByText(/Ova biljka ili sorta više nije dostupna/),
     ).toBeVisible();
 });
+
+test('sowing switches to another owned garden when the current garden is full', async ({
+    mount,
+    page,
+}) => {
+    await mount(
+        <GardenActionStory
+            full
+            anotherGarden
+            searchParams="sijanje=1&sorta=101"
+        />,
+    );
+    await expect(page.getByRole('dialog')).toHaveCount(1);
+    await expect(
+        page.getByText('Druga gredica · Polje 1', { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByTestId('garden-action-target')).toContainText(
+        '"gredica":"Druga gredica"',
+    );
+    await expect(
+        page.getByRole('button', { name: 'Dodaj u košaru', exact: true }),
+    ).toBeEnabled();
+});
+
+test('operation shortcut switches gardens before opening its target', async ({
+    mount,
+    page,
+}) => {
+    await mount(
+        <GardenActionStory inactive anotherGarden searchParams="radnja=501" />,
+    );
+    await expect(
+        page.getByRole('dialog', { name: 'Zakaži radnju: Okopavanje' }),
+    ).toBeVisible();
+    await expect(
+        page.getByText('Druga gredica', { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByTestId('garden-action-target')).toContainText(
+        '"gredica":"Druga gredica"',
+    );
+});
