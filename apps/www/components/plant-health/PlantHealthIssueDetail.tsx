@@ -3,15 +3,13 @@ import { Chip } from '@gredice/ui/Chip';
 import { GamePlantDiseaseIcon, GamePlantPestIcon } from '@gredice/ui/GameIcons';
 import { Markdown } from '@gredice/ui/Markdown';
 import { PageHeader } from '@gredice/ui/PageHeader';
-import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import Link from 'next/link';
-import { KnownPages } from '../../src/KnownPages';
 import { CommunityEditButton } from '../community-edits/CommunityEditButton';
 import { FeedbackModal } from '../shared/feedback/FeedbackModal';
 import { PublicBreadcrumbs } from '../shared/seo/PublicBreadcrumbs';
+import { PlantHealthAffectedPlants } from './PlantHealthAffectedPlants';
 import { PlantHealthIssueOperations } from './PlantHealthIssueOperations';
 import {
     type PlantHealthIssueKind,
@@ -147,72 +145,12 @@ export function PlantHealthIssueDetail({
                     </Stack>
                 </Stack>
                 <Stack spacing={6}>
-                    <Stack spacing={3}>
-                        <Row
-                            alignItems="center"
-                            justifyContent="between"
-                            spacing={3}
-                            className="flex-wrap"
-                        >
-                            <Typography level="h2" className="text-2xl">
-                                Pogođene biljke
-                            </Typography>
-                            <CommunityEditButton
-                                entityId={issue.id}
-                                entityTypeName={entityTypeName}
-                                publicPath={path}
-                                sectionKey="relationships"
-                            />
-                        </Row>
-                        {affectedPlants.length > 0 ? (
-                            <div className="grid grid-cols-1 gap-2">
-                                {affectedPlants.map((plant) => (
-                                    <Link
-                                        key={plant.id}
-                                        href={KnownPages.Plant(
-                                            plant.slug || plant.name,
-                                        )}
-                                        className="rounded-md border p-3 transition-colors hover:bg-muted"
-                                    >
-                                        <Row spacing={3} alignItems="center">
-                                            <PlantOrSortImage
-                                                plant={{
-                                                    image: plant.image,
-                                                    information: {
-                                                        name: plant.name,
-                                                    },
-                                                }}
-                                                width={48}
-                                                height={48}
-                                                className="rounded-md object-cover"
-                                            />
-                                            <Stack
-                                                spacing={0}
-                                                className="min-w-0"
-                                            >
-                                                <Typography className="truncate">
-                                                    {plant.name}
-                                                </Typography>
-                                                {plant.latinName && (
-                                                    <Typography
-                                                        level="body3"
-                                                        secondary
-                                                        className="truncate italic"
-                                                    >
-                                                        {plant.latinName}
-                                                    </Typography>
-                                                )}
-                                            </Stack>
-                                        </Row>
-                                    </Link>
-                                ))}
-                            </div>
-                        ) : (
-                            <Typography level="body2" secondary>
-                                Trenutno nema navedenih pogođenih biljaka.
-                            </Typography>
-                        )}
-                    </Stack>
+                    <PlantHealthAffectedPlants
+                        plants={affectedPlants}
+                        entityId={issue.id}
+                        entityTypeName={entityTypeName}
+                        publicPath={path}
+                    />
                     {sources.length > 0 && (
                         <Stack spacing={2}>
                             <Typography level="h2" className="text-2xl">
