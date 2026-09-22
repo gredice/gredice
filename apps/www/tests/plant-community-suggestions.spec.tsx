@@ -211,3 +211,53 @@ for (const width of [375, 1280]) {
         });
     });
 }
+
+test('changing the plant resets the health suggestion draft and selected plant', async ({
+    mount,
+    page,
+}) => {
+    let submittedBody: unknown;
+    await page.route(
+        '**/api/gredice/api/directories/community-edits/entity-suggestions',
+        async (route) => {
+            submittedBody = route.request().postDataJSON();
+            await route.fulfill({
+                status: 201,
+                json: { requestId: 47, status: 'pending_admin_approval' },
+            });
+        },
+    );
+    const component = await mount(<PlantCommunitySuggestionsHarness />);
+    await page.getByRole('button', { name: 'Predloži novu bolest' }).click();
+    await expect(
+        page.getByRole('button', { name: 'Ukloni biljku Bob' }),
+    ).toBeVisible();
+    await page.getByLabel('Naziv bolesti').fill('Prijedlog za bob');
+    await component.update(
+        <PlantCommunitySuggestionsHarness
+            plantId={11}
+            plantName="Grašak"
+            publicPath="/biljke/grasak"
+        />,
+    );
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Predloži novu bolest' }).click();
+    await expect(
+        page.getByRole('button', { name: 'Ukloni biljku Grašak' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Ukloni biljku Bob' }),
+    ).toHaveCount(0);
+    await expect(page.getByLabel('Naziv bolesti')).toHaveValue('');
+    await page.getByLabel('Naziv bolesti').fill('Prijedlog za grašak');
+    await page.getByLabel('Kratki opis bolesti').fill('Opis problema.');
+    await page.getByLabel('Simptomi').fill('Vidljivi znakovi na listovima.');
+    await page.getByLabel('Uvjeti pojave').fill('Toplo i vlažno vrijeme.');
+    await page.getByRole('button', { name: 'Pošalji' }).click();
+    await expect(page.getByText('Prijedlog #47 je poslan')).toBeVisible();
+    expect(submittedBody).toMatchObject({
+        kind: 'disease',
+        affectedPlantIds: [11],
+        publicPath: '/biljke/grasak',
+    });
+});

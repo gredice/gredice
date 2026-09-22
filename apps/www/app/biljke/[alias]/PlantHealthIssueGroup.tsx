@@ -55,6 +55,7 @@ export function PlantHealthIssueGroup({
                 </div>
             ) : null}
             <CommunityEntitySuggestionButton
+                key={plantId}
                 kind={kind}
                 plants={[{ value: String(plantId), label: plantName }]}
                 defaultAffectedPlantId={plantId}

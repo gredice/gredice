@@ -5,8 +5,14 @@ import { PlantTips } from '../app/biljke/[alias]/PlantTips';
 
 export function PlantCommunitySuggestionsHarness({
     populated = false,
+    plantId = 7,
+    plantName = 'Bob',
+    publicPath = '/biljke/bob',
 }: {
     populated?: boolean;
+    plantId?: number;
+    plantName?: string;
+    publicPath?: string;
 }) {
     const queryClient = new QueryClient({
         defaultOptions: { queries: { retry: false } },
@@ -16,12 +22,12 @@ export function PlantCommunitySuggestionsHarness({
         <QueryClientProvider client={queryClient}>
             <ThemeProvider attribute="class" forcedTheme="light">
                 <main className="mx-auto max-w-5xl space-y-8 p-4">
-                    <h1>Bob</h1>
+                    <h1>{plantName}</h1>
                     <PlantTips
                         plant={{
-                            id: 7,
+                            id: plantId,
                             information: {
-                                name: 'Bob',
+                                name: plantName,
                                 tip: populated
                                     ? [
                                           {
@@ -33,7 +39,7 @@ export function PlantCommunitySuggestionsHarness({
                                     : undefined,
                             },
                         }}
-                        publicPath="/biljke/bob"
+                        publicPath={publicPath}
                     />
                     <PlantHealthSection
                         health={
@@ -62,9 +68,9 @@ export function PlantCommunitySuggestionsHarness({
                                   }
                                 : undefined
                         }
-                        plantId={7}
-                        plantName="Bob"
-                        publicPath="/biljke/bob"
+                        plantId={plantId}
+                        plantName={plantName}
+                        publicPath={publicPath}
                     />
                 </main>
             </ThemeProvider>

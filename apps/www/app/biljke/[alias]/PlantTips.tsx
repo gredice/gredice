@@ -51,6 +51,7 @@ export function PlantTips({
                     </Accordion>
                 ))}
                 <CommunityEntitySuggestionButton
+                    key={plant.id}
                     kind="plantTip"
                     parentPlantId={plant.id}
                     parentPlantName={plant.information.name}
