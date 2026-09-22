@@ -32,8 +32,8 @@
         "profile:game:existing": "node scripts/profile-game-scene.mjs",
         "profile:game:start": "GAME_PROFILE_BASE_URL=http://localhost:3101 GAME_PROFILE_START_SERVER=1 node scripts/profile-game-scene.mjs",
         "profile:game:ci": "GAME_PROFILE_FAIL_ON_BUDGET=1 pnpm run profile:game",
-        "test": "pnpm run test:sw && pnpm run test:profile && pnpm run test:run",
-        "test:ci:prepare": "pnpm run test:sw && pnpm run test:profile",
+        "test": "pnpm run test:posthog && pnpm run test:sw && pnpm run test:profile && pnpm run test:run",
+        "test:ci:prepare": "pnpm run test:posthog && pnpm run test:sw && pnpm run test:profile",
         "test:prepare": "turbo build --filter=garden",
         "test:run": "playwright test",
         "test:profile": "node --experimental-strip-types --test scripts/profile-game-scene.unit.mjs scripts/compare-game-profile-reports.unit.mjs app/debug/profile/game/profileFlags.unit.ts app/debug/profile/game/profileGardenSwitch.unit.ts app/debug/profile/game/profileWeather.unit.ts",
@@ -42,15 +42,16 @@
         "generate-playwright:tutorial-task-list-icon": "playwright test --config playwright-generate.config.ts generate/tutorial-task-list-icon.specgen.tsx",
         "generate-playwright:garden-structure-kit-v1-catalog": "playwright test --config playwright-generate.config.ts generate/garden-structure-kit-v1-catalog.specgen.tsx",
         "generate:models-types": "node ../../scripts/generate-game-model-types.mjs",
-        "test:local": "pnpm run test:prepare && pnpm run test:run"
+        "test:local": "pnpm run test:prepare && pnpm run test:run",
+        "test:posthog": "node --import tsx --test ./lib/posthog-server.node.spec.ts"
     },
     "dependencies": {
         "@flags-sdk/vercel": "1.4.6",
         "@opentelemetry/api-logs": "0.220.0",
-        "@opentelemetry/exporter-logs-otlp-http": "0.220.0",
         "@opentelemetry/resources": "2.9.0",
         "@opentelemetry/sdk-logs": "0.220.0",
         "@posthog/next": "0.8.0",
+        "@vercel/functions": "3.9.2",
         "@vercel/toolbar": "0.2.6",
         "flags": "4.2.0",
         "next": "16.3.0",
@@ -80,6 +81,7 @@
         "postcss": "8.5.18",
         "sass": "1.101.0",
         "tailwindcss": "4.3.2",
+        "tsx": "4.23.0",
         "typescript": "7.0.2"
     }
 }
