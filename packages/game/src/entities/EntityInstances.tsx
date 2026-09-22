@@ -581,17 +581,6 @@ export function EntityInstances({
                 <TreeCanopyInstances stacks={stacks} {...commonSnowProps} />
             </Suspense>
             <EntityInstancesAssetBlock
-                assetName="Tree"
-                stacks={stacks}
-                name="Tree"
-                staticOpaqueCacheGroup="static-props"
-                yOffset={0.5}
-                scale={[0.125, 0.5, 0.125]}
-                geometry={(gltf) => gltf.nodes.Tree_1_3.geometry}
-                material={(gltf) => gltf.nodes.Tree_1_3.material}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
                 assetName="Pine"
                 stacks={stacks}
                 name="Pine"

@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useAutumnState } from '../hooks/useAutumnState';
+import { getAutumnCanopyStage } from '../scene/autumnCanopy';
 import {
     getAutumnLeafColor,
     getAutumnPaletteSeed,
@@ -15,11 +16,13 @@ import {
 export function TreeCanopyBatch({
     instances,
     palette,
+    stage,
     renderSnow,
     snowOverlayMinCoverage,
 }: {
     instances: EntityBlockInstance[];
     palette: string;
+    stage: ReturnType<typeof getAutumnCanopyStage>;
     renderSnow: boolean;
     snowOverlayMinCoverage: number;
 }) {
@@ -33,9 +36,13 @@ export function TreeCanopyBatch({
         () =>
             instances.filter(
                 (instance) =>
-                    getAutumnPaletteSeed(instance.block.id) === palette,
+                    getAutumnPaletteSeed(instance.block.id) === palette &&
+                    getAutumnCanopyStage(
+                        disabled ? 1 : autumn.leafRetention,
+                        instance.block.id,
+                    ) === stage,
             ),
-        [instances, palette],
+        [instances, palette, stage, disabled, autumn.leafRetention],
     );
     const material = useMemo(() => {
         const value = materials['Material.Leaves'].clone();
@@ -45,9 +52,15 @@ export function TreeCanopyBatch({
     useEffect(() => () => material.dispose(), [material]);
     return (
         <EntityInstancesGeometry
-            instanceKey={`Tree:canopy:${palette}`}
+            instanceKey={`Tree:canopy:${palette}:${stage}`}
             instances={selected}
-            geometry={nodes.Tree_1_2.geometry}
+            geometry={
+                stage === 'full'
+                    ? nodes.Tree_1_2.geometry
+                    : stage === 'thinning'
+                      ? nodes.Tree_AutumnThinning.geometry
+                      : nodes.Tree_AutumnSparse.geometry
+            }
             material={material}
             scale={[0.125, 0.5, 0.125]}
             castShadow

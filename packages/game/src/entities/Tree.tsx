@@ -2,7 +2,10 @@ import { MeshDistortMaterial, MeshWobbleMaterial } from '@react-three/drei';
 import { useMemo } from 'react';
 import { useAutumnState } from '../hooks/useAutumnState';
 import { getAutumnCanopyStage } from '../scene/autumnCanopy';
-import { getAutumnLeafColor, getAutumnPaletteSeed } from '../scene/autumnPalette';
+import {
+    getAutumnLeafColor,
+    getAutumnPaletteSeed,
+} from '../scene/autumnPalette';
 import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
