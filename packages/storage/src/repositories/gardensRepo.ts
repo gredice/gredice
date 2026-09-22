@@ -29,6 +29,7 @@ import {
 } from './gardenPreviewsRepo';
 import {
     createRaisedBed,
+    getGardenActivePlantCounts,
     getRaisedBeds,
     getRaisedBedsForGardens,
 } from './raisedBedsRepo';
@@ -251,6 +252,44 @@ async function getPublicGardenMembersByAccountIds(accountIds: string[]) {
         membersByAccountId.set(membership.accountId, members);
     }
     return membersByAccountId;
+}
+
+export async function getFeaturedPublicGardens() {
+    const limit = 10;
+    const candidates = await storage()
+        .select({
+            id: gardens.id,
+            likeCount: count(gardenLikes.id),
+            updatedAt: gardens.updatedAt,
+        })
+        .from(gardens)
+        .leftJoin(gardenLikes, eq(gardenLikes.gardenId, gardens.id))
+        .where(and(eq(gardens.isDeleted, false), eq(gardens.isPublic, true)))
+        .groupBy(gardens.id)
+        .orderBy(
+            desc(count(gardenLikes.id)),
+            desc(gardens.updatedAt),
+            asc(gardens.id),
+        );
+
+    // Only ties at or above the tenth garden's like count can enter the list.
+    // Never limit before resolving those ties with the canonical plant count.
+    const minimumLikes = candidates.at(limit - 1)?.likeCount ?? 0;
+    const eligible = candidates.filter(
+        (garden) => garden.likeCount >= minimumLikes,
+    );
+    const plantCounts = await getGardenActivePlantCounts(
+        eligible.map((garden) => garden.id),
+    );
+    return eligible
+        .toSorted(
+            (left, right) =>
+                right.likeCount - left.likeCount ||
+                (plantCounts.get(right.id) ?? 0) -
+                    (plantCounts.get(left.id) ?? 0),
+        )
+        .slice(0, limit)
+        .map(({ id }) => ({ id }));
 }
 
 export async function getPublicGardens() {

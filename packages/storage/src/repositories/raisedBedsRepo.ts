@@ -547,6 +547,38 @@ export async function getRaisedBeds(
     );
 }
 
+/** The public list counts event-derived fields, not selected planting density. */
+export async function getGardenActivePlantCounts(gardenIds: number[]) {
+    const counts = new Map<number, number>();
+    if (gardenIds.length === 0) return counts;
+
+    const beds = await storage()
+        .select({ id: raisedBeds.id, gardenId: raisedBeds.gardenId })
+        .from(raisedBeds)
+        .where(
+            and(
+                inArray(raisedBeds.gardenId, [...new Set(gardenIds)]),
+                eq(raisedBeds.isDeleted, false),
+            ),
+        );
+    // Reuse the canonical reducer so removals, replacements and reactivation
+    // retain exactly the same meaning as the full public garden list.
+    const fieldsByBed = await getRaisedBedFieldsWithEventsForBeds(
+        beds.map((bed) => bed.id),
+    );
+    for (const bed of beds) {
+        if (bed.gardenId === null) continue;
+        const activePlantCount = (fieldsByBed.get(bed.id) ?? []).filter(
+            (field) => field.active && typeof field.plantSortId === 'number',
+        ).length;
+        counts.set(
+            bed.gardenId,
+            (counts.get(bed.gardenId) ?? 0) + activePlantCount,
+        );
+    }
+    return counts;
+}
+
 export async function getRaisedBedsForGardens(
     gardenIds: number[],
     filters?: {

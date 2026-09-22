@@ -2,9 +2,8 @@ import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
 import { setImmediate } from 'node:timers/promises';
 import { getLandingFeaturedGardens } from './getLandingFeaturedGardens';
-import type { LandingGardenCandidate } from './landingGardenCarousel';
 
-function garden(id: number): LandingGardenCandidate['garden'] {
+function garden(id: number) {
     return {
         backgroundPalette: 'current',
         farmId: 1,
@@ -15,6 +14,7 @@ function garden(id: number): LandingGardenCandidate['garden'] {
         latitude: 45.815,
         longitude: 15.982,
         name: `Vrt ${id}`,
+        members: id === 12 ? [] : [summary(id).owner],
         raisedBeds: [],
         stacks: {},
         structures: [],
@@ -65,6 +65,7 @@ function mockRequests(
     respond: (
         gardenId: number | null,
         signal: AbortSignal,
+        path: string,
     ) => Response | Promise<Response>,
 ) {
     // Native AbortSignal.timeout uses internal timers. Substitute controllers
@@ -79,17 +80,23 @@ function mockRequests(
         }, delayMs);
         return controller.signal;
     });
-    const requests: { gardenId: number | null; signal: AbortSignal }[] = [];
+    const requests: {
+        gardenId: number | null;
+        signal: AbortSignal;
+        path: string;
+    }[] = [];
     const fetchMock: typeof fetch = async (input, init) => {
         const path = new URL(input instanceof Request ? input.url : input)
             .pathname;
         const gardenId =
+            path === '/api/gardens/public/featured' ||
             path === '/api/gardens/public'
                 ? null
                 : Number(path.split('/').at(-2));
         assert.ok(init?.signal);
-        requests.push({ gardenId, signal: init.signal });
-        return respond(gardenId, init.signal);
+        assert.equal(init.cache, 'no-store');
+        requests.push({ gardenId, signal: init.signal, path });
+        return respond(gardenId, init.signal, path);
     };
     t.mock.method(globalThis, 'fetch', fetchMock);
     const warnings = t.mock.method(console, 'warn', () => {});
@@ -111,13 +118,11 @@ async function advanceTime(t: TestContext, milliseconds = 0) {
     await setImmediate();
 }
 
-test('loads only the ten most popular gardens and retains their owners and ranking', async (t) => {
-    const items = Array.from({ length: 12 }, (_, index) =>
-        summary(index + 1, Math.floor(index / 2), index % 2),
-    );
+test('caps the server-ranked IDs at ten and uses fresh detail owners', async (t) => {
+    const items = Array.from({ length: 12 }, (_, index) => summary(12 - index));
     const { requests, timeout } = mockRequests(t, (id, signal) =>
         id === null
-            ? Response.json({ items })
+            ? Response.json({ items: items.map(({ id }) => ({ id })) })
             : delayedResponse(signal, id * 10, garden(id)),
     );
     const result = getLandingFeaturedGardens();
@@ -129,13 +134,10 @@ test('loads only the ten most popular gardens and retains their owners and ranki
     await advanceTime(t, 120);
     assert.deepEqual(
         await result,
-        items
-            .slice(2)
-            .toReversed()
-            .map((item) => ({
-                garden: garden(item.id),
-                owner: item.owner,
-            })),
+        items.slice(0, 10).map((item) => ({
+            garden: garden(item.id),
+            owner: item.owner,
+        })),
     );
     assert.equal(timeout.mock.callCount(), 2);
     assert.deepEqual(
@@ -304,4 +306,113 @@ test('the Playwright fixture bypasses network requests and the deadline', async 
     assert.equal(result[0]?.garden.id, 99_999);
     assert.deepEqual(requests, []);
     assert.equal(timeout.mock.callCount(), 0);
+});
+
+for (const phase of ['headers', 'body']) {
+    test(`list ${phase} timeout is bounded to three seconds and identifies the failing phase`, async (t) => {
+        const { errors, requests } = mockRequests(t, (_id, signal) => {
+            if (phase === 'headers')
+                return delayedResponse(signal, 4_000, { items: [] });
+            const response = pendingBody(signal);
+            response.headers.set('server-timing', 'featured-list;dur=42.0');
+            response.headers.set('x-vercel-id', 'test-region::test-request');
+            return response;
+        });
+        let settled = false;
+        const result = getLandingFeaturedGardens().then((gardens) => {
+            settled = true;
+            return gardens;
+        });
+        await advanceTime(t);
+        await advanceTime(t, 2_999);
+        assert.equal(settled, false);
+        await advanceTime(t, 1);
+        assert.deepEqual(await result, []);
+        assert.equal(requests.length, 1);
+        assert.partialDeepStrictEqual(errors.mock.calls[0]?.arguments[1], {
+            elapsedMs: 3_000,
+            listPhase: phase,
+            timedOut: true,
+            ...(phase === 'body'
+                ? {
+                      listHeadersMs: 0,
+                      listBodyMs: 3_000,
+                      apiTiming: 'featured-list;dur=42.0',
+                      apiRequestId: 'test-region::test-request',
+                  }
+                : {}),
+        });
+    });
+}
+
+test('near-deadline list success records header, body and API timings', async (t) => {
+    const { warnings } = mockRequests(t, (id, signal) =>
+        id === null
+            ? delayedResponse(signal, 2_600, { items: [{ id: 1 }] })
+            : Response.json(garden(id)),
+    );
+    const result = getLandingFeaturedGardens();
+    await advanceTime(t, 2_600);
+    assert.equal((await result).length, 1);
+    assert.partialDeepStrictEqual(warnings.mock.calls[0]?.arguments[1], {
+        listDurationMs: 2_600,
+        listHeadersMs: 2_600,
+        listBodyMs: 0,
+    });
+});
+
+test('an older API uses the ranked legacy list within the original deadline', async (t) => {
+    const { requests, timeout } = mockRequests(t, (id, _signal, path) => {
+        if (path === '/api/gardens/public/featured')
+            return new Response(null, { status: 404 });
+        if (path === '/api/gardens/public')
+            return Response.json({
+                items: [summary(1, 0, 20), summary(2, 1, 1), summary(3, 1, 9)],
+            });
+        assert.ok(id);
+        return Response.json(garden(id));
+    });
+    assert.deepEqual(
+        (await getLandingFeaturedGardens()).map(({ garden }) => garden.id),
+        [3, 2, 1],
+    );
+    assert.equal(requests[0]?.signal, requests[1]?.signal);
+    assert.equal(timeout.mock.callCount(), 2);
+});
+
+for (const phase of ['headers', 'body']) {
+    test(`legacy fallback ${phase} shares the remaining list budget`, async (t) => {
+        const { requests, timeout } = mockRequests(t, (_id, signal, path) => {
+            if (path === '/api/gardens/public/featured')
+                return new Promise<Response>((resolve) => {
+                    setTimeout(
+                        () => resolve(new Response(null, { status: 404 })),
+                        2_000,
+                    );
+                });
+            return phase === 'body'
+                ? pendingBody(signal)
+                : delayedResponse(signal, 2_000, { items: [summary(1)] });
+        });
+        const result = getLandingFeaturedGardens();
+        await advanceTime(t, 2_000);
+        await advanceTime(t, 1_000);
+        assert.deepEqual(await result, []);
+        assert.equal(Date.now(), 3_000);
+        assert.equal(requests.length, 2);
+        assert.equal(requests[0]?.signal, requests[1]?.signal);
+        assert.equal(timeout.mock.callCount(), 1);
+    });
+}
+
+test('legacy fallback HTTP errors retain the empty fallback', async (t) => {
+    const { requests } = mockRequests(
+        t,
+        (_id, _signal, path) =>
+            new Response(null, {
+                status: path === '/api/gardens/public/featured' ? 404 : 503,
+            }),
+    );
+    assert.deepEqual(await getLandingFeaturedGardens(), []);
+    assert.equal(requests.length, 2);
 });
