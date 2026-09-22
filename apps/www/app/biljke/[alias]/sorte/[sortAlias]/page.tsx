@@ -298,10 +298,13 @@ export default async function PlantSortPage(
                             editSectionKey={section.id}
                         />
                     ))}
-                {(basePlantData.information.tip?.length ?? 0) > 0 && (
-                    <PlantTips plant={basePlantData} />
-                )}
-                <PlantHealthSection health={health} />
+                <PlantTips plant={basePlantData} publicPath={sortPath} />
+                <PlantHealthSection
+                    health={health}
+                    plantId={basePlantData.id}
+                    plantName={basePlantData.information.name}
+                    publicPath={sortPath}
+                />
                 <PlantRelationshipsSection
                     editTarget={{
                         entityTypeName: 'plantSort',

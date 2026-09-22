@@ -368,6 +368,12 @@ function operationApplicationLabel(
 
 function entitySuggestionLabels(suggestion: CommunityEntitySuggestionValue) {
     switch (suggestion.kind) {
+        case 'plantTip':
+            return {
+                cardTitle: 'Novi savjet za biljku',
+                pageTitle: 'Prijedlog novog savjeta',
+                section: 'Novi savjet',
+            };
         case 'plantSort':
             return {
                 cardTitle: 'Nova sorta biljke',
@@ -413,7 +419,8 @@ function EntitySuggestionBlock({
                         <DetailItem label="Naziv">
                             <Typography>{suggestion.name}</Typography>
                         </DetailItem>
-                        {suggestion.kind === 'plantSort' ? (
+                        {suggestion.kind === 'plantSort' ||
+                        suggestion.kind === 'plantTip' ? (
                             <DetailItem label="Biljka">
                                 <Typography>
                                     {suggestion.parentPlantName} #

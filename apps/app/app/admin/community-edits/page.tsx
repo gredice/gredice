@@ -36,6 +36,8 @@ type CommunityEditRequestListItem = Awaited<
 
 function entitySuggestionTitle(suggestion: CommunityEntitySuggestionValue) {
     switch (suggestion.kind) {
+        case 'plantTip':
+            return `Novi savjet: ${suggestion.name}`;
         case 'plantSort':
             return `Nova sorta: ${suggestion.name}`;
         case 'operation':
@@ -49,6 +51,7 @@ function entitySuggestionTitle(suggestion: CommunityEntitySuggestionValue) {
 
 function entitySuggestionContext(suggestion: CommunityEntitySuggestionValue) {
     switch (suggestion.kind) {
+        case 'plantTip':
         case 'plantSort':
             return `Biljka: ${suggestion.parentPlantName}`;
         case 'operation':
