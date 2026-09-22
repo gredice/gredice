@@ -46,17 +46,17 @@ export type CommunitySuggestionPlantOption = {
 
 type CommonProps = {
     className?: string;
+    compact?: boolean;
     publicPath: string;
     trigger?: ReactElement;
 };
 
 export type CommunityEntitySuggestionButtonProps = CommonProps &
     (
-        | {
-              kind: 'plantSort';
+        | (({ kind: 'plantSort' } | { kind: 'plantTip' }) & {
               parentPlantId: number;
               parentPlantName: string;
-          }
+          })
         | {
               kind: 'operation';
               stages: CommunityOperationSuggestionStage[];
@@ -64,6 +64,7 @@ export type CommunityEntitySuggestionButtonProps = CommonProps &
         | {
               kind: 'disease' | 'pest';
               plants: CommunitySuggestionPlantOption[];
+              defaultAffectedPlantId?: number;
           }
     );
 
@@ -90,6 +91,13 @@ function isPlantHealthSuggestionKind(
 
 function suggestionLabels(kind: CommunityEntitySuggestionButtonProps['kind']) {
     switch (kind) {
+        case 'plantTip':
+            return {
+                trigger: 'Predloži novi savjet',
+                title: 'Predloži novi savjet',
+                name: 'Naslov savjeta',
+                description: 'Tvoj savjet',
+            };
         case 'plantSort':
             return {
                 trigger: 'Predloži novu sortu',
@@ -181,7 +189,13 @@ export function CommunityEntitySuggestionButton(
     const [source, setSource] = useState('');
     const [note, setNote] = useState('');
     const [plantStageId, setPlantStageId] = useState('');
-    const [affectedPlantIds, setAffectedPlantIds] = useState<string[]>([]);
+    const defaultAffectedPlantId =
+        props.kind === 'disease' || props.kind === 'pest'
+            ? props.defaultAffectedPlantId
+            : undefined;
+    const [affectedPlantIds, setAffectedPlantIds] = useState<string[]>(() =>
+        defaultAffectedPlantId ? [String(defaultAffectedPlantId)] : [],
+    );
     const [symptoms, setSymptoms] = useState('');
     const [favorableConditions, setFavorableConditions] = useState('');
     const [severity, setSeverity] = useState('');
@@ -195,9 +209,11 @@ export function CommunityEntitySuggestionButton(
     const fieldIdPrefix = useId();
     const { data: user, isLoading: isLoadingUser } = useCurrentUser();
     const contextKey =
-        props.kind === 'plantSort'
-            ? `plantSort:${props.parentPlantId}`
-            : props.kind;
+        props.kind === 'plantSort' || props.kind === 'plantTip'
+            ? `${props.kind}:${props.parentPlantId}`
+            : defaultAffectedPlantId
+              ? `${props.kind}:${defaultAffectedPlantId}`
+              : props.kind;
     const returnTo = useMemo(
         () => suggestionReturnPath(contextKey, props.publicPath),
         [contextKey, props.publicPath],
@@ -224,7 +240,9 @@ export function CommunityEntitySuggestionButton(
         setSource('');
         setNote('');
         setPlantStageId('');
-        setAffectedPlantIds([]);
+        setAffectedPlantIds(
+            defaultAffectedPlantId ? [String(defaultAffectedPlantId)] : [],
+        );
         setSymptoms('');
         setFavorableConditions('');
         setSeverity('');
@@ -271,7 +289,7 @@ export function CommunityEntitySuggestionButton(
                     'entity-suggestions'
                 ];
             const response = await (async () => {
-                if (props.kind === 'plantSort') {
+                if (props.kind === 'plantSort' || props.kind === 'plantTip') {
                     return await suggestions.$post({
                         json: {
                             kind: props.kind,
@@ -342,9 +360,16 @@ export function CommunityEntitySuggestionButton(
             trigger={
                 props.trigger ?? (
                     <Button
-                        className={props.className}
+                        className={cx(
+                            props.compact &&
+                                'h-auto min-h-12 w-full self-start justify-start gap-2 whitespace-normal rounded-lg border-dashed border-muted-foreground/40 bg-card/40 p-3 text-left font-normal hover:border-muted-foreground/60 hover:bg-card/70',
+                            props.className,
+                        )}
+                        color={props.compact ? 'neutral' : undefined}
                         size="sm"
-                        startDecorator={<Add className="size-4" />}
+                        startDecorator={
+                            <Add aria-hidden className="size-4 shrink-0" />
+                        }
                         type="button"
                         variant="outlined"
                     >
@@ -418,7 +443,8 @@ export function CommunityEntitySuggestionButton(
                     </Stack>
                 ) : (
                     <form className="space-y-4" onSubmit={handleSubmit}>
-                        {props.kind === 'plantSort' ? (
+                        {props.kind === 'plantSort' ||
+                        props.kind === 'plantTip' ? (
                             <Typography
                                 level="body2"
                                 className="rounded-lg border border-border/70 bg-muted/30 p-3"

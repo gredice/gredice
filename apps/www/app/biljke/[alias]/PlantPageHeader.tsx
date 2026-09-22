@@ -1,4 +1,5 @@
 import type { OperationData, PlantData } from '@gredice/client';
+import { gardenActionUrl } from '@gredice/js/gardenActions';
 import { calculatePlantsPerField, FIELD_SIZE_LABEL } from '@gredice/js/plants';
 import { slug } from '@gredice/js/slug';
 import { Chip } from '@gredice/ui/Chip';
@@ -223,7 +224,11 @@ export function PlantPageHeader({
                         </Stack>
                     )}
                     <NavigatingButton
-                        href={KnownPages.GardenApp}
+                        href={gardenActionUrl(KnownPages.GardenApp, {
+                            type: 'sow',
+                            plantId: plant.id,
+                            sortId: sort?.id,
+                        })}
                         className="bg-green-800 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white"
                     >
                         Moj vrt

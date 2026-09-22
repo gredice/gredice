@@ -145,6 +145,12 @@ test('CMS pages must be unpublished before deletion', async () => {
 
 test('CMS page slugs reject reserved static route conflicts', async () => {
     createTestDb();
+    for (const slug of ['postignuca', 'postignuca/sadnja']) {
+        assert.match(
+            getCmsPageSlugValidationError(slug) ?? '',
+            /reserved route/,
+        );
+    }
     assert.match(
         getCmsPageSlugValidationError('kalendar-sjetve') ?? '',
         /reserved route/,

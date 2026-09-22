@@ -193,10 +193,13 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                             editSectionKey={section.id}
                         />
                     ))}
-                {(plant.information.tip?.length ?? 0) > 0 && (
-                    <PlantTips plant={plant} />
-                )}
-                <PlantHealthSection health={plant.health} />
+                <PlantTips plant={plant} publicPath={plantPath} />
+                <PlantHealthSection
+                    health={plant.health}
+                    plantId={plant.id}
+                    plantName={plant.information.name}
+                    publicPath={plantPath}
+                />
                 <PlantRelationshipsSection
                     editTarget={{
                         entityTypeName: 'plant',

@@ -76,6 +76,7 @@ const reservedFirstSegments = new Set([
     'outlet',
     'podignuta-gredica',
     'pozadine',
+    'postignuca',
     'pozdrav',
     'preporuke',
     'prijava',

@@ -5,6 +5,7 @@ import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
 import {
+    Add,
     ArrowDownToLine,
     Check,
     Delete,
@@ -134,7 +135,7 @@ type SubmitValue =
     | OperationSuggestionSubmitValue
     | null;
 
-type ButtonStyle = 'button' | 'icon';
+type ButtonStyle = 'button' | 'card' | 'icon';
 
 export type CommunityEditButtonProps = {
     entityTypeName:
@@ -1427,11 +1428,22 @@ export function CommunityEditButton({
 
     const triggerLabel = label ?? 'Predloži izmjenu';
     const trigger =
-        buttonStyle === 'button' ? (
+        buttonStyle !== 'icon' ? (
             <Button
-                className={className}
+                className={cx(
+                    buttonStyle === 'card' &&
+                        'h-auto min-h-12 w-full justify-start gap-2 whitespace-normal rounded-lg border-dashed border-muted-foreground/40 bg-card/40 p-3 text-left font-normal hover:border-muted-foreground/60 hover:bg-card/70',
+                    className,
+                )}
+                color={buttonStyle === 'card' ? 'neutral' : undefined}
                 size="sm"
-                startDecorator={<Edit className="size-4" />}
+                startDecorator={
+                    buttonStyle === 'card' ? (
+                        <Add aria-hidden className="size-4 shrink-0" />
+                    ) : (
+                        <Edit className="size-4" />
+                    )
+                }
                 type="button"
                 variant="outlined"
             >

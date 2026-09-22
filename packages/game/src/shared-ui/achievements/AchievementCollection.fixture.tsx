@@ -5,6 +5,7 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { accountAchievementsKeys } from '../../hooks/useAccountAchievements';
+import { AchievementsTab } from '../../modals/components/AchievementsTab';
 import { AchievementsOverview } from './AchievementsOverview';
 
 export type CollectionState = 'empty' | 'starter' | 'experienced' | 'complete';
@@ -44,12 +45,14 @@ export function AchievementCollectionShowcase({
     allowAccountReset = false,
     allowApproval = false,
     unseeded = false,
+    showGuide = false,
 }: {
     state?: CollectionState;
     dark?: boolean;
     allowAccountReset?: boolean;
     allowApproval?: boolean;
     unseeded?: boolean;
+    showGuide?: boolean;
 }) {
     useEffect(() => {
         if (!dark) return;
@@ -85,7 +88,7 @@ export function AchievementCollectionShowcase({
                         Svaka nova razina donosi posebnu nagradu za tvoju
                         zbirku.
                     </p>
-                    <AchievementsOverview />
+                    {showGuide ? <AchievementsTab /> : <AchievementsOverview />}
                     {allowApproval && (
                         <button
                             type="button"

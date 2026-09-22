@@ -9,6 +9,32 @@ import { comparePublicGardensByPopularity } from './vrtovi/publicGardenFormattin
 const landingFeaturedGardensListTimeoutMs = 3_000;
 const landingFeaturedGardenDetailsTimeoutMs = 5_000;
 
+async function fetchFeaturedGardenList(listSignal: AbortSignal) {
+    const publicGardens = clientPublic().api.gardens.public;
+    const response = await publicGardens.featured.$get(undefined, {
+        init: { signal: listSignal, cache: 'no-store' },
+    });
+    // WWW and API can finish deploying independently. An older API has no
+    // featured route; use its existing list without restarting the deadline.
+    if ([404].includes(response.status)) {
+        await response.body?.cancel();
+        const fallback = await publicGardens.$get(undefined, {
+            init: { signal: listSignal, cache: 'no-store' },
+        });
+        return {
+            response: fallback,
+            readItems: async () =>
+                (await fallback.json()).items.toSorted(
+                    comparePublicGardensByPopularity,
+                ),
+        };
+    }
+    return {
+        response,
+        readItems: async () => (await response.json()).items,
+    };
+}
+
 const playwrightFeaturedGardensFixture: LandingGardenCandidate[] = [
     {
         garden: {
@@ -41,27 +67,47 @@ export async function getLandingFeaturedGardens(): Promise<
     }
 
     const startedAt = Date.now();
+    const listSignal = AbortSignal.timeout(landingFeaturedGardensListTimeoutMs);
+    let listPhase = 'headers';
+    let listHeadersMs: number | undefined;
+    let listBodyMs: number | undefined;
+    let apiTiming: string | null = null;
+    let apiRequestId: string | null = null;
     try {
-        const listSignal = AbortSignal.timeout(
-            landingFeaturedGardensListTimeoutMs,
-        );
-        const response = await clientPublic().api.gardens.public.$get(
-            undefined,
-            { init: { signal: listSignal } },
-        );
+        const { response, readItems } =
+            await fetchFeaturedGardenList(listSignal);
+        listHeadersMs = Date.now() - startedAt;
+        apiTiming = response.headers.get('server-timing');
+        apiRequestId = response.headers.get('x-vercel-id');
         if (!response.ok) {
             console.error('Failed to fetch featured gardens for landing', {
                 status: response.status,
                 elapsedMs: Date.now() - startedAt,
+                listHeadersMs,
+                apiTiming,
+                apiRequestId,
             });
             return [];
         }
 
-        const publicGardens = await response.json();
+        listPhase = 'body';
+        const publicGardens = await readItems();
         const listDurationMs = Date.now() - startedAt;
-        const featuredGardenSummaries = publicGardens.items
-            .toSorted(comparePublicGardensByPopularity)
-            .slice(0, landingFeaturedGardenLimit);
+        listBodyMs = listDurationMs - listHeadersMs;
+        if (listDurationMs >= 2_500) {
+            console.warn('Slow featured garden list for landing', {
+                listDurationMs,
+                listHeadersMs,
+                listBodyMs,
+                apiTiming,
+                apiRequestId,
+            });
+        }
+        listPhase = 'complete';
+        const featuredGardenSummaries = publicGardens.slice(
+            0,
+            landingFeaturedGardenLimit,
+        );
         // Keep the detail fan-out bounded without allowing a slow list to
         // consume the time needed to prepare otherwise healthy gardens.
         const detailSignal = AbortSignal.timeout(
@@ -77,7 +123,7 @@ export async function getLandingFeaturedGardens(): Promise<
                         {
                             param: { gardenId: garden.id.toString() },
                         },
-                        { init: { signal: detailSignal } },
+                        { init: { signal: detailSignal, cache: 'no-store' } },
                     );
 
                     if (!gardenResponse.ok) {
@@ -93,9 +139,10 @@ export async function getLandingFeaturedGardens(): Promise<
                         return null;
                     }
 
+                    const details = await gardenResponse.json();
                     return {
-                        garden: await gardenResponse.json(),
-                        owner: garden.owner ?? null,
+                        garden: details,
+                        owner: details.members?.at(0) ?? null,
                     };
                 } catch (error) {
                     // A failed fetch or body read must not discard gardens
@@ -118,6 +165,15 @@ export async function getLandingFeaturedGardens(): Promise<
         console.error('Failed to prepare featured gardens for landing', {
             error,
             elapsedMs: Date.now() - startedAt,
+            listPhase,
+            listHeadersMs,
+            listBodyMs:
+                listPhase === 'body' && listHeadersMs !== undefined
+                    ? Date.now() - startedAt - listHeadersMs
+                    : listBodyMs,
+            apiTiming,
+            apiRequestId,
+            timedOut: listSignal.aborted,
         });
         return [];
     }

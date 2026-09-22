@@ -51,7 +51,7 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
             component: 'Footer1',
             tagline: 'Gredice d.o.o',
             description: <PublicFooterOrigin />,
-            asset: <Logotype className="w-[320px] h-[87px]" />,
+            asset: <Logotype className="h-auto w-[210px] max-w-full" />,
             features: [
                 {
                     tagline: 'FooterUtility',
@@ -153,6 +153,13 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             label: 'Korisnici',
                             href: publicChromeHref(
                                 PublicPagePaths.Users,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Postignuća',
+                            href: publicChromeHref(
+                                PublicPagePaths.Achievements,
                                 linkMode,
                             ),
                         },

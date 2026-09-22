@@ -85,8 +85,8 @@ are announced once. Keep selector labels as plain text and pass artwork through
 
 The seven new rendered objects use the same processing as the existing artwork.
 `assets/settings-prompts.json` records their built-in image generation prompts.
-`sunflower.svg` is the existing mascot copied unchanged from the Storybook game
-asset; it is bundled locally so settings do not depend on the CDN.
+`GameSunflowerIcon` uses the approved bundled 3D mascot from `SunflowerVisuals`;
+settings do not depend on the CDN. The legacy 2D SVG has been retired.
 
 Review `packages/game/Settings/OverviewNavigation` at mobile and desktop widths in
 light/dark themes. The Garden workspace showcase includes the same navigation.

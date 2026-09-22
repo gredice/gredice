@@ -1,5 +1,6 @@
 import { resolveAvatarSource } from '@gredice/ui/Avatar';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
+import { sunflowerSadMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
 const largeImageSvg = encodeURIComponent(
@@ -14,7 +15,10 @@ const wideImageSrc = `data:image/svg+xml,${wideImageSvg}`;
 
 const sampleImages = [
     {
-        src: 'https://cdn.gredice.com/sunflower-sad-500x500.png',
+        src:
+            typeof sunflowerSadMascotArtwork === 'string'
+                ? sunflowerSadMascotArtwork
+                : sunflowerSadMascotArtwork.src,
         alt: 'Suncokret',
     },
     {

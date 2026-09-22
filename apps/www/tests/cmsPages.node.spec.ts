@@ -83,6 +83,11 @@ test('public CMS catch-all keeps wallpaper studio route reserved', () => {
     assert.equal(hasReservedFirstSegment('pozadine'), true);
 });
 
+test('public CMS catch-all reserves the achievements guide', () => {
+    assert.equal(hasReservedFirstSegment('postignuca'), true);
+    assert.equal(hasReservedFirstSegment('postignuca/sadnja'), true);
+});
+
 test('public CMS catch-all keeps Vercel platform routes reserved', () => {
     assert.equal(hasReservedFirstSegment('_vercel/insights/script.js'), true);
 });

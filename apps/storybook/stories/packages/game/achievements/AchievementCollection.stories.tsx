@@ -29,3 +29,4 @@ export const Starter: Story = { args: { state: 'starter' } };
 export const Empty: Story = { args: { state: 'empty' } };
 export const Complete: Story = { args: { state: 'complete' } };
 export const Dark: Story = { args: { dark: true } };
+export const WithGuide: Story = { args: { showGuide: true } };

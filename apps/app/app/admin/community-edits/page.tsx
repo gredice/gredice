@@ -36,6 +36,8 @@ type CommunityEditRequestListItem = Awaited<
 
 function entitySuggestionTitle(suggestion: CommunityEntitySuggestionValue) {
     switch (suggestion.kind) {
+        case 'plantTip':
+            return `Novi savjet: ${suggestion.name}`;
         case 'plantSort':
             return `Nova sorta: ${suggestion.name}`;
         case 'operation':
@@ -49,6 +51,7 @@ function entitySuggestionTitle(suggestion: CommunityEntitySuggestionValue) {
 
 function entitySuggestionContext(suggestion: CommunityEntitySuggestionValue) {
     switch (suggestion.kind) {
+        case 'plantTip':
         case 'plantSort':
             return `Biljka: ${suggestion.parentPlantName}`;
         case 'operation':
@@ -182,10 +185,17 @@ function publicPageUrl(publicPath: string) {
 }
 
 function requestTargetEntityType(request: CommunityEditRequestListItem) {
-    return (
-        parseCommunityEntitySuggestionRequest(request)?.kind ??
-        request.entityTypeName
-    );
+    const kind = parseCommunityEntitySuggestionRequest(request)?.kind;
+    switch (kind) {
+        case 'plantTip':
+            return 'plant';
+        case 'disease':
+            return 'plantDisease';
+        case 'pest':
+            return 'plantPest';
+        default:
+            return kind ?? request.entityTypeName;
+    }
 }
 
 export default async function CommunityEditsPage({

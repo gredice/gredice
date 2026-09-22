@@ -16,6 +16,7 @@ export const PublicPagePaths = {
     RaisedBeds: '/podignuta-gredica',
     PublicGardens: '/vrtovi',
     Users: '/korisnici',
+    Achievements: '/postignuca',
     Wallpapers: '/pozadine',
     Sowing: '/sjetva',
     Operations: '/radnje',

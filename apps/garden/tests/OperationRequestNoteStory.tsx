@@ -9,8 +9,10 @@ import { cartOperation } from './GardenOperationsHudStory';
 
 export function OperationRequestNoteStory({
     fail = false,
+    defaultOpen = false,
 }: {
     fail?: boolean;
+    defaultOpen?: boolean;
 }) {
     const [store] = useState(() =>
         createGameState({
@@ -21,19 +23,24 @@ export function OperationRequestNoteStory({
         }),
     );
     const [submitted, setSubmitted] = useState('');
+    const [closeCount, setCloseCount] = useState(0);
     return (
         <GameStateContext.Provider value={store}>
             <OperationScheduleModal
+                defaultOpen={defaultOpen}
+                onClose={() => setCloseCount((count) => count + 1)}
+                targetLabel={defaultOpen ? 'Gredica 1 · Polje 2' : undefined}
                 gardenId={1}
                 operation={cartOperation}
                 showHistory={false}
-                trigger={<Button>Zakaži</Button>}
+                trigger={defaultOpen ? undefined : <Button>Zakaži</Button>}
                 onConfirm={async (_date, note) => {
                     if (fail) throw new Error('Request failed');
                     setSubmitted(note ?? '(bez napomene)');
                 }}
             />
             <output>{submitted}</output>
+            <span data-testid="close-count">{closeCount}</span>
         </GameStateContext.Provider>
     );
 }

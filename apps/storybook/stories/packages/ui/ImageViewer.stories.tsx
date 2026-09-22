@@ -1,4 +1,5 @@
 import { ImageViewer } from '@gredice/ui/ImageViewer';
+import { sunflowerSadMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
 const largeImageSvg = encodeURIComponent(
@@ -19,7 +20,10 @@ const meta = {
         },
     },
     args: {
-        src: 'https://cdn.gredice.com/sunflower-sad-500x500.png',
+        src:
+            typeof sunflowerSadMascotArtwork === 'string'
+                ? sunflowerSadMascotArtwork
+                : sunflowerSadMascotArtwork.src,
         alt: 'Sunflower',
         previewWidth: 300,
         previewHeight: 300,
