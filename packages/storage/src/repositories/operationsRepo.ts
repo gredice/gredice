@@ -1360,8 +1360,12 @@ export async function getRaisedBedPhotoPreviews(
 
     const rows = await storage()
         .select({
+            operationId: operations.id,
             raisedBedId: operations.raisedBedId,
+            eventId: events.id,
+            type: events.type,
             data: events.data,
+            createdAt: events.createdAt,
         })
         .from(operations)
         .innerJoin(events, eq(events.aggregateId, sql`${operations.id}::text`))
@@ -1369,15 +1373,70 @@ export async function getRaisedBedPhotoPreviews(
             and(
                 eq(operations.isDeleted, false),
                 inArray(operations.raisedBedId, uniqueRaisedBedIds),
-                eq(events.type, knownEventTypes.operations.complete),
-                sql`jsonb_typeof(${events.data}->'images') = 'array'`,
-                sql`jsonb_array_length(${events.data}->'images') > 0`,
+                inArray(events.type, [
+                    knownEventTypes.operations.complete,
+                    knownEventTypes.operations.completionEvidenceUpdate,
+                    knownEventTypes.operations.schedule,
+                ]),
             ),
         )
-        .orderBy(
-            asc(operations.raisedBedId),
-            desc(events.createdAt),
-            desc(events.id),
+        .orderBy(asc(events.createdAt), asc(events.id));
+
+    // Project each operation's current completion evidence the same way the
+    // operation aggregate does: evidence updates replace the completion
+    // images and rescheduling clears them.
+    const evidenceByOperationId = new Map<
+        number,
+        {
+            raisedBedId: number;
+            imageUrls: string[];
+            completedAt?: Date;
+            completionEventId?: number;
+        }
+    >();
+    for (const row of rows) {
+        if (row.raisedBedId === null) {
+            continue;
+        }
+
+        let evidence = evidenceByOperationId.get(row.operationId);
+        if (!evidence) {
+            evidence = { raisedBedId: row.raisedBedId, imageUrls: [] };
+            evidenceByOperationId.set(row.operationId, evidence);
+        }
+
+        if (row.type === knownEventTypes.operations.schedule) {
+            evidence.imageUrls = [];
+            evidence.completedAt = undefined;
+            evidence.completionEventId = undefined;
+            continue;
+        }
+
+        if (row.type === knownEventTypes.operations.complete) {
+            evidence.completedAt ??= row.createdAt;
+            evidence.completionEventId ??= row.eventId;
+        }
+
+        const images =
+            row.data && typeof row.data === 'object'
+                ? Reflect.get(row.data, 'images')
+                : undefined;
+        if (Array.isArray(images)) {
+            evidence.imageUrls = getCompletionEventImageUrls(row.data);
+        }
+    }
+
+    const currentEvidence = [...evidenceByOperationId.values()]
+        .filter(
+            (evidence) =>
+                evidence.completedAt !== undefined &&
+                evidence.imageUrls.length > 0,
+        )
+        .sort(
+            (left, right) =>
+                (right.completedAt?.getTime() ?? 0) -
+                    (left.completedAt?.getTime() ?? 0) ||
+                (right.completionEventId ?? 0) - (left.completionEventId ?? 0),
         );
 
     const previewByRaisedBedId = new Map<number, RaisedBedPhotoPreview>(
@@ -1393,26 +1452,23 @@ export async function getRaisedBedPhotoPreviews(
     const seenImageUrlsByRaisedBedId = new Map<number, Set<string>>();
     const safeImageLimit = Math.max(1, imageLimit);
 
-    for (const row of rows) {
-        if (row.raisedBedId === null) {
-            continue;
-        }
-
-        const preview = previewByRaisedBedId.get(row.raisedBedId);
+    for (const evidence of currentEvidence) {
+        const preview = previewByRaisedBedId.get(evidence.raisedBedId);
         if (!preview) {
             continue;
         }
 
-        const imageUrls = getCompletionEventImageUrls(row.data);
-        preview.photoCount += imageUrls.length;
+        preview.photoCount += evidence.imageUrls.length;
 
-        let seenImageUrls = seenImageUrlsByRaisedBedId.get(row.raisedBedId);
+        let seenImageUrls = seenImageUrlsByRaisedBedId.get(
+            evidence.raisedBedId,
+        );
         if (!seenImageUrls) {
             seenImageUrls = new Set();
-            seenImageUrlsByRaisedBedId.set(row.raisedBedId, seenImageUrls);
+            seenImageUrlsByRaisedBedId.set(evidence.raisedBedId, seenImageUrls);
         }
 
-        for (const imageUrl of imageUrls) {
+        for (const imageUrl of evidence.imageUrls) {
             if (seenImageUrls.has(imageUrl)) {
                 continue;
             }

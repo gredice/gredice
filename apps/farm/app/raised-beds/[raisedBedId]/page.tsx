@@ -10,6 +10,7 @@ import {
     getApprovalRequests,
     getEntitiesFormatted,
     getFarmUserRaisedBeds,
+    getRaisedBedPhotoPreviews,
     getRaisedBedPlantOccupancy,
     isRaisedBedPlantInGreenhouse,
 } from '@gredice/storage';
@@ -23,10 +24,8 @@ import {
     RaisedBedPlantItem,
     RaisedBedPlantingsReadOnly,
 } from '@gredice/ui/raisedBeds';
-import { Typography } from '@gredice/ui/Typography';
 import { notFound } from 'next/navigation';
 import LoginDialog from '../../../components/auth/LoginDialog';
-import { HomeButton } from '../../../components/HomeButton';
 import { auth } from '../../../lib/auth/auth';
 import {
     getPlantDetailsPositionIndex,
@@ -37,8 +36,11 @@ import {
     getPendingPlantStateRequestStatus,
     getSelectedPlantStateRequestIdentity,
 } from './plantStatusRequests';
+import { RaisedBedDetailHeader } from './RaisedBedDetailHeader';
 
 export const dynamic = 'force-dynamic';
+
+const recentPhotoLimit = 20;
 
 function resolvePlantName(
     plantSortId: number | null | undefined,
@@ -79,12 +81,17 @@ async function RaisedBedDetailPageContent({
         notFound();
     }
 
-    const [appliedOperations, operationDefinitions] = await Promise.all([
-        raisedBed.accountId
-            ? getAppliedRaisedBedOperations(raisedBed.accountId, raisedBedId)
-            : [],
-        getEntitiesFormatted<EntityStandardized>('operation'),
-    ]);
+    const [appliedOperations, operationDefinitions, photoPreviews] =
+        await Promise.all([
+            raisedBed.accountId
+                ? getAppliedRaisedBedOperations(
+                      raisedBed.accountId,
+                      raisedBedId,
+                  )
+                : [],
+            getEntitiesFormatted<EntityStandardized>('operation'),
+            getRaisedBedPhotoPreviews([raisedBedId], recentPhotoLimit),
+        ]);
     const occupants = getRaisedBedPlantOccupancy(raisedBed);
     const orderedPositions = getRaisedBedPositionIndexesDescending([
         ...raisedBed.fields.map((field) => field.positionIndex),
@@ -183,12 +190,11 @@ async function RaisedBedDetailPageContent({
 
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
-            <div className="flex min-w-0 items-center gap-2">
-                <HomeButton href="/raised-beds" title="Povratak na gredice" />
-                <Typography component="h1" level="h5" semiBold>
-                    Gredica {raisedBed.physicalId ?? raisedBed.id}
-                </Typography>
-            </div>
+            <RaisedBedDetailHeader
+                raisedBedId={raisedBed.id}
+                physicalId={raisedBed.physicalId}
+                imageUrls={photoPreviews[0]?.imageUrls ?? []}
+            />
 
             <RaisedBedAddons
                 addons={addons}
