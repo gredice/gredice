@@ -157,6 +157,13 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             ),
                         },
                         {
+                            label: 'Postignuća',
+                            href: publicChromeHref(
+                                PublicPagePaths.Achievements,
+                                linkMode,
+                            ),
+                        },
+                        {
                             label: 'Pozadine',
                             href: publicChromeHref(
                                 PublicPagePaths.Wallpapers,

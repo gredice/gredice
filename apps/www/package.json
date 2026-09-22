@@ -44,7 +44,7 @@
         "operation-covers:verify-public": "pnpm run test:prepare && OPERATION_COVER_PUBLIC_QA=1 playwright test --project=chromium tests/operation-cover-public.spec.ts",
         "test:local": "pnpm run test:prepare && pnpm run test:run",
         "test:llms": "node --experimental-strip-types --test ./app/llms-routes.spec.ts",
-        "test:public-profile": "node --import tsx --test ./tests/publicProfile.node.spec.ts && playwright test --config playwright.profile.config.ts",
+        "test:public-profile": "node --import tsx --test ./tests/publicProfile.node.spec.ts ./app/postignuca/achievementAvailability.node.spec.ts && playwright test --config playwright.profile.config.ts",
         "faq-categories:sync-images": "node --import tsx --conditions=react-server --env-file=../../packages/storage/.env ./generate/sync-faq-category-images.ts"
     },
     "dependencies": {

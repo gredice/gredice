@@ -1,6 +1,28 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import { AchievementCollectionShowcase } from '../../../packages/game/src/shared-ui/achievements/AchievementCollection.fixture';
 
+test('the public guide stays accessible when personal achievements cannot load', async ({
+    mount,
+    page,
+}) => {
+    await page.route('**/api/accounts/current/achievements', (route) =>
+        route.fulfill({ status: 503, json: {} }),
+    );
+    await mount(<AchievementCollectionShowcase unseeded showGuide />);
+    await expect(
+        page.getByText('Postignuća trenutno nisu dostupna.'),
+    ).toBeVisible();
+    const guide = page.getByRole('link', { name: /Vodič kroz sva postignuća/ });
+    await expect(guide).toBeVisible();
+    await expect(guide).toHaveAttribute(
+        'href',
+        'https://www.gredice.com/postignuca',
+    );
+    await expect(guide).toHaveAttribute('target', '_blank');
+    await guide.focus();
+    await expect(guide).toBeFocused();
+});
+
 for (const { name: family, count } of [
     { name: 'Raznolik vrt', count: 10 },
     { name: 'Od sjemena do stola', count: 10 },
