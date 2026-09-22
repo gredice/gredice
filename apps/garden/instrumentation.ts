@@ -1,4 +1,5 @@
 import { SeverityNumber } from '@opentelemetry/api-logs';
+import { waitUntil } from '@vercel/functions';
 import type { Instrumentation } from 'next';
 
 import {
@@ -17,7 +18,7 @@ export async function register() {
     registerPostHogConsoleForwarding();
 }
 
-export const onRequestError: Instrumentation.onRequestError = async (
+export const onRequestError: Instrumentation.onRequestError = (
     error,
     request,
     context,
@@ -59,5 +60,5 @@ export const onRequestError: Instrumentation.onRequestError = async (
         severityText: 'ERROR',
     });
 
-    await flushPostHogLogs();
+    waitUntil(flushPostHogLogs());
 };

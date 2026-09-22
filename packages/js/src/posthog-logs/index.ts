@@ -181,10 +181,13 @@ export function createPostHogLogFlushScheduler({
     let failureBackoffMs = initialFailureBackoffMs;
     let hasReportedFailure = false;
     let pendingFlush: Promise<void> | null = null;
+    let collecting = false;
     let retryAfter = 0;
 
     return function schedulePostHogLogFlush(): Promise<void> {
-        if (pendingFlush) {
+        if (pendingFlush && collecting) {
+            // Concurrent requests must each keep their shared task alive.
+            registerBackgroundTask?.(pendingFlush);
             return pendingFlush;
         }
 
@@ -192,9 +195,21 @@ export function createPostHogLogFlushScheduler({
             return Promise.resolve();
         }
 
-        pendingFlush = wait(batchDelayMs)
-            .then(flush)
-            .then(() => {
+        // forceFlush snapshots the processor queue when it starts. Records
+        // arriving during export need a subsequent flush, not the same promise.
+        // Keep at most one collecting batch behind the active export.
+        const previousFlush = pendingFlush;
+        collecting = true;
+        const task = wait(batchDelayMs)
+            .then(() => previousFlush)
+            .then(async () => {
+                collecting = false;
+                // The preceding export may have failed while we were waiting.
+                if (now() < retryAfter) {
+                    return;
+                }
+
+                await flush();
                 consecutiveFailures = 0;
                 failureBackoffMs = initialFailureBackoffMs;
                 hasReportedFailure = false;
@@ -218,11 +233,14 @@ export function createPostHogLogFlushScheduler({
                 }
             })
             .finally(() => {
-                pendingFlush = null;
+                if (pendingFlush === task) {
+                    pendingFlush = null;
+                }
             });
 
-        registerBackgroundTask?.(pendingFlush);
+        pendingFlush = task;
+        registerBackgroundTask?.(task);
 
-        return pendingFlush;
+        return task;
     };
 }

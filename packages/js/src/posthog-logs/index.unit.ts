@@ -109,13 +109,128 @@ test('registers each scheduled flush with the request lifecycle', async () => {
     const secondFlush = scheduleFlush();
 
     assert.equal(firstFlush, secondFlush);
-    assert.deepEqual(backgroundTasks, [firstFlush]);
+    assert.deepEqual(backgroundTasks, [firstFlush, secondFlush]);
     assert.equal(flushCount, 0);
 
     releaseBatchWindow();
     await firstFlush;
 
     assert.equal(flushCount, 1);
+});
+
+test('exports logs arriving during a flush in one serialized follow-up batch', async (t) => {
+    const firstRequest = Promise.withResolvers<void>();
+    const releaseFirstRequest = Promise.withResolvers<void>();
+    const requestBodies: string[] = [];
+    let activeRequests = 0;
+    let maxActiveRequests = 0;
+    t.mock.method(
+        globalThis,
+        'fetch',
+        async (_input: unknown, init: RequestInit) => {
+            assert.ok(init.body instanceof Uint8Array);
+            requestBodies.push(new TextDecoder().decode(init.body));
+            activeRequests += 1;
+            maxActiveRequests = Math.max(maxActiveRequests, activeRequests);
+            if (requestBodies.length === 1) {
+                firstRequest.resolve();
+                await releaseFirstRequest.promise;
+            }
+            activeRequests -= 1;
+            return new Response(null, { status: 200 });
+        },
+    );
+    const exporter = new FetchOTLPLogExporter({
+        headers: {},
+        timeoutMillis: 100,
+        url: 'https://posthog.example.com/i/v1/logs',
+    });
+    const provider = new LoggerProvider({
+        processors: [
+            new BatchLogRecordProcessor({
+                exporter,
+                scheduledDelayMillis: 300_000,
+            }),
+        ],
+    });
+    t.after(() => provider.shutdown());
+    const backgroundTasks: Promise<void>[] = [];
+    const scheduleFlush = createPostHogLogFlushScheduler({
+        batchDelayMs: 1_000,
+        flush: () =>
+            exporter.forceFlushWithErrorPropagation(() =>
+                provider.forceFlush(),
+            ),
+        initialFailureBackoffMs: 30_000,
+        maxFailureBackoffMs: 300_000,
+        onPersistentError: () => assert.fail('exports should succeed'),
+        registerBackgroundTask: (task) => backgroundTasks.push(task),
+        wait: async () => {},
+    });
+    const logger = provider.getLogger('test');
+    logger.emit({ body: 'first record' });
+    const firstFlush = scheduleFlush();
+    await firstRequest.promise;
+
+    logger.emit({ body: 'record during export' });
+    const followUpFlush = scheduleFlush();
+    logger.emit({ body: 'another record during export' });
+    const sameFollowUpFlush = scheduleFlush();
+    // Release before assertions so the regression cannot leave an export open.
+    releaseFirstRequest.resolve();
+    await Promise.all([firstFlush, followUpFlush, sameFollowUpFlush]);
+
+    assert.notEqual(followUpFlush, firstFlush);
+    assert.equal(sameFollowUpFlush, followUpFlush);
+    assert.deepEqual(backgroundTasks, [
+        firstFlush,
+        followUpFlush,
+        sameFollowUpFlush,
+    ]);
+    assert.equal(maxActiveRequests, 1);
+    assert.equal(requestBodies.length, 2);
+    assert.match(requestBodies[0] ?? '', /first record/);
+    assert.match(requestBodies[1] ?? '', /record during export/);
+    assert.match(requestBodies[1] ?? '', /another record during export/);
+
+    logger.emit({ body: 'record after both flushes' });
+    await scheduleFlush();
+    assert.equal(requestBodies.length, 3);
+});
+
+test('a queued follow-up respects backoff established by the active flush', async () => {
+    const started = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    let currentTime = 0;
+    let flushCount = 0;
+    const scheduleFlush = createPostHogLogFlushScheduler({
+        batchDelayMs: 1_000,
+        flush: async () => {
+            flushCount += 1;
+            if (flushCount === 1) {
+                started.resolve();
+                await release.promise;
+                throw new Error('export unavailable');
+            }
+        },
+        initialFailureBackoffMs: 30_000,
+        maxFailureBackoffMs: 300_000,
+        now: () => currentTime,
+        onPersistentError: () => assert.fail('only one failure'),
+        wait: async () => {},
+    });
+    const firstFlush = scheduleFlush();
+    await started.promise;
+    const followUpFlush = scheduleFlush();
+    release.resolve();
+    await Promise.all([firstFlush, followUpFlush]);
+    assert.equal(flushCount, 1);
+
+    await scheduleFlush();
+    assert.equal(flushCount, 1);
+    currentTime += 30_000;
+    await scheduleFlush();
+    assert.equal(flushCount, 2);
 });
 
 test('uses capped exponential backoff and reports one persistent failure', async () => {
