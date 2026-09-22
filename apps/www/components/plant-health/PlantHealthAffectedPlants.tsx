@@ -1,6 +1,4 @@
 import type { PlantPestData } from '@gredice/client';
-import { Button } from '@gredice/ui/Button';
-import { Add } from '@gredice/ui/icons';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -73,20 +71,7 @@ export function PlantHealthAffectedPlants({
                     publicPath={publicPath}
                     sectionKey="relationships"
                     label="Predloži pogođenu biljku"
-                    trigger={
-                        <Button
-                            type="button"
-                            variant="outlined"
-                            color="neutral"
-                            size="sm"
-                            className="h-auto min-h-12 w-full justify-start gap-2 whitespace-normal rounded-lg border-dashed border-muted-foreground/40 bg-card/40 p-3 text-left font-normal hover:border-muted-foreground/60 hover:bg-card/70"
-                            startDecorator={
-                                <Add aria-hidden className="size-4 shrink-0" />
-                            }
-                        >
-                            Predloži pogođenu biljku
-                        </Button>
-                    }
+                    buttonStyle="card"
                 />
             </div>
         </Stack>

@@ -5,6 +5,7 @@ import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
 import {
+    Add,
     ArrowDownToLine,
     Check,
     Delete,
@@ -29,14 +30,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import dynamic from 'next/dynamic';
-import {
-    type ReactElement,
-    type ReactNode,
-    useEffect,
-    useId,
-    useMemo,
-    useState,
-} from 'react';
+import { type ReactNode, useEffect, useId, useMemo, useState } from 'react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { InlineLoginDialog } from '../auth/InlineLoginDialog';
 import {
@@ -141,7 +135,7 @@ type SubmitValue =
     | OperationSuggestionSubmitValue
     | null;
 
-type ButtonStyle = 'button' | 'icon';
+type ButtonStyle = 'button' | 'card' | 'icon';
 
 export type CommunityEditButtonProps = {
     entityTypeName:
@@ -157,7 +151,6 @@ export type CommunityEditButtonProps = {
     label?: string;
     buttonStyle?: ButtonStyle;
     className?: string;
-    trigger?: ReactElement;
 };
 
 const fieldPanelClassName =
@@ -1251,7 +1244,6 @@ export function CommunityEditButton({
     label,
     publicPath,
     sectionKey,
-    trigger: customTrigger,
 }: CommunityEditButtonProps) {
     const [open, setOpen] = useState(false);
     const [loginOpen, setLoginOpen] = useState(false);
@@ -1436,12 +1428,22 @@ export function CommunityEditButton({
 
     const triggerLabel = label ?? 'Predloži izmjenu';
     const trigger =
-        customTrigger ??
-        (buttonStyle === 'button' ? (
+        buttonStyle !== 'icon' ? (
             <Button
-                className={className}
+                className={cx(
+                    buttonStyle === 'card' &&
+                        'h-auto min-h-12 w-full justify-start gap-2 whitespace-normal rounded-lg border-dashed border-muted-foreground/40 bg-card/40 p-3 text-left font-normal hover:border-muted-foreground/60 hover:bg-card/70',
+                    className,
+                )}
+                color={buttonStyle === 'card' ? 'neutral' : undefined}
                 size="sm"
-                startDecorator={<Edit className="size-4" />}
+                startDecorator={
+                    buttonStyle === 'card' ? (
+                        <Add aria-hidden className="size-4 shrink-0" />
+                    ) : (
+                        <Edit className="size-4" />
+                    )
+                }
                 type="button"
                 variant="outlined"
             >
@@ -1456,7 +1458,7 @@ export function CommunityEditButton({
             >
                 <Edit className="size-4" />
             </IconButton>
-        ));
+        );
 
     function renderEditableField(field: CommunityEditableField) {
         const id = fieldInputId(fieldIdPrefix, field);

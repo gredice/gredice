@@ -18,7 +18,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Affected-plant links use the public card surface and border. The trailing custom CommunityEditButton trigger opens the existing relationship suggestion flow for pests and diseases.',
+                    'Affected-plant links use the public card surface and border. The trailing card-style CommunityEditButton opens the existing relationship suggestion flow for pests and diseases.',
             },
         },
     },
