@@ -185,10 +185,17 @@ function publicPageUrl(publicPath: string) {
 }
 
 function requestTargetEntityType(request: CommunityEditRequestListItem) {
-    return (
-        parseCommunityEntitySuggestionRequest(request)?.kind ??
-        request.entityTypeName
-    );
+    const kind = parseCommunityEntitySuggestionRequest(request)?.kind;
+    switch (kind) {
+        case 'plantTip':
+            return 'plant';
+        case 'disease':
+            return 'plantDisease';
+        case 'pest':
+            return 'plantPest';
+        default:
+            return kind ?? request.entityTypeName;
+    }
 }
 
 export default async function CommunityEditsPage({
