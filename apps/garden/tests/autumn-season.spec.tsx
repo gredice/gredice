@@ -64,3 +64,30 @@ for (const stage of ['summer', 'midAutumn', 'lateAutumn', 'winter'] as const) {
         );
     });
 }
+
+for (const tier of ['low', 'high'] as const) {
+    test(`falling leaves render deterministically on ${tier}`, async ({
+        mount,
+        page,
+    }) => {
+        const fixture = await mount(
+            <AutumnVisualFixture instanced leaves tier={tier} />,
+        );
+        await expect(fixture).toHaveAttribute('data-leaves', /^[1-9]/);
+        expect(
+            Number(await fixture.getAttribute('data-leaves')),
+        ).toBeLessThanOrEqual(tier === 'low' ? 24 : 160);
+        await expect(page.locator('canvas')).toHaveScreenshot(
+            `autumn-leaves-${tier}.png`,
+            { maxDiffPixelRatio: 0.005 },
+        );
+    });
+}
+
+test('summer has no ambient leaf pool activity', async ({ mount }) => {
+    const fixture = await mount(
+        <AutumnVisualFixture instanced leaves stage="summer" />,
+    );
+    await expect(fixture).toHaveAttribute('data-canopies', /.+/);
+    await expect(fixture).toHaveAttribute('data-leaves', '0');
+});

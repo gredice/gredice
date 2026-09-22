@@ -28,6 +28,7 @@ import {
 } from '../entities/helpers/HoverOutline';
 import { useOptionalGameState } from '../useGameState';
 import { AdaptiveHighQualityController } from './AdaptiveHighQualityController';
+import { AutumnSourcesProvider } from './AutumnSources';
 import {
     type AdaptiveHighQualityLevelProfile,
     adaptiveHighQualityLevels,
@@ -419,7 +420,9 @@ export function Scene({
                                             debugStats && wireframeDebugVisible,
                                         )}
                                     />
-                                    {children}
+                                    <AutumnSourcesProvider>
+                                        {children}
+                                    </AutumnSourcesProvider>
                                     <HoverOutlineEffect />
                                 </HoverOutlineProvider>
                             </ActorGroundingShadowProvider>

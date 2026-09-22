@@ -1,6 +1,8 @@
 import { MeshDistortMaterial, MeshWobbleMaterial } from '@react-three/drei';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
+import type { Group } from 'three';
 import { useAutumnState } from '../hooks/useAutumnState';
+import { useRegisterAutumnSource } from '../scene/AutumnSources';
 import { getAutumnCanopyStage } from '../scene/autumnCanopy';
 import {
     getAutumnLeafColor,
@@ -25,6 +27,8 @@ export function Tree({
     rotation,
     weatherDisabled,
 }: EntityInstanceProps) {
+    const sourceRef = useRef<Group>(null);
+    useRegisterAutumnSource(block.id, sourceRef, !weatherDisabled);
     const { nodes, materials } = useGameGLTF('Tree');
     const autumn = useAutumnState();
     const visualizationDisabled = useGameState(
@@ -59,6 +63,7 @@ export function Tree({
 
     return (
         <animated.group
+            ref={sourceRef}
             position={stack.position.clone().setY(currentStackHeight + 0.5)}
             scale={[0.125, 0.5, 0.125]}
             rotation={animatedRotation as unknown as [number, number, number]}

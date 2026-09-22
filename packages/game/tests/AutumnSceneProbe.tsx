@@ -5,8 +5,10 @@ import { useSceneTimeInvalidation } from '../src/scene/SceneTime';
 
 export function AutumnSceneProbe({
     onReady,
+    onLeafCount,
 }: {
     onReady: (value: string) => void;
+    onLeafCount?: (count: number) => void;
 }) {
     const camera = useThree((state) => state.camera);
     const scene = useThree((state) => state.scene);
@@ -18,6 +20,8 @@ export function AutumnSceneProbe({
     }, [camera]);
     useFrame(() => {
         if (++frames.current < 5) return;
+        const leaves = scene.getObjectByName('Weather:AutumnLeaves');
+        if (leaves instanceof InstancedMesh) onLeafCount?.(leaves.count);
         const canopies: string[] = [];
         scene.traverse((object) => {
             if (

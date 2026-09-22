@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useAutumnState } from '../hooks/useAutumnState';
 import { getAutumnCanopyStage } from '../scene/autumnCanopy';
 import { autumnPaletteSeeds } from '../scene/autumnPalette';
+import { useAutumnInstanceSources } from '../scene/useAutumnInstanceSources';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { useGameGLTF } from '../utils/useGameGLTF';
@@ -26,6 +27,7 @@ export function TreeCanopyInstances({
         yOffset: 0.5,
     });
     const { nodes, materials } = useGameGLTF('Tree');
+    useAutumnInstanceSources(instances);
     const autumn = useAutumnState();
     const disabled = useGameState(
         (state) => state.weatherVisualizationDisabled,
