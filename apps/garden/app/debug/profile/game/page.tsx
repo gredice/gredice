@@ -7,7 +7,10 @@ import {
 } from '@gredice/game';
 import { getSeasonDebugDates } from '@gredice/game/seasonal-debug';
 import { ProfileGameScene } from './ProfileGameScene';
-import { resolveGameProfileDate } from './profileDate';
+import {
+    resolveGameProfileDate,
+    serializeGameProfileDate,
+} from './profileDate';
 import {
     highTargetOperationVisualHighlightTarget,
     resolveGameProfileAdaptiveHigh,
@@ -383,7 +386,7 @@ export default async function GameProfilePage({
         <main
             className="relative h-screen w-screen overflow-hidden bg-[#e7e2cc]"
             data-game-profile-mode={mode}
-            data-game-profile-date={freezeTime?.toISOString()}
+            data-game-profile-date={serializeGameProfileDate(freezeTime)}
             data-game-profile-comparison-contract-version={
                 process.env.NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION
             }
@@ -448,7 +451,7 @@ export default async function GameProfilePage({
                 dayNightCycleDisabled={false}
                 flags={debugGameFlags}
                 fixedTimeSeconds={fixedTimeSeconds ?? undefined}
-                freezeTime={freezeTime}
+                freezeTime={serializeGameProfileDate(freezeTime)}
                 debugHud={showDebugHud}
                 gardenSwitchEnabled={gardenSwitchProfile}
                 hideHud={!showHud}

@@ -17,3 +17,16 @@ export function resolveGameProfileDate(
         return fallback;
     return date;
 }
+
+/** Transfer calendar/clock parts across RSC without imposing the server timezone. */
+export function serializeGameProfileDate(date: Date | undefined) {
+    if (!date) return undefined;
+    const pad = (value: number, length = 2) =>
+        String(value).padStart(length, '0');
+    return `${pad(date.getFullYear(), 4)}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${pad(date.getMilliseconds(), 3)}`;
+}
+
+/** Called at a client boundary: ISO calendar parts without a zone mean browser-local time. */
+export function restoreGameProfileDate(value: string | undefined) {
+    return value ? new Date(value) : undefined;
+}

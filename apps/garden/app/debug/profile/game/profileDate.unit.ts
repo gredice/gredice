@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { resolveGameProfileDate } from './profileDate.ts';
+import {
+    resolveGameProfileDate,
+    restoreGameProfileDate,
+    serializeGameProfileDate,
+} from './profileDate.ts';
 
 test('profile date validates calendar days and preserves the fixture clock', () => {
     const fallback = new Date(2024, 5, 21, 18, 30);
@@ -40,5 +44,31 @@ test('invalid date queries preserve the caller fallback, including live debug sc
     ]) {
         assert.equal(resolveGameProfileDate(value, fallback), fallback);
         assert.equal(resolveGameProfileDate(value), undefined);
+    }
+});
+
+test('server calendar parts preserve the requested local clock in a different browser timezone', () => {
+    const previous = process.env.TZ;
+    try {
+        process.env.TZ = 'UTC';
+        const date = resolveGameProfileDate(
+            '2024-10-22',
+            new Date(2024, 5, 21, 22, 30),
+        );
+        const parts = serializeGameProfileDate(date);
+        assert.equal(parts, '2024-10-22T22:30:00.000');
+        process.env.TZ = 'Europe/Zagreb';
+        const browserDate = restoreGameProfileDate(parts);
+        assert.ok(browserDate);
+        assert.equal(browserDate.getDate(), 22);
+        assert.equal(browserDate.getHours(), 22);
+        assert.equal(browserDate.toISOString(), '2024-10-22T20:30:00.000Z');
+        process.env.TZ = 'America/Los_Angeles';
+        assert.equal(restoreGameProfileDate(parts)?.getHours(), 22);
+        assert.equal(restoreGameProfileDate(parts)?.getDate(), 22);
+        assert.equal(restoreGameProfileDate(undefined), undefined);
+    } finally {
+        if (previous === undefined) delete process.env.TZ;
+        else process.env.TZ = previous;
     }
 });

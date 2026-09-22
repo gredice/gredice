@@ -25,7 +25,10 @@ Import `getSeasonDebugDates` from `@gredice/game/seasonal-debug` for fixture and
 story dates: `spring`, `summer`, `earlyAutumn`, `midAutumn`, `lateAutumn`, `winter`.
 The default capture year is 2024; callers may supply another year. Each call
 returns fresh local-noon dates derived from the shared seasonal milestones.
-Use a fixed browser timezone when comparing captures across machines.
+Calendar and clock parts cross the server/client boundary without a timezone,
+then become a browser-local Date. Capture reports record the resolved ISO instant
+and browser timezone in their comparison signature; different dates or zones are
+incompatible. Use a fixed browser timezone when comparing captures across machines.
 
 Run the HUD browser checks with
 `pnpm --filter garden exec playwright test --config playwright.season.config.ts`.

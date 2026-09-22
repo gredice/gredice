@@ -1,4 +1,7 @@
-import { resolveGameProfileDate } from '../profile/game/profileDate';
+import {
+    resolveGameProfileDate,
+    serializeGameProfileDate,
+} from '../profile/game/profileDate';
 import { SandboxDebugActions } from '../sandbox/SandboxDebugActions';
 import { EntityGridViewerDynamic } from './EntityGridViewerDynamic';
 import { entityGridSandboxStorageKey } from './entitySandboxStorage';
@@ -24,7 +27,7 @@ export default async function DebugEntitiesPage({
             </div>
             <div className="relative min-h-0 flex-1">
                 <EntityGridViewerDynamic
-                    freezeTime={freezeTime}
+                    freezeTime={serializeGameProfileDate(freezeTime)}
                     storageKey={entityGridSandboxStorageKey}
                 />
                 <SandboxDebugActions storageKey={entityGridSandboxStorageKey} />

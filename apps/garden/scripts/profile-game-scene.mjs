@@ -9301,6 +9301,10 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
                 element.dataset.gameProfileFixedTimeSeconds ?? '',
             );
             return {
+                sceneDate: element.dataset.gameProfileDate
+                    ? new Date(element.dataset.gameProfileDate).toISOString()
+                    : null,
+                sceneTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 controls: element.dataset.gameProfileControls ?? null,
                 debugHud: element.dataset.gameProfileDebugHud ?? null,
                 details: element.dataset.gameProfileDetails ?? null,
@@ -9318,6 +9322,8 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             };
         });
         const requested = {
+            sceneDate: profileMetadata?.sceneDate ?? null,
+            sceneTimezone: profileMetadata?.sceneTimezone ?? null,
             controls: profileMetadata?.controls ?? request.controls,
             debugHud: profileMetadata?.debugHud ?? request.debugHud,
             details: profileMetadata?.details ?? request.details,
@@ -9888,6 +9894,10 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             },
             continuousRenderLeases:
                 element.dataset.gameProfileContinuousRenderLeases ?? null,
+            sceneDate: element.dataset.gameProfileDate
+                ? new Date(element.dataset.gameProfileDate).toISOString()
+                : null,
+            sceneTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             controls: element.dataset.gameProfileControls ?? null,
             closeupRaisedBedId:
                 Number.parseInt(
@@ -9980,6 +9990,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 closeupRaisedBedId:
                     profileMetadata?.closeupRaisedBedId ??
                     request.closeupRaisedBedId,
+                sceneDate: profileMetadata?.sceneDate ?? null,
+                sceneTimezone: profileMetadata?.sceneTimezone ?? null,
                 controls: profileMetadata?.controls ?? request.controls,
                 details: profileMetadata?.details ?? request.details,
                 debugHud: profileMetadata?.debugHud ?? request.debugHud,
@@ -12616,6 +12628,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         comparisonPair: scenario.comparisonPair ?? null,
         comparisonRole: scenario.comparisonRole ?? null,
         continuousRenderLeases: profileMetadata?.continuousRenderLeases ?? null,
+        sceneDate: profileMetadata?.sceneDate ?? null,
+        sceneTimezone: profileMetadata?.sceneTimezone ?? null,
         controls: profileMetadata?.controls ?? request.controls,
         building: profileMetadata?.building ?? request.building,
         buildingFixture:
