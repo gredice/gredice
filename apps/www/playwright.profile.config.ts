@@ -16,6 +16,8 @@ export default defineConfig({
     webServer: undefined,
     use: {
         ...config.use,
+        // Keep the stubbed renderer build separate from the real WebGL suite.
+        ctCacheDir: './playwright/.cache/profile',
         ctViteConfig: {
             ...config.use?.ctViteConfig,
             resolve: {

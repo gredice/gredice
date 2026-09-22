@@ -11,7 +11,7 @@
         "dev": "node ../../scripts/run-app-command.mjs dev",
         "build": "next build",
         "start": "node ../../scripts/run-app-command.mjs start",
-        "test": "pnpm run test:public-profile && pnpm run test:pricing && pnpm run test:plant-sowing-price && pnpm run test:preview-backfill && pnpm run test:wallpapers && pnpm run test:plant-operation-stages && pnpm run test:seeds && pnpm run test:block-routes && pnpm run test:pets && pnpm run test:delivery-summary && pnpm run test:static-data && pnpm run test:sitemap && pnpm run test:canonical-urls && pnpm run test:tracking && pnpm run test:seo && pnpm run test:cms-pages && pnpm run test:faq && pnpm run test:prepare:routes && pnpm run test:run",
+        "test": "pnpm run test:public-profile && pnpm run test:pricing && pnpm run test:plant-sowing-price && pnpm run test:preview-backfill && pnpm run test:wallpapers && pnpm run test:plant-operation-stages && pnpm run test:seeds && pnpm run test:block-routes && pnpm run test:pets && pnpm run test:delivery-summary && pnpm run test:static-data && pnpm run test:plant-catalogue && pnpm run test:sitemap && pnpm run test:canonical-urls && pnpm run test:tracking && pnpm run test:seo && pnpm run test:cms-pages && pnpm run test:faq && pnpm run test:prepare:routes && pnpm run test:run",
         "test:regional-calendar": "node --import tsx --test ./lib/plants/regionalCalendar.node.spec.ts",
         "test:prepare": "turbo build --filter=www && pnpm run test:prepare:routes",
         "test:prepare:routes": "pnpm run test:regional-calendar && node --import tsx --conditions=react-server --env-file-if-exists=.env --env-file-if-exists=.env.local ./tests/populate-test-cases.ts",
@@ -47,7 +47,9 @@
         "test:local": "pnpm run test:prepare && pnpm run test:run",
         "test:llms": "node --experimental-strip-types --test ./app/llms-routes.spec.ts",
         "test:public-profile": "node --import tsx --test ./tests/publicProfile.node.spec.ts ./app/postignuca/achievementAvailability.node.spec.ts && playwright test --config playwright.profile.config.ts",
-        "faq-categories:sync-images": "node --import tsx --conditions=react-server --env-file=../../packages/storage/.env ./generate/sync-faq-category-images.ts"
+        "faq-categories:sync-images": "node --import tsx --conditions=react-server --env-file=../../packages/storage/.env ./generate/sync-faq-category-images.ts",
+        "test:plant-catalogue": "node --import tsx --test ./app/biljke/plantCatalogue.node.spec.ts",
+        "test:public-html": "playwright test --config playwright.public-html.config.ts"
     },
     "dependencies": {
         "@flags-sdk/vercel": "1.4.9",

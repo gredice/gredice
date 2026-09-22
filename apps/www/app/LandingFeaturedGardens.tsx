@@ -22,11 +22,11 @@ import { Card, CardContent } from '../components/shared/Card';
 import { WinterModeToggle } from '../components/WinterModeToggle';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { KnownPages } from '../src/KnownPages';
-import { LandingPublicGardenViewer } from './LandingPublicGardenViewer';
+import { LandingFeaturedGardenScene } from './LandingFeaturedGardenScene';
 import {
     getAdjacentLandingGardenIndex,
     getVisibleLandingGardenIndexes,
-    type LandingGardenCandidate,
+    type LandingFeaturedGarden,
     orderLandingGardens,
 } from './landingGardenCarousel';
 
@@ -88,7 +88,7 @@ function getOwnedGardenUrl(gardenId: number) {
 export function LandingFeaturedGardens({
     featuredGardens,
 }: {
-    featuredGardens: LandingGardenCandidate[];
+    featuredGardens: LandingFeaturedGarden[];
 }) {
     const { data: user } = useCurrentUser();
     const ownedGardensQuery = useQuery({
@@ -380,13 +380,9 @@ export function LandingFeaturedGardens({
                 onPointerDown={handlePointerDown}
                 onPointerUp={handlePointerUp}
             >
-                <LandingPublicGardenViewer
-                    appBaseUrl={getGardenBaseUrl()}
-                    className="size-full"
-                    deferDetails
-                    garden={displayedGarden.garden}
-                    noControls
-                    noSound
+                <LandingFeaturedGardenScene
+                    key={`${displayedGarden.source}-${displayedGarden.garden.id}`}
+                    garden={displayedGarden}
                 />
             </GardenSceneTransitionSurface>
 
