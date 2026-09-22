@@ -50,7 +50,7 @@ const plantStatusReviewOutputSchema = z.object({
         .array(
             z.object({
                 positionLabel: z.number().int().min(1).max(18),
-                plantingId: z.number().int().positive().nullable().optional(),
+                plantingId: z.number().int().positive().nullable(),
                 requestedStatus: z.enum(imageObservablePlantFieldStatuses),
                 confidence: z.number().min(0).max(1),
                 evidence: z.string(),
