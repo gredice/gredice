@@ -2,6 +2,7 @@ import { GameGardenIcon } from '@gredice/ui/GameIcons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import type { Metadata } from 'next';
+import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import { PublicEmptyState } from '../../components/shared/placeholders/PublicEmptyState';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
@@ -46,6 +47,7 @@ export default async function PublicGardensPage() {
                     Trenutno nema vidljivih vrtova.
                 </PublicEmptyState>
             )}
+            <RelatedFaq placement="publicGardens" />
         </Stack>
     );
 }

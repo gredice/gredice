@@ -89,6 +89,8 @@ export type SectionData = {
     assetAlt?: string;
     iconName?: string;
     features?: SectionData[];
+    /** Ordered published FAQ slugs, separated by spaces, commas or newlines. */
+    faqSlugs?: string;
     ctas?: {
         label: string;
         href: string;
@@ -1210,6 +1212,12 @@ export function CtaBand(props: SectionData) {
 
 export function Faq1(props: SectionData) {
     const { ctas, description, features, header, tagline } = props;
+    if (
+        typeof props.faqSlugs === 'string' &&
+        props.faqSlugs.trim() &&
+        !features?.length
+    )
+        return null;
 
     return (
         <CmsSectionContainer>
@@ -1237,9 +1245,9 @@ export function Faq1(props: SectionData) {
                                         </Typography>
                                         {typeof feature.description ===
                                         'string' ? (
-                                            <Typography component="p">
+                                            <Markdown>
                                                 {feature.description}
-                                            </Typography>
+                                            </Markdown>
                                         ) : (
                                             feature.description
                                         )}

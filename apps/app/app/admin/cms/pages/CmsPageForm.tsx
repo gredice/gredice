@@ -39,7 +39,9 @@ import {
     normalizeCmsPageRenderMode,
     normalizeCmsSectionRenderMode,
     parseCmsPageContentDocument,
+    resolveFaqSections,
     SectionsView,
+    type SharedFaqEntry,
 } from '@gredice/ui/cms';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
@@ -118,6 +120,7 @@ import {
 } from './CmsPreviewViewport';
 
 type CmsPageFormProps = {
+    faqEntries?: SharedFaqEntry[];
     page?: SelectCmsPage;
     template?: CmsPageFormTemplate;
     formId?: string;
@@ -731,6 +734,7 @@ function updateSectionData(
 }
 
 export function CmsPageForm({
+    faqEntries = [],
     page,
     template,
     formId,
@@ -2535,9 +2539,12 @@ export function CmsPageForm({
                                                                                 </div>
                                                                             ) : (
                                                                                 <SectionsView
-                                                                                    sectionsData={[
-                                                                                        section.data,
-                                                                                    ]}
+                                                                                    sectionsData={resolveFaqSections(
+                                                                                        [
+                                                                                            section.data,
+                                                                                        ],
+                                                                                        faqEntries,
+                                                                                    )}
                                                                                     componentsRegistry={
                                                                                         sectionsComponentRegistry
                                                                                     }

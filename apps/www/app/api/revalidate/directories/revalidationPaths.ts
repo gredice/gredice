@@ -1,4 +1,6 @@
 export type PublicDirectoryEntityType =
+    | 'faq'
+    | 'faq-category'
     | 'block'
     | 'brand'
     | 'hqLocations'
@@ -19,6 +21,8 @@ const revalidationPathsByEntityType: Record<
     PublicDirectoryEntityType,
     RevalidationPath[]
 > = {
+    faq: [{ path: '/', type: 'layout' }],
+    'faq-category': [{ path: '/', type: 'layout' }],
     block: [
         { path: '/blokovi' },
         { path: '/blokovi/ljubimci' },

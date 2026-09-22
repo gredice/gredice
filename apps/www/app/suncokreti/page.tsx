@@ -12,6 +12,7 @@ import {
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import Link from 'next/link';
+import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import {
     Card,
     CardContent,
@@ -264,6 +265,7 @@ export default async function SunflowersPage() {
                     ) : null}
                 </section>
             </Stack>
+            <RelatedFaq placement="sunflowers" />
         </Container>
     );
 }

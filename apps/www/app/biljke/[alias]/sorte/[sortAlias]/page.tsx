@@ -4,6 +4,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { RelatedFaq } from '../../../../../components/faq/RelatedFaq';
 import { FeedbackModal } from '../../../../../components/shared/feedback/FeedbackModal';
 import { PublicBreadcrumbs } from '../../../../../components/shared/seo/PublicBreadcrumbs';
 import { StructuredDataScript } from '../../../../../components/shared/seo/StructuredDataScript';
@@ -311,6 +312,7 @@ export default async function PlantSortPage(
                     relationships={relationships}
                 />
                 <PlantSortSeedsList plantSortId={sortData.id} />
+                <RelatedFaq placement="plant" />
                 <Row spacing={4}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj biljci korisne?

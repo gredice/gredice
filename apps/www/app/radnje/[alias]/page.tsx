@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PriceAttributeCard } from '../../../components/attributes/PriceAttributeCard';
 import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
+import { RelatedFaq } from '../../../components/faq/RelatedFaq';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { PublicBreadcrumbs } from '../../../components/shared/seo/PublicBreadcrumbs';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
@@ -251,6 +252,7 @@ export default async function OperationPage(
                     Dostupno za
                 </Typography>
                 <OperationApplicationsList operationId={operation.id} />
+                <RelatedFaq placement="operations" />
                 <Row spacing={4}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj radnji korisne?

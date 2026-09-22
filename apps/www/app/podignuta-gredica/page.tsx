@@ -6,6 +6,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
+import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import raisedBedImage from '../../public/assets/blocks/Raised_Bed.webp';
@@ -333,6 +334,7 @@ export default function RaisedBedPage() {
                         <a href={KnownPages.Contact}>kontakt</a>.
                     </p>
                 </StyledHtml>
+                <RelatedFaq placement="raisedBed" />
                 <Row spacing={4} className="mt-12">
                     <Typography level="body1">
                         Jesu li ti informacije o podignutim gredicama korisne?

@@ -12,6 +12,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
+import { RelatedFaq } from '../../../components/faq/RelatedFaq';
 import {
     Card,
     CardContent,
@@ -518,6 +519,7 @@ export default async function DeliverySlotsPage() {
                     <WhatsAppCard />
                 </Stack>
 
+                <RelatedFaq placement="deliverySlots" />
                 <Row spacing={4} className="mt-8">
                     <Typography level="body1">
                         Jesu li ti ove informacije korisne?

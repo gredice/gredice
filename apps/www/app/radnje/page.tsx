@@ -6,6 +6,7 @@ import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { CommunityEntitySuggestionButton } from '../../components/community-edits/CommunityEntitySuggestionButton';
+import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageFilterInput } from '../../components/shared/PageFilterInput';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
@@ -132,6 +133,7 @@ export default async function OperationsPage({
                 operationsData={operationsData}
                 initialSearch={search}
             />
+            <RelatedFaq placement="operations" />
             <Row spacing={4}>
                 <Typography level="body1">
                     Jesu li ti informacije o radnjama korisne?

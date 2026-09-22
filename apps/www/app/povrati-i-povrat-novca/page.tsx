@@ -2,6 +2,7 @@ import { Container } from '@gredice/ui/Container';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
+import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 
@@ -20,7 +21,7 @@ export default function RefundsPage() {
                 <PageHeader
                     padded
                     header="Povrat novca"
-                    subHeader="Ako nisi zadovoljan uslugom ili proizvodom, možeš zatražiti povrat novca u roku od 30 dana."
+                    subHeader="Ako usluga ili proizvod ne ispuni tvoja očekivanja, možeš zatražiti povrat novca u roku od 30 dana."
                 />
                 <StyledHtml>
                     <h2>Naša politika</h2>
@@ -89,6 +90,7 @@ export default function RefundsPage() {
                     </p>
                 </StyledHtml>
             </Stack>
+            <RelatedFaq placement="refunds" />
         </Container>
     );
 }
