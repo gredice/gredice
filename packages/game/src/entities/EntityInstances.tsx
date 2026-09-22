@@ -30,6 +30,7 @@ import {
 import { AutumnGroundLeaves } from './groundDecorations/AutumnGroundLeaves';
 import { GroundBlockDecorations } from './groundDecorations/GroundBlockDecorations';
 import type { GroundDecorationWeather } from './groundDecorations/GroundDecorationInstances';
+import { AutumnEntityLeaves } from './helpers/AutumnEntityLeaves';
 import {
     type GroundPatchSurface,
     useGroundPatchMaterial,
@@ -559,6 +560,12 @@ export function EntityInstances({
                 {...mergedTerrainChunkProps}
                 {...commonSnowProps}
             />
+            {renderDetails && (
+                <AutumnEntityLeaves
+                    stacks={stacks}
+                    tier={qualityProfile.tier}
+                />
+            )}
             {renderDetails && (
                 <AutumnGroundLeaves
                     farmId={farmId}

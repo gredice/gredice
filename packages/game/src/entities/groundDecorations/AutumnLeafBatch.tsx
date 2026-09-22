@@ -55,6 +55,7 @@ export function AutumnLeafBatch({
                 instances={batch.instances}
                 geometry={geometry}
                 material={material}
+                scale={batch.scale ?? 1}
                 renderSnow={false}
                 castShadow={false}
                 receiveShadow

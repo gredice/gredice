@@ -76,7 +76,7 @@ The mesh and its geometry/material are disposed on unmount. Profile metadata
 exposes `autumnLeafCount` and `autumnLeafCapacity`.
 
 `GAME_PROFILE_SCENARIO_SET=autumn pnpm --filter garden profile:game` profiles the
-dense garden in wind at the shared mid-autumn fixture date on low/medium/high.
+dense autumn-surface garden in wind at the shared late-autumn fixture date on low/medium/high.
 Use `fixedTimeSeconds` in a debug link for reproducible still captures; omit it
 when measuring animation cost.
 
@@ -96,3 +96,31 @@ darkens the leaf material and lowers roughness; snow suppresses density quadrati
 Scene cluster caps are 48/96/256/512/384 for low/constrained/medium/high/custom
 (12 triangles per cluster). `autumnGroundLeafClusters` is included in profile
 metadata. Frozen low/high WebGL fixtures cover flat and rotated sloped terrain.
+
+## Entity surface allowlist
+
+`helpers/autumnLeafSurfaces.ts` is the explicit `AutumnLeafSurface` contract.
+Anchors are authored in block-local world units after applying each model's
+runtime scale/offset. The initial audit covers Stool seats, StoneMedium top
+facets, both Raised_Bed U-segment rims, Fence central post caps (shared by
+connected variants), and all six gift-box colours on the box top away from the
+ribbon/bow. Top heights and stone facet gradients were checked against exported
+GLB triangles. Small clusters use 45% of the ground-cluster size.
+
+The global layer reuses block instances and the raised-bed footprint helper, so
+quarter-turns, stack heights, drag previews and placement/drop animation keep the
+same block identity. Authored anchor ordering is seeded by garden/block/year and
+anchor ID. Summer, absent nearby trees, covered props and full snow produce no
+leaves. Shared material wetness and raycast exclusion match the ground layer.
+Entity cluster caps are 24/48/96/160/128 for low/constrained/medium/high/custom;
+flat surfaces share one or two batches and the two stone slopes add at most four.
+Profile metadata exposes `autumnEntityLeafClusters`.
+
+Animals, crops, lights, water, undersides and unsupported props are excluded.
+Standalone WoodenBench/OutletDisplayTable need integration with their animated
+world transforms; GardenBox needs its articulated lid tracked. These and other
+unreviewed tools, gates/extensions, broad stones and large props remain follow-up
+work in [#4921](https://github.com/gredice/gredice/issues/4921). There is no automatic fallback that decorates arbitrary meshes.
+
+The `dense-autumn` mock profile places 25 trees beside 50 supported props to
+exercise both accumulation layers and their scene caps in production profiling.

@@ -26,6 +26,7 @@ export function AutumnVisualFixture({
     wind = 3,
     tier = 'high',
     ground = false,
+    entities = false,
 }: {
     stage?: keyof ReturnType<typeof getSeasonDebugDates>;
     disabled?: boolean;
@@ -37,13 +38,15 @@ export function AutumnVisualFixture({
     tier?: GameQualityTier;
     instanced?: boolean;
     ground?: boolean;
+    entities?: boolean;
 }) {
     const [ready, setReady] = useState('');
     const [leafCount, setLeafCount] = useState(0);
     const [groundCount, setGroundCount] = useState(0);
+    const [entityCount, setEntityCount] = useState(0);
     const stacks = useMemo(
-        () =>
-            [-1.4, 0, 1.4].map((x, index) => ({
+        () => [
+            ...[-1.4, 0, 1.4].map((x, index) => ({
                 position: new Vector3(x, 0, 0),
                 blocks: [
                     ...(ground
@@ -65,7 +68,26 @@ export function AutumnVisualFixture({
                     },
                 ],
             })),
-        [ground],
+            ...(entities
+                ? [
+                      'Stool',
+                      'StoneMedium',
+                      'GiftBox_BlueWhite',
+                      'Raised_Bed',
+                      'Fence',
+                  ].map((name, index) => ({
+                      position: new Vector3(
+                          ((index % 3) - 1) * 1.4,
+                          0,
+                          1.3 + Math.floor(index / 3) * 1.4,
+                      ),
+                      blocks: [
+                          { name, id: `surface:${index}`, rotation: index % 4 },
+                      ],
+                  }))
+                : []),
+        ],
+        [ground, entities],
     );
     const client = useMemo(() => new QueryClient(), []);
     const store = useMemo(() => {
@@ -89,6 +111,7 @@ export function AutumnVisualFixture({
                     data-canopies={ready}
                     data-leaves={leafCount}
                     data-ground-leaves={groundCount}
+                    data-entity-leaves={entityCount}
                     style={{ width: 640, height: 420 }}
                 >
                     <Scene
@@ -130,7 +153,7 @@ export function AutumnVisualFixture({
                                     stacks={stacks}
                                     quality={
                                         gameQualityProfiles[
-                                            ground ? tier : 'low'
+                                            ground || entities ? tier : 'low'
                                         ]
                                     }
                                     weather={{ windSpeed: 0, windDirection: 0 }}
@@ -150,6 +173,7 @@ export function AutumnVisualFixture({
                                 onReady={setReady}
                                 onLeafCount={setLeafCount}
                                 onGroundCount={setGroundCount}
+                                onEntityCount={setEntityCount}
                             />
                         </Suspense>
                     </Scene>

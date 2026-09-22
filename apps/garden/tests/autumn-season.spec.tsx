@@ -127,3 +127,44 @@ for (const tier of ['low', 'high'] as const) {
         await expect(fixture).toHaveAttribute('data-ground-leaves', '0');
     });
 }
+
+for (const tier of ['low', 'high'] as const) {
+    test(`static entity leaf surfaces at ${tier}`, async ({ mount, page }) => {
+        const fixture = await mount(
+            <AutumnVisualFixture
+                instanced
+                entities
+                stage="lateAutumn"
+                tier={tier}
+                zoom={65}
+            />,
+        );
+        await expect(fixture).toHaveAttribute('data-entity-leaves', /^[1-9]/);
+        await expect(fixture).toHaveAttribute('data-canopies', /.+/);
+        await expect(page.locator('canvas')).toHaveScreenshot(
+            `autumn-entities-${tier}.png`,
+            { maxDiffPixelRatio: 0.002 },
+        );
+        await fixture.update(
+            <AutumnVisualFixture
+                instanced
+                entities
+                stage="summer"
+                tier={tier}
+                zoom={65}
+            />,
+        );
+        await expect(fixture).toHaveAttribute('data-entity-leaves', '0');
+        await fixture.update(
+            <AutumnVisualFixture
+                instanced
+                entities
+                stage="lateAutumn"
+                snow={1}
+                tier={tier}
+                zoom={65}
+            />,
+        );
+        await expect(fixture).toHaveAttribute('data-entity-leaves', '0');
+    });
+}

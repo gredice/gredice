@@ -1641,8 +1641,8 @@ const weatherTransitionScenarios = [
 ];
 
 const autumnScenarios = ['low', 'medium', 'high'].map((tier) => ({
-    name: `game-autumn-dense-${tier}`,
-    path: `/debug/profile/game?mode=windy&profile=dense&quality=${tier}&date=2024-10-22&details=1&hud=0&debugHud=0`,
+    name: `game-autumn-accumulation-${tier}`,
+    path: `/debug/profile/game?mode=windy&profile=dense-autumn&quality=${tier}&date=2024-11-21&details=1&hud=0&debugHud=0`,
     viewport:
         tier === 'low'
             ? { width: 390, height: 844 }
@@ -11718,6 +11718,10 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             autumnGroundLeafClusters:
                 typeof metadata.autumnGroundLeafClusters === 'number'
                     ? metadata.autumnGroundLeafClusters
+                    : null,
+            autumnEntityLeafClusters:
+                typeof metadata.autumnEntityLeafClusters === 'number'
+                    ? metadata.autumnEntityLeafClusters
                     : null,
             groundDecorationCount:
                 typeof metadata.groundDecorationCount === 'number'
