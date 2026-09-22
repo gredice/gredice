@@ -43,3 +43,20 @@ memoized HSL colour derived from the stable block ID; cached GLTF materials,
 trunk, palms, crops and grass materials stay unchanged. Weather visualization
 disablement restores the base canopy. Frozen seasonal stories and WebGL captures
 cover summer, early/mid/late autumn, winter, cloudy/twilight light and snow.
+
+## Canopy retention
+
+`Tree.blend` retains its original summer mesh and adds named thinning/sparse
+canopies and an exposed branch mesh. `assets/create-tree-autumn-variants.py`
+reproduces these source meshes; export with the normal asset pipeline (a focused
+export may use `assets/export-game-assets.py -- --asset Tree`), followed by
+`pnpm generate:models-types`. The manifest version invalidates the GLB URL cache.
+
+Each tree selects one canopy with a bounded ID-seeded retention offset. Sprigs
+belonging to the original full canopy disappear with that canopy; the same selected
+geometry receives snow. Seasonal stage changes also invalidate cached shadows.
+
+Blender 5.1.2 export counts: full tree 1,170 triangles (124 trunk, 80 canopy,
+966 sprigs), thinning 284 (124 trunk, 80 canopy, 80 branches), sparse 244
+(124 trunk, 40 canopy, 80 branches). All stages use three opaque meshes plus
+the optional snow pass; no transparent duplicate canopy is mounted.

@@ -13,11 +13,13 @@ import {
 import * as SunCalc from 'suncalc';
 import { Color, type DirectionalLight } from 'three';
 import { PlantShaderPrewarm } from '../generators/plant/PlantShaderPrewarm';
+import { useAutumnState } from '../hooks/useAutumnState';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useSyncGameTime } from '../hooks/useSyncGameTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import { type GameState, useGameState } from '../useGameState';
+import { getAutumnCanopyShadowKey } from './autumnCanopy';
 import { defaultGameBackgroundPaletteIndex } from './backgroundPalettes';
 import { CloudLayer } from './CloudLayer';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
@@ -667,6 +669,7 @@ export function Environment({
         (state) => state.weatherVisualizationDisabled,
     );
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
+    const autumn = useAutumnState();
 
     const { data: garden } = useCurrentGarden();
     const location = useMemo(
@@ -967,6 +970,7 @@ export function Environment({
         `view:${view}:${closeupBlockId ?? ''}`,
         `pickup:${pickupBlockId ?? ''}`,
         `winter:${winterMode}`,
+        `canopy:${getAutumnCanopyShadowKey(garden?.stacks, weatherDisabled ? 1 : autumn.leafRetention)}`,
     ].join('||');
     const shadowMapSize = qualityProfile.shadows
         ? qualityProfile.shadowMapSize
