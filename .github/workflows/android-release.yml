@@ -44,7 +44,7 @@ jobs:
     environment:
       name: "Google Play - ${{ inputs.app }}"
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 1
 
@@ -87,13 +87,13 @@ jobs:
           echo "tag=android-${APP_NAME}-v${VERSION_NAME}${ARTIFACT_SUFFIX}" >> "${GITHUB_OUTPUT}"
 
       - name: ☕ Setup JDK 17
-        uses: actions/setup-java@v5.7.0
+        uses: actions/setup-java@v6.0.1
         with:
           distribution: temurin
           java-version: "17"
 
       - name: 🤖 Setup Android SDK
-        uses: android-actions/setup-android@v4.0.1
+        uses: android-actions/setup-android@v4.0.4
         with:
           # The legacy tools package is no longer available from the SDK repository.
           packages: platform-tools
@@ -220,14 +220,14 @@ jobs:
           echo "artifact_prefix=${ARTIFACT_PREFIX}" >> "${GITHUB_OUTPUT}"
 
       - name: 🧾 Attest signed Android binaries
-        uses: actions/attest-build-provenance@v4.1.1
+        uses: actions/attest-build-provenance@v4.2.2
         with:
           subject-path: |
             release-artifacts/${{ steps.stage.outputs.artifact_prefix }}.aab
             release-artifacts/${{ steps.stage.outputs.artifact_prefix }}.apk
 
       - name: 📤 Upload Play handoff artifact
-        uses: actions/upload-artifact@v5.0.0
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: ${{ steps.stage.outputs.artifact_prefix }}-play-handoff
           path: release-artifacts/*
@@ -237,7 +237,7 @@ jobs:
 
       - name: 🚀 Create or update draft GitHub release
         if: inputs.createGithubRelease
-        uses: softprops/action-gh-release@v2.2.2
+        uses: softprops/action-gh-release@v3.0.3
         with:
           name: "Gredice ${{ inputs.app }} Android ${{ steps.version.outputs.version_name }}${{ steps.version.outputs.artifact_suffix }}"
           tag_name: ${{ steps.version.outputs.tag }}
