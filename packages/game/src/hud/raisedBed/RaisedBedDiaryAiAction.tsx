@@ -1,20 +1,30 @@
+import { sanitizeRaisedBedAiMarkdown } from '@gredice/js/ai';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import { AiAnalysisRequestError } from '../../hooks/aiAnalysisError';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { useRaisedBedAiAnalysis } from '../../hooks/useRaisedBedAiAnalysis';
+import { useRaisedBedAiHistory } from '../../hooks/useRaisedBedAiHistory';
 import { useRaisedBedFieldAiAnalysis } from '../../hooks/useRaisedBedFieldAiAnalysis';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
 import { GameModal } from '../../shared-ui/game-modal';
-import { useSuncokretChat } from '../SuncokretChatProvider';
 import { RaisedBedAiOperationMarkdown } from './RaisedBedAiOperationMarkdown';
 import styles from './RaisedBedDiaryAiAction.module.css';
-import { buildRaisedBedAnalysisChatSeed } from './raisedBedAnalysisChatSeed';
+import {
+    buildRaisedBedAnalysisChatSeed,
+    getRaisedBedAnalysisConversationId,
+} from './raisedBedAnalysisChatSeed';
+
+const SuncokretChatPanel = dynamic(() =>
+    import('../SuncokretChatPanel').then((module) => module.SuncokretChatPanel),
+);
 
 type RaisedBedDiaryAiActionProps = {
     gardenId: number;
@@ -60,8 +70,10 @@ export function RaisedBedDiaryAiAction({
         null,
     );
     const requestIdRef = useRef(0);
-    const triggerElementRef = useRef<HTMLElement | null>(null);
-    const chat = useSuncokretChat();
+    const currentUser = useCurrentUser(open);
+    const savedHistory = useRaisedBedAiHistory(gardenId, raisedBedId, {
+        enabled: open && phase === 'done' && resultSource === 'analysis',
+    });
     const raisedBedAnalysis = useRaisedBedAiAnalysis();
     const raisedBedFieldAnalysis = useRaisedBedFieldAiAnalysis();
     const activeMutation =
@@ -201,35 +213,6 @@ export function RaisedBedDiaryAiAction({
         setAnalysisCompletedAt(null);
     }
 
-    function startFollowUpChat() {
-        const anchorElement = triggerElementRef.current;
-        if (!chat || !anchorElement || !visibleMarkdown) {
-            return;
-        }
-
-        setOpen(false);
-        resetPresentation();
-        chat.openChat(
-            {
-                conversationLabel: 'AI analizu fotografija',
-                gardenId,
-                positionIndex: positionIndex ?? null,
-                raisedBedId,
-                seed: buildRaisedBedAnalysisChatSeed({
-                    analysisMarkdown: visibleMarkdown,
-                    id: `raised-bed-analysis-${raisedBedId.toString()}-${Date.now().toString(36)}`,
-                    positionIndex,
-                    referenceDate,
-                }),
-                uiContext:
-                    typeof positionIndex === 'number'
-                        ? { surface: 'plant-details', tab: 'diary' }
-                        : { surface: 'raised-bed-details', tab: 'diary' },
-            },
-            anchorElement,
-        );
-    }
-
     function handleOpenChange(nextOpen: boolean) {
         setOpen(nextOpen);
 
@@ -288,8 +271,29 @@ export function RaisedBedDiaryAiAction({
     const canAnalyzeEntry =
         !latestCompleteHistoryEntry &&
         (phase === 'idle' || (phase === 'error' && errorStatus !== 429));
-    const canContinueInChat =
-        Boolean(chat) && phase === 'done' && visibleMarkdown.length > 0;
+    const savedAnalysisId =
+        selectedHistoryEntryId ??
+        savedHistory.data?.find(
+            (entry) =>
+                sanitizeRaisedBedAiMarkdown(entry.description ?? '') ===
+                    visibleMarkdown &&
+                imageUrls.every((url) => entry.imageUrls?.includes(url)),
+        )?.id;
+    const conversationId =
+        savedAnalysisId && currentUser.data?.id
+            ? getRaisedBedAnalysisConversationId(
+                  savedAnalysisId,
+                  currentUser.data.id,
+              )
+            : null;
+    const canContinueInChat = phase === 'done' && visibleMarkdown.length > 0;
+    const analysisContent = (
+        <div className="prose prose-sm max-w-none dark:prose-invert">
+            <RaisedBedAiOperationMarkdown gardenId={gardenId}>
+                {visibleMarkdown}
+            </RaisedBedAiOperationMarkdown>
+        </div>
+    );
 
     return (
         <>
@@ -299,7 +303,6 @@ export function RaisedBedDiaryAiAction({
                     className="w-fit self-end px-3 dark:from-green-700 dark:to-green-800 dark:text-white dark:hover:from-green-600 dark:hover:to-green-700 dark:hover:text-white"
                     onClick={(event) => {
                         event.stopPropagation();
-                        triggerElementRef.current = event.currentTarget;
                         handlePrimaryAction();
                     }}
                     startDecorator={
@@ -323,7 +326,7 @@ export function RaisedBedDiaryAiAction({
                 className="md:max-w-4xl"
             >
                 <div className="grid gap-4 md:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-                    <Stack spacing={4}>
+                    <Stack spacing={4} className="min-w-0">
                         <div className="relative overflow-hidden rounded-3xl border bg-card shadow-xs">
                             <div className="relative aspect-square overflow-hidden bg-black/5">
                                 <Image
@@ -377,7 +380,7 @@ export function RaisedBedDiaryAiAction({
                             </Row>
                         )}
                     </Stack>
-                    <Stack spacing={6}>
+                    <Stack spacing={6} className="min-w-0">
                         {historyEntries && historyEntries.length > 1 && (
                             <Stack spacing={2}>
                                 <Typography
@@ -456,7 +459,36 @@ export function RaisedBedDiaryAiAction({
                                 )}
                             </Stack>
                         </Row>
-                        {errorMessage ? (
+                        {canContinueInChat && conversationId ? (
+                            <SuncokretChatPanel
+                                key={conversationId}
+                                open={open}
+                                conversationId={conversationId}
+                                analysisContent={analysisContent}
+                                target={{
+                                    conversationLabel: 'AI analizu fotografija',
+                                    gardenId,
+                                    raisedBedId,
+                                    positionIndex: positionIndex ?? null,
+                                    seed: buildRaisedBedAnalysisChatSeed({
+                                        analysisMarkdown: visibleMarkdown,
+                                        id: conversationId,
+                                        positionIndex,
+                                        referenceDate,
+                                    }),
+                                    uiContext:
+                                        typeof positionIndex === 'number'
+                                            ? {
+                                                  surface: 'plant-details',
+                                                  tab: 'diary',
+                                              }
+                                            : {
+                                                  surface: 'raised-bed-details',
+                                                  tab: 'diary',
+                                              },
+                                }}
+                            />
+                        ) : errorMessage ? (
                             <Alert
                                 color={
                                     errorStatus === 429 ? 'warning' : 'danger'
@@ -504,23 +536,27 @@ export function RaisedBedDiaryAiAction({
                                 {`Fotografija ${Math.max(imageUrls.indexOf(selectedImageUrl), 0) + 1} od ${imageUrls.length}`}
                             </Typography>
                             <Row spacing={2} className="flex-wrap">
-                                {canContinueInChat && (
-                                    <ButtonGreen
-                                        size="sm"
-                                        className="px-3"
-                                        startDecorator={
-                                            <Image
-                                                src={sunflowerMascotArtwork}
-                                                alt=""
-                                                aria-hidden="true"
-                                                width={16}
-                                                height={16}
-                                            />
-                                        }
-                                        onClick={startFollowUpChat}
-                                    >
-                                        Nastavi razgovor
-                                    </ButtonGreen>
+                                {canContinueInChat && !conversationId && (
+                                    <Stack spacing={1}>
+                                        <Typography level="body3">
+                                            {currentUser.isError ||
+                                            savedHistory.isError ||
+                                            (!savedHistory.isFetching &&
+                                                !currentUser.isLoading)
+                                                ? 'Razgovor još nije dostupan.'
+                                                : 'Pripremam razgovor...'}
+                                        </Typography>
+                                        <Button
+                                            size="sm"
+                                            variant="plain"
+                                            onClick={() => {
+                                                void currentUser.refetch();
+                                                void savedHistory.refetch();
+                                            }}
+                                        >
+                                            Pokušaj ponovno
+                                        </Button>
+                                    </Stack>
                                 )}
                                 {canAnalyzeEntry && (
                                     <Button
