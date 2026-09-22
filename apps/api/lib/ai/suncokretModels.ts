@@ -293,8 +293,8 @@ export function estimateSuncokretPromptTokens(value: unknown) {
 }
 
 // Requests above the long-context threshold are billed at higher rates for
-// the whole request, so pre-generation budgeting must use those rates too.
-function suncokretPricingForInputTokens(
+// the whole request, so budgeting and fallback usage costs must use them too.
+export function suncokretPricingForInputTokens(
     model: SuncokretModelConfig,
     inputTokens: number,
 ): AiChatPricing {
@@ -324,6 +324,17 @@ function suncokretPricingForInputTokens(
                       inputRateMultiplier,
               }),
     };
+}
+
+// Gateway applies the long-context threshold per model call, so the largest
+// step decides the rate tier rather than the summed usage of all tool steps.
+export function largestSuncokretStepInputTokens(
+    steps: readonly { usage?: { inputTokens?: number | undefined } }[],
+) {
+    return steps.reduce(
+        (largest, step) => Math.max(largest, step.usage?.inputTokens ?? 0),
+        0,
+    );
 }
 
 export function estimateSuncokretRequestCostMicroEur({

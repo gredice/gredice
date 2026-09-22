@@ -5,8 +5,10 @@ import {
     getSuncokretGatewayBilledCostMicroEur,
     getSuncokretModel,
     getSuncokretPricedModel,
+    largestSuncokretStepInputTokens,
     resolveSuncokretMaxOutputTokens,
     suncokretGatewayGenerationIds,
+    suncokretPricingForInputTokens,
 } from './suncokretModels';
 
 function setEnvValue(name: string, value: string | undefined) {
@@ -246,6 +248,42 @@ test('Suncokret output budget uses GPT-6 Luna long-context rates above 272K inpu
                 remainingMicroEur: 52_000,
             }),
             0,
+        );
+    });
+});
+
+test('Suncokret fallback usage pricing picks the long-context tier from the largest step', () => {
+    withModelEnv({}, () => {
+        const model = getSuncokretModel();
+        assert.ok(model);
+
+        const steps = [
+            { usage: { inputTokens: 150_000 } },
+            { usage: { inputTokens: 200_000 } },
+            {},
+        ];
+        assert.equal(largestSuncokretStepInputTokens(steps), 200_000);
+        assert.equal(
+            suncokretPricingForInputTokens(
+                model,
+                largestSuncokretStepInputTokens(steps),
+            ),
+            model,
+        );
+
+        const longContextPricing = suncokretPricingForInputTokens(
+            model,
+            largestSuncokretStepInputTokens([
+                ...steps,
+                { usage: { inputTokens: 280_000 } },
+            ]),
+        );
+        assert.equal(longContextPricing.inputEurPerMillionTokens, 0.176);
+        assert.equal(longContextPricing.outputEurPerMillionTokens, 0.66);
+        assert.equal(longContextPricing.cachedInputEurPerMillionTokens, 0.0176);
+        assert.equal(
+            longContextPricing.cacheWriteInputEurPerMillionTokens,
+            0.22,
         );
     });
 });

@@ -47,7 +47,9 @@ import {
     getSuncokretModel,
     getSuncokretModelRegistry,
     getSuncokretPricedModel,
+    largestSuncokretStepInputTokens,
     resolveSuncokretMaxOutputTokens,
+    suncokretPricingForInputTokens,
 } from '../../../lib/ai/suncokretModels';
 import { buildSuncokretUsageStatus } from '../../../lib/ai/suncokretUsage';
 import { createJwt } from '../../../lib/auth/auth';
@@ -1289,7 +1291,10 @@ const app = new Hono<{ Variables: ChatVariables }>()
                             cacheWriteTokens: usage.cacheWriteTokens,
                             outputTokens: usage.outputTokens,
                             totalTokens: usage.totalTokens,
-                            pricing: model,
+                            pricing: suncokretPricingForInputTokens(
+                                model,
+                                largestSuncokretStepInputTokens(steps),
+                            ),
                             ...(billedTotalMicroEur === null
                                 ? {}
                                 : { billedTotalMicroEur }),
