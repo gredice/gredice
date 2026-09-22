@@ -89,13 +89,15 @@ export function Slider({
     const thumbInputRefs = useRef<Array<HTMLInputElement | null>>([]);
     const thumbCount = value?.length ?? defaultValue?.length ?? 1;
 
-    function toPublicValue(nextValue: number[]) {
+    function toPublicValue(nextValue: number | number[]) {
+        // Base UI sends a number for single-thumb pointer input, even with array values.
+        const values = Array.isArray(nextValue) ? nextValue : [nextValue];
         return verticalInverted
-            ? (invertValues(nextValue, min, max) ?? [])
-            : [...nextValue];
+            ? (invertValues(values, min, max) ?? [])
+            : [...values];
     }
 
-    function handleValueChange(nextValue: number[]) {
+    function handleValueChange(nextValue: number | number[]) {
         const nextPublicValue = toPublicValue(nextValue);
 
         if (value === undefined) {

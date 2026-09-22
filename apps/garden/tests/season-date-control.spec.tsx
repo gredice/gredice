@@ -31,6 +31,29 @@ test('season slider supports keyboard, milestones, external dates and reset', as
     );
 });
 
+test('season slider changes the date when clicked and dragged', async ({
+    mount,
+    page,
+}) => {
+    await mount(<SeasonDateControlFixture />);
+    const slider = page.getByRole('slider', { name: 'Day of year' });
+    const track = slider.locator('xpath=../..');
+    const bounds = await track.boundingBox();
+    expect(bounds).not.toBeNull();
+    if (!bounds) return;
+
+    const y = bounds.y + bounds.height / 2;
+    await page.mouse.click(bounds.x + bounds.width * 0.8, y);
+    await expect(slider).toHaveAttribute('aria-valuenow', '293');
+    await expect(page.locator('output').first()).toContainText('19. 10. 2024.');
+    await page.mouse.move(bounds.x + bounds.width * 0.8, y);
+    await page.mouse.down();
+    await page.mouse.move(bounds.x + bounds.width * 0.2, y, { steps: 8 });
+    await page.mouse.up();
+    await expect(slider).toHaveAttribute('aria-valuenow', '74');
+    await expect(page.locator('output').first()).toContainText('14. 03. 2024.');
+});
+
 test('season control stays hidden without debug flag', async ({
     mount,
     page,
