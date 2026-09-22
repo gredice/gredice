@@ -23,7 +23,9 @@ not a warning and must not be inferred from today's catalogue.
   boundary. It retains all physical cells while joining the bounding rectangles
   of shared plantings. Companion and empty cells inside a group keep explicit
   field numbers. Each active planting appears once within its group.
-- Farm uses the compact grid on every screen, retaining three physical columns.
+- Farm uses the compact grid on every screen, retaining three physical columns
+  and at least 18 spaces even when field records are missing. Fields 1–9 stay in
+  the bottom half when the upper half is empty, in both the overview and details.
   Admin retains the default responsive grid, stacking groups on phones.
 - Farm detail places each planting's date/details trigger in its anchor field
   header. An unsowed planting shows “Nije posijano”; no sowing date is inferred.
