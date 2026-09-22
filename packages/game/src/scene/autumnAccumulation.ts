@@ -5,6 +5,7 @@ import { getSeasonStartDate } from './seasonState';
 export type AutumnTreeAnchor = { id: string; x: number; z: number };
 export type AutumnLeafBatchData = {
     key: string;
+    scale?: number;
     gradientX: number;
     gradientZ: number;
     variant: number;

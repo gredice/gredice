@@ -7,8 +7,10 @@ export function AutumnSceneProbe({
     onReady,
     onLeafCount,
     onGroundCount,
+    onEntityCount,
 }: {
     onReady: (value: string) => void;
+    onEntityCount?: (count: number) => void;
     onGroundCount?: (count: number) => void;
     onLeafCount?: (count: number) => void;
 }) {
@@ -26,7 +28,13 @@ export function AutumnSceneProbe({
         if (leaves instanceof InstancedMesh) onLeafCount?.(leaves.count);
         const canopies: string[] = [];
         let groundCount = 0;
+        let entityCount = 0;
         scene.traverse((object) => {
+            if (
+                object.name.startsWith('BlockInstances:Autumn:entity:') &&
+                object instanceof InstancedMesh
+            )
+                entityCount += object.count;
             if (
                 object.name.startsWith('BlockInstances:Autumn:ground:') &&
                 object instanceof InstancedMesh
@@ -50,6 +58,7 @@ export function AutumnSceneProbe({
             }
         });
         onGroundCount?.(groundCount);
+        onEntityCount?.(entityCount);
         if (canopies.length === 3) onReady(canopies.join(','));
     });
     return null;

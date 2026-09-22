@@ -346,6 +346,7 @@ export function bindRuntimeFrameLoopProfileTelemetry(
 
 export type GameProfileMetadata = {
     autumnGroundLeafClusters?: number;
+    autumnEntityLeafClusters?: number;
     autumnLeafCapacity?: number;
     autumnLeafCount?: number;
     adaptiveHighAmbientFps?: number;
