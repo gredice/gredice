@@ -1,5 +1,11 @@
 import { Footer1 } from '@gredice/ui/cms';
-import { Logotype, PublicFooterOrigin } from '@gredice/ui/PublicChrome';
+import { CompanyFacebook, CompanyGitHub } from '@gredice/ui/icons';
+import {
+    Logotype,
+    PublicFooterLandscape,
+    PublicFooterOrigin,
+} from '@gredice/ui/PublicChrome';
+import { Switch } from '@gredice/ui/Switch';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
 const meta = {
@@ -11,15 +17,36 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Public footer with a prominent Croatian and EU origin sign-off above the garden artwork. Flags are 40 × 30 px with 18 px text on narrow footers, stacking above the message; wide footers use 48 × 36 px flags beside 20 px text. The copyright stays separate.',
+                    'The quiet baseline footer groups a compact logo and social controls above a secondary origin/copyright row, with the divider above the brand group. Croatian and EU flags stay 24 × 18 px beside regular 13 px text; narrow footers center and stack the baseline. The garden artwork follows without another divider.',
             },
         },
     },
     args: {
         tagline: 'Gredice d.o.o',
-        asset: <Logotype className="w-[320px] h-[87px]" />,
+        asset: <Logotype className="h-auto w-[210px] max-w-full" />,
         description: <PublicFooterOrigin />,
+        ctas: [
+            {
+                label: 'Facebook',
+                href: 'https://gredice.link/fb',
+                icon: <CompanyFacebook />,
+            },
+            {
+                label: 'GitHub',
+                href: 'https://github.com/gredice',
+                icon: <CompanyGitHub />,
+            },
+        ],
         features: [
+            {
+                tagline: 'FooterUtility',
+                asset: (
+                    <div className="flex items-center gap-6 text-xs text-muted-foreground">
+                        Ambijent vrta
+                        <Switch aria-label="Ambijentalna pozadina" size="sm" />
+                    </div>
+                ),
+            },
             {
                 header: 'Informacije',
                 ctas: [
@@ -29,6 +56,12 @@ const meta = {
             },
         ],
     },
+    render: (args) => (
+        <div className="[--muted-foreground:28_16.3%_24%]">
+            <Footer1 {...args} />
+            <PublicFooterLandscape />
+        </div>
+    ),
 } satisfies Meta<typeof Footer1>;
 
 export default meta;
@@ -45,4 +78,13 @@ export const Mobile: Story = {
             </div>
         ),
     ],
+};
+
+export const Dark: Story = {
+    render: (args) => (
+        <div className="dark bg-background text-foreground">
+            <Footer1 {...args} />
+            <PublicFooterLandscape phase="night" />
+        </div>
+    ),
 };

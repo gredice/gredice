@@ -4,22 +4,22 @@ import croatiaFlag from './assets/hr.svg';
 
 export function PublicFooterOrigin() {
     return (
-        <div className="flex flex-col items-center gap-3 text-center text-[18px] font-medium leading-7 text-foreground @[48rem]/cms:flex-row @[48rem]/cms:gap-4 @[48rem]/cms:text-[20px]">
-            <span className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-2 text-center text-[13px] font-normal leading-5 text-foreground/70 @[48rem]/cms:justify-start">
+            <span className="flex shrink-0 items-center gap-1">
                 <Image
                     src={croatiaFlag}
                     alt="Hrvatska"
-                    className="h-[30px] w-10 @[48rem]/cms:h-9 @[48rem]/cms:w-12"
-                    width={48}
-                    height={36}
+                    className="h-[18px] w-6"
+                    width={24}
+                    height={18}
                     unoptimized
                 />
                 <Image
                     src={europeanUnionFlag}
                     alt="Europska unija"
-                    className="h-[30px] w-10 @[48rem]/cms:h-9 @[48rem]/cms:w-12"
-                    width={48}
-                    height={36}
+                    className="h-[18px] w-6"
+                    width={24}
+                    height={18}
                     unoptimized
                 />
             </span>
