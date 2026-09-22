@@ -8,6 +8,23 @@ export const autumnLeafCaps = {
     high: 160,
     custom: 120,
 } satisfies Record<GameQualityProfileTier, number>;
+
+/** Reuse the caller's buffer and spread a capped pool across the visible source list. */
+export function writeAutumnLeafSourceCounts(
+    counts: number[],
+    sources: number,
+    perTree: number,
+    capacity: number,
+) {
+    counts.length = sources;
+    if (!sources) return counts;
+    const total = Math.min(capacity, sources * perTree);
+    counts.fill(Math.floor(total / sources));
+    const extra = total % sources;
+    for (let index = 0; index < extra; index++)
+        counts[Math.floor((index * sources) / extra)]++;
+    return counts;
+}
 export function resolveAutumnLeafCount(
     tier: GameQualityProfileTier,
     sources: number,
@@ -66,7 +83,7 @@ export function sampleAutumnLeaf(
         y: 1.75 * (1 - age),
         z:
             descriptor.z +
-            Math.cos(direction) * drift +
+            -Math.cos(direction) * drift +
             Math.cos(age * 11 + descriptor.rotation) * 0.09,
         rotation: descriptor.rotation + age * 8,
         scale: Math.min(1, age * 12, (1 - age) * 10),

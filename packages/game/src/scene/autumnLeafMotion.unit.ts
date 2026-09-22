@@ -5,6 +5,7 @@ import {
     createAutumnLeafDescriptor,
     resolveAutumnLeafCount,
     sampleAutumnLeaf,
+    writeAutumnLeafSourceCounts,
 } from './autumnLeafMotion';
 
 test('ambient leaf pools stay bounded and stop outside shedding or when disabled', () => {
@@ -44,4 +45,31 @@ test('leaf motion is seeded, finite, bounded and responds to wind direction', ()
         assert.ok(sample.scale >= 0 && sample.scale <= 1);
         assert.ok(Math.abs(sample.x) < 3 && Math.abs(sample.z) < 3);
     }
+});
+
+test('capped pools share leaves across visible sources, including more sources than slots', () => {
+    const buffer: number[] = [];
+    assert.equal(writeAutumnLeafSourceCounts(buffer, 10, 8, 24), buffer);
+    assert.equal(
+        buffer.reduce((sum, value) => sum + value, 0),
+        24,
+    );
+    assert(buffer.every((value) => value === 2 || value === 3));
+    writeAutumnLeafSourceCounts(buffer, 100, 8, 24);
+    assert.equal(buffer.filter(Boolean).length, 24);
+    assert(buffer.slice(80).some(Boolean));
+    assert(buffer.every((value) => value <= 1));
+    writeAutumnLeafSourceCounts(buffer, 0, 8, 24);
+    assert.equal(buffer.length, 0);
+});
+
+test('leaf drift shares the compass convention used by clouds and snow', () => {
+    const leaf = createAutumnLeafDescriptor('compass', 0);
+    const calm = sampleAutumnLeaf(leaf, 12, 0, 0);
+    assert(sampleAutumnLeaf(leaf, 12, 3, 0).z < calm.z);
+    assert(sampleAutumnLeaf(leaf, 12, 3, 180).z > calm.z);
+    assert(sampleAutumnLeaf(leaf, 12, 3, 90).x > calm.x);
+    assert(sampleAutumnLeaf(leaf, 12, 3, 270).x < calm.x);
+    const diagonal = sampleAutumnLeaf(leaf, 12, 3, 45);
+    assert(diagonal.x > calm.x && diagonal.z < calm.z);
 });

@@ -20,6 +20,7 @@ import {
     createAutumnLeafDescriptor,
     resolveAutumnLeafCount,
     sampleAutumnLeaf,
+    writeAutumnLeafSourceCounts,
 } from './autumnLeafMotion';
 import { getAutumnLeafColor } from './autumnPalette';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
@@ -82,6 +83,7 @@ export function AutumnLeaves({
         () =>
             sources.map((source) => ({
                 source,
+                origin: new Vector3(),
                 leaves: Array.from({ length: 8 }, (_, index) => ({
                     motion: createAutumnLeafDescriptor(source.id, index),
                     color: getAutumnLeafColor(
@@ -93,16 +95,18 @@ export function AutumnLeaves({
             })),
         [sources, autumn.foliageColorProgress],
     );
-    const scratch = useMemo(
-        () => ({
+    const scratch = useMemo(() => {
+        const visibleIndices: number[] = [];
+        const allocations: number[] = [];
+        return {
+            visibleIndices,
+            allocations,
             transform: new Object3D(),
-            origin: new Vector3(),
             frustum: new Frustum(),
             matrix: new Matrix4(),
             sphere: new Sphere(new Vector3(), 2.5),
-        }),
-        [],
-    );
+        };
+    }, []);
     useSceneTimeInvalidation(
         'autumn-leaves',
         visible && count > 0 && fixedTime === undefined,
@@ -132,24 +136,36 @@ export function AutumnLeaves({
                     camera.matrixWorldInverse,
                 ),
             );
-            for (const { source, leaves } of descriptors) {
-                source.object.getWorldPosition(scratch.origin);
-                scratch.sphere.center.copy(scratch.origin);
+            scratch.visibleIndices.length = 0;
+            for (const [index, { source, origin }] of descriptors.entries()) {
+                source.object.getWorldPosition(origin);
+                scratch.sphere.center.copy(origin);
                 if (
                     !source.object.visible ||
                     (!(camera instanceof OrthographicCamera) &&
-                        camera.position.distanceToSquared(scratch.origin) >
-                            900) ||
+                        camera.position.distanceToSquared(origin) > 900) ||
                     !scratch.frustum.intersectsSphere(scratch.sphere)
                 )
                     continue;
+                scratch.visibleIndices.push(index);
+            }
+            writeAutumnLeafSourceCounts(
+                scratch.allocations,
+                scratch.visibleIndices.length,
+                perTree,
+                capacity,
+            );
+            for (const [
+                visibleIndex,
+                descriptorIndex,
+            ] of scratch.visibleIndices.entries()) {
+                const { origin, leaves } = descriptors[descriptorIndex];
                 for (
                     let index = 0;
-                    index < Math.min(perTree, leaves.length);
+                    index < scratch.allocations[visibleIndex];
                     index++
                 ) {
                     const leaf = leaves[index];
-                    if (active >= capacity) break;
                     const sample = sampleAutumnLeaf(
                         leaf.motion,
                         time.value,
@@ -157,9 +173,9 @@ export function AutumnLeaves({
                         windDirection,
                     );
                     scratch.transform.position.set(
-                        scratch.origin.x + sample.x,
-                        scratch.origin.y - 0.5 + sample.y,
-                        scratch.origin.z + sample.z,
+                        origin.x + sample.x,
+                        origin.y - 0.5 + sample.y,
+                        origin.z + sample.z,
                     );
                     scratch.transform.rotation.set(
                         sample.rotation,
@@ -171,7 +187,6 @@ export function AutumnLeaves({
                     mesh.setMatrixAt(active, scratch.transform.matrix);
                     mesh.setColorAt(active++, leaf.color);
                 }
-                if (active >= capacity) break;
             }
         }
         if (mesh.count !== active)
