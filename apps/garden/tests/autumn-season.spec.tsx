@@ -22,9 +22,32 @@ test('disabled seasonal weather keeps summer color', async ({ mount }) => {
     const fixture = await mount(<AutumnVisualFixture stage="summer" />);
     await expect(fixture).toHaveAttribute('data-canopies', /.+/);
     const summer = await fixture.getAttribute('data-canopies');
+    await expect(fixture).toHaveAttribute('data-sprigs', /.+/);
+    const summerSprigs = await fixture.getAttribute('data-sprigs');
     await fixture.update(<AutumnVisualFixture stage="midAutumn" disabled />);
     await expect(fixture).toHaveAttribute('data-canopies', summer ?? '');
+    await expect(fixture).toHaveAttribute('data-sprigs', summerSprigs ?? '');
 });
+
+for (const instanced of [false, true]) {
+    test(`full autumn tree sprigs change color when instanced=${instanced}`, async ({
+        mount,
+    }) => {
+        const fixture = await mount(
+            <AutumnVisualFixture instanced={instanced} stage="summer" />,
+        );
+        await expect(fixture).toHaveAttribute('data-sprigs', /.+/);
+        const summerSprigs = await fixture.getAttribute('data-sprigs');
+        await fixture.update(
+            <AutumnVisualFixture instanced={instanced} stage="midAutumn" />,
+        );
+        await expect(fixture).toHaveAttribute('data-sprigs', /.+/);
+        await expect(fixture).not.toHaveAttribute(
+            'data-sprigs',
+            summerSprigs ?? '',
+        );
+    });
+}
 
 for (const lighting of ['twilight', 'cloudy'] as const) {
     test(`autumn colors under ${lighting} at far zoom`, async ({

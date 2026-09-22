@@ -5,11 +5,13 @@ import { useSceneTimeInvalidation } from '../src/scene/SceneTime';
 
 export function AutumnSceneProbe({
     onReady,
+    onSprigColors,
     onLeafCount,
     onGroundCount,
     onEntityCount,
 }: {
     onReady: (value: string) => void;
+    onSprigColors?: (value: string) => void;
     onEntityCount?: (count: number) => void;
     onGroundCount?: (count: number) => void;
     onLeafCount?: (count: number) => void;
@@ -27,6 +29,7 @@ export function AutumnSceneProbe({
         const leaves = scene.getObjectByName('Weather:AutumnLeaves');
         if (leaves instanceof InstancedMesh) onLeafCount?.(leaves.count);
         const canopies: string[] = [];
+        const sprigs: string[] = [];
         let groundCount = 0;
         let entityCount = 0;
         scene.traverse((object) => {
@@ -56,10 +59,25 @@ export function AutumnSceneProbe({
                         `${object.material.color.getHexString()}:${object.geometry.index?.count ?? object.geometry.attributes.position.count}`,
                     );
             }
+            if (
+                (object.name.startsWith('Autumn:Sprigs:') ||
+                    object.name.startsWith('BlockInstances:Tree:sprigs:')) &&
+                object instanceof Mesh &&
+                object.material instanceof MeshStandardMaterial
+            ) {
+                for (
+                    let index = 0;
+                    index <
+                    (object instanceof InstancedMesh ? object.count : 1);
+                    index++
+                )
+                    sprigs.push(object.material.color.getHexString());
+            }
         });
         onGroundCount?.(groundCount);
         onEntityCount?.(entityCount);
         if (canopies.length === 3) onReady(canopies.join(','));
+        if (sprigs.length === 3) onSprigColors?.(sprigs.join(','));
     });
     return null;
 }

@@ -57,6 +57,15 @@ export function Tree({
             ),
         [materials, progress, block.id],
     );
+    const sprigColor = useMemo(
+        () =>
+            getAutumnLeafColor(
+                materials['Material.GrassPart'].color,
+                progress,
+                getAutumnPaletteSeed(block.id),
+            ),
+        [materials, progress, block.id],
+    );
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
     const materialAnimationActive = useTimeDrivenMaterialAnimation();
@@ -105,12 +114,14 @@ export function Tree({
             )}
             {canopyStage === 'full' && (
                 <mesh
+                    name={`Autumn:Sprigs:${block.id}`}
                     castShadow
                     receiveShadow
                     geometry={nodes.Tree_1_3.geometry}
                 >
                     <MeshWobbleMaterial
                         {...materials['Material.GrassPart']}
+                        color={sprigColor}
                         factor={0.02}
                         speed={resolveTimeDrivenMaterialSpeed(
                             2,
