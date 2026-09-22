@@ -187,7 +187,7 @@ jobs:
           fi
 
           if [ -z "$TEST_ARGS" ]; then
-            pnpm test --filter=${{ inputs.name }}
+            pnpm run test --filter=${{ inputs.name }}
           else
             pnpm build --filter=${{ inputs.name }}
             if [ -n "${{ inputs.testShardPrepareScript }}" ]; then

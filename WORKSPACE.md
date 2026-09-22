@@ -68,9 +68,10 @@ pnpm lint --filter garden
 pnpm typecheck --filter garden
 pnpm typecheck --filter www
 
-# Run tests
+# Run tests (keep `run`: pnpm 12 applies `pnpm test --filter` as its own
+# workspace filter and skips the root turbo script and its build dependency)
 pnpm test
-pnpm test --filter garden
+pnpm run test --filter garden
 
 # Build
 pnpm build
@@ -231,7 +232,7 @@ PLAYWRIGHT_HTML_OPEN=never
 
 Keep agent internet access off by default. Setup scripts already have internet access for dependency installation. If a task truly needs runtime internet access, prefer the common dependency allowlist and read-only HTTP methods.
 
-Do not use `pnpm dev` as the default Codex validation path. It starts the local HTTPS proxy and expects Docker, host entries, and Caddy certificate setup. Use targeted `pnpm lint --filter <workspace>`, `pnpm test --filter <workspace>`, and `pnpm build --filter <workspace>` commands instead.
+Do not use `pnpm dev` as the default Codex validation path. It starts the local HTTPS proxy and expects Docker, host entries, and Caddy certificate setup. Use targeted `pnpm lint --filter <workspace>`, `pnpm run test --filter <workspace>`, and `pnpm build --filter <workspace>` commands instead.
 
 Avoid `pnpm bootstrap` in Codex unless Vercel auth and project access are configured. It links projects and pulls real environment variables. For most Codex tasks, the checked-in `.env.example` files provide enough safe smoke-test configuration.
 

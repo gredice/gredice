@@ -1205,10 +1205,10 @@ include package consumers:
 
 ```bash
 pnpm lint --filter @gredice/js
-pnpm test --filter @gredice/js
+pnpm run test --filter @gredice/js
 pnpm lint --filter @gredice/game
 pnpm typecheck --filter @gredice/game
-pnpm test --filter @gredice/game
+pnpm run test --filter @gredice/game
 pnpm typecheck --filter garden
 pnpm typecheck --filter www
 pnpm build --filter garden

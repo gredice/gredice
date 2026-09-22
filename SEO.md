@@ -59,7 +59,7 @@ SEO usually does not apply to authenticated `garden`, `farm`, `app`, or API rout
 
 ```bash
 pnpm build --filter www
-pnpm test --filter www
+pnpm run test --filter www
 ```
 
 - If a page should not be indexed, make that explicit through the app's metadata or sitemap config.

@@ -248,7 +248,7 @@ commands from the repo root:
 
 ```bash
 pnpm lint --filter @gredice/storage
-pnpm test --filter @gredice/storage
+pnpm run test --filter @gredice/storage
 pnpm build --filter api
 pnpm build --filter app
 git diff --check
