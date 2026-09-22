@@ -39,6 +39,9 @@ async function scrollFadeSize(viewport: Locator, edge: 'b' | 't') {
 }
 
 test.describe('Garden operations HUD', () => {
+    test.beforeEach(async ({ page }) => {
+        await page.clock.setFixedTime(new Date('2026-09-22T08:00:00.000Z'));
+    });
     test('shows operation items that are still in the shopping cart', async ({
         mount,
         page,
@@ -87,12 +90,8 @@ test.describe('Garden operations HUD', () => {
         await expect(
             page.getByLabel('Raised Bed 1 › Polje 5').first(),
         ).toBeVisible();
-        await expect(
-            page.getByText('Zakazano: 20. svibnja 2026.'),
-        ).toBeVisible();
-        await expect(
-            page.getByText('Zakazano: 21. svibnja 2026.'),
-        ).toBeVisible();
+        await expect(page.getByText('Zakazano: 20. svibnja')).toBeVisible();
+        await expect(page.getByText('Zakazano: 21. svibnja')).toBeVisible();
         await expect(page.getByText('Zakazano: sutra')).toBeVisible();
         await expect(page.getByText('U košari', { exact: true })).toHaveCount(
             0,
@@ -110,11 +109,10 @@ test.describe('Garden operations HUD', () => {
         await expect(page.getByText('Planirano', { exact: true })).toHaveCount(
             0,
         );
-        await expect(page.getByText('Zakazano: 22. svibnja 2026.')).toHaveCount(
-            0,
-        );
+        await expect(page.getByText('Zakazano: 22. svibnja')).toHaveCount(0);
         const operationDateButton = page.getByRole('button', {
-            name: '22. svibnja 2026.',
+            name: '22. svibnja',
+            exact: true,
         });
         await expect(operationDateButton).toBeVisible();
         const reschedulableOperationCard = page
@@ -139,11 +137,9 @@ test.describe('Garden operations HUD', () => {
         await expect(
             page.getByLabel('Raised Bed 1 › Polje 6').first(),
         ).toBeVisible();
-        await expect(page.getByText('Zakazano: 23. svibnja 2026.')).toHaveCount(
-            0,
-        );
+        await expect(page.getByText('Zakazano: 23. svibnja')).toHaveCount(0);
         await expect(
-            page.getByRole('button', { name: '23. svibnja 2026.' }),
+            page.getByRole('button', { name: '23. svibnja', exact: true }),
         ).toBeVisible();
         await expect(page.getByLabel('Tijek radnje')).toHaveCount(0);
         await expect(page.locator('.animate-progress')).toHaveCount(0);
@@ -152,7 +148,7 @@ test.describe('Garden operations HUD', () => {
         await expect(page.getByText('Nema nedovršenih radnji.')).toHaveCount(0);
 
         const rescheduleButtons = page.getByRole('button', {
-            name: /svibnja 2026\./,
+            name: /^\d+\. svibnja$/,
         });
         await expect(rescheduleButtons).toHaveCount(2);
 
@@ -211,7 +207,8 @@ test.describe('Garden operations HUD', () => {
             .locator('[data-garden-operation-card]')
             .filter({ hasText: 'Zalijevanje u košari' });
         const historyDateButton = reschedulableHistoryCard.getByRole('button', {
-            name: '20. svibnja 2026.',
+            name: '20. svibnja',
+            exact: true,
         });
         const historyDay = dialog.getByRole('button', {
             name: /^srijeda, 20\. svibnja/,
@@ -237,11 +234,11 @@ test.describe('Garden operations HUD', () => {
         ).toBeVisible();
         await expect(completedSowingCard.getByText('Završeno')).toBeVisible();
         await expect(
-            completedSowingCard.getByText('13. svibnja 2026.'),
+            completedSowingCard.getByText('13. svibnja'),
         ).toBeVisible();
-        await expect(
-            completedSowingCard.getByText('10. svibnja 2026.'),
-        ).toHaveCount(0);
+        await expect(completedSowingCard.getByText('10. svibnja')).toHaveCount(
+            0,
+        );
         await expect(
             completedSowingCard.getByLabel('Tijek radnje'),
         ).toHaveCount(0);
@@ -350,41 +347,127 @@ test.describe('Garden operations HUD', () => {
             .toBeGreaterThan(0);
     });
 
-    test('lets operation names use the space before the status badge', async ({
+    for (const width of [320, 360, 448, 768, 1280]) {
+        test(`keeps operation rows inside the panel at ${width}px`, async ({
+            mount,
+            page,
+        }) => {
+            await page.setViewportSize({ width, height: 720 });
+            await mount(<DenseGardenOperationsHudStory />);
+
+            await page.getByTitle('Status radnji').click();
+            const days = page.locator(
+                'button[aria-controls^="garden-operations-day-"]',
+            );
+            await days.nth(0).click();
+            await days.nth(1).click();
+
+            const cards = page.locator('[data-garden-operation-card]');
+            const card = cards.first();
+            const operationName = card.getByText(
+                'Površinsko zalijevanje gredice',
+            );
+            const statusButton = card.getByRole('button', {
+                name: 'Status radnje: Potvrđeno',
+            });
+            const bedName = card.getByText(
+                'Sunčana gredica s dugim imenom uz ogradu',
+                {
+                    exact: true,
+                },
+            );
+            const date = card.getByText('30. svibnja', { exact: true });
+            const viewport = page
+                .locator('[data-scroll-area-viewport]')
+                .first();
+
+            await expect(operationName).toBeVisible();
+            await expect(statusButton).toBeVisible();
+            await expect(bedName).toHaveCSS('text-overflow', 'ellipsis');
+            await expect(date).toBeVisible();
+            await expect
+                .poll(() =>
+                    date.evaluate(
+                        (element) => element.scrollWidth - element.clientWidth,
+                    ),
+                )
+                .toBeLessThanOrEqual(1);
+            await expect(statusButton.getByText('Potvrđeno')).toBeVisible({
+                visible: width >= 640,
+            });
+            await expect
+                .poll(() =>
+                    bedName.evaluate(
+                        (element) => element.scrollWidth > element.clientWidth,
+                    ),
+                )
+                .toBe(true);
+            await expect
+                .poll(() =>
+                    viewport.evaluate(
+                        (element) => element.scrollWidth - element.clientWidth,
+                    ),
+                )
+                .toBeLessThanOrEqual(1);
+
+            const viewportBox = await viewport.boundingBox();
+            const nameBox = await operationName.boundingBox();
+            const statusBox = await statusButton.boundingBox();
+            if (!viewportBox || !nameBox || !statusBox) {
+                throw new Error(
+                    'Expected operation row and panel to be visible',
+                );
+            }
+            expect(
+                statusBox.x - (nameBox.x + nameBox.width),
+            ).toBeLessThanOrEqual(16);
+
+            for (const row of await cards.all()) {
+                const controls = row.locator(
+                    'button, [data-operation-status-progress]',
+                );
+                for (const element of [row, ...(await controls.all())]) {
+                    const box = await element.boundingBox();
+                    expect(box).not.toBeNull();
+                    if (!box) continue;
+                    expect(box.x).toBeGreaterThanOrEqual(viewportBox.x);
+                    expect(box.x + box.width).toBeLessThanOrEqual(
+                        viewportBox.x + viewportBox.width + 1,
+                    );
+                }
+            }
+            const targetBox = await bedName.boundingBox();
+            const dateBox = await date.boundingBox();
+            expect(
+                (targetBox?.x ?? 0) + (targetBox?.width ?? 0),
+            ).toBeLessThanOrEqual(dateBox?.x ?? 0);
+
+            await statusButton.click();
+            await expect(
+                page.getByRole('tooltip').getByText('Statusi radnje'),
+            ).toBeVisible();
+        });
+    }
+
+    test('keeps the year for dates outside the current year', async ({
         mount,
         page,
     }) => {
-        await page.setViewportSize({ width: 448, height: 720 });
-        await mount(<DenseGardenOperationsHudStory />);
-
+        await page.clock.setFixedTime(new Date('2027-01-01T12:00:00.000Z'));
+        await mount(<GardenOperationsHudStory />);
         await page.getByTitle('Status radnji').click();
+        await expect(
+            page.getByText('Zakazano: 20. svibnja 2026.'),
+        ).toBeVisible();
         await page
-            .locator('button[aria-controls^="garden-operations-day-"]')
-            .first()
+            .getByRole('button', { name: /^petak, 22\. svibnja 2026/ })
             .click();
-
-        const card = page
-            .locator('[data-garden-operation-card]')
-            .filter({ hasText: 'Površinsko zalijevanje gredice' })
-            .first();
-        const operationName = card.getByText('Površinsko zalijevanje gredice');
-        const statusButton = card
-            .getByRole('button', { name: /Status radnje:/ })
-            .first();
-
-        await expect(operationName).toBeVisible();
-        await expect(statusButton).toBeVisible();
-
-        const nameBox = await operationName.boundingBox();
-        const statusBox = await statusButton.boundingBox();
-
-        if (!nameBox || !statusBox) {
-            throw new Error('Expected operation name and status to be visible');
-        }
-
-        const gapBeforeStatus = statusBox.x - (nameBox.x + nameBox.width);
-
-        expect(gapBeforeStatus).toBeLessThanOrEqual(16);
+        await expect(
+            page.getByRole('button', {
+                name: '22. svibnja 2026.',
+                exact: true,
+            }),
+        ).toBeVisible();
     });
 
     test('keeps history operation cards full height in scrollable modal', async ({

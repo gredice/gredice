@@ -92,7 +92,11 @@ export function GardenOperationsDayGroup({
                     )}
                 />
             </button>
-            <Collapse appear={isExpanded} duration={collapseDurationMs}>
+            <Collapse
+                appear={isExpanded}
+                duration={collapseDurationMs}
+                className="grid-cols-1"
+            >
                 {isContentMounted ? (
                     <Stack spacing={2} id={contentId} className="pt-2 pb-1">
                         {children}
