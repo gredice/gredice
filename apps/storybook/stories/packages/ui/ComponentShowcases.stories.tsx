@@ -161,6 +161,7 @@ import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { Popper } from '@gredice/ui/Popper';
 import { Progress } from '@gredice/ui/Progress';
 import {
+    Logotype,
     PublicFooterLandscape,
     PublicFooterOrigin,
 } from '@gredice/ui/PublicChrome';
@@ -1359,9 +1360,7 @@ function PublicContentShowcase() {
                         tagline="Gredice"
                         description={<PublicFooterOrigin />}
                         asset={
-                            <Typography level="h6" semiBold>
-                                Gredice
-                            </Typography>
+                            <Logotype className="h-auto w-[210px] max-w-full" />
                         }
                         ctas={[
                             {
