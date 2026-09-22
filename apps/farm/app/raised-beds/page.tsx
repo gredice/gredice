@@ -25,10 +25,7 @@ async function RaisedBedsPageContent() {
     );
 
     return (
-        <div className="mx-auto w-full max-w-2xl space-y-3 p-2 sm:p-4">
-            <Typography component="h1" level="h5" semiBold>
-                Gredice
-            </Typography>
+        <div className="mx-auto w-full max-w-2xl p-2 sm:p-4">
             {activeRaisedBeds.length === 0 ? (
                 <Card>
                     <CardContent noHeader>
