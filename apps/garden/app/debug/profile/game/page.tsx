@@ -5,7 +5,9 @@ import {
     operationVisualRewardDebugProfile,
     operationVisualRewardDebugScenarios,
 } from '@gredice/game';
+import { getSeasonDebugDates } from '@gredice/game/seasonal-debug';
 import { ProfileGameScene } from './ProfileGameScene';
+import { resolveGameProfileDate } from './profileDate';
 import {
     highTargetOperationVisualHighlightTarget,
     resolveGameProfileAdaptiveHigh,
@@ -229,19 +231,12 @@ function resolveWeather(
 }
 
 function resolveFreezeTime(mode: GameProfileMode) {
-    if (mode === 'night') {
-        return new Date(2024, 5, 21, 22, 30, 0);
-    }
-
-    if (mode === 'storm') {
-        return new Date(2024, 5, 21, 18, 30, 0);
-    }
-
-    if (mode === 'autumn') {
-        return new Date(2024, 8, 22, 16, 30, 0);
-    }
-
-    return new Date(2024, 5, 21, 12, 0, 0);
+    const dates = getSeasonDebugDates();
+    const date = mode === 'autumn' ? dates.earlyAutumn : dates.summer;
+    if (mode === 'night') date.setHours(22, 30);
+    if (mode === 'storm') date.setHours(18, 30);
+    if (mode === 'autumn') date.setHours(16, 30);
+    return date;
 }
 
 function OperationRewardDebugOverlay() {
@@ -379,12 +374,16 @@ export default async function GameProfilePage({
         isOperationVisualRewardDebugProfile(mockGardenProfile);
     const quality = resolveQuality(firstValue(params.quality));
     const weather = resolveWeather(mode);
-    const freezeTime = resolveFreezeTime(mode);
+    const freezeTime = resolveGameProfileDate(
+        firstValue(params.date),
+        resolveFreezeTime(mode),
+    );
 
     return (
         <main
             className="relative h-screen w-screen overflow-hidden bg-[#e7e2cc]"
             data-game-profile-mode={mode}
+            data-game-profile-date={freezeTime?.toISOString()}
             data-game-profile-comparison-contract-version={
                 process.env.NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION
             }

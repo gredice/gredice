@@ -1,8 +1,19 @@
+import { resolveGameProfileDate } from '../profile/game/profileDate';
 import { SandboxDebugActions } from '../sandbox/SandboxDebugActions';
 import { EntityGridViewerDynamic } from './EntityGridViewerDynamic';
 import { entityGridSandboxStorageKey } from './entitySandboxStorage';
 
-export default function DebugEntitiesPage() {
+export const instant = false;
+
+export default async function DebugEntitiesPage({
+    searchParams,
+}: {
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+    const query = await searchParams;
+    const freezeTime = resolveGameProfileDate(
+        Array.isArray(query.date) ? query.date[0] : query.date,
+    );
     return (
         <div className="flex h-screen w-screen flex-col bg-[#e7e2cc]">
             <div className="border-b border-neutral-700 bg-neutral-950 p-4">
@@ -13,6 +24,7 @@ export default function DebugEntitiesPage() {
             </div>
             <div className="relative min-h-0 flex-1">
                 <EntityGridViewerDynamic
+                    freezeTime={freezeTime}
                     storageKey={entityGridSandboxStorageKey}
                 />
                 <SandboxDebugActions storageKey={entityGridSandboxStorageKey} />

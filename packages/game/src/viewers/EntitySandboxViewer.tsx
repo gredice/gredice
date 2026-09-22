@@ -61,6 +61,7 @@ function createEntitySandboxStacks({
 export type EntitySandboxViewerProps = HTMLAttributes<HTMLDivElement> & {
     columns?: number;
     debugHud?: boolean;
+    freezeTime?: Date;
     entityName?: string;
     localSandboxStorageKey?: string;
     rotation?: number;

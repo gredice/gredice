@@ -7,11 +7,13 @@ type EntitySandboxViewerComponent =
 
 export function EntityViewerDynamic({
     entityName,
+    freezeTime,
     rotation,
     storageKey,
     variant,
 }: {
     entityName: string;
+    freezeTime?: Date;
     rotation?: number;
     storageKey: string;
     variant?: number;
@@ -46,6 +48,7 @@ export function EntityViewerDynamic({
             className="h-full w-full"
             debugHud
             entityName={entityName}
+            freezeTime={freezeTime}
             localSandboxStorageKey={storageKey}
             rotation={rotation}
             variant={variant}

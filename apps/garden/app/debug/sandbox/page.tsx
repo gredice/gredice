@@ -1,11 +1,20 @@
 import { defaultLocalSandboxStorageKey, GameScene } from '@gredice/game';
 import type { ComponentProps } from 'react';
 import { getGardenGameFlags } from '../../getGardenGameFlags';
+import { resolveGameProfileDate } from '../profile/game/profileDate';
 import { SandboxDebugActions } from './SandboxDebugActions';
 
 export const instant = false;
 
-export default async function DebugSandboxPage() {
+export default async function DebugSandboxPage({
+    searchParams,
+}: {
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+    const query = await searchParams;
+    const freezeTime = resolveGameProfileDate(
+        Array.isArray(query.date) ? query.date[0] : query.date,
+    );
     const managedFlags = await getGardenGameFlags();
     const debugSandboxFlags = {
         ...managedFlags,
@@ -22,6 +31,7 @@ export default async function DebugSandboxPage() {
                 dayNightCycleDisabled={false}
                 deferDetails={false}
                 flags={debugSandboxFlags}
+                freezeTime={freezeTime}
                 gardenStructureDebugFixture={gardenBuildingEnabled}
                 localSandboxStorageKey={defaultLocalSandboxStorageKey}
                 noSound

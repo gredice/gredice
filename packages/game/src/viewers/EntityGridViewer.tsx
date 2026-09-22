@@ -20,6 +20,7 @@ export type EntityGridViewerProps = HTMLAttributes<HTMLDivElement> & {
      */
     zoom?: number;
     debugHud?: boolean;
+    freezeTime?: Date;
     localSandboxStorageKey?: string;
     showBackground?: boolean;
 };

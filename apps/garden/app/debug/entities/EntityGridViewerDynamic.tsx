@@ -7,8 +7,10 @@ type EntityGridViewerComponent =
 
 export function EntityGridViewerDynamic({
     storageKey,
+    freezeTime,
 }: {
     storageKey: string;
+    freezeTime?: Date;
 }) {
     const [EntityGridViewer, setEntityGridViewer] =
         useState<EntityGridViewerComponent | null>(null);
@@ -38,6 +40,7 @@ export function EntityGridViewerDynamic({
     return (
         <EntityGridViewer
             className="h-full w-full"
+            freezeTime={freezeTime}
             debugHud
             localSandboxStorageKey={storageKey}
             showBackground
