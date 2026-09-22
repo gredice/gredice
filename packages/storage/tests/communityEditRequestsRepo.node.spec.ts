@@ -931,6 +931,57 @@ test('community entity suggestions store a reviewable new plant sort proposal', 
     assert.equal(approved.status, 'applied');
 });
 
+test('plant tip suggestions preserve live content and validate their plant context', async () => {
+    const data = await fixture();
+    const plantId = await createPublishedPlant();
+    const before = await getEntityRaw(plantId);
+    const input = {
+        kind: 'plantTip',
+        parentPlantId: plantId,
+        name: 'Zaštita od vjetra',
+        description: 'Visoke biljke po potrebi podupri.',
+        publicPath: '/biljke/bob',
+        submitter: { id: data.submitterId },
+    } satisfies Parameters<typeof createCommunityEntitySuggestion>[0];
+    const request = await createCommunityEntitySuggestion(input);
+    assert.equal(request.status, 'pending');
+    assert.equal(request.sectionKey, 'new-plant-tip');
+    assert.equal(request.entityId, plantId);
+    assert.equal(request.changes.length, 0);
+    assert.deepEqual(parseCommunityEntitySuggestionRequest(request), {
+        format: 'community-entity-suggestion-v1',
+        kind: 'plantTip',
+        parentPlantId: plantId,
+        parentPlantName: `Biljka ${plantId}`,
+        name: input.name,
+        description: input.description,
+    });
+    assert.deepEqual(await getEntityRaw(plantId), before);
+    assert.equal(
+        parseCommunityEntitySuggestionRequest({
+            ...request,
+            sectionKey: 'new-plant-sort',
+        }),
+        null,
+    );
+    assert.equal(
+        parseCommunityEntitySuggestionRequest({
+            ...request,
+            entityId: plantId + 1,
+        }),
+        null,
+    );
+    await assert.rejects(
+        createCommunityEntitySuggestion({ ...input, description: ' ' }),
+        CommunityEditRequestError,
+    );
+    await updateEntity({ id: plantId, state: 'draft' });
+    await assert.rejects(
+        createCommunityEntitySuggestion(input),
+        CommunityEditRequestError,
+    );
+});
+
 test('community entity suggestions store operation context and application', async () => {
     const data = await fixture();
     const plantStageId = await createPublishedPlantStage({
