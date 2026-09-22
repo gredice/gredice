@@ -29,7 +29,14 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import dynamic from 'next/dynamic';
-import { type ReactNode, useEffect, useId, useMemo, useState } from 'react';
+import {
+    type ReactElement,
+    type ReactNode,
+    useEffect,
+    useId,
+    useMemo,
+    useState,
+} from 'react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { InlineLoginDialog } from '../auth/InlineLoginDialog';
 import {
@@ -150,6 +157,7 @@ export type CommunityEditButtonProps = {
     label?: string;
     buttonStyle?: ButtonStyle;
     className?: string;
+    trigger?: ReactElement;
 };
 
 const fieldPanelClassName =
@@ -1243,6 +1251,7 @@ export function CommunityEditButton({
     label,
     publicPath,
     sectionKey,
+    trigger: customTrigger,
 }: CommunityEditButtonProps) {
     const [open, setOpen] = useState(false);
     const [loginOpen, setLoginOpen] = useState(false);
@@ -1427,7 +1436,8 @@ export function CommunityEditButton({
 
     const triggerLabel = label ?? 'Predloži izmjenu';
     const trigger =
-        buttonStyle === 'button' ? (
+        customTrigger ??
+        (buttonStyle === 'button' ? (
             <Button
                 className={className}
                 size="sm"
@@ -1446,7 +1456,7 @@ export function CommunityEditButton({
             >
                 <Edit className="size-4" />
             </IconButton>
-        );
+        ));
 
     function renderEditableField(field: CommunityEditableField) {
         const id = fieldInputId(fieldIdPrefix, field);
