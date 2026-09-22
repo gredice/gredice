@@ -142,7 +142,7 @@ Extend shared definitions with explicit `familyKey`, `level`, `visualGrade` and 
 
 Keep the shared definitions free of image imports. Add a shared UI award component backed by a typed artwork registry, using the static-import approach already established for game icons. Every known definition must resolve to a dedicated image; a neutral fallback is for legacy/unknown records and loading failures only.
 
-Retain the current API `achievements` array so existing consumers continue to work. A later additive `families` progress projection can return the validated current total, the counting unit, calculation time, highest approved level and next milestone. Include earned and approval timestamps when the details UI needs them; the current account endpoint does not expose those timestamps.
+The current account endpoint retains the `achievements` array and adds `activity: { counts, calculatedAt }` plus the authenticated `accountId`. Numeric family counts use the same server calculation as the evaluator; stored `progressValue` remains the earned milestone snapshot. The API sends no reviewer identities or internal metadata. The garden keys its query by account, rejects mismatched account responses and polls every minute while visible, with 30-second freshness on reopen/focus.
 
 **Do not calculate live progress from the last award's `progressValue`.** That field is a snapshot recorded when a threshold was reached. It does not tell us that a person at level III now has 27 qualifying actions. A first artwork-only release can show the next requirement without a numeric progress bar.
 
@@ -150,13 +150,21 @@ Preserve current award keys and the account/key uniqueness constraint. Changing 
 
 Before shipping live progress or changing eligibility, verify these existing source constraints:
 
-- Planting currently counts `sowed` update events, while the copy describes a number of plants. Define the counting unit and verify legacy and selected multi-field planting workflows. Replayed updates, moves and repeated status changes must not manufacture additional progress.
-- Watering and harvest classification currently relies on operation names, and counting walks operation-completion events. Use canonical completed-operation evidence and stable identities for progress; cancelled requests or repeated completion events must not inflate totals. Do not encourage extra watering to earn an award.
+- Planting counts confirmed sowing once per legacy planting cycle or canonical selected planting. A new legacy placement starts a new cycle; repeated sowed updates and selected task-completion/verification replays do not increase progress.
+- Watering and harvest classification relies on the existing published operation names. Each non-deleted operation with completion evidence counts once; uncompleted requests and replayed completion events do not increase progress. Do not encourage extra watering to earn an award.
 - Community contribution thresholds use applied edit requests. Retain the existing account attribution and distinct-request behavior; submitted or merely reviewed edits do not qualify.
 - The scheduled evaluator is configured hourly, and community edits also have a direct evaluation path. Keep a consistent server-owned calculation and communicate freshness when necessary. Browser interactions must not grant achievements or sunflowers.
 - Preserve historical records and balances when reconciling progress. Before changing granting behavior, test concurrent approval and interrupted reward delivery: the current award insert uniqueness is not by itself proof that every reward-credit retry is atomic.
 
-The art/definition phase can proceed without a database migration. Any future persistence changes for progress projections or seasonal awards need their own design and the repository's normal storage/migration workflow.
+The activity projection is read-only and requires no schema migration. Existing award rows and payouts remain unchanged when repeated source events are deduplicated. Future persistence changes or seasonal awards need their own design and the repository's normal storage/migration workflow.
+
+## Next-goal progress in the garden
+
+Numeric family details show a thin progress bar matching the user XP treatment, the verified count/target and the remaining amount (for example, 27/50 completed cycles and 23 remaining). Values are capped visually at the goal. A reached pending goal says it awaits approval; an unmet or denied award is never presented as approved and no XP or sunflower credit is granted by reading progress. The list keeps individual award approval and reward states.
+
+The projection scopes accounts, beds, planting and operation evidence to the authenticated account. Applied community edits retain earliest-membership attribution and distinct-request semantics. Species identities and completed cycles reuse the canonical garden replay, including historical deleted plantings. Missing activity is explicitly unavailable; refresh errors retain the last fetched values with a stale-data notice. Registration, seasonal badges and families without a next level have no numeric progress bar.
+
+Storybook collection states include `LiveProgress`, `LiveProgressDark` and `ProgressUnavailable`. Storage regressions cover scope, read-only behavior, source deduplication, canonical selected planting and primary account attribution. Browser checks cover numeric values, remaining amounts, reached/pending goals, missing data, refresh failure, account changes and mismatched responses.
 
 ## Later achievement families
 

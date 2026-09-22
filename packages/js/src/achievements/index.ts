@@ -1,3 +1,4 @@
+export * from './activity';
 export * from './definitions';
 export * from './families';
 export * from './gardenProgress';

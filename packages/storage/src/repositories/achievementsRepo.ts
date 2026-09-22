@@ -1,10 +1,12 @@
 import 'server-only';
 import {
+    type AchievementActivity,
     type AchievementDefinition,
+    evaluateGardenAchievementProgress,
     getAchievementDefinition,
     getAchievementDefinitions,
 } from '@gredice/js/achievements';
-import { and, asc, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import {
     type AccountSunflowersPayload,
     accountAchievements,
@@ -16,16 +18,16 @@ import {
     events,
     knownEventTypes,
     operations,
-    raisedBedPlantings,
     raisedBeds,
     type SelectAccountAchievement,
     storage,
 } from '..';
 import {
     gardenAchievementEventTypes,
-    gardenFamilyAchievementPlans,
+    gardenFamilyAchievementPlansFromProgress,
     getGardenAchievementPlantings,
     getPlantIdBySortId,
+    mapGardenAchievementCommands,
 } from '../helpers/gardenAchievementEvaluation';
 import { isCanonicalSelectedPlantingSowedEvent } from '../helpers/selectedPlantingSowedEvent';
 import { getEntitiesFormatted } from './entitiesRepo';
@@ -358,6 +360,7 @@ function addCommunityEditAchievementPlans(input: {
             definitions: input.definitions,
         });
     }
+    return counters;
 }
 
 async function createPlannedAchievements(
@@ -495,7 +498,7 @@ function isHarvestOperation(entity: EntityStandardized | null | undefined) {
     return false;
 }
 
-export async function evaluateAchievements() {
+async function buildAchievementEvaluation(accountId?: string) {
     const [
         accountsList,
         existingAchievements,
@@ -505,20 +508,37 @@ export async function evaluateAchievements() {
     ] = await Promise.all([
         storage()
             .select({ id: accounts.id, createdAt: accounts.createdAt })
-            .from(accounts),
+            .from(accounts)
+            .where(
+                accountId === undefined
+                    ? undefined
+                    : eq(accounts.id, accountId),
+            ),
         storage()
             .select({
                 accountId: accountAchievements.accountId,
                 achievementKey: accountAchievements.achievementKey,
             })
-            .from(accountAchievements),
+            .from(accountAchievements)
+            .where(
+                accountId === undefined
+                    ? undefined
+                    : eq(accountAchievements.accountId, accountId),
+            ),
         storage()
             .select({
                 id: raisedBeds.id,
                 accountId: raisedBeds.accountId,
             })
             .from(raisedBeds)
-            .where(isNotNull(raisedBeds.accountId)),
+            .where(
+                and(
+                    isNotNull(raisedBeds.accountId),
+                    accountId === undefined
+                        ? undefined
+                        : eq(raisedBeds.accountId, accountId),
+                ),
+            ),
         storage()
             .select({
                 id: operations.id,
@@ -526,7 +546,14 @@ export async function evaluateAchievements() {
                 entityId: operations.entityId,
             })
             .from(operations)
-            .where(eq(operations.isDeleted, false)),
+            .where(
+                and(
+                    eq(operations.isDeleted, false),
+                    accountId === undefined
+                        ? undefined
+                        : eq(operations.accountId, accountId),
+                ),
+            ),
         storage()
             .select({
                 requestId: communityEditRequests.id,
@@ -540,7 +567,18 @@ export async function evaluateAchievements() {
                 accountUsers,
                 eq(accountUsers.userId, communityEditRequests.submitterUserId),
             )
-            .where(eq(communityEditRequests.status, 'applied'))
+            .where(
+                and(
+                    eq(communityEditRequests.status, 'applied'),
+                    eq(
+                        accountUsers.id,
+                        sql<number>`(select primary_membership.id from account_users primary_membership where primary_membership.user_id = ${communityEditRequests.submitterUserId} order by primary_membership.created_at, primary_membership.id limit 1)`,
+                    ),
+                    accountId === undefined
+                        ? undefined
+                        : eq(accountUsers.accountId, accountId),
+                ),
+            )
             .orderBy(
                 asc(communityEditRequests.appliedAt),
                 asc(communityEditRequests.id),
@@ -587,30 +625,40 @@ export async function evaluateAchievements() {
     const harvestCounters = new Map<string, number>();
     const wateringCounters = new Map<string, number>();
 
-    const [plantEvents, gardenPlantings, plantIdBySortId] = await Promise.all([
-        storage().query.events.findMany({
-            where: inArray(events.type, [...gardenAchievementEventTypes]),
-            orderBy: [asc(events.createdAt), asc(events.id)],
-        }),
-        getGardenAchievementPlantings(),
+    const [gardenPlantings, plantIdBySortId] = await Promise.all([
+        getGardenAchievementPlantings(accountId),
         getPlantIdBySortId(),
     ]);
-
-    const selectedPlantings = await storage()
-        .select({
-            aggregateId: raisedBedPlantings.eventAggregateId,
-            raisedBedId: raisedBedPlantings.raisedBedId,
-        })
-        .from(raisedBedPlantings)
-        .where(eq(raisedBedPlantings.configurationSource, 'selected'));
     const selectedBedIds = new Map(
-        selectedPlantings.map((planting) => [
-            planting.aggregateId,
-            planting.raisedBedId,
-        ]),
+        gardenPlantings
+            .filter((planting) => planting.configurationSource === 'selected')
+            .map((planting) => [
+                planting.eventAggregateId,
+                planting.raisedBedId,
+            ]),
     );
+    const plantEvents = await storage().query.events.findMany({
+        where: and(
+            inArray(events.type, [...gardenAchievementEventTypes]),
+            accountId === undefined
+                ? undefined
+                : or(
+                      inArray(
+                          sql<string>`split_part(${events.aggregateId}, '|', 1)`,
+                          raisedBedList.map((bed) => String(bed.id)),
+                      ),
+                      inArray(events.aggregateId, [...selectedBedIds.keys()]),
+                  ),
+        ),
+        orderBy: [asc(events.createdAt), asc(events.id)],
+    });
     const countedSelectedPlantings = new Set<string>();
+    const legacyCycleStart = new Map<string, number>();
+    const countedLegacyCycles = new Set<string>();
     for (const event of plantEvents) {
+        if (event.type === knownEventTypes.raisedBedFields.plantPlace) {
+            legacyCycleStart.set(event.aggregateId, event.id);
+        }
         const data = event.data as RaisedBedFieldPlantEventsPayload | undefined;
         const status =
             data && 'status' in data ? data?.status?.toLowerCase() : undefined;
@@ -627,6 +675,11 @@ export async function evaluateAchievements() {
         if (!raisedBedId) continue;
         const accountId = raisedBedAccountMap.get(raisedBedId);
         if (!accountId) continue;
+        if (!selected) {
+            const cycle = `${event.aggregateId}:${legacyCycleStart.get(event.aggregateId) ?? 0}`;
+            if (countedLegacyCycles.has(cycle)) continue;
+            countedLegacyCycles.add(cycle);
+        }
 
         const nextCount = (plantingCounters.get(accountId) ?? 0) + 1;
         plantingCounters.set(accountId, nextCount);
@@ -667,15 +720,25 @@ export async function evaluateAchievements() {
     }
 
     const operationEvents = await storage().query.events.findMany({
-        where: eq(events.type, knownEventTypes.operations.complete),
+        where: and(
+            eq(events.type, knownEventTypes.operations.complete),
+            accountId === undefined
+                ? undefined
+                : inArray(
+                      events.aggregateId,
+                      operationsList.map((operation) => String(operation.id)),
+                  ),
+        ),
         orderBy: [asc(events.createdAt)],
     });
 
+    const countedOperations = new Set<number>();
     for (const event of operationEvents) {
         const operationId = Number.parseInt(event.aggregateId, 10);
         if (Number.isNaN(operationId)) continue;
         const info = operationAccountMap.get(operationId);
-        if (!info?.accountId) continue;
+        if (!info?.accountId || countedOperations.has(operationId)) continue;
+        countedOperations.add(operationId);
 
         // Track watering operations
         if (wateringEntityIds.has(info.entityId)) {
@@ -726,7 +789,7 @@ export async function evaluateAchievements() {
         }
     }
 
-    addCommunityEditAchievementPlans({
+    const communityCounters = addCommunityEditAchievementPlans({
         sources: communityEditAchievementRows.map((row) => ({
             requestId: row.requestId,
             accountId: row.accountId,
@@ -742,6 +805,9 @@ export async function evaluateAchievements() {
     const registrationEvents = await storage().query.events.findMany({
         where: and(
             eq(events.type, knownEventTypes.accounts.earnSunflowers),
+            accountId === undefined
+                ? undefined
+                : eq(events.aggregateId, accountId),
             sql`${events.data} ->> 'reason' IN ('registration', 'achievement:registration')`,
         ),
         orderBy: [asc(events.createdAt)],
@@ -779,12 +845,16 @@ export async function evaluateAchievements() {
         ensureAccountSet(plannedByAccount, account.id).add('registration');
     }
 
-    const gardenPlans = gardenFamilyAchievementPlans({
-        events: plantEvents,
-        plantings: gardenPlantings,
-        raisedBedAccountId: raisedBedAccountMap,
+    const gardenProgress = evaluateGardenAchievementProgress(
+        mapGardenAchievementCommands({
+            events: plantEvents,
+            plantings: gardenPlantings,
+            raisedBedAccountId: raisedBedAccountMap,
+        }),
         plantIdBySortId,
-    });
+    );
+    const gardenPlans =
+        gardenFamilyAchievementPlansFromProgress(gardenProgress);
     for (const plan of gardenPlans) {
         const existing = existingByAccount.get(plan.accountId) ?? new Set();
         const planned = ensureAccountSet(plannedByAccount, plan.accountId);
@@ -798,5 +868,45 @@ export async function evaluateAchievements() {
         planned.add(plan.definition.key);
     }
 
+    const activityByAccount = new Map(
+        accountsList.map((account) => {
+            const garden = gardenProgress.get(account.id);
+            const activity: AchievementActivity['counts'] = {
+                planting: plantingCounters.get(account.id) ?? 0,
+                watering: wateringCounters.get(account.id) ?? 0,
+                harvest: harvestCounters.get(account.id) ?? 0,
+                community_editing: communityCounters.get(account.id) ?? 0,
+                garden_diversity: garden?.distinctPlants.length ?? 0,
+                seed_to_table: garden?.completedCycles.length ?? 0,
+            };
+            return [account.id, activity] satisfies [
+                string,
+                AchievementActivity['counts'],
+            ];
+        }),
+    );
+    return { plans, existingByAccount, activityByAccount };
+}
+
+/** Account-scoped, read-only projection sharing the cron's eligibility calculation. */
+export async function getAccountAchievementActivity(
+    accountId: string,
+): Promise<AchievementActivity> {
+    const { activityByAccount } = await buildAchievementEvaluation(accountId);
+    return {
+        calculatedAt: new Date().toISOString(),
+        counts: activityByAccount.get(accountId) ?? {
+            planting: 0,
+            watering: 0,
+            harvest: 0,
+            community_editing: 0,
+            garden_diversity: 0,
+            seed_to_table: 0,
+        },
+    };
+}
+
+export async function evaluateAchievements() {
+    const { plans, existingByAccount } = await buildAchievementEvaluation();
     return createPlannedAchievements(plans, existingByAccount);
 }
