@@ -32,7 +32,7 @@ export type NoteSuggestionOperation = Pick<
     | 'completionNotesEdited'
 >;
 
-export const OPERATION_NOTE_SUGGESTION_MODEL = 'openai/gpt-5.6-luna';
+export const OPERATION_NOTE_SUGGESTION_MODEL = 'openai/gpt-6-luna';
 
 export const operationNoteSuggestionSystem = `Uređuješ bilješke vrtlara za korisnike Gredica. Piši isključivo prirodnim, pravilnim hrvatskim jezikom.
 Ispravi tipfelere, izostavljena slova, kratice, lokalne izraze, padeže i interpunkciju. Koristi jasan naziv biljke ili radnje iz konteksta kada se značenje nedvojbeno podudara. Stručni izraz po potrebi objasni jednostavno (npr. dekapitacija rajčice znači uklanjanje vrha biljke).

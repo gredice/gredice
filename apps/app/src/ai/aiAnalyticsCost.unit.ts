@@ -5,6 +5,26 @@ import {
     sumAiAnalysisCostEur,
 } from './aiAnalyticsCost';
 
+test('estimateAiAnalysisCostEur calculates standard GPT-6 Sol usage cost in euros', () => {
+    const cost = estimateAiAnalysisCostEur({
+        model: 'openai/gpt-6-sol',
+        inputTokens: 200_000,
+        outputTokens: 100_000,
+    });
+
+    assert.strictEqual(cost, 1.232);
+});
+
+test('estimateAiAnalysisCostEur applies GPT-6 Sol long-context multipliers', () => {
+    const cost = estimateAiAnalysisCostEur({
+        model: 'gpt-6-sol',
+        inputTokens: 300_000,
+        outputTokens: 100_000,
+    });
+
+    assert.strictEqual(Number(cost?.toFixed(6)), 2.376);
+});
+
 test('estimateAiAnalysisCostEur calculates standard GPT-5.6 Terra usage cost in euros', () => {
     const cost = estimateAiAnalysisCostEur({
         model: 'openai/gpt-5.6-terra',

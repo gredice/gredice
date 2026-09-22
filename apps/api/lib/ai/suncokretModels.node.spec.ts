@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    estimateSuncokretRequestCostMicroEur,
     getSuncokretGatewayBilledCostMicroEur,
     getSuncokretModel,
     getSuncokretPricedModel,
+    largestSuncokretStepInputTokens,
+    resolveSuncokretMaxOutputTokens,
     suncokretGatewayGenerationIds,
+    suncokretPricingForInputTokens,
 } from './suncokretModels';
 
 function setEnvValue(name: string, value: string | undefined) {
@@ -41,23 +45,23 @@ function withModelEnv(
     }
 }
 
-test('getSuncokretModel defaults to OpenAI GPT-5.6 Luna', () => {
+test('getSuncokretModel defaults to OpenAI GPT-6 Luna', () => {
     withModelEnv({}, () => {
-        assert.equal(getSuncokretModel()?.id, 'openai/gpt-5.6-luna');
+        assert.equal(getSuncokretModel()?.id, 'openai/gpt-6-luna');
     });
 });
 
 test('getSuncokretModel falls back to the first enabled model for automatic selection', () => {
     withModelEnv(
         {
-            allowlist: 'openai/gpt-5.6-luna',
+            allowlist: 'openai/gpt-6-luna',
         },
         () => {
             const model = getSuncokretModel();
 
-            assert.equal(model?.id, 'openai/gpt-5.6-luna');
-            assert.equal(model?.inputEurPerMillionTokens, 0.176);
-            assert.equal(model?.outputEurPerMillionTokens, 1.056);
+            assert.equal(model?.id, 'openai/gpt-6-luna');
+            assert.equal(model?.inputEurPerMillionTokens, 0.088);
+            assert.equal(model?.outputEurPerMillionTokens, 0.44);
         },
     );
 });
@@ -65,15 +69,15 @@ test('getSuncokretModel falls back to the first enabled model for automatic sele
 test('getSuncokretModel applies the configured USD to EUR rate', () => {
     withModelEnv(
         {
-            allowlist: 'openai/gpt-5.6-luna',
-            defaultModel: 'openai/gpt-5.6-luna',
+            allowlist: 'openai/gpt-6-luna',
+            defaultModel: 'openai/gpt-6-luna',
             usdToEurRate: '0.9',
         },
         () => {
             const model = getSuncokretModel();
 
-            assert.equal(model?.inputEurPerMillionTokens, 0.18);
-            assert.equal(model?.outputEurPerMillionTokens, 1.08);
+            assert.equal(model?.inputEurPerMillionTokens, 0.09);
+            assert.equal(model?.outputEurPerMillionTokens, 0.45);
         },
     );
 });
@@ -81,7 +85,7 @@ test('getSuncokretModel applies the configured USD to EUR rate', () => {
 test('getSuncokretModel keeps explicit unavailable model requests invalid', () => {
     withModelEnv(
         {
-            allowlist: 'openai/gpt-5.6-luna',
+            allowlist: 'openai/gpt-6-luna',
         },
         () => {
             assert.equal(getSuncokretModel('deepseek/deepseek-v4-flash'), null);
@@ -92,16 +96,16 @@ test('getSuncokretModel keeps explicit unavailable model requests invalid', () =
 test('getSuncokretPricedModel uses current AI Gateway catalog pricing', async () => {
     await withModelEnvAsync(
         {
-            allowlist: 'openai/gpt-5.6-luna',
+            allowlist: 'openai/gpt-6-luna',
         },
         async () => {
             const model = await getSuncokretPricedModel(
-                'openai/gpt-5.6-luna',
+                'openai/gpt-6-luna',
                 async () => ({
                     models: [
                         {
-                            id: 'openai/gpt-5.6-luna',
-                            name: 'GPT 5.6 Luna',
+                            id: 'openai/gpt-6-luna',
+                            name: 'GPT-6 Luna',
                             pricing: {
                                 input: '0.00000015',
                                 output: '0.0000009',
@@ -111,7 +115,7 @@ test('getSuncokretPricedModel uses current AI Gateway catalog pricing', async ()
                             specification: {
                                 specificationVersion: 'v4',
                                 provider: 'gateway',
-                                modelId: 'openai/gpt-5.6-luna',
+                                modelId: 'openai/gpt-6-luna',
                             },
                             modelType: 'language',
                         },
@@ -157,7 +161,7 @@ test('Suncokret Gateway billed cost sums unique generation costs', async () => {
             upstreamInferenceCost: 0,
             usage: 0,
             createdAt: '2026-08-05T00:00:00.000Z',
-            model: 'openai/gpt-5.6-luna',
+            model: 'openai/gpt-6-luna',
             isByok: false,
             providerName: 'openai',
             streamed: true,
@@ -199,3 +203,87 @@ async function withModelEnvAsync(
         setEnvValue('SUNCOKRET_AI_USD_TO_EUR_RATE', previousUsdToEurRate);
     }
 }
+
+test('Suncokret request estimates apply GPT-6 Luna long-context rates above 272K input tokens', () => {
+    withModelEnv({}, () => {
+        const model = getSuncokretModel();
+        assert.ok(model);
+
+        assert.equal(
+            estimateSuncokretRequestCostMicroEur({
+                inputTokens: 200_000,
+                maxOutputTokens: 1_000,
+                model,
+            }),
+            18_040,
+        );
+        assert.equal(
+            estimateSuncokretRequestCostMicroEur({
+                inputTokens: 300_000,
+                maxOutputTokens: 1_000,
+                model,
+            }),
+            53_460,
+        );
+    });
+});
+
+test('Suncokret output budget uses GPT-6 Luna long-context rates above 272K input tokens', () => {
+    withModelEnv({}, () => {
+        const model = getSuncokretModel();
+        assert.ok(model);
+
+        assert.equal(
+            resolveSuncokretMaxOutputTokens({
+                estimatedInputTokens: 300_000,
+                model,
+                remainingMicroEur: 53_000,
+            }),
+            303,
+        );
+        assert.equal(
+            resolveSuncokretMaxOutputTokens({
+                estimatedInputTokens: 300_000,
+                model,
+                remainingMicroEur: 52_000,
+            }),
+            0,
+        );
+    });
+});
+
+test('Suncokret fallback usage pricing picks the long-context tier from the largest step', () => {
+    withModelEnv({}, () => {
+        const model = getSuncokretModel();
+        assert.ok(model);
+
+        const steps = [
+            { usage: { inputTokens: 150_000 } },
+            { usage: { inputTokens: 200_000 } },
+            {},
+        ];
+        assert.equal(largestSuncokretStepInputTokens(steps), 200_000);
+        assert.equal(
+            suncokretPricingForInputTokens(
+                model,
+                largestSuncokretStepInputTokens(steps),
+            ),
+            model,
+        );
+
+        const longContextPricing = suncokretPricingForInputTokens(
+            model,
+            largestSuncokretStepInputTokens([
+                ...steps,
+                { usage: { inputTokens: 280_000 } },
+            ]),
+        );
+        assert.equal(longContextPricing.inputEurPerMillionTokens, 0.176);
+        assert.equal(longContextPricing.outputEurPerMillionTokens, 0.66);
+        assert.equal(longContextPricing.cachedInputEurPerMillionTokens, 0.0176);
+        assert.equal(
+            longContextPricing.cacheWriteInputEurPerMillionTokens,
+            0.22,
+        );
+    });
+});
