@@ -1,12 +1,14 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useLayoutEffect, useRef } from 'react';
 import { InstancedMesh, Mesh, MeshStandardMaterial } from 'three';
+import { readGameProfileMetadata } from '../src/scene/gameProfileMetadata';
 import { useSceneTimeInvalidation } from '../src/scene/SceneTime';
 
 export function AutumnSceneProbe({
     onReady,
     onSprigColors,
     onLeafCount,
+    onGustCount,
     onGroundCount,
     onEntityCount,
 }: {
@@ -15,6 +17,7 @@ export function AutumnSceneProbe({
     onEntityCount?: (count: number) => void;
     onGroundCount?: (count: number) => void;
     onLeafCount?: (count: number) => void;
+    onGustCount?: (count: number) => void;
 }) {
     const camera = useThree((state) => state.camera);
     const scene = useThree((state) => state.scene);
@@ -28,6 +31,7 @@ export function AutumnSceneProbe({
         if (++frames.current < 5) return;
         const leaves = scene.getObjectByName('Weather:AutumnLeaves');
         if (leaves instanceof InstancedMesh) onLeafCount?.(leaves.count);
+        onGustCount?.(readGameProfileMetadata()?.autumnGustCount ?? 0);
         const canopies: string[] = [];
         const sprigs: string[] = [];
         let groundCount = 0;

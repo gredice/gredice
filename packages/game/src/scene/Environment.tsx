@@ -16,6 +16,7 @@ import { AutumnRustle } from '../audio/AutumnRustle';
 import { PlantShaderPrewarm } from '../generators/plant/PlantShaderPrewarm';
 import { useAutumnState } from '../hooks/useAutumnState';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useSceneCurrentGarden } from '../hooks/useSceneCurrentGarden';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useSyncGameTime } from '../hooks/useSyncGameTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
@@ -674,6 +675,7 @@ export function Environment({
     const autumn = useAutumnState();
 
     const { data: garden } = useCurrentGarden();
+    const sceneGarden = useSceneCurrentGarden(garden);
     const location = useMemo(
         () => ({
             lat: garden?.location.lat ?? defaultLocation.lat,
@@ -1159,9 +1161,13 @@ export function Environment({
             />
             <AutumnLeaves
                 tier={qualityProfile.tier}
+                stacks={sceneGarden?.stacks}
+                gardenId={garden?.id}
                 enabled={!weatherDisabled}
                 windSpeed={blendedWeather?.windSpeed ?? 0}
                 windDirection={windDirection}
+                rain={blendedWeather?.rainy ?? 0}
+                snow={blendedWeather?.snowy ?? 0}
             />
             {!weatherDisabled && blendedWeather && (
                 <CloudLayer

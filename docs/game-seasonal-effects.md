@@ -147,6 +147,31 @@ third-party samples. The versioned filename supports cache invalidation. Peak is
 verify decoding, one-source continuity, mute and missing-asset behavior; final
 speaker/headphone mix tuning remains a listening check.
 
+## Ground leaf gusts
+
+The airborne leaf mesh now also draws a short ground-level gust every 12 scene
+seconds when blended wind reaches 0.75. One seeded event selects a visible exposed
+grass, sand or swamp block within four tiles of a mounted deciduous tree. The
+same exposure, slope, rotation and stack-height rules used by settled leaves
+place the gust just above the surface. An event lasts 1.4 seconds and uses at
+most 2/2/3/4/3 leaves on low/constrained/medium/high/custom quality. Those
+instances come out of the existing airborne-leaf cap for that frame; the
+interaction-particle pool is untouched. The mesh has no raycast target.
+
+Calm wind, heavy rain, accumulating snow, reduced motion and disabled weather
+silence gusts. Hidden scenes release their animation lease. Audio disablement
+still mutes rustle independently of the visual layer. Event selection and
+trajectory use garden, block, autumn year and shared animation time seeds, so
+`fixedTimeSeconds=10.7` gives a repeatable active burst and `14` gives a quiet
+frame at the same frozen calendar date. The normal still fixture remains at 12.
+
+Profile metadata exposes `autumnGustCount`, `autumnGustPeakCount` and
+`autumnGustCapacity` beside the combined `autumnLeafCount` and the settled
+ground/entity counts. Run `GAME_PROFILE_SCENARIO_SET=autumn pnpm --filter garden
+profile:game` to measure the dense autumn layers together. The WebGL component
+checks exercise low/high caps, wind/rain/snow/reduced-motion combinations and
+cleanup.
+
 For QA open `/debug/profile/game?mode=autumn&profile=dense-autumn&date=2024-10-22&sound=1&leafWind=light&hud=1&debugHud=1`
 and click inside the page to unlock browser audio. Combine dates `2024-06-21`,
 `2024-09-22`, `2024-10-22`, `2024-11-21` with `leafWind=calm|light|strong`.

@@ -23,7 +23,9 @@ export function AutumnVisualFixture({
     instanced = false,
     zoom = 95,
     leaves = false,
+    gusts = false,
     wind = 3,
+    rain = 0,
     tier = 'high',
     ground = false,
     entities = false,
@@ -34,7 +36,9 @@ export function AutumnVisualFixture({
     lighting?: 'day' | 'twilight' | 'cloudy';
     zoom?: number;
     leaves?: boolean;
+    gusts?: boolean;
     wind?: number;
+    rain?: number;
     tier?: GameQualityTier;
     instanced?: boolean;
     ground?: boolean;
@@ -43,6 +47,7 @@ export function AutumnVisualFixture({
     const [ready, setReady] = useState('');
     const [sprigColors, setSprigColors] = useState('');
     const [leafCount, setLeafCount] = useState(0);
+    const [gustCount, setGustCount] = useState(0);
     const [groundCount, setGroundCount] = useState(0);
     const [entityCount, setEntityCount] = useState(0);
     const stacks = useMemo(
@@ -112,6 +117,7 @@ export function AutumnVisualFixture({
                     data-canopies={ready}
                     data-sprigs={sprigColors}
                     data-leaves={leafCount}
+                    data-gust-leaves={gustCount}
                     data-ground-leaves={groundCount}
                     data-entity-leaves={entityCount}
                     style={{ width: 640, height: 420 }}
@@ -120,7 +126,7 @@ export function AutumnVisualFixture({
                         position={[4, 4, 6]}
                         zoom={zoom}
                         quality={gameQualityProfiles.low}
-                        fixedTimeSeconds={12}
+                        fixedTimeSeconds={gusts ? 10.7 : 12}
                         animateSprings={false}
                         style={{ width: '100%', height: '100%' }}
                     >
@@ -146,6 +152,10 @@ export function AutumnVisualFixture({
                                 tier={tier}
                                 windSpeed={wind}
                                 windDirection={90}
+                                stacks={gusts ? stacks : undefined}
+                                gardenId={7}
+                                rain={rain}
+                                snow={snow}
                                 enabled={!disabled}
                             />
                         )}
@@ -175,6 +185,7 @@ export function AutumnVisualFixture({
                                 onReady={setReady}
                                 onSprigColors={setSprigColors}
                                 onLeafCount={setLeafCount}
+                                onGustCount={setGustCount}
                                 onGroundCount={setGroundCount}
                                 onEntityCount={setEntityCount}
                             />
