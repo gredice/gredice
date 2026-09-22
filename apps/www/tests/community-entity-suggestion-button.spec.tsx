@@ -146,7 +146,8 @@ test('submits a new disease with named affected plants', async ({
         />,
     );
 
-    await page.getByRole('button', { name: 'Predloži novu bolest' }).click();
+    await page.getByRole('button', { name: 'Predloži bolest' }).click();
+    await page.getByRole('radio', { name: 'Predloži novu bolest' }).check();
     await page
         .getByRole('combobox', {
             name: 'Dodaj biljku — Pogođene biljke',

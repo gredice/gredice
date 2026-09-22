@@ -72,3 +72,52 @@ export const StandardButton: Story = {
         />
     ),
 };
+
+const authenticatedClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+});
+authenticatedClient.setQueryData(currentUserQueryKey, {
+    id: 'storybook-user',
+    userName: 'ana',
+    displayName: 'Ana',
+    role: 'user',
+});
+authenticatedClient.setQueryData(
+    ['community-plant-health-options', 'disease'],
+    [
+        {
+            id: 21,
+            information: {
+                name: 'Pepelnica',
+                shortDescription: 'Bijela prevlaka na listovima.',
+            },
+            relationships: { affectedPlants: [] },
+        },
+    ],
+);
+authenticatedClient.setQueryData(
+    ['community-plant-health-options', 'pest'],
+    [],
+);
+
+export const ExistingDisease: Story = {
+    ...Disease,
+    decorators: [
+        (Story) => (
+            <QueryClientProvider client={authenticatedClient}>
+                <Story />
+            </QueryClientProvider>
+        ),
+    ],
+};
+
+export const NoExistingPests: Story = {
+    ...Pest,
+    decorators: [
+        (Story) => (
+            <QueryClientProvider client={authenticatedClient}>
+                <Story />
+            </QueryClientProvider>
+        ),
+    ],
+};
