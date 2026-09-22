@@ -35,4 +35,4 @@ Garden browser checks: `pnpm --filter garden exec playwright test --config playw
 
 Public profile checks: `pnpm --filter www exec playwright test --config playwright.profile.config.ts` and `pnpm --filter www exec node --import tsx --test tests/publicProfile.node.spec.ts`.
 
-Existing keys, artwork, approval requirements and sunflower balances are preserved. No storage migration is needed. Live progress projections and a favorites shelf remain later work.
+Existing keys, artwork, approval requirements and sunflower balances are preserved. No storage migration is needed. The current-account API also returns `activity.counts` and `activity.calculatedAt`. Pass `activity` to `AchievementFamilyDetails` to show a numeric next-goal bar, current verified count and remaining amount. Missing activity shows an unavailable state, never a fabricated zero. Reached goals remain pending until approved; seasonal/registration and fully completed families do not show a numeric bar. A favorites shelf remains later work.

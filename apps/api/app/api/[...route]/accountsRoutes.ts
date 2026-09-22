@@ -10,6 +10,7 @@ import {
     deleteAccountWithDependencies,
     earnSunflowers,
     getAccount,
+    getAccountAchievementActivity,
     getAccountAchievements,
     getAccountGardens,
     getAccountInvitationByToken,
@@ -55,6 +56,7 @@ import { Hono } from 'hono';
 import { setCookie as honoSetCookie } from 'hono/cookie';
 import { describeRoute, resolver, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import { accountAchievementsResponse } from '../../../lib/accounts/accountAchievementsResponse';
 import { createJwt, verifyJwt } from '../../../lib/auth/auth';
 import {
     accountCookieName,
@@ -731,26 +733,20 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .get(
         '/current/achievements',
         describeRoute({
-            description: 'Get the current account achievements',
+            description:
+                'Get the current account awards and current verified activity for numeric achievement goals. Reading progress does not grant awards or rewards.',
+            security: authSecurity,
         }),
         authValidator(['user', 'admin']),
         async (context) => {
             const { accountId } = context.get('authContext');
-            const achievements = await getAccountAchievements(accountId);
-            return context.json({
-                achievements: achievements.map((achievement) => ({
-                    id: achievement.id,
-                    key: achievement.achievementKey,
-                    status: achievement.status,
-                    rewardSunflowers: achievement.rewardSunflowers,
-                    progressValue: achievement.progressValue,
-                    threshold: achievement.threshold,
-                    earnedAt: achievement.earnedAt.toISOString(),
-                    approvedAt: achievement.approvedAt?.toISOString() ?? null,
-                    rewardGrantedAt:
-                        achievement.rewardGrantedAt?.toISOString() ?? null,
-                })),
-            });
+            const [achievements, activity] = await Promise.all([
+                getAccountAchievements(accountId),
+                getAccountAchievementActivity(accountId),
+            ]);
+            return context.json(
+                accountAchievementsResponse(accountId, achievements, activity),
+            );
         },
     )
     .get(

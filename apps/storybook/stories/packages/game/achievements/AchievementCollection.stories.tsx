@@ -29,3 +29,11 @@ export const Starter: Story = { args: { state: 'starter' } };
 export const Empty: Story = { args: { state: 'empty' } };
 export const Complete: Story = { args: { state: 'complete' } };
 export const Dark: Story = { args: { dark: true } };
+
+export const LiveProgress: Story = { args: { state: 'progress' } };
+export const LiveProgressDark: Story = {
+    args: { state: 'progress', dark: true },
+};
+export const ProgressUnavailable: Story = {
+    args: { state: 'progress', activity: null },
+};
