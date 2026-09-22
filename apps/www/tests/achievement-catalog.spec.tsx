@@ -18,6 +18,11 @@ for (const width of [320, 768, 1280]) {
                 <AchievementCatalog now="2026-09-22T12:00:00Z" />
             </main>,
         );
+        await expect(
+            page.getByRole('link', {
+                name: 'Kako skupljati XP i napredovati kroz razine',
+            }),
+        ).toHaveAttribute('href', '/iskustvo-i-razine');
         const cards = page.locator('[data-catalog-achievement]');
         await expect(cards).toHaveCount(getAchievementDefinitions().length);
         for (const definition of getAchievementDefinitions()) {

@@ -13,6 +13,7 @@ export const PublicPagePaths = {
     PlantPests: '/stetnici',
     Blocks: '/blokovi',
     Sunflowers: '/suncokreti',
+    Experience: '/iskustvo-i-razine',
     RaisedBeds: '/podignuta-gredica',
     PublicGardens: '/vrtovi',
     Users: '/korisnici',

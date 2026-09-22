@@ -4,6 +4,7 @@ import { Link } from '@gredice/ui/Link';
 import { Stack } from '@gredice/ui/Stack';
 import { UserAchievementProgress, UserAvatar } from '@gredice/ui/UserAvatar';
 import { useQuery } from '@tanstack/react-query';
+import { KnownPages } from '../../../src/KnownPages';
 import { formatGardenDate } from '../../vrtovi/publicGardenFormatting';
 import { PublicProfileAchievements } from './PublicProfileAchievements';
 import { PublicProfileGardens } from './PublicProfileGardens';
@@ -54,6 +55,12 @@ export function ProfilePageClient({ publicId }: ProfilePageClientProps) {
                     <UserAchievementProgress
                         achievementCount={user.achievementCount}
                     />
+                    <Link
+                        href={KnownPages.Experience}
+                        className="mt-2 inline-block text-xs underline underline-offset-4"
+                    >
+                        Kako funkcioniraju XP i razine?
+                    </Link>
                     {membership && (
                         <p className="mt-2 text-sm text-muted-foreground">
                             <time

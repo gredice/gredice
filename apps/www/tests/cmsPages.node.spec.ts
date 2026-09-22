@@ -69,6 +69,11 @@ test('quality harvest safety source CMS page is published and canonical', () => 
     assert.ok(getSourceCmsPageBySlug(QUALITY_HARVEST_SAFETY_SLUG));
 });
 
+test('public CMS catch-all protects the experience guide and its descendants', () => {
+    assert.equal(hasReservedFirstSegment('iskustvo-i-razine'), true);
+    assert.equal(hasReservedFirstSegment('iskustvo-i-razine/primjer'), true);
+});
+
 test('public CMS catch-all keeps outlet route reserved', () => {
     assert.equal(hasReservedFirstSegment('outlet'), true);
     assert.equal(hasReservedFirstSegment('outlet/sezonska-ponuda'), true);

@@ -218,6 +218,17 @@ export default async function SunflowersPage() {
                     >
                         Pogledaj sva postignuća i nagrade
                     </Link>
+                    <p className="mt-4 text-muted-foreground">
+                        Suncokrete trošiš na vrtne akcije, a XP skupljaš
+                        odobrenim postignućima. Kupnja i trošenje suncokreta ne
+                        mijenjaju tvoju razinu.
+                    </p>
+                    <Link
+                        href={KnownPages.Experience}
+                        className="mt-4 inline-block underline underline-offset-4"
+                    >
+                        Saznaj kako skupljati XP i napredovati kroz razine
+                    </Link>
                 </section>
 
                 <section className="space-y-4">

@@ -106,6 +106,12 @@ export function AchievementCatalog({ now }: { now: string }) {
                         povećava tvoju razinu i ne troši se kupnjom.
                     </p>
                 </div>
+                <Link
+                    href={KnownPages.Experience}
+                    className="mt-5 inline-block text-sm underline underline-offset-4"
+                >
+                    Kako skupljati XP i napredovati kroz razine
+                </Link>
             </section>
 
             <nav

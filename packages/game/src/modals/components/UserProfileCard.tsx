@@ -2,6 +2,7 @@ import { AvatarSelectionMenu } from '@gredice/ui/AvatarSelectionMenu';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardActions, CardContent } from '@gredice/ui/Card';
 import { Input } from '@gredice/ui/Input';
+import { Link } from '@gredice/ui/Link';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -9,6 +10,7 @@ import { UserAchievementProgress } from '@gredice/ui/UserAvatar';
 import type { FormEvent } from 'react';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { useUpdateUser } from '../../hooks/useUpdateUser';
+import { KnownPages } from '../../knownPages';
 import { ProfileAvatar } from '../../shared-ui/ProfileAvatar';
 
 export function UserProfileCard() {
@@ -84,6 +86,14 @@ export function UserProfileCard() {
                                     }
                                 />
                             )}
+                            <Link
+                                href={KnownPages.GrediceExperience}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm underline underline-offset-4"
+                            >
+                                Kako funkcioniraju XP i razine? (nova kartica)
+                            </Link>
                             <CardActions className="justify-between">
                                 <Typography level="body2">
                                     Član od: {memberSinceDisplay}

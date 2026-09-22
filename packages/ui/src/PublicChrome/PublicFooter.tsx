@@ -234,6 +234,13 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             ),
                         },
                         {
+                            label: 'XP i razine',
+                            href: publicChromeHref(
+                                PublicPagePaths.Experience,
+                                linkMode,
+                            ),
+                        },
+                        {
                             label: 'Što je novo',
                             href: publicChromeHref(
                                 PublicPagePaths.WhatsNew,
