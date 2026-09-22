@@ -109,14 +109,16 @@ export function PublicEnvironmentProvider({
     const [weatherKind, setWeatherKind] =
         useState<PublicEnvironmentWeatherKind>('live');
 
+    // Ambient mode is on by default; only an explicit opt-out is persisted
+    // as "false" and keeps it off on later visits.
     useEffect(() => {
         try {
             setEnabled(
-                window.localStorage.getItem(PUBLIC_ENVIRONMENT_STORAGE_KEY) ===
-                    'true',
+                window.localStorage.getItem(PUBLIC_ENVIRONMENT_STORAGE_KEY) !==
+                    'false',
             );
         } catch {
-            setEnabled(false);
+            setEnabled(true);
         }
     }, []);
 
@@ -220,7 +222,7 @@ export function PublicEnvironmentProvider({
 
     const toggle = useCallback(() => {
         setEnabled((current) => {
-            const next = !(current ?? false);
+            const next = !(current ?? true);
             try {
                 window.localStorage.setItem(
                     PUBLIC_ENVIRONMENT_STORAGE_KEY,

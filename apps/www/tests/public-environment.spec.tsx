@@ -45,7 +45,7 @@ async function mockPublicEnvironmentRequests(page: Page) {
     });
 }
 
-test('toggles the sky and applies deterministic debug conditions', async ({
+test('shows the sky by default and applies deterministic debug conditions', async ({
     mount,
     page,
 }) => {
@@ -56,21 +56,6 @@ test('toggles the sky and applies deterministic debug conditions', async ({
         name: 'Ambijentalna pozadina',
     });
     await expect(toggle).toBeEnabled();
-    await expect(toggle).not.toBeChecked();
-    await expect(page.getByTestId('public-environment-backdrop')).toHaveCount(
-        0,
-    );
-    await expect
-        .poll(() =>
-            page
-                .locator('html')
-                .evaluate((root) =>
-                    root.style.getPropertyValue('--environmentHue'),
-                ),
-        )
-        .toBe('');
-
-    await toggle.click();
     await expect(toggle).toBeChecked();
     await expect(page.getByTestId('public-environment-backdrop')).toBeVisible();
     const stars = page.locator('.public-environment-stars');
@@ -108,6 +93,9 @@ test('toggles the sky and applies deterministic debug conditions', async ({
 
     await toggle.click();
     await expect(toggle).not.toBeChecked();
+    await expect(page.getByTestId('public-environment-backdrop')).toHaveCount(
+        0,
+    );
     await expect
         .poll(() =>
             page
@@ -117,6 +105,40 @@ test('toggles the sky and applies deterministic debug conditions', async ({
                 ),
         )
         .toBe('');
+    expect(
+        await page.evaluate(() =>
+            localStorage.getItem('gredice-public-environment-enabled'),
+        ),
+    ).toBe('false');
+});
+
+test('keeps the sky off when the visitor previously turned it off', async ({
+    mount,
+    page,
+}) => {
+    await mockPublicEnvironmentRequests(page);
+    await page.evaluate(() => {
+        localStorage.setItem('gredice-public-environment-enabled', 'false');
+    });
+    await mount(<PublicEnvironmentHarness />);
+
+    const toggle = page.getByRole('switch', {
+        name: 'Ambijentalna pozadina',
+    });
+    await expect(toggle).toBeEnabled();
+    await expect(toggle).not.toBeChecked();
+    await expect(page.getByTestId('public-environment-backdrop')).toHaveCount(
+        0,
+    );
+
+    await toggle.click();
+    await expect(toggle).toBeChecked();
+    await expect(page.getByTestId('public-environment-backdrop')).toBeVisible();
+    expect(
+        await page.evaluate(() =>
+            localStorage.getItem('gredice-public-environment-enabled'),
+        ),
+    ).toBe('true');
 });
 
 test('fits the footer controls on mobile and supports keyboard toggling', async ({
@@ -130,9 +152,10 @@ test('fits the footer controls on mobile and supports keyboard toggling', async 
     const toggle = page.getByRole('switch', {
         name: 'Ambijentalna pozadina',
     });
+    await expect(toggle).toBeChecked();
     await toggle.focus();
     await page.keyboard.press('Space');
-    await expect(toggle).toBeChecked();
+    await expect(toggle).not.toBeChecked();
     await page.getByText('Debug prikaza').click();
 
     expect(
@@ -197,9 +220,9 @@ for (const width of [360, 768, 1280]) {
         await expect(landscape).toHaveAttribute('aria-hidden', 'true');
         const initialHeight = (await landscape.boundingBox())?.height;
 
-        await page
-            .getByRole('switch', { name: 'Ambijentalna pozadina' })
-            .click();
+        await expect(
+            page.getByRole('switch', { name: 'Ambijentalna pozadina' }),
+        ).toBeChecked();
         await page.getByText('Debug prikaza').click();
         await page.getByLabel('Fiksiraj vrijeme').check();
 
@@ -265,6 +288,9 @@ test('uses the night garden in dark mode with ambient disabled', async ({
 }) => {
     await page.clock.setFixedTime(new Date('2026-08-24T21:00:00Z'));
     await mockPublicEnvironmentRequests(page);
+    await page.evaluate(() => {
+        localStorage.setItem('gredice-public-environment-enabled', 'false');
+    });
     await mount(
         <PublicChromeProvider>
             <PublicFooter />

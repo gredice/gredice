@@ -59,7 +59,7 @@ export function PublicEnvironmentFooterControls() {
                 </label>
                 <Switch
                     aria-label="Ambijentalna pozadina"
-                    checked={enabled ?? false}
+                    checked={enabled ?? true}
                     disabled={enabled === null}
                     id={ambientToggleId}
                     onCheckedChange={toggle}
