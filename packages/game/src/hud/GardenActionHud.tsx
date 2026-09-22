@@ -96,10 +96,9 @@ export function GardenActionHud({ enabled = true }: { enabled?: boolean }) {
         setOpened({ key: actionKey, action: resolved });
         if (resolved.type !== 'unavailable') {
             if (resolved.raisedBedName)
-                void focusRaisedBed(
-                    resolved.raisedBedName,
-                    resolved.positionIndex,
-                );
+                // `polje` opens a separate plant/history dialog. The shortcut
+                // dialog owns the field selection and displays its target.
+                void focusRaisedBed(resolved.raisedBedName);
             // Consume successful links once. Refreshing or reopening a field must not repeat the action.
             void setParams(clearAction);
         }

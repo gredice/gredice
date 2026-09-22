@@ -15,8 +15,11 @@ test('plant link focuses the first available field and opens variety selection',
         page.getByRole('heading', { name: 'Odabir sorte', exact: true }),
     ).toBeVisible();
     await expect(page.getByTestId('garden-action-target')).toContainText(
-        '"gredica":"Mock gredica","polje":2',
+        '"gredica":"Mock gredica","polje":null',
     );
+    await expect(
+        page.getByText('Mock gredica · Polje 2', { exact: true }),
+    ).toBeVisible();
     await expect(page.getByTestId('garden-action-target')).toContainText(
         '"view":"closeup"',
     );
