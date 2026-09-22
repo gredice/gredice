@@ -408,7 +408,7 @@ jobs:
         with:
           fetch-depth: 2
 
-      - uses: pnpm/action-setup@v6.0.8
+      - uses: pnpm/action-setup@v6.1.0
         name: ✨ Install pnpm
 
       - name: ✨ Setup Node
@@ -455,7 +455,7 @@ jobs:
         with:
           fetch-depth: 2
 
-      - uses: pnpm/action-setup@v6.0.8
+      - uses: pnpm/action-setup@v6.1.0
         name: ✨ Install pnpm
 
       - name: ✨ Setup Node
@@ -494,7 +494,7 @@ jobs:
         with:
           fetch-depth: 2
 
-      - uses: pnpm/action-setup@v6.0.8
+      - uses: pnpm/action-setup@v6.1.0
         name: ✨ Install pnpm
 
       - name: ✨ Setup Node
