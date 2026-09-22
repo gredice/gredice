@@ -1,6 +1,7 @@
 import { MeshDistortMaterial, MeshWobbleMaterial } from '@react-three/drei';
 import { useMemo } from 'react';
 import { useAutumnState } from '../hooks/useAutumnState';
+import { getAutumnCanopyStage } from '../scene/autumnCanopy';
 import {
     getAutumnLeafColor,
     getAutumnPaletteSeed,
@@ -33,6 +34,16 @@ export function Tree({
         weatherDisabled || visualizationDisabled
             ? 0
             : autumn.foliageColorProgress;
+    const canopyStage = getAutumnCanopyStage(
+        weatherDisabled || visualizationDisabled ? 1 : autumn.leafRetention,
+        block.id,
+    );
+    const canopyGeometry =
+        canopyStage === 'full'
+            ? nodes.Tree_1_2.geometry
+            : canopyStage === 'thinning'
+              ? nodes.Tree_AutumnThinning.geometry
+              : nodes.Tree_AutumnSparse.geometry;
     const leafColor = useMemo(
         () =>
             getAutumnLeafColor(
@@ -62,7 +73,7 @@ export function Tree({
                 name={`Autumn:Canopy:${block.id}`}
                 castShadow
                 receiveShadow
-                geometry={nodes.Tree_1_2.geometry}
+                geometry={canopyGeometry}
             >
                 <MeshDistortMaterial
                     {...materials['Material.Leaves']}
@@ -75,20 +86,34 @@ export function Tree({
                 />
             </mesh>
             <SnowOverlay
-                geometry={nodes.Tree_1_2.geometry}
+                geometry={canopyGeometry}
                 {...snowPresets.treeCanopyInner}
                 renderOrder={2}
             />
-            <mesh castShadow receiveShadow geometry={nodes.Tree_1_3.geometry}>
-                <MeshWobbleMaterial
-                    {...materials['Material.GrassPart']}
-                    factor={0.02}
-                    speed={resolveTimeDrivenMaterialSpeed(
-                        2,
-                        materialAnimationActive,
-                    )}
+            {canopyStage !== 'full' && (
+                <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={nodes.Tree_AutumnBranches.geometry}
+                    material={materials['Material.Planks']}
                 />
-            </mesh>
+            )}
+            {canopyStage === 'full' && (
+                <mesh
+                    castShadow
+                    receiveShadow
+                    geometry={nodes.Tree_1_3.geometry}
+                >
+                    <MeshWobbleMaterial
+                        {...materials['Material.GrassPart']}
+                        factor={0.02}
+                        speed={resolveTimeDrivenMaterialSpeed(
+                            2,
+                            materialAnimationActive,
+                        )}
+                    />
+                </mesh>
+            )}
         </animated.group>
     );
 }

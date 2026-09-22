@@ -222,7 +222,8 @@
             "source": "Tree.blend",
             "output": "Tree.glb",
             "preload": "primary",
-            "objects": ["Tree 1"]
+            "version": "autumn-canopy-v1",
+            "objects": ["Tree 1", "Tree_AutumnThinning", "Tree_AutumnSparse", "Tree_AutumnBranches"]
         },
         {
             "name": "Pine",
