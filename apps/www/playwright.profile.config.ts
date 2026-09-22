@@ -9,6 +9,7 @@ export default defineConfig({
         'avatar-profile-links.spec.tsx',
         'public-garden-members.spec.tsx',
         'user-leaderboard.spec.tsx',
+        'achievement-catalog.spec.tsx',
     ],
     testIgnore: [],
     webServer: undefined,

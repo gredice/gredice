@@ -33,6 +33,7 @@ export const appRouterHubPaths = [
     '/dostava/termini',
     '/kontakt',
     '/korisnici',
+    '/postignuca',
     '/legalno',
     '/legalno/licenca',
     '/legalno/natjecaji',

@@ -56,6 +56,7 @@ export const KnownPages = {
     WhatsNew: '/novosti/sto-je-novo',
     PublicGardens: '/vrtovi',
     Users: '/korisnici',
+    Achievements: '/postignuca',
     Wallpapers: '/pozadine',
     PublicGarden: (gardenId: number) =>
         `/vrtovi/${gardenId.toString()}` as Route,
