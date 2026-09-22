@@ -155,6 +155,7 @@ import {
     OperationCategoryIcon,
     OperationImage,
 } from '@gredice/ui/OperationImage';
+import { OperationRequestNote } from '@gredice/ui/OperationRequestNote';
 import { PageHeader, PageHeaderSection } from '@gredice/ui/PageHeader';
 import { PaperNote } from '@gredice/ui/PaperNote';
 import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
@@ -1521,6 +1522,7 @@ function GardenWorkspaceShowcase() {
                     <Typography level="h3">
                         Bilješka iz pregleda gredice
                     </Typography>
+                    <OperationRequestNote note="Molim provjerite listove prije zalijevanja." />
                     <PaperNote noteKey="garden-inspection-42">
                         Tlo je rahlo i dovoljno vlažno. Uklonjen je korov oko
                         rajčice.

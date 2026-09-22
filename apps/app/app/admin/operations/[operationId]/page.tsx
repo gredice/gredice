@@ -19,6 +19,7 @@ import { Chip } from '@gredice/ui/Chip';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { ExternalLink } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { OperationRequestNote } from '@gredice/ui/OperationRequestNote';
 import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
@@ -581,6 +582,17 @@ export default async function OperationDetailsPage({
             value: operationDateValue(operation.canceledAt),
         });
     }
+    if (operation.requestNote) {
+        outcomeItems.push({
+            id: 'request-note',
+            label: 'Napomena korisnika',
+            value: (
+                <span className="whitespace-pre-wrap [overflow-wrap:anywhere]">
+                    {operation.requestNote}
+                </span>
+            ),
+        });
+    }
     if (operation.completionNotes) {
         outcomeItems.push({
             id: 'completion-notes',
@@ -760,6 +772,11 @@ export default async function OperationDetailsPage({
                                     </Typography>
                                 </CardContent>
                             </Card>
+                        )}
+                        {operation.requestNote && (
+                            <OperationRequestNote
+                                note={operation.requestNote}
+                            />
                         )}
                         {operation.completionNotes && (
                             <Card>

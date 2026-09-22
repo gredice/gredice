@@ -4,6 +4,7 @@ import { Chip } from '@gredice/ui/Chip';
 import { Calendar } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { OperationImage } from '@gredice/ui/OperationImage';
+import { OperationRequestNote } from '@gredice/ui/OperationRequestNote';
 import { PaperNote } from '@gredice/ui/PaperNote';
 import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
@@ -130,6 +131,12 @@ export function OperationListItemContent({
                                 </span>
                             ) : null}
                         </div>
+                        {operation.kind === 'operation' &&
+                            operation.requestNote && (
+                                <OperationRequestNote
+                                    note={operation.requestNote}
+                                />
+                            )}
                         {operation.kind === 'operation' &&
                         operation.completionNotes ? (
                             <PaperNote

@@ -172,7 +172,7 @@ export function RaisedBedAiOperationChip({
             gardenId={gardenId}
             initialScheduledDate={target.scheduledDate}
             operation={operation}
-            onConfirm={async (scheduledDate) => {
+            onConfirm={async (scheduledDate, requestNote) => {
                 await setShoppingCartItem.mutateAsync({
                     amount: 1,
                     entityId: operation.id.toString(),
@@ -181,6 +181,7 @@ export function RaisedBedAiOperationChip({
                     raisedBedId: target.raisedBedId,
                     positionIndex: targetPositionIndex,
                     additionalData: JSON.stringify({
+                        ...(requestNote ? { requestNote } : {}),
                         scheduledDate: scheduledDate.toISOString(),
                     }),
                 });

@@ -1,5 +1,9 @@
 import type { OperationData } from '@gredice/client';
 import { formatPrice } from '@gredice/js/currency';
+import {
+    normalizeOperationRequestNote,
+    operationRequestNoteMaxLength,
+} from '@gredice/js/operations';
 import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
@@ -10,7 +14,7 @@ import { OperationImage } from '@gredice/ui/OperationImage';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useLiveTime } from '../../../hooks/useLiveTime';
 import { GameModal } from '../../../shared-ui/game-modal';
 import { formatLocalDate } from '../RaisedBedPlantPicker';
@@ -49,12 +53,14 @@ export function OperationScheduleModal({
     gardenId: number;
     initialScheduledDate?: string;
     operation: OperationData;
-    onConfirm: (date: Date) => Promise<void>;
+    onConfirm: (date: Date, requestNote?: string) => Promise<void>;
     positionIndex?: number;
     raisedBedId?: number;
     showHistory?: boolean;
     trigger?: React.ReactElement;
 }) {
+    const requestNoteId = useId();
+    const [requestNote, setRequestNote] = useState('');
     const [open, setOpen] = useState(defaultOpen);
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -106,7 +112,11 @@ export function OperationScheduleModal({
         setErrorMessage(null);
         setIsLoading(true);
         try {
-            await onConfirm(scheduledDate);
+            await onConfirm(
+                scheduledDate,
+                normalizeOperationRequestNote(requestNote),
+            );
+            setRequestNote('');
             setOpen(false);
             onClose?.();
         } catch {
@@ -131,6 +141,7 @@ export function OperationScheduleModal({
                 if (!nextOpen) {
                     setErrorMessage(null);
                     setScheduledDateInput(null);
+                    setRequestNote('');
                     onClose?.();
                 }
             }}
@@ -230,10 +241,36 @@ export function OperationScheduleModal({
                             visibleTo={threeMonthsFromTomorrow}
                         />
                     ) : null}
+                    <Stack spacing={1}>
+                        <label
+                            htmlFor={requestNoteId}
+                            className="text-sm font-medium"
+                        >
+                            Napomena za vrtlara (neobavezno)
+                        </label>
+                        <textarea
+                            id={requestNoteId}
+                            name="requestNote"
+                            value={requestNote}
+                            onChange={(event) =>
+                                setRequestNote(event.target.value)
+                            }
+                            maxLength={operationRequestNoteMaxLength}
+                            rows={3}
+                            disabled={isLoading}
+                            placeholder="Što želiš da vrtlar zna prije radnje?"
+                            className="w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        />
+                    </Stack>
                     <Row spacing={2}>
                         <Button
+                            type="button"
                             variant="plain"
-                            onClick={() => setOpen(false)}
+                            onClick={() => {
+                                setOpen(false);
+                                setRequestNote('');
+                                onClose?.();
+                            }}
                             disabled={isLoading}
                         >
                             Odustani

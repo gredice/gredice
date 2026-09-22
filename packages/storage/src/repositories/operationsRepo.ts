@@ -1,3 +1,4 @@
+import { normalizeOperationRequestNote } from '@gredice/js/operations';
 import type { SelectedPlantingOperationTarget } from '@gredice/js/plants';
 import {
     and,
@@ -239,6 +240,9 @@ function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
             (value): value is string => typeof value === 'string',
         );
     }
+    if (typeof record.requestNote === 'string') {
+        data.requestNote = record.requestNote;
+    }
     if (typeof record.notes === 'string') {
         data.notes = record.notes;
     }
@@ -345,6 +349,7 @@ async function fillOperationAggregates(
         let canceledAt: Date | undefined;
         let cancelReason: string | undefined;
         let imageUrls: string[] | undefined;
+        let requestNote: string | undefined;
         let completionNotes: string | undefined;
         let completionNotesEdited = false;
         let blockedAt: Date | undefined;
@@ -425,6 +430,7 @@ async function fillOperationAggregates(
                 cancelReason = asString(data?.reason);
                 canceledAt = event.createdAt;
             } else if (event.type === knownEventTypes.operations.schedule) {
+                requestNote = requestNote ?? asString(data.requestNote);
                 status = 'planned';
                 scheduledDate = data?.scheduledDate
                     ? new Date(String(data.scheduledDate))
@@ -478,6 +484,7 @@ async function fillOperationAggregates(
             canceledAt,
             cancelReason,
             imageUrls,
+            requestNote,
             completionNotes,
             ...(completionNotesEdited ? { completionNotesEdited: true } : {}),
             blockedAt,
@@ -2303,6 +2310,7 @@ export async function createScheduledOperation(
 }
 
 type CheckoutOperationOptions = {
+    requestNote?: string;
     plantingTarget?: SelectedPlantingOperationTarget;
     accept?: boolean;
     delivery: CheckoutOperationCreatedPayload['delivery'];
@@ -2325,6 +2333,7 @@ function checkoutOperationFingerprint(
 ): Omit<CheckoutOperationCreatedPayload, 'operationId'> {
     const scheduledDate = options.scheduledDate.toISOString();
     const operationTimestamp = operation.timestamp?.toISOString() ?? null;
+    const requestNote = normalizeOperationRequestNote(options.requestNote);
 
     return {
         accountId: operation.accountId ?? null,
@@ -2338,6 +2347,7 @@ function checkoutOperationFingerprint(
             ? { plantingId: operation.plantingId }
             : {}),
         operationTimestamp,
+        ...(requestNote ? { requestNote } : {}),
         paymentCurrency: options.paymentCurrency,
         delivery: options.delivery,
         scheduledDate,
@@ -2434,6 +2444,8 @@ function parseCheckoutOperationCreatedPayload(
         !paymentCurrency(data.paymentCurrency) ||
         parsedDelivery === undefined ||
         !isoDateString(data.scheduledDate) ||
+        (data.requestNote !== undefined &&
+            typeof data.requestNote !== 'string') ||
         typeof data.accepted !== 'boolean'
     ) {
         return null;
@@ -2455,6 +2467,9 @@ function parseCheckoutOperationCreatedPayload(
         paymentCurrency: data.paymentCurrency,
         delivery: parsedDelivery,
         scheduledDate: data.scheduledDate,
+        ...(typeof data.requestNote === 'string'
+            ? { requestNote: data.requestNote }
+            : {}),
         accepted: data.accepted,
     };
 }
@@ -2599,6 +2614,7 @@ function assertCheckoutOperationFingerprint(
         'paymentCurrency',
         'scheduledDate',
         'accepted',
+        'requestNote',
     ] as const;
     const mismatch = fingerprintFields.find(
         (field) => stored[field] !== expected[field],
@@ -2712,6 +2728,9 @@ async function ensureCheckoutOperation(
     await createEvent(
         knownEvents.operations.scheduledV1(operationId.toString(), {
             scheduledDate: fingerprint.scheduledDate,
+            ...(fingerprint.requestNote
+                ? { requestNote: fingerprint.requestNote }
+                : {}),
         }),
         db,
     );

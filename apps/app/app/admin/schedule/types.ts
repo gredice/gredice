@@ -75,6 +75,7 @@ export type Operation = {
     blockReasonLabel?: string;
     blockNote?: string;
     blockImageUrls?: string[];
+    requestNote?: string;
     completionNotes?: string;
     completionNotesEdited?: boolean;
     imageUrls?: string[];

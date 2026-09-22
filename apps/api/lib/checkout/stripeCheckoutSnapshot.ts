@@ -18,6 +18,10 @@ import {
     buildCheckoutAdditionalData,
     encodeHarvestDatesMetadata,
 } from './harvestCheckout';
+import {
+    operationRequestNoteMetadata,
+    readCheckoutProductAdditionalData,
+} from './operationRequestNoteMetadata';
 import { calculateSunflowerAmount } from './sunflowerCalculations';
 
 export const stripeCheckoutAttemptMetadataKeys = {
@@ -301,9 +305,11 @@ export function decodeStripeCheckoutAttemptMetadata(
     return { attemptId, cartId };
 }
 
-function parseProductAdditionalData(value: string | undefined) {
+function parseProductAdditionalData(
+    metadata: Record<string, string | undefined> | undefined,
+) {
     try {
-        return value ? JSON.parse(value) : {};
+        return readCheckoutProductAdditionalData(metadata);
     } catch {
         throw new StripeCheckoutAttemptConflictError(
             'stripe_additional_data_invalid',
@@ -365,6 +371,9 @@ export function buildStripeCheckoutReplayInput({
                         additionalData: serializeStripeCheckoutValue(
                             checkoutAdditionalDataByCartItemId.get(item.id) ??
                                 {},
+                        ),
+                        ...operationRequestNoteMetadata(
+                            checkoutAdditionalDataByCartItemId.get(item.id),
                         ),
                         cartId: attempt.snapshot.cartId,
                         cartItemId: item.id.toString(),
@@ -520,7 +529,7 @@ export function assertStripeSessionMatchesCheckoutAttempt(
                 expected.positionIndex ||
             !outletMetadataMatchesSnapshot(productMetadata, expected.outlet) ||
             fingerprintStripeCheckoutValue(
-                parseProductAdditionalData(productMetadata.additionalData),
+                parseProductAdditionalData(productMetadata),
             ) !== expected.checkoutAdditionalDataFingerprint
         ) {
             throw new StripeCheckoutAttemptConflictError('stripe_item_changed');
@@ -627,9 +636,7 @@ export function buildVerifiedStripeCheckoutAdditionalData({
         if (!Number.isSafeInteger(cartItemId) || cartItemId <= 0) {
             continue;
         }
-        const additionalData = parseProductAdditionalData(
-            product?.metadata?.additionalData,
-        );
+        const additionalData = parseProductAdditionalData(product?.metadata);
         stripeAdditionalDataByCartItemId.set(cartItemId, additionalData);
         if (
             additionalData &&

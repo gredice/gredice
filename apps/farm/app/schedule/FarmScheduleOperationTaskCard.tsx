@@ -1,4 +1,5 @@
 import type { EntityStandardized } from '@gredice/storage';
+import { OperationRequestNote } from '@gredice/ui/OperationRequestNote';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -49,7 +50,11 @@ export type FarmOperationCardData = Pick<
     Partial<
         Pick<
             FarmOperation,
-            'blockedAt' | 'blockImageUrls' | 'blockNote' | 'blockReasonLabel'
+            | 'requestNote'
+            | 'blockedAt'
+            | 'blockImageUrls'
+            | 'blockNote'
+            | 'blockReasonLabel'
         >
     > & {
         durationMinutes: number;
@@ -167,6 +172,9 @@ export function FarmScheduleOperationTaskCard({
             )}
         >
             <div className="min-w-0 px-1 py-1">{detailsContent}</div>
+            {operation.requestNote && (
+                <OperationRequestNote note={operation.requestNote} />
+            )}
             {showProofRequirements && (
                 <OperationProofRequirements
                     className="mt-2"

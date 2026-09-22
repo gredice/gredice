@@ -4,6 +4,7 @@ import type { ScheduleTaskBlockPayload } from './scheduleTaskBlock';
 // Checkout event payload types
 // ============================================================================
 export type CheckoutOperationCreatedPayload = {
+    requestNote?: string;
     operationId: number;
     plantingId?: number | null;
     accountId: string | null;
@@ -439,6 +440,7 @@ export type RaisedBedPlantingEventsPayload =
 // Operation event payload types
 // ============================================================================
 export type OperationSchedulePayload = {
+    requestNote?: string;
     scheduledDate: string;
 };
 

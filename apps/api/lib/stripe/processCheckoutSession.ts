@@ -2,6 +2,7 @@ import {
     fiscalizeReceipt,
     issueReceiptForPaidInvoice,
 } from '@gredice/fiscalization/server';
+import { readOperationRequestNote } from '@gredice/js/operations';
 import {
     ADVANCED_SOWING_DEFAULT_BED_FIELD_COUNT,
     type AdvancedSowingCartAuthorizationV1,
@@ -109,6 +110,7 @@ import {
     decodeExpectedNonStripeCartItemIdsMetadata,
     decodeHarvestDatesMetadata,
 } from '../checkout/harvestCheckout';
+import { readCheckoutProductAdditionalData } from '../checkout/operationRequestNoteMetadata';
 import {
     buildOrderConfirmationItems,
     ORDER_CONFIRMATION_MANAGE_URL,
@@ -2232,9 +2234,9 @@ async function processPaidCheckoutSession(
         // Extract metadata from the product
         let additionalData: unknown;
         try {
-            additionalData = product?.metadata.additionalData
-                ? JSON.parse(product.metadata.additionalData)
-                : undefined;
+            additionalData = readCheckoutProductAdditionalData(
+                product?.metadata,
+            );
         } catch (cause) {
             const error = new Error(
                 `Stripe line item ${item.id} has invalid additionalData metadata.`,
@@ -2555,9 +2557,9 @@ async function processPaidCheckoutSession(
         : (session.lineItems?.data ?? [])) {
         const product = item.price?.product;
         if (typeof product !== 'string' && !product?.deleted) {
-            const additionalData = product?.metadata?.additionalData
-                ? JSON.parse(product.metadata.additionalData)
-                : undefined;
+            const additionalData = readCheckoutProductAdditionalData(
+                product?.metadata,
+            );
             if (
                 additionalData &&
                 typeof additionalData === 'object' &&
@@ -3375,6 +3377,7 @@ export async function prepareSelectedPlantingCheckoutOperation(
         },
         {
             plantingTarget,
+            requestNote: readOperationRequestNote(item.additionalData),
             paymentCurrency: currency,
             scheduledDate: stored
                 ? new Date(stored.scheduledDate)
@@ -3457,7 +3460,10 @@ export async function processItem(
         ) {
             console.error(
                 `Missing required metadata for operation item in order.`,
-                itemData,
+                {
+                    cartItemId: itemData.cartItemId,
+                    entityId: itemData.entityId,
+                },
             );
             return { status: 'not_fulfilled', reason: 'missing_metadata' };
         }
@@ -3465,7 +3471,10 @@ export async function processItem(
         if (Number.isNaN(entityIdNumber)) {
             console.error(
                 `Invalid entityId ${itemData.entityId} for operation item in order.`,
-                itemData,
+                {
+                    cartItemId: itemData.cartItemId,
+                    entityId: itemData.entityId,
+                },
             );
             return { status: 'not_fulfilled', reason: 'invalid_entity_id' };
         }
@@ -3477,7 +3486,10 @@ export async function processItem(
         ) {
             console.error(
                 `Invalid payment currency for operation item in order.`,
-                itemData,
+                {
+                    cartItemId: itemData.cartItemId,
+                    entityId: itemData.entityId,
+                },
             );
             return { status: 'not_fulfilled', reason: 'unsupported_item' };
         }
@@ -3523,16 +3535,10 @@ export async function processItem(
         if (typeof additionalData === 'string') {
             try {
                 additionalData = JSON.parse(additionalData);
-            } catch (error) {
-                console.error(
-                    `Invalid additionalData for operation item in order.`,
-                    {
-                        additionalData,
-                        itemData,
-                        error,
-                    },
+            } catch {
+                throw new Error(
+                    'Invalid additional data for operation checkout.',
                 );
-                additionalData = null;
             }
         }
         const scheduledDate = checkoutScheduledDateFromAdditionalData(
@@ -3575,6 +3581,7 @@ export async function processItem(
                 {
                     ...(plantingTarget ? { plantingTarget } : {}),
                     delivery: deliveryProvenance,
+                    requestNote: readOperationRequestNote(additionalData),
                     paymentCurrency,
                     scheduledDate: new Date(operationScheduledDate),
                 },

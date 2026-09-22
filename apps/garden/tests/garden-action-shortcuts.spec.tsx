@@ -117,6 +117,9 @@ for (const application of ['raisedBedFull', 'plant', 'garden']) {
         ).toBeVisible();
         expect(posts).toEqual([]);
         await page
+            .getByRole('textbox', { name: 'Napomena za vrtlara (neobavezno)' })
+            .fill('  Molim sačuvajte listove.  ');
+        await page
             .getByRole('button', { name: 'Potvrdi', exact: true })
             .click();
         await expect.poll(() => posts.length).toBe(1);
@@ -125,6 +128,9 @@ for (const application of ['raisedBedFull', 'plant', 'garden']) {
             entityId: '501',
             entityTypeName: 'operation',
             amount: 1,
+            additionalData: expect.stringContaining(
+                '"requestNote":"Molim sačuvajte listove."',
+            ),
             ...(application !== 'garden' ? { raisedBedId: 1 } : {}),
             ...(application === 'plant' ? { positionIndex: 1 } : {}),
         });
