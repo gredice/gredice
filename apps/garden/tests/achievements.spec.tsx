@@ -23,6 +23,37 @@ test('the public guide stays accessible when personal achievements cannot load',
     await expect(guide).toBeFocused();
 });
 
+test('shows unavailable state instead of locked families when the account cannot load', async ({
+    mount,
+    page,
+}) => {
+    let sunflowerRequests = 0;
+    await page.route('**/api/accounts/current', (route) =>
+        route.fulfill({ json: { id: 'award-fixture-account' } }),
+    );
+    await page.route('**/api/accounts/current/sunflowers', (route) => {
+        sunflowerRequests++;
+        if (sunflowerRequests === 1)
+            return route.fulfill({ status: 500, json: {} });
+        return route.fulfill({ json: { amount: 0 } });
+    });
+    await page.route('**/api/accounts/current/achievements', (route) =>
+        route.fulfill({
+            json: { accountId: 'award-fixture-account', achievements: [] },
+        }),
+    );
+    await mount(<AchievementCollectionShowcase unseeded accountUnseeded />);
+    await expect(page.getByRole('alert')).toContainText(
+        'Postignuća trenutno nisu dostupna.',
+    );
+    await expect(page.locator('[data-achievement-family]')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Pokušaj ponovno' }).click();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(
+        page.getByRole('button', { name: /^Od sjemena do stola/ }),
+    ).toBeVisible();
+});
+
 for (const { name: family, count } of [
     { name: 'Raznolik vrt', count: 10 },
     { name: 'Od sjemena do stola', count: 10 },

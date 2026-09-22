@@ -87,6 +87,7 @@ export function AchievementCollectionShowcase({
     allowAccountReset = false,
     allowApproval = false,
     unseeded = false,
+    accountUnseeded = false,
     activity,
     showGuide = false,
 }: {
@@ -95,6 +96,7 @@ export function AchievementCollectionShowcase({
     allowAccountReset?: boolean;
     allowApproval?: boolean;
     unseeded?: boolean;
+    accountUnseeded?: boolean;
     activity?: AchievementActivity | null;
     showGuide?: boolean;
 }) {
@@ -111,6 +113,7 @@ export function AchievementCollectionShowcase({
         const client = new QueryClient({
             defaultOptions: { queries: { retry: false } },
         });
+        if (accountUnseeded) return client;
         client.setQueryData(['accounts', 'current'], {
             id: 'award-fixture-account',
         });
