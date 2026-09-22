@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildRaisedBedAnalysisChatSeed } from './raisedBedAnalysisChatSeed';
+import {
+    buildRaisedBedAnalysisChatSeed,
+    getRaisedBedAnalysisConversationId,
+} from './raisedBedAnalysisChatSeed';
 
 test('buildRaisedBedAnalysisChatSeed opens the thread with the raised bed analysis', () => {
     const seed = buildRaisedBedAnalysisChatSeed({
@@ -45,4 +48,11 @@ test('buildRaisedBedAnalysisChatSeed omits an unusable analysis date', () => {
         seed.messages[0]?.text ?? '',
         /^Evo moje analize fotografija gredice:/,
     );
+});
+
+test('review conversations are stable across reopening and isolated by analysis and user', () => {
+    const id = getRaisedBedAnalysisConversationId(501, 'user-a');
+    assert.equal(id, getRaisedBedAnalysisConversationId(501, 'user-a'));
+    assert.notEqual(id, getRaisedBedAnalysisConversationId(500, 'user-a'));
+    assert.notEqual(id, getRaisedBedAnalysisConversationId(501, 'user-b'));
 });

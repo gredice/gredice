@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
 import { currentGardenKeys } from '../../../packages/game/src/hooks/useCurrentGarden';
 import { useShoppingCartQueryKey } from '../../../packages/game/src/hooks/useShoppingCart';
+import { RaisedBedDiaryAiAction } from '../../../packages/game/src/hud/raisedBed/RaisedBedDiaryAiAction';
 import { SuncokretChatHud } from '../../../packages/game/src/hud/SuncokretChatHud';
 import {
     SuncokretChatProvider,
@@ -129,6 +130,7 @@ function createQueryClient() {
         [wateringOperation, resistanceOperation],
     );
     queryClient.setQueryData(['sorts'], recommendationSorts);
+    queryClient.setQueryData(['currentUser'], { id: 'review-user' });
     return queryClient;
 }
 
@@ -148,6 +150,8 @@ function ShoppingCartQueryProbe() {
 }
 
 export function SuncokretChatHudStory({
+    review = false,
+    freshReview = false,
     contextTarget,
     debug = false,
     fieldUiTarget,
@@ -155,6 +159,8 @@ export function SuncokretChatHudStory({
     observeShoppingCart = false,
     settingsSection,
 }: {
+    review?: boolean;
+    freshReview?: boolean;
     contextTarget?: SuncokretChatTarget;
     debug?: boolean;
     fieldUiTarget?: SuncokretChatTarget;
@@ -193,6 +199,46 @@ export function SuncokretChatHudStory({
                         }}
                     >
                         <SuncokretChatProvider>
+                            {review && (
+                                <RaisedBedDiaryAiAction
+                                    gardenId={gardenId}
+                                    raisedBedId={raisedBedId}
+                                    positionIndex={1}
+                                    entryName="Fotografiranje gredice"
+                                    imageUrls={[
+                                        '/web-app-manifest-192x192.png',
+                                    ]}
+                                    referenceDate="2026-09-22T12:00:00Z"
+                                    historyEntries={
+                                        freshReview
+                                            ? []
+                                            : [
+                                                  {
+                                                      id: 501,
+                                                      description:
+                                                          '## Sažetak stanja\nGrah ima zrele mahune.',
+                                                      timestamp: new Date(
+                                                          '2026-09-22T12:00:00Z',
+                                                      ),
+                                                      imageUrls: [
+                                                          '/web-app-manifest-192x192.png',
+                                                      ],
+                                                  },
+                                                  {
+                                                      id: 500,
+                                                      description:
+                                                          '## Prethodna analiza\nGrah raste.',
+                                                      timestamp: new Date(
+                                                          '2026-09-21T12:00:00Z',
+                                                      ),
+                                                      imageUrls: [
+                                                          '/web-app-manifest-192x192.png',
+                                                      ],
+                                                  },
+                                              ]
+                                    }
+                                />
+                            )}
                             {observeShoppingCart ? (
                                 <ShoppingCartQueryProbe />
                             ) : null}
