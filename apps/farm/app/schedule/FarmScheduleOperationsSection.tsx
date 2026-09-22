@@ -10,6 +10,7 @@ import {
 } from './FarmScheduleOperationTaskCard';
 import { RaisedBedScheduleGroupHeader } from './RaisedBedScheduleGroupHeader';
 import { RaisedBedScheduleGroupHeaderWithPhotos } from './RaisedBedScheduleGroupHeaderWithPhotos';
+import { ScheduleSectionHeader } from './ScheduleSectionHeader';
 import { ScheduleSectionSummaryBadges } from './ScheduleSectionSummaryBadges';
 import type {
     FarmScheduleDayData,
@@ -245,18 +246,15 @@ export function FarmScheduleOperationsSection({
             (sum, operation) => sum + operation.durationMinutes,
             0,
         );
-        const sectionTitle = mode === 'harvest' ? 'Berba' : 'Zalijevanje';
-
         return (
-            <Stack spacing={2}>
-                <Row spacing={2} className="items-center flex-wrap gap-y-1">
-                    <Typography semiBold>{sectionTitle}</Typography>
+            <Stack spacing={3}>
+                <ScheduleSectionHeader section={mode}>
                     <ScheduleSectionSummaryBadges
                         count={groupedOperations.length}
                         countLabel="zadataka"
                         durationMinutes={groupedTotalDuration}
                     />
-                </Row>
+                </ScheduleSectionHeader>
                 <Stack spacing={2}>
                     {groupedOperations.map((operation) => (
                         <FarmScheduleOperationTaskCard
@@ -294,6 +292,7 @@ export function FarmScheduleOperationsSection({
 
     return (
         <Stack spacing={6}>
+            <ScheduleSectionHeader section="tasks" />
             {raisedBedGroups.map(
                 ({ key, physicalId, raisedBeds: groupedRaisedBeds }) => {
                     const dayOperations = visibleScheduledOperations
