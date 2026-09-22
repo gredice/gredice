@@ -933,9 +933,9 @@ function EntityInstancesGeometryRenderer(
     }
 
     const renderAnimatedInstances = (suffix: string) =>
-        animatedInstances.map(({ instance: data, renderId }) => (
+        animatedInstances.map(({ instance: data, renderId, partIndex }) => (
             <QueuedPlacementDropAnimation
-                key={`block-${instanceKey}-${suffix}-placement:${renderId}`}
+                key={`block-${instanceKey}-${suffix}-placement:${renderId}:${partIndex}`}
                 animationRenderId={renderId}
                 block={data.block}
                 particlePosition={[
@@ -965,64 +965,72 @@ function EntityInstancesGeometryRenderer(
     const renderAnimatedSnowOverlays = () =>
         !snow || !renderSnow
             ? null
-            : animatedInstances.map(({ instance: data, renderId }) => (
-                  <QueuedPlacementDropAnimation
-                      key={`block-${instanceKey}-snow-placement:${renderId}`}
-                      animationRenderId={renderId}
-                      block={data.block}
-                      particlePosition={[
-                          data.position[0],
-                          data.stackHeight,
-                          data.position[2],
-                      ]}
-                      position={[
-                          data.position[0],
-                          data.position[1] + (snowLift || 0.003),
-                          data.position[2],
-                      ]}
-                  >
-                      <group rotation={[0, data.rotation * (Math.PI / 2), 0]}>
+            : animatedInstances.map(
+                  ({ instance: data, renderId, partIndex }) => (
+                      <QueuedPlacementDropAnimation
+                          key={`block-${instanceKey}-snow-placement:${renderId}:${partIndex}`}
+                          animationRenderId={renderId}
+                          block={data.block}
+                          particlePosition={[
+                              data.position[0],
+                              data.stackHeight,
+                              data.position[2],
+                          ]}
+                          position={[
+                              data.position[0],
+                              data.position[1] + (snowLift || 0.003),
+                              data.position[2],
+                          ]}
+                      >
                           <group
-                              position={localTransform.position}
-                              rotation={localTransform.rotation}
-                              scale={stableScale}
+                              rotation={[0, data.rotation * (Math.PI / 2), 0]}
                           >
-                              <SnowOverlay
-                                  geometry={geometry}
-                                  minCoverage={snowOverlayMinCoverage}
-                                  {...snow}
-                              />
+                              <group
+                                  position={localTransform.position}
+                                  rotation={localTransform.rotation}
+                                  scale={stableScale}
+                              >
+                                  <SnowOverlay
+                                      geometry={geometry}
+                                      minCoverage={snowOverlayMinCoverage}
+                                      {...snow}
+                                  />
+                              </group>
                           </group>
-                      </group>
-                  </QueuedPlacementDropAnimation>
-              ));
+                      </QueuedPlacementDropAnimation>
+                  ),
+              );
 
     const renderAnimatedRainOverlays = () =>
         !renderRainWetOverlay
             ? null
-            : animatedInstances.map(({ instance: data, renderId }) => (
-                  <QueuedPlacementDropAnimation
-                      key={`block-${instanceKey}-rain-placement:${renderId}`}
-                      animationRenderId={renderId}
-                      block={data.block}
-                      particlePosition={[
-                          data.position[0],
-                          data.stackHeight,
-                          data.position[2],
-                      ]}
-                      position={data.position}
-                  >
-                      <group rotation={[0, data.rotation * (Math.PI / 2), 0]}>
+            : animatedInstances.map(
+                  ({ instance: data, renderId, partIndex }) => (
+                      <QueuedPlacementDropAnimation
+                          key={`block-${instanceKey}-rain-placement:${renderId}:${partIndex}`}
+                          animationRenderId={renderId}
+                          block={data.block}
+                          particlePosition={[
+                              data.position[0],
+                              data.stackHeight,
+                              data.position[2],
+                          ]}
+                          position={data.position}
+                      >
                           <group
-                              position={localTransform.position}
-                              rotation={localTransform.rotation}
-                              scale={stableScale}
+                              rotation={[0, data.rotation * (Math.PI / 2), 0]}
                           >
-                              <RainWetOverlay geometry={geometry} />
+                              <group
+                                  position={localTransform.position}
+                                  rotation={localTransform.rotation}
+                                  scale={stableScale}
+                              >
+                                  <RainWetOverlay geometry={geometry} />
+                              </group>
                           </group>
-                      </group>
-                  </QueuedPlacementDropAnimation>
-              ));
+                      </QueuedPlacementDropAnimation>
+                  ),
+              );
 
     return (
         <>

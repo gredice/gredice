@@ -11707,6 +11707,18 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.groundDecorationChunkCount === 'number'
                     ? metadata.groundDecorationChunkCount
                     : null,
+            autumnLeafCount:
+                typeof metadata.autumnLeafCount === 'number'
+                    ? metadata.autumnLeafCount
+                    : null,
+            autumnLeafCapacity:
+                typeof metadata.autumnLeafCapacity === 'number'
+                    ? metadata.autumnLeafCapacity
+                    : null,
+            autumnGroundLeafClusters:
+                typeof metadata.autumnGroundLeafClusters === 'number'
+                    ? metadata.autumnGroundLeafClusters
+                    : null,
             groundDecorationCount:
                 typeof metadata.groundDecorationCount === 'number'
                     ? metadata.groundDecorationCount
