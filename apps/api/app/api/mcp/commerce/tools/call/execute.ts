@@ -59,7 +59,7 @@ const GetCartSchema = z.object({
 const AddToCartSchema = z.object({
     userId: z.string().optional(),
     productId: z.string().min(1),
-    quantity: z.number().positive().default(1),
+    quantity: z.number().int().min(1).max(100).default(1),
     gardenId: z.number().int().positive().optional(),
     raisedBedId: z.number().int().positive().optional(),
     positionIndex: z.number().int().min(0).optional(),
@@ -69,7 +69,7 @@ const AddToCartSchema = z.object({
 const AddOperationToCartSchema = z.object({
     userId: z.string().optional(),
     operationId: z.coerce.number().int().positive(),
-    quantity: z.number().positive().default(1),
+    quantity: z.number().int().min(1).max(100).default(1),
     gardenId: z.number().int().positive().optional(),
     raisedBedId: z.number().int().positive().optional(),
     positionIndex: z.number().int().min(0).optional(),

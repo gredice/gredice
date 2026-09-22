@@ -70,6 +70,7 @@ import {
     resolveOutletCartCurrency,
 } from '../../../lib/checkout/outletCartTarget';
 import { serializeShoppingCartItemForClient } from '../../../lib/checkout/shoppingCartClientSerialization';
+import { calculateSunflowerAmount } from '../../../lib/checkout/sunflowerCalculations';
 import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
 import {
     type AuthVariables,
@@ -211,13 +212,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             item.currency === 'sunflower',
                     )
                     .reduce(
-                        (sum, item) =>
-                            sum +
-                            (typeof item.shopData.discountPrice === 'number'
-                                ? item.shopData.discountPrice
-                                : (item.shopData.price ?? 0)),
+                        (sum, item) => sum + calculateSunflowerAmount(item),
                         0,
-                    ) * 1000,
+                    ),
             );
 
             // Check if there are enough sunflowers in the account
