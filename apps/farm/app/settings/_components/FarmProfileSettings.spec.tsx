@@ -120,6 +120,8 @@ test('removes an avatar, retains edits after a failed save, and retries', async 
     );
     await expect(page.getByLabel('Ime za prikaz')).toHaveValue('Ana Horvat');
     await expect(saveButton).toBeEnabled();
+    await page.getByLabel('Ime za prikaz').fill('Ana Horvat ');
+    await expect(page.getByRole('alert')).toHaveCount(0);
     await saveButton.click();
     await expect(page.getByRole('status')).toHaveText('Profil je spremljen.');
     await expect(saveButton).toBeDisabled();

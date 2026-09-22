@@ -23,6 +23,9 @@ export function FarmProfileSettings({
 }) {
     const [displayName, setDisplayName] = useState(initialDisplayName);
     const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl);
+    // A failed result describes the submitted draft, so hide it once edited.
+    const [isDraftEditedSinceSubmit, setIsDraftEditedSinceSubmit] =
+        useState(false);
     const [state, formAction, isPending] = useActionState<
         FarmProfileActionState,
         FormData
@@ -42,6 +45,7 @@ export function FarmProfileSettings({
     const savedAvatarUrl = state?.success ? state.avatarUrl : initialAvatarUrl;
     const hasChanges =
         displayName.trim() !== savedDisplayName || avatarUrl !== savedAvatarUrl;
+    const showResult = state?.success ? !hasChanges : !isDraftEditedSinceSubmit;
 
     return (
         <Card>
@@ -51,7 +55,11 @@ export function FarmProfileSettings({
                 </Typography>
             </CardHeader>
             <CardContent>
-                <form action={formAction} aria-busy={isPending}>
+                <form
+                    action={formAction}
+                    onSubmit={() => setIsDraftEditedSinceSubmit(false)}
+                    aria-busy={isPending}
+                >
                     <Stack spacing={3}>
                         <input
                             type="hidden"
@@ -68,7 +76,10 @@ export function FarmProfileSettings({
                                 <AvatarSelectionMenu
                                     displayName={displayName}
                                     avatarUrl={avatarUrl}
-                                    onChange={setAvatarUrl}
+                                    onChange={(nextAvatarUrl) => {
+                                        setAvatarUrl(nextAvatarUrl);
+                                        setIsDraftEditedSinceSubmit(true);
+                                    }}
                                 >
                                     <Button
                                         type="button"
@@ -85,9 +96,10 @@ export function FarmProfileSettings({
                                     name="displayName"
                                     autoComplete="nickname"
                                     value={displayName}
-                                    onChange={(event) =>
-                                        setDisplayName(event.target.value)
-                                    }
+                                    onChange={(event) => {
+                                        setDisplayName(event.target.value);
+                                        setIsDraftEditedSinceSubmit(true);
+                                    }}
                                     maxLength={100}
                                     required
                                     fullWidth
@@ -106,7 +118,7 @@ export function FarmProfileSettings({
                                 Spremi profil
                             </Button>
                         </div>
-                        {state?.message && (!state.success || !hasChanges) && (
+                        {state?.message && showResult && (
                             <Alert
                                 color={state.success ? 'success' : 'danger'}
                                 role={state.success ? 'status' : 'alert'}

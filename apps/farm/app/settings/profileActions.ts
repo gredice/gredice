@@ -58,14 +58,26 @@ export async function updateFarmProfile(
             return { success: false, message: 'Odaberi valjan avatar.' };
         }
 
-        if (displayName !== user.displayName) {
+        // The form falls back to the username, so an untouched name must not
+        // be persisted as a display-name override.
+        const displayNameChanged =
+            displayName !== (user.displayName ?? user.userName);
+        const avatarChanged = avatarUrl !== user.avatarUrl;
+
+        if (displayNameChanged) {
             updatedFields.push('display_name');
         }
-        if (avatarUrl !== user.avatarUrl) {
+        if (avatarChanged) {
             updatedFields.push('avatar_url');
         }
 
-        await updateUser({ id: userId, displayName, avatarUrl });
+        if (updatedFields.length > 0) {
+            await updateUser({
+                id: userId,
+                ...(displayNameChanged ? { displayName } : {}),
+                ...(avatarChanged ? { avatarUrl } : {}),
+            });
+        }
     } catch {
         return {
             success: false,
