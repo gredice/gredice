@@ -124,3 +124,32 @@ work in [#4921](https://github.com/gredice/gredice/issues/4921). There is no aut
 
 The `dense-autumn` mock profile places 25 trees beside 50 supported props to
 exercise both accumulation layers and their scene caps in production profiling.
+
+## Leaf-rustle ambience
+
+`AutumnRustle` uses one registered loop on the existing ambient mixer. Its target
+combines blended 0–3 wind with retained/settled leaf presence and a mounted tree
+source, only in autumn/winter. Wind enters above 0.45 and exits below 0.30; gain
+is capped at 0.14 before master/ambient volume. A 0.3-second exponential time
+constant smooths changes without restarting the source, and silent loops stop
+after five time constants. Disablement, mute, backgrounding and unmount stop the
+layer; a missing asset fails quietly and is not retried on each weather update.
+
+`useMusic().setTargetVolume(target, fadeSeconds)` is available for future weather
+layers. It preserves buffer caching and the existing channel/master controls.
+General wind (#2631) and broader weather crossfades (#2726) remain separate work;
+the sparse, high-frequency leaf grains leave low-frequency space for wind.
+
+`assets/generate-autumn-leaf-rustle.py` reproducibly creates the original six-second
+mono WAV in both garden and WWW public assets. It uses no external recording or
+third-party samples. The versioned filename supports cache invalidation. Peak is
+0.42, RMS is approximately 0.0648, and both loop endpoints are zero. Browser tests
+verify decoding, one-source continuity, mute and missing-asset behavior; final
+speaker/headphone mix tuning remains a listening check.
+
+For QA open `/debug/profile/game?mode=autumn&profile=dense-autumn&date=2024-10-22&sound=1&leafWind=light&hud=1&debugHud=1`
+and click inside the page to unlock browser audio. Combine dates `2024-06-21`,
+`2024-09-22`, `2024-10-22`, `2024-11-21` with `leafWind=calm|light|strong`.
+Summer and calm are silent. The season slider and wind controls can be changed
+rapidly without restarting an audible rustle loop. Profile metadata exposes only
+the intended `autumnRustleTargetGain`; it is not proof of hardware sound output.

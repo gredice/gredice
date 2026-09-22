@@ -5,6 +5,7 @@ export default defineConfig({
     testMatch: [
         'tests/season-date-control.spec.tsx',
         'tests/autumn-season.spec.tsx',
+        'tests/autumn-audio.spec.tsx',
     ],
     projects: config.projects
         ?.filter((p) => p.name === 'chromium' || p.name === 'chromium-webgl')
@@ -12,7 +13,10 @@ export default defineConfig({
             ...project,
             testMatch:
                 project.name === 'chromium'
-                    ? 'tests/season-date-control.spec.tsx'
+                    ? [
+                          'tests/season-date-control.spec.tsx',
+                          'tests/autumn-audio.spec.tsx',
+                      ]
                     : 'tests/autumn-season.spec.tsx',
         })),
     webServer: undefined,

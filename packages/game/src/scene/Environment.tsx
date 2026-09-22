@@ -12,6 +12,7 @@ import {
 } from 'react';
 import * as SunCalc from 'suncalc';
 import { Color, type DirectionalLight } from 'three';
+import { AutumnRustle } from '../audio/AutumnRustle';
 import { PlantShaderPrewarm } from '../generators/plant/PlantShaderPrewarm';
 import { useAutumnState } from '../hooks/useAutumnState';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
@@ -1152,6 +1153,10 @@ export function Environment({
                     enabled={qualityProfile.shadows}
                 />
             </directionalLight>
+            <AutumnRustle
+                windSpeed={blendedWeather?.windSpeed ?? 0}
+                enabled={!noSound && !weatherDisabled && sceneRuntimeVisible}
+            />
             <AutumnLeaves
                 tier={qualityProfile.tier}
                 enabled={!weatherDisabled}
