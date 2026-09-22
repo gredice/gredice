@@ -61,3 +61,33 @@ React state updates per query.
   profile:game:cross-tier`. Before/after captures use identical scenario inputs
   and separate clean source commits. These are local headless production-build
   measurements, separate from deployed or physical-device acceptance.
+
+Run the picking CPU diagnostic independently of WebGL:
+
+```bash
+pnpm --filter @gredice/game benchmark:spatial
+```
+
+On the local ARM64 Node 24.15.0 run on 2026-09-23, 1,000 vertical rays took
+7.32 ms with the linear resolver versus 2.08 ms with the index for 400 targets,
+and 97.36 ms versus 2.11 ms for 6,400 targets. Mean candidate counts were 23 and
+24.505 respectively (edge chunks contain fewer targets). These short CPU
+samples demonstrate query scaling; they are not renderer or device FPS claims.
+
+The candidate production capture at runtime commit
+`7ce2a11de3f89806487a2c49d63aeac837f39a55` passed all 30 cross-tier runs (three
+repeats of steady and camera-motion workloads for Low, Medium, High,
+Auto-standard, and Auto-constrained). Its Garden build, Game/Garden/WWW
+typechecks, Game lint, and both targeted WebGL tests passed. The Game suite
+contains 2,064 passing tests.
+
+For paired comparison, run the same clean harness commit against both served
+production builds. A separate baseline checkout can serve its already-built
+app while the candidate harness uses `profile:game:existing` with
+`GAME_PROFILE_BASE_URL` pointing to that server. The report's served-build
+marker must identify the baseline source, while harness provenance stays equal
+to the candidate capture. `compare-game-profile-reports.mjs --allow-partial`
+compares this cross-tier subset diagnostically; the full canonical release gate
+also requires fauna, garden-switch, lifecycle, and independent confirmation
+captures. Never relabel diagnostic cross-tier evidence as that full gate or as
+physical-device validation.
