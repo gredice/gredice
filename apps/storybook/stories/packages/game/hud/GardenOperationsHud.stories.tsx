@@ -42,7 +42,7 @@ export const DenseUpcomingOperations: Story = {
     parameters: {
         docs: {
             description: {
-                story: 'A busier garden, showing how the day headers and bubbles behave once several days carry work.',
+                story: 'A busier garden with long operation and raised-bed names. Resize below 640px to see icon-only status buttons, truncated bed names, and dates without the current year.',
             },
         },
     },
