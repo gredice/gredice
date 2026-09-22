@@ -104,9 +104,9 @@
     *::before,
     *::after {
         transition:
-            background-color 0.3s ease,
+            background-color var(--public-theme-color-duration, 0.3s) ease,
             border-color 0.3s ease,
-            color 0.3s ease;
+            color var(--public-theme-color-duration, 0.3s) ease;
     }
 
     body {

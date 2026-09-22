@@ -218,6 +218,7 @@ import { OverviewNavigationPreview } from '../game/settings/OverviewNavigationPr
 import { FarmerAvatarsPreview } from './FarmerAvatarsPreview';
 import { GameAccountMenuPreview } from './GameAccountMenuPreview';
 import { PlantCareHudPreview } from './PlantCareHudPreview';
+import { PublicEnvironmentPreview } from './PublicEnvironmentPreview';
 
 const sampleImages = [
     {
@@ -2155,4 +2156,8 @@ export const SurveyForm: Story = {
 
 export const RaisedBedPlantings: Story = {
     render: () => <RaisedBedFieldsGridFixture compact />,
+};
+
+export const AmbientPublicContent: Story = {
+    render: () => <PublicEnvironmentPreview hour={6.5} weatherKind="clear" />,
 };
