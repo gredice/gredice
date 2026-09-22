@@ -48,21 +48,11 @@ export function createAutumnEntityBatches({
                 .some((block) => block.name.startsWith('Block_'))
         )
             continue;
-        const influence = getAutumnTreeInfluence(
-            instance.position[0],
-            instance.position[2],
-            trees,
-        );
-        const density =
-            Math.min(1, Math.max(0, amount)) *
-            influence *
-            (1 - Math.min(1, Math.max(0, snow))) ** 2;
         const seed = `${gardenId}:${instance.block.id}:${year}`;
         const ordered = [...surfaces].sort(
             (a, b) =>
                 autumnSeed(`${seed}:${a.id}`) - autumnSeed(`${seed}:${b.id}`),
         );
-        const count = Math.round(ordered.length * density);
         const segments =
             instance.block.name === 'Raised_Bed'
                 ? getRaisedBedFootprintSegments(instance.rotation)
@@ -74,6 +64,16 @@ export function createAutumnEntityBatches({
                       },
                   ];
         for (const segment of segments) {
+            const influence = getAutumnTreeInfluence(
+                instance.position[0] + segment.offset.x,
+                instance.position[2] + segment.offset.z,
+                trees,
+            );
+            const density =
+                Math.min(1, Math.max(0, amount)) *
+                influence *
+                (1 - Math.min(1, Math.max(0, snow))) ** 2;
+            const count = Math.round(ordered.length * density);
             for (const surface of ordered.slice(0, count)) {
                 if (total >= autumnEntityCaps[tier])
                     return [...batches.values()];

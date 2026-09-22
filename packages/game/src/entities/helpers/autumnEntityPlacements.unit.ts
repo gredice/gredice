@@ -101,7 +101,7 @@ test('raised bed orientations expand both U segments on their own rims', () => {
     for (const rotation of [0, 1, 2, 3]) {
         const instanceValue = instance('Raised_Bed');
         const result = leaves({ instances: [{ ...instanceValue, rotation }] });
-        assert.equal(result.length, 6);
+        assert.equal(result.length, 5);
         assert.equal(
             new Set(
                 result.map(
@@ -141,4 +141,20 @@ test('covered props are excluded and quality bounds hold across repeated instanc
                 (tier === 'low' || tier === 'auto-constrained' ? 1 : 2),
         );
     }
+});
+
+test('each raised-bed segment resolves tree proximity from its own world offset', () => {
+    const bed = { ...instance('Raised_Bed'), rotation: 1 };
+    const leftOnly = leaves({
+        instances: [bed],
+        trees: [{ id: 'tree', x: -2.9, z: 0 }],
+    });
+    assert.equal(leftOnly.length, 1);
+    assert(leftOnly.every((leaf) => leaf.id.includes(':autumn:1:')));
+    const rightOnly = leaves({
+        instances: [bed],
+        trees: [{ id: 'tree', x: 3.4, z: 0 }],
+    });
+    assert.equal(rightOnly.length, 1);
+    assert(rightOnly.every((leaf) => leaf.id.includes(':autumn:0:')));
 });
