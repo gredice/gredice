@@ -2,11 +2,11 @@ import { useFrame } from '@react-three/fiber';
 import { useCallback, useLayoutEffect, useRef } from 'react';
 import { type InstancedMesh, Vector3 } from 'three';
 import { useAutumnSources } from '../../scene/AutumnSources';
-import { getAutumnTreeInfluence } from '../../scene/autumnAccumulation';
 import { useAutumnLeafBatchResources } from '../groundDecorations/AutumnLeafBatch';
-import type {
-    AutumnPartCandidate,
-    AutumnPartLeafPlacement,
+import {
+    type AutumnPartCandidate,
+    type AutumnPartLeafPlacement,
+    getAutumnVisibleSurfaceCount,
 } from './autumnEntityPlacements';
 import { createAutumnPartLeafInstanceMatrix } from './autumnPartMatrices';
 
@@ -51,25 +51,14 @@ export function AutumnPartLeafBatch({
                 const origin = new Vector3().setFromMatrixPosition(
                     object.matrixWorld,
                 );
-                const influence = getAutumnTreeInfluence(
+                visibleCount = getAutumnVisibleSurfaceCount(
+                    placement.surfaceCount,
                     origin.x,
                     origin.z,
                     trees,
-                );
-                visibleCount = [
-                    origin.x,
-                    origin.z,
-                    influence,
                     amount,
                     snow,
-                ].every(Number.isFinite)
-                    ? Math.round(
-                          placement.surfaceCount *
-                              Math.min(1, Math.max(0, amount)) *
-                              influence *
-                              (1 - Math.min(1, Math.max(0, snow))) ** 2,
-                      )
-                    : 0;
+                );
                 visibleCountByPart.set(placement.part, visibleCount);
             }
             if (placement.rank >= visibleCount) continue;

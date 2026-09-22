@@ -264,6 +264,42 @@ test('part clusters stay attached during animated root rotation', async ({
     await expect(fixture).toHaveAttribute('data-part-mismatch-frames', '0');
 });
 
+test('a bench entering tree range during a spring gains leaves on its live parts', async ({
+    mount,
+}) => {
+    const fixture = await mount(
+        <AutumnVisualFixture
+            instanced
+            animateSprings
+            movingBenchTargetX={10}
+            stage="lateAutumn"
+            tier="high"
+        />,
+    );
+    await expect(fixture).toHaveAttribute('data-part-leaves', '0');
+    await fixture.update(
+        <AutumnVisualFixture
+            instanced
+            animateSprings
+            movingBenchTargetX={0}
+            stage="lateAutumn"
+            tier="high"
+        />,
+    );
+    await expect(fixture).toHaveAttribute('data-part-leaves', /^[1-9]/);
+    await expect(fixture).toHaveAttribute('data-part-mismatch-frames', '0');
+    await fixture.update(
+        <AutumnVisualFixture
+            instanced
+            animateSprings
+            movingBenchTargetX={10}
+            stage="lateAutumn"
+            tier="high"
+        />,
+    );
+    await expect(fixture).toHaveAttribute('data-part-leaves', '0');
+});
+
 test('bench leaves follow a real drop spring while props rotate and the lid opens', async ({
     mount,
 }) => {

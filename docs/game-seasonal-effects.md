@@ -165,6 +165,11 @@ and production build. Profile metadata keeps `autumnEntityLeafClusters` as the
 combined rendered count. Dynamic batches have no raycast, no shadow casting
 and no idle animation lease; the scene render scheduler updates them only on
 requested frames.
+The scene samples a discrete visible-anchor count after each requested spring
+frame. When a prop or deciduous tree crosses a density threshold, it refreshes
+the shared allocation from current world matrices; this also admits a part
+that had zero candidates before a drag. Existing batch matrices still follow
+the rendered part each frame without a React update for every pose.
 
 ### Validation record (2026-09-23)
 
@@ -173,21 +178,25 @@ quarter-turns, rain, partial snow, each reviewed face and a grazing lid view.
 An animation-enabled case samples the real placement-drop wrapper while the
 bench rotates and the box lid opens; its leaf/part matrices agree in every
 sampled frame. Separate cases cover rapid reopen, reduced motion and two Canvas
-roots. `autumnSurfaceGeometry.unit.ts` checks both leaf variants against the
+roots, plus a bench spring moving from zero tree influence into range and back.
+`autumnSurfaceGeometry.unit.ts` checks both leaf variants against the
 exported triangles of every enabled new face, including the three gate caps.
 
 A same-fixture production profile on macOS arm64, Node 24 and headless Chromium
 149 compared current `main` plus the revised dense fixture with this feature.
-Both runs used the `autumn` scenario set, 5-second warmup/sample, the same
-quality viewport/DPR, and clean build/harness provenance. All per-tier budgets
-passed. The first candidate run measured:
+Two independent runs per side used the `autumn` scenario set, 5-second
+warmup/sample, the same quality viewport/DPR, and clean build/harness
+provenance. All per-tier budgets passed. Draw calls and triangles per **rendered**
+frame were stable across repeats; per browser frame varied with host FPS.
 
-| Tier | Entity clusters baseline → candidate | Draw calls/frame baseline → candidate | Triangles/frame baseline → candidate | p95 frame baseline → candidate |
+| Tier | Entity clusters baseline → candidate | Draw calls/render baseline → candidate | Triangles/render baseline → candidate | p95 frame baseline → candidate |
 | --- | ---: | ---: | ---: | ---: |
-| low | 24 → 24 (shared cap) | 56.0 → 55.3 | 49,730 → 48,737 | 26.2 → 26.1 ms |
-| medium | 44 → 96 (shared cap) | 118.3 → 121.5 | 60,056 → 60,213 | 26.1 → 26.1 ms |
-| high | 44 → 99 | 96.4 → 101.2 | 52,869 → 53,876 | 26.2 → 26.1 ms |
+| low | 24 → 14 | 131 → 132 | 116,368 → 116,320 | 26.1–26.2 → 27.1–27.2 ms |
+| medium | 44 → 59 | 280 → 288 | 142,132 → 142,756 | 26.1 → 21.4–26.8 ms |
+| high | 44 → 59 | 224 → 232 | 122,895 → 123,555 | 26.1–26.2 → 27.1–27.2 ms |
 
+The final low-tier allocation contains 14 eligible clusters, below its cap of
+24; the medium and high scenes include the new reviewed surfaces.
 The new path is visibly populated in the high-tier screenshot and directly
 counted by the part-only WebGL fixture. These are headless desktop measurements;
 physical-device visual and performance checks remain separate.

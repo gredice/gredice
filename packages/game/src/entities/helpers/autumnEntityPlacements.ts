@@ -63,6 +63,25 @@ type AllocationEntry =
     | { blockId: string; instance: EntityBlockInstance; part?: never }
     | { blockId: string; instance?: never; part: AutumnPartCandidate };
 
+export function getAutumnVisibleSurfaceCount(
+    surfaceCount: number,
+    x: number,
+    z: number,
+    trees: readonly AutumnTreeAnchor[],
+    amount: number,
+    snow: number,
+) {
+    const influence = getAutumnTreeInfluence(x, z, trees);
+    if (![surfaceCount, x, z, influence, amount, snow].every(Number.isFinite))
+        return 0;
+    return Math.round(
+        surfaceCount *
+            Math.min(1, Math.max(0, amount)) *
+            influence *
+            (1 - Math.min(1, Math.max(0, snow))) ** 2,
+    );
+}
+
 /** One ordered pass applies the scene cap to block-local and part-local
  * candidates. The block-only call retains the original IDs and ordering.
  */
@@ -206,8 +225,13 @@ export function createAutumnEntityAllocation({
                 autumnSeed(`${seed}:${part.partId}:${a.id}`) -
                 autumnSeed(`${seed}:${part.partId}:${b.id}`),
         );
-        const count = Math.round(
-            ordered.length * densityAt(origin.x, origin.z),
+        const count = getAutumnVisibleSurfaceCount(
+            ordered.length,
+            origin.x,
+            origin.z,
+            trees,
+            amount,
+            snow,
         );
         for (const [rank, surface] of ordered.slice(0, count).entries()) {
             if (total >= autumnEntityCaps[tier]) break;

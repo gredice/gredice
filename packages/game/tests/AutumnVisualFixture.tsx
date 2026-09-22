@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Suspense, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { Vector3 } from 'three';
 import { EntityInstances } from '../src/entities/EntityInstances';
 import { FenceGate } from '../src/entities/FenceGate';
@@ -13,6 +13,7 @@ import { AutumnLeaves } from '../src/scene/AutumnLeaves';
 import type { GameQualityTier } from '../src/scene/gameQuality';
 import { gameQualityProfiles } from '../src/scene/gameQuality';
 import { Scene } from '../src/scene/Scene';
+import { animated, useSpring } from '../src/scene/sceneSpring';
 import { getSeasonDebugDates } from '../src/scene/seasonDebugDates';
 import {
     createGameState,
@@ -20,6 +21,28 @@ import {
     useDisposeGameStateStore,
 } from '../src/useGameState';
 import { AutumnSceneProbe } from './AutumnSceneProbe';
+
+function MovingAutumnBench({ targetX }: { targetX: number }) {
+    const stack = useMemo(
+        () => ({
+            position: new Vector3(10, 0, 1.5),
+            blocks: [{ name: 'WoodenBench', id: 'moving-bench', rotation: 0 }],
+        }),
+        [],
+    );
+    const [{ offsetX }, api] = useSpring(() => ({
+        from: { offsetX: 0 },
+        config: { tension: 120, friction: 24 },
+    }));
+    useEffect(() => {
+        void api.start({ offsetX: targetX - 10 });
+    }, [api, targetX]);
+    return (
+        <animated.group position-x={offsetX}>
+            <WoodenBench stack={stack} block={stack.blocks[0]} rotation={0} />
+        </animated.group>
+    );
+}
 
 export function AutumnVisualFixture({
     stage = 'midAutumn',
@@ -39,6 +62,7 @@ export function AutumnVisualFixture({
     rain = 0,
     standaloneBox = false,
     motionDrop = false,
+    movingBenchTargetX,
     focus,
     cameraHeight = 4,
 }: {
@@ -59,6 +83,7 @@ export function AutumnVisualFixture({
     rain?: number;
     standaloneBox?: boolean;
     motionDrop?: boolean;
+    movingBenchTargetX?: number;
     focus?: readonly [number, number, number];
     cameraHeight?: number;
 }) {
@@ -365,6 +390,11 @@ export function AutumnVisualFixture({
                                             stack={boxStack}
                                             block={boxStack.blocks[0]}
                                             rotation={partRotation % 4}
+                                        />
+                                    )}
+                                    {movingBenchTargetX !== undefined && (
+                                        <MovingAutumnBench
+                                            targetX={movingBenchTargetX}
                                         />
                                     )}
                                 </>
