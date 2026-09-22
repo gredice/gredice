@@ -303,6 +303,7 @@ function useGeneratedPlantFieldLods({
     const camera = useThree((state) => state.camera);
     const viewport = useThree((state) => state.viewport);
     const gameCamera = useGameState((state) => state.gameCamera);
+    const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
     const worldPosition = useMemo(() => new THREE.Vector3(), []);
     const projectedPosition = useMemo(() => new THREE.Vector3(), []);
     const readCameraFrame = useCameraFrame();
@@ -627,6 +628,9 @@ function useGeneratedPlantFieldLods({
     }, [gameCamera, updateLods]);
 
     useFrame(() => {
+        // Overview changes already publish through the camera subscription.
+        // Avatar movement writes the camera directly and needs this fallback.
+        if (gameCamera && gardenAvatarView === 'overview') return;
         const frame = readCameraFrame();
         if (
             gameCamera &&

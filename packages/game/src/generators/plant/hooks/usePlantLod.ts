@@ -90,6 +90,7 @@ export function usePlantLodState(
     } | null>(null);
     const viewport = useThree((state) => state.viewport);
     const gameCamera = useGameState((state) => state.gameCamera);
+    const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
     const worldPosition = useMemo(() => new THREE.Vector3(), []);
     const [lodState, setLodState] = useState<PlantLodState>(() => ({
         level: cullOffscreen ? 'far' : resolvePlantLodLevel(1),
@@ -174,6 +175,9 @@ export function usePlantLodState(
     }, [gameCamera, updateLod]);
 
     useFrame(() => {
+        // Overview changes already publish through the camera subscription.
+        // Avatar movement writes the camera directly and needs this fallback.
+        if (gameCamera && gardenAvatarView === 'overview') return;
         const frame = readCameraFrame();
         if (
             gameCamera &&

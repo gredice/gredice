@@ -40,6 +40,8 @@ selection reuse this frame. Existing plant hysteresis/focus overrides,
 decoration conservative bounds, and light influence spheres/sticky selection
 remain in their policy helpers. Plant and decoration frame checks also observe
 avatar camera changes after its -100 update priority, including camera swaps.
+Overview plant LOD remains subscription-driven so a stationary overview does
+not poll and refresh the same camera matrices every frame.
 
 Runtime diagnostics are available in `window.__grediceGameProfile.spatialPicking`
 and `.spatialCamera`: candidate counts, visited chunks, query count/duration,
