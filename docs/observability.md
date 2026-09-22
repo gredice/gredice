@@ -1,5 +1,8 @@
 # Observability event budget
 
+For the September 2026 WWW/Garden preview flag-definition 401s, see the
+[authentication investigation and prepared Preview setting](./vercel-preview-flags/README.md).
+
 Vercel records separate Observability events for the request, Proxy, Function,
 and outgoing API stages of one product action. Gredice keeps those layers when
 they provide required routing, authentication, or operational reliability and

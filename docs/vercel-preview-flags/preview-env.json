@@ -1,0 +1,6 @@
+{
+    "key": "VERCEL_FLAGS_EMBED_DEFINITIONS",
+    "value": "force-off",
+    "type": "plain",
+    "target": ["preview"]
+}
