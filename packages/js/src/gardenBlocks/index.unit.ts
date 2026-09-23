@@ -125,13 +125,33 @@ describe('canStackBlockOnBlock', () => {
         });
     }
 
-    it('keeps other decorations blocked on walkways', () => {
+    for (const surfaceName of [
+        'MulchCoconut',
+        'MulchHey',
+        'MulchWood',
+        'StoneWalkway',
+        'WoodenWalkway',
+    ]) {
+        it(`allows other decorations on ${surfaceName} surface cover`, () => {
+            assert.equal(
+                canStackBlockOnBlock({
+                    aboveBlockData: nonStackable,
+                    aboveBlockName: 'EnamelGardenLamp',
+                    belowBlockData: nonStackable,
+                    belowBlockName: surfaceName,
+                }),
+                true,
+            );
+        });
+    }
+
+    it('keeps other decorations blocked on unrelated non-stackable blocks', () => {
         assert.equal(
             canStackBlockOnBlock({
                 aboveBlockData: nonStackable,
                 aboveBlockName: 'EnamelGardenLamp',
                 belowBlockData: nonStackable,
-                belowBlockName: 'StoneWalkway',
+                belowBlockName: 'WaterWell',
             }),
             false,
         );
