@@ -6,6 +6,10 @@ PACKAGE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$PACKAGE_ROOT"
 
+# Storage runs in UTC on CI and in production; pin it so date-boundary specs
+# behave the same on developer machines in other time zones.
+export TZ=UTC
+
 cleanup() {
     local status=$?
     trap - EXIT INT TERM

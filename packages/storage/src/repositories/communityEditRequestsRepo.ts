@@ -2473,6 +2473,37 @@ async function applyMultipleChange(input: {
     }
 }
 
+// Reads the operation through the shared storage client, so it must run before
+// the approval transaction: a single-connection database (PGlite in storage
+// tests) would otherwise wait on the transaction's own connection forever.
+async function validateOperationSuggestionTarget(
+    proposedValue: string | null,
+): Promise<CommunityEditRequestError | null> {
+    const suggestion = parseCommunityOperationSuggestion(proposedValue);
+    if (
+        suggestion?.operationMode !== 'existing' ||
+        suggestion.intent !== 'add'
+    ) {
+        return null;
+    }
+
+    try {
+        await resolveOperationSuggestionTarget({
+            operationId: suggestion.operationId,
+            stage: {
+                name: suggestion.stageName,
+                label: suggestion.stageLabel,
+            },
+        });
+        return null;
+    } catch (error) {
+        if (error instanceof CommunityEditRequestError) {
+            return error;
+        }
+        throw error;
+    }
+}
+
 async function applyOperationSuggestionChange(input: {
     db: DatabaseClient;
     sideEffects: ReturnType<typeof createAttributeValueMutationSideEffects>;
@@ -2480,6 +2511,7 @@ async function applyOperationSuggestionChange(input: {
     entityId: number;
     attributeDefinitionId: number;
     proposedValue: string | null;
+    operationTargetError: CommunityEditRequestError | null;
     actor: CommunityEditActor;
 }) {
     const suggestion = parseCommunityOperationSuggestion(input.proposedValue);
@@ -2508,13 +2540,9 @@ async function applyOperationSuggestionChange(input: {
             return;
         }
 
-        await resolveOperationSuggestionTarget({
-            operationId: suggestion.operationId,
-            stage: {
-                name: suggestion.stageName,
-                label: suggestion.stageLabel,
-            },
-        });
+        if (input.operationTargetError) {
+            throw input.operationTargetError;
+        }
         await upsertAttributeValue(
             {
                 attributeDefinitionId: input.attributeDefinitionId,
@@ -2637,6 +2665,7 @@ export async function approveCommunityEditRequest(input: {
         attributeValueId: number | null;
         currentValue: string | null;
         proposedValue: string | null;
+        operationTargetError: CommunityEditRequestError | null;
     }[] = [];
     for (const change of request.changes) {
         const field = getCommunityEditableFieldDefinition(
@@ -2688,6 +2717,12 @@ export async function approveCommunityEditRequest(input: {
             attributeValueId: snapshot.attributeValueId,
             currentValue: snapshot.currentValue,
             proposedValue: applicationValue.proposedValue,
+            operationTargetError:
+                field.controlType === 'operationSuggestion'
+                    ? await validateOperationSuggestionTarget(
+                          applicationValue.proposedValue,
+                      )
+                    : null,
         });
     }
 
@@ -2771,6 +2806,7 @@ export async function approveCommunityEditRequest(input: {
                 field,
                 attributeValueId,
                 proposedValue,
+                operationTargetError,
             } of preparedChanges) {
                 if (isAdvancedSowingCommunityField(field)) {
                     continue;
@@ -2783,6 +2819,7 @@ export async function approveCommunityEditRequest(input: {
                         entityId: request.entityId,
                         attributeDefinitionId: change.attributeDefinitionId,
                         proposedValue,
+                        operationTargetError,
                         actor: input.reviewer,
                     });
                 } else if (change.attributeDefinition.multiple) {

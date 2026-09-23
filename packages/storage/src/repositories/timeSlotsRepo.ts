@@ -14,10 +14,17 @@ import { storage } from '../storage';
 import { withDeliveryDispatchTransaction } from './deliveryDispatchRepo';
 import { assertDeliveryTimeSlotHasNoActiveAssignment } from './deliveryRunAssignmentsRepo';
 
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
+
 export async function getTimeSlot(
     slotId: number,
+    db: DatabaseClient = storage(),
 ): Promise<SelectTimeSlot | undefined> {
-    return storage().query.timeSlots.findFirst({
+    return db.query.timeSlots.findFirst({
         where: eq(timeSlots.id, slotId),
         with: {
             location: true,

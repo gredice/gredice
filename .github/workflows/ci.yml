@@ -444,7 +444,7 @@ jobs:
         run: pnpm test --filter=@gredice/storage
 
   test_game_package:
-    name: "CI - test @gredice/game"
+    name: "CI - test @gredice/game and @gredice/js"
     timeout-minutes: 5
     runs-on: ubuntu-latest
     needs: changes
@@ -477,10 +477,10 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: 📦️ Install dependencies
-        run: pnpm install --frozen-lockfile --filter @gredice/game... --filter .
+        run: pnpm install --frozen-lockfile --filter @gredice/game... --filter @gredice/js... --filter .
 
-      - name: ⚒️ Test package
-        run: pnpm test --filter=@gredice/game
+      - name: ⚒️ Test packages
+        run: pnpm test --filter=@gredice/game --filter=@gredice/js
 
   test_email_package:
     name: "CI - test @gredice/email"

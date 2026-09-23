@@ -1341,7 +1341,9 @@ test('planting verification rejects a stale pending version and keeps completed 
     assert.strictEqual(completedRetry.eventId, verified.eventId);
 });
 
-test('planting date revisions advance the version before a stale verification can commit', async () => {
+test('planting date revisions advance the version before a stale verification can commit', {
+    skip: process.env.GREDICE_TEST_DB_PROVIDER === 'pglite',
+}, async () => {
     const fixture = await createTaskFixture();
     await submitPlantingTaskCompletion({
         raisedBedId: fixture.raisedBedId,
@@ -1596,7 +1598,9 @@ test('historical planting completion remains idempotent after an illicit status 
     );
 });
 
-test('completion commits before competing diary reschedule and cancel writers revalidate', async () => {
+test('completion commits before competing diary reschedule and cancel writers revalidate', {
+    skip: process.env.GREDICE_TEST_DB_PROVIDER === 'pglite',
+}, async () => {
     const fixture = await createTaskFixture();
     const referenceDate = new Date('2026-07-10T08:00:00.000Z');
     let competingWriters: Promise<unknown>[] = [];
@@ -1722,7 +1726,9 @@ test('completion commits before competing diary reschedule and cancel writers re
     );
 });
 
-test('verification commits before a competing completion-evidence writer revalidates', async () => {
+test('verification commits before a competing completion-evidence writer revalidates', {
+    skip: process.env.GREDICE_TEST_DB_PROVIDER === 'pglite',
+}, async () => {
     const fixture = await createTaskFixture();
     await submitOperationTaskCompletion({
         operationId: fixture.operationId,
@@ -1997,7 +2003,9 @@ test('abandoning a raised bed first rejects operation and planting submissions',
     );
 });
 
-test('task completion commits before a competing raised-bed abandonment', async () => {
+test('task completion commits before a competing raised-bed abandonment', {
+    skip: process.env.GREDICE_TEST_DB_PROVIDER === 'pglite',
+}, async () => {
     const fixture = await createTaskFixture();
     let abandonmentPromise: Promise<unknown> | undefined;
 
@@ -2048,7 +2056,9 @@ test('task completion commits before a competing raised-bed abandonment', async 
     assert.strictEqual(raisedBed?.status, 'abandoned');
 });
 
-test('operation completion revalidates actor membership after a concurrent removal commits', async () => {
+test('operation completion revalidates actor membership after a concurrent removal commits', {
+    skip: process.env.GREDICE_TEST_DB_PROVIDER === 'pglite',
+}, async () => {
     const fixture = await createTaskFixture();
     let completionPromise:
         | ReturnType<typeof submitOperationTaskCompletion>
@@ -2084,7 +2094,9 @@ test('operation completion revalidates actor membership after a concurrent remov
     );
 });
 
-test('operation and planting assignment revalidate every selected membership after removal', async () => {
+test('operation and planting assignment revalidate every selected membership after removal', {
+    skip: process.env.GREDICE_TEST_DB_PROVIDER === 'pglite',
+}, async () => {
     const fixture = await createTaskFixture();
     let operationAssignmentPromise:
         | ReturnType<typeof assignOperationTaskUsers>
@@ -2242,7 +2254,9 @@ test('concurrent planting completion is idempotent and never copies assignment m
     );
 });
 
-test('operation reassignment wins the shared lock before former-assignee completion', async () => {
+test('operation reassignment wins the shared lock before former-assignee completion', {
+    skip: process.env.GREDICE_TEST_DB_PROVIDER === 'pglite',
+}, async () => {
     const fixture = await createTaskFixture();
     let completionPromise:
         | ReturnType<typeof submitOperationTaskCompletion>
@@ -2288,7 +2302,9 @@ test('operation reassignment wins the shared lock before former-assignee complet
     );
 });
 
-test('planting reassignment wins the shared lock without stale completion assignment', async () => {
+test('planting reassignment wins the shared lock without stale completion assignment', {
+    skip: process.env.GREDICE_TEST_DB_PROVIDER === 'pglite',
+}, async () => {
     const fixture = await createTaskFixture();
     let completionPromise:
         | ReturnType<typeof submitPlantingTaskCompletion>
@@ -2340,7 +2356,9 @@ test('planting reassignment wins the shared lock without stale completion assign
     );
 });
 
-test('planting completion and block commit before a competing history move', async () => {
+test('planting completion and block commit before a competing history move', {
+    skip: process.env.GREDICE_TEST_DB_PROVIDER === 'pglite',
+}, async () => {
     for (const outcome of ['completed', 'blocked'] as const) {
         const fixture = await createTaskFixture();
         const targetPositionIndex = fixture.positionIndex + 1;
@@ -2420,7 +2438,9 @@ test('planting completion and block commit before a competing history move', asy
     }
 });
 
-test('history move commits before stale planting completion and block attempts', async () => {
+test('history move commits before stale planting completion and block attempts', {
+    skip: process.env.GREDICE_TEST_DB_PROVIDER === 'pglite',
+}, async () => {
     for (const outcome of ['completed', 'blocked'] as const) {
         const fixture = await createTaskFixture();
         const targetPositionIndex = fixture.positionIndex + 1;
@@ -2493,7 +2513,9 @@ test('history move commits before stale planting completion and block attempts',
     }
 });
 
-test('history move commits before stale planting verification', async () => {
+test('history move commits before stale planting verification', {
+    skip: process.env.GREDICE_TEST_DB_PROVIDER === 'pglite',
+}, async () => {
     const fixture = await createTaskFixture();
     const targetPositionIndex = fixture.positionIndex + 1;
     await submitPlantingTaskCompletion({
