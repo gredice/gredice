@@ -47,6 +47,7 @@ import {
     getGardenBoxInventoryAggregateId,
     getInventoryAggregateId,
 } from './inventoryRepo';
+import { deleteLegacyGardenStructureRows } from './legacyGardenStructuresCleanup';
 import { lockAndAssertShoppingCartsMutable } from './stripeCheckoutAttemptRepo';
 import { deleteUserAuthenticationData } from './usersRepo';
 
@@ -451,6 +452,8 @@ export async function deleteAccountWithDependencies(
         }
 
         for (const garden of gardens) {
+            await deleteLegacyGardenStructureRows(garden.id);
+
             // Delete garden stacks, blocks, gardens, garden events
             console.info(
                 `[AccountDelete] Deleting garden stacks for gardenId=${garden.id}`,

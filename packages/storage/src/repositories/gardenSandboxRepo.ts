@@ -27,6 +27,7 @@ import {
     deleteRaisedBedField,
     upsertRaisedBedField,
 } from './gardensRepo';
+import { deleteLegacyGardenStructureRows } from './legacyGardenStructuresCleanup';
 import { createLegacyRaisedBedPlantPlaceWithProjection } from './raisedBedPlantingsRepo';
 import { lockAndAssertCartItemsMutable } from './stripeCheckoutAttemptRepo';
 
@@ -901,6 +902,8 @@ async function deleteNextSandboxGardenDependencyBatch(
     if (raisedBedRows > 0) {
         return raisedBedRows;
     }
+
+    await deleteLegacyGardenStructureRows(garden.id);
 
     const stackRows = await deleteSandboxGardenStackBatch(garden.id, batchSize);
     if (stackRows > 0) {
