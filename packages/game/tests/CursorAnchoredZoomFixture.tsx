@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { Vector3 } from 'three';
 import { GameCameraRig } from '../src/controls/GameCameraRig';
 import { Scene } from '../src/scene/Scene';
@@ -14,6 +14,17 @@ const anchor = new Vector3(1.5, 0, -1.25);
 const initialPosition = new Vector3(-10, 10, -10);
 const initialTarget = new Vector3(0, 0, 0);
 const initialZoom = 100;
+
+function ViewportRefresh({ revision }: { revision: number }) {
+    const get = useThree((state) => state.get);
+    useLayoutEffect(() => {
+        if (revision > 0) {
+            const state = get();
+            state.set({ size: { ...state.size } });
+        }
+    }, [get, revision]);
+    return null;
+}
 
 function CameraProjectionProbe() {
     const gameCamera = useGameState((state) => state.gameCamera);
@@ -57,6 +68,7 @@ function CameraProjectionProbe() {
 }
 
 export function CursorAnchoredZoomFixture() {
+    const [viewportRevision, setViewportRevision] = useState(0);
     const queryClient = useMemo(
         () =>
             new QueryClient({
@@ -89,6 +101,7 @@ export function CursorAnchoredZoomFixture() {
                             suspendWhenOffscreen={false}
                             zoom={initialZoom}
                         >
+                            <ViewportRefresh revision={viewportRevision} />
                             <mesh position={anchor}>
                                 <sphereGeometry args={[0.12, 12, 8]} />
                                 <meshBasicMaterial color="#facc15" />
@@ -101,9 +114,19 @@ export function CursorAnchoredZoomFixture() {
                             />
                         </Scene>
                         <CameraProjectionProbe />
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setViewportRevision((value) => value + 1)
+                            }
+                        >
+                            Refresh viewport
+                        </button>
                     </div>
                 </GameStateContext.Provider>
             </QueryClientProvider>
         </NuqsTestingAdapter>
     );
 }
+
+import { useThree } from '@react-three/fiber';

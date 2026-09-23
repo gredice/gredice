@@ -11,6 +11,7 @@ import {
     useSceneRenderRequest,
     useSceneTimeInvalidation,
 } from '../scene/SceneTime';
+import { getCameraFrame } from '../spatial/cameraFrame';
 import { useGameState } from '../useGameState';
 import {
     findRaisedBedByBlockId,
@@ -321,6 +322,12 @@ export function GameCameraRig({
     singlePointerPanEnabled?: boolean;
 }) {
     const { camera, gl, size } = useThree();
+    // Renderer size notifications can replace the object without resizing.
+    // Keep camera callbacks stable so they do not tear down active gestures.
+    const cameraViewport = useMemo(
+        () => ({ width: size.width, height: size.height }),
+        [size.width, size.height],
+    );
     const requestRender = useSceneRenderRequest();
     const isOrthographicCamera = camera instanceof OrthographicCamera;
     const setGameCamera = useGameState((state) => state.setGameCamera);
@@ -481,11 +488,12 @@ export function GameCameraRig({
             version: snapshotVersionRef.current,
             zoom: camera.zoom,
         });
+        getCameraFrame(camera, cameraViewport, snapshot.target);
         setGameCameraSnapshot(snapshot);
         for (const listener of cameraListenersRef.current) {
             listener(snapshot);
         }
-    }, [camera, isOrthographicCamera, setGameCameraSnapshot]);
+    }, [camera, cameraViewport, isOrthographicCamera, setGameCameraSnapshot]);
 
     const publishSnapshot = useCallback(() => {
         if (!isOrthographicCamera) {
@@ -503,9 +511,16 @@ export function GameCameraRig({
         camera.lookAt(targetRef.current);
         camera.updateProjectionMatrix();
         camera.updateMatrixWorld();
+        getCameraFrame(camera, cameraViewport, targetRef.current.toArray());
         publishSnapshot();
         requestRender('camera-change');
-    }, [camera, isOrthographicCamera, publishSnapshot, requestRender]);
+    }, [
+        camera,
+        cameraViewport,
+        isOrthographicCamera,
+        publishSnapshot,
+        requestRender,
+    ]);
 
     const saveNormalCamera = useCallback(() => {
         if (!isOrthographicCamera || view !== 'normal') {
@@ -742,7 +757,10 @@ export function GameCameraRig({
                     return null;
                 }
 
-                const projected = position.clone().project(camera);
+                const projected = getCameraFrame(camera).project(
+                    position,
+                    new Vector3(),
+                );
                 return {
                     x: rect.left + ((projected.x + 1) / 2) * rect.width,
                     y: rect.top + ((-projected.y + 1) / 2) * rect.height,
