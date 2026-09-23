@@ -14,8 +14,6 @@ import {
     gardenBlocks,
     gardenStacks,
     gardenVisitStates,
-    legacyGardenStructureOperations,
-    legacyGardenStructures,
     raisedBedSensors,
 } from '../schema/gardenSchema';
 import {
@@ -49,6 +47,7 @@ import {
     getGardenBoxInventoryAggregateId,
     getInventoryAggregateId,
 } from './inventoryRepo';
+import { deleteLegacyGardenStructureRows } from './legacyGardenStructuresCleanup';
 import { lockAndAssertShoppingCartsMutable } from './stripeCheckoutAttemptRepo';
 import { deleteUserAuthenticationData } from './usersRepo';
 
@@ -453,16 +452,7 @@ export async function deleteAccountWithDependencies(
         }
 
         for (const garden of gardens) {
-            // Legacy building rows reference the garden without cascading.
-            console.info('[AccountDelete] Deleting legacy garden structures', {
-                gardenId: garden.id,
-            });
-            await storage()
-                .delete(legacyGardenStructureOperations)
-                .where(eq(legacyGardenStructureOperations.gardenId, garden.id));
-            await storage()
-                .delete(legacyGardenStructures)
-                .where(eq(legacyGardenStructures.gardenId, garden.id));
+            await deleteLegacyGardenStructureRows(garden.id);
 
             // Delete garden stacks, blocks, gardens, garden events
             console.info(
