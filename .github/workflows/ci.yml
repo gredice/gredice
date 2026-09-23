@@ -441,7 +441,7 @@ jobs:
         working-directory: ./packages/storage/
 
       - name: ⚒️ Test app
-        run: pnpm test --filter=@gredice/storage
+        run: pnpm run test --filter=@gredice/storage
 
   test_game_package:
     name: "CI - test @gredice/game"
@@ -480,7 +480,7 @@ jobs:
         run: pnpm install --frozen-lockfile --filter @gredice/game... --filter .
 
       - name: ⚒️ Test package
-        run: pnpm test --filter=@gredice/game
+        run: pnpm run test --filter=@gredice/game
 
   test_email_package:
     name: "CI - test @gredice/email"
