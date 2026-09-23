@@ -10901,6 +10901,18 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.autumnLeafCapacity === 'number'
                     ? metadata.autumnLeafCapacity
                     : null,
+            autumnGustCount:
+                typeof metadata.autumnGustCount === 'number'
+                    ? metadata.autumnGustCount
+                    : null,
+            autumnGustCapacity:
+                typeof metadata.autumnGustCapacity === 'number'
+                    ? metadata.autumnGustCapacity
+                    : null,
+            autumnGustPeakCount:
+                typeof metadata.autumnGustPeakCount === 'number'
+                    ? metadata.autumnGustPeakCount
+                    : null,
             autumnGroundLeafClusters:
                 typeof metadata.autumnGroundLeafClusters === 'number'
                     ? metadata.autumnGroundLeafClusters

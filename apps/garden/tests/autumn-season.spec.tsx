@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/experimental-ct-react';
+import { AutumnGustLeaseFixture } from '../../../packages/game/tests/AutumnGustLeaseFixture';
 import { AutumnVisualFixture } from '../../../packages/game/tests/AutumnVisualFixture';
 
 for (const stage of [
@@ -415,6 +416,108 @@ test('summer has no ambient leaf pool activity', async ({ mount }) => {
     );
     await expect(fixture).toHaveAttribute('data-canopies', /.+/);
     await expect(fixture).toHaveAttribute('data-leaves', '0');
+});
+
+for (const tier of ['low', 'high'] as const) {
+    test(`ground gusts share the autumn leaf cap on ${tier}`, async ({
+        mount,
+        page,
+    }) => {
+        const fixture = await mount(
+            <AutumnVisualFixture
+                instanced
+                ground
+                leaves
+                gusts
+                stage="lateAutumn"
+                tier={tier}
+            />,
+        );
+        await expect(fixture).toHaveAttribute('data-gust-leaves', /^[1-9]/);
+        await expect(fixture).toHaveAttribute('data-ground-leaves', /^[1-9]/);
+        expect(
+            Number(await fixture.getAttribute('data-leaves')),
+        ).toBeLessThanOrEqual(tier === 'low' ? 24 : 160);
+        await expect(page.locator('canvas')).toHaveScreenshot(
+            `autumn-gust-${tier}.png`,
+            { maxDiffPixelRatio: 0.005 },
+        );
+    });
+}
+
+test('winter gusts release the render lease between windows', async ({
+    mount,
+    page,
+}) => {
+    test.setTimeout(25_000);
+    const fixture = await mount(<AutumnGustLeaseFixture />);
+    const readGustActivity = () =>
+        page.evaluate(() => ({
+            count: window.__grediceGameProfile?.autumnGustCount ?? 0,
+            deadlines:
+                window.__grediceGameProfile?.runtimeFrameLoop
+                    ?.activeDeadlineCount ?? 0,
+            leases:
+                window.__grediceGameProfile?.runtimeFrameLoop
+                    ?.activeRenderLeaseCount ?? 0,
+        }));
+    await expect.poll(readGustActivity).toEqual({
+        count: 0,
+        deadlines: 1,
+        leases: 0,
+    });
+    await expect
+        .poll(
+            async () => {
+                const activity = await readGustActivity();
+                return activity.count > 0 && activity.leases > 0;
+            },
+            { timeout: 14_000 },
+        )
+        .toBe(true);
+    await expect.poll(readGustActivity).toEqual({
+        count: 0,
+        deadlines: 1,
+        leases: 0,
+    });
+    await fixture.unmount();
+});
+
+test('calm, heavy rain, snow and reduced motion silence ground gusts', async ({
+    mount,
+    page,
+}) => {
+    const base = {
+        instanced: true,
+        ground: true,
+        leaves: true,
+        gusts: true,
+        stage: 'lateAutumn' as const,
+    };
+    const fixture = await mount(<AutumnVisualFixture {...base} wind={0} />);
+    await expect(fixture).toHaveAttribute('data-canopies', /.+/);
+    await expect(fixture).toHaveAttribute('data-gust-leaves', '0');
+    await fixture.update(<AutumnVisualFixture {...base} rain={0.8} />);
+    await expect(fixture).toHaveAttribute('data-gust-leaves', '0');
+    await fixture.update(<AutumnVisualFixture {...base} snow={1} />);
+    await expect(fixture).toHaveAttribute('data-gust-leaves', '0');
+    await fixture.update(<AutumnVisualFixture {...base} />);
+    await expect(fixture).toHaveAttribute('data-gust-leaves', /^[1-9]/);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await fixture.update(<AutumnVisualFixture {...base} wind={2.5} />);
+    await expect(fixture).toHaveAttribute('data-gust-leaves', '0');
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    expect(
+        await page.evaluate(
+            () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+        ),
+    ).toBe(false);
+    await fixture.update(<AutumnVisualFixture {...base} wind={3} />);
+    await expect(fixture).toHaveAttribute('data-gust-leaves', /^[1-9]/);
+    await fixture.unmount();
+    expect(
+        await page.evaluate(() => window.__grediceGameProfile?.autumnGustCount),
+    ).toBe(0);
 });
 
 for (const tier of ['low', 'high'] as const) {
