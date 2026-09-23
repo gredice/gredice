@@ -47,15 +47,9 @@ async function prepare(page: Page) {
     await page.route('**/api/auth/current-claims', (route) =>
         route.fulfill({ status: 401, json: {} }),
     );
-    await page.addInitScript(() => {
-        localStorage.setItem('gredice-public-environment-enabled', 'true');
-    });
 }
 
 async function enableDebug(page: Page) {
-    const toggle = page.getByRole('switch', { name: 'Ambijentalna pozadina' });
-    // Component tests mount into an already loaded document.
-    if (!(await toggle.isChecked())) await toggle.click();
     await page.getByText('Debug prikaza', { exact: true }).click();
     await page.getByLabel('Fiksiraj vrijeme').check();
     // Probe the exact minute on either side of the theme boundary; the
@@ -173,24 +167,6 @@ for (const width of [360, 768, 1280]) {
             body: JSON.stringify(ratios, null, 2),
             contentType: 'application/json',
         });
-
-        await page
-            .getByRole('switch', { name: 'Ambijentalna pozadina' })
-            .click();
-        await expect(
-            page.getByTestId('public-environment-backdrop'),
-        ).toHaveCount(0);
-        await expect
-            .poll(async () => {
-                const description = await page
-                    .locator('.public-page-description')
-                    .evaluate((element) => getComputedStyle(element).color);
-                const alternative = await page
-                    .getByText('lat. Abelmoschus esculentus')
-                    .evaluate((element) => getComputedStyle(element).color);
-                return description === alternative;
-            })
-            .toBe(true);
     });
 }
 

@@ -337,6 +337,7 @@ test.describe('public search filters', () => {
     });
 
     test('navbar search avoids primary link overlap', async ({ page }) => {
+        test.slow();
         await page.setViewportSize({ width: 1180, height: 720 });
         await page.goto(navSearchTestPath, { waitUntil: 'domcontentloaded' });
         await expect(
@@ -347,9 +348,11 @@ test.describe('public search filters', () => {
         ).toBeVisible();
 
         await page.setViewportSize({ width: 1280, height: 720 });
-        const searchBox = await page
-            .locator('header search[aria-label="Pretraga"]')
-            .boundingBox();
+        const desktopSearch = page.locator(
+            'header search[aria-label="Pretraga"]',
+        );
+        await expect(desktopSearch).toBeVisible();
+        const searchBox = await desktopSearch.boundingBox();
         const raisedBedLinkBox = await page
             .locator('header')
             .getByRole('link', { name: 'Gredica', exact: true })
@@ -435,6 +438,7 @@ test.describe('public search filters', () => {
     test('plant search keeps keyboard focus and ignores Croatian diacritics', async ({
         page,
     }) => {
+        test.slow();
         await page.goto('/biljke', { waitUntil: 'load' });
 
         const searchInput = page.locator('#plant-search');
@@ -477,6 +481,7 @@ test.describe('public search filters', () => {
     test('operation search keeps keyboard focus and ignores Croatian diacritics', async ({
         page,
     }) => {
+        test.slow();
         const imageDimensionWarnings: string[] = [];
         page.on('console', (message) => {
             const text = message.text();

@@ -10,7 +10,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Time-of-day sky and matching footer garden used on the public www and News surfaces. The preview includes astronomical sun/moon placement, moon phase, weather tone, and the contrast veil behind unframed public content, secondary labels, and growing instructions.',
+                    'Always-on time-of-day sky and matching footer garden used on the public www and News surfaces. The preview includes astronomical sun/moon placement, moon phase, weather tone, and the contrast veil behind unframed public content, secondary labels, and growing instructions.',
             },
         },
     },
