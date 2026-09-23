@@ -1,4 +1,3 @@
-import type { PlantData } from '@gredice/client';
 import {
     PlantOrSortImage,
     PlantYieldTooltip,
@@ -9,18 +8,17 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { ItemCard } from '../../components/shared/ItemCard';
 import { KnownPages } from '../../src/KnownPages';
+import type { toPlantCard } from './plantCatalogue';
 import { getPlantImageViewTransitionName } from './plantViewTransition';
 
-export type PlantsGalleryItemProps = Pick<
-    PlantData,
-    'information' | 'attributes' | 'image'
-> &
-    Partial<Pick<PlantData, 'prices'>> & {
-        id: string;
-        isRecommended?: boolean;
-        matchingAlternativeName?: string;
-        matchingSortName?: string;
-    };
+export type PlantsGalleryItemProps = Omit<
+    ReturnType<typeof toPlantCard>,
+    'id'
+> & {
+    id: string;
+    matchingAlternativeName?: string;
+    matchingSortName?: string;
+};
 
 export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
     const {

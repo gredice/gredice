@@ -16,6 +16,24 @@ export const test = base.extend({
                 });
             },
         );
+        await page.route('**/api/gredice/api/gardens/99999/public', (route) =>
+            route.fulfill({
+                json: {
+                    id: 99_999,
+                    name: 'Istaknuti testni vrt',
+                    backgroundPalette: 'current',
+                    farmId: 1,
+                    homeCamera: null,
+                    isPublic: true,
+                    isSandbox: false,
+                    latitude: 45.815,
+                    longitude: 15.982,
+                    raisedBeds: [],
+                    stacks: {},
+                    updatedAt: '2026-08-29T12:00:00.000Z',
+                },
+            }),
+        );
         await page.route(
             'https://vrt.gredice.com/assets/models/*.glb',
             async (route) => {

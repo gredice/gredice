@@ -1,7 +1,7 @@
 import { clientPublic } from '@gredice/client';
 import 'server-only';
 import {
-    type LandingGardenCandidate,
+    type LandingFeaturedGarden,
     landingFeaturedGardenLimit,
 } from './landingGardenCarousel';
 import { comparePublicGardensByPopularity } from './vrtovi/publicGardenFormatting';
@@ -42,21 +42,11 @@ async function fetchFeaturedGardenList(
     };
 }
 
-const playwrightFeaturedGardensFixture: LandingGardenCandidate[] = [
+const playwrightFeaturedGardensFixture: LandingFeaturedGarden[] = [
     {
         garden: {
-            backgroundPalette: 'current',
-            farmId: 1,
-            homeCamera: null,
             id: 99_999,
-            isPublic: true,
-            isSandbox: false,
-            latitude: 45.815,
-            longitude: 15.982,
             name: 'Istaknuti testni vrt',
-            raisedBeds: [],
-            stacks: {},
-            updatedAt: '2026-08-29T12:00:00.000Z',
         },
         owner: {
             avatarUrl: null,
@@ -66,7 +56,7 @@ const playwrightFeaturedGardensFixture: LandingGardenCandidate[] = [
 ];
 
 export async function getLandingFeaturedGardens(): Promise<
-    LandingGardenCandidate[]
+    LandingFeaturedGarden[]
 > {
     if (process.env.GREDICE_PLAYWRIGHT_FEATURED_GARDENS_FIXTURE === 'true') {
         return playwrightFeaturedGardensFixture;
@@ -155,9 +145,23 @@ export async function getLandingFeaturedGardens(): Promise<
                     }
 
                     const details = await gardenResponse.json();
+                    const owner = details.members?.at(0);
+                    // Recheck current visibility and owner data, but keep full
+                    // scene graphs on the server until the viewer requests one.
                     return {
-                        garden: details,
-                        owner: details.members?.at(0) ?? null,
+                        garden: { id: details.id, name: details.name },
+                        owner: owner
+                            ? {
+                                  publicId: owner.publicId,
+                                  displayName: owner.displayName,
+                                  avatarUrl: owner.avatarUrl,
+                                  achievementCount: owner.achievementCount,
+                              }
+                            : null,
+                        dayPreviewImageUrl:
+                            details.previewImages?.day?.url ??
+                            details.previewImage?.url,
+                        nightPreviewImageUrl: details.previewImages?.night?.url,
                     };
                 } catch (error) {
                     // A failed fetch or body read must not discard gardens

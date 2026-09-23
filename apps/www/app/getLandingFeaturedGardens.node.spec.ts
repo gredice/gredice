@@ -14,6 +14,7 @@ function garden(id: number) {
         latitude: 45.815,
         longitude: 15.982,
         name: `Vrt ${id}`,
+        previewImage: { url: `https://cdn.gredice.com/garden-${id}.webp` },
         members: id === 12 ? [] : [summary(id).owner],
         raisedBeds: [],
         stacks: {},
@@ -27,7 +28,14 @@ function summary(id: number, likeCount = 0, activePlantCount = 0) {
         likeCount,
         activePlantCount,
         owner:
-            id === 12 ? null : { avatarUrl: null, displayName: `Vrtlar ${id}` },
+            id === 12
+                ? null
+                : {
+                      avatarUrl: null,
+                      displayName: `Vrtlar ${id}`,
+                      publicId: `u_${id}`,
+                      achievementCount: id,
+                  },
     };
 }
 
@@ -145,8 +153,10 @@ test('caps the server-ranked IDs at ten and uses fresh detail owners', async (t)
     assert.deepEqual(
         await result,
         items.slice(0, 10).map((item) => ({
-            garden: garden(item.id),
+            garden: { id: item.id, name: `Vrt ${item.id}` },
             owner: item.owner,
+            dayPreviewImageUrl: `https://cdn.gredice.com/garden-${item.id}.webp`,
+            nightPreviewImageUrl: undefined,
         })),
     );
     assert.equal(timeout.mock.callCount(), 2);
@@ -219,10 +229,10 @@ test('gives details a fresh bounded budget after a slow list and preserves compl
     await advanceTime(t, 499);
     assert.equal(settled, false);
     await advanceTime(t, 1);
-    assert.deepEqual(await result, [
-        { garden: garden(1), owner: summary(1).owner },
-        { garden: garden(2), owner: summary(2).owner },
-    ]);
+    assert.deepEqual(
+        (await result).map(({ garden }) => garden.id),
+        [1, 2],
+    );
     assert.equal(Date.now(), 7_109);
     assert.equal(timeout.mock.callCount(), 2);
     assert.deepEqual(
@@ -433,4 +443,30 @@ test('legacy fallback HTTP errors retain the empty fallback', async (t) => {
     );
     assert.deepEqual(await getLandingFeaturedGardens(), []);
     assert.equal(requests.length, 2);
+});
+
+test('keeps all carousel content but excludes scene graphs and unused owner fields', async (t) => {
+    const details = {
+        ...garden(1),
+        stacks: { large: 'unused'.repeat(100_000) },
+        members: [{ ...summary(1).owner, extra: 'unused' }],
+        previewImages: {
+            day: { url: 'https://cdn.gredice.com/day.webp' },
+            night: { url: 'https://cdn.gredice.com/night.webp' },
+        },
+    };
+    mockRequests(t, (id) =>
+        Response.json(id === null ? { items: [{ id: 1 }] } : details),
+    );
+    const result = await getLandingFeaturedGardens();
+    assert.deepEqual(result, [
+        {
+            garden: { id: 1, name: 'Vrt 1' },
+            owner: summary(1).owner,
+            dayPreviewImageUrl: details.previewImages.day.url,
+            nightPreviewImageUrl: details.previewImages.night.url,
+        },
+    ]);
+    assert.ok(JSON.stringify(result).length < 500);
+    assert.doesNotMatch(JSON.stringify(result), /stacks|members|unused/);
 });
