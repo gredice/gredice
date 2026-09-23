@@ -76,19 +76,23 @@ function loadPgliteMigrator() {
 }
 
 const PGLITE_TRANSACTION_SCOPE_WAIT_MS = 10_000;
-const pgliteTransactionScope = new AsyncLocalStorage<true>();
+const pgliteTransactionScope = new AsyncLocalStorage<{
+    settled: Promise<void>;
+}>();
 
-// PGlite serializes every call on one connection. A query issued through the
+// PGlite serializes every call on one connection. A call made through the
 // shared client from inside a transaction callback (instead of through `tx`)
-// waits for that transaction to finish; if the transaction awaits it, neither
-// ever finishes. Calls from a transaction scope get a deadline so a deadlock
-// fails with the offending stack instead of hanging the storage suite, while
-// deliberately unawaited competing writers still run once the transaction ends.
-function withPgliteDeadlockDeadline<T>(
+// cannot run until that transaction ends. Hold such calls here until the
+// transaction settles: deliberately unawaited competing writers then run as
+// before, while a call the transaction awaits (a deadlock) is rejected after a
+// deadline with the offending stack and never reaches PGlite, so it cannot
+// execute after the transaction rolls back.
+function deferUntilPgliteTransactionSettles<T>(
     method: string,
     run: () => Promise<T>,
 ): Promise<T> {
-    if (!pgliteTransactionScope.getStore()) {
+    const scope = pgliteTransactionScope.getStore();
+    if (!scope) {
         return run();
     }
 
@@ -97,15 +101,29 @@ function withPgliteDeadlockDeadline<T>(
             'PGlite has a single connection, so an awaited query here deadlocks; ' +
             'pass the transaction client through or run the query before the transaction.',
     );
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    const deadline = new Promise<never>((_, reject) => {
-        timeout = setTimeout(
-            () => reject(deadlockError),
-            PGLITE_TRANSACTION_SCOPE_WAIT_MS,
-        );
+    return new Promise<T>((resolve, reject) => {
+        let timedOut = false;
+        const timeout = setTimeout(() => {
+            timedOut = true;
+            reject(deadlockError);
+        }, PGLITE_TRANSACTION_SCOPE_WAIT_MS);
+        void scope.settled.then(() => {
+            clearTimeout(timeout);
+            if (!timedOut) {
+                run().then(resolve, reject);
+            }
+        });
     });
+}
 
-    return Promise.race([run(), deadline]).finally(() => clearTimeout(timeout));
+function runInPgliteTransactionScope<T>(run: () => Promise<T>): Promise<T> {
+    let settle: () => void = () => {};
+    const settled = new Promise<void>((resolve) => {
+        settle = resolve;
+    });
+    const result = pgliteTransactionScope.run({ settled }, run);
+    result.then(settle, settle);
+    return result;
 }
 
 function guardPgliteTransactionDeadlocks(client: PGlite) {
@@ -114,13 +132,13 @@ function guardPgliteTransactionDeadlocks(client: PGlite) {
     const exec = client.exec.bind(client);
 
     client.transaction = <T>(callback: (tx: Transaction) => Promise<T>) =>
-        withPgliteDeadlockDeadline('transaction', () =>
-            pgliteTransactionScope.run(true, () => transaction(callback)),
+        deferUntilPgliteTransactionSettles('transaction', () =>
+            runInPgliteTransactionScope(() => transaction(callback)),
         );
     client.query = <T>(...args: Parameters<PGlite['query']>) =>
-        withPgliteDeadlockDeadline('query', () => query<T>(...args));
+        deferUntilPgliteTransactionSettles('query', () => query<T>(...args));
     client.exec = (...args: Parameters<PGlite['exec']>) =>
-        withPgliteDeadlockDeadline('exec', () => exec(...args));
+        deferUntilPgliteTransactionSettles('exec', () => exec(...args));
 }
 
 function pgliteStorage() {

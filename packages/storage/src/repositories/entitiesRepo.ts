@@ -61,6 +61,11 @@ async function refreshEntitySearchDocumentAfterMutation(entityId: number) {
     }
 }
 
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
 type EntityAttribute = SelectAttributeValue & {
     attributeDefinition: SelectAttributeDefinition;
 };
@@ -251,8 +256,12 @@ function resolveAttributeDefaultValue(
     return generatedImageAttributeValue(generatedImageConfig, sourceValue);
 }
 
-export async function getEntitiesRaw(entityTypeName: string, state?: string) {
-    const entityRows = await storage().query.entities.findMany({
+export async function getEntitiesRaw(
+    entityTypeName: string,
+    state?: string,
+    db: DatabaseClient = storage(),
+) {
+    const entityRows = await db.query.entities.findMany({
         where: state
             ? and(
                   eq(entities.entityTypeName, entityTypeName),
@@ -271,7 +280,7 @@ export async function getEntitiesRaw(entityTypeName: string, state?: string) {
     }
 
     const [rawAttributes, entityType] = await Promise.all([
-        storage().query.attributeValues.findMany({
+        db.query.attributeValues.findMany({
             where: and(
                 inArray(
                     attributeValues.entityId,
@@ -280,7 +289,7 @@ export async function getEntitiesRaw(entityTypeName: string, state?: string) {
                 eq(attributeValues.isDeleted, false),
             ),
         }),
-        storage().query.entityTypes.findFirst({
+        db.query.entityTypes.findFirst({
             where: eq(entityTypes.name, entityTypeName),
             with: {
                 attributeDefinitions: true,
@@ -300,7 +309,7 @@ export async function getEntitiesRaw(entityTypeName: string, state?: string) {
     const referencedAttributeDefinitions =
         referencedDefinitionIds.length === 0
             ? []
-            : await storage().query.attributeDefinitions.findMany({
+            : await db.query.attributeDefinitions.findMany({
                   where: inArray(
                       attributeDefinitions.id,
                       referencedDefinitionIds,
@@ -994,8 +1003,8 @@ export async function getEntityFormatted<T>(id: number) {
     );
 }
 
-export async function getEntityRaw(id: number) {
-    const entity = await storage().query.entities.findFirst({
+export async function getEntityRaw(id: number, db: DatabaseClient = storage()) {
+    const entity = await db.query.entities.findFirst({
         where: and(eq(entities.id, id), eq(entities.isDeleted, false)),
         with: {
             attributes: {
