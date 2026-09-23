@@ -67,7 +67,7 @@ export function SurveyDuplicatePanel({
                             Izvorna verzija
                         </span>
                         <select
-                            className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-hidden focus:border-ring focus:ring-2 focus:ring-ring/30"
+                            className="h-10 w-full rounded-md border bg-field px-3 text-sm outline-hidden focus:border-ring focus:ring-2 focus:ring-ring/30"
                             value={versionId}
                             onChange={(event) =>
                                 setVersionId(event.target.value)

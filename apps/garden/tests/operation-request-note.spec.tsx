@@ -1,6 +1,45 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import { OperationRequestNoteStory } from './OperationRequestNoteStory';
 
+for (const theme of ['light', 'dark']) {
+    test(`schedule form surfaces stay distinct in ${theme} theme`, async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await mount(<OperationRequestNoteStory defaultOpen />);
+        await page.evaluate((nextTheme) => {
+            document.documentElement.classList.toggle(
+                'dark',
+                nextTheme === 'dark',
+            );
+        }, theme);
+
+        const surfaces = await page.evaluate(() => {
+            const dialog = document.querySelector('[role="dialog"]');
+            const card = dialog?.querySelector('.bg-card');
+            const calendar = dialog?.querySelector('[data-event-calendar]');
+            const note = dialog?.querySelector('textarea[name="requestNote"]');
+            if (!dialog || !card || !calendar || !note) {
+                throw new Error('Schedule form surfaces are missing');
+            }
+
+            const background = (element: Element) =>
+                getComputedStyle(element).backgroundColor;
+            return {
+                dialog: background(dialog),
+                card: background(card),
+                calendar: background(calendar),
+                note: background(note),
+            };
+        });
+
+        expect(surfaces.calendar).toBe(surfaces.card);
+        expect(surfaces.note).not.toBe(surfaces.dialog);
+        expect(surfaces.note).not.toBe(surfaces.card);
+    });
+}
+
 test('operation request note is optional, trimmed and cleared after success', async ({
     mount,
     page,

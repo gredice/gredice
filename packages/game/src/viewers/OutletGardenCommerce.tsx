@@ -1020,7 +1020,7 @@ export function OutletGardenReservationPanel({
                             <label className="grid gap-1 text-sm">
                                 <span className="font-medium">Vrt</span>
                                 <select
-                                    className="min-h-11 rounded-lg border bg-background px-3"
+                                    className="min-h-11 rounded-lg border bg-field px-3"
                                     disabled={commerce.state === 'reserving'}
                                     onChange={(event) =>
                                         commerce.selectGarden(
@@ -1043,7 +1043,7 @@ export function OutletGardenReservationPanel({
                         <label className="grid gap-1 text-sm">
                             <span className="font-medium">Gredica</span>
                             <select
-                                className="min-h-11 rounded-lg border bg-background px-3"
+                                className="min-h-11 rounded-lg border bg-field px-3"
                                 disabled={commerce.state === 'reserving'}
                                 onChange={(event) =>
                                     commerce.selectRaisedBed(
@@ -1067,7 +1067,7 @@ export function OutletGardenReservationPanel({
                                 Polje / pozicija
                             </span>
                             <select
-                                className="min-h-11 rounded-lg border bg-background px-3"
+                                className="min-h-11 rounded-lg border bg-field px-3"
                                 disabled={commerce.state === 'reserving'}
                                 onChange={(event) =>
                                     commerce.selectTarget(
@@ -1129,7 +1129,7 @@ export function OutletGardenReservationPanel({
                         <label className="mt-3 grid gap-1 text-sm">
                             <span className="font-medium">Vrt</span>
                             <select
-                                className="min-h-11 rounded-lg border bg-background px-3"
+                                className="min-h-11 rounded-lg border bg-field px-3"
                                 onChange={(event) =>
                                     commerce.selectGarden(
                                         Number(event.currentTarget.value),

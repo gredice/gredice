@@ -101,7 +101,7 @@ export function SelectedPlantingStatusControl({
                     variant="plain"
                     className={
                         compact
-                            ? 'h-8 max-w-full border border-input bg-background px-2 text-left shadow-xs'
+                            ? 'h-8 max-w-full border border-input bg-field px-2 text-left shadow-xs'
                             : 'h-auto max-w-full whitespace-normal px-1 text-left'
                     }
                     startDecorator={

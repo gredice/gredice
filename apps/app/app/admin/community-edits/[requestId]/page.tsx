@@ -588,7 +588,7 @@ function ReviewNote() {
         <label className="block space-y-1">
             <Typography level="body2">Napomena moderatora</Typography>
             <textarea
-                className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="min-h-24 w-full rounded-md border border-input bg-field px-3 py-2 text-sm"
                 name="reviewerNote"
                 placeholder="Interna napomena ili objašnjenje za odbijanje..."
             />

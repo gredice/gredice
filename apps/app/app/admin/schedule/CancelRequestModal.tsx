@@ -72,7 +72,7 @@ export function CancelRequestModal({
                         <textarea
                             name="reason"
                             placeholder="Unesite razlog otkazivanja..."
-                            className="w-full bg-card border border-muted rounded p-2"
+                            className="w-full bg-field border border-muted rounded p-2"
                             disabled={isLoading}
                             required
                             rows={3}

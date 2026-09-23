@@ -2185,7 +2185,7 @@ export function CmsPageForm({
                                             <textarea
                                                 value={rawContent}
                                                 rows={18}
-                                                className="block w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                                className="block w-full rounded-md border border-input bg-field px-3 py-2 font-mono text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                                 onBlur={() => {
                                                     try {
                                                         setRawContent(

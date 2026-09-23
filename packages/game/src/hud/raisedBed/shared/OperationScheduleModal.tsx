@@ -259,7 +259,7 @@ export function OperationScheduleModal({
                             rows={3}
                             disabled={isLoading}
                             placeholder="Što želiš da vrtlar zna prije radnje?"
-                            className="w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="w-full min-w-0 rounded-md border border-input bg-field px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         />
                     </Stack>
                     <Row spacing={2}>
