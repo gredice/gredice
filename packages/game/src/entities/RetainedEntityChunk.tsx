@@ -17,6 +17,7 @@ export type RetainedEntityChunkProps = Pick<
 const sceneDependentNames = new Set([
     'BeachBall',
     'Cow',
+    'Goat',
     'Horse',
     'Rabbit',
     'Sheep',

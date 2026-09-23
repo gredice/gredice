@@ -10,8 +10,8 @@ versions. Interaction ordering remains the original stack order for picking ties
 
 `RetainedEntityChunks` mounts memoized chunk containers. Stationary entity slots
 remain inside those containers so their established controls, weather, articulated
-parts, and placement-drop identity continue to work. Cow, horse, rabbit, sheep,
-and beach-ball actors separately subscribe to the full terrain because movement
+parts, and placement-drop identity continue to work. Cow, goat, horse, rabbit,
+sheep, and beach-ball actors separately subscribe to the full terrain because movement
 can leave their anchor chunk. The Canvas and garden-transition owner are unchanged.
 
 Instanced archetype indexes retain unchanged name groups. Instance reconciliation
@@ -91,6 +91,12 @@ on Apple M4 Pro. The immutable subjects were:
 - Candidate: `0168eef8a076142c474cbfe96cc1e66494642200`.
 - Frozen profiler harness for every comparable capture:
   `018a6d73cfda8db46086d3f7d1bfff7a05c42476`.
+
+A follow-up review fix adds legacy `Goat` actors to the full-scene subscription
+used by roaming animals. Eighteen farm-animal and entity-memo tests pass after
+that fix. Direct fixture-inventory checks confirm that both `high-target` and
+`fauna-heavy` contain zero legacy `Goat` blocks, so this routing correction does
+not change the captured workloads. The buffer compiler is unchanged.
 
 The final symmetric 2×2 comparison passes **344/344 checks and 42/42 invariants**,
 with zero reproduced regressions and zero unresolved replications. Each of the
