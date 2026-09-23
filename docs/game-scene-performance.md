@@ -97,6 +97,10 @@ not accidentally based on `next dev`.
   follows exposed edges, and color/opacity ease continuously with depth instead
   of snapping at a fixed block threshold. Production profile runs should be used
   for before/after budget decisions.
+- [Retained garden chunks](game-retained-chunks.md) preserve unchanged scene
+  packets and geometry buffers during garden edits. Large terrain merges use
+  transferable worker buffers; small patches use a measured synchronous budget.
+  Water-side rebuilds retain the existing cardinal-neighbor occlusion rules.
 - Snow and rain overlays are optimized for repeated instanced blocks, but many
   non-instanced entities can still mount per-block `SnowOverlay` or
   `RainWetOverlay` meshes when weather makes them visible, so snow/rain profiles

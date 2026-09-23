@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
     BoxGeometry,
     BufferAttribute,
+    Float16BufferAttribute,
     Float32BufferAttribute,
     InterleavedBuffer,
     InterleavedBufferAttribute,
@@ -31,6 +32,48 @@ const instances: ChunkedMeshInstance[] = [
 ];
 
 describe('direct mesh buffers', () => {
+    it('preserves half-float values before transforming copied attribute storage', () => {
+        const source = new BoxGeometry();
+        const original = source.getAttribute('position');
+        const position = new Float16BufferAttribute(
+            new Uint16Array(original.array.length),
+            3,
+        );
+        for (let i = 0; i < original.count; i++)
+            position.setXYZ(
+                i,
+                original.getX(i),
+                original.getY(i),
+                original.getZ(i),
+            );
+        source.setAttribute('position', position);
+        source.setAttribute('weatherLocalPosition', position.clone());
+        const packet = compileMeshBuffers(
+            packMeshGeometry(source),
+            createChunkMatrices(instances, transform, 1),
+        );
+        const actual = unpackMeshGeometry(packet);
+        for (const [instanceIndex, instance] of instances.entries()) {
+            const expected = source
+                .clone()
+                .applyMatrix4(createMeshInstanceMatrix(instance, transform, 1));
+            for (const name of ['position', 'weatherLocalPosition'])
+                assert.deepEqual(
+                    actual
+                        .getAttribute(name)
+                        .array.slice(
+                            instanceIndex * original.array.length,
+                            (instanceIndex + 1) * original.array.length,
+                        ),
+                    expected.getAttribute(name).array,
+                    name,
+                );
+            expected.dispose();
+        }
+        actual.dispose();
+        source.dispose();
+    });
+
     for (const indexed of [true, false])
         it(`matches the legacy transformed geometry for ${indexed ? 'indexed' : 'non-indexed'} sources`, () => {
             const box = new BoxGeometry();

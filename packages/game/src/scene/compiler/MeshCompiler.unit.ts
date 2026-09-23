@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { BoxGeometry } from 'three';
+import { BoxGeometry, Uint32BufferAttribute } from 'three';
 import { createChunkMatrices } from '../../entities/chunkedMeshGeometry';
 import { MeshCompiler, type MeshCompilerWorker } from './MeshCompiler';
 import { compileMeshBuffers } from './meshBuffers';
@@ -49,6 +49,31 @@ class TestWorker implements MeshCompilerWorker {
 }
 
 describe('mesh compiler ownership', () => {
+    it('keeps morph and index-heavy work out of the small synchronous path', () => {
+        for (const kind of ['morph', 'index']) {
+            const source = new BoxGeometry();
+            if (kind === 'morph')
+                source.morphAttributes.position = Array.from(
+                    { length: 120 },
+                    () => source.getAttribute('position').clone(),
+                );
+            else
+                source.setIndex(
+                    new Uint32BufferAttribute(new Uint32Array(9000), 1),
+                );
+            const worker = new TestWorker();
+            const compiler = new MeshCompiler(() => worker);
+            let delivered = false;
+            compiler.request(source, matrices(1), () => {
+                delivered = true;
+            });
+            assert.equal(delivered, false, kind);
+            assert.equal(worker.jobs.length, 1, kind);
+            compiler.dispose();
+            source.dispose();
+        }
+    });
+
     it('compiles a small patch synchronously without constructing a worker', () => {
         const source = new BoxGeometry();
         const compiler = new MeshCompiler(() => {

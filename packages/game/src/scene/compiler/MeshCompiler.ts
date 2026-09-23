@@ -4,6 +4,7 @@ import {
     compileMeshBuffers,
     meshBufferByteLength,
     meshBufferTransferables,
+    meshGeometryComponentCount,
     type PackedMeshGeometry,
     packMeshGeometry,
 } from './meshBuffers';
@@ -60,12 +61,7 @@ export class MeshCompiler {
     ) {
         if (this.disposed) return () => {};
         const components =
-            (Object.values(geometry.attributes).reduce(
-                (sum, attribute) => sum + attribute.count * attribute.itemSize,
-                0,
-            ) *
-                matrices.length) /
-            16;
+            (meshGeometryComponentCount(geometry) * matrices.length) / 16;
         if (
             components <= synchronousChunkComponentLimit &&
             this.syncSpentMs < synchronousChunkBudgetMs

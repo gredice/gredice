@@ -11,6 +11,7 @@ import {
 import { synchronousChunkComponentLimit } from '../src/scene/compiler/MeshCompiler';
 import {
     compileMeshBuffers,
+    meshGeometryComponentCount,
     packMeshGeometry,
     unpackMeshGeometry,
 } from '../src/scene/compiler/meshBuffers';
@@ -56,12 +57,7 @@ for (const asset of ['BlockGround', 'BlockGrass', 'BlockStone']) {
                     rotation: i % 4,
                 }),
             );
-            const components =
-                Object.values(source.attributes).reduce(
-                    (sum, attribute) =>
-                        sum + attribute.count * attribute.itemSize,
-                    0,
-                ) * count;
+            const components = meshGeometryComponentCount(source) * count;
             const direct = timings(() => {
                 const output = unpackMeshGeometry(
                     compileMeshBuffers(

@@ -29,8 +29,8 @@ normals, tangent handedness, custom weather attributes, and bounds. Source GLTF
 buffers are never transferred or disposed. Index storage promotes to 32-bit when
 needed.
 
-The small path accepts up to 8,192 output attribute components with a cumulative
-2 ms synchronous budget per task. Larger work goes through one module worker,
+The small path accepts up to 8,192 output attribute, morph, and index components
+with a cumulative 2 ms synchronous budget per task. Larger work goes through one module worker,
 one transferable job at a time. Queued jobs pack source data only when dispatched.
 Cancellation removes queued jobs and rejects in-flight stale results. Worker
 failure or unavailability keeps the existing instanced geometry visible; it does

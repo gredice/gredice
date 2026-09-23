@@ -27,6 +27,17 @@ export type PackedMeshGeometry = {
     bounds?: { min: number[]; max: number[]; center: number[]; radius: number };
 };
 
+export function meshGeometryComponentCount(geometry: BufferGeometry) {
+    const attributes = [
+        ...Object.values(geometry.attributes),
+        ...Object.values(geometry.morphAttributes).flat(),
+    ];
+    return attributes.reduce(
+        (total, attribute) => total + attribute.count * attribute.itemSize,
+        geometry.index?.count ?? 0,
+    );
+}
+
 function allocateLike(array: TypedArray, length: number): TypedArray {
     if (array instanceof Float32Array) return new Float32Array(length);
     if (array instanceof Float64Array) return new Float64Array(length);
@@ -143,7 +154,7 @@ export function compileMeshBuffers(
         const attribute = unpackAttribute(result);
         const vertices = packed.array.length / packed.itemSize;
         for (let instance = 0; instance < count; instance++) {
-            array.set(packed.array, packed.array.length * instance);
+            attribute.array.set(packed.array, packed.array.length * instance);
             if (name !== 'position' && name !== 'normal' && name !== 'tangent')
                 continue;
             matrix.fromArray(matrices, instance * 16);
