@@ -15,7 +15,7 @@ import {
     upsertOrRemoveCartItem,
 } from '@gredice/storage';
 import { z } from 'zod';
-import { applyDefaultNewCartItemCurrency } from '../../../../../../lib/checkout/defaultCartItemCurrency';
+import { upsertCartItemWithDefaultCurrency } from '../../../../../../lib/checkout/defaultCartItemCurrency';
 import {
     assertOperationCartTarget,
     resolveOperationCartTarget,
@@ -369,21 +369,8 @@ export async function executeCommerceTool(
             const additionalData = input.scheduledDate
                 ? JSON.stringify({ scheduledDate: input.scheduledDate })
                 : null;
-            const cartItemId = await upsertOrRemoveCartItem(
-                null,
-                cart.id,
-                entityId.toString(),
-                'plantSort',
-                input.quantity,
-                location.gardenId,
-                location.raisedBedId,
-                location.positionIndex,
-                additionalData,
-            );
-            await applyDefaultNewCartItemCurrency({
+            const { cartItemId } = await upsertCartItemWithDefaultCurrency({
                 accountId: authContext.accountId,
-                cartItemId,
-                existingCartItemIds: cart.items.map((item) => item.id),
                 mutation: {
                     additionalData,
                     amount: input.quantity,
@@ -451,21 +438,8 @@ export async function executeCommerceTool(
             const additionalData = input.scheduledDate
                 ? JSON.stringify({ scheduledDate: input.scheduledDate })
                 : null;
-            const cartItemId = await upsertOrRemoveCartItem(
-                null,
-                cart.id,
-                input.operationId.toString(),
-                'operation',
-                input.quantity,
-                location.gardenId,
-                location.raisedBedId,
-                location.positionIndex,
-                additionalData,
-            );
-            await applyDefaultNewCartItemCurrency({
+            const { cartItemId } = await upsertCartItemWithDefaultCurrency({
                 accountId: authContext.accountId,
-                cartItemId,
-                existingCartItemIds: cart.items.map((item) => item.id),
                 mutation: {
                     additionalData,
                     amount: input.quantity,
