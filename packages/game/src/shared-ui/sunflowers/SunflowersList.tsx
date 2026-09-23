@@ -4,14 +4,12 @@ import { BlockImage } from '@gredice/ui/BlockImage';
 import {
     GameBasketIcon,
     GameBirthdayIcon,
-    GameBlocksIcon,
     GameCalendarIcon,
     GameCommunityIcon,
     GameGiftIcon,
     GameHistoryIcon,
     GameReceiptIcon,
     GameRefundIcon,
-    GameRulerIcon,
     GameSunflowerIcon,
     GameTasksIcon,
 } from '@gredice/ui/GameIcons';
@@ -24,7 +22,6 @@ import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useCurrentAccount } from '../../hooks/useCurrentAccount';
 import { formatSunflowers } from '../../utils/sunflowerPricing';
-import { getGardenStructureSunflowerHistoryDescription } from './gardenStructureSunflowerReason';
 import { NoSunflowersPlaceholder } from './NoSunflowersPlaceholder';
 
 function sunflowerReasonToDescription(reason: string) {
@@ -152,22 +149,6 @@ function sunflowerReasonToDescription(reason: string) {
         return {
             icon: <GameRefundIcon className="size-10 shrink-0" aria-hidden />,
             label: 'Povrat sredstava za radnju',
-        };
-    }
-
-    const gardenStructureDescription =
-        getGardenStructureSunflowerHistoryDescription(reason);
-    if (gardenStructureDescription) {
-        return {
-            icon:
-                gardenStructureDescription.icon === 'refund' ? (
-                    <GameRefundIcon className="size-10 shrink-0" aria-hidden />
-                ) : gardenStructureDescription.icon === 'resize' ? (
-                    <GameRulerIcon className="size-10 shrink-0" aria-hidden />
-                ) : (
-                    <GameBlocksIcon className="size-10 shrink-0" aria-hidden />
-                ),
-            label: gardenStructureDescription.label,
         };
     }
 

@@ -17,7 +17,6 @@ function garden(id: number) {
         members: id === 12 ? [] : [summary(id).owner],
         raisedBeds: [],
         stacks: {},
-        structures: [],
         updatedAt: '2026-09-14T12:00:00.000Z',
     };
 }

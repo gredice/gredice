@@ -8,6 +8,53 @@ export type AutumnLeafSurface = {
     gradientZ?: number;
 };
 
+/** Part-local anchors are transformed by the rendered part, never by a second
+ * copy of the block's animation. The optional scale keeps narrow slat clusters
+ * inside their audited footprint after the bench root's 0.52 scale.
+ */
+export type AutumnPartLeafSurface = AutumnLeafSurface & {
+    scale?: number;
+};
+
+export const autumnPartLeafSurfaces: Readonly<
+    Record<string, readonly AutumnPartLeafSurface[]>
+> = {
+    WoodenBench_SeatSlatFront: [
+        { id: 'left', position: [-0.4, 0.065, 0], scale: 0.45 },
+        { id: 'right', position: [0.4, 0.065, 0], scale: 0.45 },
+    ],
+    WoodenBench_SeatSlatCenter: [
+        { id: 'left', position: [-0.4, 0.065, 0], scale: 0.45 },
+        { id: 'right', position: [0.4, 0.065, 0], scale: 0.45 },
+    ],
+    WoodenBench_SeatSlatBack: [
+        { id: 'left', position: [-0.4, 0.065, 0], scale: 0.45 },
+        { id: 'right', position: [0.4, 0.065, 0], scale: 0.45 },
+    ],
+    OutletDisplayTable_TopPlanks: [
+        { id: 'nw', position: [-0.27, 0.67, -0.255] },
+        { id: 'ne', position: [0.27, 0.67, -0.255] },
+        { id: 'sw', position: [-0.27, 0.67, 0.255] },
+        { id: 'se', position: [0.27, 0.67, 0.255] },
+    ],
+    GardenBox_Lid_HingeOrigin: [
+        { id: 'left', position: [-0.23, 0.06, 0.3] },
+        { id: 'right', position: [0.23, 0.06, 0.3] },
+    ],
+    FenceGate_Posts: [
+        { id: 'left', position: [-0.43, 0.55, 0] },
+        { id: 'right', position: [0.43, 0.55, 0] },
+    ],
+    StoneFenceGate_Posts_Mesh: [
+        { id: 'left', position: [-0.43, 0.68, 0] },
+        { id: 'right', position: [0.43, 0.68, 0] },
+    ],
+    PolishedStoneFenceGate_Posts: [
+        { id: 'left', position: [-0.43, 0.68, 0] },
+        { id: 'right', position: [0.43, 0.68, 0] },
+    ],
+};
+
 const giftBoxSurfaces: readonly AutumnLeafSurface[] = [
     { id: 'GiftBox_Box:nw', position: [-0.13, 0.5, -0.13] },
     { id: 'GiftBox_Box:se', position: [0.13, 0.5, 0.13] },
@@ -42,6 +89,15 @@ export const autumnLeafSurfaces: Readonly<
             position: [0, 0.245439, 0.12],
             gradientX: 0.189321,
             gradientZ: -0.523459,
+        },
+    ],
+    // Stone_Large is scaled [0.263, 0.426, 0.291] by both render paths.
+    StoneLarge: [
+        {
+            id: 'Stone_Large:top-west',
+            position: [-0.1035, 0.5867, -0.0574],
+            gradientX: 0.081585,
+            gradientZ: 0.329026,
         },
     ],
     // Each U segment is expanded by the same footprint helper as RaisedBedInstances.

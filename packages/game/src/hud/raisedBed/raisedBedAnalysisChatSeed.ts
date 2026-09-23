@@ -69,3 +69,11 @@ export function buildRaisedBedAnalysisChatSeed({
         suggestions: raisedBedAnalysisSuggestions,
     };
 }
+
+/** A saved analysis has one durable conversation per user; the API still enforces ownership. */
+export function getRaisedBedAnalysisConversationId(
+    analysisId: number,
+    userId: string,
+) {
+    return `analysis-${analysisId}-${userId}`;
+}

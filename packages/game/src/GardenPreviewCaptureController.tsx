@@ -87,7 +87,6 @@ function publicGardenDetailFromCurrentGarden(
         name: garden.name,
         raisedBeds: garden.raisedBeds,
         stacks: publicGardenStacksFromCurrentGarden(garden.stacks),
-        structures: garden.structures,
         updatedAt: sourceRevision,
     };
 }

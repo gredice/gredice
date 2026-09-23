@@ -6,7 +6,6 @@ import { useGameFlags } from './GameFlagsContext';
 import { GameHud } from './GameHud';
 import styles from './GameScene.module.css';
 import { GardenOverview2DMap } from './GardenOverview2DMap';
-import { GardenStructureOverview2DPanel } from './GardenStructureOverview2DPanel';
 import { useBlockData } from './hooks/useBlockData';
 import { useClearSandboxEnvironmentOverrides } from './hooks/useClearSandboxEnvironmentOverrides';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
@@ -14,7 +13,6 @@ import { useSyncGameTime } from './hooks/useSyncGameTime';
 import { useSyncGardenBackgroundPalette } from './hooks/useSyncGardenBackgroundPalette';
 import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { getSolarEclipseState } from './scene/solarEclipse';
-import { resolveGardenStructureBuildModeEnabled } from './structures/gardenStructureRollout';
 import { useGameState } from './useGameState';
 import { useRaisedBedCloseup } from './useRaisedBedCloseup';
 import { defaultGameLocation } from './utils/timeOfDay';
@@ -136,12 +134,6 @@ export function GardenOverview2DContent({
         );
     }
 
-    const gardenStructureBuildEnabled = resolveGardenStructureBuildModeEnabled({
-        fixture: isLocalSandbox,
-        managedEnabled: Boolean(flags.enableGardenBuildingSystemFlag),
-        serverEnabled: Boolean(garden.gardenBuildingSystem?.enabled),
-    });
-
     return (
         <div
             data-garden-renderer="2d"
@@ -156,12 +148,6 @@ export function GardenOverview2DContent({
                 garden={garden}
                 solarEclipseObscuration={solarEclipseObscuration}
             />
-            {garden.structures.length > 0 || gardenStructureBuildEnabled ? (
-                <GardenStructureOverview2DPanel
-                    buildEnabled={gardenStructureBuildEnabled}
-                    structures={garden.structures}
-                />
-            ) : null}
             {hud}
             {isLocalSandbox ? null : (
                 <span className="sr-only">

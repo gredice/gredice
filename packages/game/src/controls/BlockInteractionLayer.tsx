@@ -1,11 +1,12 @@
 'use client';
 
 import type { ThreeEvent } from '@react-three/fiber';
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { type Mesh, MeshBasicMaterial, type Vector3 } from 'three';
 import { instancedBlockNames } from '../entities/EntityInstances';
 import { useBlockData } from '../hooks/useBlockData';
 import { updateGameProfileMetadata } from '../scene/gameProfileMetadata';
+import { GardenSpatialIndex } from '../spatial/GardenSpatialIndex';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { getBlockHitboxSize } from '../utils/blockHitbox';
@@ -20,6 +21,7 @@ import {
     hasCloserNonLayerIntersection,
     resolveBlockInteractionLayerTarget,
 } from './BlockInteractionResolver';
+import { syncBlockInteractionSpatialIndex } from './BlockInteractionSpatialIndex';
 import {
     InstancedBlockInteractionController,
     type InstancedBlockInteractionControllerApi,
@@ -31,6 +33,14 @@ type LayerEvent<TEvent extends PointerEvent | MouseEvent> =
         __blockInteractionStopped?: () => boolean;
     };
 
+const stackTargetCache = new WeakMap<
+    Stack,
+    {
+        blockData: ReturnType<typeof useBlockData>['data'];
+        targets: BlockInteractionLayerTarget[];
+    }
+>();
+
 export function getBlockInteractionLayerTargets({
     blockData,
     stacks,
@@ -41,6 +51,12 @@ export function getBlockInteractionLayerTargets({
     const targets: BlockInteractionLayerTarget[] = [];
 
     for (const stack of stacks ?? []) {
+        const cached = stackTargetCache.get(stack);
+        if (cached && cached.blockData === blockData) {
+            targets.push(...cached.targets);
+            continue;
+        }
+        const stackTargets: BlockInteractionLayerTarget[] = [];
         stack.blocks.forEach((block, blockIndex) => {
             if (!instancedBlockNames.includes(block.name)) {
                 return;
@@ -49,7 +65,7 @@ export function getBlockInteractionLayerTargets({
             const blockEntity = getBlockDataByName(blockData, block.name);
             const hitbox = getBlockHitboxSize(blockEntity);
             const stackHeight = getStackHeight(blockData, stack, block);
-            targets.push({
+            stackTargets.push({
                 block,
                 blockIndex,
                 hitbox,
@@ -62,6 +78,8 @@ export function getBlockInteractionLayerTargets({
                 stackHeight,
             });
         });
+        stackTargetCache.set(stack, { blockData, targets: stackTargets });
+        targets.push(...stackTargets);
     }
 
     return targets;
@@ -117,6 +135,13 @@ export function BlockInteractionLayer({
         () => getBlockInteractionLayerTargets({ blockData, stacks }),
         [blockData, stacks],
     );
+    const [spatialIndex] = useState(
+        () => new GardenSpatialIndex<BlockInteractionLayerTarget>(),
+    );
+    useLayoutEffect(() => {
+        syncBlockInteractionSpatialIndex(spatialIndex, targets);
+        updateGameProfileMetadata({ spatialPicking: spatialIndex.metrics });
+    }, [spatialIndex, targets]);
     const interactionBounds = useMemo(
         () => getBlockInteractionLayerBounds(targets),
         [targets],
@@ -214,7 +239,7 @@ export function BlockInteractionLayer({
     ) {
         const resolutionStart = performance.now();
         const resolvedLayerTarget = resolveBlockInteractionLayerTarget(
-            targets,
+            spatialIndex.queryRay(event.ray),
             event.ray,
         );
         recordResolutionDuration(performance.now() - resolutionStart);

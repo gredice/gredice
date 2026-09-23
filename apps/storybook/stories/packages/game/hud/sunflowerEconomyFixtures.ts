@@ -94,9 +94,6 @@ export const sunflowerVisualHistory = [
     { reason: 'birthday:2026', amount: 1000 },
     { reason: 'tutorial:open-cart', amount: 25 },
     { reason: 'sunflowerDrop', amount: 1 },
-    { reason: 'gardenStructure:1:2:create:3:debit', amount: -500 },
-    { reason: 'gardenStructure:1:2:resize:3:debit', amount: -200 },
-    { reason: 'gardenStructure:1:2:delete:3:refund', amount: 500 },
     { reason: 'registration', amount: 100 },
 ].map((event, index) => ({
     ...event,

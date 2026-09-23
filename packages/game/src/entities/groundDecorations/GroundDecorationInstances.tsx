@@ -6,7 +6,6 @@ import {
     Box3,
     DynamicDrawUsage,
     Euler,
-    Frustum,
     InstancedBufferAttribute,
     type InstancedMesh,
     type IUniform,
@@ -24,6 +23,7 @@ import {
     useSceneTimeInvalidation,
     useSceneTimeUniform,
 } from '../../scene/SceneTime';
+import { useCameraFrame } from '../../spatial/useCameraFrame';
 import { resolveSpriteAtlasAssetPaths } from '../../sprites/resolveSpriteAtlasAssetPaths';
 import { getSpriteBrightness } from '../../sprites/spriteLighting';
 import type { SpriteAtlasPage, SpriteAtlasSprite } from '../../sprites/types';
@@ -85,12 +85,6 @@ type GroundDecorationProfileBatchStats = {
     chunkKeys: string[];
     instanceCount: number;
     visibleCount: number;
-};
-
-type GroundDecorationCameraSnapshot = {
-    position: Vector3;
-    projectionMatrix: Matrix4;
-    quaternion: Quaternion;
 };
 
 type RecordGroundDecorationProfileBatch = (
@@ -597,15 +591,13 @@ function GroundDecorationInstancedBatch({
     weather?: GroundDecorationWeather;
 }) {
     const meshRef = useRef<InstancedMesh | null>(null);
-    const avatarCameraSnapshotRef =
-        useRef<GroundDecorationCameraSnapshot | null>(null);
+    const avatarCameraVersionRef = useRef<number | null>(null);
     const visibleInstancesRef = useRef<GroundDecorationBatchInstance[]>([]);
     const staticAttributeGeometryRef = useRef<PlaneGeometry | null>(null);
     const profileInitializedRef = useRef(false);
     const camera = useThree((state) => state.camera);
     const matrix = useMemo(() => new Matrix4(), []);
-    const frustumMatrix = useMemo(() => new Matrix4(), []);
-    const frustum = useMemo(() => new Frustum(), []);
+    const readCameraFrame = useCameraFrame();
     const position = useMemo(() => new Vector3(), []);
     const quaternion = useMemo(() => new Quaternion(), []);
     const rotationZ = useMemo(() => new Quaternion(), []);
@@ -691,11 +683,7 @@ function GroundDecorationInstancedBatch({
                 return;
             }
 
-            frustumMatrix.multiplyMatrices(
-                camera.projectionMatrix,
-                camera.matrixWorldInverse,
-            );
-            frustum.setFromProjectionMatrix(frustumMatrix);
+            const frame = readCameraFrame();
 
             const wobbleAttribute = geometry.getAttribute(
                 'instanceWobble',
@@ -714,7 +702,7 @@ function GroundDecorationInstancedBatch({
             let visibleIndex = 0;
 
             for (const chunk of chunks) {
-                if (!frustum.intersectsBox(chunk.bounds)) {
+                if (!frame.intersectsBox(chunk.bounds)) {
                     continue;
                 }
 
@@ -784,10 +772,8 @@ function GroundDecorationInstancedBatch({
             batch.instances.length,
             batch.key,
             batch.atlasPageIndex,
-            camera,
             chunks,
-            frustum,
-            frustumMatrix,
+            readCameraFrame,
             geometry,
             matrix,
             position,
@@ -809,30 +795,13 @@ function GroundDecorationInstancedBatch({
 
     useFrame(() => {
         if (gardenAvatarView === 'overview') {
-            avatarCameraSnapshotRef.current = null;
+            avatarCameraVersionRef.current = null;
             return;
         }
 
-        const snapshot = avatarCameraSnapshotRef.current;
-        if (
-            snapshot?.position.equals(camera.position) &&
-            snapshot.quaternion.equals(camera.quaternion) &&
-            snapshot.projectionMatrix.equals(camera.projectionMatrix)
-        ) {
-            return;
-        }
-
-        if (snapshot) {
-            snapshot.position.copy(camera.position);
-            snapshot.quaternion.copy(camera.quaternion);
-            snapshot.projectionMatrix.copy(camera.projectionMatrix);
-        } else {
-            avatarCameraSnapshotRef.current = {
-                position: camera.position.clone(),
-                projectionMatrix: camera.projectionMatrix.clone(),
-                quaternion: camera.quaternion.clone(),
-            };
-        }
+        const frame = readCameraFrame();
+        if (avatarCameraVersionRef.current === frame.version) return;
+        avatarCameraVersionRef.current = frame.version;
         updateMatrices(camera.quaternion);
     }, -90);
 

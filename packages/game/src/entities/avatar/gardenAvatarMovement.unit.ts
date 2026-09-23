@@ -1331,7 +1331,7 @@ test('spawns beside a decoration when there is no roamable terrain', () => {
     assert.notDeepEqual({ x: spawn.x, z: spawn.z }, { x: 0, z: 0 });
 });
 
-test('queries only nearby collision buckets in a dense structure-sized world', () => {
+test('queries only nearby collision buckets in a dense collision world', () => {
     const surfaces = grid({ minX: 0, maxX: 19, minZ: 0, maxZ: 19 });
     const world = createIndexedGardenAvatarCollisionWorld({
         blockedCells: [],

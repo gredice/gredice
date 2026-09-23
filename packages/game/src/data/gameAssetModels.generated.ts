@@ -207,9 +207,6 @@ export const gameAssetModels = {
     HarvestBasket: { url: '/assets/models/HarvestBasket.glb?v=5361f192e361' },
     ArrowSign: { url: '/assets/models/ArrowSign.glb?v=a7af022e88ee' },
     WoodenSign: { url: '/assets/models/WoodenSign.glb?v=970d78ef2f60' },
-    GardenStructureKitV1: {
-        url: '/assets/models/GardenStructureKitV1.glb?v=07365ed157cb',
-    },
 } satisfies Record<string, { url: string }>;
 
 export type GameAssetName = keyof typeof gameAssetModels;
@@ -366,7 +363,6 @@ export const lazyGameAssetNames = [
     'HarvestBasket',
     'ArrowSign',
     'WoodenSign',
-    'GardenStructureKitV1',
 ] satisfies GameAssetName[];
 
 export const allGameAssetNames = [
@@ -515,5 +511,4 @@ export const allGameAssetNames = [
     'HarvestBasket',
     'ArrowSign',
     'WoodenSign',
-    'GardenStructureKitV1',
 ] satisfies GameAssetName[];

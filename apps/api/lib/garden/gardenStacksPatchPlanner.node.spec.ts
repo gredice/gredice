@@ -62,7 +62,6 @@ function plannerInput({
     operations = [{ op: 'test', path: '/0/0/0', value: 'ground' }],
     raisedBeds = [],
     stacks = [stack(0, 0, ['ground'])],
-    structures = [],
 }: Readonly<{
     blockData?: readonly GardenStacksPatchDirectoryBlock[];
     blocks?: readonly GardenStacksPatchBlock[];
@@ -70,7 +69,6 @@ function plannerInput({
     operations?: readonly GardenStacksPatchOperation[];
     raisedBeds?: readonly GardenStacksPatchRaisedBed[];
     stacks?: readonly GardenStacksPatchStack[];
-    structures?: GardenStacksPatchPlannerInput['snapshot']['structures'];
 }> = {}): GardenStacksPatchPlannerInput {
     return {
         blockData,
@@ -80,7 +78,6 @@ function plannerInput({
             garden: { isSandbox },
             raisedBeds,
             stacks,
-            structures,
         },
     };
 }
@@ -103,23 +100,6 @@ function expectFailure(
     }
     assert.equal(result.code, code);
     return result;
-}
-
-function structureDocument(...cells: readonly [number, number][]) {
-    return {
-        schemaVersion: 1,
-        footprint: {
-            cells: cells.map(([x, y]) => ({
-                spaceKind: 'interior',
-                x,
-                y,
-            })),
-        },
-        floors: [],
-        edges: [],
-        roofRegions: [],
-        props: [],
-    };
 }
 
 describe('planGardenStacksPatch path and operation boundary', () => {
@@ -457,55 +437,6 @@ describe('planGardenStacksPatch sequential move planning', () => {
         );
         expectFailure(uneven, 'INVALID_SPANNING_PLACEMENT');
     });
-
-    test('rejects duplicate active records and placements before mutation', () => {
-        const duplicateRecord = expectFailure(
-            planGardenStacksPatch(
-                plannerInput({
-                    blocks: [block('duplicate'), block('duplicate')],
-                    operations: [
-                        {
-                            op: 'move',
-                            from: '/0/0/0',
-                            path: '/1/0/-',
-                        },
-                    ],
-                    stacks: [stack(0, 0, ['duplicate'])],
-                }),
-            ),
-            'GARDEN_OCCUPANCY_INVALID_STATE',
-        );
-        assert.deepEqual(
-            duplicateRecord.occupancyError?.issues.map((issue) => issue.code),
-            ['duplicate-block-id'],
-        );
-
-        const duplicatePlacement = expectFailure(
-            planGardenStacksPatch(
-                plannerInput({
-                    blocks: [block('duplicate')],
-                    operations: [
-                        {
-                            op: 'move',
-                            from: '/0/0/0',
-                            path: '/2/0/-',
-                        },
-                    ],
-                    stacks: [
-                        stack(0, 0, ['duplicate']),
-                        stack(1, 0, ['duplicate']),
-                    ],
-                }),
-            ),
-            'GARDEN_OCCUPANCY_INVALID_STATE',
-        );
-        assert.deepEqual(
-            duplicatePlacement.occupancyError?.issues.map(
-                (issue) => issue.code,
-            ),
-            ['duplicate-block-placement'],
-        );
-    });
 });
 
 describe('planGardenStacksPatch recycle planning', () => {
@@ -683,56 +614,5 @@ describe('planGardenStacksPatch recycle planning', () => {
             ),
             'INVALID_REFUND_PRICE',
         );
-    });
-});
-
-describe('planGardenStacksPatch persisted structure fence', () => {
-    test('validates the final candidate through the shared occupancy service', () => {
-        const result = planGardenStacksPatch(
-            plannerInput({
-                operations: [{ op: 'remove', path: '/0/0/0' }],
-                structures: [
-                    {
-                        anchorX: 0,
-                        anchorY: 0,
-                        document: structureDocument([0, 0]),
-                        id: 'house',
-                        rotation: 0,
-                    },
-                ],
-            }),
-        );
-
-        const failure = expectFailure(result, 'GARDEN_OCCUPANCY_CONFLICT');
-        assert.deepEqual(
-            failure.occupancyError?.issues.map((issue) => issue.code),
-            ['missing-support'],
-        );
-    });
-
-    test('allows a support move when the final persisted structure stays valid', () => {
-        const plan = expectSuccess(
-            planGardenStacksPatch(
-                plannerInput({
-                    operations: [
-                        { op: 'move', from: '/0/0/0', path: '/1/0/-' },
-                    ],
-                    structures: [
-                        {
-                            anchorX: 1,
-                            anchorY: 0,
-                            document: structureDocument([0, 0]),
-                            id: 'house',
-                            rotation: 0,
-                        },
-                    ],
-                }),
-            ),
-        );
-
-        assert.deepEqual(plan.candidateStacks, [
-            stack(0, 0, []),
-            stack(1, 0, ['ground']),
-        ]);
     });
 });

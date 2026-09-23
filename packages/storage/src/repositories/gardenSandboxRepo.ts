@@ -5,9 +5,9 @@ import {
     events,
     gardenBlocks,
     gardenStacks,
-    gardenStructureOperations,
-    gardenStructures,
     gardens,
+    legacyGardenStructureOperations,
+    legacyGardenStructures,
     notifications,
     operations,
     raisedBedPlantingFields,
@@ -741,26 +741,26 @@ async function deleteSandboxGardenBlockBatch(
     return rows.length;
 }
 
-async function deleteSandboxGardenStructureOperationBatch(
+async function deleteSandboxLegacyGardenStructureOperationBatch(
     gardenId: number,
     batchSize: number,
 ) {
     const rows = await storage()
-        .select({ operationId: gardenStructureOperations.operationId })
-        .from(gardenStructureOperations)
-        .where(eq(gardenStructureOperations.gardenId, gardenId))
+        .select({ operationId: legacyGardenStructureOperations.operationId })
+        .from(legacyGardenStructureOperations)
+        .where(eq(legacyGardenStructureOperations.gardenId, gardenId))
         .limit(batchSize);
     if (rows.length === 0) {
         return 0;
     }
 
     await storage()
-        .delete(gardenStructureOperations)
+        .delete(legacyGardenStructureOperations)
         .where(
             and(
-                eq(gardenStructureOperations.gardenId, gardenId),
+                eq(legacyGardenStructureOperations.gardenId, gardenId),
                 inArray(
-                    gardenStructureOperations.operationId,
+                    legacyGardenStructureOperations.operationId,
                     rows.map((row) => row.operationId),
                 ),
             ),
@@ -768,24 +768,24 @@ async function deleteSandboxGardenStructureOperationBatch(
     return rows.length;
 }
 
-async function deleteSandboxGardenStructureBatch(
+async function deleteSandboxLegacyGardenStructureBatch(
     gardenId: number,
     batchSize: number,
 ) {
     const rows = await storage()
-        .select({ id: gardenStructures.id })
-        .from(gardenStructures)
-        .where(eq(gardenStructures.gardenId, gardenId))
+        .select({ id: legacyGardenStructures.id })
+        .from(legacyGardenStructures)
+        .where(eq(legacyGardenStructures.gardenId, gardenId))
         .limit(batchSize);
     if (rows.length === 0) {
         return 0;
     }
 
     await storage()
-        .delete(gardenStructures)
+        .delete(legacyGardenStructures)
         .where(
             inArray(
-                gardenStructures.id,
+                legacyGardenStructures.id,
                 rows.map((row) => row.id),
             ),
         );
@@ -955,20 +955,23 @@ async function deleteNextSandboxGardenDependencyBatch(
         return raisedBedRows;
     }
 
-    // Receipts deliberately do not cascade: remove durable idempotency records
-    // before their authoritative structure rows during sandbox hard deletion.
-    const structureOperationRows =
-        await deleteSandboxGardenStructureOperationBatch(garden.id, batchSize);
-    if (structureOperationRows > 0) {
-        return structureOperationRows;
+    // Legacy building rows reference the garden without cascading; remove
+    // receipts before the structures they point at.
+    const legacyStructureOperationRows =
+        await deleteSandboxLegacyGardenStructureOperationBatch(
+            garden.id,
+            batchSize,
+        );
+    if (legacyStructureOperationRows > 0) {
+        return legacyStructureOperationRows;
     }
 
-    const structureRows = await deleteSandboxGardenStructureBatch(
+    const legacyStructureRows = await deleteSandboxLegacyGardenStructureBatch(
         garden.id,
         batchSize,
     );
-    if (structureRows > 0) {
-        return structureRows;
+    if (legacyStructureRows > 0) {
+        return legacyStructureRows;
     }
 
     const stackRows = await deleteSandboxGardenStackBatch(garden.id, batchSize);
