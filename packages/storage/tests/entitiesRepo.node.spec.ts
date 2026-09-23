@@ -3,10 +3,12 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     createAttributeDefinition,
+    createAttributeValueMutationSideEffects,
     createEntity,
     deleteAttributeDefinition,
     deleteAttributeValue,
     deleteEntity,
+    flushAttributeValueMutationSideEffects,
     generatedImageUrlDefaultValue,
     getCommunityEditableFieldsForEntity,
     getEntitiesFormatted,
@@ -18,6 +20,7 @@ import {
     upsertAttributeValue,
     upsertEntityType,
 } from '@gredice/storage';
+import { storage } from '../src/storage';
 import { createTestDb } from './testDb';
 
 type FormattedSort = {
@@ -1503,6 +1506,51 @@ test('CMS generated image attributes are configured by attribute definitions', a
             url: 'https://cdn.example.test/assets/Parent%20Block.webp',
         }),
     );
+});
+
+test('transaction-scoped raw entity reads resolve parents through the transaction', async () => {
+    createTestDb();
+    const suffix = randomUUID();
+    const entityTypeName = `tx-parent-inheritance-${suffix}`;
+
+    await upsertEntityType({
+        name: entityTypeName,
+        label: `Transaction Parent Inheritance ${suffix}`,
+    });
+    const nameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName,
+        dataType: 'text',
+    });
+    const parentEntityId = await createEntity(entityTypeName);
+    const childEntityId = await createEntity(entityTypeName);
+    await updateEntity({ id: childEntityId, parentId: parentEntityId });
+
+    const sideEffects = createAttributeValueMutationSideEffects();
+    const inheritedName = await storage().transaction(async (tx) => {
+        await upsertAttributeValue(
+            {
+                attributeDefinitionId: nameDefinitionId,
+                entityTypeName,
+                entityId: parentEntityId,
+                value: 'Uncommitted Parent',
+            },
+            undefined,
+            { db: tx, sideEffects },
+        );
+        const child = (
+            await getEntitiesRaw(entityTypeName, undefined, tx)
+        ).find((entity) => entity.id === childEntityId);
+        return child?.attributes.find(
+            (attribute) => attribute.attributeDefinitionId === nameDefinitionId,
+        )?.value;
+    });
+
+    await flushAttributeValueMutationSideEffects(sideEffects);
+
+    assert.equal(inheritedName, 'Uncommitted Parent');
 });
 
 test('CMS boolean defaults stay virtual until explicitly overridden', async () => {

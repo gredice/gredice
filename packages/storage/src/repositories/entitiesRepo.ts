@@ -133,6 +133,7 @@ function parseEntityRefId(value: string | null | undefined) {
 async function buildEffectiveEntity(
     entity: EntityWithAttributesAndDefinitions,
     visited = new Set<number>(),
+    db: DatabaseClient = storage(),
 ): Promise<EntityWithAttributesAndDefinitions> {
     if (visited.has(entity.id)) {
         throw new Error('Cycle detected in entity hierarchy.');
@@ -143,7 +144,7 @@ async function buildEffectiveEntity(
         return populateMissingAttributes(entity);
     }
 
-    const parent = await storage().query.entities.findFirst({
+    const parent = await db.query.entities.findFirst({
         where: and(
             eq(entities.id, entity.parentId),
             eq(entities.isDeleted, false),
@@ -169,7 +170,7 @@ async function buildEffectiveEntity(
         return populateMissingAttributes(entity);
     }
 
-    const parentEffective = await buildEffectiveEntity(parent, visited);
+    const parentEffective = await buildEffectiveEntity(parent, visited, db);
     const childByDefinitionId = new Map(
         entity.attributes.map((attribute) => [
             attribute.attributeDefinitionId,
@@ -356,7 +357,9 @@ export async function getEntitiesRaw(
     );
 
     return Promise.all(
-        rawEntities.map((entity) => buildEffectiveEntity(entity)),
+        rawEntities.map((entity) =>
+            buildEffectiveEntity(entity, new Set<number>(), db),
+        ),
     );
 }
 
