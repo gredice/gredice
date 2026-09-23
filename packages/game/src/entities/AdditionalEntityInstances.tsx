@@ -42,6 +42,11 @@ import { fenceExtensionName, fenceVariantNames } from './Fence';
 import type { FenceConnectionShape } from './fenceConnections';
 import { GardenFlowerModel } from './helpers/GardenFlowerModel';
 import {
+    gardenBoxLidHingePosition,
+    gardenBoxOpenLidRotation,
+    gardenBoxRootQuarterTurns,
+} from './helpers/gardenBoxLidTransform';
+import {
     type GroundPatchSurface,
     useGroundPatchMaterial,
 } from './helpers/groundPatchMaterial';
@@ -1884,7 +1889,12 @@ function GardenBoxInstances({
     const instances = useEntityBlockInstances({
         name: 'GardenBox',
         stacks,
-    })?.map((instance) => mapInstanceRotation(instance, instance.rotation + 2));
+    })?.map((instance) =>
+        mapInstanceRotation(
+            instance,
+            instance.rotation + gardenBoxRootQuarterTurns,
+        ),
+    );
     const hoveredGardenBoxBlockId = useGameState(
         (state) => state.activeDragPreview?.hoveredGardenBoxBlockId ?? null,
     );
@@ -1924,7 +1934,7 @@ function GardenBoxInstances({
                 instances={closedLidInstances}
                 geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
                 material={materials[planksMaterialName]}
-                localPosition={[0, 0.6, -0.38]}
+                localPosition={gardenBoxLidHingePosition}
                 castShadow={false}
                 renderRainWetOverlay
                 snow={snowPresets.giftBox}
@@ -1935,8 +1945,8 @@ function GardenBoxInstances({
                 instances={openLidInstances}
                 geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
                 material={materials[planksMaterialName]}
-                localPosition={[0, 0.6, -0.38]}
-                localRotation={[-Math.PI / 2, 0, 0]}
+                localPosition={gardenBoxLidHingePosition}
+                localRotation={gardenBoxOpenLidRotation}
                 castShadow={false}
                 renderRainWetOverlay
                 snow={snowPresets.giftBox}
@@ -2065,8 +2075,10 @@ function GardenBoxHoverOutlines({
                     </mesh>
                     <mesh
                         geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
-                        position={[0, 0.6, -0.38]}
-                        rotation={lidOpen ? [-Math.PI / 2, 0, 0] : undefined}
+                        position={gardenBoxLidHingePosition}
+                        rotation={
+                            lidOpen ? gardenBoxOpenLidRotation : undefined
+                        }
                         raycast={() => null}
                     >
                         <meshBasicMaterial visible={false} />

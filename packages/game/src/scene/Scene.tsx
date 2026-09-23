@@ -28,6 +28,7 @@ import {
 } from '../entities/helpers/HoverOutline';
 import { useOptionalGameState } from '../useGameState';
 import { AdaptiveHighQualityController } from './AdaptiveHighQualityController';
+import { AutumnPartsProvider } from './AutumnParts';
 import { AutumnSourcesProvider } from './AutumnSources';
 import {
     type AdaptiveHighQualityLevelProfile,
@@ -421,7 +422,9 @@ export function Scene({
                                         )}
                                     />
                                     <AutumnSourcesProvider>
-                                        {children}
+                                        <AutumnPartsProvider>
+                                            {children}
+                                        </AutumnPartsProvider>
                                     </AutumnSourcesProvider>
                                     <HoverOutlineEffect />
                                 </HoverOutlineProvider>
