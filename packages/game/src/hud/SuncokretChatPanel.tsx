@@ -83,6 +83,11 @@ type SuncokretModel = {
     label: string;
 };
 
+type ConversationContext = Pick<
+    SuncokretChatTarget,
+    'gardenId' | 'raisedBedId' | 'positionIndex' | 'uiContext'
+>;
+
 export function SuncokretChatPanel({
     open,
     target,
@@ -116,6 +121,10 @@ export function SuncokretChatPanel({
     const [activeConversationTitle, setActiveConversationTitle] = useState<
         string | null
     >(null);
+    const [savedContext, setSavedContext] = useState<{
+        sourceKey: string;
+        context: ConversationContext;
+    } | null>(null);
     const [chatView, setChatView] = useState<'chat' | 'conversations'>('chat');
     const [conversations, setConversations] = useState<
         SuncokretConversationSummary[]
@@ -143,14 +152,20 @@ export function SuncokretChatPanel({
         }
         return params.toString();
     }, [debug, featureFlagQuery, modelId]);
+    const { seed, conversationLabel } = target;
+    const contextKey = JSON.stringify([
+        target.gardenId,
+        target.raisedBedId,
+        target.positionIndex,
+        target.uiContext,
+        seed?.id,
+    ]);
     const {
         gardenId,
         positionIndex,
         raisedBedId: contextRaisedBedId,
         uiContext,
-        seed,
-        conversationLabel,
-    } = target;
+    } = savedContext?.sourceKey === contextKey ? savedContext.context : target;
     const appliedSeedIdRef = useRef<string | null>(null);
     const requestContextRef = useRef({
         conversationId: activeConversationId,
@@ -301,6 +316,7 @@ export function SuncokretChatPanel({
         }
 
         appliedSeedIdRef.current = seed.id;
+        setSavedContext(null);
         clearError();
         setInput('');
         setMessages(seedMessages(seed));
@@ -426,6 +442,19 @@ export function SuncokretChatPanel({
             );
             setActiveConversationId(conversation.id);
             setActiveConversationTitle(conversation.title);
+            setSavedContext({
+                sourceKey: contextKey,
+                context: {
+                    gardenId: conversation.gardenId,
+                    raisedBedId: conversation.raisedBedId,
+                    positionIndex: null,
+                    uiContext: {
+                        surface: conversation.raisedBedId
+                            ? 'raised-bed'
+                            : 'garden',
+                    },
+                },
+            });
             if (
                 debug &&
                 conversation.model &&
@@ -453,6 +482,7 @@ export function SuncokretChatPanel({
         setMessages([]);
         setActiveConversationId(randomChatId());
         setActiveConversationTitle(null);
+        setSavedContext(null);
         setChatView('chat');
     };
 
@@ -493,7 +523,9 @@ export function SuncokretChatPanel({
         limit?.blockedReason || dailyUsageExhausted || weeklyUsageExhausted,
     );
     const contextSuggestions =
-        seed?.suggestions ?? suncokretContextSuggestions(uiContext);
+        (messages.some((message) => message.id === `${seed?.id}-0`)
+            ? seed?.suggestions
+            : undefined) ?? suncokretContextSuggestions(uiContext);
     // A seeded thread already shows the analysis, so the empty-state prompts
     // are offered under it until the first question is asked.
     const showSeededSuggestions =

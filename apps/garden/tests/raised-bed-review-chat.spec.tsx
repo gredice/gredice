@@ -503,6 +503,118 @@ test('photos inside the conversation open in the full-size gallery without losin
 });
 
 for (const review of [true, false]) {
+    test(`history selection retargets requests from ${review ? 'photo' : 'ordinary'} chat`, async ({
+        mount,
+        page,
+    }) => {
+        const other = {
+            id: 'other-garden-conversation',
+            title: 'Savjeti za drugi vrt',
+            model: null,
+            gardenId: 2,
+            raisedBedId: 22,
+            createdAt: '2026-09-22T12:00:00Z',
+            lastMessageAt: null,
+            messages: [
+                {
+                    id: 'other-message',
+                    role: 'assistant',
+                    parts: [{ type: 'text', text: 'Savjeti za drugi vrt.' }],
+                },
+            ],
+        };
+        let sent: Record<string, unknown> | undefined;
+        await page.route('**/api/ai/suncokret/status?*', (route) =>
+            route.fulfill({ json: status }),
+        );
+        await page.route('**/api/ai/suncokret/conversations?*', (route) =>
+            route.fulfill({ json: { conversations: [other] } }),
+        );
+        await page.route('**/api/ai/suncokret/conversations/*', (route) =>
+            route.fulfill(
+                route.request().url().includes(other.id)
+                    ? { json: { conversation: other } }
+                    : { status: 404, json: {} },
+            ),
+        );
+        await page.route('**/api/ai/suncokret/chat', (route) => {
+            sent = route.request().postDataJSON();
+            return route.fulfill({
+                status: 500,
+                json: { error: 'Request captured' },
+            });
+        });
+        await mount(<SuncokretChatHudStory review={review} />);
+        await page
+            .getByRole('button', {
+                name: review ? 'Pregledaj savjete suncokreta' : 'Suncokret AI',
+            })
+            .click();
+        const chat = page.getByRole('dialog', {
+            name: 'Razgovor sa Suncokretom',
+        });
+        await chat.getByRole('button', { name: 'Prijašnji razgovori' }).click();
+        await chat
+            .getByRole('button', { name: /Savjeti za drugi vrt/ })
+            .click();
+        await chat.getByRole('textbox').fill('Što učiniti ovdje?');
+        await chat.getByRole('button', { name: 'Pošalji' }).click();
+        await expect
+            .poll(() => sent)
+            .toMatchObject({
+                conversationId: other.id,
+                gardenId: 2,
+                raisedBedId: 22,
+                positionIndex: null,
+                uiContext: { surface: 'raised-bed' },
+            });
+    });
+}
+
+test('switching gardens clears a retained photo conversation before the global trigger reopens', async ({
+    mount,
+    page,
+}) => {
+    let sent: Record<string, unknown> | undefined;
+    await page.route('**/api/ai/suncokret/status?*', (route) =>
+        route.fulfill({ json: status }),
+    );
+    await page.route('**/api/ai/suncokret/conversations/*', (route) =>
+        route.fulfill({ status: 404, json: {} }),
+    );
+    await page.route('**/api/ai/suncokret/chat', (route) => {
+        sent = route.request().postDataJSON();
+        return route.fulfill({
+            status: 500,
+            json: { error: 'Request captured' },
+        });
+    });
+    await mount(<SuncokretChatHudStory review switchGarden />);
+    await page
+        .getByRole('button', { name: 'Pregledaj savjete suncokreta' })
+        .click();
+    const chat = page.getByRole('dialog', { name: 'Razgovor sa Suncokretom' });
+    await chat.getByRole('textbox').fill('Pitanje za prvi vrt');
+    await chat.getByRole('button', { name: 'Zatvori', exact: true }).click();
+    await page.getByRole('button', { name: 'Otvori drugi vrt' }).click();
+    await page.getByRole('button', { name: 'Suncokret AI' }).click();
+    await expect(chat).toContainText('Razgovor za Drugi vrt');
+    await expect(chat.getByRole('textbox')).toHaveValue('');
+    await expect(chat.getByText('Grah ima zrele mahune.')).toHaveCount(0);
+    await chat.getByRole('textbox').fill('Pitanje za drugi vrt');
+    await chat.getByRole('button', { name: 'Pošalji' }).click();
+    await expect
+        .poll(() => sent)
+        .toMatchObject({
+            gardenId: 2,
+            raisedBedId: null,
+            positionIndex: null,
+            uiContext: { surface: 'garden' },
+        });
+    expect(sent?.conversationId).not.toBe(conversationId);
+});
+
+for (const review of [true, false]) {
     test(`message dates group restored ${review ? 'review' : 'HUD'} conversations and streamed replies`, async ({
         mount,
         page,

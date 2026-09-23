@@ -83,6 +83,7 @@ export function SuncokretChatHud() {
                 </HudCard>
             )}
             <SuncokretChatPanel
+                key={defaultGardenId}
                 open={chat.open && !target.photoAnalysis}
                 target={target}
                 onClose={chat.closeChat}

@@ -57,12 +57,24 @@ const SuncokretChatContext = createContext<SuncokretChatController | null>(
     null,
 );
 
-export function SuncokretChatProvider({ children }: PropsWithChildren) {
+export function SuncokretChatProvider({
+    children,
+    gardenId,
+}: PropsWithChildren<{ gardenId: number | null }>) {
+    const [previousGardenId, setPreviousGardenId] = useState(gardenId);
     const [open, setOpen] = useState(false);
     const [target, setTarget] = useState<SuncokretChatTarget | null>(null);
     const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(
         null,
     );
+
+    // Garden changes end the retained context before any trigger can reopen it.
+    if (previousGardenId !== gardenId) {
+        setPreviousGardenId(gardenId);
+        setTarget(null);
+        setAnchorElement(null);
+        setOpen(false);
+    }
 
     const closeChat = useCallback(() => setOpen(false), []);
     const openChat = useCallback(

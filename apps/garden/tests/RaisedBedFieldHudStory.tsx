@@ -198,7 +198,7 @@ export function RaisedBedHudTestProviders({
             <ReactQuery.QueryClientProvider client={queryClient}>
                 <GameStateContext.Provider value={gameStore}>
                     <GameFlagsContext.Provider value={{}}>
-                        <SuncokretChatProvider>
+                        <SuncokretChatProvider gardenId={TEST_GARDEN_ID}>
                             <GameAnalyticsProvider
                                 capture={(eventName, properties) => {
                                     window.dispatchEvent(
