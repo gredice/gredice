@@ -1,4 +1,5 @@
 import {
+    getAiChatMessageTimestamp,
     getAiChatResponseTimestamp,
     suncokretPlantDetailTabs,
     suncokretRaisedBedDetailTabs,
@@ -1022,7 +1023,10 @@ const app = new Hono<{ Variables: ChatVariables }>()
                         parts: message.parts,
                         metadata: {
                             ...message.metadata,
-                            createdAt: message.createdAt.toISOString(),
+                            createdAt: (
+                                getAiChatMessageTimestamp(message.metadata) ??
+                                message.createdAt
+                            ).toISOString(),
                         },
                     })),
                 },

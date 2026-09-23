@@ -789,14 +789,24 @@ test('chat snapshots preserve message dates and expose timestamps for legacy mes
     const seedTime = new Date(
         Date.now() - 2 * 24 * 60 * 60 * 1000,
     ).toISOString();
-    const legacyTime = new Date(Date.now() - 60 * 60 * 1000);
     const seed = {
         id: 'dated-analysis',
         role: 'assistant',
         parts: [{ type: 'text', text: 'Analiza' }],
         metadata: { createdAt: seedTime },
     };
+    const beforeInitialSave = Date.now();
     await replaceAiChatMessages({ conversationId, messages: [seed] });
+    const initial = await getAiChatConversationForUser({
+        accountId,
+        userId,
+        conversationId,
+    });
+    const initialOrderingTime = initial?.messages[0]?.createdAt;
+    assert.ok(initialOrderingTime);
+    assert.ok(initialOrderingTime.getTime() >= beforeInitialSave);
+    assert.notEqual(initialOrderingTime.toISOString(), seedTime);
+    const legacyTime = new Date(initialOrderingTime.getTime() + 1);
     await storage()
         .insert(aiChatMessages)
         .values({
@@ -840,7 +850,10 @@ test('chat snapshots preserve message dates and expose timestamps for legacy mes
         restored.messages.map((message) => message.id),
         ['dated-analysis', 'legacy-question', 'new-reply'],
     );
-    assert.equal(restored.messages[0]?.createdAt.toISOString(), seedTime);
+    assert.equal(
+        restored.messages[0]?.createdAt.toISOString(),
+        initialOrderingTime.toISOString(),
+    );
     assert.equal(restored.messages[0]?.metadata?.createdAt, seedTime);
     assert.deepEqual(restored.messages[0]?.metadata?.suncokret, { usage: 1 });
     assert.equal(
@@ -869,4 +882,115 @@ test('chat snapshots preserve message dates and expose timestamps for legacy mes
         reopened?.messages.map((message) => message.createdAt),
         restored.messages.map((message) => message.createdAt),
     );
+});
+
+test('client clock skew and arbitrary dates cannot reorder persisted questions and replies', async () => {
+    createTestDb();
+    const { accountId, userId } = await createAiChatTestUser();
+    const conversationId = randomUUID();
+    await ensureAiChatConversation({
+        id: conversationId,
+        accountId,
+        userId,
+        model: 'openai/gpt-5.5',
+    });
+    const submitted = [
+        {
+            id: 'future-question',
+            role: 'user',
+            parts: [{ type: 'text', text: 'Pitanje s brzim satom' }],
+            metadata: { createdAt: '2099-01-01T12:00:00.000Z' },
+        },
+        {
+            id: 'server-reply',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Odgovor' }],
+            metadata: { createdAt: new Date().toISOString() },
+        },
+        {
+            id: 'backdated-question',
+            role: 'user',
+            parts: [{ type: 'text', text: 'Pitanje s proizvoljnim datumom' }],
+            metadata: { createdAt: '1900-01-01T12:00:00.000Z' },
+        },
+        {
+            id: 'second-reply',
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Drugi odgovor' }],
+            metadata: { createdAt: new Date().toISOString() },
+        },
+    ];
+    const beforeSave = Date.now();
+    await replaceAiChatMessages({ conversationId, messages: submitted });
+    const restored = await getAiChatConversationForUser({
+        accountId,
+        userId,
+        conversationId,
+    });
+    assert.ok(restored);
+    assert.deepEqual(
+        restored.messages.map((message) => message.id),
+        submitted.map((message) => message.id),
+    );
+    assert.deepEqual(
+        restored.messages.map((message) => message.metadata?.createdAt),
+        submitted.map((message) => message.metadata.createdAt),
+    );
+    const orderingTimes = restored.messages.map((message) =>
+        message.createdAt.getTime(),
+    );
+    assert.ok(
+        orderingTimes.every(
+            (timestamp) =>
+                timestamp >= beforeSave &&
+                timestamp <= Date.now() + submitted.length,
+        ),
+    );
+    assert.ok(
+        orderingTimes.every(
+            (timestamp, index) =>
+                index === 0 || timestamp > orderingTimes[index - 1],
+        ),
+    );
+
+    // Later snapshots cannot rewrite old ordering/display dates, and a new
+    // backdated message still follows the previously stored transcript.
+    await replaceAiChatMessages({
+        conversationId,
+        messages: [
+            ...submitted.map((message) => ({
+                ...message,
+                metadata: { createdAt: '2100-01-01T12:00:00Z' },
+            })),
+            {
+                id: 'later-question',
+                role: 'user',
+                parts: [{ type: 'text', text: 'Nastavak' }],
+                metadata: { createdAt: '1800-01-01T12:00:00.000Z' },
+            },
+        ],
+    });
+    const reopened = await getAiChatConversationForUser({
+        accountId,
+        userId,
+        conversationId,
+    });
+    assert.ok(reopened);
+    assert.deepEqual(
+        reopened.messages.map((message) => message.id),
+        [...submitted.map((message) => message.id), 'later-question'],
+    );
+    assert.deepEqual(
+        reopened.messages
+            .slice(0, submitted.length)
+            .map((message) => message.createdAt.getTime()),
+        orderingTimes,
+    );
+    assert.deepEqual(
+        reopened.messages
+            .slice(0, submitted.length)
+            .map((message) => message.metadata?.createdAt),
+        submitted.map((message) => message.metadata.createdAt),
+    );
+    assert.ok(reopened.messages[4].createdAt.getTime() > orderingTimes[3]);
 });

@@ -893,13 +893,22 @@ export async function replaceAiChatMessages({
             .select({
                 id: aiChatMessages.id,
                 createdAt: aiChatMessages.createdAt,
+                metadata: aiChatMessages.metadata,
             })
             .from(aiChatMessages)
             .where(eq(aiChatMessages.conversationId, conversationId));
-        const existingTimestamps = new Map(
-            existingMessages.map((message) => [message.id, message.createdAt]),
+        const existingMessagesById = new Map(
+            existingMessages.map((message) => [message.id, message]),
         );
-        const now = new Date();
+        // createdAt orders the transcript. Client dates are display metadata only.
+        // Separate milliseconds keep a question ahead of its reply, including
+        // when both arrive in one snapshot or a continuation is saved immediately.
+        let nextOrderingTimestamp = Math.max(
+            Date.now(),
+            ...existingMessages.map(
+                (message) => message.createdAt.getTime() + 1,
+            ),
+        );
         const existingToolCalls = await tx
             .select()
             .from(aiChatToolCalls)
@@ -920,10 +929,18 @@ export async function replaceAiChatMessages({
         if (normalizedMessages.length > 0) {
             await tx.insert(aiChatMessages).values(
                 normalizedMessages.map((message) => {
+                    const existingMessage = existingMessagesById.get(
+                        message.id,
+                    );
                     const createdAt =
-                        existingTimestamps.get(message.id) ??
-                        getAiChatMessageTimestamp(message.metadata) ??
-                        now;
+                        existingMessage?.createdAt ??
+                        new Date(nextOrderingTimestamp++);
+                    const displayTimestamp = existingMessage
+                        ? (getAiChatMessageTimestamp(
+                              existingMessage.metadata,
+                          ) ?? existingMessage.createdAt)
+                        : (getAiChatMessageTimestamp(message.metadata) ??
+                          createdAt);
                     return {
                         id: message.id,
                         conversationId,
@@ -931,7 +948,7 @@ export async function replaceAiChatMessages({
                         parts: message.parts,
                         metadata: {
                             ...message.metadata,
-                            createdAt: createdAt.toISOString(),
+                            createdAt: displayTimestamp.toISOString(),
                         },
                         createdAt,
                     };
