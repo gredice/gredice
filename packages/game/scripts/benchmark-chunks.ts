@@ -82,11 +82,6 @@ for (const asset of ['BlockGround', 'BlockGrass', 'BlockStone']) {
                 for (const clone of clones) clone.dispose();
             });
             const synchronous = components <= synchronousChunkComponentLimit;
-            if (synchronous)
-                assert.ok(
-                    direct.p95Ms < 2,
-                    `${asset} small-patch p95 exceeded 2 ms`,
-                );
             geometryResults.push({
                 asset,
                 vertices: source.getAttribute('position').count,
@@ -132,4 +127,12 @@ console.log(
         null,
         2,
     ),
+);
+// Keep the complete measurements even when a loaded host misses the budget.
+assert.deepEqual(
+    geometryResults.filter(
+        (result) => result.synchronous && result.direct.p95Ms >= 2,
+    ),
+    [],
+    'small-patch p95 exceeded 2 ms',
 );
