@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
+    aiChatMessages,
     aiChatUsageDateKey,
     aiUsageLedger,
     calculateAiChatUsageCostMicroEur,
@@ -773,4 +774,99 @@ test('normalizeAiChatMessagesForStorage rejects spaced provider tool protocol te
             text: 'Nisam uspio dovršiti odgovor. Pokušaj ponovno — ne moraš mijenjati pitanje.',
         },
     ]);
+});
+
+test('chat snapshots preserve message dates and expose timestamps for legacy messages', async () => {
+    createTestDb();
+    const { accountId, userId } = await createAiChatTestUser();
+    const conversationId = randomUUID();
+    await ensureAiChatConversation({
+        id: conversationId,
+        accountId,
+        userId,
+        model: 'openai/gpt-5.5',
+    });
+    const seedTime = new Date(
+        Date.now() - 2 * 24 * 60 * 60 * 1000,
+    ).toISOString();
+    const legacyTime = new Date(Date.now() - 60 * 60 * 1000);
+    const seed = {
+        id: 'dated-analysis',
+        role: 'assistant',
+        parts: [{ type: 'text', text: 'Analiza' }],
+        metadata: { createdAt: seedTime },
+    };
+    await replaceAiChatMessages({ conversationId, messages: [seed] });
+    await storage()
+        .insert(aiChatMessages)
+        .values({
+            id: 'legacy-question',
+            conversationId,
+            role: 'user',
+            parts: [{ type: 'text', text: 'Pitanje' }],
+            createdAt: legacyTime,
+        });
+    const beforeSave = Date.now();
+    await replaceAiChatMessages({
+        conversationId,
+        messages: [
+            {
+                ...seed,
+                metadata: {
+                    createdAt: '2026-09-24T15:00:00Z',
+                    suncokret: { usage: 1 },
+                },
+            },
+            {
+                id: 'legacy-question',
+                role: 'user',
+                parts: [{ type: 'text', text: 'Pitanje' }],
+            },
+            {
+                id: 'new-reply',
+                role: 'assistant',
+                parts: [{ type: 'text', text: 'Odgovor' }],
+                metadata: { createdAt: 'invalid' },
+            },
+        ],
+    });
+    const restored = await getAiChatConversationForUser({
+        accountId,
+        userId,
+        conversationId,
+    });
+    assert.ok(restored);
+    assert.deepEqual(
+        restored.messages.map((message) => message.id),
+        ['dated-analysis', 'legacy-question', 'new-reply'],
+    );
+    assert.equal(restored.messages[0]?.createdAt.toISOString(), seedTime);
+    assert.equal(restored.messages[0]?.metadata?.createdAt, seedTime);
+    assert.deepEqual(restored.messages[0]?.metadata?.suncokret, { usage: 1 });
+    assert.equal(
+        restored.messages[1]?.createdAt.toISOString(),
+        legacyTime.toISOString(),
+    );
+    assert.equal(
+        restored.messages[1]?.metadata?.createdAt,
+        legacyTime.toISOString(),
+    );
+    assert.ok(restored.messages[2].createdAt.getTime() >= beforeSave);
+    assert.equal(
+        restored.messages[2]?.metadata?.createdAt,
+        restored.messages[2]?.createdAt.toISOString(),
+    );
+    await replaceAiChatMessages({
+        conversationId,
+        messages: restored.messages,
+    });
+    const reopened = await getAiChatConversationForUser({
+        accountId,
+        userId,
+        conversationId,
+    });
+    assert.deepEqual(
+        reopened?.messages.map((message) => message.createdAt),
+        restored.messages.map((message) => message.createdAt),
+    );
 });

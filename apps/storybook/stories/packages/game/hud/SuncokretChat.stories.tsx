@@ -67,6 +67,7 @@ const meta = {
                             },
                             {
                                 id: 'question',
+                                metadata: { createdAt: '2026-09-23T11:00:00Z' },
                                 role: 'user',
                                 parts: [
                                     {
@@ -77,6 +78,7 @@ const meta = {
                             },
                             {
                                 id: 'answer',
+                                metadata: { createdAt: '2026-09-23T11:00:30Z' },
                                 role: 'assistant',
                                 parts: [
                                     {

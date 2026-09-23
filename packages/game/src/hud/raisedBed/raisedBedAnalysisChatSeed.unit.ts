@@ -9,10 +9,12 @@ test('buildRaisedBedAnalysisChatSeed opens the thread with the raised bed analys
     const seed = buildRaisedBedAnalysisChatSeed({
         analysisMarkdown: '## Sažetak stanja\nSve izgleda dobro.',
         id: 'seed-1',
+        analyzedAt: new Date('2026-05-13T09:00:00Z'),
         referenceDate: new Date('2026-05-12T10:00:00.000Z'),
     });
 
     assert.strictEqual(seed.id, 'seed-1');
+    assert.equal(seed.messages[0]?.createdAt, '2026-05-13T09:00:00.000Z');
     assert.strictEqual(seed.messages.length, 1);
     assert.strictEqual(seed.messages[0]?.role, 'assistant');
     assert.match(

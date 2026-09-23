@@ -14,6 +14,7 @@ import type { SuncokretContextSuggestion } from './suncokretChatContext';
 export type SuncokretChatSeedMessage = {
     role: 'assistant' | 'user';
     text: string;
+    createdAt?: string;
 };
 
 /**
