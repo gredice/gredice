@@ -18,7 +18,6 @@ import {
     getGardenStackForUpdate,
     getGardenStacks,
     knownEventTypes,
-    listGardenStructures,
     softDeleteGardenOnce,
     updateGardenStack,
     withGardenBoxInventoryTransaction,
@@ -34,7 +33,6 @@ import {
     type GardenBoxBlockStorageDependencies,
     getGardenBoxBlockStorageOperationId,
 } from './gardenBoxBlockStorageService';
-import { validatePersistedStructuresAfterBlockMutation } from './gardenOccupancyService';
 
 const storageIntegrationEnabled =
     process.env.TEST_ENV === '1' && Boolean(process.env.POSTGRES_URL);
@@ -115,9 +113,7 @@ function integrationService({
             getGardenMutationOperationReceipt,
             getGardenPlacementSnapshotForUpdate,
             getGardenStackForUpdate,
-            listGardenStructures,
             updateGardenStack,
-            validatePersistedStructuresAfterBlockMutation,
             withGardenBoxInventoryTransaction: (
                 accountId,
                 gardenId,

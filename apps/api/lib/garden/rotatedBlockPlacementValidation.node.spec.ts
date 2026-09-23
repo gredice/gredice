@@ -125,7 +125,6 @@ function rotationInput({
             },
             stacks,
         },
-        structures: [],
     };
 }
 

@@ -47,7 +47,6 @@ function toPublicGardenDetail(garden: GardenResponse): PublicGardenDetail {
         name: garden.name,
         raisedBeds: garden.raisedBeds,
         stacks: garden.stacks,
-        structures: garden.structures,
         updatedAt: garden.updatedAt,
     };
 }

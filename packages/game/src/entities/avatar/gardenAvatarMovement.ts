@@ -233,15 +233,6 @@ export function createIndexedGardenAvatarCollisionWorld({
     };
 }
 
-export function mergeGardenAvatarCollisionWorlds(
-    ...worlds: readonly (GardenAvatarCollisionWorld | null | undefined)[]
-) {
-    return createIndexedGardenAvatarCollisionWorld({
-        blockedCells: worlds.flatMap((world) => world?.blockedCells ?? []),
-        surfaces: worlds.flatMap((world) => world?.surfaces ?? []),
-    });
-}
-
 export function getGardenAvatarSurfaceY(
     position: Pick<GardenAvatarPoint, 'x' | 'z'>,
     surface: GardenAvatarMovementSurface,

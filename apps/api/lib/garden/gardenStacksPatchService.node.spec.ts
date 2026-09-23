@@ -12,7 +12,6 @@ import {
     getGardenStacks,
     getSunflowers,
     listGardenRaisedBedMetadataForUpdate,
-    listGardenStructures,
     SunflowerEarnAmountConflictError,
     softDeleteGardenBlockOnce,
     softDeleteNewRaisedBedOnce,
@@ -24,7 +23,6 @@ import {
 import {
     type GardenStacksPatchDirectoryBlock,
     type GardenStacksPatchOperation,
-    type GardenStacksPatchPlannerInput,
     planGardenStacksPatch,
 } from './gardenStacksPatchPlanner';
 import {
@@ -70,7 +68,6 @@ type HarnessState = {
         positionX: number;
         positionY: number;
     }[];
-    structures: GardenStacksPatchPlannerInput['snapshot']['structures'];
 };
 
 type HarnessOptions = Readonly<{
@@ -136,7 +133,6 @@ function makeHarness(options: HarnessOptions = {}) {
                           positionY: 0,
                       },
                   ],
-                  structures: [],
               }
             : {
                   blocks: [
@@ -175,7 +171,6 @@ function makeHarness(options: HarnessOptions = {}) {
                             ]
                           : []),
                   ],
-                  structures: [],
               };
 
     function cloneState() {
@@ -280,12 +275,6 @@ function makeHarness(options: HarnessOptions = {}) {
             return state.raisedBeds
                 .filter((raisedBed) => !raisedBed.deleted)
                 .map(({ blockId, id, status }) => ({ blockId, id, status }));
-        },
-        listGardenStructures: async (receivedGardenId, receivedTransaction) => {
-            assert.equal(receivedGardenId, gardenId);
-            assertTransaction(receivedTransaction);
-            calls.push('structures');
-            return state.structures;
         },
         planGardenStacksPatch: (input) => {
             calls.push('plan');
@@ -429,7 +418,6 @@ describe('garden stack patch orchestration', () => {
             'garden-lock',
             'snapshot',
             'raised-beds',
-            'structures',
             'plan',
             'stack-update:0:0',
             'stack-update:1:0',
@@ -529,7 +517,7 @@ describe('garden stack patch orchestration', () => {
         }
     });
 
-    it('re-reads ownership before raised-bed, structure, planning, or write work', async () => {
+    it('re-reads ownership before raised-bed, planning, or write work', async () => {
         const harness = makeHarness({ gardenAccountId: 'other-account' });
 
         const result = await harness.service(harness.moveCommand());
@@ -769,7 +757,6 @@ test('real shared transaction rolls back stack, block, event, and refund after a
         ],
         getGardenPlacementSnapshotForUpdate,
         listGardenRaisedBedMetadataForUpdate,
-        listGardenStructures,
         planGardenStacksPatch,
         softDeleteGardenBlockOnce,
         softDeleteNewRaisedBedOnce,

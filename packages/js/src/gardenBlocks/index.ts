@@ -452,7 +452,6 @@ export function validateStackPlacement(params: {
 
 function validatePlacementAtPosition(params: {
     blockName: string;
-    blockedCells?: ReadonlySet<string>;
     position: Position;
     occupiedCells: Map<string, OccupiedCell[]>;
     stacks: GardenBlockStack[];
@@ -461,7 +460,6 @@ function validatePlacementAtPosition(params: {
 }): GardenBlockPlacementResult {
     const {
         blockName,
-        blockedCells,
         position,
         occupiedCells,
         stacks,
@@ -481,12 +479,6 @@ function validatePlacementAtPosition(params: {
             x: position.x + offset.x,
             y: position.y + offset.y,
         };
-        if (blockedCells?.has(cellKey(footprintPosition))) {
-            return {
-                valid: false,
-                error: `Invalid block placement: structure occupies ${cellKey(footprintPosition)}`,
-            };
-        }
         const footprintStack =
             findStackAtPosition(stacks, footprintPosition)?.blocks.slice() ??
             [];
@@ -571,7 +563,6 @@ function validatePlacementAtPosition(params: {
 
 function resolveAutomaticGardenBlockPlacement(params: {
     blockName: string;
-    blockedCells?: ReadonlySet<string>;
     occupiedCells: Map<string, OccupiedCell[]>;
     searchOrigin: Position;
     stacks: GardenBlockStack[];
@@ -580,7 +571,6 @@ function resolveAutomaticGardenBlockPlacement(params: {
 }): GardenBlockPlacementResult {
     const {
         blockName,
-        blockedCells,
         occupiedCells,
         searchOrigin,
         stacks,
@@ -594,7 +584,6 @@ function resolveAutomaticGardenBlockPlacement(params: {
     ): GardenBlockPlacementResult | null => {
         const placement = validatePlacementAtPosition({
             blockName,
-            blockedCells,
             occupiedCells,
             position: candidatePosition,
             stacks,
@@ -647,7 +636,6 @@ function resolveAutomaticGardenBlockPlacement(params: {
 
 export function resolveGardenBlockPlacement(params: {
     blockName: string;
-    blockedCells?: ReadonlySet<string>;
     stacks: GardenBlockStack[];
     blockNameById: Map<string, string>;
     blockDataByName: Map<string, GardenBlockDataLike>;
@@ -657,7 +645,6 @@ export function resolveGardenBlockPlacement(params: {
 }): GardenBlockPlacementResult {
     const {
         blockName,
-        blockedCells,
         stacks,
         blockNameById,
         blockDataByName,
@@ -675,7 +662,6 @@ export function resolveGardenBlockPlacement(params: {
     if (requestedPosition) {
         return validatePlacementAtPosition({
             blockName,
-            blockedCells,
             occupiedCells,
             position: requestedPosition,
             stacks,
@@ -686,7 +672,6 @@ export function resolveGardenBlockPlacement(params: {
 
     return resolveAutomaticGardenBlockPlacement({
         blockName,
-        blockedCells,
         occupiedCells,
         stacks,
         blockNameById,

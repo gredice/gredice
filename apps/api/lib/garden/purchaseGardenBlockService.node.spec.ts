@@ -10,10 +10,6 @@ import {
 } from '@gredice/storage';
 import { resolveGardenBlockPlacement } from './blockPlacementService';
 import {
-    createGardenOccupancyIndexFromStorageSnapshot,
-    validatePersistedStructuresAfterBlockMutation,
-} from './gardenOccupancyService';
-import {
     createPurchaseGardenBlockService,
     type PurchaseGardenBlockCommand,
     type PurchaseGardenBlockDependencies,
@@ -53,19 +49,6 @@ function directoryBlock(
     };
 }
 
-function structureDocument() {
-    return {
-        schemaVersion: 1,
-        footprint: {
-            cells: [{ spaceKind: 'interior' as const, x: 0, y: 0 }],
-        },
-        floors: [],
-        edges: [],
-        roofRegions: [],
-        props: [],
-    };
-}
-
 type TestTransaction = Readonly<{ id: 'shared-transaction' }>;
 
 type TestState = {
@@ -87,13 +70,6 @@ type TestState = {
         }
     >;
     stacks: { blocks: string[]; positionX: number; positionY: number }[];
-    structures: {
-        anchorX: number;
-        anchorY: number;
-        document: ReturnType<typeof structureDocument>;
-        id: string;
-        rotation: number;
-    }[];
 };
 
 type HarnessOptions = Readonly<{
@@ -108,7 +84,6 @@ type HarnessOptions = Readonly<{
     failCacheBust?: boolean;
     gardenAccountId?: string;
     sandbox?: boolean;
-    structures?: TestState['structures'];
 }>;
 
 function cloneState(state: TestState): TestState {
@@ -126,10 +101,6 @@ function cloneState(state: TestState): TestState {
         stacks: state.stacks.map((stack) => ({
             ...stack,
             blocks: [...stack.blocks],
-        })),
-        structures: state.structures.map((structure) => ({
-            ...structure,
-            document: structureDocument(),
         })),
     };
 }
@@ -201,10 +172,6 @@ function makeHarness(options: HarnessOptions = {}) {
         raisedBeds: [],
         receipts: new Map(),
         stacks: [{ blocks: ['ground-1'], positionX: 0, positionY: 0 }],
-        structures:
-            options.structures?.map((structure) => ({
-                ...structure,
-            })) ?? [],
     };
 
     const dependencies: PurchaseGardenBlockDependencies<TestTransaction> = {
@@ -233,7 +200,6 @@ function makeHarness(options: HarnessOptions = {}) {
             calls.push('create-block');
             return id;
         },
-        createGardenOccupancyIndexFromStorageSnapshot,
         createGardenStack: async (_gardenId, position, receivedTransaction) => {
             assert.equal(receivedTransaction, transaction);
             state.stacks.push({
@@ -312,11 +278,6 @@ function makeHarness(options: HarnessOptions = {}) {
             };
         },
         isBlockPurchaseAvailableNow: () => options.availableNow ?? true,
-        listGardenStructures: async (_gardenId, receivedTransaction) => {
-            assert.equal(receivedTransaction, transaction);
-            calls.push('structures');
-            return state.structures;
-        },
         now: () => new Date('2026-08-30T23:00:00.000Z'),
         random: () => 0.25,
         resolveGardenBlockPlacement,
@@ -331,7 +292,6 @@ function makeHarness(options: HarnessOptions = {}) {
             target.blocks = [...stack.blocks];
             calls.push('update-stack');
         },
-        validatePersistedStructuresAfterBlockMutation,
         withAccountDeletionFenceTransaction: async (
             _accountId,
             callback,
@@ -465,7 +425,6 @@ describe('purchaseGardenBlock', () => {
             'operation-receipt',
             'snapshot',
             'location',
-            'structures',
             'create-block',
             'update-stack',
             'create-raised-bed',
@@ -749,28 +708,6 @@ describe('purchaseGardenBlock', () => {
         assert.equal(!conflict.ok && conflict.code, 'OPERATION_CONFLICT');
         assert.equal(!conflict.ok && conflict.status, 409);
         assert.equal(harness.state().debits.length, 1);
-    });
-
-    it('rejects structure-occupied placement before any write or debit', async () => {
-        const harness = makeHarness({
-            structures: [
-                {
-                    anchorX: 0,
-                    anchorY: 0,
-                    document: structureDocument(),
-                    id: 'house-1',
-                    rotation: 0,
-                },
-            ],
-        });
-
-        const result = await harness.service(harness.command());
-
-        assert.equal(!result.ok && result.code, 'BLOCK_PLACEMENT_INVALID');
-        const state = harness.state();
-        assert.equal(state.blocks.length, 1);
-        assert.equal(state.debits.length, 0);
-        assert.equal(state.receipts.size, 0);
     });
 
     it('rolls every write back when a later debit step fails', async () => {

@@ -20,7 +20,7 @@ const reporter: PlaywrightTestConfig['reporter'] = [
     ['html', { open: 'never' }],
 ];
 const webglComponentTestPattern =
-    /(autumn-season|actor-speech-bubble|cursor-anchored-zoom|detailed-inspection-farmer|garden-building-avatar-interiors|garden-building-pointer-profile|garden-building-vertical-slice|garden-preview-capture|garden-structure-kit-renderer|hover-outline|instanced-mesh-material-swap|precipitation-camera-follow|public-garden-switch|r3f-root-isolation|raised-bed-notification-bubble|scene-root-isolation|solar-eclipse|spatial-interaction)\.spec\.tsx/;
+    /(autumn-season|actor-speech-bubble|cursor-anchored-zoom|detailed-inspection-farmer|garden-preview-capture|hover-outline|instanced-mesh-material-swap|precipitation-camera-follow|public-garden-switch|r3f-root-isolation|raised-bed-notification-bubble|scene-root-isolation|solar-eclipse|spatial-interaction)\.spec\.tsx/;
 const outletGardenRouteTestPattern = /outlet-garden-route\.spec\.ts/;
 
 // Plugin to intercept next/font/google before Vite's resolver
@@ -118,7 +118,6 @@ export const config: PlaywrightTestConfig = {
         env: {
             FLAGS_SECRET: process.env.FLAGS_SECRET ?? gardenTestFlagsSecret,
             GREDICE_DETACH_CHILD_PROCESS: 'false',
-            GREDICE_GARDEN_BUILDING_PROFILE_FIXTURE_ENABLED: 'true',
             VERCEL_ENV: 'preview',
         },
         gracefulShutdown: { signal: 'SIGTERM', timeout: 5000 },

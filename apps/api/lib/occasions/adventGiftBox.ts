@@ -6,7 +6,6 @@ import {
     getEntitiesFormatted,
     getGardenMutationAuthorityForUpdate,
     getGardenPlacementSnapshotForUpdate,
-    listGardenStructuresForUpdate,
     softDeleteGardenBlockOnce,
     updateGardenStack,
     withAccountDeletionFenceTransaction,
@@ -14,8 +13,6 @@ import {
     withGardenPlacementTransaction,
     withInventoryAccountTransaction,
 } from '@gredice/storage';
-import { getBlockData } from '../blocks/blockDataService';
-import { validatePersistedStructuresAfterBlockMutation } from '../garden/gardenOccupancyService';
 import { isAdventSeasonOver } from './advent2025';
 import {
     type AdventGiftBoxDependencies,
@@ -98,14 +95,11 @@ export const openAdventGiftBox = createAdventGiftBoxService({
     deleteGardenStack,
     getGardenPlacementSnapshotForUpdate,
     getGardenMutationAuthorityForUpdate,
-    getBlockData,
     isAdventSeasonOver,
-    listGardenStructuresForUpdate,
     loadGiftBoxRewardCatalog,
     pickGiftBoxReward,
     softDeleteGardenBlockOnce,
     updateGardenStack,
-    validatePersistedStructuresAfterBlockMutation,
     withAccountDeletionFenceTransaction,
     withGardenMutationOperation: (input, callback, transaction) =>
         withGardenMutationOperation(input, callback, transaction),

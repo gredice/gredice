@@ -1,12 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createGardenStructureTemplateSeed } from '@gredice/js/gardenStructures';
 import { createActiveDragPreviewTarget } from './dragPreviewIdentity';
 import { getSeasonState } from './scene/seasonState';
-import {
-    confirmGardenStructureTemplatePlacement,
-    createNewGardenStructureEditorState,
-} from './structures/editor';
 import type { ActiveDragPreview, GameState } from './useGameState';
 import {
     activeDragPreviewsEqual,
@@ -41,25 +36,6 @@ function createPreview(): ActiveDragPreview {
         isBlocked: false,
         isOverRecycler: false,
     };
-}
-
-function createStructureEditor(templateKey: 'barn' | 'house') {
-    const created = createNewGardenStructureEditorState({
-        draftId: `fixture-${templateKey}`,
-        gardenId: 1,
-        placement: { anchorX: -1, anchorY: -1, rotation: 0 },
-        seed: createGardenStructureTemplateSeed(templateKey),
-    });
-    assert.equal(created.ok, true);
-    if (!created.ok) {
-        throw new Error('Failed to create fixture editor');
-    }
-    const confirmed = confirmGardenStructureTemplatePlacement(created.value);
-    assert.equal(confirmed.ok, true);
-    if (!confirmed.ok) {
-        throw new Error('Failed to confirm fixture editor');
-    }
-    return confirmed.value;
 }
 
 test('authenticated garden queries stay enabled by default and allow explicit isolation', () => {
@@ -1036,82 +1012,6 @@ test('garden avatar view enters play mode and resets controls on exit', () => {
         assert.equal(store.getState().gardenAvatarAimedBoatId, null);
         assert.equal(store.getState().gardenAvatarSeatId, null);
         assert.equal(store.getState().gardenAvatarPresence, null);
-    } finally {
-        store.getState().audio.dispose();
-    }
-});
-
-test('structure build mode is one discriminated session and excludes avatar and closeup modes', () => {
-    const store = createGameState({
-        appBaseUrl: '',
-        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
-        isMock: true,
-    });
-
-    try {
-        store.getState().setGardenAvatarView('third-person');
-        store.getState().setPickupBlock({
-            id: 'dragged-block',
-            name: 'Block_Grass',
-            rotation: 0,
-        });
-        store.getState().setActiveDragPreview(createPreview());
-        store.getState().beginHudPlacementDrag({
-            blockName: 'Block_Grass',
-            clientX: 10,
-            clientY: 20,
-            pointerId: 4,
-            pointerType: 'touch',
-        });
-        store.getState().addPickupSelectionTarget({
-            blockId: 'dragged-block',
-            blockIndex: 0,
-            stackPosition: { x: 0, z: 0 },
-        });
-        store.getState().setStationaryPickupOutlineTarget({
-            blockId: 'dragged-block',
-            blockIndex: 0,
-            stackPosition: { x: 0, z: 0 },
-        });
-        store.getState().setItemsHudDropTargetActive(true);
-        store.getState().setIsDragging(true);
-        store.getState().setStructureBuildSession({
-            editor: createStructureEditor('house'),
-            persistence: 'fixture',
-            category: 'structure',
-            roofCutaway: false,
-            selectedPartId: null,
-        });
-
-        assert.equal(store.getState().gardenAvatarView, 'overview');
-        assert.equal(store.getState().view, 'normal');
-        assert.equal(
-            store.getState().structureBuildSession?.editor.workflow.kind,
-            'editing',
-        );
-        assert.equal(store.getState().pickupBlock, null);
-        assert.equal(store.getState().activeDragPreview, null);
-        assert.equal(store.getState().hudPlacementDrag, null);
-        assert.deepEqual(store.getState().pickupSelectionTargets, []);
-        assert.equal(store.getState().stationaryPickupOutlineTarget, null);
-        assert.equal(store.getState().itemsHudDropTargetActive, false);
-        assert.equal(store.getState().isDragging, false);
-
-        store.getState().setGardenAvatarView('first-person');
-        assert.equal(store.getState().structureBuildSession, null);
-
-        store.getState().setStructureBuildSession({
-            editor: createStructureEditor('barn'),
-            persistence: 'fixture',
-            category: 'roof',
-            roofCutaway: true,
-            selectedPartId: null,
-        });
-        store.getState().setView({
-            view: 'closeup',
-            block: { id: 'bed', name: 'Raised_Bed', rotation: 0 },
-        });
-        assert.equal(store.getState().structureBuildSession, null);
     } finally {
         store.getState().audio.dispose();
     }
