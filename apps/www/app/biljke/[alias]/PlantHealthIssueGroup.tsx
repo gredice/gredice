@@ -31,37 +31,35 @@ export function PlantHealthIssueGroup({
             <Typography level="h2" className="text-xl">
                 {title}
             </Typography>
-            {issues?.length ? (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    {issues.map((issue) => (
-                        <PlantHealthIssueCard
-                            key={issue.id}
-                            issue={{
-                                id: issue.id,
-                                href: plantHealthIssueDetailPath(
-                                    kind,
-                                    issue.slug || issue.name,
-                                ),
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {issues?.map((issue) => (
+                    <PlantHealthIssueCard
+                        key={issue.id}
+                        issue={{
+                            id: issue.id,
+                            href: plantHealthIssueDetailPath(
                                 kind,
-                                title: issue.name,
-                                shortDescription: issue.shortDescription,
-                                symptoms: issue.symptoms,
-                                operationCount: plantHealthOperationCount(
-                                    issue.operations,
-                                ),
-                            }}
-                        />
-                    ))}
-                </div>
-            ) : null}
-            <CommunityEntitySuggestionButton
-                key={plantId}
-                kind={kind}
-                plants={[{ value: String(plantId), label: plantName }]}
-                defaultAffectedPlantId={plantId}
-                publicPath={publicPath}
-                compact
-            />
+                                issue.slug || issue.name,
+                            ),
+                            kind,
+                            title: issue.name,
+                            shortDescription: issue.shortDescription,
+                            symptoms: issue.symptoms,
+                            operationCount: plantHealthOperationCount(
+                                issue.operations,
+                            ),
+                        }}
+                    />
+                ))}
+                <CommunityEntitySuggestionButton
+                    key={plantId}
+                    kind={kind}
+                    plants={[{ value: String(plantId), label: plantName }]}
+                    defaultAffectedPlantId={plantId}
+                    publicPath={publicPath}
+                    compact
+                />
+            </div>
         </Stack>
     );
 }

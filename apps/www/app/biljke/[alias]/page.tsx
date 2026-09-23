@@ -3,7 +3,6 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { RelatedFaq } from '../../../components/faq/RelatedFaq';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
@@ -19,6 +18,7 @@ import { GrowthAttributeCards } from './GrowthAttributeCards';
 import { getPlantInforationSections } from './getPlantInforationSections';
 import { HarvestAttributeCards } from './HarvestAttributeCards';
 import { InformationSection } from './InformationSection';
+import { PlantFurtherReading } from './PlantFurtherReading';
 import { PlantHealthSection } from './PlantHealthSection';
 import { PlantPageHeader } from './PlantPageHeader';
 import { PlantRelationshipsSection } from './PlantRelationshipsSection';
@@ -209,14 +209,7 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                     }}
                     relationships={plant.relationships}
                 />
-                <Typography level="body1" component="p">
-                    Želiš saznati više o tome kako naručiti sjetvu? Posjeti našu
-                    stranicu o{' '}
-                    <Link className="underline" href={KnownPages.Sowing}>
-                        sjetvi biljaka
-                    </Link>{' '}
-                    za detalje o sjetvi, rasporedu i pogodnostima.
-                </Typography>
+                <PlantFurtherReading />
                 <RelatedFaq placement="plant" />
                 <Row spacing={4}>
                     <Typography level="body1">

@@ -20,6 +20,7 @@ import { GrowthAttributeCards } from '../../GrowthAttributeCards';
 import { getPlantInforationSections } from '../../getPlantInforationSections';
 import { HarvestAttributeCards } from '../../HarvestAttributeCards';
 import { InformationSection } from '../../InformationSection';
+import { PlantFurtherReading } from '../../PlantFurtherReading';
 import { PlantHealthSection } from '../../PlantHealthSection';
 import { PlantPageHeader } from '../../PlantPageHeader';
 import {
@@ -315,6 +316,7 @@ export default async function PlantSortPage(
                     relationships={relationships}
                 />
                 <PlantSortSeedsList plantSortId={sortData.id} />
+                <PlantFurtherReading />
                 <RelatedFaq placement="plant" />
                 <Row spacing={4}>
                     <Typography level="body1">
