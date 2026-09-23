@@ -54,6 +54,7 @@ const CommunityMarkdownInput = dynamic(
 );
 
 const communityEditEntityParam = 'communityEditEntity';
+const communityEditFieldParam = 'communityEditField';
 const communityEditSectionParam = 'communityEditSection';
 
 type CommunityEditControlType =
@@ -153,6 +154,7 @@ export type CommunityEditButtonProps = {
     entityId: number;
     publicPath: string;
     sectionKey?: string;
+    fieldKey?: string;
     label?: string;
     buttonStyle?: ButtonStyle;
     className?: string;
@@ -993,10 +995,12 @@ function isSubmitResponse(value: unknown): value is { requestId: number } {
 function communityEditReturnPath({
     entityKey,
     fallbackPath,
+    fieldKey,
     sectionKey,
 }: {
     entityKey: string;
     fallbackPath: string;
+    fieldKey: string;
     sectionKey: string;
 }) {
     const url =
@@ -1005,6 +1009,11 @@ function communityEditReturnPath({
             : new URL(window.location.href);
 
     url.searchParams.set(communityEditEntityParam, entityKey);
+    if (fieldKey) {
+        url.searchParams.set(communityEditFieldParam, fieldKey);
+    } else {
+        url.searchParams.delete(communityEditFieldParam);
+    }
     if (sectionKey) {
         url.searchParams.set(communityEditSectionParam, sectionKey);
     } else {
@@ -1022,9 +1031,11 @@ function currentCommunityEditReturnRequest() {
     const url = new URL(window.location.href);
     return {
         entityKey: url.searchParams.get(communityEditEntityParam),
+        fieldKey: url.searchParams.get(communityEditFieldParam) ?? '',
         sectionKey: url.searchParams.get(communityEditSectionParam) ?? '',
         clear() {
             url.searchParams.delete(communityEditEntityParam);
+            url.searchParams.delete(communityEditFieldParam);
             url.searchParams.delete(communityEditSectionParam);
             window.history.replaceState(
                 window.history.state,
@@ -1240,6 +1251,7 @@ export function CommunityEditButton({
     className,
     entityId,
     entityTypeName,
+    fieldKey,
     label,
     publicPath,
     sectionKey,
@@ -1259,14 +1271,21 @@ export function CommunityEditButton({
     const { data: user, isLoading: isLoadingUser } = useCurrentUser();
     const communityEditEntityKey = `${entityTypeName}:${entityId}`;
     const communityEditSectionKey = sectionKey ?? '';
+    const communityEditFieldKey = fieldKey ?? '';
     const communityEditReturnTo = useMemo(
         () =>
             communityEditReturnPath({
                 entityKey: communityEditEntityKey,
                 fallbackPath: publicPath,
+                fieldKey: communityEditFieldKey,
                 sectionKey: communityEditSectionKey,
             }),
-        [communityEditEntityKey, communityEditSectionKey, publicPath],
+        [
+            communityEditEntityKey,
+            communityEditFieldKey,
+            communityEditSectionKey,
+            publicPath,
+        ],
     );
 
     useEffect(() => {
@@ -1274,6 +1293,7 @@ export function CommunityEditButton({
         if (
             !returnRequest ||
             returnRequest.entityKey !== communityEditEntityKey ||
+            returnRequest.fieldKey !== communityEditFieldKey ||
             returnRequest.sectionKey !== communityEditSectionKey
         ) {
             return;
@@ -1282,7 +1302,11 @@ export function CommunityEditButton({
         setOpen(true);
         setLoginOpen(false);
         returnRequest.clear();
-    }, [communityEditEntityKey, communityEditSectionKey]);
+    }, [
+        communityEditEntityKey,
+        communityEditFieldKey,
+        communityEditSectionKey,
+    ]);
 
     useEffect(() => {
         if (!open) {
@@ -1325,10 +1349,13 @@ export function CommunityEditButton({
                     return;
                 }
 
-                setFields(data.fields);
+                const editableFields = fieldKey
+                    ? data.fields.filter((field) => field.fieldKey === fieldKey)
+                    : data.fields;
+                setFields(editableFields);
                 setValues(
                     Object.fromEntries(
-                        data.fields.map((field) => [
+                        editableFields.map((field) => [
                             field.fieldKey,
                             initialFieldValue(field),
                         ]),
@@ -1349,7 +1376,7 @@ export function CommunityEditButton({
         return () => {
             isMounted = false;
         };
-    }, [entityId, entityTypeName, open, sectionKey, user]);
+    }, [entityId, entityTypeName, fieldKey, open, sectionKey, user]);
 
     const changedFields = useMemo(
         () =>

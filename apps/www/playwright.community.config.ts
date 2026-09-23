@@ -4,6 +4,7 @@ export default defineConfig({
     ...config,
     testMatch: [
         'plant-community-suggestions.spec.tsx',
+        'plant-relationships.spec.tsx',
         'plant-tips.spec.tsx',
         'community-entity-suggestion-button.spec.tsx',
         'community-edit-button.spec.tsx',

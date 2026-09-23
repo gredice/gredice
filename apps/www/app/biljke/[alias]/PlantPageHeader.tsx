@@ -22,7 +22,6 @@ import { KnownPages } from '../../../src/KnownPages';
 import { getPlantImageViewTransitionName } from '../plantViewTransition';
 import { getPlantInforationSections } from './getPlantInforationSections';
 import { PlantCalendarPicker } from './PlantCalendarPicker';
-import { hasPlantRelationships } from './PlantRelationshipsSection';
 import { VerifiedInformationBadge } from './VerifiedInformationBadge';
 
 type InformationWithAlternativeName = {
@@ -100,12 +99,10 @@ export function PlantPageHeader({
             label: 'Savjeti',
         });
     }
-    if (hasPlantRelationships(sort?.relationships ?? plant.relationships)) {
-        contentLinks.push({
-            href: `#${slug('Biljni susjedi')}`,
-            label: 'Biljni susjedi',
-        });
-    }
+    contentLinks.push({
+        href: `#${slug('Biljni susjedi')}`,
+        label: 'Biljni susjedi',
+    });
 
     const baseLatinName = plant.information.latinName
         ? `lat. ${plant.information.latinName}`
