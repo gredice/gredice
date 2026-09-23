@@ -42,14 +42,11 @@ import { Birds } from '../entities/birds/Birds';
 import { Butterflies } from '../entities/butterflies/Butterflies';
 import { Cats } from '../entities/cats/Cats';
 import { Dogs } from '../entities/dogs/Dogs';
-import { EntityFactory } from '../entities/EntityFactory';
-import {
-    EntityInstances,
-    instancedBlockNames,
-} from '../entities/EntityInstances';
+import { EntityInstances } from '../entities/EntityInstances';
 import { Chickens, Piglets, Sheep } from '../entities/farmAnimals/FarmAnimals';
 import { Frogs } from '../entities/frogs/Frogs';
 import { Ladybugs } from '../entities/ladybugs/Ladybugs';
+import { RetainedEntityChunks } from '../entities/RetainedEntityChunks';
 import { RaisedBedMulchOverlays } from '../entities/raisedBed/RaisedBedMulchOverlays';
 import { Slugs } from '../entities/slugs/Slugs';
 import { Squirrels } from '../entities/squirrels/Squirrels';
@@ -61,6 +58,7 @@ import { useGardensKeys } from '../hooks/useGardens';
 import { useAllSorts } from '../hooks/usePlantSorts';
 import { GardenAvatarHud } from '../hud/GardenAvatarHud';
 import { ParticleSystemProvider } from '../particles/ParticleSystem';
+import { useRetainedGardenScene } from '../scene/compiler/useRetainedGardenScene';
 import { Environment } from '../scene/Environment';
 import {
     type GameQualityProfile,
@@ -515,6 +513,10 @@ function PublicGardenScene({
     visitorPresence?: GardenVisitorPresenceController;
 }) {
     const blockDataQuery = useBlockData();
+    const retainedScene = useRetainedGardenScene(
+        normalizedStacks,
+        blockDataQuery.data,
+    );
     const blockDataLoaded = Boolean(blockDataQuery.data);
     const plantSortsQuery = useAllSorts(loadPlantSorts);
     const plantSortsLoaded = Boolean(plantSortsQuery.data);
@@ -622,27 +624,11 @@ function PublicGardenScene({
                                             ref={setVisualOccluders}
                                             name="PublicGardenScene:VisualOccluders"
                                         >
-                                            {normalizedStacks.map((stack) =>
-                                                stack.blocks.map((block) => (
-                                                    <EntityFactory
-                                                        key={`${stack.position.x}|${stack.position.z}|${block.id}-${block.name}`}
-                                                        name={block.name}
-                                                        stack={stack}
-                                                        block={block}
-                                                        stacks={
-                                                            normalizedStacks
-                                                        }
-                                                        rotation={
-                                                            block.rotation
-                                                        }
-                                                        variant={block.variant}
-                                                        noRenderInView={
-                                                            instancedBlockNames
-                                                        }
-                                                        noControl
-                                                    />
-                                                )),
-                                            )}
+                                            <RetainedEntityChunks
+                                                scene={retainedScene}
+                                                noControl
+                                                includeInstancedDebug
+                                            />
                                             <EntityInstances
                                                 farmId={garden?.farmId}
                                                 quality={qualityProfile}
@@ -650,7 +636,7 @@ function PublicGardenScene({
                                                     renderLivingDetails,
                                                     renderGroundDecorations,
                                                 )}
-                                                stacks={normalizedStacks}
+                                                stacks={retainedScene.stacks}
                                                 renderDetails={
                                                     renderLivingDetails
                                                 }
@@ -672,7 +658,7 @@ function PublicGardenScene({
                                                 <Suspense fallback={null}>
                                                     <Birds
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                 </Suspense>
@@ -682,7 +668,7 @@ function PublicGardenScene({
                                                     <Squirrels
                                                         farmId={garden?.farmId}
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                 </Suspense>
@@ -692,7 +678,7 @@ function PublicGardenScene({
                                                     <Frogs
                                                         gardenId={garden?.id}
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                 </Suspense>
@@ -703,7 +689,7 @@ function PublicGardenScene({
                                                         farmId={garden?.farmId}
                                                         gardenId={garden?.id}
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                 </Suspense>
@@ -713,7 +699,7 @@ function PublicGardenScene({
                                                     <Cats
                                                         farmId={garden?.farmId}
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                 </Suspense>
@@ -723,7 +709,7 @@ function PublicGardenScene({
                                                     <Dogs
                                                         farmId={garden?.farmId}
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                 </Suspense>
@@ -733,19 +719,19 @@ function PublicGardenScene({
                                                     <Chickens
                                                         farmId={garden?.farmId}
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                     <Piglets
                                                         farmId={garden?.farmId}
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                     <Sheep
                                                         farmId={garden?.farmId}
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                 </Suspense>
@@ -822,7 +808,7 @@ function PublicGardenScene({
                                                             undefined
                                                         }
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                     {visitorPresence.visitors.map(
@@ -850,7 +836,7 @@ function PublicGardenScene({
                                                         }
                                                         onSelect={onSelectBlock}
                                                         stacks={
-                                                            normalizedStacks
+                                                            retainedScene.stacks
                                                         }
                                                     />
                                                 ) : null}
@@ -858,11 +844,16 @@ function PublicGardenScene({
                                                     onSelect={
                                                         onSelectRaisedBedBlock
                                                     }
-                                                    stacks={normalizedStacks}
+                                                    stacks={
+                                                        retainedScene.stacks
+                                                    }
                                                 />
                                                 <BlockInteractionLayer
+                                                    scene={retainedScene}
                                                     controlsEnabled
-                                                    stacks={normalizedStacks}
+                                                    stacks={
+                                                        retainedScene.stacks
+                                                    }
                                                 />
                                             </>
                                         ) : null}

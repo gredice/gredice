@@ -20,6 +20,7 @@
         "./theme": "./src/hooks/useThemeManager.ts"
     },
     "scripts": {
+        "benchmark:chunks": "tsx scripts/benchmark-chunks.ts",
         "benchmark:spatial": "tsx scripts/benchmark-spatial.ts",
         "benchmark:plants": "tsx scripts/benchmark-plants.ts",
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",

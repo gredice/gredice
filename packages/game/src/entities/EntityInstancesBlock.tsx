@@ -24,6 +24,7 @@ import {
     useRainWetOverlayVisible,
 } from '../rain/RainWetOverlay';
 import { registerCloudShadowAttenuationMaterialCandidate } from '../scene/cloudShadowAttenuation';
+import { useCompiledChunk } from '../scene/compiler/useCompiledChunk';
 import {
     StaticOpaqueSceneCacheBoundary,
     type StaticOpaqueSceneCacheGroup,
@@ -61,7 +62,6 @@ import type { Stack } from '../types/Stack';
 import { type ActiveDragPreview, useGameState } from '../useGameState';
 import { getStackHeight } from '../utils/getStackHeight';
 import {
-    createMergedChunkGeometry,
     createMeshInstanceMatrix,
     type MeshInstanceChunk,
     type MeshInstanceLocalTransform,
@@ -195,11 +195,23 @@ function useStableEntityBlockInstances(
     instances: EntityBlockInstance[] | undefined,
 ) {
     const previous = useRef<EntityBlockInstance[] | undefined>(undefined);
-
-    if (!entityBlockInstancesEqual(previous.current, instances)) {
-        previous.current = instances;
+    if (entityBlockInstancesEqual(previous.current, instances))
+        return previous.current;
+    const oldById = new Map<string, EntityBlockInstance[]>();
+    for (const instance of previous.current ?? []) {
+        const group = oldById.get(instance.id);
+        if (group) group.push(instance);
+        else oldById.set(instance.id, [instance]);
     }
-
+    const occurrence = new Map<string, number>();
+    previous.current = instances?.map((instance) => {
+        const index = occurrence.get(instance.id) ?? 0;
+        occurrence.set(instance.id, index + 1);
+        const old = oldById.get(instance.id)?.[index];
+        return old && entityBlockInstancesEqual([old], [instance])
+            ? old
+            : instance;
+    });
     return previous.current;
 }
 
@@ -326,47 +338,65 @@ export function useEntityBlockInstances({
         name,
         names,
     );
-    const instances = stacks
-        ? indexedBlocks.map(
-              ({ block, blockIndex, stack }): EntityBlockInstance => {
-                  const stackHeight = getStackHeight(blockData, stack, block);
-                  const target = createActiveDragPreviewTarget({
-                      blockId: block.id,
-                      blockIndex,
-                      stackPosition: stack.position,
-                  });
-                  const dragPreviewOffset =
-                      getActiveDragPreviewTargetPositionOffset(
-                          target,
-                          activeDragPreview,
-                      );
-                  const stationaryPickupOutlineVisible =
-                      activeDragPreviewTargetMatches(
-                          stationaryPickupOutlineTarget,
-                          target,
-                      );
+    const hasStacks = Boolean(stacks);
+    const instances = useMemo(
+        () =>
+            hasStacks
+                ? indexedBlocks.map(
+                      ({ block, blockIndex, stack }): EntityBlockInstance => {
+                          const stackHeight = getStackHeight(
+                              blockData,
+                              stack,
+                              block,
+                          );
+                          const target = createActiveDragPreviewTarget({
+                              blockId: block.id,
+                              blockIndex,
+                              stackPosition: stack.position,
+                          });
+                          const dragPreviewOffset =
+                              getActiveDragPreviewTargetPositionOffset(
+                                  target,
+                                  activeDragPreview,
+                              );
+                          const stationaryPickupOutlineVisible =
+                              activeDragPreviewTargetMatches(
+                                  stationaryPickupOutlineTarget,
+                                  target,
+                              );
 
-                  return {
-                      block,
-                      blockIndex,
-                      id: `${stack.position.x}|${stack.position.z}|${block.id}|${blockIndex}`,
-                      pickupOutlineVisible:
-                          Boolean(dragPreviewOffset) ||
-                          stationaryPickupOutlineVisible,
-                      position: [
-                          stack.position.x + (dragPreviewOffset?.x ?? 0),
-                          stackHeight +
-                              (yOffset ?? 0) +
-                              (dragPreviewOffset?.y ?? 0),
-                          stack.position.z + (dragPreviewOffset?.z ?? 0),
-                      ],
-                      rotation: block.rotation || 0,
-                      stack,
-                      stackHeight,
-                  };
-              },
-          )
-        : undefined;
+                          return {
+                              block,
+                              blockIndex,
+                              id: `${stack.position.x}|${stack.position.z}|${block.id}|${blockIndex}`,
+                              pickupOutlineVisible:
+                                  Boolean(dragPreviewOffset) ||
+                                  stationaryPickupOutlineVisible,
+                              position: [
+                                  stack.position.x +
+                                      (dragPreviewOffset?.x ?? 0),
+                                  stackHeight +
+                                      (yOffset ?? 0) +
+                                      (dragPreviewOffset?.y ?? 0),
+                                  stack.position.z +
+                                      (dragPreviewOffset?.z ?? 0),
+                              ],
+                              rotation: block.rotation || 0,
+                              stack,
+                              stackHeight,
+                          };
+                      },
+                  )
+                : undefined,
+        [
+            hasStacks,
+            indexedBlocks,
+            blockData,
+            activeDragPreview,
+            stationaryPickupOutlineTarget,
+            yOffset,
+        ],
+    );
 
     return useStableEntityBlockInstances(instances);
 }
@@ -682,10 +712,23 @@ function EntityInstancesGeometryRenderer(
         }),
         [stableLocalPosition, stableLocalRotation],
     );
+    const previousAddressedChunks = useRef<
+        | ReturnType<
+              typeof addressPlacementAnimationChunks<EntityBlockInstance>
+          >
+        | undefined
+    >(undefined);
     const addressedChunks = useMemo(
-        () => addressPlacementAnimationChunks(instances ?? []),
+        () =>
+            addressPlacementAnimationChunks(
+                instances ?? [],
+                previousAddressedChunks.current,
+            ),
         [instances],
     );
+    useLayoutEffect(() => {
+        previousAddressedChunks.current = addressedChunks;
+    }, [addressedChunks]);
     const selectAnimatedRenderIds = useMemo(
         () =>
             createPlacementDropAnimationRenderIdsSelector([
@@ -698,6 +741,15 @@ function EntityInstancesGeometryRenderer(
         () => createPlacementAnimationChunkCache<EntityBlockInstance>(),
         [],
     );
+    useLayoutEffect(() => {
+        const liveChunks = new Map(
+            addressedChunks.chunks.map((chunk) => [chunk.key, chunk]),
+        );
+        for (const [key, cached] of placementAnimationChunkCache) {
+            if (liveChunks.get(key) !== cached.sourceChunk)
+                placementAnimationChunkCache.delete(key);
+        }
+    }, [addressedChunks, placementAnimationChunkCache]);
     const localizedChunks = useMemo(
         () =>
             localizePlacementDropAnimationChunks(
@@ -1249,57 +1301,53 @@ const ChunkedMergedMesh = memo(function ChunkedMergedMesh({
     renderOrder?: number;
     scale: EntityInstancesBlockBaseProps['scale'];
 }) {
-    const previousChunkInstances = useRef<EntityBlockInstance[] | undefined>(
-        undefined,
+    const build = useCompiledChunk(
+        geometry,
+        chunk.instances,
+        localTransform,
+        scale,
     );
-    const previousPlacementSignature = useRef<string | undefined>(undefined);
-    const mergedGeometryBuild = useMemo(() => {
-        const startedAt = placementAnimationProfileNow();
-        const mergedGeometry = createMergedChunkGeometry({
-            geometry,
-            instances: chunk.instances,
-            localTransform,
-            scale,
-        });
-
-        return {
-            durationMs: placementAnimationProfileNow() - startedAt,
-            geometry: mergedGeometry,
-        };
-    }, [chunk.instances, geometry, localTransform, scale]);
-    const mergedGeometry = mergedGeometryBuild.geometry;
-
-    useEffect(() => () => mergedGeometry.dispose(), [mergedGeometry]);
+    const previous = useRef<
+        { instances: EntityBlockInstance[]; signature: string } | undefined
+    >(undefined);
     useEffect(() => {
-        const previousInstances = previousChunkInstances.current;
-        const previousSignature = previousPlacementSignature.current;
-        previousChunkInstances.current = chunk.instances;
-        previousPlacementSignature.current = placementSignature;
+        if (!build) return;
         if (
-            !shouldRecordPlacementAnimationChunkRebuild({
+            shouldRecordPlacementAnimationChunkRebuild({
                 currentInstances: chunk.instances,
                 currentPlacementSignature: placementSignature,
-                previousInstances,
-                previousPlacementSignature: previousSignature,
+                previousInstances: previous.current?.instances,
+                previousPlacementSignature: previous.current?.signature,
             })
-        ) {
-            return;
-        }
-
-        recordPlacementAnimationChunkRebuild({
-            durationMs: mergedGeometryBuild.durationMs,
-            transformedInstanceCount: chunk.instances.length,
-        });
-    }, [
-        chunk.instances,
-        chunk.instances.length,
-        mergedGeometryBuild.durationMs,
-        placementSignature,
-    ]);
-
-    if (!mergedGeometry.getAttribute('position')) {
-        return null;
+        )
+            recordPlacementAnimationChunkRebuild({
+                durationMs: build.durationMs,
+                transformedInstanceCount: chunk.instances.length,
+            });
+        previous.current = {
+            instances: chunk.instances,
+            signature: placementSignature,
+        };
+    }, [build, chunk.instances, placementSignature]);
+    const mergedGeometry = build?.geometry;
+    if (!mergedGeometry) {
+        return (
+            <ChunkedInstancedMesh
+                castShadow={castShadow}
+                chunk={chunk}
+                debugName={debugName}
+                geometry={geometry}
+                localTransform={localTransform}
+                material={material}
+                materialNode={materialNode}
+                placementSignature={placementSignature}
+                receiveShadow={receiveShadow}
+                renderOrder={renderOrder}
+                scale={scale}
+            />
+        );
     }
+    if (!mergedGeometry.getAttribute('position')) return null;
 
     return (
         <mesh
