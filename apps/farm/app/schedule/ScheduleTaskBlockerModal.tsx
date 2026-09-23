@@ -502,7 +502,7 @@ export function ScheduleTaskBlockerModal({
                                 noteMissing ? noteHelpId : undefined
                             }
                             aria-invalid={noteMissing || undefined}
-                            className="min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-base font-normal focus:outline-hidden focus:ring-2 focus:ring-primary"
+                            className="min-h-24 w-full resize-y rounded-md border border-input bg-field px-3 py-2 text-base font-normal focus:outline-hidden focus:ring-2 focus:ring-primary"
                             disabled={isSubmitting}
                             maxLength={MAX_BLOCKER_NOTE_LENGTH}
                             onChange={(event) => {

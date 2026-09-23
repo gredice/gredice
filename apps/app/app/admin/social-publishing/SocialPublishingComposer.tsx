@@ -290,7 +290,7 @@ export function SocialPublishingComposer({
                             name="body"
                             rows={7}
                             placeholder="Tekst objave, opis slike ili video caption"
-                            className="w-full rounded border border-muted bg-card p-2"
+                            className="w-full rounded border border-muted bg-field p-2"
                         />
                     </label>
                     <SocialMediaUploadField

@@ -344,7 +344,7 @@ function SelectedPlantingBlockModal({
                 <label className="grid gap-1 text-sm font-medium">
                     Razlog
                     <select
-                        className="min-h-11 rounded-md border bg-card px-3"
+                        className="min-h-11 rounded-md border bg-field px-3"
                         disabled={isLoading}
                         onChange={(event) => {
                             const reason = parseSelectedTaskBlockReason(
@@ -366,7 +366,7 @@ function SelectedPlantingBlockModal({
                 <label className="grid gap-1 text-sm font-medium">
                     Napomena
                     <textarea
-                        className="min-h-24 rounded-md border bg-card px-3 py-2"
+                        className="min-h-24 rounded-md border bg-field px-3 py-2"
                         disabled={isLoading}
                         maxLength={2000}
                         onChange={(event) => setNote(event.target.value)}

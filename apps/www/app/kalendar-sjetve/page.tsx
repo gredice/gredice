@@ -139,7 +139,7 @@ export default async function SowingCalendarPage({
                             id="calendar-month"
                             name="mjesec"
                             defaultValue={month}
-                            className="rounded-md border bg-background px-3 py-2"
+                            className="rounded-md border bg-field px-3 py-2"
                         >
                             <option value="">Svi mjeseci</option>
                             {calendarMonthNames.map((name, index) => (
@@ -155,7 +155,7 @@ export default async function SowingCalendarPage({
                             id="calendar-activity"
                             name="radnja"
                             defaultValue={activity}
-                            className="max-w-full rounded-md border bg-background px-3 py-2"
+                            className="max-w-full rounded-md border bg-field px-3 py-2"
                         >
                             <option value="">Sve radnje</option>
                             {calendarActivityKeys.map((key) => (
