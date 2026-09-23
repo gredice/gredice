@@ -112,6 +112,33 @@ test('shows the sky by default and applies deterministic debug conditions', asyn
     ).toBe('false');
 });
 
+test('respects the always-day preference when ambient was never chosen', async ({
+    mount,
+    page,
+}) => {
+    await page.clock.setFixedTime(new Date('2026-08-24T21:00:00Z'));
+    await mockPublicEnvironmentRequests(page);
+    await page.evaluate(() => {
+        localStorage.setItem('game-day-night-cycle-disabled', 'true');
+    });
+    await mount(<PublicEnvironmentHarness />);
+
+    const toggle = page.getByRole('switch', {
+        name: 'Ambijentalna pozadina',
+    });
+    await expect(toggle).toBeEnabled();
+    await expect(toggle).not.toBeChecked();
+    await expect(page.getByTestId('public-environment-backdrop')).toHaveCount(
+        0,
+    );
+    await expect(page.locator('html')).not.toHaveClass(/dark/u);
+
+    // An explicit ambient choice still wins over the always-day default.
+    await toggle.click();
+    await expect(toggle).toBeChecked();
+    await expect(page.locator('html')).toHaveClass(/dark/u);
+});
+
 test('keeps the sky off when the visitor previously turned it off', async ({
     mount,
     page,
