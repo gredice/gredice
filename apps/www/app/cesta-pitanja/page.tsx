@@ -27,26 +27,27 @@ export default async function FaqPage() {
 
     return (
         <Stack>
+            {sections.length > 0 && (
+                <nav
+                    aria-label="Kategorije čestih pitanja"
+                    className="mt-8 mb-8 flex gap-2 overflow-x-auto pb-2 sm:flex-wrap sm:gap-3 sm:overflow-visible sm:pb-0 md:mt-12"
+                >
+                    {sections.map(({ category }) => (
+                        <a
+                            key={category.information.name}
+                            href={`#${category.information.name}`}
+                            className="shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                        >
+                            {category.information.label}
+                        </a>
+                    ))}
+                </nav>
+            )}
             <PageHeader
                 header="Česta pitanja"
                 subHeader="Od prve sadnje do dostave: pronađi odgovor za svoj sljedeći korak."
-                padded
             />
-            <nav
-                aria-label="Kategorije čestih pitanja"
-                className="mb-8 flex flex-wrap gap-3"
-            >
-                {sections.map(({ category }) => (
-                    <a
-                        key={category.information.name}
-                        href={`#${category.information.name}`}
-                        className="rounded-full border px-4 py-2 text-sm hover:bg-muted"
-                    >
-                        {category.information.label}
-                    </a>
-                ))}
-            </nav>
-            <Stack spacing={8}>
+            <Stack spacing={8} className="mt-8">
                 {!faq?.length && (
                     <div className=" border rounded py-4 md:col-span-2">
                         <NoDataPlaceholder>
