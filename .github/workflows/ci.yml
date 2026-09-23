@@ -26,10 +26,10 @@ jobs:
     name: "Validate UI primitive boundary"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v6.4.0
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: 24
       - run: node --test scripts/check-ui-primitives.test.mjs
@@ -42,10 +42,10 @@ jobs:
       pull-requests: read
       contents: read
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 1
-      - uses: dorny/paths-filter@v4.0.2
+      - uses: dorny/paths-filter@v4.0.3
         id: filter
         with:
           filters: |
@@ -255,8 +255,8 @@ jobs:
     if: success() && needs.changes.outputs.plugin_package == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.3
-      - uses: actions/setup-node@v6.4.0
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: 24
       - run: node scripts/check-plugins.mjs
@@ -404,24 +404,24 @@ jobs:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_APP }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 2
 
-      - uses: pnpm/action-setup@v6.0.8
+      - uses: pnpm/action-setup@v6.1.0
         name: ✨ Install pnpm
 
       - name: ✨ Setup Node
-        uses: actions/setup-node@v6.4.0
+        uses: actions/setup-node@v7.0.0
         with:
-          node-version: "24.15.0"
+          node-version: "24.21.0"
 
       - name: ✨ Get pnpm store directory
         shell: bash
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - uses: actions/cache@v5.0.5
+      - uses: actions/cache@v6.1.0
         name: ✨ Setup pnpm cache
         with:
           path: ${{ env.STORE_PATH }}
@@ -451,24 +451,24 @@ jobs:
     if: success() && github.event_name == 'pull_request' &&
       needs.changes.outputs.packages_game == 'true'
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 2
 
-      - uses: pnpm/action-setup@v6.0.8
+      - uses: pnpm/action-setup@v6.1.0
         name: ✨ Install pnpm
 
       - name: ✨ Setup Node
-        uses: actions/setup-node@v6.4.0
+        uses: actions/setup-node@v7.0.0
         with:
-          node-version: "24.15.0"
+          node-version: "24.21.0"
 
       - name: ✨ Get pnpm store directory
         shell: bash
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - uses: actions/cache@v5.0.5
+      - uses: actions/cache@v6.1.0
         name: ✨ Setup pnpm cache
         with:
           path: ${{ env.STORE_PATH }}
@@ -490,24 +490,24 @@ jobs:
     if: success() && github.event_name == 'pull_request' &&
       needs.changes.outputs.packages_email == 'true'
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 2
 
-      - uses: pnpm/action-setup@v6.0.8
+      - uses: pnpm/action-setup@v6.1.0
         name: ✨ Install pnpm
 
       - name: ✨ Setup Node
-        uses: actions/setup-node@v6.4.0
+        uses: actions/setup-node@v7.0.0
         with:
-          node-version: "24.15.0"
+          node-version: "24.21.0"
 
       - name: ✨ Get pnpm store directory
         shell: bash
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - uses: actions/cache@v5.0.5
+      - uses: actions/cache@v6.1.0
         name: ✨ Setup pnpm cache
         with:
           path: ${{ env.STORE_PATH }}
@@ -528,12 +528,12 @@ jobs:
     name: "CI - verify app package filters"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.1
 
       - name: ✨ Setup Node
-        uses: actions/setup-node@v6.4.0
+        uses: actions/setup-node@v7.0.0
         with:
-          node-version: "24.15.0"
+          node-version: "24.21.0"
 
       - name: 🔎 Verify CI app filters
         run: node ./scripts/check-ci-filters.mjs

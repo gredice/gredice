@@ -1,5 +1,8 @@
 # Game scene performance analysis
 
+See [Shared garden spatial queries](./game-spatial-queries.md) for indexed picking,
+shared camera frames, diagnostics, and validation of spatial consumers.
+
 Date: 2026-04-29
 
 Static inventory refreshed: 2026-08-30

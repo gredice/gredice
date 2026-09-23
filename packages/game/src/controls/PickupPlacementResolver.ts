@@ -9,6 +9,7 @@ import {
     type ActiveDragPreviewTargetOffset,
     createActiveDragPreviewTarget,
 } from '../dragPreviewIdentity';
+import { GardenCellMap } from '../spatial/GardenCellMap';
 import type { Block } from '../types/Block';
 import type { GardenStack } from '../types/Stack';
 import {
@@ -62,17 +63,6 @@ export type PickupPlacementPreviewResolver = {
     ) => ResolvedPlacementPreview | null;
 };
 
-function getStack(
-    stacks: GardenStack[] | undefined,
-    destination: { x: number; z: number },
-) {
-    return stacks?.find(
-        (candidate) =>
-            candidate.position.x === destination.x &&
-            candidate.position.z === destination.z,
-    );
-}
-
 type OccupiedCell = {
     block: Block;
     blockIndex: number;
@@ -80,10 +70,6 @@ type OccupiedCell = {
     stackable: boolean;
     topHeight: number;
 };
-
-function cellKey(position: { x: number; z: number }) {
-    return `${position.x}|${position.z}`;
-}
 
 function createOccupiedCells({
     blockData,
@@ -94,7 +80,7 @@ function createOccupiedCells({
     movingBlockIds: Set<string>;
     stacks: GardenStack[] | undefined;
 }) {
-    const occupiedCells = new Map<string, OccupiedCell[]>();
+    const occupiedCells = new GardenCellMap<OccupiedCell>();
 
     for (const stack of stacks ?? []) {
         let stackHeight = 0;
@@ -116,8 +102,6 @@ function createOccupiedCells({
                         x: stack.position.x + offset.x,
                         z: stack.position.z + offset.y,
                     };
-                    const key = cellKey(position);
-                    const existing = occupiedCells.get(key);
                     const cell = {
                         block,
                         blockIndex,
@@ -126,11 +110,7 @@ function createOccupiedCells({
                         topHeight: stackHeight + blockHeight,
                     };
 
-                    if (existing) {
-                        existing.push(cell);
-                    } else {
-                        occupiedCells.set(key, [cell]);
-                    }
+                    occupiedCells.add(position.x, position.z, cell);
                 }
 
                 stackHeight += blockHeight;
@@ -142,10 +122,10 @@ function createOccupiedCells({
 }
 
 function getTopOccupiedCell(
-    occupiedCells: Map<string, OccupiedCell[]>,
+    occupiedCells: GardenCellMap<OccupiedCell>,
     position: { x: number; z: number },
 ) {
-    const cells = occupiedCells.get(cellKey(position));
+    const cells = occupiedCells.get(position.x, position.z);
     if (!cells?.length) {
         return null;
     }
@@ -249,6 +229,9 @@ export function createPickupPlacementPreviewResolver({
         movingBlockIds,
         stacks,
     });
+    const stacksByCell = new GardenCellMap<GardenStack>();
+    for (const stack of stacks ?? [])
+        stacksByCell.add(stack.position.x, stack.position.z, stack);
     const preparedMovingSegments: PreparedMovingSegment[] = movingSegments.map(
         (segment) => ({
             footprintOffsets: getSegmentFootprintOffsets(blockData, segment),
@@ -266,7 +249,7 @@ export function createPickupPlacementPreviewResolver({
                 occupiedCells,
                 preparedMovingSegments,
                 relative,
-                stacks,
+                stacksByCell,
             }),
     };
 }
@@ -279,16 +262,16 @@ function resolvePickupPlacementPreviewFromPreparedState({
     occupiedCells,
     preparedMovingSegments,
     relative,
-    stacks,
+    stacksByCell,
 }: {
     blockData: BlockData[];
     gardenIsSandbox: boolean;
     localSandboxStorageKey: string | null;
     movingBlockIds: Set<string>;
-    occupiedCells: Map<string, OccupiedCell[]>;
+    occupiedCells: GardenCellMap<OccupiedCell>;
     preparedMovingSegments: PreparedMovingSegment[];
     relative: PickupPlacementRelative;
-    stacks: GardenStack[] | undefined;
+    stacksByCell: GardenCellMap<GardenStack>;
 }): ResolvedPlacementPreview | null {
     const placementPreviews: PlacementPreview[] =
         preparedMovingSegments.flatMap(({ footprintOffsets, segment }) => {
@@ -327,7 +310,10 @@ function resolvePickupPlacementPreviewFromPreparedState({
                     occupiedCells,
                     footprintDestination,
                 );
-                const supportStack = getStack(stacks, footprintDestination);
+                const supportStack = stacksByCell.get(
+                    footprintDestination.x,
+                    footprintDestination.z,
+                )[0];
                 const supportStackWithoutMoving = supportStack
                     ? {
                           ...supportStack,

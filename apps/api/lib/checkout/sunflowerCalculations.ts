@@ -2,7 +2,7 @@ import type { ShoppingCartItemWithShopData } from './cartInfo';
 
 type ShoppingCartItemForSunflowerCalculation = Pick<
     ShoppingCartItemWithShopData,
-    'currency' | 'id' | 'shopData' | 'status'
+    'amount' | 'currency' | 'id' | 'shopData' | 'status'
 >;
 
 /**
@@ -10,13 +10,13 @@ type ShoppingCartItemForSunflowerCalculation = Pick<
  * Returns the amount in sunflowers (multiplied by 1000 for precision).
  */
 export function calculateSunflowerAmount(
-    item: Pick<ShoppingCartItemWithShopData, 'shopData'>,
+    item: Pick<ShoppingCartItemWithShopData, 'amount' | 'shopData'>,
 ): number {
     const price =
         typeof item.shopData.discountPrice === 'number'
             ? item.shopData.discountPrice
             : (item.shopData.price ?? 0);
-    return Math.round(price * 1000);
+    return Math.round(price * 1000) * item.amount;
 }
 
 /**
@@ -26,6 +26,7 @@ export function calculateSunflowerAmount(
  * The durable spend event remains authoritative when one already exists.
  */
 export function calculateSunflowerReplayAmount(item: {
+    amount: number;
     outlet?: { outletPrice: number };
     shopData: { discountPrice?: number; price?: number };
     status: string;
@@ -35,7 +36,7 @@ export function calculateSunflowerReplayAmount(item: {
     }
 
     const price = item.outlet?.outletPrice ?? item.shopData.price ?? 0;
-    return Math.round(price * 1000);
+    return Math.round(price * 1000) * item.amount;
 }
 
 export function getDefaultCartItemCurrency({

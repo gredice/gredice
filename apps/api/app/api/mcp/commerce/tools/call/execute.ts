@@ -15,6 +15,7 @@ import {
     upsertOrRemoveCartItem,
 } from '@gredice/storage';
 import { z } from 'zod';
+import { upsertCartItemWithDefaultCurrency } from '../../../../../../lib/checkout/defaultCartItemCurrency';
 import {
     assertOperationCartTarget,
     resolveOperationCartTarget,
@@ -58,7 +59,7 @@ const GetCartSchema = z.object({
 const AddToCartSchema = z.object({
     userId: z.string().optional(),
     productId: z.string().min(1),
-    quantity: z.number().positive().default(1),
+    quantity: z.number().int().min(1).max(100).default(1),
     gardenId: z.number().int().positive().optional(),
     raisedBedId: z.number().int().positive().optional(),
     positionIndex: z.number().int().min(0).optional(),
@@ -68,7 +69,7 @@ const AddToCartSchema = z.object({
 const AddOperationToCartSchema = z.object({
     userId: z.string().optional(),
     operationId: z.coerce.number().int().positive(),
-    quantity: z.number().positive().default(1),
+    quantity: z.number().int().min(1).max(100).default(1),
     gardenId: z.number().int().positive().optional(),
     raisedBedId: z.number().int().positive().optional(),
     positionIndex: z.number().int().min(0).optional(),
@@ -368,17 +369,19 @@ export async function executeCommerceTool(
             const additionalData = input.scheduledDate
                 ? JSON.stringify({ scheduledDate: input.scheduledDate })
                 : null;
-            const cartItemId = await upsertOrRemoveCartItem(
-                null,
-                cart.id,
-                entityId.toString(),
-                'plantSort',
-                input.quantity,
-                location.gardenId,
-                location.raisedBedId,
-                location.positionIndex,
-                additionalData,
-            );
+            const { cartItemId } = await upsertCartItemWithDefaultCurrency({
+                accountId: authContext.accountId,
+                mutation: {
+                    additionalData,
+                    amount: input.quantity,
+                    cartId: cart.id,
+                    entityId: entityId.toString(),
+                    entityTypeName: 'plantSort',
+                    gardenId: location.gardenId,
+                    positionIndex: location.positionIndex,
+                    raisedBedId: location.raisedBedId,
+                },
+            });
             const refreshedCart = await getOrCreateShoppingCart(
                 authContext.accountId,
             );
@@ -435,17 +438,19 @@ export async function executeCommerceTool(
             const additionalData = input.scheduledDate
                 ? JSON.stringify({ scheduledDate: input.scheduledDate })
                 : null;
-            const cartItemId = await upsertOrRemoveCartItem(
-                null,
-                cart.id,
-                input.operationId.toString(),
-                'operation',
-                input.quantity,
-                location.gardenId,
-                location.raisedBedId,
-                location.positionIndex,
-                additionalData,
-            );
+            const { cartItemId } = await upsertCartItemWithDefaultCurrency({
+                accountId: authContext.accountId,
+                mutation: {
+                    additionalData,
+                    amount: input.quantity,
+                    cartId: cart.id,
+                    entityId: input.operationId.toString(),
+                    entityTypeName: 'operation',
+                    gardenId: location.gardenId,
+                    positionIndex: location.positionIndex,
+                    raisedBedId: location.raisedBedId,
+                },
+            });
             const refreshedCart = await getOrCreateShoppingCart(
                 authContext.accountId,
             );

@@ -298,9 +298,19 @@ function createDenseMockStacks(
                 ? x % 3 === 0 && z % 3 === 0
                     ? 'Tree'
                     : (x - 1) % 3 === 0 && z % 3 === 0
-                      ? 'Stool'
+                      ? z < -3
+                          ? 'Stool'
+                          : z < 0
+                            ? 'WoodenBench'
+                            : z < 3
+                              ? 'OutletDisplayTable'
+                              : 'GardenBox'
                       : x % 3 === 0 && (z - 1) % 3 === 0
-                        ? 'GiftBox_BlueWhite'
+                        ? z < 0
+                            ? 'GiftBox_BlueWhite'
+                            : z < 3
+                              ? 'StoneLarge'
+                              : 'FenceGate'
                         : null
                 : getDenseMockDetailBlockName(x, z);
             if (detailName) {

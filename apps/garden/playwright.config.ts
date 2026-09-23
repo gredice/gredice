@@ -20,7 +20,7 @@ const reporter: PlaywrightTestConfig['reporter'] = [
     ['html', { open: 'never' }],
 ];
 const webglComponentTestPattern =
-    /(autumn-season|actor-speech-bubble|cursor-anchored-zoom|detailed-inspection-farmer|garden-preview-capture|hover-outline|instanced-mesh-material-swap|precipitation-camera-follow|public-garden-switch|r3f-root-isolation|raised-bed-notification-bubble|scene-root-isolation|solar-eclipse)\.spec\.tsx/;
+    /(autumn-season|actor-speech-bubble|cursor-anchored-zoom|detailed-inspection-farmer|garden-preview-capture|hover-outline|instanced-mesh-material-swap|precipitation-camera-follow|public-garden-switch|r3f-root-isolation|raised-bed-notification-bubble|scene-root-isolation|solar-eclipse|spatial-interaction)\.spec\.tsx/;
 const outletGardenRouteTestPattern = /outlet-garden-route\.spec\.ts/;
 
 // Plugin to intercept next/font/google before Vite's resolver
@@ -55,6 +55,9 @@ export const config: PlaywrightTestConfig = {
         trace: 'on-first-retry',
         ctPort: getComponentTestPort(app),
         ctViteConfig: {
+            // Playwright CT 1.62 bundles Vite 8, whose CJS interop turns default imports
+            // of Next's CJS entry points (e.g. next/image) into module objects.
+            legacy: { inconsistentCjsInterop: true },
             plugins: [nextFontMockPlugin()],
             optimizeDeps: {
                 exclude: ['next/font/google'],

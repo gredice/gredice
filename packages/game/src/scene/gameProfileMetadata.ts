@@ -2,6 +2,8 @@
 
 import type { GameCameraSnapshot } from '../controls/GameCameraRigApi';
 import type { PlantInstanceBufferMetricsSnapshot } from '../generators/plant/lib/plantInstanceBufferMetrics';
+import type { CameraFrame } from '../spatial/cameraFrame';
+import type { GardenSpatialIndex } from '../spatial/GardenSpatialIndex';
 import type {
     GameRuntimeSchedulerFrequentProfileSnapshot,
     GameRuntimeSchedulerSnapshot,
@@ -467,6 +469,8 @@ export type GameProfileMetadata = {
     profileGardenId?: number;
     profileGardenRaisedBedCount?: number;
     profileGardenStackCount?: number;
+    spatialCamera?: CameraFrame['metrics'];
+    spatialPicking?: GardenSpatialIndex<unknown>['metrics'];
     instancedInteractionControllerCount?: number;
     instancedInteractionResolutionCount?: number;
     instancedInteractionResolutionMaxMs?: number;
