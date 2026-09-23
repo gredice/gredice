@@ -90,6 +90,7 @@ test('backfill changes legacy defaults and keeps uncertain edits until requested
     const edited = randomUUID();
     const emailOnly = randomUUID();
     const temporary = randomUUID();
+    const postDeployment = randomUUID();
     await db.insert(users).values([
         {
             id: original,
@@ -124,6 +125,14 @@ test('backfill changes legacy defaults and keeps uncertain edits until requested
             createdAt,
             updatedAt: createdAt,
         },
+        {
+            id: postDeployment,
+            userName: `${postDeployment}@example.com`,
+            displayName: 'Nova Vrtlarica',
+            role: 'user',
+            createdAt: new Date('2026-10-01T12:00:00.000Z'),
+            updatedAt: new Date('2026-10-01T12:00:00.000Z'),
+        },
     ]);
     await db.insert(userLogins).values([
         {
@@ -135,6 +144,12 @@ test('backfill changes legacy defaults and keeps uncertain edits until requested
         {
             userId: edited,
             loginType: 'facebook',
+            loginId: randomUUID(),
+            loginData: '{}',
+        },
+        {
+            userId: postDeployment,
+            loginType: 'google',
             loginId: randomUUID(),
             loginData: '{}',
         },
@@ -154,9 +169,11 @@ test('backfill changes legacy defaults and keeps uncertain edits until requested
     assert.equal(await getName(edited), 'Iva Kovač');
     assert.match((await getName(emailOnly)) ?? '', /\d{4}$/u);
     assert.equal(await getName(temporary), 'Mali Suncokret 1234');
+    assert.equal(await getName(postDeployment), 'Nova Vrtlarica');
 
     await backfillLegacyUserDisplayNames({ apply: true, scope: 'all-social' });
     assert.equal(await getName(edited), 'Iva');
+    assert.equal(await getName(postDeployment), 'Nova Vrtlarica');
     assert.equal(
         (await backfillLegacyUserDisplayNames({ scope: 'all-social' }))
             .firstNameCandidates,

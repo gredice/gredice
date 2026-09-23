@@ -13,7 +13,7 @@ type TransactionClient = Parameters<
 >[0];
 type DatabaseClient = StorageClient | TransactionClient;
 export type LegacyDisplayNameScope = 'untouched' | 'all-social';
-// Freeze the legacy cohort so a later apply cannot shorten new custom names.
+// Dry-run baseline; an apply supplies the actual deployment cutoff explicitly.
 const legacySignupCutoff = new Date('2026-09-23T20:06:16.000Z');
 
 export function legacyDisplayNameChange(
@@ -44,6 +44,7 @@ export function legacyDisplayNameChange(
 async function findCandidates(
     db: DatabaseClient,
     scope: LegacyDisplayNameScope,
+    createdBefore: Date,
 ) {
     const [registeredUsers, socialLogins] = await Promise.all([
         db
@@ -57,7 +58,7 @@ async function findCandidates(
             .where(
                 and(
                     eq(users.isTemporary, false),
-                    lt(users.createdAt, legacySignupCutoff),
+                    lt(users.createdAt, createdBefore),
                 ),
             ),
         db
@@ -81,15 +82,21 @@ async function findCandidates(
 
 export async function backfillLegacyUserDisplayNames({
     apply = false,
+    createdBefore = legacySignupCutoff,
     scope = 'untouched',
 }: {
     apply?: boolean;
+    createdBefore?: Date;
     scope?: LegacyDisplayNameScope;
 } = {}) {
+    if (Number.isNaN(createdBefore.getTime())) {
+        throw new Error('Invalid legacy signup cutoff');
+    }
     const run = async (db: DatabaseClient) => {
-        const candidates = await findCandidates(db, scope);
+        const candidates = await findCandidates(db, scope, createdBefore);
         const summary = {
             scope,
+            createdBefore: createdBefore.toISOString(),
             dryRun: !apply,
             randomCandidates: candidates.filter(
                 (user) => user.change === 'random',
