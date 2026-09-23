@@ -245,13 +245,20 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
 
     await page.waitForTimeout(1_000);
     expect(authenticatedViewerRequests).toEqual([]);
+    // The neighbouring spring root keeps its own cadence after capture; poll
+    // so software-rendered CI runners have time to submit its next frames.
+    await expect
+        .poll(
+            async () =>
+                JSON.parse((await resultOutput.textContent()) ?? '{}')
+                    .activeRootSubmittedFrameCount,
+            { timeout: 15_000 },
+        )
+        .toBeGreaterThan(result.activeRootSubmittedFrameCount + 5);
     const settledResult = JSON.parse(
         (await resultOutput.textContent()) ?? '{}',
     );
     expect(settledResult.count).toBe(1);
-    expect(settledResult.activeRootSubmittedFrameCount).toBeGreaterThan(
-        result.activeRootSubmittedFrameCount + 5,
-    );
     expect(settledResult.captureAfterRenderPassCount).toBe(
         result.captureAfterRenderPassCount,
     );
