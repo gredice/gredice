@@ -31,6 +31,7 @@
         "stripe-payment-claim:review": "tsx --conditions=react-server ./scripts/reviewStripePaymentClaim.ts",
         "stripe-payment-claim:rollback-preflight": "tsx --conditions=react-server ./scripts/checkStripePaymentRollback.ts",
         "notifications:backfill-rollout": "tsx --env-file=.env ./scripts/backfillNotificationRolloutDefaults.ts",
+        "users:display-names:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillLegacyUserDisplayNames.ts",
         "sunflower-packages:seed": "tsx --conditions=react-server --env-file=.env ./scripts/seedSunflowerPackageCatalog.ts",
         "plant-relationships:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPlantRelationships.ts",
         "plant-health:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPlantHealthDirectory.ts",

@@ -1,3 +1,4 @@
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import type { RaisedBedFieldAssignableFarmUser } from '@gredice/storage';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
 
@@ -22,12 +23,14 @@ export async function PlantingAssignedUserAvatar({
     return (
         <div
             className="shrink-0"
-            title={`Dodijeljeno: ${assignedUser.displayName ?? assignedUser.userName}`}
+            title={`Dodijeljeno: ${safeUserDisplayName(assignedUser.displayName ?? assignedUser.userName)}`}
         >
             <UserAvatar
                 achievementCount={assignedUser.achievementCount}
                 avatarUrl={assignedUser.avatarUrl}
-                displayName={assignedUser.displayName ?? assignedUser.userName}
+                displayName={safeUserDisplayName(
+                    assignedUser.displayName ?? assignedUser.userName,
+                )}
                 className="size-7 rounded-full"
             />
         </div>

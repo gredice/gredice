@@ -1,5 +1,6 @@
 import 'server-only';
 import { userIdToPublicId } from '@gredice/js/publicId';
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import { and, asc, count, desc, eq, inArray, max, sql } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { storage } from '..';
@@ -239,15 +240,14 @@ async function getPublicGardenMembersByAccountIds(accountIds: string[]) {
         if (members.some((member) => member.publicId === publicId)) {
             continue;
         }
-        const displayName = membership.displayName?.trim();
         members.push({
             publicId,
             avatarUrl: membership.avatarUrl,
             achievementCount: membership.achievementCount,
-            displayName:
-                displayName && !/\S+@\S+/u.test(displayName)
-                    ? displayName
-                    : 'Korisnik Gredica',
+            displayName: safeUserDisplayName(
+                membership.displayName,
+                'Korisnik Gredica',
+            ),
         });
         membersByAccountId.set(membership.accountId, members);
     }

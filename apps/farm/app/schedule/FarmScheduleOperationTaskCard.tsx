@@ -1,3 +1,4 @@
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import type { EntityStandardized } from '@gredice/storage';
 import { OperationRequestNote } from '@gredice/ui/OperationRequestNote';
 import { Row } from '@gredice/ui/Row';
@@ -120,17 +121,17 @@ export function FarmScheduleOperationTaskCard({
                 {operation.assignedUser && (
                     <div
                         className="shrink-0"
-                        title={`Dodijeljeno: ${operation.assignedUser.displayName ?? operation.assignedUser.userName}`}
+                        title={`Dodijeljeno: ${safeUserDisplayName(operation.assignedUser.displayName ?? operation.assignedUser.userName)}`}
                     >
                         <UserAvatar
                             achievementCount={
                                 operation.assignedUser.achievementCount
                             }
                             avatarUrl={operation.assignedUser.avatarUrl}
-                            displayName={
+                            displayName={safeUserDisplayName(
                                 operation.assignedUser.displayName ??
-                                operation.assignedUser.userName
-                            }
+                                    operation.assignedUser.userName,
+                            )}
                             className="size-7 rounded-full"
                         />
                     </div>
