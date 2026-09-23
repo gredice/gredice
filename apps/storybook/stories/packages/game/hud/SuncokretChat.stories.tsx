@@ -11,6 +11,26 @@ const meta = {
         const originalFetch = globalThis.fetch;
         globalThis.fetch = async (input, init) => {
             const url = String(input instanceof Request ? input.url : input);
+            if (context.args.freshReview && url.endsWith('/analyze-image')) {
+                await new Promise((resolve) => setTimeout(resolve, 1500));
+                return new Response(
+                    '## Sažetak stanja\nGrah ima zrele mahune.',
+                    {
+                        headers: { 'Content-Type': 'text/plain' },
+                    },
+                );
+            }
+            if (context.args.freshReview && url.endsWith('/ai-history')) {
+                return Response.json([
+                    {
+                        id: 501,
+                        description:
+                            '## Sažetak stanja\nGrah ima zrele mahune.',
+                        timestamp: '2026-09-22T12:00:00Z',
+                        imageUrls: ['/web-app-manifest-192x192.png'],
+                    },
+                ]);
+            }
             if (!url.includes('/api/ai/suncokret/'))
                 return originalFetch(input, init);
             if (url.includes('/status'))
@@ -79,11 +99,13 @@ const meta = {
             globalThis.fetch = originalFetch;
         };
     },
-    play: async ({ canvasElement }) => {
+    play: async ({ canvasElement, args }) => {
         const canvas = within(canvasElement);
         await userEvent.click(
             canvas.getByRole('button', {
-                name: 'Pregledaj savjete suncokreta',
+                name: args.freshReview
+                    ? 'Pitaj suncokret za savjete'
+                    : 'Pregledaj savjete suncokreta',
             }),
         );
         await expect(
@@ -99,3 +121,12 @@ export const Review: Story = {};
 export const SavedDiscussion: Story = { parameters: { saved: true } };
 export const HistoryUnavailable: Story = { parameters: { historyError: true } };
 export const Mobile: Story = { globals: { viewport: { value: 'mobile1' } } };
+export const ScanningToReview: Story = { args: { freshReview: true } };
+export const MultiplePhotos: Story = {
+    args: {
+        reviewImageUrls: [
+            '/web-app-manifest-192x192.png',
+            '/web-app-manifest-512x512.png',
+        ],
+    },
+};

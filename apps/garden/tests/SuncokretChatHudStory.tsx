@@ -150,6 +150,7 @@ function ShoppingCartQueryProbe() {
 }
 
 export function SuncokretChatHudStory({
+    reviewImageUrls = ['/web-app-manifest-192x192.png'],
     review = false,
     freshReview = false,
     contextTarget,
@@ -159,6 +160,7 @@ export function SuncokretChatHudStory({
     observeShoppingCart = false,
     settingsSection,
 }: {
+    reviewImageUrls?: string[];
     review?: boolean;
     freshReview?: boolean;
     contextTarget?: SuncokretChatTarget;
@@ -205,9 +207,7 @@ export function SuncokretChatHudStory({
                                     raisedBedId={raisedBedId}
                                     positionIndex={1}
                                     entryName="Fotografiranje gredice"
-                                    imageUrls={[
-                                        '/web-app-manifest-192x192.png',
-                                    ]}
+                                    imageUrls={reviewImageUrls}
                                     referenceDate="2026-09-22T12:00:00Z"
                                     historyEntries={
                                         freshReview
@@ -220,9 +220,8 @@ export function SuncokretChatHudStory({
                                                       timestamp: new Date(
                                                           '2026-09-22T12:00:00Z',
                                                       ),
-                                                      imageUrls: [
-                                                          '/web-app-manifest-192x192.png',
-                                                      ],
+                                                      imageUrls:
+                                                          reviewImageUrls,
                                                   },
                                                   {
                                                       id: 500,
@@ -231,9 +230,8 @@ export function SuncokretChatHudStory({
                                                       timestamp: new Date(
                                                           '2026-09-21T12:00:00Z',
                                                       ),
-                                                      imageUrls: [
-                                                          '/web-app-manifest-192x192.png',
-                                                      ],
+                                                      imageUrls:
+                                                          reviewImageUrls,
                                                   },
                                               ]
                                     }
