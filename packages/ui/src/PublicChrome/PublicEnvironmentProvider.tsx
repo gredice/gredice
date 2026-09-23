@@ -109,15 +109,34 @@ export function PublicEnvironmentProvider({
     const [weatherKind, setWeatherKind] =
         useState<PublicEnvironmentWeatherKind>('live');
 
+    // Ambient mode is on by default unless the visitor chose "Uvijek dan"
+    // (always day); an explicit ambient choice is persisted and wins.
     useEffect(() => {
-        try {
-            setEnabled(
-                window.localStorage.getItem(PUBLIC_ENVIRONMENT_STORAGE_KEY) ===
-                    'true',
+        const readEnabled = () => {
+            let stored: string | null = null;
+            try {
+                stored = window.localStorage.getItem(
+                    PUBLIC_ENVIRONMENT_STORAGE_KEY,
+                );
+            } catch {
+                // Fall back to the default when storage is blocked.
+            }
+            if (stored === 'true' || stored === 'false') {
+                return stored === 'true';
+            }
+            return !isDayNightCycleDisabled();
+        };
+        const updateEnabled = () => setEnabled(readEnabled());
+        updateEnabled();
+        window.addEventListener(
+            DAY_NIGHT_CYCLE_DISABLED_CHANGE_EVENT,
+            updateEnabled,
+        );
+        return () =>
+            window.removeEventListener(
+                DAY_NIGHT_CYCLE_DISABLED_CHANGE_EVENT,
+                updateEnabled,
             );
-        } catch {
-            setEnabled(false);
-        }
     }, []);
 
     useEffect(() => {
@@ -220,7 +239,7 @@ export function PublicEnvironmentProvider({
 
     const toggle = useCallback(() => {
         setEnabled((current) => {
-            const next = !(current ?? false);
+            const next = !(current ?? true);
             try {
                 window.localStorage.setItem(
                     PUBLIC_ENVIRONMENT_STORAGE_KEY,

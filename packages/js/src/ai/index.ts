@@ -1,3 +1,8 @@
+export {
+    getAiChatMessageTimestamp,
+    getAiChatResponseTimestamp,
+} from './chatMessageTimestamp';
+
 const MARKDOWN_LINK_DESTINATION_PATTERN = /\]\([^)]*\)/g;
 
 // ECB reference rates fluctuate daily. AI provider prices arrive in USD, so

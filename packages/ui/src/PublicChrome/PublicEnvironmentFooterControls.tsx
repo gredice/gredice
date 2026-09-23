@@ -59,7 +59,7 @@ export function PublicEnvironmentFooterControls() {
                 </label>
                 <Switch
                     aria-label="Ambijentalna pozadina"
-                    checked={enabled ?? false}
+                    checked={enabled ?? true}
                     disabled={enabled === null}
                     id={ambientToggleId}
                     onCheckedChange={toggle}
@@ -126,7 +126,7 @@ export function PublicEnvironmentFooterControls() {
                         >
                             <span>Vremenski uvjeti</span>
                             <select
-                                className="h-10 rounded-md border border-input bg-background px-3 text-foreground"
+                                className="h-10 rounded-md border border-input bg-field px-3 text-foreground"
                                 id={weatherId}
                                 onChange={(event) => {
                                     const kind = event.currentTarget.value;

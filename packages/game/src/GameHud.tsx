@@ -38,9 +38,6 @@ import { AdventModal } from './modals/advent/AdventModal';
 import { GiftBoxModal } from './modals/GiftBoxModal';
 import { OverviewModal } from './modals/OverviewModal';
 import { WoodenSignModal } from './modals/WoodenSignModal';
-import { GardenStructureVerticalSliceHudDynamic } from './structures/GardenStructureVerticalSliceHudDynamic';
-import type { GardenStructureProfileFixtureDescriptor } from './structures/gardenStructureProfileFixtureDescriptor';
-import type { GardenStructureSemanticPlan } from './structures/structurePlanTypes';
 import { useGameState } from './useGameState';
 
 export const gameHudBottomBarClassName =
@@ -68,19 +65,11 @@ export function getGameHudBottomCloseupClassName(isCloseup: boolean) {
 
 export function GameHud({
     debugHud,
-    gardenStructureBuildEnabled = false,
-    gardenStructureDebugFixture,
-    gardenStructureDebugPlan,
-    gardenStructureProfileFixture,
     noWeather,
     suppressOpeningHud,
     viewMode = '3d',
 }: {
     debugHud?: boolean;
-    gardenStructureBuildEnabled?: boolean;
-    gardenStructureDebugFixture?: boolean;
-    gardenStructureDebugPlan?: GardenStructureSemanticPlan;
-    gardenStructureProfileFixture?: GardenStructureProfileFixtureDescriptor;
     noWeather?: boolean;
     suppressOpeningHud?: boolean;
     viewMode?: GardenViewMode;
@@ -96,9 +85,6 @@ export function GameHud({
     }>({ confirmed: false, gardenId: null });
     const isCloseup = useGameState((state) => state.view) === 'closeup';
     const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
-    const structureBuildSession = useGameState(
-        (state) => state.structureBuildSession,
-    );
     const { data: currentGarden } = useCurrentGarden();
     const { data: currentUser } = useCurrentUser();
     const markTutorialChecklistTaskReady = useMarkTutorialChecklistTaskReady();
@@ -132,21 +118,6 @@ export function GameHud({
         (isSandbox || raisedBedOnboardingChecklistResolved);
     const whatsNewHudEnabled =
         !isLocalSandbox && !suppressOpeningHud && openingFlowComplete;
-
-    if (gardenStructureBuildEnabled && structureBuildSession) {
-        return (
-            <SuncokretChatProvider>
-                <GardenStructureVerticalSliceHudDynamic
-                    key="structure-build-hud"
-                    enabled
-                    fixture={gardenStructureDebugFixture}
-                    plan={gardenStructureDebugPlan}
-                    profileFixture={gardenStructureProfileFixture}
-                />
-                {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
-            </SuncokretChatProvider>
-        );
-    }
 
     if (gardenAvatarView !== 'overview') {
         // Interacting with a garden box or a sign while walking has to open its
@@ -322,15 +293,6 @@ export function GameHud({
                 </>
             )}
             {!isLocalSandbox && <PaymentSuccessfulMessage />}
-            {gardenStructureBuildEnabled ? (
-                <GardenStructureVerticalSliceHudDynamic
-                    key="structure-build-hud"
-                    enabled
-                    fixture={gardenStructureDebugFixture}
-                    plan={gardenStructureDebugPlan}
-                    profileFixture={gardenStructureProfileFixture}
-                />
-            ) : null}
             {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
         </SuncokretChatProvider>
     );

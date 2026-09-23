@@ -1,6 +1,5 @@
 'use client';
 
-import { createGardenStructureTemplateSeed } from '@gredice/js/gardenStructures';
 import { Canvas } from '@react-three/fiber';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -18,30 +17,6 @@ import { R3FRootIsolationSpring } from '../../../packages/game/tests/R3FRootIsol
 
 const capturedAt = '2026-07-11T10:00:00.000Z';
 const raisedBedId = 8_101;
-const captureStructureSeed = createGardenStructureTemplateSeed('house');
-const captureStructure: PublicGardenDetail['structures'][number] = {
-    anchorX: 4,
-    anchorY: 0,
-    document: captureStructureSeed.document,
-    id: 'capture-house',
-    isDeleted: false,
-    kitKey: captureStructureSeed.kitKey,
-    kitVersion: captureStructureSeed.kitVersion,
-    revision: 1,
-    rotation: 0,
-    templateKey: captureStructureSeed.templateKey,
-};
-
-function captureStructureSupport(x: number, y: number) {
-    return [
-        {
-            id: `grass-structure-${x.toString()}-${y.toString()}`,
-            name: 'Block_Grass',
-            rotation: 0,
-        },
-    ];
-}
-
 const captureGarden = {
     backgroundPalette: 'current',
     farmId: 1,
@@ -118,7 +93,6 @@ const captureGarden = {
             isValid: true,
         },
     ],
-    structures: [captureStructure],
     stacks: {
         '0': {
             '0': [
@@ -166,24 +140,6 @@ const captureGarden = {
                     rotation: 0,
                 },
             ],
-        },
-        '4': {
-            '0': captureStructureSupport(4, 0),
-            '1': captureStructureSupport(4, 1),
-            '2': captureStructureSupport(4, 2),
-            '3': captureStructureSupport(4, 3),
-        },
-        '5': {
-            '0': captureStructureSupport(5, 0),
-            '1': captureStructureSupport(5, 1),
-            '2': captureStructureSupport(5, 2),
-            '3': captureStructureSupport(5, 3),
-        },
-        '6': {
-            '0': captureStructureSupport(6, 0),
-            '1': captureStructureSupport(6, 1),
-            '2': captureStructureSupport(6, 2),
-            '3': captureStructureSupport(6, 3),
         },
     },
     updatedAt: capturedAt,

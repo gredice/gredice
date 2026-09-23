@@ -1,20 +1,32 @@
+import { sanitizeRaisedBedAiMarkdown } from '@gredice/js/ai';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
+import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import { AiAnalysisRequestError } from '../../hooks/aiAnalysisError';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { useRaisedBedAiAnalysis } from '../../hooks/useRaisedBedAiAnalysis';
+import { useRaisedBedAiHistory } from '../../hooks/useRaisedBedAiHistory';
 import { useRaisedBedFieldAiAnalysis } from '../../hooks/useRaisedBedFieldAiAnalysis';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
 import { GameModal } from '../../shared-ui/game-modal';
-import { useSuncokretChat } from '../SuncokretChatProvider';
 import { RaisedBedAiOperationMarkdown } from './RaisedBedAiOperationMarkdown';
 import styles from './RaisedBedDiaryAiAction.module.css';
-import { buildRaisedBedAnalysisChatSeed } from './raisedBedAnalysisChatSeed';
+import {
+    buildRaisedBedAnalysisChatSeed,
+    getRaisedBedAnalysisConversationId,
+} from './raisedBedAnalysisChatSeed';
+import { useRaisedBedReviewLayout } from './useRaisedBedReviewLayout';
+
+const SuncokretChatPanel = dynamic(() =>
+    import('../SuncokretChatPanel').then((module) => module.SuncokretChatPanel),
+);
 
 type RaisedBedDiaryAiActionProps = {
     gardenId: number;
@@ -59,9 +71,19 @@ export function RaisedBedDiaryAiAction({
     const [analysisCompletedAt, setAnalysisCompletedAt] = useState<Date | null>(
         null,
     );
+    const compactReview =
+        phase === 'typing' ||
+        phase === 'done' ||
+        (phase === 'error' && visibleMarkdown.length > 0);
+    const { captureScanningLayout, layoutRef } = useRaisedBedReviewLayout(
+        compactReview,
+        open,
+    );
     const requestIdRef = useRef(0);
-    const triggerElementRef = useRef<HTMLElement | null>(null);
-    const chat = useSuncokretChat();
+    const currentUser = useCurrentUser(open);
+    const savedHistory = useRaisedBedAiHistory(gardenId, raisedBedId, {
+        enabled: open && phase === 'done' && resultSource === 'analysis',
+    });
     const raisedBedAnalysis = useRaisedBedAiAnalysis();
     const raisedBedFieldAnalysis = useRaisedBedFieldAiAnalysis();
     const activeMutation =
@@ -115,6 +137,7 @@ export function RaisedBedDiaryAiAction({
 
         const onChunk = (accumulated: string) => {
             if (requestIdRef.current !== requestId) return;
+            captureScanningLayout();
             setPhase('typing');
             setVisibleMarkdown(accumulated);
         };
@@ -122,6 +145,7 @@ export function RaisedBedDiaryAiAction({
         const callbacks = {
             onSuccess: () => {
                 if (requestIdRef.current !== requestId) return;
+                captureScanningLayout();
                 setPhase('done');
                 setAnalysisCompletedAt(new Date());
             },
@@ -193,41 +217,13 @@ export function RaisedBedDiaryAiAction({
         setOpen(true);
         setSelectedHistoryEntryId(entry.id);
         setSelectedImageUrl(entry.imageUrls?.[0] ?? imageUrls[0] ?? '');
+        captureScanningLayout();
         setVisibleMarkdown(entry.description ?? '');
         setErrorMessage(null);
         setErrorStatus(null);
         setPhase('done');
         setResultSource('history');
         setAnalysisCompletedAt(null);
-    }
-
-    function startFollowUpChat() {
-        const anchorElement = triggerElementRef.current;
-        if (!chat || !anchorElement || !visibleMarkdown) {
-            return;
-        }
-
-        setOpen(false);
-        resetPresentation();
-        chat.openChat(
-            {
-                conversationLabel: 'AI analizu fotografija',
-                gardenId,
-                positionIndex: positionIndex ?? null,
-                raisedBedId,
-                seed: buildRaisedBedAnalysisChatSeed({
-                    analysisMarkdown: visibleMarkdown,
-                    id: `raised-bed-analysis-${raisedBedId.toString()}-${Date.now().toString(36)}`,
-                    positionIndex,
-                    referenceDate,
-                }),
-                uiContext:
-                    typeof positionIndex === 'number'
-                        ? { surface: 'plant-details', tab: 'diary' }
-                        : { surface: 'raised-bed-details', tab: 'diary' },
-            },
-            anchorElement,
-        );
     }
 
     function handleOpenChange(nextOpen: boolean) {
@@ -254,7 +250,7 @@ export function RaisedBedDiaryAiAction({
                     : 'Pitaj suncokret';
     const statusDescription =
         resultSource === 'history' && phase === 'done'
-            ? 'Prikazujem spremljene savjete suncokreta za ovaj dnevnički unos.'
+            ? null
             : phase === 'thinking'
               ? 'Skeniram sve fotografije i tražim tragove stresa, rasta i hitnih koraka.'
               : phase === 'typing'
@@ -269,27 +265,37 @@ export function RaisedBedDiaryAiAction({
     const selectedHistoryEntry = historyEntries?.find(
         (historyEntry) => historyEntry.id === selectedHistoryEntryId,
     );
+    const canAnalyzeEntry =
+        !latestCompleteHistoryEntry &&
+        (phase === 'idle' || (phase === 'error' && errorStatus !== 429));
+    const savedAnalysis = savedHistory.data?.find(
+        (entry) =>
+            sanitizeRaisedBedAiMarkdown(entry.description ?? '') ===
+                visibleMarkdown &&
+            imageUrls.every((url) => entry.imageUrls?.includes(url)),
+    );
+    const savedAnalysisId = selectedHistoryEntryId ?? savedAnalysis?.id;
     const analysisTimestamp =
         resultSource === 'history' && phase === 'done'
             ? selectedHistoryEntry?.timestamp
             : phase === 'done'
-              ? analysisCompletedAt
+              ? (savedAnalysis?.timestamp ?? analysisCompletedAt)
               : null;
-    const formattedAnalysisTimestamp = analysisTimestamp?.toLocaleString(
-        'hr-HR',
-        {
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            month: 'long',
-            year: 'numeric',
-        },
+    const conversationId =
+        savedAnalysisId && currentUser.data?.id
+            ? getRaisedBedAnalysisConversationId(
+                  savedAnalysisId,
+                  currentUser.data.id,
+              )
+            : null;
+    const canContinueInChat = phase === 'done' && visibleMarkdown.length > 0;
+    const analysisContent = (
+        <div className="prose prose-sm max-w-none dark:prose-invert">
+            <RaisedBedAiOperationMarkdown gardenId={gardenId}>
+                {visibleMarkdown}
+            </RaisedBedAiOperationMarkdown>
+        </div>
     );
-    const canAnalyzeEntry =
-        !latestCompleteHistoryEntry &&
-        (phase === 'idle' || (phase === 'error' && errorStatus !== 429));
-    const canContinueInChat =
-        Boolean(chat) && phase === 'done' && visibleMarkdown.length > 0;
 
     return (
         <>
@@ -299,7 +305,6 @@ export function RaisedBedDiaryAiAction({
                     className="w-fit self-end px-3 dark:from-green-700 dark:to-green-800 dark:text-white dark:hover:from-green-600 dark:hover:to-green-700 dark:hover:text-white"
                     onClick={(event) => {
                         event.stopPropagation();
-                        triggerElementRef.current = event.currentTarget;
                         handlePrimaryAction();
                     }}
                     startDecorator={
@@ -322,16 +327,28 @@ export function RaisedBedDiaryAiAction({
                 title="AI analiza fotografije"
                 className="md:max-w-4xl"
             >
-                <div className="grid gap-4 md:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-                    <Stack spacing={4}>
-                        <div className="relative overflow-hidden rounded-3xl border bg-card shadow-xs">
-                            <div className="relative aspect-square overflow-hidden bg-black/5">
-                                <Image
-                                    src={selectedImageUrl}
-                                    alt={`Fotografija unosa ${entryName}`}
-                                    fill
-                                    className="object-cover"
-                                    sizes="(max-width: 768px) 100vw, 320px"
+                <div
+                    ref={layoutRef}
+                    className={styles.analysisLayout}
+                    data-review-layout={compactReview ? 'review' : 'scanning'}
+                >
+                    <div className={styles.media}>
+                        <div
+                            className={`${styles.photo} relative overflow-hidden rounded-2xl border bg-card shadow-xs`}
+                            data-review-layout-part="photo"
+                        >
+                            <div
+                                className={`${styles.photoGallery} relative aspect-square overflow-hidden bg-black/5`}
+                            >
+                                <ImageGallery
+                                    images={[
+                                        {
+                                            src: selectedImageUrl,
+                                            alt: `Fotografija unosa ${entryName}`,
+                                        },
+                                    ]}
+                                    previewWidth={320}
+                                    previewHeight={320}
                                 />
                                 {phase === 'thinking' && (
                                     <>
@@ -344,7 +361,11 @@ export function RaisedBedDiaryAiAction({
                             </div>
                         </div>
                         {imageUrls.length > 1 && (
-                            <Row spacing={2} className="flex-wrap">
+                            <Row
+                                spacing={2}
+                                className={`${styles.photoChoices} flex-wrap`}
+                                data-review-layout-part="thumbnails"
+                            >
                                 {imageUrls.map((imageUrl, imageIndex) => {
                                     const isSelected =
                                         imageUrl === selectedImageUrl;
@@ -353,6 +374,8 @@ export function RaisedBedDiaryAiAction({
                                         <button
                                             key={imageUrl}
                                             type="button"
+                                            aria-label={`Prikaži fotografiju ${imageIndex + 1}`}
+                                            aria-pressed={isSelected}
                                             className={`overflow-hidden rounded-2xl border transition-all ${
                                                 isSelected
                                                     ? 'border-lime-400 shadow-xs ring-2 ring-lime-200'
@@ -376,8 +399,52 @@ export function RaisedBedDiaryAiAction({
                                 })}
                             </Row>
                         )}
-                    </Stack>
-                    <Stack spacing={6}>
+                    </div>
+                    <Row
+                        spacing={4}
+                        className={`${styles.reviewStatus} items-center md:pr-6`}
+                        data-review-layout-part="status"
+                    >
+                        {!compactReview && (
+                            <div
+                                className={`${
+                                    phase === 'thinking'
+                                        ? styles.sunflowerPulse
+                                        : ''
+                                } relative flex size-16 shrink-0 items-center justify-center`}
+                            >
+                                <Image
+                                    src={sunflowerMascotArtwork}
+                                    alt="Suncokret koji razmišlja"
+                                    width={56}
+                                    height={56}
+                                    className={
+                                        phase === 'thinking'
+                                            ? styles.sunflowerThinking
+                                            : undefined
+                                    }
+                                />
+                            </div>
+                        )}
+                        <Stack spacing={1}>
+                            <Typography level="body1" semiBold>
+                                {statusTitle}
+                            </Typography>
+                            {statusDescription && (
+                                <Typography
+                                    level="body3"
+                                    className="text-muted-foreground"
+                                >
+                                    {statusDescription}
+                                </Typography>
+                            )}
+                        </Stack>
+                    </Row>
+                    <Stack
+                        spacing={4}
+                        className={styles.reviewBody}
+                        data-review-layout-part="content"
+                    >
                         {historyEntries && historyEntries.length > 1 && (
                             <Stack spacing={2}>
                                 <Typography
@@ -416,47 +483,37 @@ export function RaisedBedDiaryAiAction({
                                 </Row>
                             </Stack>
                         )}
-                        <Row spacing={4} className="items-center">
-                            <div
-                                className={`${
-                                    phase === 'thinking'
-                                        ? styles.sunflowerPulse
-                                        : ''
-                                } relative flex size-16 shrink-0 items-center justify-center`}
-                            >
-                                <Image
-                                    src={sunflowerMascotArtwork}
-                                    alt="Suncokret koji razmišlja"
-                                    width={56}
-                                    height={56}
-                                    className={
-                                        phase === 'thinking'
-                                            ? styles.sunflowerThinking
-                                            : undefined
-                                    }
-                                />
-                            </div>
-                            <Stack spacing={1}>
-                                <Typography level="body1" semiBold>
-                                    {statusTitle}
-                                </Typography>
-                                <Typography
-                                    level="body3"
-                                    className="text-muted-foreground"
-                                >
-                                    {statusDescription}
-                                </Typography>
-                                {formattedAnalysisTimestamp && (
-                                    <Typography
-                                        level="body3"
-                                        className="text-muted-foreground"
-                                    >
-                                        {`Analizirano ${formattedAnalysisTimestamp}`}
-                                    </Typography>
-                                )}
-                            </Stack>
-                        </Row>
-                        {errorMessage ? (
+                        {canContinueInChat && conversationId ? (
+                            <SuncokretChatPanel
+                                key={conversationId}
+                                open={open}
+                                conversationId={conversationId}
+                                analysisContent={analysisContent}
+                                target={{
+                                    conversationLabel: 'AI analizu fotografija',
+                                    gardenId,
+                                    raisedBedId,
+                                    positionIndex: positionIndex ?? null,
+                                    seed: buildRaisedBedAnalysisChatSeed({
+                                        analysisMarkdown: visibleMarkdown,
+                                        analyzedAt: analysisTimestamp,
+                                        id: conversationId,
+                                        positionIndex,
+                                        referenceDate,
+                                    }),
+                                    uiContext:
+                                        typeof positionIndex === 'number'
+                                            ? {
+                                                  surface: 'plant-details',
+                                                  tab: 'diary',
+                                              }
+                                            : {
+                                                  surface: 'raised-bed-details',
+                                                  tab: 'diary',
+                                              },
+                                }}
+                            />
+                        ) : errorMessage ? (
                             <Alert
                                 color={
                                     errorStatus === 429 ? 'warning' : 'danger'
@@ -493,34 +550,30 @@ export function RaisedBedDiaryAiAction({
                                 )}
                             </div>
                         )}
-                        <Row
-                            spacing={4}
-                            className="justify-between items-center flex-wrap"
-                        >
-                            <Typography
-                                level="body3"
-                                className="text-muted-foreground"
-                            >
-                                {`Fotografija ${Math.max(imageUrls.indexOf(selectedImageUrl), 0) + 1} od ${imageUrls.length}`}
-                            </Typography>
+                        {(canAnalyzeEntry ||
+                            (canContinueInChat && !conversationId)) && (
                             <Row spacing={2} className="flex-wrap">
-                                {canContinueInChat && (
-                                    <ButtonGreen
-                                        size="sm"
-                                        className="px-3"
-                                        startDecorator={
-                                            <Image
-                                                src={sunflowerMascotArtwork}
-                                                alt=""
-                                                aria-hidden="true"
-                                                width={16}
-                                                height={16}
-                                            />
-                                        }
-                                        onClick={startFollowUpChat}
-                                    >
-                                        Nastavi razgovor
-                                    </ButtonGreen>
+                                {canContinueInChat && !conversationId && (
+                                    <Stack spacing={1}>
+                                        <Typography level="body3">
+                                            {currentUser.isError ||
+                                            savedHistory.isError ||
+                                            (!savedHistory.isFetching &&
+                                                !currentUser.isLoading)
+                                                ? 'Razgovor još nije dostupan.'
+                                                : 'Pripremam razgovor...'}
+                                        </Typography>
+                                        <Button
+                                            size="sm"
+                                            variant="plain"
+                                            onClick={() => {
+                                                void currentUser.refetch();
+                                                void savedHistory.refetch();
+                                            }}
+                                        >
+                                            Pokušaj ponovno
+                                        </Button>
+                                    </Stack>
                                 )}
                                 {canAnalyzeEntry && (
                                     <Button
@@ -533,7 +586,7 @@ export function RaisedBedDiaryAiAction({
                                     </Button>
                                 )}
                             </Row>
-                        </Row>
+                        )}
                     </Stack>
                 </div>
             </GameModal>

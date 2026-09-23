@@ -10,10 +10,6 @@ import {
     createGardenBoxBlockPlacementService,
     type GardenBoxBlockPlacementCommand,
 } from './gardenBoxBlockPlacementService';
-import {
-    createGardenOccupancyIndexFromStorageSnapshot,
-    validatePersistedStructuresAfterBlockMutation,
-} from './gardenOccupancyService';
 
 const timestamp = '2026-08-30T00:00:00.000Z';
 
@@ -46,19 +42,6 @@ function directoryBlock(
     };
 }
 
-function structureDocument() {
-    return {
-        schemaVersion: 1,
-        footprint: {
-            cells: [{ spaceKind: 'interior' as const, x: 0, y: 0 }],
-        },
-        floors: [],
-        edges: [],
-        roofRegions: [],
-        props: [],
-    };
-}
-
 const command: GardenBoxBlockPlacementCommand = {
     accountId: 'account-1',
     gardenId: 7,
@@ -77,32 +60,14 @@ describe('placeGardenBoxBlock', () => {
             directoryBlock(2, 'GardenBox', { stackable: false }),
             directoryBlock(101, 'Shade', { stackable: false }),
         ];
-        const structures = [
-            {
-                anchorX: 0,
-                anchorY: 0,
-                document: structureDocument(),
-                id: 'house-1',
-                rotation: 0,
-            },
-        ];
         const preSnapshot = {
             garden: { id: 7, accountId: 'account-1', isSandbox: false },
             blocks: [
                 { id: 'ground-1', name: 'Block_Grass', rotation: 0 },
                 { id: 'box-1', name: 'GardenBox', rotation: 0 },
             ],
-            stacks: [{ blocks: ['ground-1'], positionX: 0, positionY: 0 }],
-        };
-        const postSnapshot = {
-            ...preSnapshot,
-            blocks: [
-                ...preSnapshot.blocks,
-                { id: 'placed-1', name: 'Shade', rotation: 0 },
-            ],
             stacks: [
-                ...preSnapshot.stacks,
-                { blocks: ['placed-1'], positionX: 0, positionY: -1 },
+                { blocks: ['ground-1', 'box-1'], positionX: 0, positionY: 0 },
             ],
         };
         let snapshotReadCount = 0;
@@ -135,7 +100,6 @@ describe('placeGardenBoxBlock', () => {
                 calls.push('create-block');
                 return 'placed-1';
             },
-            createGardenOccupancyIndexFromStorageSnapshot,
             createGardenStack: async (
                 _gardenId,
                 position,
@@ -180,15 +144,8 @@ describe('placeGardenBoxBlock', () => {
             ) => {
                 assert.equal(receivedTransaction, transaction);
                 snapshotReadCount += 1;
-                calls.push(
-                    snapshotReadCount === 1 ? 'snapshot-pre' : 'snapshot-post',
-                );
-                return snapshotReadCount === 1 ? preSnapshot : postSnapshot;
-            },
-            listGardenStructures: async (_gardenId, receivedTransaction) => {
-                assert.equal(receivedTransaction, transaction);
-                calls.push('structures');
-                return structures;
+                calls.push('snapshot-pre');
+                return preSnapshot;
             },
             resolveGardenBlockPlacement,
             updateGardenStack: async (
@@ -204,7 +161,6 @@ describe('placeGardenBoxBlock', () => {
                 });
                 calls.push('update-stack');
             },
-            validatePersistedStructuresAfterBlockMutation,
             withGardenBoxInventoryTransaction: async (
                 _accountId,
                 _gardenId,
@@ -325,11 +281,9 @@ describe('placeGardenBoxBlock', () => {
             'box-authority',
             'receipt',
             'snapshot-pre',
-            'structures',
             'create-stack',
             'create-block',
             'update-stack',
-            'snapshot-post',
             'consume',
         ]);
 
@@ -388,121 +342,6 @@ describe('placeGardenBoxBlock', () => {
         assert.equal(calls.includes('receipt'), false);
     });
 
-    test('rolls placement writes back when post-mutation structure validation fails', async () => {
-        const transaction = { id: 'rollback-transaction' };
-        const blockData = [
-            directoryBlock(2, 'GardenBox', { stackable: false }),
-            directoryBlock(101, 'Shade', { stackable: false }),
-        ];
-        const state = { blockCreated: false, stackCreated: false };
-        let consumed = false;
-        const snapshot = {
-            garden: { id: 7, accountId: 'account-1', isSandbox: false },
-            blocks: [{ id: 'box-1', name: 'GardenBox', rotation: 0 }],
-            stacks: [],
-        };
-
-        const place = createGardenBoxBlockPlacementService({
-            consumeGardenBoxInventoryItem: async () => {
-                consumed = true;
-            },
-            createGardenBlock: async () => {
-                state.blockCreated = true;
-                return 'placed-1';
-            },
-            createGardenOccupancyIndexFromStorageSnapshot,
-            createGardenStack: async () => {
-                state.stackCreated = true;
-            },
-            getBlockData: async () => blockData,
-            getGardenBlockForUpdate: async () => ({
-                id: command.gardenBoxBlockId,
-                name: 'GardenBox',
-            }),
-            getGardenMutationAuthorityForUpdate: async () => ({
-                accountId: command.accountId,
-                id: command.gardenId,
-                isDeleted: false,
-                isSandbox: false,
-            }),
-            getGardenPlacementSnapshotForUpdate: async () => snapshot,
-            listGardenStructures: async () => [],
-            resolveGardenBlockPlacement,
-            updateGardenStack: async () => {},
-            validatePersistedStructuresAfterBlockMutation: () => ({
-                valid: false,
-                error: {
-                    code: 'GARDEN_OCCUPANCY_CONFLICT',
-                    issues: [],
-                    message: 'Garden occupancy rules prevent this change.',
-                    status: 409,
-                    truncated: false,
-                },
-            }),
-            withGardenBoxInventoryTransaction: async (
-                _accountId,
-                _gardenId,
-                _gardenBoxBlockId,
-                callback,
-            ) => {
-                const before = { ...state };
-                try {
-                    return await callback(transaction);
-                } catch (error) {
-                    Object.assign(state, before);
-                    throw error;
-                }
-            },
-            withGardenMutationOperation: async (
-                operation,
-                callback,
-                receivedTransaction,
-            ) => {
-                assert.equal(receivedTransaction, transaction);
-                const mutation = await callback(transaction);
-                return {
-                    receipt: {
-                        createdAt: new Date(),
-                        gardenId: operation.gardenId,
-                        kind: operation.kind,
-                        operationId: operation.operationId,
-                        payloadHash: '0'.repeat(64),
-                        response: {
-                            blockId: 'placed-1',
-                            item: {
-                                amount: 1,
-                                entityId: command.entityId,
-                                entityTypeName: 'block',
-                            },
-                            position: { x: 0, y: 0 },
-                        },
-                    },
-                    replayed: false,
-                    mutation,
-                };
-            },
-            withGardenPlacementTransaction: async (
-                _gardenId,
-                callback,
-                receivedTransaction,
-            ) => {
-                assert.equal(receivedTransaction, transaction);
-                return callback(transaction);
-            },
-        });
-
-        const result = await place(command);
-
-        assert.deepEqual(result, {
-            ok: false,
-            code: 'GARDEN_OCCUPANCY_CONFLICT',
-            error: 'Garden occupancy rules prevent this change.',
-            status: 409,
-        });
-        assert.deepEqual(state, { blockCreated: false, stackCreated: false });
-        assert.equal(consumed, false);
-    });
-
     test('rolls placement writes back when the GardenBox item is gone', async () => {
         const transaction = { id: 'inventory-rollback-transaction' };
         const blockData = [
@@ -524,7 +363,6 @@ describe('placeGardenBoxBlock', () => {
                 state.blockCreated = true;
                 return 'placed-1';
             },
-            createGardenOccupancyIndexFromStorageSnapshot,
             createGardenStack: async () => {
                 state.stackCreated = true;
             },
@@ -540,12 +378,8 @@ describe('placeGardenBoxBlock', () => {
                 isSandbox: false,
             }),
             getGardenPlacementSnapshotForUpdate: async () => snapshot,
-            listGardenStructures: async () => [],
             resolveGardenBlockPlacement,
             updateGardenStack: async () => {},
-            validatePersistedStructuresAfterBlockMutation: () => ({
-                valid: true,
-            }),
             withGardenBoxInventoryTransaction: async (
                 _accountId,
                 _gardenId,

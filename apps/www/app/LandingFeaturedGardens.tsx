@@ -7,6 +7,7 @@ import {
     gardenSceneTransitionDelayMs,
 } from '@gredice/game/garden-scene-transition';
 import { getGardenBaseUrl } from '@gredice/js/urls';
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Left, Navigate, Pause, Play } from '@gredice/ui/icons';
@@ -22,11 +23,11 @@ import { Card, CardContent } from '../components/shared/Card';
 import { WinterModeToggle } from '../components/WinterModeToggle';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { KnownPages } from '../src/KnownPages';
-import { LandingPublicGardenViewer } from './LandingPublicGardenViewer';
+import { LandingFeaturedGardenScene } from './LandingFeaturedGardenScene';
 import {
     getAdjacentLandingGardenIndex,
     getVisibleLandingGardenIndexes,
-    type LandingGardenCandidate,
+    type LandingFeaturedGarden,
     orderLandingGardens,
 } from './landingGardenCarousel';
 
@@ -47,7 +48,6 @@ function toPublicGardenDetail(garden: GardenResponse): PublicGardenDetail {
         name: garden.name,
         raisedBeds: garden.raisedBeds,
         stacks: garden.stacks,
-        structures: garden.structures,
         updatedAt: garden.updatedAt,
     };
 }
@@ -89,7 +89,7 @@ function getOwnedGardenUrl(gardenId: number) {
 export function LandingFeaturedGardens({
     featuredGardens,
 }: {
-    featuredGardens: LandingGardenCandidate[];
+    featuredGardens: LandingFeaturedGarden[];
 }) {
     const { data: user } = useCurrentUser();
     const ownedGardensQuery = useQuery({
@@ -108,7 +108,10 @@ export function LandingFeaturedGardens({
                   publicId: user.publicId,
                   avatarUrl: user.avatarUrl ?? null,
                   achievementCount: user.achievementCount,
-                  displayName: user.displayName ?? 'Korisnik Gredica',
+                  displayName: safeUserDisplayName(
+                      user.displayName ?? user.userName,
+                      'Korisnik Gredica',
+                  ),
               }
             : null;
 
@@ -381,13 +384,9 @@ export function LandingFeaturedGardens({
                 onPointerDown={handlePointerDown}
                 onPointerUp={handlePointerUp}
             >
-                <LandingPublicGardenViewer
-                    appBaseUrl={getGardenBaseUrl()}
-                    className="size-full"
-                    deferDetails
-                    garden={displayedGarden.garden}
-                    noControls
-                    noSound
+                <LandingFeaturedGardenScene
+                    key={`${displayedGarden.source}-${displayedGarden.garden.id}`}
+                    garden={displayedGarden}
                 />
             </GardenSceneTransitionSurface>
 

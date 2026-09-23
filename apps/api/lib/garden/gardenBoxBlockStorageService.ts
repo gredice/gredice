@@ -17,7 +17,6 @@ import {
     getGardenMutationOperationReceipt,
     getGardenPlacementSnapshotForUpdate,
     getGardenStackForUpdate,
-    listGardenStructures,
     updateGardenStack,
     withGardenBoxInventoryTransaction,
     withGardenMutationOperation,
@@ -25,11 +24,6 @@ import {
 } from '@gredice/storage';
 import { getBlockData } from '../blocks/blockDataService';
 import { settleGardenEconomicMutationDependency } from './gardenEconomicMutationDependency';
-import {
-    type GardenOccupancyServiceError,
-    type GardenOccupancyStorageStructureLike,
-    validatePersistedStructuresAfterBlockMutation,
-} from './gardenOccupancyService';
 
 const maximumStorageInteger = 2_147_483_647;
 const minimumStorageInteger = -2_147_483_648;
@@ -116,16 +110,11 @@ export type GardenBoxBlockStorageDependencies<Transaction> = Readonly<{
         position: Readonly<{ x: number; y: number }>,
         transaction: Transaction,
     ) => Promise<GardenBoxSourceStack | null>;
-    listGardenStructures: (
-        gardenId: number,
-        transaction: Transaction,
-    ) => Promise<readonly GardenOccupancyStorageStructureLike[]>;
     updateGardenStack: (
         gardenId: number,
         stack: Readonly<{ x: number; y: number; blocks: string[] }>,
         transaction: Transaction,
     ) => Promise<void>;
-    validatePersistedStructuresAfterBlockMutation: typeof validatePersistedStructuresAfterBlockMutation;
     withGardenBoxInventoryTransaction: <Result>(
         accountId: string,
         gardenId: number,
@@ -170,9 +159,6 @@ type GardenBoxBlockStorageFailureCode =
     | 'GARDEN_BOX_NOT_FOUND'
     | 'GARDEN_BOX_NOT_PLACED'
     | 'GARDEN_NOT_FOUND'
-    | 'GARDEN_OCCUPANCY_CONFLICT'
-    | 'GARDEN_OCCUPANCY_INVALID_INPUT'
-    | 'GARDEN_OCCUPANCY_INVALID_STATE'
     | 'GARDEN_STATE_CHANGED'
     | 'INVALID_OPERATION_RECEIPT'
     | 'INVALID_REQUEST'
@@ -314,10 +300,6 @@ function readReceiptResponse(
             entityTypeName: 'block',
         },
     };
-}
-
-function failOccupancy(error: GardenOccupancyServiceError): never {
-    fail(error.code, error.status, error.message);
 }
 
 function assertBlockCanBeStored(
@@ -636,42 +618,6 @@ export function createGardenBoxBlockStorageService<Transaction>(
                                             operationTransaction,
                                         );
 
-                                        const [
-                                            postMutationSnapshot,
-                                            structures,
-                                        ] = await Promise.all([
-                                            dependencies.getGardenPlacementSnapshotForUpdate(
-                                                command.gardenId,
-                                                operationTransaction,
-                                            ),
-                                            dependencies.listGardenStructures(
-                                                command.gardenId,
-                                                operationTransaction,
-                                            ),
-                                        ]);
-                                        if (!postMutationSnapshot) {
-                                            fail(
-                                                'GARDEN_STATE_CHANGED',
-                                                409,
-                                                'Garden changed while storing block',
-                                            );
-                                        }
-                                        const validation =
-                                            dependencies.validatePersistedStructuresAfterBlockMutation(
-                                                {
-                                                    blockData:
-                                                        mutation.blockData,
-                                                    snapshot: {
-                                                        blocks: postMutationSnapshot.blocks,
-                                                        stacks: postMutationSnapshot.stacks,
-                                                        structures,
-                                                    },
-                                                },
-                                            );
-                                        if (!validation.valid) {
-                                            failOccupancy(validation.error);
-                                        }
-
                                         await dependencies.addGardenBoxInventoryItem(
                                             command.accountId,
                                             command.gardenId,
@@ -781,9 +727,7 @@ const defaultDependencies: GardenBoxBlockStorageDependencies<GardenPlacementTran
         getGardenMutationOperationReceipt,
         getGardenPlacementSnapshotForUpdate,
         getGardenStackForUpdate,
-        listGardenStructures,
         updateGardenStack,
-        validatePersistedStructuresAfterBlockMutation,
         withGardenBoxInventoryTransaction: (
             accountId,
             gardenId,

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { getPlantsData } from '../lib/plants/getPlantsData';
 import { KnownPages } from '../src/KnownPages';
 import { PlantsGalleryItem } from './biljke/PlantsGalleryItem';
+import { toPlantCard } from './biljke/plantCatalogue';
 
 export async function PlantsShowcase() {
     const entities = await getPlantsData();
@@ -34,12 +35,8 @@ export async function PlantsShowcase() {
                     >
                         <PlantsGalleryItem
                             key={plant.information.name}
+                            {...toPlantCard(plant)}
                             id={plant.id.toString()}
-                            information={plant.information}
-                            attributes={plant.attributes}
-                            image={plant.image}
-                            prices={plant.prices}
-                            isRecommended={plant.isRecommended}
                         />
                     </div>
                 ))}
@@ -57,7 +54,7 @@ export async function PlantsShowcase() {
                                 className="relative aspect-square"
                             >
                                 <PlantOrSortImage
-                                    plant={plant}
+                                    plant={toPlantCard(plant)}
                                     alt={plant.information.name ?? 'Biljka'}
                                     fill
                                     className="object-contain"

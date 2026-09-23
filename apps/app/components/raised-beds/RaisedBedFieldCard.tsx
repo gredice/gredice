@@ -8,10 +8,10 @@ type RaisedBedFieldCardGridProps = {
 };
 
 export const raisedBedFieldCardSelectClassName =
-    'w-full min-w-0 [&_[role=combobox]]:h-8 [&_[role=combobox]]:w-full [&_[role=combobox]]:max-w-full [&_[role=combobox]]:min-w-0 [&_[role=combobox]]:gap-1.5 [&_[role=combobox]]:overflow-hidden [&_[role=combobox]]:border [&_[role=combobox]]:border-input [&_[role=combobox]]:!bg-background [&_[role=combobox]]:px-2 [&_[role=combobox]]:text-foreground [&_[role=combobox]]:shadow-xs [&_[role=combobox]]:hover:!bg-muted [&_[role=combobox]>span]:block [&_[role=combobox]>span]:min-w-0 [&_[role=combobox]>span]:truncate';
+    'w-full min-w-0 [&_[role=combobox]]:h-8 [&_[role=combobox]]:w-full [&_[role=combobox]]:max-w-full [&_[role=combobox]]:min-w-0 [&_[role=combobox]]:gap-1.5 [&_[role=combobox]]:overflow-hidden [&_[role=combobox]]:border [&_[role=combobox]]:border-input [&_[role=combobox]]:!bg-field [&_[role=combobox]]:px-2 [&_[role=combobox]]:text-foreground [&_[role=combobox]]:shadow-xs [&_[role=combobox]]:hover:!bg-muted [&_[role=combobox]>span]:block [&_[role=combobox]>span]:min-w-0 [&_[role=combobox]>span]:truncate';
 
 export const raisedBedFieldCardButtonClassName =
-    'max-w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap border border-input !bg-background text-foreground shadow-xs hover:!bg-muted hover:text-foreground [&>span]:min-w-0';
+    'max-w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap border border-input !bg-field text-foreground shadow-xs hover:!bg-muted hover:text-foreground [&>span]:min-w-0';
 
 export const raisedBedFieldCardChipClassName =
     'min-w-0 max-w-full overflow-hidden';

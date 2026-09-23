@@ -1,7 +1,7 @@
 import { clientPublic } from '@gredice/client';
 import 'server-only';
 import {
-    type LandingGardenCandidate,
+    type LandingFeaturedGarden,
     landingFeaturedGardenLimit,
 } from './landingGardenCarousel';
 import { comparePublicGardensByPopularity } from './vrtovi/publicGardenFormatting';
@@ -9,10 +9,17 @@ import { comparePublicGardensByPopularity } from './vrtovi/publicGardenFormattin
 const landingFeaturedGardensListTimeoutMs = 3_000;
 const landingFeaturedGardenDetailsTimeoutMs = 5_000;
 
-async function fetchFeaturedGardenList(listSignal: AbortSignal) {
+async function fetchFeaturedGardenList(
+    listSignal: AbortSignal,
+    traceId: string,
+) {
     const publicGardens = clientPublic().api.gardens.public;
     const response = await publicGardens.featured.$get(undefined, {
-        init: { signal: listSignal, cache: 'no-store' },
+        init: {
+            signal: listSignal,
+            cache: 'no-store',
+            headers: { 'x-gredice-featured-trace': traceId },
+        },
     });
     // WWW and API can finish deploying independently. An older API has no
     // featured route; use its existing list without restarting the deadline.
@@ -35,22 +42,11 @@ async function fetchFeaturedGardenList(listSignal: AbortSignal) {
     };
 }
 
-const playwrightFeaturedGardensFixture: LandingGardenCandidate[] = [
+const playwrightFeaturedGardensFixture: LandingFeaturedGarden[] = [
     {
         garden: {
-            backgroundPalette: 'current',
-            farmId: 1,
-            homeCamera: null,
             id: 99_999,
-            isPublic: true,
-            isSandbox: false,
-            latitude: 45.815,
-            longitude: 15.982,
             name: 'Istaknuti testni vrt',
-            raisedBeds: [],
-            stacks: {},
-            structures: [],
-            updatedAt: '2026-08-29T12:00:00.000Z',
         },
         owner: {
             avatarUrl: null,
@@ -60,25 +56,30 @@ const playwrightFeaturedGardensFixture: LandingGardenCandidate[] = [
 ];
 
 export async function getLandingFeaturedGardens(): Promise<
-    LandingGardenCandidate[]
+    LandingFeaturedGarden[]
 > {
     if (process.env.GREDICE_PLAYWRIGHT_FEATURED_GARDENS_FIXTURE === 'true') {
         return playwrightFeaturedGardensFixture;
     }
 
     const startedAt = Date.now();
+    const traceId = crypto.randomUUID();
     const listSignal = AbortSignal.timeout(landingFeaturedGardensListTimeoutMs);
     let listPhase = 'headers';
     let listHeadersMs: number | undefined;
     let listBodyMs: number | undefined;
     let apiTiming: string | null = null;
     let apiRequestId: string | null = null;
+    let apiCacheStatus: string | null = null;
     try {
-        const { response, readItems } =
-            await fetchFeaturedGardenList(listSignal);
+        const { response, readItems } = await fetchFeaturedGardenList(
+            listSignal,
+            traceId,
+        );
         listHeadersMs = Date.now() - startedAt;
         apiTiming = response.headers.get('server-timing');
         apiRequestId = response.headers.get('x-vercel-id');
+        apiCacheStatus = response.headers.get('x-vercel-cache');
         if (!response.ok) {
             console.error('Failed to fetch featured gardens for landing', {
                 status: response.status,
@@ -86,6 +87,8 @@ export async function getLandingFeaturedGardens(): Promise<
                 listHeadersMs,
                 apiTiming,
                 apiRequestId,
+                apiCacheStatus,
+                traceId,
             });
             return [];
         }
@@ -101,6 +104,8 @@ export async function getLandingFeaturedGardens(): Promise<
                 listBodyMs,
                 apiTiming,
                 apiRequestId,
+                apiCacheStatus,
+                traceId,
             });
         }
         listPhase = 'complete';
@@ -140,9 +145,23 @@ export async function getLandingFeaturedGardens(): Promise<
                     }
 
                     const details = await gardenResponse.json();
+                    const owner = details.members?.at(0);
+                    // Recheck current visibility and owner data, but keep full
+                    // scene graphs on the server until the viewer requests one.
                     return {
-                        garden: details,
-                        owner: details.members?.at(0) ?? null,
+                        garden: { id: details.id, name: details.name },
+                        owner: owner
+                            ? {
+                                  publicId: owner.publicId,
+                                  displayName: owner.displayName,
+                                  avatarUrl: owner.avatarUrl,
+                                  achievementCount: owner.achievementCount,
+                              }
+                            : null,
+                        dayPreviewImageUrl:
+                            details.previewImages?.day?.url ??
+                            details.previewImage?.url,
+                        nightPreviewImageUrl: details.previewImages?.night?.url,
                     };
                 } catch (error) {
                     // A failed fetch or body read must not discard gardens
@@ -173,6 +192,8 @@ export async function getLandingFeaturedGardens(): Promise<
                     : listBodyMs,
             apiTiming,
             apiRequestId,
+            apiCacheStatus,
+            traceId,
             timedOut: listSignal.aborted,
         });
         return [];

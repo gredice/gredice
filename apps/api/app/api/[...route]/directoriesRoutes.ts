@@ -1,3 +1,4 @@
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import {
     CommunityEditRequestError,
     createCommunityEditRequest,
@@ -377,10 +378,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     ...body,
                     submitter: {
                         id: authContext.userId,
-                        name:
-                            user?.displayName ??
-                            user?.userName ??
-                            authContext.userId,
+                        name: safeUserDisplayName(
+                            user?.displayName ?? user?.userName,
+                        ),
                     },
                 });
 
@@ -443,10 +443,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     sectionKey: body.sectionKey,
                     submitter: {
                         id: authContext.userId,
-                        name:
-                            user?.displayName ??
-                            user?.userName ??
-                            authContext.userId,
+                        name: safeUserDisplayName(
+                            user?.displayName ?? user?.userName,
+                        ),
                     },
                     submitterNote: body.submitterNote,
                     changes: body.changes,

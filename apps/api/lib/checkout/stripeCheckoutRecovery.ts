@@ -20,7 +20,7 @@ type RecoveryDependencies = {
         | {
               id: string;
               customerId: string | { id: string } | null;
-              status: 'complete' | 'expired' | 'open' | null;
+              status: string | null;
               url: string | null;
           }
         | undefined

@@ -17,6 +17,7 @@ import {
     storage,
     TutorialChecklistTaskNotClaimableError,
     tutorialChecklistTaskClaims,
+    updateUser,
     upsertEntityType,
     upsertOrRemoveCartItem,
 } from '@gredice/storage';
@@ -84,6 +85,24 @@ test('tutorial checklist returns day groups and open tasks', async () => {
             ?.tasks.some((task) => task.key === 'enter-referral-code'),
     );
     assert.strictEqual(state.totals.claimableCount, 0);
+});
+
+test('generated signup name does not complete the profile task', async () => {
+    createTestDb();
+    const { accountId, userId } = await createChecklistTestUser();
+
+    const initial = findChecklistTask(
+        await getTutorialChecklistState({ accountId, userId }),
+        'update-profile',
+    );
+    assert.strictEqual(initial?.status, 'available');
+
+    await updateUser({ id: userId, displayName: 'Moj vrtlar' });
+    const edited = findChecklistTask(
+        await getTutorialChecklistState({ accountId, userId }),
+        'update-profile',
+    );
+    assert.strictEqual(edited?.status, 'ready');
 });
 
 test('tutorial checklist treats an active raised bed as first plan progress', async () => {

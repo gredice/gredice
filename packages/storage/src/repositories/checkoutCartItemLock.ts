@@ -9,6 +9,7 @@ export type CheckoutCartItemLockDatabase = CheckoutCartItemLockTransaction;
 
 const checkoutCartItemDatabaseLockTails = new Map<number, Promise<void>>();
 const checkoutCartItemProcessingLockTails = new Map<number, Promise<void>>();
+const shoppingCartDefaultCurrencyLockTails = new Map<number, Promise<void>>();
 
 function isPgliteTestDatabase() {
     return (
@@ -134,4 +135,37 @@ export async function withCheckoutCartItemLock<T>(
     transaction?: CheckoutCartItemLockTransaction,
 ) {
     return withCheckoutCartItemLocks([cartItemId], operation, transaction);
+}
+
+/**
+ * Serializes cart-item creation with the decision to default a new item to
+ * sunflower payment. This lock is intentionally separate from checkout-item
+ * locks: defaulting acquires it first, while checkout never acquires it, so the
+ * existing checkout item -> cart row -> sunflower account lock order remains
+ * unchanged.
+ */
+export async function withShoppingCartDefaultCurrencyLock<T>(
+    cartId: number,
+    operation: (db: CheckoutCartItemLockTransaction) => Promise<T>,
+) {
+    if (!Number.isSafeInteger(cartId) || cartId <= 0) {
+        throw new RangeError(
+            'Shopping cart default currency lock requires a positive safe integer ID',
+        );
+    }
+
+    if (isPgliteTestDatabase()) {
+        return withCheckoutCartItemInProcessLock(
+            shoppingCartDefaultCurrencyLockTails,
+            cartId,
+            () => storage().transaction(operation),
+        );
+    }
+
+    return storage().transaction(async (db) => {
+        await db.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${`shopping-cart-default-currency:${cartId.toString()}`}));`,
+        );
+        return operation(db);
+    });
 }

@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { Vector3 } from 'three';
+import { Matrix4, Vector3 } from 'three';
 import type { EntityBlockInstance } from '../EntityInstancesBlock';
 import {
     autumnEntityCaps,
+    createAutumnEntityAllocation,
     createAutumnEntityBatches,
 } from './autumnEntityPlacements';
-import { autumnLeafEntityNames } from './autumnLeafSurfaces';
+import {
+    autumnLeafEntityNames,
+    autumnPartLeafSurfaces,
+} from './autumnLeafSurfaces';
+import { createClosedGardenBoxLidCandidates } from './gardenBoxLidTransform';
 
 function instance(name = 'Stool', id = 'entity'): EntityBlockInstance {
     const block = { id, name, rotation: 0 };
@@ -157,4 +162,146 @@ test('each raised-bed segment resolves tree proximity from its own world offset'
     });
     assert.equal(rightOnly.length, 1);
     assert(rightOnly.every((leaf) => leaf.id.includes(':autumn:0:')));
+});
+
+test('closed instanced lids use the renderer root correction and hinge for all rotations', () => {
+    for (const rotation of [0, 1, 2, 3]) {
+        const box = {
+            ...instance('GardenBox'),
+            rotation,
+            position: [2, 1, 3] as [number, number, number],
+        };
+        const parts = createClosedGardenBoxLidCandidates({
+            instances: [box],
+            openBlockIds: new Set(),
+            registeredBlockIds: new Set(),
+        });
+        assert.equal(parts.length, 1);
+        assert.equal(parts[0].instance?.rotation, rotation + 2);
+        const hinge = new Vector3().setFromMatrixPosition(parts[0].matrix);
+        const angle = ((rotation + 2) * Math.PI) / 2;
+        assert(Math.abs(hinge.x - (2 - 0.38 * Math.sin(angle))) < 1e-9);
+        assert.equal(hinge.y, 1.6);
+        assert(Math.abs(hinge.z - (3 - 0.38 * Math.cos(angle))) < 1e-9);
+        const result = createAutumnEntityAllocation({
+            instances: [],
+            parts,
+            trees: [{ id: 'tree', x: 2, z: 3 }],
+            amount: 1,
+            snow: 0,
+            tier: 'high',
+            year: 2024,
+            gardenId: 1,
+        });
+        assert(result.blocks.flatMap((batch) => batch.instances).length > 0);
+    }
+    for (const state of [
+        {
+            openBlockIds: new Set(['entity']),
+            registeredBlockIds: new Set<string>(),
+        },
+        {
+            openBlockIds: new Set<string>(),
+            registeredBlockIds: new Set(['entity']),
+        },
+    ])
+        assert.equal(
+            createClosedGardenBoxLidCandidates({
+                instances: [instance('GardenBox')],
+                ...state,
+            }).length,
+            0,
+        );
+});
+
+test('mixed static and registered parts share every tier cap with stable owner and density ordering', () => {
+    const staticInstances = Array.from({ length: 100 }, (_, i) =>
+        instance('Stool', `block:${String(i).padStart(3, '0')}`),
+    );
+    const parts = Array.from({ length: 100 }, (_, i) => ({
+        blockId: `block:${String(i).padStart(3, '0')}:part`,
+        partId: 'OutletDisplayTable_TopPlanks',
+        coordinateSpace: 'part-local' as const,
+        eligibilityPolicy: 'always' as const,
+        surfaces: autumnPartLeafSurfaces.OutletDisplayTable_TopPlanks,
+        matrix: new Matrix4(),
+        eligible: true,
+        covered: false,
+    }));
+    const input = {
+        instances: staticInstances,
+        parts,
+        trees: [{ id: 'tree', x: 0, z: 0 }],
+        amount: 1,
+        snow: 0,
+        year: 2024,
+        gardenId: 1,
+    };
+    const ids = (
+        tier: 'low' | 'auto-constrained' | 'medium' | 'high' | 'custom',
+        shuffled = false,
+    ) => {
+        const allocation = createAutumnEntityAllocation({
+            ...input,
+            tier,
+            instances: shuffled
+                ? [...staticInstances].reverse()
+                : staticInstances,
+            parts: shuffled ? [...parts].reverse() : parts,
+        });
+        return [
+            ...allocation.blocks.flatMap((batch) =>
+                batch.instances.map((leaf) => leaf.id),
+            ),
+            ...[...allocation.parts.values()].flatMap((batch) =>
+                batch.map((leaf) => leaf.id),
+            ),
+        ].sort();
+    };
+    for (const tier of [
+        'low',
+        'auto-constrained',
+        'medium',
+        'high',
+        'custom',
+    ] as const) {
+        assert.equal(ids(tier).length, autumnEntityCaps[tier]);
+        assert.deepEqual(ids(tier, true), ids(tier));
+    }
+    const uncappedInput = {
+        ...input,
+        instances: staticInstances.slice(0, 2),
+        parts: parts.slice(0, 2),
+        tier: 'high' as const,
+    };
+    const full = createAutumnEntityAllocation(uncappedInput);
+    const sparse = createAutumnEntityAllocation({
+        ...uncappedInput,
+        amount: 0.5,
+    });
+    const fullIds = new Set([
+        ...full.blocks.flatMap((batch) =>
+            batch.instances.map((leaf) => leaf.id),
+        ),
+        ...[...full.parts.values()].flatMap((batch) =>
+            batch.map((leaf) => leaf.id),
+        ),
+    ]);
+    for (const id of [
+        ...sparse.blocks.flatMap((batch) =>
+            batch.instances.map((leaf) => leaf.id),
+        ),
+        ...[...sparse.parts.values()].flatMap((batch) =>
+            batch.map((leaf) => leaf.id),
+        ),
+    ])
+        assert(fullIds.has(id));
+    assert.equal(
+        createAutumnEntityAllocation({
+            ...uncappedInput,
+            instances: [],
+            parts: [{ ...parts[0], covered: true }],
+        }).parts.size,
+        0,
+    );
 });

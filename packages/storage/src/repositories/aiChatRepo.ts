@@ -1,6 +1,9 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
-import { sanitizeSuncokretAssistantText } from '@gredice/js/ai';
+import {
+    getAiChatMessageTimestamp,
+    sanitizeSuncokretAssistantText,
+} from '@gredice/js/ai';
 import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import {
     accounts,
@@ -886,6 +889,26 @@ export async function replaceAiChatMessages({
     const normalizedMessages = normalizeAiChatMessagesForStorage(messages);
 
     await storage().transaction(async (tx) => {
+        const existingMessages = await tx
+            .select({
+                id: aiChatMessages.id,
+                createdAt: aiChatMessages.createdAt,
+                metadata: aiChatMessages.metadata,
+            })
+            .from(aiChatMessages)
+            .where(eq(aiChatMessages.conversationId, conversationId));
+        const existingMessagesById = new Map(
+            existingMessages.map((message) => [message.id, message]),
+        );
+        // createdAt orders the transcript. Client dates are display metadata only.
+        // Separate milliseconds keep a question ahead of its reply, including
+        // when both arrive in one snapshot or a continuation is saved immediately.
+        let nextOrderingTimestamp = Math.max(
+            Date.now(),
+            ...existingMessages.map(
+                (message) => message.createdAt.getTime() + 1,
+            ),
+        );
         const existingToolCalls = await tx
             .select()
             .from(aiChatToolCalls)
@@ -905,13 +928,31 @@ export async function replaceAiChatMessages({
 
         if (normalizedMessages.length > 0) {
             await tx.insert(aiChatMessages).values(
-                normalizedMessages.map((message) => ({
-                    id: message.id,
-                    conversationId,
-                    role: message.role,
-                    parts: message.parts,
-                    metadata: message.metadata,
-                })),
+                normalizedMessages.map((message) => {
+                    const existingMessage = existingMessagesById.get(
+                        message.id,
+                    );
+                    const createdAt =
+                        existingMessage?.createdAt ??
+                        new Date(nextOrderingTimestamp++);
+                    const displayTimestamp = existingMessage
+                        ? (getAiChatMessageTimestamp(
+                              existingMessage.metadata,
+                          ) ?? existingMessage.createdAt)
+                        : (getAiChatMessageTimestamp(message.metadata) ??
+                          createdAt);
+                    return {
+                        id: message.id,
+                        conversationId,
+                        role: message.role,
+                        parts: message.parts,
+                        metadata: {
+                            ...message.metadata,
+                            createdAt: displayTimestamp.toISOString(),
+                        },
+                        createdAt,
+                    };
+                }),
             );
         }
 

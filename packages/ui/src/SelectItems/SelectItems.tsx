@@ -331,7 +331,7 @@ export function SelectItems<T extends string>({
     const rootDefaultValue = toSelectValue(defaultValue);
     const rootClassName = cx(
         triggerClassName,
-        variant === 'outlined' && 'border border-input bg-background',
+        variant === 'outlined' && 'border border-input bg-field',
         variant === 'plain' && 'bg-transparent',
     );
 
@@ -427,7 +427,7 @@ export function SelectItems<T extends string>({
                                     initialFocus={false}
                                 >
                                     <div className="border-b p-1">
-                                        <div className="flex h-9 items-center rounded-sm border border-input bg-background px-2 ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                                        <div className="flex h-9 items-center rounded-sm border border-input bg-field px-2 ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
                                             <Search className="size-4 shrink-0 text-muted-foreground" />
                                             <ComboboxPrimitive.Input
                                                 ref={searchInputRef}

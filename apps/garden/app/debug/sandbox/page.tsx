@@ -25,8 +25,6 @@ export default async function DebugSandboxPage({
         enableDebugHudFlag: true,
         enableGardenAvatarFlag: true,
     } satisfies NonNullable<ComponentProps<typeof GameScene>['flags']>;
-    const gardenBuildingEnabled =
-        debugSandboxFlags.enableGardenBuildingSystemFlag;
 
     return (
         <main className="relative h-screen w-screen overflow-hidden bg-[#e7e2cc]">
@@ -36,7 +34,6 @@ export default async function DebugSandboxPage({
                 deferDetails={false}
                 flags={debugSandboxFlags}
                 freezeTime={serializeGameProfileDate(freezeTime)}
-                gardenStructureDebugFixture={gardenBuildingEnabled}
                 localSandboxStorageKey={defaultLocalSandboxStorageKey}
                 noSound
             />

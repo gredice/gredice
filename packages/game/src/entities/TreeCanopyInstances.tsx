@@ -32,17 +32,6 @@ export function TreeCanopyInstances({
     const disabled = useGameState(
         (state) => state.weatherVisualizationDisabled,
     );
-    const full = useMemo(
-        () =>
-            instances?.filter(
-                (instance) =>
-                    getAutumnCanopyStage(
-                        disabled ? 1 : autumn.leafRetention,
-                        instance.block.id,
-                    ) === 'full',
-            ),
-        [instances, disabled, autumn.leafRetention],
-    );
     const sparse = useMemo(
         () =>
             instances?.filter(
@@ -69,15 +58,6 @@ export function TreeCanopyInstances({
                     />
                 )),
             )}
-            <EntityInstancesGeometry
-                instanceKey="Tree:sprigs"
-                instances={full}
-                geometry={nodes.Tree_1_3.geometry}
-                material={materials['Material.GrassPart']}
-                scale={[0.125, 0.5, 0.125]}
-                castShadow
-                receiveShadow
-            />
             <EntityInstancesGeometry
                 instanceKey="Tree:branches"
                 instances={sparse}

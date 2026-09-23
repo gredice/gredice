@@ -342,7 +342,6 @@ test('preserves OTLP JSON log bodies, attributes, and authorization', async () =
             scheduledDelayMillis: 1_000,
         });
         const provider = new LoggerProvider({
-            forceFlushTimeoutMillis: 200,
             processors: [processor],
         });
 
@@ -352,7 +351,7 @@ test('preserves OTLP JSON log bodies, attributes, and authorization', async () =
             },
             body: 'preserved log',
         });
-        await provider.forceFlush();
+        await provider.forceFlush({ timeoutMillis: 200 });
 
         assert.equal(
             new Headers(requestInit?.headers).get('Authorization'),
@@ -414,13 +413,12 @@ test('retries one timed-out OTLP request with the same log batch', async () => {
             scheduledDelayMillis: 1_000,
         });
         const provider = new LoggerProvider({
-            forceFlushTimeoutMillis: 100,
             processors: [processor],
         });
 
         provider.getLogger('test').emit({ body: 'test log' });
         await exporter.forceFlushWithErrorPropagation(() =>
-            provider.forceFlush(),
+            provider.forceFlush({ timeoutMillis: 100 }),
         );
 
         assert.equal(requestCount, 2);
@@ -459,14 +457,13 @@ test('stops after one retry when OTLP requests keep timing out', async () => {
             scheduledDelayMillis: 1_000,
         });
         const provider = new LoggerProvider({
-            forceFlushTimeoutMillis: 100,
             processors: [processor],
         });
 
         provider.getLogger('test').emit({ body: 'test log' });
         await assert.rejects(() =>
             exporter.forceFlushWithErrorPropagation(() =>
-                provider.forceFlush(),
+                provider.forceFlush({ timeoutMillis: 100 }),
             ),
         );
 
@@ -499,14 +496,13 @@ test('does not retry non-transient OTLP response failures', async () => {
             scheduledDelayMillis: 1_000,
         });
         const provider = new LoggerProvider({
-            forceFlushTimeoutMillis: 100,
             processors: [processor],
         });
 
         provider.getLogger('test').emit({ body: 'test log' });
         await assert.rejects(() =>
             exporter.forceFlushWithErrorPropagation(() =>
-                provider.forceFlush(),
+                provider.forceFlush({ timeoutMillis: 100 }),
             ),
         );
 
@@ -540,7 +536,6 @@ test('backs off after an OTLP export failure swallowed by the batch processor', 
             scheduledDelayMillis: 60_000,
         });
         const provider = new LoggerProvider({
-            forceFlushTimeoutMillis: 300,
             processors: [processor],
         });
         const logger = provider.getLogger('test');
@@ -549,7 +544,7 @@ test('backs off after an OTLP export failure swallowed by the batch processor', 
             batchDelayMs: 1_000,
             flush: () =>
                 exporter.forceFlushWithErrorPropagation(() =>
-                    provider.forceFlush(),
+                    provider.forceFlush({ timeoutMillis: 300 }),
                 ),
             initialFailureBackoffMs: 30_000,
             maxFailureBackoffMs: 300_000,

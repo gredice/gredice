@@ -9,18 +9,12 @@ import {
     useMemo,
     useRef,
 } from 'react';
-import {
-    Frustum,
-    type Material,
-    Matrix4,
-    type PointLight,
-    Sphere,
-    Vector3,
-} from 'three';
+import { type Material, type PointLight, Sphere, Vector3 } from 'three';
 import {
     getNightGardenGlowAmount,
     resolveNightGardenLightFrame,
 } from '../entities/helpers/nightGardenLight';
+import { useCameraFrame } from '../spatial/useCameraFrame';
 import { useOptionalGameState } from '../useGameState';
 import type { GameQualityProfileTier } from './gameQuality';
 import {
@@ -70,11 +64,10 @@ export function GardenLightProvider({
         new GardenLightRegistryStore<GardenLightRegistration>(),
     );
     const activeKeysRef = useRef<ReadonlySet<string>>(new Set());
-    const cameraFrustum = useMemo(() => new Frustum(), []);
     const influenceSphere = useMemo(() => new Sphere(), []);
     const projectedPosition = useMemo(() => new Vector3(), []);
-    const projectionViewMatrix = useMemo(() => new Matrix4(), []);
     const worldPosition = useMemo(() => new Vector3(), []);
+    const readCameraFrame = useCameraFrame();
     const budget = resolveGardenLightBudget(qualityTier);
     const timeOfDay = useOptionalGameState((state) => state.timeOfDay, 0.5);
     const registry = useMemo<GardenLightRegistry>(
@@ -96,46 +89,38 @@ export function GardenLightProvider({
         [],
     );
 
-    useFrame(({ camera }) => {
+    useFrame(() => {
         const registrations = registrationsRef.current.getEntries();
         const nightAmount = getNightGardenGlowAmount(timeOfDay);
-        if (nightAmount > 0) {
-            camera.updateMatrixWorld();
-            projectionViewMatrix.multiplyMatrices(
-                camera.projectionMatrix,
-                camera.matrixWorldInverse,
-            );
-            cameraFrustum.setFromProjectionMatrix(projectionViewMatrix);
-        }
-        const candidates =
-            nightAmount > 0
-                ? registrations.flatMap(({ instanceKey, registration }) => {
-                      const light = registration.lightRef.current;
-                      if (!light) {
-                          return [];
-                      }
+        const cameraFrame = nightAmount > 0 ? readCameraFrame() : null;
+        const candidates = cameraFrame
+            ? registrations.flatMap(({ instanceKey, registration }) => {
+                  const light = registration.lightRef.current;
+                  if (!light) {
+                      return [];
+                  }
 
-                      light.updateWorldMatrix(true, false);
-                      light.getWorldPosition(worldPosition);
-                      projectedPosition.copy(worldPosition).project(camera);
+                  light.updateWorldMatrix(true, false);
+                  light.getWorldPosition(worldPosition);
+                  cameraFrame.project(worldPosition, projectedPosition);
 
-                      return [
-                          {
-                              influenceIntersectsFrustum:
-                                  doesGardenLightInfluenceIntersectFrustum({
-                                      distance: light.distance,
-                                      frustum: cameraFrustum,
-                                      influenceSphere,
-                                      position: worldPosition,
-                                  }),
-                              key: instanceKey,
-                              x: projectedPosition.x,
-                              y: projectedPosition.y,
-                              z: projectedPosition.z,
-                          },
-                      ];
-                  })
-                : [];
+                  return [
+                      {
+                          influenceIntersectsFrustum:
+                              doesGardenLightInfluenceIntersectFrustum({
+                                  distance: light.distance,
+                                  frustum: cameraFrame,
+                                  influenceSphere,
+                                  position: worldPosition,
+                              }),
+                          key: instanceKey,
+                          x: projectedPosition.x,
+                          y: projectedPosition.y,
+                          z: projectedPosition.z,
+                      },
+                  ];
+              })
+            : [];
         const activeKeys = selectActiveGardenLightKeys(
             candidates,
             budget,

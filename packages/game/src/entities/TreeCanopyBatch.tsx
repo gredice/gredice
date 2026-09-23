@@ -50,25 +50,45 @@ export function TreeCanopyBatch({
         return value;
     }, [materials, progress, palette]);
     useEffect(() => () => material.dispose(), [material]);
+    const sprigMaterial = useMemo(() => {
+        if (stage !== 'full') return null;
+        const value = materials['Material.GrassPart'].clone();
+        value.color.copy(getAutumnLeafColor(value.color, progress, palette));
+        return value;
+    }, [materials, progress, palette, stage]);
+    useEffect(() => () => sprigMaterial?.dispose(), [sprigMaterial]);
     return (
-        <EntityInstancesGeometry
-            instanceKey={`Tree:canopy:${palette}:${stage}`}
-            instances={selected}
-            geometry={
-                stage === 'full'
-                    ? nodes.Tree_1_2.geometry
-                    : stage === 'thinning'
-                      ? nodes.Tree_AutumnThinning.geometry
-                      : nodes.Tree_AutumnSparse.geometry
-            }
-            material={material}
-            scale={[0.125, 0.5, 0.125]}
-            castShadow
-            receiveShadow
-            renderSnow={renderSnow}
-            snow={snowPresets.treeCanopyInner}
-            snowLift={0.002}
-            snowOverlayMinCoverage={snowOverlayMinCoverage}
-        />
+        <>
+            <EntityInstancesGeometry
+                instanceKey={`Tree:canopy:${palette}:${stage}`}
+                instances={selected}
+                geometry={
+                    stage === 'full'
+                        ? nodes.Tree_1_2.geometry
+                        : stage === 'thinning'
+                          ? nodes.Tree_AutumnThinning.geometry
+                          : nodes.Tree_AutumnSparse.geometry
+                }
+                material={material}
+                scale={[0.125, 0.5, 0.125]}
+                castShadow
+                receiveShadow
+                renderSnow={renderSnow}
+                snow={snowPresets.treeCanopyInner}
+                snowLift={0.002}
+                snowOverlayMinCoverage={snowOverlayMinCoverage}
+            />
+            {sprigMaterial && (
+                <EntityInstancesGeometry
+                    instanceKey={`Tree:sprigs:${palette}`}
+                    instances={selected}
+                    geometry={nodes.Tree_1_3.geometry}
+                    material={sprigMaterial}
+                    scale={[0.125, 0.5, 0.125]}
+                    castShadow
+                    receiveShadow
+                />
+            )}
+        </>
     );
 }

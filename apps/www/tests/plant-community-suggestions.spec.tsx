@@ -225,6 +225,27 @@ for (const width of [375, 1280]) {
     });
 }
 
+test('disease suggestion occupies the fourth card slot when three diseases are shown', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await mount(<PlantCommunitySuggestionsHarness threeDiseases />);
+    const thirdCard = page.getByRole('link', { name: /Treća bolest/ });
+    const suggestion = page.getByRole('button', { name: 'Predloži bolest' });
+    const thirdBounds = await thirdCard.boundingBox();
+    const suggestionBounds = await suggestion.boundingBox();
+    expect(thirdBounds).not.toBeNull();
+    expect(suggestionBounds).not.toBeNull();
+    expect(
+        Math.abs((suggestionBounds?.y ?? 0) - (thirdBounds?.y ?? 0)),
+    ).toBeLessThan(4);
+    expect(suggestionBounds?.x).toBeGreaterThan((thirdBounds?.x ?? 0) + 10);
+    expect(suggestionBounds?.width).toBeLessThanOrEqual(
+        thirdBounds?.width ?? 0,
+    );
+});
+
 test('changing the plant resets the health suggestion draft and selected plant', async ({
     mount,
     page,

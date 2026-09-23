@@ -37,7 +37,7 @@ export function SurveyContactFields({
                             {contactFieldLabel(field)}
                         </span>
                         <input
-                            className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-hidden focus:border-ring focus:ring-2 focus:ring-ring/30"
+                            className="h-10 w-full rounded-md border bg-field px-3 text-sm outline-hidden focus:border-ring focus:ring-2 focus:ring-ring/30"
                             type={field === 'email' ? 'email' : 'text'}
                             value={value[key] ?? ''}
                             onChange={(event) =>

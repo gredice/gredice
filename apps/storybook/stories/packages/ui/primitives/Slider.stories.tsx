@@ -1,5 +1,23 @@
 import { Slider } from '@gredice/ui/Slider';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { useState } from 'react';
+
+function ControlledSliderStory() {
+    const [value, setValue] = useState([173]);
+
+    return (
+        <div className="w-72">
+            <Slider
+                aria-label="Dan u godini"
+                label={`Dan u godini: ${value[0]}`}
+                max={366}
+                min={1}
+                onValueChange={setValue}
+                value={value}
+            />
+        </div>
+    );
+}
 
 const meta = {
     title: 'packages/ui/Inputs/Slider',
@@ -32,6 +50,10 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const ControlledSingleThumb: Story = {
+    render: () => <ControlledSliderStory />,
+};
 
 export const FineStep: Story = {
     args: {

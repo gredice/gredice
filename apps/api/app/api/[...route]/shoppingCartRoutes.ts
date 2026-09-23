@@ -61,6 +61,7 @@ import {
     readAdvancedSowingCatalogueDistanceRange,
 } from '../../../lib/checkout/advancedSowingPlan';
 import { getCartInfo } from '../../../lib/checkout/cartInfo';
+import { applyDefaultNewCartItemCurrency } from '../../../lib/checkout/defaultCartItemCurrency';
 import {
     assertOutletCartTargetAvailable,
     OutletCartMutationConflictError,
@@ -69,7 +70,7 @@ import {
     resolveOutletCartCurrency,
 } from '../../../lib/checkout/outletCartTarget';
 import { serializeShoppingCartItemForClient } from '../../../lib/checkout/shoppingCartClientSerialization';
-import { getDefaultCartItemCurrency } from '../../../lib/checkout/sunflowerCalculations';
+import { calculateSunflowerAmount } from '../../../lib/checkout/sunflowerCalculations';
 import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
 import {
     type AuthVariables,
@@ -211,13 +212,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                             item.currency === 'sunflower',
                     )
                     .reduce(
-                        (sum, item) =>
-                            sum +
-                            (typeof item.shopData.discountPrice === 'number'
-                                ? item.shopData.discountPrice
-                                : (item.shopData.price ?? 0)),
+                        (sum, item) => sum + calculateSunflowerAmount(item),
                         0,
-                    ) * 1000,
+                    ),
             );
 
             // Check if there are enough sunflowers in the account
@@ -791,42 +788,25 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     }
                 }
 
-                const isNewCartItem =
-                    cartItemId !== null &&
-                    !cart.items.some((item) => item.id === cartItemId);
-                if (
-                    amount > 0 &&
-                    cartItemId !== null &&
-                    currency == null &&
-                    isNewCartItem
-                ) {
-                    const updatedCart = await getShoppingCart(cartId);
-                    if (updatedCart) {
-                        const cartInfo = await getCartInfo(
-                            updatedCart.items,
+                if (amount > 0 && cartItemId !== null && currency == null) {
+                    appliedCurrency =
+                        (await applyDefaultNewCartItemCurrency({
                             accountId,
-                        );
-                        appliedCurrency = getDefaultCartItemCurrency({
-                            availableSunflowers: await getSunflowers(accountId),
-                            items: cartInfo.items,
-                            newCartItemId: cartItemId,
-                        });
-
-                        if (appliedCurrency === 'sunflower') {
-                            await upsertOrRemoveCartItem(
-                                cartItemId,
+                            cartItemId,
+                            existingCartItemIds: cart.items.map(
+                                (item) => item.id,
+                            ),
+                            mutation: {
+                                additionalData,
+                                amount,
                                 cartId,
                                 entityId,
                                 entityTypeName,
-                                amount,
                                 gardenId,
-                                raisedBedId,
                                 positionIndex,
-                                additionalData,
-                                appliedCurrency,
-                            );
-                        }
-                    }
+                                raisedBedId,
+                            },
+                        })) ?? appliedCurrency;
                 }
             } catch (error) {
                 if (

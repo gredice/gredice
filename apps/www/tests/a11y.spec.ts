@@ -29,6 +29,16 @@ function getRoutesToCheck(): string[] {
 test.describe('accessibility axe smoke tests', () => {
     test.describe.configure({ timeout: 60_000 });
 
+    test.beforeEach(async ({ page }) => {
+        // Axe resolves backgrounds by hit testing and cannot see the
+        // pointer-events-free ambient sky, so it reports light night-time
+        // copy against white. Ambient contrast is sampled from pixels in
+        // public-environment-contrast.spec.tsx instead.
+        await page.addInitScript(() => {
+            localStorage.setItem('gredice-public-environment-enabled', 'false');
+        });
+    });
+
     for (const url of getRoutesToCheck()) {
         test(`page ${url} has no serious axe violations`, async ({ page }) => {
             test.skip(

@@ -378,7 +378,10 @@ test('submits multiple reference edits for plant relationships', async ({
     await page
         .getByRole('combobox', { name: 'Dodaj biljku — Dobri susjedi' })
         .click();
-    await page.getByPlaceholder('Pretraži biljke...').fill('mrk');
+    await page
+        .getByRole('dialog', { name: 'Dodaj biljku — Dobri susjedi' })
+        .getByPlaceholder('Pretraži biljke...')
+        .fill('mrk');
     await page.getByRole('option', { name: 'Mrkva' }).click();
 
     await page
@@ -386,7 +389,10 @@ test('submits multiple reference edits for plant relationships', async ({
             name: 'Dodaj biljku — Izbjegavati blizinu',
         })
         .click();
-    await page.getByPlaceholder('Pretraži biljke...').fill('krump');
+    await page
+        .getByRole('dialog', { name: 'Dodaj biljku — Izbjegavati blizinu' })
+        .getByPlaceholder('Pretraži biljke...')
+        .fill('krump');
     await page.getByRole('option', { name: 'Krumpir' }).click();
     await page.getByRole('button', { name: 'Pošalji' }).click();
 

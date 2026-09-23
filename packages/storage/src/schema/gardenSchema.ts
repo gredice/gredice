@@ -1,9 +1,4 @@
 import type { GardenPreviewPhase } from '@gredice/js/gardenPreviews';
-import type {
-    GardenStructureDocument,
-    GardenStructureRotation,
-    GardenStructureTemplateKey,
-} from '@gredice/js/gardenStructures';
 import { relations, sql } from 'drizzle-orm';
 import {
     boolean,
@@ -64,28 +59,6 @@ export const gardens = pgTable(
     ],
 );
 
-export const gardenStructureOperationKinds = [
-    'create',
-    'replace',
-    'resize',
-    'placement',
-    'delete',
-] as const;
-export type GardenStructureOperationKind =
-    (typeof gardenStructureOperationKinds)[number];
-
-export type GardenStructureOperationJson =
-    | null
-    | boolean
-    | number
-    | string
-    | readonly GardenStructureOperationJson[]
-    | Readonly<{ [key: string]: GardenStructureOperationJson }>;
-
-export type GardenStructureOperationStoredResponse = Readonly<{
-    [key: string]: GardenStructureOperationJson;
-}>;
-
 export const gardenMutationOperationKinds = [
     'block-purchase',
     'garden-box-block-place',
@@ -108,10 +81,9 @@ export type GardenMutationOperationStoredResponse = Readonly<{
 }>;
 
 /**
- * Garden-scoped idempotency receipts for mutations that do not belong to the
- * structure aggregate itself. The garden/operation primary key deliberately
- * spans operation kinds so one client command identity cannot be reused for a
- * different economic effect.
+ * Garden-scoped idempotency receipts for economic garden mutations. The
+ * garden/operation primary key deliberately spans operation kinds so one
+ * client command identity cannot be reused for a different economic effect.
  */
 export const gardenMutationOperations = pgTable(
     'garden_mutation_operations',
@@ -156,7 +128,14 @@ export const gardenMutationOperations = pgTable(
     ],
 );
 
-export const gardenStructures = pgTable(
+/**
+ * Tables left behind by the removed garden building system. The application no
+ * longer reads or writes them; they stay declared only so account and sandbox
+ * deletion can clear legacy rows that still reference gardens through
+ * non-cascading foreign keys. Drop them in a deliberate migration once every
+ * remaining row, including refundable Sunflower principal, has been resolved.
+ */
+export const legacyGardenStructures = pgTable(
     'garden_structures',
     {
         id: text('id').primaryKey(),
@@ -165,14 +144,9 @@ export const gardenStructures = pgTable(
             .references(() => gardens.id),
         anchorX: integer('anchor_x').notNull(),
         anchorY: integer('anchor_y').notNull(),
-        rotation: integer('rotation')
-            .$type<GardenStructureRotation>()
-            .notNull()
-            .default(0),
+        rotation: integer('rotation').notNull().default(0),
         revision: integer('revision').notNull().default(1),
-        templateKey: text('template_key')
-            .$type<GardenStructureTemplateKey>()
-            .notNull(),
+        templateKey: text('template_key').notNull(),
         kitKey: text('kit_key').notNull(),
         kitVersion: text('kit_version').notNull(),
         pricingVersion: integer('pricing_version').notNull().default(1),
@@ -182,7 +156,7 @@ export const gardenStructures = pgTable(
         refundableSunflowerPrincipal: integer('refundable_sunflower_principal')
             .notNull()
             .default(0),
-        document: jsonb('document').$type<GardenStructureDocument>().notNull(),
+        document: jsonb('document').notNull(),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()
@@ -254,7 +228,7 @@ export const gardenStructures = pgTable(
     ],
 );
 
-export const gardenStructureOperations = pgTable(
+export const legacyGardenStructureOperations = pgTable(
     'garden_structure_operations',
     {
         gardenId: integer('garden_id')
@@ -262,11 +236,9 @@ export const gardenStructureOperations = pgTable(
             .references(() => gardens.id),
         operationId: text('operation_id').notNull(),
         structureId: text('structure_id').notNull(),
-        kind: text('kind').$type<GardenStructureOperationKind>().notNull(),
+        kind: text('kind').notNull(),
         payloadHash: text('payload_hash').notNull(),
-        response: jsonb('response')
-            .$type<GardenStructureOperationStoredResponse>()
-            .notNull(),
+        response: jsonb('response').notNull(),
         resultRevision: integer('result_revision').notNull(),
         createdAt: timestamp('created_at').notNull().defaultNow(),
     },
@@ -277,7 +249,10 @@ export const gardenStructureOperations = pgTable(
         }),
         foreignKey({
             columns: [table.gardenId, table.structureId],
-            foreignColumns: [gardenStructures.gardenId, gardenStructures.id],
+            foreignColumns: [
+                legacyGardenStructures.gardenId,
+                legacyGardenStructures.id,
+            ],
             name: 'garden_structure_operations_garden_structure_fk',
         }),
         index('garden_structure_operations_structure_id_idx').on(
@@ -313,39 +288,6 @@ export const gardenStructureOperations = pgTable(
     ],
 );
 
-export const gardenStructureRelations = relations(
-    gardenStructures,
-    ({ one, many }) => ({
-        garden: one(gardens, {
-            fields: [gardenStructures.gardenId],
-            references: [gardens.id],
-            relationName: 'gardenStructures',
-        }),
-        operations: many(gardenStructureOperations, {
-            relationName: 'gardenStructureOperations',
-        }),
-    }),
-);
-
-export const gardenStructureOperationRelations = relations(
-    gardenStructureOperations,
-    ({ one }) => ({
-        garden: one(gardens, {
-            fields: [gardenStructureOperations.gardenId],
-            references: [gardens.id],
-            relationName: 'gardenStructureGardenOperations',
-        }),
-        structure: one(gardenStructures, {
-            fields: [
-                gardenStructureOperations.gardenId,
-                gardenStructureOperations.structureId,
-            ],
-            references: [gardenStructures.gardenId, gardenStructures.id],
-            relationName: 'gardenStructureOperations',
-        }),
-    }),
-);
-
 export const gardenMutationOperationRelations = relations(
     gardenMutationOperations,
     ({ one }) => ({
@@ -361,20 +303,6 @@ export type InsertGardenMutationOperation =
     typeof gardenMutationOperations.$inferInsert;
 export type SelectGardenMutationOperation =
     typeof gardenMutationOperations.$inferSelect;
-
-export type InsertGardenStructure = typeof gardenStructures.$inferInsert;
-export type UpdateGardenStructure = Partial<
-    Omit<
-        typeof gardenStructures.$inferInsert,
-        'id' | 'gardenId' | 'createdAt' | 'updatedAt' | 'isDeleted'
-    >
-> &
-    Pick<typeof gardenStructures.$inferSelect, 'id' | 'gardenId'>;
-export type SelectGardenStructure = typeof gardenStructures.$inferSelect;
-export type InsertGardenStructureOperation =
-    typeof gardenStructureOperations.$inferInsert;
-export type SelectGardenStructureOperation =
-    typeof gardenStructureOperations.$inferSelect;
 
 export const gardenPreviews = pgTable(
     'garden_previews',
@@ -520,12 +448,6 @@ export const gardenRelations = relations(gardens, ({ one, many }) => ({
     }),
     previews: many(gardenPreviews, {
         relationName: 'gardenPreview',
-    }),
-    structures: many(gardenStructures, {
-        relationName: 'gardenStructures',
-    }),
-    structureOperations: many(gardenStructureOperations, {
-        relationName: 'gardenStructureGardenOperations',
     }),
     mutationOperations: many(gardenMutationOperations, {
         relationName: 'gardenMutationOperations',
