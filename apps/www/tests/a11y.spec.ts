@@ -29,16 +29,6 @@ function getRoutesToCheck(): string[] {
 test.describe('accessibility axe smoke tests', () => {
     test.describe.configure({ timeout: 60_000 });
 
-    test.beforeEach(async ({ page }) => {
-        // Axe resolves backgrounds by hit testing and cannot see the
-        // pointer-events-free ambient sky, so it reports light night-time
-        // copy against white. Ambient contrast is sampled from pixels in
-        // public-environment-contrast.spec.tsx instead.
-        await page.addInitScript(() => {
-            localStorage.setItem('gredice-public-environment-enabled', 'false');
-        });
-    });
-
     for (const url of getRoutesToCheck()) {
         test(`page ${url} has no serious axe violations`, async ({ page }) => {
             test.skip(
@@ -50,7 +40,11 @@ test.describe('accessibility axe smoke tests', () => {
                 'Route immediately forwards the browser after an OAuth callback.',
             );
 
+            // Keep the smoke test deterministic while the public sky follows
+            // real time. Night contrast is covered by the pixel contrast suite.
+            await page.clock.setFixedTime(new Date('2026-09-23T11:00:00Z'));
             await page.goto(url, { waitUntil: 'domcontentloaded' });
+            await expect(page.locator('html')).not.toHaveClass(/dark/u);
 
             const results = await new AxeBuilder({ page })
                 .withTags(['wcag2a', 'wcag2aa'])
