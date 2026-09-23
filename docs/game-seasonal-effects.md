@@ -225,7 +225,7 @@ speaker/headphone mix tuning remains a listening check.
 
 ## Ground leaf gusts
 
-The airborne leaf mesh now also draws a short ground-level gust every 12 scene
+The airborne leaf mesh now also draws a short ground-level gust every 12 live
 seconds when blended wind reaches 0.75. One seeded event selects a visible exposed
 grass, sand or swamp block within four tiles of a mounted deciduous tree. The
 same exposure, slope, rotation and stack-height rules used by settled leaves
@@ -235,9 +235,10 @@ instances come out of the existing airborne-leaf cap for that frame; the
 interaction-particle pool is untouched. The mesh has no raycast target.
 
 Calm wind, heavy rain, accumulating snow, reduced motion and disabled weather
-silence gusts. Hidden scenes release their animation lease. Audio disablement
+silence gusts. A scene deadline wakes each gust; the render lease is held only
+during the burst and is released while quiet or hidden. Audio disablement
 still mutes rustle independently of the visual layer. Event selection and
-trajectory use garden, block, autumn year and shared animation time seeds, so
+trajectory use garden, block, autumn year and elapsed-time seeds, so
 `fixedTimeSeconds=10.7` gives a repeatable active burst and `14` gives a quiet
 frame at the same frozen calendar date. The normal still fixture remains at 12.
 

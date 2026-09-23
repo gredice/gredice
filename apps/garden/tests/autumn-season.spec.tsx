@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/experimental-ct-react';
+import { AutumnGustLeaseFixture } from '../../../packages/game/tests/AutumnGustLeaseFixture';
 import { AutumnVisualFixture } from '../../../packages/game/tests/AutumnVisualFixture';
 
 for (const stage of [
@@ -443,6 +444,44 @@ for (const tier of ['low', 'high'] as const) {
         );
     });
 }
+
+test('winter gusts release the render lease between windows', async ({
+    mount,
+    page,
+}) => {
+    test.setTimeout(25_000);
+    const fixture = await mount(<AutumnGustLeaseFixture />);
+    const readGustActivity = () =>
+        page.evaluate(() => ({
+            count: window.__grediceGameProfile?.autumnGustCount ?? 0,
+            deadlines:
+                window.__grediceGameProfile?.runtimeFrameLoop
+                    ?.activeDeadlineCount ?? 0,
+            leases:
+                window.__grediceGameProfile?.runtimeFrameLoop
+                    ?.activeRenderLeaseCount ?? 0,
+        }));
+    await expect.poll(readGustActivity).toEqual({
+        count: 0,
+        deadlines: 1,
+        leases: 0,
+    });
+    await expect
+        .poll(
+            async () => {
+                const activity = await readGustActivity();
+                return activity.count > 0 && activity.leases > 0;
+            },
+            { timeout: 14_000 },
+        )
+        .toBe(true);
+    await expect.poll(readGustActivity).toEqual({
+        count: 0,
+        deadlines: 1,
+        leases: 0,
+    });
+    await fixture.unmount();
+});
 
 test('calm, heavy rain, snow and reduced motion silence ground gusts', async ({
     mount,

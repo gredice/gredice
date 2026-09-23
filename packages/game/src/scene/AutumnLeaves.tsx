@@ -1,5 +1,5 @@
 import { useFrame } from '@react-three/fiber';
-import { useEffect, useMemo, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import {
     Color,
     DoubleSide,
@@ -27,6 +27,7 @@ import {
     resolveAutumnGustCount,
     sampleAutumnGustLeaf,
     sampleAutumnGustWindow,
+    secondsUntilNextAutumnGust,
 } from './autumnLeafGusts';
 import {
     autumnLeafCaps,
@@ -39,6 +40,7 @@ import { getAutumnLeafColor } from './autumnPalette';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
 import type { GameQualityProfileTier } from './gameQuality';
 import {
+    useSceneDeadline,
     useSceneFixedTimeSeconds,
     useSceneRenderRequest,
     useSceneRuntimeVisible,
@@ -116,6 +118,7 @@ export function AutumnLeaves({
     const visible = useSceneRuntimeVisible();
     const fixedTime = useSceneFixedTimeSeconds();
     const time = useSceneTimeUniform();
+    const [gustClockOriginMs] = useState(() => performance.now());
     const requestRender = useSceneRenderRequest();
     const capacity = autumnLeafCaps[tier];
     const gustCount = resolveAutumnGustCount({
@@ -202,15 +205,36 @@ export function AutumnLeaves({
             sphere: new Sphere(new Vector3(), 2.5),
         };
     }, []);
+    const [gustWindowActive, setGustWindowActive] = useState(false);
+    const [nextGustAtMs, setNextGustAtMs] = useState<number | null>(null);
+    const gustOnly =
+        visible && fixedTime === undefined && count === 0 && gustCount > 0;
     useSceneTimeInvalidation(
         'autumn-leaves',
-        visible && (count > 0 || gustCount > 0) && fixedTime === undefined,
+        visible &&
+            fixedTime === undefined &&
+            (count > 0 || (gustOnly && gustWindowActive)),
     );
-    // A fixed clock has no continuous frame lease; changes in these inputs still need one render.
+    useSceneDeadline({
+        callback: () => {
+            setNextGustAtMs(null);
+            setGustWindowActive(true);
+            requestRender('autumn-gust-start');
+        },
+        deadlineMs: nextGustAtMs,
+        enabled: gustOnly && !gustWindowActive,
+        owner: 'autumn-gust-next-window',
+    });
+    useEffect(() => {
+        if (!gustOnly) {
+            setGustWindowActive(false);
+            setNextGustAtMs(null);
+        }
+    }, [gustOnly]);
+    // A changed input needs one frame to update the mesh and its next deadline.
     // biome-ignore lint/correctness/useExhaustiveDependencies: Each value deliberately invalidates the scene frame.
     useEffect(() => {
-        if (fixedTime !== undefined || (count === 0 && gustCount === 0))
-            requestRender('autumn-leaves-change');
+        requestRender('autumn-leaves-change');
     }, [
         count,
         fixedTime,
@@ -252,15 +276,32 @@ export function AutumnLeaves({
     }, [capacity, tier]);
     useFrame(({ camera }) => {
         let active = 0;
+        // The R3F clock pauses between demand-driven frames. Live gusts need
+        // elapsed wall time so a deadline can wake the next window precisely.
+        const gustTime =
+            fixedTime ?? (performance.now() - gustClockOriginMs) / 1000;
         const gustWindow =
             visible && gustCount > 0
                 ? sampleAutumnGustWindow(
-                      time.value,
+                      gustTime,
                       gardenId,
                       year,
                       gustAnchors.length,
                   )
                 : null;
+        if (gustOnly) {
+            const activeWindow = gustWindow !== null;
+            if (gustWindowActive !== activeWindow)
+                setGustWindowActive(activeWindow);
+            if (activeWindow && nextGustAtMs !== null) setNextGustAtMs(null);
+            if (!activeWindow && nextGustAtMs === null) {
+                const waitSeconds = secondsUntilNextAutumnGust(gustTime);
+                if (waitSeconds !== null)
+                    setNextGustAtMs(
+                        performance.now() + waitSeconds * 1000 + 20,
+                    );
+            }
+        }
         let gustAnchorIndex = -1;
         if (gustWindow) {
             scratch.frustum.setFromProjectionMatrix(

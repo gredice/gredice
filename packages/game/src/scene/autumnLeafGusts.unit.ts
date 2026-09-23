@@ -9,6 +9,7 @@ import {
     resolveAutumnGustCount,
     sampleAutumnGustLeaf,
     sampleAutumnGustWindow,
+    secondsUntilNextAutumnGust,
 } from './autumnLeafGusts';
 import {
     autumnLeafCaps,
@@ -179,5 +180,18 @@ test('frozen scene time repeats short gusts and the shared pool remains capped',
             allocations.reduce((sum, value) => sum + value, gustCount) <=
                 autumnLeafCaps[tier],
         );
+    }
+});
+
+test('quiet gust intervals have a bounded next wake-up', () => {
+    assert.equal(secondsUntilNextAutumnGust(0), 10);
+    assert.equal(secondsUntilNextAutumnGust(11.4), 10.6);
+    assert.equal(secondsUntilNextAutumnGust(14), 8);
+    assert.equal(secondsUntilNextAutumnGust(Number.NaN), null);
+    for (const time of [0, 11.4, 14, 23.5]) {
+        assert.equal(sampleAutumnGustWindow(time, 7, 2024, 1), null);
+        const delay = secondsUntilNextAutumnGust(time);
+        assert(delay !== null && delay > 0 && delay <= 12);
+        assert(sampleAutumnGustWindow(time + delay + 0.02, 7, 2024, 1));
     }
 });

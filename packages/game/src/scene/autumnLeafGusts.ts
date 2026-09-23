@@ -30,6 +30,13 @@ const maxGustAnchors = 64;
 const gustPeriodSeconds = 12;
 const gustDurationSeconds = 1.4;
 
+/** Time until the next event starts when the current window is quiet. */
+export function secondsUntilNextAutumnGust(time: number) {
+    if (!Number.isFinite(time)) return null;
+    const elapsed = Math.max(0, time) + 2;
+    return gustPeriodSeconds - (elapsed % gustPeriodSeconds);
+}
+
 /** Keep a stable, bounded set of exposed ground sites near deciduous trees. */
 export function createAutumnGustAnchors({
     instances,
