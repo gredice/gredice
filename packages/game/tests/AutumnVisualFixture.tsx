@@ -52,14 +52,15 @@ export function AutumnVisualFixture({
     instanced = false,
     zoom = 95,
     leaves = false,
+    gusts = false,
     wind = 3,
+    rain = 0,
     tier = 'high',
     ground = false,
     entities = false,
     partEntities = false,
     partRotation = 0,
     animateSprings = false,
-    rain = 0,
     standaloneBox = false,
     motionDrop = false,
     movingBenchTargetX,
@@ -72,7 +73,9 @@ export function AutumnVisualFixture({
     lighting?: 'day' | 'twilight' | 'cloudy';
     zoom?: number;
     leaves?: boolean;
+    gusts?: boolean;
     wind?: number;
+    rain?: number;
     tier?: GameQualityTier;
     instanced?: boolean;
     ground?: boolean;
@@ -80,7 +83,6 @@ export function AutumnVisualFixture({
     partEntities?: boolean;
     partRotation?: number;
     animateSprings?: boolean;
-    rain?: number;
     standaloneBox?: boolean;
     motionDrop?: boolean;
     movingBenchTargetX?: number;
@@ -90,6 +92,7 @@ export function AutumnVisualFixture({
     const [ready, setReady] = useState('');
     const [sprigColors, setSprigColors] = useState('');
     const [leafCount, setLeafCount] = useState(0);
+    const [gustCount, setGustCount] = useState(0);
     const [groundCount, setGroundCount] = useState(0);
     const [entityCount, setEntityCount] = useState(0);
     const [partCount, setPartCount] = useState(0);
@@ -214,6 +217,7 @@ export function AutumnVisualFixture({
                     data-canopies={ready}
                     data-sprigs={sprigColors}
                     data-leaves={leafCount}
+                    data-gust-leaves={gustCount}
                     data-ground-leaves={groundCount}
                     data-entity-leaves={entityCount}
                     data-part-leaves={partCount}
@@ -276,7 +280,7 @@ export function AutumnVisualFixture({
                         ]}
                         zoom={zoom}
                         quality={gameQualityProfiles.low}
-                        fixedTimeSeconds={12}
+                        fixedTimeSeconds={gusts ? 10.7 : 12}
                         animateSprings={animateSprings}
                         style={{ width: '100%', height: '100%' }}
                     >
@@ -302,6 +306,10 @@ export function AutumnVisualFixture({
                                 tier={tier}
                                 windSpeed={wind}
                                 windDirection={90}
+                                stacks={gusts ? stacks : undefined}
+                                gardenId={7}
+                                rain={rain}
+                                snow={snow}
                                 enabled={!disabled}
                             />
                         )}
@@ -412,6 +420,7 @@ export function AutumnVisualFixture({
                                 onReady={setReady}
                                 onSprigColors={setSprigColors}
                                 onLeafCount={setLeafCount}
+                                onGustCount={setGustCount}
                                 onGroundCount={setGroundCount}
                                 onEntityCount={setEntityCount}
                                 onPartCount={setPartCount}

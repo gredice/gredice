@@ -22,6 +22,7 @@
 
         --border: 28 31.8% 91.4%;
         --input: 28 31.8% 91.4%;
+        --field: 28 40% 96%;
 
         --primary: 28 47.4% 11.2%;
         --primary-foreground: 28 40% 98%;
@@ -75,6 +76,7 @@
 
         --border: var(--hue) 16% 25%;
         --input: var(--hue) 31% 9%;
+        --field: var(--hue) 16% 24%;
 
         --primary: var(--hue-primary) 16% 98%;
         --primary-foreground: var(--hue) 40% 20%;

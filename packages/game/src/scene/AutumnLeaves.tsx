@@ -1,5 +1,5 @@
 import { useFrame } from '@react-three/fiber';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import {
     Color,
     DoubleSide,
@@ -12,9 +12,23 @@ import {
     Sphere,
     Vector3,
 } from 'three';
+import { useEntityBlockInstances } from '../entities/EntityInstancesBlock';
+import { getAutumnGroundBlocks } from '../entities/groundDecorations/autumnGroundPlacements';
 import { useAutumnState } from '../hooks/useAutumnState';
+import { useLiveTime } from '../hooks/useLiveTime';
+import type { Stack } from '../types/Stack';
+import { useGameState } from '../useGameState';
 import { useAutumnSources } from './AutumnSources';
+import { getAutumnAccumulationYear } from './autumnAccumulation';
 import { createAutumnLeafGeometry } from './autumnLeafGeometry';
+import {
+    autumnGustCaps,
+    createAutumnGustAnchors,
+    resolveAutumnGustCount,
+    sampleAutumnGustLeaf,
+    sampleAutumnGustWindow,
+    secondsUntilNextAutumnGust,
+} from './autumnLeafGusts';
 import {
     autumnLeafCaps,
     createAutumnLeafDescriptor,
@@ -26,29 +40,96 @@ import { getAutumnLeafColor } from './autumnPalette';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
 import type { GameQualityProfileTier } from './gameQuality';
 import {
+    useSceneDeadline,
     useSceneFixedTimeSeconds,
+    useSceneRenderRequest,
     useSceneRuntimeVisible,
     useSceneTimeInvalidation,
     useSceneTimeUniform,
 } from './SceneTime';
 
+const reducedMotionQuery = '(prefers-reduced-motion: reduce)';
+function subscribeReducedMotion(listener: () => void) {
+    const query = window.matchMedia(reducedMotionQuery);
+    query.addEventListener('change', listener);
+    return () => query.removeEventListener('change', listener);
+}
+function getReducedMotion() {
+    return window.matchMedia(reducedMotionQuery).matches;
+}
+
 export function AutumnLeaves({
     tier,
+    stacks,
+    gardenId,
     windSpeed = 0,
     windDirection = 0,
+    rain = 0,
+    snow = 0,
     enabled = true,
 }: {
     tier: GameQualityProfileTier;
+    stacks?: Stack[];
+    gardenId?: number;
     windSpeed?: number;
     windDirection?: number;
+    rain?: number;
+    snow?: number;
     enabled?: boolean;
 }) {
     const sources = useAutumnSources();
     const autumn = useAutumnState();
+    const reducedMotion = useSyncExternalStore(
+        subscribeReducedMotion,
+        getReducedMotion,
+        () => false,
+    );
+    const snowCoverage = useGameState((state) => state.snowCoverage);
+    const year = getAutumnAccumulationYear(useLiveTime());
+    const exposedBlocks = useMemo(
+        () => getAutumnGroundBlocks(stacks),
+        [stacks],
+    );
+    const exposedNames = useMemo(
+        () => [...new Set(exposedBlocks.map(({ block }) => block.name))],
+        [exposedBlocks],
+    );
+    const groundInstances = useEntityBlockInstances({
+        stacks,
+        names: exposedNames,
+        yOffset: 0.2,
+    });
+    const gustAnchors = useMemo(() => {
+        const treePosition = new Vector3();
+        const trees = sources.map(({ id, object }) => {
+            object.getWorldPosition(treePosition);
+            return { id, x: treePosition.x, z: treePosition.z };
+        });
+        return createAutumnGustAnchors({
+            instances: groundInstances ?? [],
+            exposedBlockIds: new Set(
+                exposedBlocks.map(({ block }) => block.id),
+            ),
+            trees,
+            gardenId,
+            year,
+        });
+    }, [exposedBlocks, gardenId, groundInstances, sources, year]);
     const visible = useSceneRuntimeVisible();
     const fixedTime = useSceneFixedTimeSeconds();
     const time = useSceneTimeUniform();
+    const [gustClockOriginMs] = useState(() => performance.now());
+    const requestRender = useSceneRenderRequest();
     const capacity = autumnLeafCaps[tier];
+    const gustCount = resolveAutumnGustCount({
+        tier,
+        windSpeed,
+        rain,
+        snow: Math.max(snow, snowCoverage),
+        settledLeafAmount: autumn.settledLeafAmount,
+        anchorCount: gustAnchors.length,
+        enabled: enabled && !reducedMotion,
+    });
     const count = resolveAutumnLeafCount(
         tier,
         sources.length,
@@ -95,22 +176,76 @@ export function AutumnLeaves({
             })),
         [sources, autumn.foliageColorProgress],
     );
+    const gustColors = useMemo(
+        () =>
+            gustAnchors.map((anchor) =>
+                Array.from({ length: autumnGustCaps[tier] }, (_, index) =>
+                    getAutumnLeafColor(
+                        new Color('#458a36'),
+                        autumn.foliageColorProgress,
+                        `${anchor.id}:${index}`,
+                    ),
+                ),
+            ),
+        [gustAnchors, autumn.foliageColorProgress, tier],
+    );
     const scratch = useMemo(() => {
         const visibleIndices: number[] = [];
+        const visibleGustIndices: number[] = [];
         const allocations: number[] = [];
         return {
             visibleIndices,
+            visibleGustIndices,
             allocations,
+            lastGustCount: 0,
+            peakGustCount: 0,
             transform: new Object3D(),
             frustum: new Frustum(),
             matrix: new Matrix4(),
             sphere: new Sphere(new Vector3(), 2.5),
         };
     }, []);
+    const [gustWindowActive, setGustWindowActive] = useState(false);
+    const [nextGustAtMs, setNextGustAtMs] = useState<number | null>(null);
+    const gustOnly =
+        visible && fixedTime === undefined && count === 0 && gustCount > 0;
     useSceneTimeInvalidation(
         'autumn-leaves',
-        visible && count > 0 && fixedTime === undefined,
+        visible &&
+            fixedTime === undefined &&
+            (count > 0 || (gustOnly && gustWindowActive)),
     );
+    useSceneDeadline({
+        callback: () => {
+            setNextGustAtMs(null);
+            setGustWindowActive(true);
+            requestRender('autumn-gust-start');
+        },
+        deadlineMs: nextGustAtMs,
+        enabled: gustOnly && !gustWindowActive,
+        owner: 'autumn-gust-next-window',
+    });
+    useEffect(() => {
+        if (!gustOnly) {
+            setGustWindowActive(false);
+            setNextGustAtMs(null);
+        }
+    }, [gustOnly]);
+    // A changed input needs one frame to update the mesh and its next deadline.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: Each value deliberately invalidates the scene frame.
+    useEffect(() => {
+        requestRender('autumn-leaves-change');
+    }, [
+        count,
+        fixedTime,
+        gustCount,
+        descriptors,
+        gustAnchors,
+        requestRender,
+        visible,
+        windDirection,
+        windSpeed,
+    ]);
     useEffect(
         () => () => {
             mesh.geometry.dispose();
@@ -119,16 +254,84 @@ export function AutumnLeaves({
         },
         [mesh],
     );
+    // Reset telemetry when the scene switches garden or autumn year.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: Garden and year identity deliberately reset the recorded peak.
     useEffect(() => {
-        updateGameProfileMetadata({ autumnLeafCapacity: capacity });
+        scratch.peakGustCount = 0;
+        updateGameProfileMetadata({ autumnGustPeakCount: 0 });
+    }, [gardenId, scratch, year]);
+    useEffect(() => {
+        updateGameProfileMetadata({
+            autumnLeafCapacity: capacity,
+            autumnGustCapacity: autumnGustCaps[tier],
+        });
         return () =>
             updateGameProfileMetadata({
                 autumnLeafCapacity: 0,
                 autumnLeafCount: 0,
+                autumnGustCapacity: 0,
+                autumnGustCount: 0,
+                autumnGustPeakCount: 0,
             });
-    }, [capacity]);
+    }, [capacity, tier]);
     useFrame(({ camera }) => {
         let active = 0;
+        // The R3F clock pauses between demand-driven frames. Live gusts need
+        // elapsed wall time so a deadline can wake the next window precisely.
+        const gustTime =
+            fixedTime ?? (performance.now() - gustClockOriginMs) / 1000;
+        const gustWindow =
+            visible && gustCount > 0
+                ? sampleAutumnGustWindow(
+                      gustTime,
+                      gardenId,
+                      year,
+                      gustAnchors.length,
+                  )
+                : null;
+        if (gustOnly) {
+            const activeWindow = gustWindow !== null;
+            if (gustWindowActive !== activeWindow)
+                setGustWindowActive(activeWindow);
+            if (activeWindow && nextGustAtMs !== null) setNextGustAtMs(null);
+            if (!activeWindow && nextGustAtMs === null) {
+                const waitSeconds = secondsUntilNextAutumnGust(gustTime);
+                if (waitSeconds !== null)
+                    setNextGustAtMs(
+                        performance.now() + waitSeconds * 1000 + 20,
+                    );
+            }
+        }
+        let gustAnchorIndex = -1;
+        if (gustWindow) {
+            scratch.frustum.setFromProjectionMatrix(
+                scratch.matrix.multiplyMatrices(
+                    camera.projectionMatrix,
+                    camera.matrixWorldInverse,
+                ),
+            );
+            scratch.sphere.radius = 0.9;
+            scratch.visibleGustIndices.length = 0;
+            for (const [index, anchor] of gustAnchors.entries()) {
+                scratch.sphere.center.set(anchor.x, anchor.y, anchor.z);
+                if (
+                    scratch.frustum.intersectsSphere(scratch.sphere) &&
+                    (camera instanceof OrthographicCamera ||
+                        camera.position.distanceToSquared(
+                            scratch.sphere.center,
+                        ) <= 900)
+                )
+                    scratch.visibleGustIndices.push(index);
+            }
+            if (scratch.visibleGustIndices.length > 0)
+                gustAnchorIndex =
+                    scratch.visibleGustIndices[
+                        gustWindow.anchorIndex %
+                            scratch.visibleGustIndices.length
+                    ];
+        }
+        const gustAnchor = gustAnchors[gustAnchorIndex];
+        const visibleGust = gustAnchor ? gustCount : 0;
         if (visible && count > 0) {
             scratch.frustum.setFromProjectionMatrix(
                 scratch.matrix.multiplyMatrices(
@@ -136,6 +339,7 @@ export function AutumnLeaves({
                     camera.matrixWorldInverse,
                 ),
             );
+            scratch.sphere.radius = 2.5;
             scratch.visibleIndices.length = 0;
             for (const [index, { source, origin }] of descriptors.entries()) {
                 source.object.getWorldPosition(origin);
@@ -153,7 +357,7 @@ export function AutumnLeaves({
                 scratch.allocations,
                 scratch.visibleIndices.length,
                 perTree,
-                capacity,
+                capacity - visibleGust,
             );
             for (const [
                 visibleIndex,
@@ -189,8 +393,39 @@ export function AutumnLeaves({
                 }
             }
         }
-        if (mesh.count !== active)
-            updateGameProfileMetadata({ autumnLeafCount: active });
+        if (gustWindow && gustAnchor && visibleGust > 0) {
+            for (let index = 0; index < visibleGust; index++) {
+                const sample = sampleAutumnGustLeaf(
+                    `${gustAnchor.id}:${gustWindow.eventIndex}`,
+                    index,
+                    gustWindow.progress,
+                    windSpeed,
+                    windDirection,
+                );
+                scratch.transform.position.set(
+                    gustAnchor.x + sample.x,
+                    gustAnchor.y + sample.y,
+                    gustAnchor.z + sample.z,
+                );
+                scratch.transform.rotation.set(
+                    sample.rotation * 0.3,
+                    sample.rotation,
+                    sample.rotation * 0.4,
+                );
+                scratch.transform.scale.setScalar(sample.scale);
+                scratch.transform.updateMatrix();
+                mesh.setMatrixAt(active, scratch.transform.matrix);
+                mesh.setColorAt(active++, gustColors[gustAnchorIndex][index]);
+            }
+        }
+        scratch.peakGustCount = Math.max(scratch.peakGustCount, visibleGust);
+        if (mesh.count !== active || scratch.lastGustCount !== visibleGust)
+            updateGameProfileMetadata({
+                autumnLeafCount: active,
+                autumnGustCount: visibleGust,
+                autumnGustPeakCount: scratch.peakGustCount,
+            });
+        scratch.lastGustCount = visibleGust;
         mesh.count = active;
         mesh.instanceMatrix.needsUpdate = true;
         if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;

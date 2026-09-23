@@ -139,7 +139,7 @@ export default async function FarmerDocumentationPage({
                                 type="date"
                                 name="since"
                                 defaultValue={sinceInput ?? ''}
-                                className="h-10 rounded-md border border-input bg-background px-3 text-sm font-normal outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                                className="h-10 rounded-md border border-input bg-field px-3 text-sm font-normal outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                             />
                         </label>
                         <Button type="submit" variant="outlined">

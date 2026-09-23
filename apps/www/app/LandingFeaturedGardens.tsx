@@ -7,6 +7,7 @@ import {
     gardenSceneTransitionDelayMs,
 } from '@gredice/game/garden-scene-transition';
 import { getGardenBaseUrl } from '@gredice/js/urls';
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Left, Navigate, Pause, Play } from '@gredice/ui/icons';
@@ -107,7 +108,10 @@ export function LandingFeaturedGardens({
                   publicId: user.publicId,
                   avatarUrl: user.avatarUrl ?? null,
                   achievementCount: user.achievementCount,
-                  displayName: user.displayName ?? 'Korisnik Gredica',
+                  displayName: safeUserDisplayName(
+                      user.displayName ?? user.userName,
+                      'Korisnik Gredica',
+                  ),
               }
             : null;
 

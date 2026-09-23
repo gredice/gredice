@@ -738,10 +738,7 @@ export function EventCalendar({
     return (
         <Stack
             spacing={3}
-            className={cx(
-                'rounded-lg border bg-card/80 p-3 shadow-sm',
-                className,
-            )}
+            className={cx('rounded-lg border bg-card p-3 shadow-sm', className)}
             data-event-calendar
             {...rest}
         >

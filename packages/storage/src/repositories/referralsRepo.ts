@@ -1,5 +1,6 @@
 import 'server-only';
 import { randomInt } from 'node:crypto';
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { accounts, accountUsers, events, raisedBeds, users } from '../schema';
 import { storage } from '../storage';
@@ -339,10 +340,10 @@ async function getReferralAccountSummaries(accountIds: string[]) {
         accountIdsWithUser.add(accountUser.accountId);
         summaries.set(accountUser.accountId, {
             id: accountUser.accountId,
-            displayName:
-                accountUser.displayName ??
-                accountUser.userName ??
+            displayName: safeUserDisplayName(
+                accountUser.displayName ?? accountUser.userName,
                 'Gredice račun',
+            ),
             avatarUrl: accountUser.avatarUrl ?? null,
             achievementCount: accountUser.achievementCount,
         });

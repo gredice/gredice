@@ -1,5 +1,6 @@
 import { pbkdf2Sync, randomUUID } from 'node:crypto';
 import { userIdToPublicId } from '@gredice/js/publicId';
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import { notifyNewUserRegistered } from '@gredice/notifications';
 import {
     blockLogin,
@@ -149,7 +150,7 @@ function currentClaimsFromUser(
         id: user.id,
         publicId: userIdToPublicId(user.id),
         userName: user.userName,
-        displayName: user.displayName ?? user.userName,
+        displayName: safeUserDisplayName(user.displayName ?? user.userName),
         avatarUrl: user.avatarUrl,
         achievementCount: user.achievementCount,
         role: user.role,
@@ -766,7 +767,6 @@ const app = new Hono()
                 );
                 const oauthResult = await createOrUpdateUserWithOauth(
                     {
-                        name: userInfo.name,
                         email: userInfo.email,
                         providerUserId: userInfo.id,
                         provider: 'google',
@@ -927,7 +927,6 @@ const app = new Hono()
                 );
                 const oauthResult = await createOrUpdateUserWithOauth(
                     {
-                        name: userInfo.name,
                         email: userInfo.email,
                         providerUserId: userInfo.id,
                         provider: 'facebook',

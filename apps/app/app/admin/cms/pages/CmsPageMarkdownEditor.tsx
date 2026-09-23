@@ -125,7 +125,7 @@ export function CmsPageMarkdownEditor({
     const editorShellClassName =
         variant === 'inline'
             ? 'bg-transparent'
-            : 'overflow-hidden rounded-md border border-input bg-background';
+            : 'overflow-hidden rounded-md border border-input bg-field';
 
     return (
         <div className="space-y-2">

@@ -1,3 +1,4 @@
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import { getUser } from '@gredice/storage';
 import { AuthProtectedSection, SignedOut } from '@gredice/ui/auth/server';
 import { Typography } from '@gredice/ui/Typography';
@@ -21,7 +22,9 @@ async function FarmSettingsContent() {
             </Typography>
             {user && (
                 <FarmProfileSettings
-                    displayName={user.displayName ?? user.userName}
+                    displayName={safeUserDisplayName(
+                        user.displayName ?? user.userName,
+                    )}
                     avatarUrl={user.avatarUrl}
                 />
             )}

@@ -2,7 +2,6 @@ import 'server-only';
 import {
     randomBytes as cryptoRandomBytes,
     pbkdf2Sync,
-    randomInt,
     randomUUID,
 } from 'node:crypto';
 import { and, asc, desc, eq, lt, ne, sql } from 'drizzle-orm';
@@ -29,6 +28,7 @@ import {
 import { createEvent, knownEvents } from './eventsRepo';
 import { createDefaultGardenForAccount } from './gardensRepo';
 import { userAchievementExtras } from './userAchievementProgress';
+import { randomUserDisplayName } from './userDisplayNames';
 
 type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = Parameters<
@@ -37,24 +37,10 @@ type TransactionClient = Parameters<
 type DatabaseClient = StorageClient | TransactionClient;
 
 const temporaryAccountInactivityDays = 30;
-const temporaryUserNameSuffixMin = 1000;
-const temporaryUserNameSuffixMax = 9999;
 const temporaryUserNameMaxAttempts = 12;
 const temporaryActivityTouchIntervalMs = 60 * 60 * 1000;
 
-const temporaryUserNamePrefixes = [
-    'Mali Suncokret',
-    'Bosiljak Na Pauzi',
-    'Vrtni Majstor',
-    'Tihi Komposter',
-    'Brzi Zaljevac',
-    'Sunce U Tegli',
-    'Veseli Rasad',
-    'Zelena Patrola',
-];
-
 export interface OAuthUserData {
-    name: string;
     email: string;
     providerUserId: string;
     provider: 'google' | 'facebook';
@@ -252,7 +238,7 @@ async function createUser(
         .values({
             id: randomUUID(),
             userName,
-            displayName,
+            displayName: displayName ?? randomUserDisplayName(),
             role: 'user',
             isTemporary: options?.isTemporary ?? false,
             ...(options?.lastActiveAt
@@ -333,21 +319,9 @@ export async function ensureRegisteredUserAccount(
     });
 }
 
-function randomTemporaryUserName() {
-    const prefix =
-        temporaryUserNamePrefixes[
-            randomInt(0, temporaryUserNamePrefixes.length)
-        ];
-    const suffix = randomInt(
-        temporaryUserNameSuffixMin,
-        temporaryUserNameSuffixMax + 1,
-    );
-    return `${prefix} ${suffix.toString()}`;
-}
-
 async function createUniqueTemporaryUserName() {
     for (let attempt = 0; attempt < temporaryUserNameMaxAttempts; attempt++) {
-        const userName = randomTemporaryUserName();
+        const userName = randomUserDisplayName();
         const existing = await storage().query.users.findFirst({
             where: eq(users.userName, userName),
         });
@@ -438,11 +412,9 @@ export async function retireTemporaryUserForCleanup(userId: string) {
 }
 
 export async function promoteTemporaryUser({
-    displayName,
     userId,
     userName,
 }: {
-    displayName?: string;
     userId: string;
     userName: string;
 }) {
@@ -466,7 +438,7 @@ export async function promoteTemporaryUser({
             .update(users)
             .set({
                 userName,
-                displayName: displayName ?? user.displayName ?? userName,
+                displayName: user.displayName ?? randomUserDisplayName(),
                 isTemporary: false,
                 lastActiveAt: new Date(),
             })
@@ -796,7 +768,6 @@ export async function createOrUpdateUserWithOauth(
             await promoteTemporaryUser({
                 userId: loggedInUserId,
                 userName: data.email,
-                displayName: data.name,
             });
             existingUser = await storage().query.users.findFirst({
                 where: eq(users.id, loggedInUserId),
@@ -813,7 +784,7 @@ export async function createOrUpdateUserWithOauth(
     if (!existingUser) {
         const createdUserId = await createUserAndAccount(
             data.email,
-            data.name,
+            undefined,
             timeZone,
         );
         existingUser = await storage().query.users.findFirst({
