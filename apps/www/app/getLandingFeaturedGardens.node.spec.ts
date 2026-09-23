@@ -83,6 +83,7 @@ function mockRequests(
         gardenId: number | null;
         signal: AbortSignal;
         path: string;
+        traceId: string | null;
     }[] = [];
     const fetchMock: typeof fetch = async (input, init) => {
         const path = new URL(input instanceof Request ? input.url : input)
@@ -94,7 +95,12 @@ function mockRequests(
                 : Number(path.split('/').at(-2));
         assert.ok(init?.signal);
         assert.equal(init.cache, 'no-store');
-        requests.push({ gardenId, signal: init.signal, path });
+        requests.push({
+            gardenId,
+            signal: init.signal,
+            path,
+            traceId: new Headers(init.headers).get('x-gredice-featured-trace'),
+        });
         return respond(gardenId, init.signal, path);
     };
     t.mock.method(globalThis, 'fetch', fetchMock);
@@ -130,6 +136,11 @@ test('caps the server-ranked IDs at ten and uses fresh detail owners', async (t)
         requests.map(({ gardenId }) => gardenId),
         [null, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3],
     );
+    assert.match(
+        requests[0]?.traceId ?? '',
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u,
+    );
+    assert.ok(requests.slice(1).every(({ traceId }) => traceId === null));
     await advanceTime(t, 120);
     assert.deepEqual(
         await result,
@@ -331,6 +342,7 @@ for (const phase of ['headers', 'body']) {
         assert.partialDeepStrictEqual(errors.mock.calls[0]?.arguments[1], {
             elapsedMs: 3_000,
             listPhase: phase,
+            traceId: requests[0]?.traceId,
             timedOut: true,
             ...(phase === 'body'
                 ? {
@@ -345,9 +357,14 @@ for (const phase of ['headers', 'body']) {
 }
 
 test('near-deadline list success records header, body and API timings', async (t) => {
-    const { warnings } = mockRequests(t, (id, signal) =>
+    const { requests, warnings } = mockRequests(t, (id, signal) =>
         id === null
-            ? delayedResponse(signal, 2_600, { items: [{ id: 1 }] })
+            ? delayedResponse(signal, 2_600, {
+                  items: [{ id: 1 }],
+              }).then((response) => {
+                  response.headers.set('x-vercel-cache', 'MISS');
+                  return response;
+              })
             : Response.json(garden(id)),
     );
     const result = getLandingFeaturedGardens();
@@ -357,6 +374,8 @@ test('near-deadline list success records header, body and API timings', async (t
         listDurationMs: 2_600,
         listHeadersMs: 2_600,
         listBodyMs: 0,
+        apiCacheStatus: 'MISS',
+        traceId: requests[0]?.traceId,
     });
 });
 
