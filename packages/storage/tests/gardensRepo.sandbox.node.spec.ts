@@ -31,6 +31,8 @@ import {
     gardenBlocks,
     gardenStacks,
     gardens,
+    legacyGardenStructureOperations,
+    legacyGardenStructures,
     notifications,
     operations,
     raisedBedFields,
@@ -171,6 +173,33 @@ test('deleteSandboxGardenCompletely removes sandbox garden dependencies across r
         status: 'test',
         stripePaymentId: 'sandbox-cleanup-payment',
     });
+    const structureId = `sandbox-structure-${gardenId.toString()}`;
+    await storage()
+        .insert(legacyGardenStructures)
+        .values({
+            id: structureId,
+            gardenId,
+            anchorX: 0,
+            anchorY: 0,
+            templateKey: 'blank',
+            kitKey: 'gredice-buildings',
+            kitVersion: '1',
+            document: {
+                schemaVersion: 1,
+                footprint: { cells: [{ x: 0, y: 0, spaceKind: 'interior' }] },
+            },
+        });
+    await storage()
+        .insert(legacyGardenStructureOperations)
+        .values({
+            gardenId,
+            kind: 'create',
+            operationId: `sandbox-create-${gardenId.toString()}`,
+            payloadHash: 'a'.repeat(64),
+            response: { structureId },
+            resultRevision: 1,
+            structureId,
+        });
 
     let complete = false;
     let attempts = 0;
@@ -214,6 +243,18 @@ test('deleteSandboxGardenCompletely removes sandbox garden dependencies across r
         .from(gardenStacks)
         .where(eq(gardenStacks.gardenId, gardenId));
     assert.equal(gardenStackRows.length, 0);
+
+    const legacyStructureRows = await storage()
+        .select({ id: legacyGardenStructures.id })
+        .from(legacyGardenStructures)
+        .where(eq(legacyGardenStructures.gardenId, gardenId));
+    assert.equal(legacyStructureRows.length, 0);
+
+    const legacyStructureOperationRows = await storage()
+        .select({ operationId: legacyGardenStructureOperations.operationId })
+        .from(legacyGardenStructureOperations)
+        .where(eq(legacyGardenStructureOperations.gardenId, gardenId));
+    assert.equal(legacyStructureOperationRows.length, 0);
 
     const raisedBedRows = await storage()
         .select({ id: raisedBeds.id })

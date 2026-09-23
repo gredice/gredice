@@ -6,6 +6,8 @@ import {
     gardenBlocks,
     gardenStacks,
     gardens,
+    legacyGardenStructureOperations,
+    legacyGardenStructures,
     notifications,
     operations,
     raisedBedPlantingFields,
@@ -739,6 +741,57 @@ async function deleteSandboxGardenBlockBatch(
     return rows.length;
 }
 
+async function deleteSandboxLegacyGardenStructureOperationBatch(
+    gardenId: number,
+    batchSize: number,
+) {
+    const rows = await storage()
+        .select({ operationId: legacyGardenStructureOperations.operationId })
+        .from(legacyGardenStructureOperations)
+        .where(eq(legacyGardenStructureOperations.gardenId, gardenId))
+        .limit(batchSize);
+    if (rows.length === 0) {
+        return 0;
+    }
+
+    await storage()
+        .delete(legacyGardenStructureOperations)
+        .where(
+            and(
+                eq(legacyGardenStructureOperations.gardenId, gardenId),
+                inArray(
+                    legacyGardenStructureOperations.operationId,
+                    rows.map((row) => row.operationId),
+                ),
+            ),
+        );
+    return rows.length;
+}
+
+async function deleteSandboxLegacyGardenStructureBatch(
+    gardenId: number,
+    batchSize: number,
+) {
+    const rows = await storage()
+        .select({ id: legacyGardenStructures.id })
+        .from(legacyGardenStructures)
+        .where(eq(legacyGardenStructures.gardenId, gardenId))
+        .limit(batchSize);
+    if (rows.length === 0) {
+        return 0;
+    }
+
+    await storage()
+        .delete(legacyGardenStructures)
+        .where(
+            inArray(
+                legacyGardenStructures.id,
+                rows.map((row) => row.id),
+            ),
+        );
+    return rows.length;
+}
+
 async function deleteSandboxRaisedBedPlantingBatch(
     raisedBedIds: number[],
     batchSize: number,
@@ -900,6 +953,25 @@ async function deleteNextSandboxGardenDependencyBatch(
     );
     if (raisedBedRows > 0) {
         return raisedBedRows;
+    }
+
+    // Legacy building rows reference the garden without cascading; remove
+    // receipts before the structures they point at.
+    const legacyStructureOperationRows =
+        await deleteSandboxLegacyGardenStructureOperationBatch(
+            garden.id,
+            batchSize,
+        );
+    if (legacyStructureOperationRows > 0) {
+        return legacyStructureOperationRows;
+    }
+
+    const legacyStructureRows = await deleteSandboxLegacyGardenStructureBatch(
+        garden.id,
+        batchSize,
+    );
+    if (legacyStructureRows > 0) {
+        return legacyStructureRows;
     }
 
     const stackRows = await deleteSandboxGardenStackBatch(garden.id, batchSize);
