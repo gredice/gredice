@@ -1,5 +1,6 @@
 'use server';
 
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import { getUser, updateUser } from '@gredice/storage';
 import { AVATAR_OPTIONS } from '@gredice/ui/AvatarSelectionMenu';
 import { revalidatePath } from 'next/cache';
@@ -58,10 +59,11 @@ export async function updateFarmProfile(
             return { success: false, message: 'Odaberi valjan avatar.' };
         }
 
-        // The form falls back to the username, so an untouched name must not
+        // The form displays a safe fallback, so an untouched name must not
         // be persisted as a display-name override.
         const displayNameChanged =
-            displayName !== (user.displayName ?? user.userName);
+            displayName !==
+            safeUserDisplayName(user.displayName ?? user.userName);
         const avatarChanged = avatarUrl !== user.avatarUrl;
 
         if (displayNameChanged) {

@@ -1,4 +1,5 @@
 import { publicIdToUserId } from '@gredice/js/publicId';
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import {
     getAccountAchievements,
     getAccountGardens,
@@ -203,7 +204,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json({
                 id: dbUser.id,
                 userName: dbUser.userName,
-                displayName: dbUser.displayName ?? dbUser.userName,
+                displayName: safeUserDisplayName(
+                    dbUser.displayName ?? dbUser.userName,
+                ),
                 avatarUrl: dbUser.avatarUrl,
                 achievementCount: dbUser.achievementCount,
                 isTemporary: dbUser.isTemporary,

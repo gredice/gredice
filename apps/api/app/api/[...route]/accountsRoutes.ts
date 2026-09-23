@@ -1,5 +1,6 @@
 import { tz } from '@date-fns/tz';
 import { sendEmail } from '@gredice/email/acs';
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import {
     acceptAccountInvitation,
     accountHasActiveRaisedBed,
@@ -797,9 +798,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     status: invitation.status,
                     invitedBy: {
                         id: invitation.invitedByUser.id,
-                        displayName:
+                        displayName: safeUserDisplayName(
                             invitation.invitedByUser.displayName ??
-                            invitation.invitedByUser.userName,
+                                invitation.invitedByUser.userName,
+                        ),
                     },
                     expiresAt: invitation.expiresAt.toISOString(),
                     createdAt: invitation.createdAt.toISOString(),
@@ -871,8 +873,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             // Get inviter info for the email
             const inviter = await getUser(userId);
-            const inviterName =
-                inviter?.displayName ?? inviter?.userName ?? 'Korisnik';
+            const inviterName = safeUserDisplayName(
+                inviter?.displayName ?? inviter?.userName,
+            );
 
             const acceptUrl = `https://vrt.gredice.com/pozivnica?token=${invitation.token}`;
 
@@ -1045,9 +1048,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     token: invitation.token,
                     invitedBy: {
                         id: invitation.invitedByUser.id,
-                        displayName:
+                        displayName: safeUserDisplayName(
                             invitation.invitedByUser.displayName ??
-                            invitation.invitedByUser.userName,
+                                invitation.invitedByUser.userName,
+                        ),
                     },
                     expiresAt: invitation.expiresAt.toISOString(),
                     createdAt: invitation.createdAt.toISOString(),
