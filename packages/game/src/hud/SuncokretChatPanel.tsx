@@ -39,6 +39,7 @@ import {
     SuncokretConversationList,
     type SuncokretConversationSummary,
 } from './SuncokretConversationList';
+import { SuncokretMessageTimestamp } from './SuncokretMessageTimestamp';
 import { SuncokretUsageButton } from './SuncokretUsageButton';
 import {
     resolveSuncokretVisibleUsage,
@@ -46,6 +47,7 @@ import {
     suncokretContextSuggestions,
 } from './suncokretChatContext';
 import { invalidateSuncokretMutationQueries } from './suncokretChatQueryInvalidation';
+import { groupSuncokretMessageTimestamps } from './suncokretChatTimestamps';
 import {
     debugJson,
     formatRetryAt,
@@ -447,7 +449,10 @@ export function SuncokretChatPanel({
             return;
         }
         setInput('');
-        void sendMessage({ text: trimmed });
+        void sendMessage({
+            text: trimmed,
+            metadata: { createdAt: new Date().toISOString() },
+        });
     };
 
     const onSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -530,6 +535,12 @@ export function SuncokretChatPanel({
                     </span>
                     <Stack spacing={0} className="min-w-0">
                         <Typography level="body2" semiBold noWrap>
+                            {chatView === 'chat' && (
+                                <span
+                                    aria-hidden="true"
+                                    className="mr-1.5 inline-block size-1.5 rounded-full bg-emerald-500 align-middle"
+                                />
+                            )}
                             Suncokret
                         </Typography>
                         <Typography
@@ -537,9 +548,6 @@ export function SuncokretChatPanel({
                             className="text-muted-foreground"
                             noWrap
                         >
-                            {chatView === 'chat' && (
-                                <span className="mr-1.5 inline-block size-1.5 rounded-full bg-emerald-500 align-middle" />
-                            )}
                             {chatView === 'conversations'
                                 ? 'Prijašnji razgovori'
                                 : (activeConversationTitle ??
@@ -656,30 +664,42 @@ export function SuncokretChatPanel({
                             </Stack>
                         }
                         items={[
-                            ...messages.map((message) => ({
+                            ...groupSuncokretMessageTimestamps(
+                                messages,
+                                seed,
+                            ).map(({ message, timestamp }) => ({
                                 id: message.id,
                                 scrollAnchor: message.role === 'user',
-                                content:
-                                    analysisContent &&
-                                    message.id === `${seed?.id}-0` ? (
-                                        analysisContent
-                                    ) : (
-                                        <SuncokretChatMessage
-                                            addToolApprovalResponse={
-                                                addToolApprovalResponse
-                                            }
-                                            debug={debug}
-                                            isStreaming={
-                                                loading &&
-                                                message.role === 'assistant' &&
-                                                message.id ===
-                                                    messages[
-                                                        messages.length - 1
-                                                    ]?.id
-                                            }
-                                            message={message}
-                                        />
-                                    ),
+                                content: (
+                                    <>
+                                        {timestamp && (
+                                            <SuncokretMessageTimestamp
+                                                timestamp={timestamp}
+                                            />
+                                        )}
+                                        {analysisContent &&
+                                        message.id === `${seed?.id}-0` ? (
+                                            analysisContent
+                                        ) : (
+                                            <SuncokretChatMessage
+                                                addToolApprovalResponse={
+                                                    addToolApprovalResponse
+                                                }
+                                                debug={debug}
+                                                isStreaming={
+                                                    loading &&
+                                                    message.role ===
+                                                        'assistant' &&
+                                                    message.id ===
+                                                        messages[
+                                                            messages.length - 1
+                                                        ]?.id
+                                                }
+                                                message={message}
+                                            />
+                                        )}
+                                    </>
+                                ),
                             })),
                             ...(showSeededSuggestions
                                 ? [

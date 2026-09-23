@@ -1,4 +1,6 @@
 import {
+    getAiChatMessageTimestamp,
+    getAiChatResponseTimestamp,
     suncokretPlantDetailTabs,
     suncokretRaisedBedDetailTabs,
     suncokretSettingsSections,
@@ -1019,7 +1021,13 @@ const app = new Hono<{ Variables: ChatVariables }>()
                         id: message.id,
                         role: message.role,
                         parts: message.parts,
-                        metadata: message.metadata ?? undefined,
+                        metadata: {
+                            ...message.metadata,
+                            createdAt: (
+                                getAiChatMessageTimestamp(message.metadata) ??
+                                message.createdAt
+                            ).toISOString(),
+                        },
                     })),
                 },
             });
@@ -1328,17 +1336,23 @@ const app = new Hono<{ Variables: ChatVariables }>()
                     },
                 });
 
+                const responseCreatedAt = getAiChatResponseTimestamp(
+                    body.messages,
+                ).toISOString();
                 return result.toUIMessageStreamResponse({
                     originalMessages: body.messages as UIMessage[],
                     consumeSseStream: consumeStream,
                     onError: suncokretStreamErrorMessage,
                     messageMetadata: ({ part }) => {
+                        if (part.type === 'start')
+                            return { createdAt: responseCreatedAt };
                         if (part.type !== 'finish') {
                             return undefined;
                         }
 
-                        return (
-                            finishMetadata ?? {
+                        return {
+                            createdAt: responseCreatedAt,
+                            ...(finishMetadata ?? {
                                 suncokret: {
                                     requestId,
                                     usage: usageTokens(part.totalUsage),
@@ -1356,8 +1370,8 @@ const app = new Hono<{ Variables: ChatVariables }>()
                                           }
                                         : {}),
                                 },
-                            }
-                        );
+                            }),
+                        };
                     },
                     onFinish: async ({ isAborted, messages }) => {
                         await replaceAiChatMessages({

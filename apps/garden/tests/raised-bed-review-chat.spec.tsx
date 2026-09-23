@@ -3,6 +3,8 @@ import { expect, test } from '@playwright/experimental-ct-react';
 import type { seedMessages } from '../../../packages/game/src/hud/suncokretChatUtils';
 import { SuncokretChatHudStory } from './SuncokretChatHudStory';
 
+test.use({ timezoneId: 'Europe/Zagreb' });
+
 test.beforeEach(async ({ page }) => {
     await page.route('**/_next/image?*', (route) =>
         route.fulfill({
@@ -129,6 +131,21 @@ for (const viewport of [
             chatBounds?.y ?? 0,
         );
         await expect(chat).toContainText('Grah ima zrele mahune.');
+        await expect(modal.getByText(/Fotografija \d+ od \d+/)).toHaveCount(0);
+        await expect(
+            modal.getByText(/Prikazujem spremljene savjete/),
+        ).toHaveCount(0);
+        await expect(modal.getByText(/^Analizirano /)).toHaveCount(0);
+        await expect(chat.locator('time').first()).toHaveAttribute(
+            'datetime',
+            '2026-09-22T12:00:00.000Z',
+        );
+        await expect(
+            chat
+                .getByText('Suncokret', { exact: true })
+                .first()
+                .locator('span.bg-emerald-500'),
+        ).toHaveCount(1);
         await expect(page.locator('[data-suncokret-placement]')).toHaveCount(0);
         await expect(
             chat.getByRole('button', { name: 'Novi razgovor' }),
@@ -142,6 +159,12 @@ for (const viewport of [
             raisedBedId: 11,
             positionIndex: 1,
             uiContext: { surface: 'plant-details', tab: 'diary' },
+        });
+        expect(saved.get(conversationId)?.[0]?.metadata).toEqual({
+            createdAt: '2026-09-22T12:00:00.000Z',
+        });
+        expect(saved.get(conversationId)?.[1]?.metadata).toMatchObject({
+            createdAt: expect.any(String),
         });
         expect(saved.get(conversationId)?.[0]?.parts).toEqual([
             expect.objectContaining({
@@ -452,3 +475,116 @@ test('compact header keeps all photos selectable and opens the full-size gallery
     await expect(modal).toBeVisible();
     await expect(composer).toHaveValue('Što vidiš na drugoj fotografiji?');
 });
+
+for (const review of [true, false]) {
+    test(`message dates group restored ${review ? 'review' : 'HUD'} conversations and streamed replies`, async ({
+        mount,
+        page,
+    }) => {
+        await page.clock.setFixedTime(new Date('2026-09-23T12:00:00Z'));
+        const id = review ? conversationId : 'dated-chat';
+        const times = [
+            '2026-09-22T12:00:00.000Z',
+            '2026-09-22T12:59:00.000Z',
+            '2026-09-22T13:59:00.000Z',
+            '2026-09-22T21:50:00.000Z',
+            '2026-09-22T22:05:00.000Z',
+        ];
+        const conversation = {
+            id,
+            title: 'Razgovor s datumima',
+            model: null,
+            gardenId: 1,
+            raisedBedId: 11,
+            createdAt: times[0],
+            lastMessageAt: times.at(-1),
+            messages: times.map((createdAt, index) => ({
+                id: index === 0 && review ? `${id}-0` : `dated-${index}`,
+                role: index === 0 ? 'assistant' : 'user',
+                metadata: { createdAt },
+                parts: [{ type: 'text', text: `Poruka ${index + 1}` }],
+            })),
+        };
+        await page.route('**/api/ai/suncokret/status?*', (route) =>
+            route.fulfill({ json: status }),
+        );
+        await page.route('**/api/ai/suncokret/conversations?*', (route) =>
+            route.fulfill({ json: { conversations: [conversation] } }),
+        );
+        await page.route('**/api/ai/suncokret/conversations/*', (route) =>
+            route.fulfill({ json: { conversation } }),
+        );
+        await page.route('**/api/ai/suncokret/chat', (route) => {
+            const chunks = [
+                {
+                    type: 'start',
+                    messageId: 'dated-reply',
+                    messageMetadata: { createdAt: '2026-09-23T13:00:00.000Z' },
+                },
+                { type: 'text-start', id: 'text' },
+                { type: 'text-delta', id: 'text', delta: 'Odgovor s datumom' },
+                { type: 'text-end', id: 'text' },
+                {
+                    type: 'finish',
+                    finishReason: 'stop',
+                    messageMetadata: {
+                        createdAt: '2026-09-23T13:00:00.000Z',
+                        suncokret: { usage: {} },
+                    },
+                },
+            ];
+            return route.fulfill({
+                contentType: 'text/event-stream',
+                headers: { 'x-vercel-ai-ui-message-stream': 'v1' },
+                body: `${chunks.map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`).join('')}data: [DONE]\n\n`,
+            });
+        });
+        await mount(<SuncokretChatHudStory review={review} />);
+        if (review) {
+            await page
+                .getByRole('button', { name: 'Pregledaj savjete suncokreta' })
+                .click();
+        } else {
+            await page.getByRole('button', { name: 'Suncokret AI' }).click();
+            await page
+                .getByRole('button', { name: 'Prijašnji razgovori' })
+                .click();
+            await page
+                .getByRole('button', { name: /Razgovor s datumima/ })
+                .click();
+        }
+        const chat = page.locator('[data-suncokret-chat]');
+        const timestamps = () =>
+            chat
+                .locator('time')
+                .evaluateAll((elements) =>
+                    elements.map((element) => element.getAttribute('datetime')),
+                );
+        await expect
+            .poll(timestamps)
+            .toEqual([times[0], times[2], times[3], times[4]]);
+        await expect(chat.locator('time').first()).toHaveText(
+            '22. ruj 2026. 14:00',
+        );
+        // Date and message belong to the same scroll item, with the date first.
+        expect(
+            await chat
+                .locator('time')
+                .first()
+                .evaluate(
+                    (element) =>
+                        element.parentElement?.previousElementSibling === null,
+                ),
+        ).toBe(true);
+        await chat.getByRole('textbox').fill('Nastavimo danas');
+        await chat.getByRole('button', { name: 'Pošalji' }).click();
+        await expect(chat).toContainText('Odgovor s datumom');
+        await expect
+            .poll(timestamps)
+            .toEqual([
+                ...[times[0], times[2], times[3], times[4]],
+                '2026-09-23T12:00:00.000Z',
+                '2026-09-23T13:00:00.000Z',
+            ]);
+    });
+}

@@ -250,7 +250,7 @@ export function RaisedBedDiaryAiAction({
                     : 'Pitaj suncokret';
     const statusDescription =
         resultSource === 'history' && phase === 'done'
-            ? 'Prikazujem spremljene savjete suncokreta za ovaj dnevnički unos.'
+            ? null
             : phase === 'thinking'
               ? 'Skeniram sve fotografije i tražim tragove stresa, rasta i hitnih koraka.'
               : phase === 'typing'
@@ -265,33 +265,22 @@ export function RaisedBedDiaryAiAction({
     const selectedHistoryEntry = historyEntries?.find(
         (historyEntry) => historyEntry.id === selectedHistoryEntryId,
     );
+    const canAnalyzeEntry =
+        !latestCompleteHistoryEntry &&
+        (phase === 'idle' || (phase === 'error' && errorStatus !== 429));
+    const savedAnalysis = savedHistory.data?.find(
+        (entry) =>
+            sanitizeRaisedBedAiMarkdown(entry.description ?? '') ===
+                visibleMarkdown &&
+            imageUrls.every((url) => entry.imageUrls?.includes(url)),
+    );
+    const savedAnalysisId = selectedHistoryEntryId ?? savedAnalysis?.id;
     const analysisTimestamp =
         resultSource === 'history' && phase === 'done'
             ? selectedHistoryEntry?.timestamp
             : phase === 'done'
-              ? analysisCompletedAt
+              ? (savedAnalysis?.timestamp ?? analysisCompletedAt)
               : null;
-    const formattedAnalysisTimestamp = analysisTimestamp?.toLocaleString(
-        'hr-HR',
-        {
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            month: 'long',
-            year: 'numeric',
-        },
-    );
-    const canAnalyzeEntry =
-        !latestCompleteHistoryEntry &&
-        (phase === 'idle' || (phase === 'error' && errorStatus !== 429));
-    const savedAnalysisId =
-        selectedHistoryEntryId ??
-        savedHistory.data?.find(
-            (entry) =>
-                sanitizeRaisedBedAiMarkdown(entry.description ?? '') ===
-                    visibleMarkdown &&
-                imageUrls.every((url) => entry.imageUrls?.includes(url)),
-        )?.id;
     const conversationId =
         savedAnalysisId && currentUser.data?.id
             ? getRaisedBedAnalysisConversationId(
@@ -441,18 +430,12 @@ export function RaisedBedDiaryAiAction({
                             <Typography level="body1" semiBold>
                                 {statusTitle}
                             </Typography>
-                            <Typography
-                                level="body3"
-                                className="text-muted-foreground"
-                            >
-                                {statusDescription}
-                            </Typography>
-                            {formattedAnalysisTimestamp && (
+                            {statusDescription && (
                                 <Typography
                                     level="body3"
                                     className="text-muted-foreground"
                                 >
-                                    {`Analizirano ${formattedAnalysisTimestamp}`}
+                                    {statusDescription}
                                 </Typography>
                             )}
                         </Stack>
@@ -513,6 +496,7 @@ export function RaisedBedDiaryAiAction({
                                     positionIndex: positionIndex ?? null,
                                     seed: buildRaisedBedAnalysisChatSeed({
                                         analysisMarkdown: visibleMarkdown,
+                                        analyzedAt: analysisTimestamp,
                                         id: conversationId,
                                         positionIndex,
                                         referenceDate,
@@ -566,16 +550,8 @@ export function RaisedBedDiaryAiAction({
                                 )}
                             </div>
                         )}
-                        <Row
-                            spacing={4}
-                            className="justify-between items-center flex-wrap"
-                        >
-                            <Typography
-                                level="body3"
-                                className="text-muted-foreground"
-                            >
-                                {`Fotografija ${Math.max(imageUrls.indexOf(selectedImageUrl), 0) + 1} od ${imageUrls.length}`}
-                            </Typography>
+                        {(canAnalyzeEntry ||
+                            (canContinueInChat && !conversationId)) && (
                             <Row spacing={2} className="flex-wrap">
                                 {canContinueInChat && !conversationId && (
                                     <Stack spacing={1}>
@@ -610,7 +586,7 @@ export function RaisedBedDiaryAiAction({
                                     </Button>
                                 )}
                             </Row>
-                        </Row>
+                        )}
                     </Stack>
                 </div>
             </GameModal>

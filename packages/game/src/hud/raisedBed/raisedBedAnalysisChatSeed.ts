@@ -39,11 +39,13 @@ function formatAnalysisDate(value: Date | string | null | undefined) {
  */
 export function buildRaisedBedAnalysisChatSeed({
     analysisMarkdown,
+    analyzedAt,
     id,
     positionIndex,
     referenceDate,
 }: {
     analysisMarkdown: string;
+    analyzedAt?: Date | null;
     id: string;
     positionIndex?: number;
     referenceDate?: Date | string | null;
@@ -63,6 +65,10 @@ export function buildRaisedBedAnalysisChatSeed({
         messages: [
             {
                 role: 'assistant',
+                createdAt:
+                    analyzedAt && !Number.isNaN(analyzedAt.getTime())
+                        ? analyzedAt.toISOString()
+                        : undefined,
                 text: `${intro}\n\n${analysisMarkdown}`,
             },
         ],
