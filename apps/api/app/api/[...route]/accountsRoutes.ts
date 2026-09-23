@@ -305,9 +305,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 users.map((accountUser) => ({
                     id: accountUser.user.id,
                     userName: accountUser.user.userName,
-                    displayName:
+                    displayName: safeUserDisplayName(
                         accountUser.user.displayName ??
-                        accountUser.user.userName,
+                            accountUser.user.userName,
+                    ),
                     avatarUrl: accountUser.user.avatarUrl,
                     achievementCount: accountUser.user.achievementCount,
                     assignedAt: accountUser.createdAt.toISOString(),
