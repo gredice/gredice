@@ -27,6 +27,7 @@ type PublicEnvironmentContextValue = {
     date: Date;
     debugEnabled: boolean;
     debugMinutes: number | null;
+    hydrated: boolean;
     setDebugMinutes: (minutes: number | null) => void;
     setWeatherKind: (kind: PublicEnvironmentWeatherKind) => void;
     snapshot: PublicEnvironmentSnapshot;
@@ -128,6 +129,43 @@ export function PublicEnvironmentProvider({
         [date, weather],
     );
 
+    useLayoutEffect(() => {
+        const root = document.documentElement;
+        const baseHue = root.style.getPropertyValue('--baseHue');
+        const baseHuePriority = root.style.getPropertyPriority('--baseHue');
+        const environmentHue = root.style.getPropertyValue('--environmentHue');
+        const environmentHuePriority =
+            root.style.getPropertyPriority('--environmentHue');
+        const environmentAttribute = root.getAttribute(
+            'data-public-environment',
+        );
+
+        return () => {
+            if (baseHue) {
+                root.style.setProperty('--baseHue', baseHue, baseHuePriority);
+            } else {
+                root.style.removeProperty('--baseHue');
+            }
+            if (environmentHue) {
+                root.style.setProperty(
+                    '--environmentHue',
+                    environmentHue,
+                    environmentHuePriority,
+                );
+            } else {
+                root.style.removeProperty('--environmentHue');
+            }
+            if (environmentAttribute === null) {
+                root.removeAttribute('data-public-environment');
+            } else {
+                root.setAttribute(
+                    'data-public-environment',
+                    environmentAttribute,
+                );
+            }
+        };
+    }, []);
+
     // Apply reading colors before the new sky is painted. ThemeProvider also
     // suppresses transitions when switching between the light/dark palettes.
     useLayoutEffect(() => {
@@ -144,13 +182,22 @@ export function PublicEnvironmentProvider({
             date,
             debugEnabled,
             debugMinutes,
+            hydrated,
             setDebugMinutes,
             setWeatherKind,
             snapshot,
             weather,
             weatherKind,
         }),
-        [date, debugEnabled, debugMinutes, snapshot, weather, weatherKind],
+        [
+            date,
+            debugEnabled,
+            debugMinutes,
+            hydrated,
+            snapshot,
+            weather,
+            weatherKind,
+        ],
     );
 
     return (

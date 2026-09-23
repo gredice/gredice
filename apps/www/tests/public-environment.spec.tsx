@@ -103,6 +103,37 @@ test('keeps the sky on and applies deterministic debug conditions', async ({
         .toBe('208');
 });
 
+test('restores document ambience styles when the provider unmounts', async ({
+    mount,
+    page,
+}) => {
+    await mockPublicEnvironmentRequests(page);
+    await page.evaluate(() => {
+        const root = document.documentElement;
+        root.style.setProperty('--baseHue', '50');
+        root.style.setProperty('--environmentHue', '60');
+        root.dataset.publicEnvironment = 'before';
+    });
+
+    const component = await mount(<PublicEnvironmentHarness />);
+    await expect(page.locator('html')).toHaveAttribute(
+        'data-public-environment',
+        'on',
+    );
+    await component.unmount();
+
+    await expect(page.locator('html')).toHaveAttribute(
+        'data-public-environment',
+        'before',
+    );
+    expect(
+        await page.locator('html').evaluate((root) => ({
+            baseHue: root.style.getPropertyValue('--baseHue'),
+            environmentHue: root.style.getPropertyValue('--environmentHue'),
+        })),
+    ).toEqual({ baseHue: '50', environmentHue: '60' });
+});
+
 test('fits the debug controls on mobile', async ({ mount, page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await mockPublicEnvironmentRequests(page);
