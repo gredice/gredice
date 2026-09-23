@@ -3,7 +3,7 @@ import { gardenActionUrl } from '@gredice/js/gardenActions';
 import { calculatePlantsPerField, FIELD_SIZE_LABEL } from '@gredice/js/plants';
 import { slug } from '@gredice/js/slug';
 import { Chip } from '@gredice/ui/Chip';
-import { GameLocationIcon, GameSeedlingIcon } from '@gredice/ui/GameIcons';
+import { GameCoinsIcon, GameLocationIcon } from '@gredice/ui/GameIcons';
 import { PlantGridIcon } from '@gredice/ui/GridIcons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { PageHeader } from '@gredice/ui/PageHeader';
@@ -242,7 +242,7 @@ export function PlantPageHeader({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {price && (
                             <PriceAttributeCard
-                                icon={<GameSeedlingIcon aria-hidden />}
+                                icon={<GameCoinsIcon aria-hidden />}
                                 header="Cijena sijanja"
                                 currentPrice={price.currentPrice}
                                 description="Cijena jedne biljke uključuje troškove sjemena, pripreme tla, sjetve i sezonske pogodnosti. Više o samoj sjetvi u gredicama možeš pročitati u nastavku."
