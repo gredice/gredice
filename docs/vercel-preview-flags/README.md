@@ -1,8 +1,8 @@
 # Preview flag-definition authentication failures
 
-## Reviewable fix — prepared, not applied
+## Preview mitigation — applied 23 September 2026
 
-Create the non-secret setting in [preview-env.json](./preview-env.json) on
+The non-secret setting in [preview-env.json](./preview-env.json) is applied on
 **only the `www` and `garden` Vercel projects, only for Preview**:
 `VERCEL_FLAGS_EMBED_DEFINITIONS=force-off`.
 
@@ -14,9 +14,10 @@ flag service is unavailable; normal SDK fetching/default behavior still applies.
 This mitigates the build integration failure; it does not repair Vercel's token
 issuance or refresh lifecycle.
 
-The payload has not been submitted. The investigation did not expose, change,
-or rotate credentials, change remote settings, or initiate a deployment.
-Merging these review artifacts does not apply the proposed setting.
+Issue 2 of the 23 September application-health review
+counted 111 failed WWW/Garden previews across 33 branches in the preceding day.
+Four sampled builds failed on the flag-definition fetch with 401 after queue
+waits longer than an hour. The actual token expiry remains unproven.
 
 ## Evidence and authentication
 
@@ -99,21 +100,16 @@ Upstream references:
 The moving source link is background; validation below uses the exact published
 packages, including the CLI's package-manifest detection fallback.
 
-## Applying after review
+## Applied configuration and rollback
 
 Project settings are the narrowest fix because they can target Preview before
 CLI startup. A static `vercel.json` `build.env` override would also affect future
 production builds. No application change is needed.
 
-Immediately before applying, inspect environment **metadata only** on both
-projects and confirm neither embedding override has since been added. If a
-setting exists, reconcile its targets instead of overwriting a shared
-Preview/Production record. At investigation time both were absent.
-
-These commands are provided for a later authorized application; they were
-**not executed**. They use the existing CLI login, require no new secret, and
-do not initiate a deployment. No `upsert` is used, so a conflicting record
-should be inspected rather than overwritten.
+Immediately before applying on 23 September, live environment metadata showed
+no embedding override on either project. The following commands created one
+Preview-only record per project without `upsert` or a credential change. They
+are recorded for audit and should not be run again while the records exist:
 
 ```sh
 vercel api /v10/projects/www/env --scope gredice --method POST \
@@ -123,16 +119,40 @@ vercel api /v10/projects/garden/env --scope gredice --method POST \
 ```
 
 The payload follows the [project environment API](https://vercel.com/docs/rest-api/reference/endpoints/projects/create-one-or-more-environment-variables).
-Read back the new record IDs and confirm `type=plain`, `target=[preview]`, and
-the intended value. Rollback is removal of only those newly created Preview
-records. Existing failed deployments are not repaired by changing settings.
+Live readback confirmed `type=plain`, `target=[preview]`, no branch restriction,
+and `value=force-off` for WWW record `AHzoa1U17frfRGr3` and Garden record
+`OtJIFxNxBxobvmOo`. Neither has a Production target. Rollback is removal of
+only these two records. Existing failed deployments are not repaired by changing
+settings.
 
-After the setting is applied, verify that a new preview passes CLI setup,
-reaches READY, and preserves authenticated Flags Explorer and managed flag
-evaluation. A queued preview exceeding one hour is the relevant acceptance
-case. Platform confirmation of historical expiry/token refresh remains a
-separate investigation; the sanitized IDs and timestamps above are sufficient
-for escalation without sending credentials.
+New preview builds must pass CLI setup and reach READY. A queued preview
+exceeding one hour is the relevant acceptance case. Platform confirmation of
+historical expiry/token refresh remains a separate investigation; the
+sanitized IDs and timestamps above are sufficient for escalation without
+sending credentials.
+
+## Live validation after application
+
+On 23 September, two previously failed Preview deployments were rebuilt with
+the new project settings:
+
+| Project | New Preview deployment | Queue wait | Result |
+| --- | --- | ---: | --- |
+| WWW | [dpl_7vTjybGs9vPM75a8p8hYmPvLARgb](https://vercel.com/gredice/www/7vTjybGs9vPM75a8p8hYmPvLARgb) | 1.3 s | READY; protected `/` returned 200 |
+| Garden | [dpl_8Ph1pAK4gq17MGCuPiQtc2kC1seC](https://vercel.com/gredice/garden/8Ph1pAK4gq17MGCuPiQtc2kC1seC) | 3 min 19 s | READY; protected `/` returned 200 |
+
+Both builds used hosted Vercel CLI 59.23.2, passed setup, ran their application
+build, and logged `Build Completed` without a flag-definition 401. Garden was
+observed in QUEUED before BUILDING. An unauthenticated request to its flag
+discovery endpoint still returned 401, as expected. No credentials were
+changed or exposed, no Production deployment was initiated, and no source flag
+declaration changed. The Preview records have no Production target.
+
+These queue waits are shorter than the historical 62.5–223.8-minute failures.
+The exact long-queue scenario and authenticated managed flag evaluation remain
+unverified in a live Preview. The environment readback plus the pinned CLI gate
+test below establish that `force-off` skips the failing fetch regardless of
+queue duration; they do not establish why Vercel rejected the old tokens.
 
 ## Offline validation
 
@@ -159,8 +179,6 @@ node docs/vercel-preview-flags/verify.mjs \
   "$flags_check_dir/cli/package" "$flags_check_dir/prepare/package"
 ```
 
-`git diff --check` also passed. Offline validation did not run a full app build
-or hosted preview: these review artifacts contain no application changes.
-Git integration builds for this PR do not apply the environment payload.
-Live recovery remains unverified until the setting is applied and a new
-preview build completes.
+`git diff --check` also passed during the original investigation. This offline
+validation did not exercise live authentication or an application build; the
+subsequent hosted Preview builds are recorded above.
