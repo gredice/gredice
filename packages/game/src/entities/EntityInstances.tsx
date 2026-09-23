@@ -22,7 +22,6 @@ import {
     useEntityBlockInstances,
 } from './EntityInstancesBlock';
 import {
-    createEntityBlockInstanceIndex,
     EntityBlockInstanceIndexContext,
     hasIndexedEntityBlocks,
     useEntityBlockInstanceIndex,
@@ -269,10 +268,7 @@ export function EntityInstances({
     renderDetails?: boolean;
     weather?: GroundDecorationWeather;
 }) {
-    const entityBlockInstanceIndex = useMemo(
-        () => createEntityBlockInstanceIndex(stacks),
-        [stacks],
-    );
+    const entityBlockInstanceIndex = useEntityBlockInstanceIndex(stacks);
     const qualityProfile = quality ?? resolveGameQualityProfile();
     const snowCoverage = useGameState((state) => state.snowCoverage);
     const snowOverlaysVisible =

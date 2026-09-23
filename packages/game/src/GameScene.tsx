@@ -25,11 +25,7 @@ import { Birds } from './entities/birds/Birds';
 import { Butterflies } from './entities/butterflies/Butterflies';
 import { Cats } from './entities/cats/Cats';
 import { Dogs } from './entities/dogs/Dogs';
-import { EntityFactory } from './entities/EntityFactory';
-import {
-    EntityInstances,
-    instancedBlockNames,
-} from './entities/EntityInstances';
+import { EntityInstances } from './entities/EntityInstances';
 import {
     Chickens,
     Goats,
@@ -43,6 +39,7 @@ import { Frogs } from './entities/frogs/Frogs';
 import { PlacementGroundingShadows } from './entities/helpers/PlacementGroundingShadows';
 import { Ladybugs } from './entities/ladybugs/Ladybugs';
 import { HomeSpawnedPersistentPets } from './entities/persistentPets/HomeSpawnedPetActors';
+import { RetainedEntityChunks } from './entities/RetainedEntityChunks';
 import { RaisedBedMulchOverlays } from './entities/raisedBed/RaisedBedMulchOverlays';
 import {
     SunflowerDropFlyAnimation,
@@ -92,6 +89,7 @@ import {
     type AdaptiveHighQualityLevelProfile,
     adaptiveHighQualityLevels,
 } from './scene/adaptiveHighQuality';
+import { useRetainedGardenScene } from './scene/compiler/useRetainedGardenScene';
 import { Environment } from './scene/Environment';
 import { GameProfileController } from './scene/GameProfileController';
 import {
@@ -106,9 +104,7 @@ import { StaticOpaqueSceneCacheOcclusionFixture } from './scene/StaticOpaqueScen
 import type { Block } from './types/Block';
 import type { Stack } from './types/Stack';
 import {
-    formatBlockPlacementDropAnimationRenderIdentity,
     type GameState,
-    getBlockPlacementDropAnimationRenderIdForBlockId,
     type MockGardenProfile,
     useGameState,
     useGameStateStore,
@@ -284,55 +280,6 @@ function useAdaptiveHighInteractionActivity(enabled: boolean) {
     return enabled && (placementActive || cameraActive);
 }
 
-function GameSceneEntitySlot({
-    block,
-    farmId,
-    noControls,
-    stack,
-    stacks,
-    weather,
-    weatherDisabled,
-}: {
-    block: Block;
-    farmId?: number | null;
-    noControls: boolean | undefined;
-    stack: Stack;
-    stacks: Stack[];
-    weather?: Partial<NonNullable<GameState['weather']>>;
-    weatherDisabled: boolean;
-}) {
-    const placementDropAnimationRenderId = useGameState((state) =>
-        getBlockPlacementDropAnimationRenderIdForBlockId(
-            state.blockPlacementDropAnimations,
-            block.id,
-        ),
-    );
-    const renderIdentity = formatBlockPlacementDropAnimationRenderIdentity(
-        block.id,
-        placementDropAnimationRenderId,
-    );
-    const entityFactory = (
-        <EntityFactory
-            name={block.name}
-            stack={stack}
-            block={block}
-            farmId={farmId}
-            stacks={stacks}
-            rotation={block.rotation}
-            variant={block.variant}
-            weather={weather}
-            weatherDisabled={weatherDisabled}
-            noRenderInView={instancedBlockNames}
-            noControl={noControls}
-        />
-    );
-
-    return (
-        <Suspense key={renderIdentity} fallback={null}>
-            {entityFactory}
-        </Suspense>
-    );
-}
 export function GameScene({
     cameraPosition = defaultGameCameraPosition,
     zoom = 'normal',
@@ -443,6 +390,7 @@ export function GameScene({
     const { isPending: isBlockVariantPending, mutate: updateBlockVariant } =
         useBlockVariant();
     const garden = useSceneCurrentGarden(transitionedGardenData);
+    const retainedScene = useRetainedGardenScene(garden?.stacks, blockData);
     const fenceGateBlockIds = useMemo(
         () =>
             new Set(
@@ -658,36 +606,16 @@ export function GameScene({
                                 <StaticOpaqueSceneCacheOcclusionFixture />
                             ) : null}
                             <PlacementGroundingShadows
-                                stacks={garden?.stacks}
+                                stacks={retainedScene.stacks}
                             />
                             <group name="GameScene:Entities">
-                                {garden?.stacks.map((stack) =>
-                                    stack.blocks?.map((block, i) => {
-                                        if (
-                                            instancedBlockNames.includes(
-                                                block.name,
-                                            )
-                                        ) {
-                                            return null;
-                                        }
-
-                                        const slotKey = `${stack.position.x}|${stack.position.y}|${stack.position.z}|${block.name}-${i}`;
-                                        return (
-                                            <GameSceneEntitySlot
-                                                key={slotKey}
-                                                block={block}
-                                                farmId={garden.farmId}
-                                                noControls={noControls}
-                                                stack={stack}
-                                                stacks={garden.stacks}
-                                                weather={weather}
-                                                weatherDisabled={
-                                                    weatherDisabled
-                                                }
-                                            />
-                                        );
-                                    }),
-                                )}
+                                <RetainedEntityChunks
+                                    scene={retainedScene}
+                                    farmId={garden?.farmId}
+                                    noControl={noControls}
+                                    weather={weather}
+                                    weatherDisabled={weatherDisabled}
+                                />
                                 {shouldRenderRaisedBedMulchOverlays && (
                                     <Suspense fallback={null}>
                                         <RaisedBedMulchOverlays
@@ -701,7 +629,7 @@ export function GameScene({
                                     renderGroundDecorations={
                                         renderDetails && zoom !== 'far'
                                     }
-                                    stacks={garden?.stacks}
+                                    stacks={retainedScene.stacks}
                                     renderDetails={renderDetails}
                                     weather={weather}
                                 />
@@ -717,22 +645,23 @@ export function GameScene({
                                     </Suspense>
                                 )}
                                 <BlockInteractionLayer
+                                    scene={retainedScene}
                                     controlsEnabled={
                                         !noControls && !gardenAvatarActive
                                     }
                                     sharedControllerEnabled
-                                    stacks={garden?.stacks}
+                                    stacks={retainedScene.stacks}
                                 />
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
-                                        <Birds stacks={garden?.stacks} />
+                                        <Birds stacks={retainedScene.stacks} />
                                     </Suspense>
                                 )}
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
                                         <Squirrels
                                             farmId={garden?.farmId}
-                                            stacks={garden?.stacks}
+                                            stacks={retainedScene.stacks}
                                         />
                                     </Suspense>
                                 )}
@@ -740,7 +669,7 @@ export function GameScene({
                                     <Suspense fallback={null}>
                                         <Frogs
                                             gardenId={garden?.id}
-                                            stacks={garden?.stacks}
+                                            stacks={retainedScene.stacks}
                                         />
                                     </Suspense>
                                 )}
@@ -749,7 +678,7 @@ export function GameScene({
                                         <Bats
                                             farmId={garden?.farmId}
                                             gardenId={garden?.id}
-                                            stacks={garden?.stacks}
+                                            stacks={retainedScene.stacks}
                                             weather={weather}
                                             weatherDisabled={weatherDisabled}
                                         />
@@ -759,7 +688,7 @@ export function GameScene({
                                     <Suspense fallback={null}>
                                         <Cats
                                             farmId={garden?.farmId}
-                                            stacks={garden?.stacks}
+                                            stacks={retainedScene.stacks}
                                             weather={weather}
                                             weatherDisabled={weatherDisabled}
                                         />
@@ -769,7 +698,7 @@ export function GameScene({
                                     <Suspense fallback={null}>
                                         <Dogs
                                             farmId={garden?.farmId}
-                                            stacks={garden?.stacks}
+                                            stacks={retainedScene.stacks}
                                             weather={weather}
                                             weatherDisabled={weatherDisabled}
                                         />
@@ -779,36 +708,36 @@ export function GameScene({
                                     <Suspense fallback={null}>
                                         <Chickens
                                             farmId={garden?.farmId}
-                                            stacks={garden?.stacks}
+                                            stacks={retainedScene.stacks}
                                             weather={weather}
                                             weatherDisabled={weatherDisabled}
                                         />
                                         <Piglets
                                             farmId={garden?.farmId}
-                                            stacks={garden?.stacks}
+                                            stacks={retainedScene.stacks}
                                             weather={weather}
                                             weatherDisabled={weatherDisabled}
                                         />
                                         <Goats
                                             farmId={garden?.farmId}
-                                            stacks={garden?.stacks}
+                                            stacks={retainedScene.stacks}
                                             weather={weather}
                                             weatherDisabled={weatherDisabled}
                                         />
                                         <Sheep
                                             farmId={garden?.farmId}
-                                            stacks={garden?.stacks}
+                                            stacks={retainedScene.stacks}
                                             weather={weather}
                                             weatherDisabled={weatherDisabled}
                                         />
                                         <LegacySheep
                                             farmId={garden?.farmId}
-                                            stacks={garden?.stacks}
+                                            stacks={retainedScene.stacks}
                                             weather={weather}
                                             weatherDisabled={weatherDisabled}
                                         />
                                         <HomeSpawnedPersistentPets
-                                            stacks={garden?.stacks}
+                                            stacks={retainedScene.stacks}
                                         />
                                     </Suspense>
                                 )}
@@ -823,7 +752,7 @@ export function GameScene({
                                                 onInteractBlock={
                                                     interactWithAvatarBlock
                                                 }
-                                                stacks={garden?.stacks}
+                                                stacks={retainedScene.stacks}
                                             />
                                         </Suspense>
                                     )}

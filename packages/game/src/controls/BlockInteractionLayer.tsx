@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { type Mesh, MeshBasicMaterial, type Vector3 } from 'three';
 import { instancedBlockNames } from '../entities/EntityInstances';
 import { useBlockData } from '../hooks/useBlockData';
+import type { RetainedGardenScene } from '../scene/compiler/retainedGardenScene';
 import { updateGameProfileMetadata } from '../scene/gameProfileMetadata';
 import { GardenSpatialIndex } from '../spatial/GardenSpatialIndex';
 import type { Stack } from '../types/Stack';
@@ -111,10 +112,12 @@ export function BlockInteractionLayer({
     controlsEnabled,
     sharedControllerEnabled = false,
     stacks,
+    scene,
 }: {
     controlsEnabled: boolean;
     sharedControllerEnabled?: boolean;
     stacks: Stack[] | undefined;
+    scene?: RetainedGardenScene;
 }) {
     const { data: blockData } = useBlockData();
     const registry = useBlockInteractionRegistry();
@@ -131,9 +134,15 @@ export function BlockInteractionLayer({
     const editHitboxDebugVisible = useGameState(
         (state) => state.editHitboxDebugVisible,
     );
+    const compiledInteractions = scene?.interactions;
     const targets = useMemo(
-        () => getBlockInteractionLayerTargets({ blockData, stacks }),
-        [blockData, stacks],
+        () =>
+            compiledInteractions
+                ? compiledInteractions.filter((target) =>
+                      instancedBlockNames.includes(target.block.name),
+                  )
+                : getBlockInteractionLayerTargets({ blockData, stacks }),
+        [blockData, stacks, compiledInteractions],
     );
     const [spatialIndex] = useState(
         () => new GardenSpatialIndex<BlockInteractionLayerTarget>(),

@@ -4,6 +4,7 @@ import type { GameCameraSnapshot } from '../controls/GameCameraRigApi';
 import type { PlantInstanceBufferMetricsSnapshot } from '../generators/plant/lib/plantInstanceBufferMetrics';
 import type { CameraFrame } from '../spatial/cameraFrame';
 import type { GardenSpatialIndex } from '../spatial/GardenSpatialIndex';
+import type { ChunkCompilerMetrics } from './compiler/chunkCompilerMetrics';
 import type {
     GameRuntimeSchedulerFrequentProfileSnapshot,
     GameRuntimeSchedulerSnapshot,
@@ -347,6 +348,7 @@ export function bindRuntimeFrameLoopProfileTelemetry(
 }
 
 export type GameProfileMetadata = {
+    chunkCompiler?: ChunkCompilerMetrics;
     autumnGroundLeafClusters?: number;
     autumnEntityLeafClusters?: number;
     autumnRustleTargetGain?: number;
