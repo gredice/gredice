@@ -34,6 +34,8 @@ publications update the shared target before notifying listeners. Camera
 replacement gets a separate frame; viewport, target, zoom, and matrix changes
 advance its version. Callers use frames synchronously and can supply an expected
 version to detect stale work.
+Camera callbacks depend on viewport dimensions, so an equivalent renderer size
+notification does not detach pointer listeners during an active gesture.
 
 Generated plant groups, individual plant LOD, decoration chunks, and night-light
 selection reuse this frame. Existing plant hysteresis/focus overrides,

@@ -322,6 +322,12 @@ export function GameCameraRig({
     singlePointerPanEnabled?: boolean;
 }) {
     const { camera, gl, size } = useThree();
+    // Renderer size notifications can replace the object without resizing.
+    // Keep camera callbacks stable so they do not tear down active gestures.
+    const cameraViewport = useMemo(
+        () => ({ width: size.width, height: size.height }),
+        [size.width, size.height],
+    );
     const requestRender = useSceneRenderRequest();
     const isOrthographicCamera = camera instanceof OrthographicCamera;
     const setGameCamera = useGameState((state) => state.setGameCamera);
@@ -482,12 +488,12 @@ export function GameCameraRig({
             version: snapshotVersionRef.current,
             zoom: camera.zoom,
         });
-        getCameraFrame(camera, size, snapshot.target);
+        getCameraFrame(camera, cameraViewport, snapshot.target);
         setGameCameraSnapshot(snapshot);
         for (const listener of cameraListenersRef.current) {
             listener(snapshot);
         }
-    }, [camera, isOrthographicCamera, setGameCameraSnapshot, size]);
+    }, [camera, cameraViewport, isOrthographicCamera, setGameCameraSnapshot]);
 
     const publishSnapshot = useCallback(() => {
         if (!isOrthographicCamera) {
@@ -505,10 +511,16 @@ export function GameCameraRig({
         camera.lookAt(targetRef.current);
         camera.updateProjectionMatrix();
         camera.updateMatrixWorld();
-        getCameraFrame(camera, size, targetRef.current.toArray());
+        getCameraFrame(camera, cameraViewport, targetRef.current.toArray());
         publishSnapshot();
         requestRender('camera-change');
-    }, [camera, isOrthographicCamera, publishSnapshot, requestRender, size]);
+    }, [
+        camera,
+        cameraViewport,
+        isOrthographicCamera,
+        publishSnapshot,
+        requestRender,
+    ]);
 
     const saveNormalCamera = useCallback(() => {
         if (!isOrthographicCamera || view !== 'normal') {
