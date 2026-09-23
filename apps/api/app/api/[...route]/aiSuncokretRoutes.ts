@@ -689,7 +689,7 @@ function buildTools({
                 'Dodaj proizvod u košaricu. Uvijek treba odobrenje korisnika.',
             inputSchema: z.object({
                 productId: z.string().min(1),
-                quantity: z.number().positive().default(1),
+                quantity: z.number().int().min(1).max(100).default(1),
                 gardenId: z.number().int().positive().optional(),
                 raisedBedId: z.number().int().positive().optional(),
                 positionIndex: z.number().int().min(0).optional(),
@@ -704,7 +704,7 @@ function buildTools({
                 'Dodaj dostupnu radnju za cijelu gredicu ili biljku na polju u košaricu. ID radnje dohvati iz kataloga radnji. Za radnju cijele gredice izostavi positionIndex; navedi ga samo za radnju biljke na konkretnom polju. Uvijek treba odobrenje korisnika.',
             inputSchema: z.object({
                 operationId: z.number().int().positive(),
-                quantity: z.number().positive().default(1),
+                quantity: z.number().int().min(1).max(100).default(1),
                 gardenId: z.number().int().positive().optional(),
                 raisedBedId: z.number().int().positive().optional(),
                 positionIndex: z
