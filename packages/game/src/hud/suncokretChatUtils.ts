@@ -17,9 +17,17 @@ export function seedMessages(seed: SuncokretChatSeed): UIMessage[] {
         id: `${seed.id}-${index.toString()}`,
         role: message.role,
         parts: [{ type: 'text', text: message.text }],
-        metadata: message.createdAt
-            ? { createdAt: message.createdAt }
-            : undefined,
+        metadata:
+            message.createdAt || message.photoAnalysis
+                ? {
+                      ...(message.createdAt
+                          ? { createdAt: message.createdAt }
+                          : {}),
+                      ...(message.photoAnalysis
+                          ? { photoAnalysis: message.photoAnalysis }
+                          : {}),
+                  }
+                : undefined,
     }));
 }
 

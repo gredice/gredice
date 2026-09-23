@@ -1,595 +1,78 @@
-import { sanitizeRaisedBedAiMarkdown } from '@gredice/js/ai';
-import { Alert } from '@gredice/ui/Alert';
-import { Button } from '@gredice/ui/Button';
-import { ImageGallery } from '@gredice/ui/ImageGallery';
-import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
-import { Typography } from '@gredice/ui/Typography';
-import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import { useEffect, useRef, useState } from 'react';
-import { AiAnalysisRequestError } from '../../hooks/aiAnalysisError';
-import { useCurrentUser } from '../../hooks/useCurrentUser';
-import { useRaisedBedAiAnalysis } from '../../hooks/useRaisedBedAiAnalysis';
-import { useRaisedBedAiHistory } from '../../hooks/useRaisedBedAiHistory';
-import { useRaisedBedFieldAiAnalysis } from '../../hooks/useRaisedBedFieldAiAnalysis';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
-import { GameModal } from '../../shared-ui/game-modal';
-import { RaisedBedAiOperationMarkdown } from './RaisedBedAiOperationMarkdown';
-import styles from './RaisedBedDiaryAiAction.module.css';
-import {
-    buildRaisedBedAnalysisChatSeed,
-    getRaisedBedAnalysisConversationId,
-} from './raisedBedAnalysisChatSeed';
-import { useRaisedBedReviewLayout } from './useRaisedBedReviewLayout';
+import { useSuncokretChat } from '../SuncokretChatProvider';
+import type { PhotoAnalysisRequest } from './photoAnalysisChat';
 
-const SuncokretChatPanel = dynamic(() =>
-    import('../SuncokretChatPanel').then((module) => module.SuncokretChatPanel),
-);
-
-type RaisedBedDiaryAiActionProps = {
-    gardenId: number;
+type RaisedBedDiaryAiActionProps = Omit<
+    PhotoAnalysisRequest,
+    'key' | 'historyEntryId'
+> & {
     raisedBedId: number;
-    entryName: string;
-    imageUrls: string[];
     positionIndex?: number;
-    referenceDate?: Date | string | null;
-    historyEntries?: Array<{
-        id: number;
-        description: string | undefined;
-        timestamp: Date;
-        imageUrls?: string[] | null;
-    }>;
 };
-
-type AnalysisPhase = 'idle' | 'thinking' | 'typing' | 'done' | 'error';
 
 export function RaisedBedDiaryAiAction({
     gardenId,
     raisedBedId,
-    entryName,
-    imageUrls,
     positionIndex,
-    referenceDate,
-    historyEntries,
+    ...analysis
 }: RaisedBedDiaryAiActionProps) {
-    const [open, setOpen] = useState(false);
-    const [selectedImageUrl, setSelectedImageUrl] = useState(
-        imageUrls[0] ?? '',
+    const chat = useSuncokretChat();
+    const latestCompleteHistoryEntry = analysis.historyEntries?.find((entry) =>
+        analysis.imageUrls.every((url) => entry.imageUrls?.includes(url)),
     );
-    const [visibleMarkdown, setVisibleMarkdown] = useState('');
-    const [phase, setPhase] = useState<AnalysisPhase>('idle');
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const [errorStatus, setErrorStatus] = useState<number | null>(null);
-    const [selectedHistoryEntryId, setSelectedHistoryEntryId] = useState<
-        number | null
-    >(null);
-    const [resultSource, setResultSource] = useState<
-        'history' | 'analysis' | null
-    >(null);
-    const [analysisCompletedAt, setAnalysisCompletedAt] = useState<Date | null>(
-        null,
-    );
-    const compactReview =
-        phase === 'typing' ||
-        phase === 'done' ||
-        (phase === 'error' && visibleMarkdown.length > 0);
-    const { captureScanningLayout, layoutRef } = useRaisedBedReviewLayout(
-        compactReview,
-        open,
-    );
-    const requestIdRef = useRef(0);
-    const currentUser = useCurrentUser(open);
-    const savedHistory = useRaisedBedAiHistory(gardenId, raisedBedId, {
-        enabled: open && phase === 'done' && resultSource === 'analysis',
-    });
-    const raisedBedAnalysis = useRaisedBedAiAnalysis();
-    const raisedBedFieldAnalysis = useRaisedBedFieldAiAnalysis();
-    const activeMutation =
-        typeof positionIndex === 'number'
-            ? raisedBedFieldAnalysis
-            : raisedBedAnalysis;
-    const latestHistoryEntry = historyEntries?.[0];
-    const latestCompleteHistoryEntry = historyEntries?.find((entry) => {
-        const analyzedImageUrls = entry.imageUrls ?? [];
-
-        return imageUrls.every((imageUrl) =>
-            analyzedImageUrls.includes(imageUrl),
-        );
-    });
-
-    useEffect(() => {
-        if (!selectedImageUrl && imageUrls[0]) {
-            setSelectedImageUrl(imageUrls[0]);
-        }
-    }, [imageUrls, selectedImageUrl]);
-
-    function resetPresentation() {
-        requestIdRef.current += 1;
-        setVisibleMarkdown('');
-        setErrorMessage(null);
-        setErrorStatus(null);
-        setPhase('idle');
-        setSelectedHistoryEntryId(null);
-        setResultSource(null);
-        setAnalysisCompletedAt(null);
-    }
-
-    function beginAnalysis() {
-        if (!imageUrls.length) {
-            return;
-        }
-
-        requestIdRef.current += 1;
-        const requestId = requestIdRef.current;
-
-        if (!selectedImageUrl) {
-            setSelectedImageUrl(imageUrls[0] ?? '');
-        }
-        setVisibleMarkdown('');
-        setErrorMessage(null);
-        setErrorStatus(null);
-        setPhase('thinking');
-        setSelectedHistoryEntryId(null);
-        setResultSource('analysis');
-        setAnalysisCompletedAt(null);
-
-        const onChunk = (accumulated: string) => {
-            if (requestIdRef.current !== requestId) return;
-            captureScanningLayout();
-            setPhase('typing');
-            setVisibleMarkdown(accumulated);
-        };
-
-        const callbacks = {
-            onSuccess: () => {
-                if (requestIdRef.current !== requestId) return;
-                captureScanningLayout();
-                setPhase('done');
-                setAnalysisCompletedAt(new Date());
-            },
-            onError: (error: Error) => {
-                if (requestIdRef.current !== requestId) return;
-                setPhase('error');
-                setErrorMessage(error.message);
-                setErrorStatus(
-                    error instanceof AiAnalysisRequestError
-                        ? error.status
-                        : null,
-                );
-                setAnalysisCompletedAt(null);
-            },
-        };
-
-        if (typeof positionIndex === 'number') {
-            raisedBedFieldAnalysis.mutate(
-                {
-                    gardenId,
-                    raisedBedId,
-                    positionIndex,
-                    imageUrls,
-                    referenceDate,
-                    onChunk,
-                },
-                callbacks,
-            );
-        } else {
-            raisedBedAnalysis.mutate(
-                {
-                    gardenId,
-                    raisedBedId,
-                    imageUrls,
-                    referenceDate,
-                    onChunk,
-                },
-                callbacks,
-            );
-        }
-    }
-
-    function handleOpen() {
-        if (!imageUrls.length) {
-            return;
-        }
-
-        setOpen(true);
-        beginAnalysis();
-    }
-
-    function handlePrimaryAction() {
-        if (latestCompleteHistoryEntry) {
-            handleShowHistory(latestCompleteHistoryEntry);
-            return;
-        }
-
-        handleOpen();
-    }
-
-    function handleShowHistory(
-        entry = latestCompleteHistoryEntry ?? latestHistoryEntry,
-    ) {
-        if (!entry) {
-            return;
-        }
-
-        requestIdRef.current += 1;
-        setOpen(true);
-        setSelectedHistoryEntryId(entry.id);
-        setSelectedImageUrl(entry.imageUrls?.[0] ?? imageUrls[0] ?? '');
-        captureScanningLayout();
-        setVisibleMarkdown(entry.description ?? '');
-        setErrorMessage(null);
-        setErrorStatus(null);
-        setPhase('done');
-        setResultSource('history');
-        setAnalysisCompletedAt(null);
-    }
-
-    function handleOpenChange(nextOpen: boolean) {
-        setOpen(nextOpen);
-
-        if (!nextOpen) {
-            resetPresentation();
-        }
-    }
-
-    const statusTitle =
-        resultSource === 'history' && phase === 'done'
-            ? 'Prethodni odgovor'
-            : phase === 'thinking'
-              ? 'Suncokret razmišlja...'
-              : phase === 'typing'
-                ? 'Analiza stiže...'
-                : phase === 'done'
-                  ? 'Analiza je spremna'
-                  : phase === 'error'
-                    ? errorStatus === 429
-                        ? 'Tjedni limit je iskorišten'
-                        : 'Analiza nije uspjela'
-                    : 'Pitaj suncokret';
-    const statusDescription =
-        resultSource === 'history' && phase === 'done'
-            ? null
-            : phase === 'thinking'
-              ? 'Skeniram sve fotografije i tražim tragove stresa, rasta i hitnih koraka.'
-              : phase === 'typing'
-                ? 'Preporuke se ispisuju u AI dnevničkom formatu.'
-                : phase === 'done'
-                  ? 'Odgovor je spremljen i u dnevnik, a ovdje ga vidiš odmah.'
-                  : phase === 'error'
-                    ? errorStatus === 429
-                        ? 'Novi AI savjeti bit će dostupni nakon što dio tjednog prozora istekne.'
-                        : 'Provjeri poruku ispod i pokušaj ponovno s istim fotografijama.'
-                    : 'Pokreni analizu svih fotografija iz dnevnika.';
-    const selectedHistoryEntry = historyEntries?.find(
-        (historyEntry) => historyEntry.id === selectedHistoryEntryId,
-    );
-    const canAnalyzeEntry =
-        !latestCompleteHistoryEntry &&
-        (phase === 'idle' || (phase === 'error' && errorStatus !== 429));
-    const savedAnalysis = savedHistory.data?.find(
-        (entry) =>
-            sanitizeRaisedBedAiMarkdown(entry.description ?? '') ===
-                visibleMarkdown &&
-            imageUrls.every((url) => entry.imageUrls?.includes(url)),
-    );
-    const savedAnalysisId = selectedHistoryEntryId ?? savedAnalysis?.id;
-    const analysisTimestamp =
-        resultSource === 'history' && phase === 'done'
-            ? selectedHistoryEntry?.timestamp
-            : phase === 'done'
-              ? (savedAnalysis?.timestamp ?? analysisCompletedAt)
-              : null;
-    const conversationId =
-        savedAnalysisId && currentUser.data?.id
-            ? getRaisedBedAnalysisConversationId(
-                  savedAnalysisId,
-                  currentUser.data.id,
-              )
-            : null;
-    const canContinueInChat = phase === 'done' && visibleMarkdown.length > 0;
-    const analysisContent = (
-        <div className="prose prose-sm max-w-none dark:prose-invert">
-            <RaisedBedAiOperationMarkdown gardenId={gardenId}>
-                {visibleMarkdown}
-            </RaisedBedAiOperationMarkdown>
-        </div>
-    );
-
     return (
-        <>
-            <Stack spacing={2} className="items-end">
-                <ButtonGreen
-                    size="sm"
-                    className="w-fit self-end px-3 dark:from-green-700 dark:to-green-800 dark:text-white dark:hover:from-green-600 dark:hover:to-green-700 dark:hover:text-white"
-                    onClick={(event) => {
-                        event.stopPropagation();
-                        handlePrimaryAction();
-                    }}
-                    startDecorator={
-                        <Image
-                            src={sunflowerMascotArtwork}
-                            alt="Suncokret"
-                            width={18}
-                            height={18}
-                        />
-                    }
-                >
-                    {latestCompleteHistoryEntry
-                        ? 'Pregledaj savjete suncokreta'
-                        : 'Pitaj suncokret za savjete'}
-                </ButtonGreen>
-            </Stack>
-            <GameModal
-                open={open}
-                onOpenChange={handleOpenChange}
-                title="AI analiza fotografije"
-                className="md:max-w-4xl"
-            >
-                <div
-                    ref={layoutRef}
-                    className={styles.analysisLayout}
-                    data-review-layout={compactReview ? 'review' : 'scanning'}
-                >
-                    <div className={styles.media}>
-                        <div
-                            className={`${styles.photo} relative overflow-hidden rounded-2xl border bg-card shadow-xs`}
-                            data-review-layout-part="photo"
-                        >
-                            <div
-                                className={`${styles.photoGallery} relative aspect-square overflow-hidden bg-black/5`}
-                            >
-                                <ImageGallery
-                                    images={[
-                                        {
-                                            src: selectedImageUrl,
-                                            alt: `Fotografija unosa ${entryName}`,
-                                        },
-                                    ]}
-                                    previewWidth={320}
-                                    previewHeight={320}
-                                />
-                                {phase === 'thinking' && (
-                                    <>
-                                        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(254,240,138,0.14),transparent_58%),linear-gradient(180deg,rgba(120,53,15,0.02)_0%,rgba(120,53,15,0.12)_100%)]" />
-                                        <div
-                                            className={`${styles.scanBeam} pointer-events-none absolute -inset-x-[16%] top-[-30%] h-[28%] rounded-full`}
-                                        />
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                        {imageUrls.length > 1 && (
-                            <Row
-                                spacing={2}
-                                className={`${styles.photoChoices} flex-wrap`}
-                                data-review-layout-part="thumbnails"
-                            >
-                                {imageUrls.map((imageUrl, imageIndex) => {
-                                    const isSelected =
-                                        imageUrl === selectedImageUrl;
-
-                                    return (
-                                        <button
-                                            key={imageUrl}
-                                            type="button"
-                                            aria-label={`Prikaži fotografiju ${imageIndex + 1}`}
-                                            aria-pressed={isSelected}
-                                            className={`overflow-hidden rounded-2xl border transition-all ${
-                                                isSelected
-                                                    ? 'border-lime-400 shadow-xs ring-2 ring-lime-200'
-                                                    : 'border-black/10 opacity-80 hover:opacity-100'
-                                            }`}
-                                            onClick={() =>
-                                                setSelectedImageUrl(imageUrl)
-                                            }
-                                        >
-                                            <div className="relative size-16">
-                                                <Image
-                                                    src={imageUrl}
-                                                    alt={`${entryName} ${imageIndex + 1}`}
-                                                    fill
-                                                    className="object-cover"
-                                                    sizes="64px"
-                                                />
-                                            </div>
-                                        </button>
-                                    );
-                                })}
-                            </Row>
-                        )}
-                    </div>
-                    <Row
-                        spacing={4}
-                        className={`${styles.reviewStatus} items-center md:pr-6`}
-                        data-review-layout-part="status"
-                    >
-                        {!compactReview && (
-                            <div
-                                className={`${
-                                    phase === 'thinking'
-                                        ? styles.sunflowerPulse
-                                        : ''
-                                } relative flex size-16 shrink-0 items-center justify-center`}
-                            >
-                                <Image
-                                    src={sunflowerMascotArtwork}
-                                    alt="Suncokret koji razmišlja"
-                                    width={56}
-                                    height={56}
-                                    className={
-                                        phase === 'thinking'
-                                            ? styles.sunflowerThinking
-                                            : undefined
-                                    }
-                                />
-                            </div>
-                        )}
-                        <Stack spacing={1}>
-                            <Typography level="body1" semiBold>
-                                {statusTitle}
-                            </Typography>
-                            {statusDescription && (
-                                <Typography
-                                    level="body3"
-                                    className="text-muted-foreground"
-                                >
-                                    {statusDescription}
-                                </Typography>
-                            )}
-                        </Stack>
-                    </Row>
-                    <Stack
-                        spacing={4}
-                        className={styles.reviewBody}
-                        data-review-layout-part="content"
-                    >
-                        {historyEntries && historyEntries.length > 1 && (
-                            <Stack spacing={2}>
-                                <Typography
-                                    level="body3"
-                                    className="text-muted-foreground"
-                                >
-                                    Prethodni odgovori
-                                </Typography>
-                                <Row spacing={2} className="flex-wrap">
-                                    {historyEntries.map((historyEntry) => {
-                                        const isSelected =
-                                            selectedHistoryEntryId ===
-                                            historyEntry.id;
-
-                                        return (
-                                            <Button
-                                                key={historyEntry.id}
-                                                size="sm"
-                                                variant={
-                                                    isSelected
-                                                        ? 'solid'
-                                                        : 'outlined'
-                                                }
-                                                onClick={() =>
-                                                    handleShowHistory(
-                                                        historyEntry,
-                                                    )
-                                                }
-                                            >
-                                                {historyEntry.timestamp.toLocaleDateString(
-                                                    'hr-HR',
-                                                )}
-                                            </Button>
-                                        );
-                                    })}
-                                </Row>
-                            </Stack>
-                        )}
-                        {canContinueInChat && conversationId ? (
-                            <SuncokretChatPanel
-                                key={conversationId}
-                                open={open}
-                                conversationId={conversationId}
-                                analysisContent={analysisContent}
-                                target={{
-                                    conversationLabel: 'AI analizu fotografija',
+        <Stack spacing={2} className="items-end">
+            <ButtonGreen
+                size="sm"
+                disabled={!chat || !analysis.imageUrls.length}
+                className="w-fit self-end px-3 dark:from-green-700 dark:to-green-800 dark:text-white dark:hover:from-green-600 dark:hover:to-green-700 dark:hover:text-white"
+                onClick={(event) => {
+                    event.stopPropagation();
+                    chat?.openChat(
+                        {
+                            conversationLabel: 'AI analizu fotografija',
+                            gardenId,
+                            raisedBedId,
+                            positionIndex: positionIndex ?? null,
+                            uiContext:
+                                typeof positionIndex === 'number'
+                                    ? { surface: 'plant-details', tab: 'diary' }
+                                    : {
+                                          surface: 'raised-bed-details',
+                                          tab: 'diary',
+                                      },
+                            photoAnalysis: {
+                                ...analysis,
+                                gardenId,
+                                key: JSON.stringify([
                                     gardenId,
                                     raisedBedId,
-                                    positionIndex: positionIndex ?? null,
-                                    seed: buildRaisedBedAnalysisChatSeed({
-                                        analysisMarkdown: visibleMarkdown,
-                                        analyzedAt: analysisTimestamp,
-                                        id: conversationId,
-                                        positionIndex,
-                                        referenceDate,
-                                    }),
-                                    uiContext:
-                                        typeof positionIndex === 'number'
-                                            ? {
-                                                  surface: 'plant-details',
-                                                  tab: 'diary',
-                                              }
-                                            : {
-                                                  surface: 'raised-bed-details',
-                                                  tab: 'diary',
-                                              },
-                                }}
-                            />
-                        ) : errorMessage ? (
-                            <Alert
-                                color={
-                                    errorStatus === 429 ? 'warning' : 'danger'
-                                }
-                            >
-                                <Typography level="body2">
-                                    {errorMessage}
-                                </Typography>
-                            </Alert>
-                        ) : (
-                            <div className="min-h-72 rounded-3xl border bg-card p-4 text-card-foreground shadow-xs">
-                                {visibleMarkdown ? (
-                                    <div className="prose prose-sm max-w-none dark:prose-invert">
-                                        <RaisedBedAiOperationMarkdown
-                                            gardenId={gardenId}
-                                        >
-                                            {visibleMarkdown}
-                                        </RaisedBedAiOperationMarkdown>
-                                        {phase === 'typing' && (
-                                            <span
-                                                className={`${styles.cursorBlink} ml-0.5 inline-block h-[1.1rem] w-2.5 rounded-full bg-amber-300 align-text-bottom`}
-                                            />
-                                        )}
-                                    </div>
-                                ) : (
-                                    <Typography
-                                        level="body2"
-                                        className="text-muted-foreground"
-                                    >
-                                        {phase === 'thinking'
-                                            ? 'Suncokret skenira sve fotografije, boje listova, tragove stresa i vrtni kontekst prije nego što napiše preporuke.'
-                                            : 'Analiza će se pojaviti ovdje u markdown formatu.'}
-                                    </Typography>
-                                )}
-                            </div>
-                        )}
-                        {(canAnalyzeEntry ||
-                            (canContinueInChat && !conversationId)) && (
-                            <Row spacing={2} className="flex-wrap">
-                                {canContinueInChat && !conversationId && (
-                                    <Stack spacing={1}>
-                                        <Typography level="body3">
-                                            {currentUser.isError ||
-                                            savedHistory.isError ||
-                                            (!savedHistory.isFetching &&
-                                                !currentUser.isLoading)
-                                                ? 'Razgovor još nije dostupan.'
-                                                : 'Pripremam razgovor...'}
-                                        </Typography>
-                                        <Button
-                                            size="sm"
-                                            variant="plain"
-                                            onClick={() => {
-                                                void currentUser.refetch();
-                                                void savedHistory.refetch();
-                                            }}
-                                        >
-                                            Pokušaj ponovno
-                                        </Button>
-                                    </Stack>
-                                )}
-                                {canAnalyzeEntry && (
-                                    <Button
-                                        size="sm"
-                                        variant="outlined"
-                                        loading={activeMutation.isPending}
-                                        onClick={beginAnalysis}
-                                    >
-                                        Pokušaj ponovno
-                                    </Button>
-                                )}
-                            </Row>
-                        )}
-                    </Stack>
-                </div>
-            </GameModal>
-        </>
+                                    positionIndex,
+                                    analysis.imageUrls,
+                                    analysis.referenceDate,
+                                ]),
+                                historyEntryId: latestCompleteHistoryEntry?.id,
+                            },
+                        },
+                        event.currentTarget,
+                    );
+                }}
+                startDecorator={
+                    <Image
+                        src={sunflowerMascotArtwork}
+                        alt="Suncokret"
+                        width={18}
+                        height={18}
+                    />
+                }
+            >
+                {latestCompleteHistoryEntry
+                    ? 'Pregledaj savjete suncokreta'
+                    : 'Pitaj suncokret za savjete'}
+            </ButtonGreen>
+        </Stack>
     );
 }

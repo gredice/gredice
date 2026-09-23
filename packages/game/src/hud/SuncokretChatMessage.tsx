@@ -4,12 +4,15 @@ import {
     ChatMarker,
     ChatMessage as ChatMessageLayout,
 } from '@gredice/ui/Chat';
+import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { AI, Close, LoaderSpinner, Warning } from '@gredice/ui/icons';
 import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import { cx } from '@gredice/ui/utils';
 import type { UIMessage } from 'ai';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
+import type { ReactNode } from 'react';
+import { photoAnalysisAttachment } from './raisedBed/photoAnalysisChat';
 import { SuncokretMessageText } from './SuncokretMessageText';
 import { SuncokretToolPart } from './SuncokretToolPart';
 import {
@@ -35,11 +38,18 @@ const SuncokretRecommendationChips = dynamic(
     { ssr: false },
 );
 
+const RaisedBedAiOperationMarkdown = dynamic(() =>
+    import('./raisedBed/RaisedBedAiOperationMarkdown').then(
+        (module) => module.RaisedBedAiOperationMarkdown,
+    ),
+);
+
 export function SuncokretChatMessage({
     addToolApprovalResponse,
     debug,
     isStreaming,
     message,
+    actions,
 }: {
     addToolApprovalResponse: ReturnType<
         typeof useChat
@@ -47,8 +57,12 @@ export function SuncokretChatMessage({
     debug: boolean;
     isStreaming: boolean;
     message: UIMessage;
+    actions?: ReactNode;
 }) {
     const isUser = message.role === 'user';
+    const analysis = !isUser
+        ? photoAnalysisAttachment(message.metadata)
+        : undefined;
     const partKeyCounts = new Map<string, number>();
     const keyedParts = message.parts.map((part) => {
         const baseKey = messagePartKey(part);
@@ -117,9 +131,33 @@ export function SuncokretChatMessage({
                 className={cx('flex flex-col gap-2', !isUser && 'w-full')}
                 variant={isUser ? 'sunflower' : 'ghost'}
             >
+                {analysis && (
+                    <ImageGallery
+                        images={analysis.imageUrls.map((src, index) => ({
+                            src,
+                            alt: `Fotografija unosa ${analysis.entryName} - ${index + 1}`,
+                        }))}
+                        previewWidth={160}
+                        previewHeight={160}
+                    />
+                )}
+                {actions}
                 {keyedParts.map(({ key, part }) => {
                     const text = textPart(part);
                     if (text) {
+                        if (analysis)
+                            return (
+                                <div
+                                    key={key}
+                                    className="prose prose-sm max-w-none dark:prose-invert"
+                                >
+                                    <RaisedBedAiOperationMarkdown
+                                        gardenId={analysis.gardenId}
+                                    >
+                                        {text}
+                                    </RaisedBedAiOperationMarkdown>
+                                </div>
+                            );
                         return (
                             <SuncokretMessageText
                                 key={key}

@@ -136,7 +136,7 @@ export function GameHud({
     }
 
     return (
-        <SuncokretChatProvider>
+        <SuncokretChatProvider gardenId={currentGarden?.id ?? null}>
             {!isLocalSandbox && (
                 <GardenActionHud enabled={openingFlowComplete} />
             )}
