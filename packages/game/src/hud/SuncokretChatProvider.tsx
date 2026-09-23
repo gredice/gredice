@@ -9,12 +9,17 @@ import {
     useMemo,
     useState,
 } from 'react';
+import type {
+    PhotoAnalysisAttachment,
+    PhotoAnalysisRequest,
+} from './raisedBed/photoAnalysisChat';
 import type { SuncokretContextSuggestion } from './suncokretChatContext';
 
 export type SuncokretChatSeedMessage = {
     role: 'assistant' | 'user';
     text: string;
     createdAt?: string;
+    photoAnalysis?: PhotoAnalysisAttachment;
 };
 
 /**
@@ -35,6 +40,7 @@ export type SuncokretChatTarget = {
     positionIndex: number | null;
     raisedBedId: number | null;
     seed?: SuncokretChatSeed;
+    photoAnalysis?: PhotoAnalysisRequest;
     uiContext: SuncokretUiContext;
 };
 
@@ -74,11 +80,11 @@ export function SuncokretChatProvider({ children }: PropsWithChildren) {
                 return;
             }
 
-            setTarget(null);
+            if (!target?.photoAnalysis) setTarget(null);
             setAnchorElement(nextAnchorElement);
             setOpen(true);
         },
-        [open],
+        [open, target],
     );
     const value = useMemo(
         () => ({

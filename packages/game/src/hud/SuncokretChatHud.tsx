@@ -1,5 +1,6 @@
 'use client';
-import { useMemo } from 'react';
+import dynamic from 'next/dynamic';
+import { type ReactNode, useMemo } from 'react';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useGameState } from '../useGameState';
 import { useOverviewSectionParam } from '../useUrlState';
@@ -13,6 +14,12 @@ import {
     resolveSuncokretUiContext,
     suncokretConversationLabel,
 } from './suncokretChatContext';
+
+const SuncokretPhotoAnalysisChat = dynamic(() =>
+    import('./SuncokretPhotoAnalysisChat').then(
+        (module) => module.SuncokretPhotoAnalysisChat,
+    ),
+);
 
 export function SuncokretChatHud() {
     const chat = useSuncokretChat();
@@ -49,6 +56,16 @@ export function SuncokretChatHud() {
     };
     const isCloseup = view === 'closeup';
     if (!chat) return null;
+    const renderPanel = (panel: ReactNode) =>
+        chat.open ? (
+            <SuncokretChatPositioner
+                anchorElement={chat.anchorElement}
+                isCloseup={isCloseup}
+                onClose={chat.closeChat}
+            >
+                {panel}
+            </SuncokretChatPositioner>
+        ) : null;
     return (
         <>
             {!isCloseup && (
@@ -66,21 +83,23 @@ export function SuncokretChatHud() {
                 </HudCard>
             )}
             <SuncokretChatPanel
-                open={chat.open}
+                open={chat.open && !target.photoAnalysis}
                 target={target}
                 onClose={chat.closeChat}
                 renderPanel={(panel) =>
-                    chat.open ? (
-                        <SuncokretChatPositioner
-                            anchorElement={chat.anchorElement}
-                            isCloseup={isCloseup}
-                            onClose={chat.closeChat}
-                        >
-                            {panel}
-                        </SuncokretChatPositioner>
-                    ) : null
+                    !target.photoAnalysis ? renderPanel(panel) : null
                 }
             />
+            {target.photoAnalysis && (
+                <SuncokretPhotoAnalysisChat
+                    key={target.photoAnalysis.key}
+                    open={chat.open}
+                    target={target}
+                    analysis={target.photoAnalysis}
+                    onClose={chat.closeChat}
+                    renderPanel={renderPanel}
+                />
+            )}
         </>
     );
 }

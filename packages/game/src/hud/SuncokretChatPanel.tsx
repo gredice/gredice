@@ -33,6 +33,10 @@ import {
     useState,
 } from 'react';
 import { useGameFlags } from '../GameFlagsContext';
+import {
+    photoAnalysisAttachment,
+    restoreAnalysisAttachments,
+} from './raisedBed/photoAnalysisChat';
 import { SuncokretChatMessage } from './SuncokretChatMessage';
 import type { SuncokretChatTarget } from './SuncokretChatProvider';
 import {
@@ -84,14 +88,16 @@ export function SuncokretChatPanel({
     target,
     onClose,
     conversationId,
-    analysisContent,
+    preparation,
+    seedActions,
     renderPanel,
 }: {
     open: boolean;
     target: SuncokretChatTarget;
     onClose?: () => void;
     conversationId?: string;
-    analysisContent?: ReactNode;
+    preparation?: ReactNode;
+    seedActions?: ReactNode;
     renderPanel?: (panel: ReactNode) => ReactNode;
 }) {
     const queryClient = useQueryClient();
@@ -332,7 +338,12 @@ export function SuncokretChatPanel({
                 if (conversation) {
                     // A request blocked before its first message can leave an empty record.
                     if (conversation.messages.length)
-                        setMessages(conversation.messages);
+                        setMessages(
+                            restoreAnalysisAttachments(
+                                conversation.messages,
+                                seed,
+                            ),
+                        );
                     setActiveConversationTitle(conversation.title);
                 }
                 setRestored(true);
@@ -352,7 +363,7 @@ export function SuncokretChatPanel({
     ]);
 
     const showConversationList = async () => {
-        if (loading) {
+        if (loading || preparation || !restored) {
             return;
         }
 
@@ -386,7 +397,7 @@ export function SuncokretChatPanel({
     };
 
     const selectConversation = async (conversationId: string) => {
-        if (loading) {
+        if (loading || preparation || !restored) {
             return;
         }
 
@@ -410,7 +421,9 @@ export function SuncokretChatPanel({
 
             clearError();
             setInput('');
-            setMessages(conversation.messages);
+            setMessages(
+                restoreAnalysisAttachments(conversation.messages, seed),
+            );
             setActiveConversationId(conversation.id);
             setActiveConversationTitle(conversation.title);
             if (
@@ -431,7 +444,7 @@ export function SuncokretChatPanel({
     };
 
     const startFreshConversation = () => {
-        if (loading) {
+        if (loading || preparation || !restored) {
             return;
         }
 
@@ -445,7 +458,7 @@ export function SuncokretChatPanel({
 
     const sendPrompt = (text: string) => {
         const trimmed = text.trim();
-        if (!trimmed || loading || !restored || blocked) {
+        if (!trimmed || loading || !restored || blocked || preparation) {
             return;
         }
         setInput('');
@@ -486,9 +499,14 @@ export function SuncokretChatPanel({
     const showSeededSuggestions =
         chatView === 'chat' &&
         !loading &&
+        !preparation &&
         restored &&
         messages.length > 0 &&
         messages.every((message) => message.role !== 'user');
+    const isPhotoConversation =
+        Boolean(preparation) ||
+        messages.some((message) => photoAnalysisAttachment(message.metadata));
+    const hasUserMessages = messages.some((message) => message.role === 'user');
     const suggestionButtons = contextSuggestions.map((suggestion, index) => (
         <Button
             key={suggestion.prompt}
@@ -500,7 +518,7 @@ export function SuncokretChatPanel({
                 index === 0 &&
                     'border-amber-200 bg-amber-50/60 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:hover:bg-amber-950',
             )}
-            disabled={loading || blocked || !restored}
+            disabled={loading || blocked || !restored || Boolean(preparation)}
             onClick={() => sendPrompt(suggestion.prompt)}
         >
             {suggestion.label}
@@ -508,16 +526,11 @@ export function SuncokretChatPanel({
     ));
 
     const panel = (
-        // biome-ignore lint/a11y/useAriaPropsSupportedByRole: both region and dialog support an accessible name.
         <div
             aria-label="Razgovor sa Suncokretom"
-            className={cx(
-                conversationId
-                    ? 'flex h-[min(680px,calc(100dvh-15rem))] min-h-80 w-full flex-col overflow-hidden rounded-2xl border bg-background'
-                    : 'flex h-[min(680px,calc(100dvh-var(--game-safe-area-top,0px)-var(--game-safe-area-bottom,0px)-1rem))] w-full max-w-[440px] flex-col overflow-hidden rounded-2xl border border-amber-200/80 border-b-4 border-b-amber-400 bg-background/98 shadow-2xl shadow-foreground/15 backdrop-blur-sm dark:border-amber-900/80 dark:border-b-amber-700 md:h-[min(720px,calc(100dvh-var(--game-safe-area-top,0px)-var(--game-safe-area-bottom,0px)-5rem))]',
-            )}
+            className="flex h-[min(680px,calc(100dvh-var(--game-safe-area-top,0px)-var(--game-safe-area-bottom,0px)-1rem))] w-full max-w-[440px] flex-col overflow-hidden rounded-2xl border border-amber-200/80 border-b-4 border-b-amber-400 bg-background/98 shadow-2xl shadow-foreground/15 backdrop-blur-sm dark:border-amber-900/80 dark:border-b-amber-700 md:h-[min(720px,calc(100dvh-var(--game-safe-area-top,0px)-var(--game-safe-area-bottom,0px)-5rem))]"
             data-suncokret-chat
-            role={conversationId ? 'region' : 'dialog'}
+            role="dialog"
         >
             <Row
                 justifyContent="space-between"
@@ -556,38 +569,37 @@ export function SuncokretChatPanel({
                     </Stack>
                 </Row>
                 <Row spacing={1}>
-                    {!conversationId &&
-                        (chatView === 'conversations' ? (
-                            <IconButton
-                                title="Natrag na razgovor"
-                                variant="plain"
-                                disabled={conversationsLoading}
-                                onClick={() => setChatView('chat')}
-                            >
-                                <ArrowLeft className="size-4" />
-                            </IconButton>
-                        ) : (
-                            <IconButton
-                                title="Prijašnji razgovori"
-                                variant="plain"
-                                disabled={loading}
-                                onClick={() => {
-                                    void showConversationList();
-                                }}
-                            >
-                                <History className="size-4" />
-                            </IconButton>
-                        ))}
-                    {!conversationId && (
+                    {chatView === 'conversations' ? (
                         <IconButton
-                            title="Novi razgovor"
+                            title="Natrag na razgovor"
                             variant="plain"
-                            disabled={loading}
-                            onClick={startFreshConversation}
+                            disabled={conversationsLoading}
+                            onClick={() => setChatView('chat')}
                         >
-                            <Add className="size-4" />
+                            <ArrowLeft className="size-4" />
+                        </IconButton>
+                    ) : (
+                        <IconButton
+                            title="Prijašnji razgovori"
+                            variant="plain"
+                            disabled={
+                                loading || Boolean(preparation) || !restored
+                            }
+                            onClick={() => {
+                                void showConversationList();
+                            }}
+                        >
+                            <History className="size-4" />
                         </IconButton>
                     )}
+                    <IconButton
+                        title="Novi razgovor"
+                        variant="plain"
+                        disabled={loading || Boolean(preparation) || !restored}
+                        onClick={startFreshConversation}
+                    >
+                        <Add className="size-4" />
+                    </IconButton>
                     {chatView === 'chat' && debug && models.length > 1 && (
                         <select
                             aria-label="AI model"
@@ -631,12 +643,16 @@ export function SuncokretChatPanel({
                 <>
                     <ChatMessageScroller
                         ariaBusy={loading}
-                        ariaLabel={
-                            conversationId
-                                ? 'Poruke o analizi'
-                                : 'Razgovor sa Suncokretom'
-                        }
+                        ariaLabel="Poruke sa Suncokretom"
+                        autoScroll={!isPhotoConversation || hasUserMessages}
                         className="flex-1"
+                        defaultScrollPosition={
+                            isPhotoConversation
+                                ? hasUserMessages
+                                    ? 'last-anchor'
+                                    : 'start'
+                                : 'end'
+                        }
                         emptyContent={
                             <Stack
                                 alignItems="center"
@@ -664,12 +680,27 @@ export function SuncokretChatPanel({
                             </Stack>
                         }
                         items={[
+                            ...(preparation
+                                ? [
+                                      {
+                                          id: 'suncokret-preparation',
+                                          scrollAnchor: true,
+                                          content: preparation,
+                                      },
+                                  ]
+                                : []),
                             ...groupSuncokretMessageTimestamps(
                                 messages,
                                 seed,
                             ).map(({ message, timestamp }) => ({
                                 id: message.id,
-                                scrollAnchor: message.role === 'user',
+                                scrollAnchor:
+                                    message.role === 'user' ||
+                                    Boolean(
+                                        photoAnalysisAttachment(
+                                            message.metadata,
+                                        ),
+                                    ),
                                 content: (
                                     <>
                                         {timestamp && (
@@ -677,27 +708,29 @@ export function SuncokretChatPanel({
                                                 timestamp={timestamp}
                                             />
                                         )}
-                                        {analysisContent &&
-                                        message.id === `${seed?.id}-0` ? (
-                                            analysisContent
-                                        ) : (
-                                            <SuncokretChatMessage
-                                                addToolApprovalResponse={
-                                                    addToolApprovalResponse
-                                                }
-                                                debug={debug}
-                                                isStreaming={
-                                                    loading &&
-                                                    message.role ===
-                                                        'assistant' &&
-                                                    message.id ===
-                                                        messages[
-                                                            messages.length - 1
-                                                        ]?.id
-                                                }
-                                                message={message}
-                                            />
-                                        )}
+                                        <SuncokretChatMessage
+                                            addToolApprovalResponse={
+                                                addToolApprovalResponse
+                                            }
+                                            debug={debug}
+                                            isStreaming={
+                                                loading &&
+                                                message.role === 'assistant' &&
+                                                message.id ===
+                                                    messages[
+                                                        messages.length - 1
+                                                    ]?.id
+                                            }
+                                            message={message}
+                                            actions={
+                                                message.id ===
+                                                    `${seed?.id}-0` &&
+                                                activeConversationId ===
+                                                    conversationId
+                                                    ? seedActions
+                                                    : undefined
+                                            }
+                                        />
                                     </>
                                 ),
                             })),
@@ -796,7 +829,12 @@ export function SuncokretChatPanel({
                             <textarea
                                 aria-label="Pitaj Suncokret"
                                 value={input}
-                                disabled={loading || blocked || !restored}
+                                disabled={
+                                    loading ||
+                                    blocked ||
+                                    !restored ||
+                                    Boolean(preparation)
+                                }
                                 onChange={(event) =>
                                     setInput(event.target.value)
                                 }
@@ -840,6 +878,7 @@ export function SuncokretChatPanel({
                                             loading ||
                                             blocked ||
                                             !restored ||
+                                            Boolean(preparation) ||
                                             input.trim().length === 0
                                         }
                                         className="size-9 shrink-0 rounded-full bg-emerald-700 text-white shadow-sm hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500"

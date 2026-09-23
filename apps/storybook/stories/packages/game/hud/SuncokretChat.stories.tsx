@@ -12,6 +12,11 @@ const meta = {
         globalThis.fetch = async (input, init) => {
             const url = String(input instanceof Request ? input.url : input);
             if (context.args.freshReview && url.endsWith('/analyze-image')) {
+                if (context.parameters.analysisError)
+                    return Response.json(
+                        { error: 'Analiza nije dostupna. Pokušaj ponovno.' },
+                        { status: 503 },
+                    );
                 await new Promise((resolve) => setTimeout(resolve, 1500));
                 return new Response(
                     '## Sažetak stanja\nGrah ima zrele mahune.',
@@ -112,7 +117,7 @@ const meta = {
         );
         await expect(
             within(canvasElement.ownerDocument.body).getByRole('dialog', {
-                name: 'AI analiza fotografije',
+                name: 'Razgovor sa Suncokretom',
             }),
         ).toBeVisible();
     },
@@ -124,6 +129,11 @@ export const SavedDiscussion: Story = { parameters: { saved: true } };
 export const HistoryUnavailable: Story = { parameters: { historyError: true } };
 export const Mobile: Story = { globals: { viewport: { value: 'mobile1' } } };
 export const ScanningToReview: Story = { args: { freshReview: true } };
+export const AnalysisUnavailable: Story = {
+    args: { freshReview: true },
+    parameters: { analysisError: true },
+};
+export const FromDiary: Story = { args: { reviewInModal: true } };
 export const MultiplePhotos: Story = {
     args: {
         reviewImageUrls: [

@@ -36,7 +36,7 @@ export function SuncokretChatPositioner({
         [anchorElement],
     );
 
-    if (desktop && anchorElement && virtualRef) {
+    if (desktop && anchorElement?.isConnected && virtualRef) {
         const anchorRect = anchorElement.getBoundingClientRect();
         const anchorCenter = anchorRect.left + anchorRect.width / 2;
         const side = anchorCenter < window.innerWidth / 2 ? 'right' : 'left';
