@@ -1,5 +1,52 @@
 # Homepage featured garden list performance
 
+## Follow-up: pre-header timeout after PR #4914 (23 September 2026)
+
+The daily application review found two more homepage list timeouts at
+15:00:48–49 UTC on 22 September, after the featured-ID route was deployed. Both
+expired at 3,002–3,004 ms while waiting for API headers. Three other successful
+requests spent 2,573–2,695 ms waiting for headers, while the API's
+`featured-list` timer measured 399.5–441.1 ms. The response body took 1–5 ms.
+The successful requests are not trace matches for the failures, so they locate
+the missing measurement window but do not identify the exact failed operation.
+
+The homepage calls `api.gredice.com` directly from WWW. The featured endpoint
+was still inside `app/api/[...route]/route.ts`, which imports every API domain
+before the featured handler starts its timer. The successful `x-vercel-id`
+headers show requests entering through Frankfurt, Singapore, or Cleveland and
+executing in Frankfurt. Region transit, function startup, and routing all fall
+outside the handler timer. The saved evidence cannot apportion their time or
+prove that the two failures reached the handler.
+
+The endpoint now has an exact Next.js route backed by the same Hono handler and
+storage ranking function. The production build resolves it separately from the
+catch-all. In local build traces, the catch-all retained 303 files totaling
+10,411,230 bytes; the dedicated route traced 267 files totaling 4,694,494
+bytes. These totals include framework and shared files and are a bounded bundle
+comparison, not a measurement of Vercel cold-start duration. Five read-only
+GETs from the local machine through Frankfurt ingress to the current API took
+210–329 ms to headers, of which the handler reported 118–235 ms. They did not
+reproduce the cross-region tail.
+
+WWW now sends a random UUID with the list request and includes it in its slow
+or failed list log. The API logs that ID on handler entry and completion, with
+duration but no garden, member, auth, or URL data. Future pre-header failures
+can be matched to API logs: with complete logs, no entry points to delay before
+this handler; an
+entry without a timely completion points within it; a quick completion points
+after it. The API accepts only UUID-shaped IDs for logging. WWW also records
+`x-vercel-cache` on responses that reach it. A timeout before headers still has
+no API response headers.
+
+The endpoint remains `Cache-Control: no-store`; its list is fresh, and each
+public detail independently rechecks visibility. The three-second list and
+five-second shared detail deadlines, ranking, ten-detail cap, legacy-API 404
+fallback, and partial-detail recovery remain in place. Local build and tests
+cannot establish that production timeouts are eliminated. Verify with matched
+WWW/API trace IDs and request timings after a separate release.
+
+## Original PR #4914 investigation
+
 Investigation date: 22 September 2026. Baseline: `db3d4cebb` (current
 `origin/main` when work started). Source incident: issue 1 of the
 `gredice-vercel-review` automation's 2026-09-22 report.

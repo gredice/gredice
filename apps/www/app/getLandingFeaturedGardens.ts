@@ -9,10 +9,17 @@ import { comparePublicGardensByPopularity } from './vrtovi/publicGardenFormattin
 const landingFeaturedGardensListTimeoutMs = 3_000;
 const landingFeaturedGardenDetailsTimeoutMs = 5_000;
 
-async function fetchFeaturedGardenList(listSignal: AbortSignal) {
+async function fetchFeaturedGardenList(
+    listSignal: AbortSignal,
+    traceId: string,
+) {
     const publicGardens = clientPublic().api.gardens.public;
     const response = await publicGardens.featured.$get(undefined, {
-        init: { signal: listSignal, cache: 'no-store' },
+        init: {
+            signal: listSignal,
+            cache: 'no-store',
+            headers: { 'x-gredice-featured-trace': traceId },
+        },
     });
     // WWW and API can finish deploying independently. An older API has no
     // featured route; use its existing list without restarting the deadline.
@@ -66,18 +73,23 @@ export async function getLandingFeaturedGardens(): Promise<
     }
 
     const startedAt = Date.now();
+    const traceId = crypto.randomUUID();
     const listSignal = AbortSignal.timeout(landingFeaturedGardensListTimeoutMs);
     let listPhase = 'headers';
     let listHeadersMs: number | undefined;
     let listBodyMs: number | undefined;
     let apiTiming: string | null = null;
     let apiRequestId: string | null = null;
+    let apiCacheStatus: string | null = null;
     try {
-        const { response, readItems } =
-            await fetchFeaturedGardenList(listSignal);
+        const { response, readItems } = await fetchFeaturedGardenList(
+            listSignal,
+            traceId,
+        );
         listHeadersMs = Date.now() - startedAt;
         apiTiming = response.headers.get('server-timing');
         apiRequestId = response.headers.get('x-vercel-id');
+        apiCacheStatus = response.headers.get('x-vercel-cache');
         if (!response.ok) {
             console.error('Failed to fetch featured gardens for landing', {
                 status: response.status,
@@ -85,6 +97,8 @@ export async function getLandingFeaturedGardens(): Promise<
                 listHeadersMs,
                 apiTiming,
                 apiRequestId,
+                apiCacheStatus,
+                traceId,
             });
             return [];
         }
@@ -100,6 +114,8 @@ export async function getLandingFeaturedGardens(): Promise<
                 listBodyMs,
                 apiTiming,
                 apiRequestId,
+                apiCacheStatus,
+                traceId,
             });
         }
         listPhase = 'complete';
@@ -172,6 +188,8 @@ export async function getLandingFeaturedGardens(): Promise<
                     : listBodyMs,
             apiTiming,
             apiRequestId,
+            apiCacheStatus,
+            traceId,
             timedOut: listSignal.aborted,
         });
         return [];

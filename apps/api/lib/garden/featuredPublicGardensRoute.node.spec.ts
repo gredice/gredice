@@ -22,6 +22,37 @@ test('an empty featured list remains a successful response', async () => {
     assert.deepEqual(await response.json(), { items: [] });
 });
 
+test('a valid trace correlates handler entry and completion without logging request data', async (t) => {
+    const started = t.mock.method(console, 'info', () => {});
+    const traceId = '6b29852c-814b-4e63-96f1-38a09f0b4264';
+    const response = await featuredPublicGardensRoute(async () => [
+        { id: 7 },
+    ]).request('/public/featured', {
+        headers: { 'x-gredice-featured-trace': traceId },
+    });
+    assert.equal(response.status, 200);
+    assert.equal(started.mock.callCount(), 2);
+    assert.deepEqual(started.mock.calls[0]?.arguments, [
+        'Featured garden list request started',
+        { traceId },
+    ]);
+    assert.equal(started.mock.calls[1]?.arguments[1]?.traceId, traceId);
+    assert.equal(
+        typeof started.mock.calls[1]?.arguments[1]?.durationMs,
+        'number',
+    );
+});
+
+test('untrusted trace text is ignored', async (t) => {
+    const started = t.mock.method(console, 'info', () => {});
+    const response = await featuredPublicGardensRoute(async () => []).request(
+        '/public/featured',
+        { headers: { 'x-gredice-featured-trace': 'private@example.com' } },
+    );
+    assert.equal(response.status, 200);
+    assert.equal(started.mock.callCount(), 0);
+});
+
 test('storage failures remain failures instead of successful empty lists', async () => {
     const app = featuredPublicGardensRoute(async () => {
         throw new Error('Unavailable');
