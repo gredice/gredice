@@ -23,16 +23,23 @@ export function SuncokretPhotoAnalysisChat({
     open,
     target,
     analysis,
+    openRequest,
     onClose,
     renderPanel,
 }: {
     open: boolean;
     target: SuncokretChatTarget;
     analysis: PhotoAnalysisRequest;
+    openRequest: number;
     onClose: () => void;
     renderPanel: (panel: ReactNode) => ReactNode;
 }) {
     const [selectedId, setSelectedId] = useState(analysis.historyEntryId);
+    const [previousOpenRequest, setPreviousOpenRequest] = useState(openRequest);
+    if (previousOpenRequest !== openRequest) {
+        setPreviousOpenRequest(openRequest);
+        setSelectedId(analysis.historyEntryId);
+    }
     const [markdown, setMarkdown] = useState('');
     const [phase, setPhase] = useState<
         'thinking' | 'typing' | 'done' | 'error'
@@ -67,6 +74,7 @@ export function SuncokretPhotoAnalysisChat({
             : undefined;
     const ready = Boolean(conversationId && saved);
     const photoAnalysis = {
+        positionIndex: target.positionIndex ?? undefined,
         gardenId: analysis.gardenId,
         entryName: analysis.entryName,
         imageUrls: selected?.imageUrls?.length
@@ -210,6 +218,7 @@ export function SuncokretPhotoAnalysisChat({
             open={open}
             target={{ ...target, seed: ready ? seed : undefined }}
             conversationId={conversationId}
+            openRequest={openRequest}
             preparation={preparing}
             seedActions={seedActions}
             onClose={onClose}

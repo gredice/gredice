@@ -93,6 +93,7 @@ export function SuncokretChatPanel({
     target,
     onClose,
     conversationId,
+    openRequest = 0,
     preparation,
     seedActions,
     renderPanel,
@@ -101,6 +102,7 @@ export function SuncokretChatPanel({
     target: SuncokretChatTarget;
     onClose?: () => void;
     conversationId?: string;
+    openRequest?: number;
     preparation?: ReactNode;
     seedActions?: ReactNode;
     renderPanel?: (panel: ReactNode) => ReactNode;
@@ -225,6 +227,7 @@ export function SuncokretChatPanel({
         sendMessage,
         setMessages,
         status,
+        stop,
     } = useChat({
         id: chatSessionId,
         messages: seed ? seedMessages(seed) : [],
@@ -240,6 +243,23 @@ export function SuncokretChatPanel({
         sendAutomaticallyWhen:
             lastAssistantMessageIsCompleteWithApprovalResponses,
     });
+
+    const [previousOpenRequest, setPreviousOpenRequest] = useState(openRequest);
+    const openRequestRef = useRef(openRequest);
+    openRequestRef.current = openRequest;
+    if (previousOpenRequest !== openRequest) {
+        setPreviousOpenRequest(openRequest);
+        if (conversationId) {
+            setChatView('chat');
+            if (activeConversationId !== conversationId) {
+                setActiveConversationId(conversationId);
+                setActiveConversationTitle(seed?.title ?? null);
+                setSavedContext(null);
+                setInput('');
+                setRestored(false);
+            }
+        }
+    }
 
     const loading = status === 'submitted' || status === 'streaming';
 
@@ -331,13 +351,14 @@ export function SuncokretChatPanel({
         if (!open || !conversationId || restored) return;
         const controller = new AbortController();
         setRestoreError(false);
-        void fetch(
-            `${apiOrigin}/api/ai/suncokret/conversations/${encodeURIComponent(conversationId)}?${featureFlagQuery}`,
-            {
-                credentials: 'include',
-                signal: controller.signal,
-            },
-        )
+        // An explicit review open can replace a conversation that is still streaming.
+        void stop()
+            .then(() =>
+                fetch(
+                    `${apiOrigin}/api/ai/suncokret/conversations/${encodeURIComponent(conversationId)}?${featureFlagQuery}`,
+                    { credentials: 'include', signal: controller.signal },
+                ),
+            )
             .then(async (response) => {
                 if (response.status === 404) return null;
                 if (!response.ok)
@@ -353,15 +374,21 @@ export function SuncokretChatPanel({
                 if (controller.signal.aborted) return;
                 if (conversation) {
                     // A request blocked before its first message can leave an empty record.
-                    if (conversation.messages.length)
-                        setMessages(
-                            restoreAnalysisAttachments(
-                                conversation.messages,
-                                seed,
-                            ),
-                        );
+                    setMessages(
+                        conversation.messages.length
+                            ? restoreAnalysisAttachments(
+                                  conversation.messages,
+                                  seed,
+                              )
+                            : seed
+                              ? seedMessages(seed)
+                              : [],
+                    );
                     setActiveConversationTitle(conversation.title);
+                } else {
+                    setMessages(seed ? seedMessages(seed) : []);
                 }
+                clearError();
                 setRestored(true);
             })
             .catch(() => {
@@ -413,6 +440,7 @@ export function SuncokretChatPanel({
     };
 
     const selectConversation = async (conversationId: string) => {
+        const requestedAt = openRequestRef.current;
         if (loading || preparation || !restored) {
             return;
         }
@@ -431,6 +459,7 @@ export function SuncokretChatPanel({
 
             const payload: unknown = await response.json();
             const conversation = parseConversationDetailPayload(payload);
+            if (requestedAt !== openRequestRef.current) return;
             if (!conversation) {
                 throw new Error('Invalid conversation response');
             }
@@ -442,17 +471,23 @@ export function SuncokretChatPanel({
             );
             setActiveConversationId(conversation.id);
             setActiveConversationTitle(conversation.title);
+            const photo = conversation.messages
+                .map((message) => photoAnalysisAttachment(message.metadata))
+                .find(Boolean);
             setSavedContext({
                 sourceKey: contextKey,
                 context: {
                     gardenId: conversation.gardenId,
                     raisedBedId: conversation.raisedBedId,
-                    positionIndex: null,
-                    uiContext: {
-                        surface: conversation.raisedBedId
-                            ? 'raised-bed'
-                            : 'garden',
-                    },
+                    positionIndex: photo?.positionIndex ?? null,
+                    uiContext:
+                        photo?.positionIndex !== undefined
+                            ? { surface: 'plant-details', tab: 'diary' }
+                            : {
+                                  surface: conversation.raisedBedId
+                                      ? 'raised-bed'
+                                      : 'garden',
+                              },
                 },
             });
             if (

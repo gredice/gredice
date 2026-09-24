@@ -2,6 +2,10 @@ export {
     getAiChatMessageTimestamp,
     getAiChatResponseTimestamp,
 } from './chatMessageTimestamp';
+export {
+    getRaisedBedAnalysisConversationId,
+    raisedBedAnalysisChatText,
+} from './raisedBedAnalysisChat';
 
 const MARKDOWN_LINK_DESTINATION_PATTERN = /\]\([^)]*\)/g;
 

@@ -97,6 +97,7 @@ export function SuncokretChatHud() {
                     open={chat.open}
                     target={target}
                     analysis={target.photoAnalysis}
+                    openRequest={chat.openRequest}
                     onClose={chat.closeChat}
                     renderPanel={renderPanel}
                 />

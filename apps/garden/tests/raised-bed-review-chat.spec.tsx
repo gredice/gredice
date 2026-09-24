@@ -26,6 +26,44 @@ const status = {
     },
 };
 
+test('desktop diary review opens above the modal and accepts keyboard input', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.route('**/api/ai/suncokret/status?*', (route) =>
+        route.fulfill({ json: status }),
+    );
+    await page.route('**/api/ai/suncokret/conversations/*', (route) =>
+        route.fulfill({ status: 404, json: {} }),
+    );
+    await mount(<SuncokretChatHudStory review reviewInModal />);
+    await page
+        .getByRole('button', { name: 'Pregledaj savjete suncokreta' })
+        .click();
+    const chat = page.getByRole('dialog', { name: 'Razgovor sa Suncokretom' });
+    const composer = chat.getByRole('textbox');
+    await expect(composer).toBeEnabled();
+    await expect
+        .poll(() =>
+            composer.evaluate((element) => {
+                const rect = element.getBoundingClientRect();
+                return element.contains(
+                    document.elementFromPoint(
+                        rect.left + rect.width / 2,
+                        rect.top + rect.height / 2,
+                    ),
+                );
+            }),
+        )
+        .toBe(true);
+    await composer.click();
+    await page.keyboard.type('Pitanje iz dnevnika');
+    await expect(composer).toHaveValue('Pitanje iz dnevnika');
+    await expect(composer).toBeFocused();
+    await page.screenshot({ path: '/tmp/photo-chat-desktop-modal.png' });
+});
+
 for (const viewport of [
     { width: 1280, height: 900 },
     { width: 768, height: 1024 },
@@ -117,6 +155,27 @@ for (const viewport of [
             chat.locator('[data-chat-message-scroller] img').first(),
         ).toBeVisible();
         await expect(chat).toContainText('Grah ima zrele mahune.');
+        const answer = chat
+            .locator('[data-chat-message][data-align="start"]')
+            .first();
+        const headerBounds = await answer
+            .locator('[data-chat-message-header]')
+            .boundingBox();
+        const bubbleBounds = await answer
+            .locator('[data-chat-bubble]')
+            .boundingBox();
+        const messageBounds = await answer.boundingBox();
+        expect(headerBounds && bubbleBounds && messageBounds).toBeTruthy();
+        if (headerBounds && bubbleBounds && messageBounds) {
+            expect(headerBounds.y + headerBounds.height).toBeLessThanOrEqual(
+                bubbleBounds.y,
+            );
+            expect(Math.abs(bubbleBounds.x - messageBounds.x)).toBeLessThan(1);
+            expect(
+                Math.abs(bubbleBounds.width - messageBounds.width),
+            ).toBeLessThan(1);
+        }
+
         await expect(modal.getByText(/Fotografija \d+ od \d+/)).toHaveCount(0);
         await expect(
             modal.getByText(/Prikazujem spremljene savjete/),
@@ -424,6 +483,7 @@ test('ordinary chat history restores review photos and can start a fresh convers
                     createdAt: '2026-09-22T12:00:00Z',
                     photoAnalysis: {
                         gardenId: 1,
+                        positionIndex: 2,
                         entryName: 'Fotografiranje gredice',
                         imageUrls: ['/web-app-manifest-192x192.png'],
                     },
@@ -441,6 +501,14 @@ test('ordinary chat history restores review photos and can start a fresh convers
     await page.route('**/api/ai/suncokret/conversations/*', (route) =>
         route.fulfill({ json: { conversation } }),
     );
+    let sent: Record<string, unknown> | undefined;
+    await page.route('**/api/ai/suncokret/chat', (route) => {
+        sent = route.request().postDataJSON();
+        return route.fulfill({
+            status: 500,
+            json: { error: 'Request captured' },
+        });
+    });
     await mount(<SuncokretChatHudStory />);
     await page.getByRole('button', { name: 'Suncokret AI' }).click();
     const chat = page.getByRole('dialog', { name: 'Razgovor sa Suncokretom' });
@@ -450,6 +518,18 @@ test('ordinary chat history restores review photos and can start a fresh convers
         chat.getByAltText('Fotografija unosa Fotografiranje gredice - 1'),
     ).toBeVisible();
     await expect(chat).toContainText('Grah raste.');
+    await chat.getByRole('textbox').fill('Što sada?');
+    await chat.getByRole('button', { name: 'Pošalji' }).click();
+    await expect
+        .poll(() => sent)
+        .toMatchObject({
+            conversationId,
+            gardenId: 1,
+            raisedBedId: 11,
+            positionIndex: 2,
+            uiContext: { surface: 'plant-details', tab: 'diary' },
+        });
+    await expect(chat.getByRole('textbox')).toBeEnabled();
     await chat.getByRole('button', { name: 'Novi razgovor' }).click();
     await expect(
         chat.getByAltText('Fotografija unosa Fotografiranje gredice - 1'),
@@ -544,7 +624,7 @@ for (const review of [true, false]) {
                 json: { error: 'Request captured' },
             });
         });
-        await mount(<SuncokretChatHudStory review={review} />);
+        await mount(<SuncokretChatHudStory review />);
         await page
             .getByRole('button', {
                 name: review ? 'Pregledaj savjete suncokreta' : 'Suncokret AI',
@@ -567,6 +647,25 @@ for (const review of [true, false]) {
                 raisedBedId: 22,
                 positionIndex: null,
                 uiContext: { surface: 'raised-bed' },
+            });
+        await expect(chat.getByRole('textbox')).toBeEnabled();
+        await chat
+            .getByRole('button', { name: 'Zatvori', exact: true })
+            .click();
+        await page
+            .getByRole('button', { name: 'Pregledaj savjete suncokreta' })
+            .click();
+        await expect(chat).toContainText('Grah ima zrele mahune.');
+        await expect(chat).not.toContainText('Savjeti za drugi vrt.');
+        await chat.getByRole('textbox').fill('Kada brati?');
+        await chat.getByRole('button', { name: 'Pošalji' }).click();
+        await expect
+            .poll(() => sent)
+            .toMatchObject({
+                conversationId,
+                gardenId: 1,
+                raisedBedId: 11,
+                positionIndex: 1,
             });
     });
 }

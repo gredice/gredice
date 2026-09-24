@@ -3,6 +3,7 @@ import type { SuncokretChatSeed } from '../SuncokretChatProvider';
 import { isRecord, seedMessages } from '../suncokretChatUtils';
 
 export type PhotoAnalysisAttachment = {
+    positionIndex?: number;
     gardenId: number;
     entryName: string;
     imageUrls: string[];
@@ -35,6 +36,11 @@ export function photoAnalysisAttachment(
     )
         return undefined;
     return {
+        ...(typeof value.positionIndex === 'number' &&
+        Number.isInteger(value.positionIndex) &&
+        value.positionIndex >= 0
+            ? { positionIndex: value.positionIndex }
+            : {}),
         gardenId: value.gardenId,
         entryName: value.entryName,
         imageUrls: value.imageUrls,

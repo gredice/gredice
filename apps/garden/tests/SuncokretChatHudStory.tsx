@@ -182,7 +182,7 @@ function ReviewContainer({
     children: ReactNode;
 }) {
     return inModal ? (
-        <GameModal open title="Dnevnik gredice">
+        <GameModal open title="Dnevnik gredice" className="h-[75dvh] max-w-4xl">
             {children}
         </GameModal>
     ) : (

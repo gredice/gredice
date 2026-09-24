@@ -58,3 +58,12 @@ test('review conversations are stable across reopening and isolated by analysis 
     assert.notEqual(id, getRaisedBedAnalysisConversationId(500, 'user-a'));
     assert.notEqual(id, getRaisedBedAnalysisConversationId(501, 'user-b'));
 });
+
+test('analysis reference dates use Zagreb time on both server and client', () => {
+    const seed = buildRaisedBedAnalysisChatSeed({
+        id: 'date-boundary',
+        analysisMarkdown: 'Grah raste.',
+        referenceDate: '2026-09-21T22:30:00Z',
+    });
+    assert.match(seed.messages[0].text, /22\. rujna 2026\./);
+});
