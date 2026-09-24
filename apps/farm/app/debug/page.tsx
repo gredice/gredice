@@ -1,7 +1,17 @@
+import type { Route } from 'next';
 import Link from 'next/link';
 import { HomeButton } from '../../components/HomeButton';
 
-const debugGroups = [
+type DebugGroup = {
+    title: string;
+    pages: Array<{
+        href: Route;
+        title: string;
+        description: string;
+    }>;
+};
+
+const debugGroups: DebugGroup[] = [
     {
         title: 'Labels',
         pages: [
@@ -11,9 +21,15 @@ const debugGroups = [
                 description:
                     'Preview and tune generated harvest labels with representative operation data.',
             },
+            {
+                href: '/debug/label-printer',
+                title: 'Label printer test',
+                description:
+                    'Connect a Niimbot printer, inspect battery, paper, lid and RFID status, and run test prints.',
+            },
         ],
     },
-] as const;
+];
 
 export default function FarmDebugIndexPage() {
     return (
