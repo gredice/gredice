@@ -51,6 +51,7 @@ export type PopperProps = Omit<HTMLAttributes<HTMLDivElement>, 'onSelect'> & {
     onCloseAutoFocus?(event: Event): void;
     onEscapeKeyDown?(event: Event): void;
     container?: HTMLElement;
+    positionerClassName?: string;
     arrowPadding?: number;
     avoidCollisions?: boolean;
     collisionBoundary?: Element | null | Array<Element | null>;
@@ -80,6 +81,7 @@ export function Popper({
     onOpenAutoFocus,
     onOpenChange,
     open,
+    positionerClassName,
     side,
     sideOffset,
     sticky,
@@ -148,11 +150,10 @@ export function Popper({
                     alignOffset={resolvedAlignOffset}
                     anchor={virtualRef ? () => virtualRef.current : undefined}
                     arrowPadding={arrowPadding}
-                    className={
-                        hideWhenDetached
-                            ? 'data-[anchor-hidden]:hidden'
-                            : undefined
-                    }
+                    className={cx(
+                        hideWhenDetached && 'data-[anchor-hidden]:hidden',
+                        positionerClassName,
+                    )}
                     collisionAvoidance={
                         avoidCollisions === false
                             ? { align: 'none', side: 'none' }

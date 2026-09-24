@@ -1,3 +1,7 @@
+import { raisedBedAnalysisChatText } from '@gredice/js/ai';
+
+export { getRaisedBedAnalysisConversationId } from '@gredice/js/ai';
+
 import type { SuncokretChatSeed } from '../SuncokretChatProvider';
 import type { SuncokretContextSuggestion } from '../suncokretChatContext';
 import type { PhotoAnalysisAttachment } from './photoAnalysisChat';
@@ -16,23 +20,6 @@ const raisedBedAnalysisSuggestions: SuncokretContextSuggestion[] = [
         prompt: 'Koje radnje mogu naručiti da riješim probleme iz ove analize?',
     },
 ];
-
-function formatAnalysisDate(value: Date | string | null | undefined) {
-    if (!value) {
-        return null;
-    }
-
-    const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) {
-        return null;
-    }
-
-    return date.toLocaleDateString('hr-HR', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    });
-}
 
 /**
  * Turns a finished AI raised bed analysis into a new Suncokret thread that
@@ -53,15 +40,6 @@ export function buildRaisedBedAnalysisChatSeed({
     positionIndex?: number;
     referenceDate?: Date | string | null;
 }): SuncokretChatSeed {
-    const analysisDate = formatAnalysisDate(referenceDate);
-    const scope =
-        typeof positionIndex === 'number'
-            ? `polja ${(positionIndex + 1).toString()}`
-            : 'gredice';
-    const intro = analysisDate
-        ? `Evo moje analize fotografija ${scope} od ${analysisDate}:`
-        : `Evo moje analize fotografija ${scope}:`;
-
     return {
         id,
         title: 'AI analiza fotografija',
@@ -73,17 +51,13 @@ export function buildRaisedBedAnalysisChatSeed({
                     analyzedAt && !Number.isNaN(analyzedAt.getTime())
                         ? analyzedAt.toISOString()
                         : undefined,
-                text: `${intro}\n\n${analysisMarkdown}`,
+                text: raisedBedAnalysisChatText({
+                    analysisMarkdown,
+                    positionIndex,
+                    referenceDate,
+                }),
             },
         ],
         suggestions: raisedBedAnalysisSuggestions,
     };
-}
-
-/** A saved analysis has one durable conversation per user; the API still enforces ownership. */
-export function getRaisedBedAnalysisConversationId(
-    analysisId: number,
-    userId: string,
-) {
-    return `analysis-${analysisId}-${userId}`;
 }

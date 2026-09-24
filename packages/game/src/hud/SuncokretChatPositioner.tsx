@@ -52,6 +52,7 @@ export function SuncokretChatPositioner({
                     }
                 }}
                 open
+                positionerClassName="z-[60] data-[base-ui-inert]:pointer-events-none data-[base-ui-inert]:z-40"
                 side={side}
                 sideOffset={12}
                 virtualRef={virtualRef}

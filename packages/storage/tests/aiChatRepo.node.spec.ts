@@ -8,6 +8,7 @@ import {
     calculateAiChatUsageCostMicroEur,
     createUserWithPassword,
     ensureAiChatConversation,
+    events,
     getAccountGardens,
     getAiChatAccountLimitState,
     getAiChatConversationForUser,
@@ -993,4 +994,172 @@ test('client clock skew and arbitrary dates cannot reorder persisted questions a
         submitted.map((message) => message.metadata.createdAt),
     );
     assert.ok(reopened.messages[4].createdAt.getTime() > orderingTimes[3]);
+});
+
+test('saved photo analyses are listed and readable before the first follow-up, then deduplicated', async () => {
+    const db = createTestDb();
+    const owner = await createAiChatTestUser();
+    const garden = (await getAccountGardens(owner.accountId))[0];
+    const bed = garden.raisedBeds[0];
+    assert.ok(bed);
+    const [bedAnalysis, fieldAnalysis] = await db
+        .insert(events)
+        .values([
+            {
+                type: 'raisedBed.aiAnalysis',
+                version: 1,
+                aggregateId: `${bed.id}`,
+                createdAt: new Date('2026-01-01T09:00:00Z'),
+                data: {
+                    markdown: 'Grah raste.',
+                    imageUrl: 'https://example.test/bed.jpg',
+                },
+            },
+            {
+                type: 'raisedBedField.aiAnalysis',
+                version: 1,
+                aggregateId: `${bed.id}|2`,
+                createdAt: new Date('2026-01-02T09:00:00Z'),
+                data: {
+                    accountId: owner.accountId,
+                    markdown: 'Rajčica raste.',
+                    imageUrls: ['https://example.test/field.jpg'],
+                    referenceDate: '2026-01-02',
+                },
+            },
+        ])
+        .returning();
+    assert.ok(bedAnalysis && fieldAnalysis);
+    const id = `analysis-${fieldAnalysis.id}-${owner.userId}`;
+    const list = await getAiChatConversationsForUser(owner);
+    assert.deepEqual(
+        list.map((item) => item.id),
+        [id, `analysis-${bedAnalysis.id}-${owner.userId}`],
+    );
+    assert.equal(
+        (await getAiChatConversationsForUser({ ...owner, limit: 1 }))[0]?.id,
+        id,
+    );
+    const detail = await getAiChatConversationForUser({
+        ...owner,
+        conversationId: id,
+    });
+    assert.ok(detail);
+    assert.equal(detail.gardenId, garden.id);
+    assert.equal(detail.raisedBedId, bed.id);
+    assert.equal(detail.messages[0]?.id, `${id}-0`);
+    assert.match(
+        String(detail.messages[0]?.parts[0]?.text),
+        /polja 3.*2\. siječnja 2026\./s,
+    );
+    assert.deepEqual(detail.messages[0]?.metadata?.photoAnalysis, {
+        gardenId: garden.id,
+        entryName: 'Fotografiranje gredice',
+        positionIndex: 2,
+        imageUrls: ['https://example.test/field.jpg'],
+    });
+    const bedDetail = await getAiChatConversationForUser({
+        ...owner,
+        conversationId: `analysis-${bedAnalysis.id}-${owner.userId}`,
+    });
+    assert.deepEqual(bedDetail?.messages[0]?.metadata?.photoAnalysis, {
+        gardenId: garden.id,
+        entryName: 'Fotografiranje gredice',
+        positionIndex: undefined,
+        imageUrls: ['https://example.test/bed.jpg'],
+    });
+    await ensureAiChatConversation({
+        ...owner,
+        id,
+        gardenId: garden.id,
+        raisedBedId: bed.id,
+        title: 'Nastavak analize',
+        model: 'test-model',
+    });
+    // Legacy continuations did not carry photo metadata. Restore it without replacing their text.
+    await replaceAiChatMessages({
+        conversationId: id,
+        messages: [
+            {
+                id: `${id}-0`,
+                role: 'assistant',
+                parts: [{ type: 'text', text: 'Sačuvani odgovor.' }],
+            },
+            {
+                id: `photo-question-${randomUUID()}`,
+                role: 'user',
+                parts: [{ type: 'text', text: 'Što sada?' }],
+            },
+        ],
+    });
+    const continued = await getAiChatConversationsForUser(owner);
+    assert.equal(continued.length, 2);
+    assert.equal(continued[0]?.title, 'Nastavak analize');
+    const reopened = await getAiChatConversationForUser({
+        ...owner,
+        conversationId: id,
+    });
+    assert.equal(reopened?.messages.length, 2);
+    assert.equal(reopened?.messages[0]?.parts[0]?.text, 'Sačuvani odgovor.');
+    assert.deepEqual(
+        reopened?.messages[0]?.metadata?.photoAnalysis,
+        detail.messages[0]?.metadata?.photoAnalysis,
+    );
+});
+
+test('photo history isolates accounts and user conversation IDs, including transferred beds', async () => {
+    const db = createTestDb();
+    const owner = await createAiChatTestUser();
+    const stranger = await createAiChatTestUser();
+    const bed = (await getAccountGardens(owner.accountId))[0].raisedBeds[0];
+    assert.ok(bed);
+    const [analysis] = await db
+        .insert(events)
+        .values({
+            type: 'raisedBed.aiAnalysis',
+            version: 1,
+            aggregateId: `${bed.id}`,
+            data: { accountId: owner.accountId, markdown: 'Privatna analiza.' },
+        })
+        .returning();
+    assert.ok(analysis);
+    assert.deepEqual(await getAiChatConversationsForUser(stranger), []);
+    assert.equal(
+        await getAiChatConversationForUser({
+            ...stranger,
+            conversationId: `analysis-${analysis.id}-${stranger.userId}`,
+        }),
+        undefined,
+    );
+    assert.equal(
+        await getAiChatConversationForUser({
+            ...owner,
+            conversationId: `analysis-${analysis.id}-${stranger.userId}`,
+        }),
+        undefined,
+    );
+    await db.insert(events).values([
+        {
+            type: 'raisedBed.aiAnalysis',
+            version: 1,
+            aggregateId: `${bed.id}`,
+            data: {
+                accountId: stranger.accountId,
+                markdown: 'Analiza prijašnjeg vlasnika.',
+            },
+        },
+        {
+            type: 'raisedBed.aiAnalysis',
+            version: 1,
+            aggregateId: `${bed.id}`,
+            data: { markdown: '' },
+        },
+        {
+            type: 'raisedBed.aiAnalysis',
+            version: 1,
+            aggregateId: `${bed.id}`,
+            data: { markdown: 123 },
+        },
+    ]);
+    assert.equal((await getAiChatConversationsForUser(owner)).length, 1);
 });

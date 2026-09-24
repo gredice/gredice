@@ -48,6 +48,7 @@ type SuncokretChatController = {
     anchorElement: HTMLElement | null;
     closeChat: () => void;
     open: boolean;
+    openRequest: number;
     openChat: (target: SuncokretChatTarget, anchorElement: HTMLElement) => void;
     target: SuncokretChatTarget | null;
     toggleDefaultChat: (anchorElement: HTMLElement) => void;
@@ -63,6 +64,7 @@ export function SuncokretChatProvider({
 }: PropsWithChildren<{ gardenId: number | null }>) {
     const [previousGardenId, setPreviousGardenId] = useState(gardenId);
     const [open, setOpen] = useState(false);
+    const [openRequest, setOpenRequest] = useState(0);
     const [target, setTarget] = useState<SuncokretChatTarget | null>(null);
     const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(
         null,
@@ -79,6 +81,7 @@ export function SuncokretChatProvider({
     const closeChat = useCallback(() => setOpen(false), []);
     const openChat = useCallback(
         (nextTarget: SuncokretChatTarget, nextAnchorElement: HTMLElement) => {
+            setOpenRequest((request) => request + 1);
             setTarget(nextTarget);
             setAnchorElement(nextAnchorElement);
             setOpen(true);
@@ -104,10 +107,19 @@ export function SuncokretChatProvider({
             closeChat,
             open,
             openChat,
+            openRequest,
             target,
             toggleDefaultChat,
         }),
-        [anchorElement, closeChat, open, openChat, target, toggleDefaultChat],
+        [
+            anchorElement,
+            closeChat,
+            open,
+            openChat,
+            openRequest,
+            target,
+            toggleDefaultChat,
+        ],
     );
 
     return (
