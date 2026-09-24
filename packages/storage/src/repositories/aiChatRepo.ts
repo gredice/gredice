@@ -820,6 +820,12 @@ export async function getAiChatConversationsForUser({
             where: and(
                 eq(aiChatConversations.accountId, accountId),
                 eq(aiChatConversations.userId, userId),
+                // A failed first follow-up can create an empty row. Keep the event's
+                // original title/activity and apply the limit only to real continuations.
+                sql`(${aiChatConversations.id} NOT LIKE 'analysis-%' OR EXISTS (
+                    SELECT 1 FROM ${aiChatMessages} AS persisted_messages
+                    WHERE persisted_messages.conversation_id = ${aiChatConversations.id}
+                ))`,
             ),
             orderBy: desc(aiChatConversations.lastMessageAt),
             limit: count,
@@ -892,10 +898,7 @@ export async function getAiChatConversationForUser({
         limit: 1,
     });
     if (!analysis) return persisted;
-    if (!persisted?.messages.length)
-        return persisted
-            ? { ...persisted, messages: analysis.messages }
-            : analysis;
+    if (!persisted?.messages.length) return analysis;
     const first = analysis.messages[0];
     return {
         ...persisted,

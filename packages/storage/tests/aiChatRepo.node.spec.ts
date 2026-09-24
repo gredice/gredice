@@ -1011,6 +1011,7 @@ test('saved photo analyses are listed and readable before the first follow-up, t
                 aggregateId: `${bed.id}`,
                 createdAt: new Date('2026-01-01T09:00:00Z'),
                 data: {
+                    accountId: owner.accountId,
                     markdown: 'Grah raste.',
                     imageUrl: 'https://example.test/bed.jpg',
                 },
@@ -1076,6 +1077,22 @@ test('saved photo analyses are listed and readable before the first follow-up, t
         title: 'Nastavak analize',
         model: 'test-model',
     });
+    const emptyContinuationList = await getAiChatConversationsForUser(owner);
+    assert.deepEqual(emptyContinuationList, list);
+    assert.deepEqual(
+        await getAiChatConversationForUser({ ...owner, conversationId: id }),
+        detail,
+    );
+    // Even a recent empty row for the older analysis must not displace the newer analysis.
+    await ensureAiChatConversation({
+        ...owner,
+        id: `analysis-${bedAnalysis.id}-${owner.userId}`,
+        title: 'Razgovor sa Suncokretom',
+    });
+    assert.equal(
+        (await getAiChatConversationsForUser({ ...owner, limit: 1 }))[0]?.id,
+        id,
+    );
     // Legacy continuations did not carry photo metadata. Restore it without replacing their text.
     await replaceAiChatMessages({
         conversationId: id,
@@ -1162,4 +1179,40 @@ test('photo history isolates accounts and user conversation IDs, including trans
         },
     ]);
     assert.equal((await getAiChatConversationsForUser(owner)).length, 1);
+});
+
+test('ownerless legacy analyses stay private after a raised bed transfer', async () => {
+    const db = createTestDb();
+    const previousOwner = await createAiChatTestUser();
+    const nextOwner = await createAiChatTestUser();
+    const bed = (await getAccountGardens(previousOwner.accountId))[0]
+        .raisedBeds[0];
+    const nextGarden = (await getAccountGardens(nextOwner.accountId))[0];
+    assert.ok(bed && nextGarden);
+    const [legacy] = await db
+        .insert(events)
+        .values({
+            type: 'raisedBed.aiAnalysis',
+            version: 1,
+            aggregateId: `${bed.id}`,
+            data: {
+                markdown: 'Analiza bez vlasnika.',
+                imageUrl: 'https://example.test/private-old-photo.jpg',
+            },
+        })
+        .returning();
+    assert.ok(legacy);
+    await updateRaisedBed({
+        id: bed.id,
+        accountId: nextOwner.accountId,
+        gardenId: nextGarden.id,
+    });
+    assert.deepEqual(await getAiChatConversationsForUser(nextOwner), []);
+    assert.equal(
+        await getAiChatConversationForUser({
+            ...nextOwner,
+            conversationId: `analysis-${legacy.id}-${nextOwner.userId}`,
+        }),
+        undefined,
+    );
 });

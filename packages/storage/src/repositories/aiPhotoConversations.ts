@@ -53,8 +53,8 @@ export async function getAiPhotoConversations({
                 eq(raisedBeds.accountId, accountId),
                 eq(gardens.accountId, accountId),
                 eq(raisedBeds.isDeleted, false),
-                // Old events had no account metadata. Never expose an analysis from a previous owner.
-                sql`(${events.data}->>'accountId' IS NULL OR ${events.data}->>'accountId' = ${accountId})`,
+                // Current bed ownership cannot establish ownership of an older analysis.
+                sql`${events.data}->>'accountId' = ${accountId}`,
                 sql`jsonb_typeof(${events.data}->'markdown') = 'string' AND length(trim(${events.data}->>'markdown')) > 0`,
                 analysisId === undefined
                     ? undefined
