@@ -1,5 +1,7 @@
 import type { BlockData } from '@gredice/client';
 import { getGardenBlockFootprintOffsets } from '@gredice/js/gardenBlocks';
+import { Box3, Vector3 } from 'three';
+import { GardenSpatialIndex } from '../../spatial/GardenSpatialIndex';
 import type { Stack } from '../../types/Stack';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { getStackBlockHeight } from '../../utils/stackHeightCore';
@@ -463,4 +465,40 @@ export function isAnimalSwimmingAt(
     surfaces: AnimalMovementSurface[],
 ) {
     return getAnimalMovementSurfaceAt(position, surfaces)?.kind === 'water';
+}
+
+/** Build once for a synchronous navigation operation; retain exact slope/height selection. */
+export function createAnimalMovementSurfaceQuery(
+    surfaces: readonly AnimalMovementSurface[],
+) {
+    const index = new GardenSpatialIndex<AnimalMovementSurface>();
+    surfaces.forEach((surface, order) => {
+        const rotation = surface.rotation ?? 0;
+        const halfWidth =
+            (surface.halfWidth ?? movementSurfaceHalfSize) +
+            movementSurfaceEpsilon;
+        const halfDepth =
+            (surface.halfDepth ?? movementSurfaceHalfSize) +
+            movementSurfaceEpsilon;
+        const xRadius =
+            Math.abs(Math.cos(rotation)) * halfWidth +
+            Math.abs(Math.sin(rotation)) * halfDepth;
+        const zRadius =
+            Math.abs(Math.sin(rotation)) * halfWidth +
+            Math.abs(Math.cos(rotation)) * halfDepth;
+        index.upsert({
+            bounds: new Box3(
+                new Vector3(surface.x - xRadius, 0, surface.z - zRadius),
+                new Vector3(surface.x + xRadius, 0, surface.z + zRadius),
+            ),
+            key: String(order),
+            order,
+            value: surface,
+        });
+    });
+    return (position: AnimalMovementCell) =>
+        getAnimalMovementSurfaceAt(
+            position,
+            index.queryPoint(position.x, position.z),
+        );
 }

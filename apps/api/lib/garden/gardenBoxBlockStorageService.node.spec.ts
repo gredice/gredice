@@ -11,7 +11,6 @@ import {
     type GardenBoxBlockStorageCommand,
     getGardenBoxBlockStorageOperationId,
 } from './gardenBoxBlockStorageService';
-import { validatePersistedStructuresAfterBlockMutation } from './gardenOccupancyService';
 
 const timestamp = '2026-08-30T00:00:00.000Z';
 
@@ -39,22 +38,6 @@ function directoryBlock(id: number, name: string): BlockData {
     };
 }
 
-function structureDocument() {
-    return {
-        schemaVersion: 1,
-        footprint: {
-            cells: [
-                { spaceKind: 'interior' as const, x: 0, y: 0 },
-                { spaceKind: 'interior' as const, x: 1, y: 0 },
-            ],
-        },
-        floors: [],
-        edges: [],
-        roofRegions: [],
-        props: [],
-    };
-}
-
 const command: GardenBoxBlockStorageCommand = {
     accountId: 'account-1',
     blockId: 'stored-1',
@@ -72,13 +55,6 @@ type HarnessOptions = Readonly<{
     directoryPending?: () => boolean;
     directoryUnavailable?: () => boolean;
     failInventoryAdd?: boolean;
-    structures?: readonly Readonly<{
-        anchorX: number;
-        anchorY: number;
-        document: ReturnType<typeof structureDocument>;
-        id: string;
-        rotation: 0;
-    }>[];
 }>;
 
 function makeHarness(options: HarnessOptions = {}) {
@@ -126,7 +102,6 @@ function makeHarness(options: HarnessOptions = {}) {
                 positionY: 0,
             },
         ],
-        structures: [...(options.structures ?? [])],
     };
     let receipt:
         | Readonly<{
@@ -267,12 +242,6 @@ function makeHarness(options: HarnessOptions = {}) {
             );
             return stack ? structuredClone(stack) : null;
         },
-        listGardenStructures: async (gardenId, receivedTransaction) => {
-            assert.equal(receivedTransaction, transaction);
-            assert.equal(gardenId, command.gardenId);
-            calls.push('structures');
-            return structuredClone(state.structures);
-        },
         updateGardenStack: async (gardenId, stack, receivedTransaction) => {
             assert.equal(receivedTransaction, transaction);
             assert.equal(gardenId, command.gardenId);
@@ -284,10 +253,6 @@ function makeHarness(options: HarnessOptions = {}) {
             );
             assert.ok(current);
             current.blocks = [...stack.blocks];
-        },
-        validatePersistedStructuresAfterBlockMutation: (input) => {
-            calls.push('validate');
-            return validatePersistedStructuresAfterBlockMutation(input);
         },
         withGardenBoxInventoryTransaction: async (
             accountId,
@@ -310,7 +275,6 @@ function makeHarness(options: HarnessOptions = {}) {
                 state.blocks = before.state.blocks;
                 state.inventoryAdds = before.state.inventoryAdds;
                 state.stacks = before.state.stacks;
-                state.structures = before.state.structures;
                 receipt = before.receipt;
                 calls.push('rollback');
                 throw error;
@@ -435,9 +399,6 @@ describe('storeGardenBlockInGardenBox', () => {
             'receipt',
             'update-stack',
             'delete-block',
-            'snapshot:3',
-            'structures',
-            'validate',
             'inventory-add',
             'commit',
         ]);
@@ -547,31 +508,6 @@ describe('storeGardenBlockInGardenBox', () => {
         assert.equal(harness.calls.includes('receipt'), false);
         assert.equal(harness.calls.includes('update-stack'), false);
         assert.equal(harness.calls.includes('delete-block'), false);
-        assert.equal(harness.calls.includes('inventory-add'), false);
-        assert.equal(harness.calls.at(-1), 'rollback');
-    });
-
-    test('rolls stack, block, and inventory changes back when support validation fails', async () => {
-        const harness = makeHarness({
-            structures: [
-                {
-                    anchorX: 0,
-                    anchorY: 0,
-                    document: structureDocument(),
-                    id: 'structure-1',
-                    rotation: 0,
-                },
-            ],
-        });
-        const before = structuredClone(harness.state);
-
-        const result = await harness.service(command);
-
-        assert.equal(result.ok, false);
-        if (result.ok) return;
-        assert.equal(result.code, 'GARDEN_OCCUPANCY_CONFLICT');
-        assert.equal(result.status, 409);
-        assert.deepEqual(harness.state, before);
         assert.equal(harness.calls.includes('inventory-add'), false);
         assert.equal(harness.calls.at(-1), 'rollback');
     });

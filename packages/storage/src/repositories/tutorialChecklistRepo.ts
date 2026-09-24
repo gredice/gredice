@@ -25,6 +25,7 @@ import {
     RAISED_BED_WATERING_50L_OPERATION_ID,
 } from './seasonalOffersRepo';
 import { getAllShoppingCarts } from './shoppingCartRepo';
+import { isGeneratedUserDisplayName } from './userDisplayNames';
 import { listUserFavorites } from './userFavoritesRepo';
 import { getUser } from './usersRepo';
 
@@ -819,7 +820,9 @@ async function getTutorialChecklistSignals({
 
     signals.userProfileUpdated = Boolean(
         user &&
-            ((user.displayName && user.displayName !== user.userName) ||
+            ((user.displayName &&
+                user.displayName !== user.userName &&
+                !isGeneratedUserDisplayName(user.displayName)) ||
                 user.avatarUrl),
     );
     signals.favoriteAdded = favorites.length > 0;

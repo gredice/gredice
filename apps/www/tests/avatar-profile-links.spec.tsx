@@ -17,7 +17,6 @@ const featuredGardens: LandingGardenCandidate[] = [
             longitude: 15.982,
             raisedBeds: [],
             stacks: {},
-            structures: [],
             updatedAt: '2026-09-12T00:00:00.000Z',
         },
         owner: { publicId: 'u_ana', displayName: 'Ana Kovač', avatarUrl: null },
@@ -35,10 +34,88 @@ const currentUser = {
 };
 
 test.beforeEach(async ({ page }) => {
+    await page.route('**/api/gardens/*/public', (route) => {
+        const id = Number(
+            new URL(route.request().url()).pathname.split('/').at(-2),
+        );
+        const candidate = [...featuredGardens, otherGarden].find(
+            (entry) => entry.garden.id === id,
+        );
+        return route.fulfill({ json: candidate?.garden });
+    });
     await page.route('**/api/auth/current-claims**', (route) =>
         route.fulfill({ status: 401, json: {} }),
     );
     await page.route('**/api/gardens', (route) => route.fulfill({ json: [] }));
+});
+
+test('loads only the displayed public scene and reuses it when navigating back', async ({
+    mount,
+    page,
+}) => {
+    const requestedIds: number[] = [];
+    await page.route('**/api/gardens/*/public', (route) => {
+        const id = Number(
+            new URL(route.request().url()).pathname.split('/').at(-2),
+        );
+        requestedIds.push(id);
+        return route.fulfill({
+            json: id === 1 ? featuredGardens[0].garden : otherGarden.garden,
+        });
+    });
+    await mount(
+        <AvatarProfileLinksHarness
+            featuredGardens={[...featuredGardens, otherGarden]}
+        />,
+    );
+    await expect(page.getByTestId('garden-scene')).toHaveAttribute(
+        'data-garden-id',
+        '1',
+    );
+    expect(requestedIds).toEqual([1]);
+    await page.getByRole('button', { name: 'Sljedeći vrt' }).click();
+    await expect(page.getByTestId('garden-scene')).toHaveAttribute(
+        'data-garden-id',
+        '2',
+    );
+    await expect(
+        page.getByRole('button', { name: 'Prethodni vrt' }),
+    ).toBeEnabled();
+    await page.getByRole('button', { name: 'Prethodni vrt' }).click();
+    await expect(page.getByTestId('garden-scene')).toHaveAttribute(
+        'data-garden-id',
+        '1',
+    );
+    expect(requestedIds).toEqual([1, 2]);
+});
+
+test('keeps the garden name and link on a scene error and allows retry', async ({
+    mount,
+    page,
+}) => {
+    await page.route('**/api/gardens/1/public', (route) =>
+        route.fulfill({ status: 503, json: {} }),
+    );
+    await mount(
+        <AvatarProfileLinksHarness featuredGardens={featuredGardens} />,
+    );
+    const retry = page.getByRole('button', {
+        name: 'Ponovno učitaj prikaz vrta',
+    });
+    await expect(retry).toBeVisible();
+    await expect(page.getByText('Anin vrt', { exact: true })).toBeVisible();
+    await expect(
+        page.getByRole('link', { name: 'Pogledaj vrt', exact: true }),
+    ).toHaveAttribute('href', '/vrtovi/1');
+    await page.route('**/api/gardens/1/public', (route) =>
+        route.fulfill({ json: featuredGardens[0].garden }),
+    );
+    await retry.click();
+    await expect(page.getByTestId('garden-scene')).toHaveAttribute(
+        'data-garden-id',
+        '1',
+    );
+    await expect(retry).toBeHidden();
 });
 
 test('shows each avatar owner’s actual level and exposes it in the profile link label', async ({

@@ -29,7 +29,7 @@ export function doesGardenLightInfluenceIntersectFrustum({
     position,
 }: {
     distance: number;
-    frustum: Frustum;
+    frustum: Pick<Frustum, 'intersectsSphere'>;
     influenceSphere: Sphere;
     position: Vector3;
 }) {

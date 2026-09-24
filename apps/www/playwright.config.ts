@@ -40,6 +40,9 @@ export const config: PlaywrightTestConfig = {
         trace: 'on-first-retry',
         ctPort: getComponentTestPort(app),
         ctViteConfig: {
+            // Playwright CT 1.62 bundles Vite 8, whose CJS interop turns default imports
+            // of Next's CJS entry points (e.g. next/image) into module objects.
+            legacy: { inconsistentCjsInterop: true },
             resolve: {
                 dedupe: ['nuqs', 'react', 'react-dom'],
             },

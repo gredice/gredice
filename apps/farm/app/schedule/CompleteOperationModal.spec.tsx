@@ -1927,6 +1927,90 @@ for (const width of [320, 375, 390, 430]) {
     });
 }
 
+for (const width of [390, 1280]) {
+    test(`explains the required blocker note before submission at ${width}px`, async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize({ width, height: 844 });
+        await page.evaluate(() => {
+            window.__farmScheduleActionTestState = {
+                blockerCalls: 0,
+                hold: false,
+                operationCalls: 0,
+                plantingCalls: 0,
+            };
+        });
+        await mount(
+            <ScheduleTaskBlockerModalAttemptStory
+                defaultOpen
+                label="Zalij rajčice"
+                target={{
+                    expectedEntityId: 701,
+                    kind: 'operation',
+                    operationId: 42,
+                }}
+            />,
+        );
+
+        const dialog = page.getByRole('dialog', { name: 'Prijavi prepreku' });
+        const note = dialog.getByRole('textbox');
+        const submit = dialog.getByRole('button', {
+            name: 'Prijavi prepreku',
+            exact: true,
+        });
+        const explanation = dialog.getByRole('status');
+
+        for (const reason of [
+            'Drugi razlog',
+            'Zadatak ili upute nisu primjenjivi',
+        ]) {
+            await dialog.getByRole('radio', { name: reason }).check();
+            await expect(submit).toBeDisabled();
+            await expect(explanation).toHaveText(
+                'Za odabrani razlog napiši kratko objašnjenje.',
+            );
+            const explanationId = await explanation.getAttribute('id');
+            expect(explanationId).toBeTruthy();
+            await expect(note).toHaveAttribute(
+                'aria-describedby',
+                explanationId ?? '',
+            );
+
+            await note.fill('   ');
+            await expect(submit).toBeDisabled();
+            await expect(explanation).toBeVisible();
+        }
+
+        expect(
+            await page.evaluate(
+                () => window.__farmScheduleActionTestState?.blockerCalls,
+            ),
+        ).toBe(0);
+
+        await note.fill('Gredica je nedostupna zbog radova.');
+        await expect(explanation).toHaveCount(0);
+        await expect(note).not.toHaveAttribute('aria-describedby');
+        await expect(submit).toBeEnabled();
+
+        await note.fill('');
+        await dialog
+            .getByRole('radio', { name: 'Ne mogu pristupiti lokaciji' })
+            .check();
+        await expect(explanation).toHaveCount(0);
+        await expect(submit).toBeEnabled();
+        await submit.click();
+        await expect(dialog.getByRole('status')).toContainText(
+            'Status: Blokirano.',
+        );
+        expect(
+            await page.evaluate(
+                () => window.__farmScheduleActionTestState?.blockerCalls,
+            ),
+        ).toBe(1);
+    });
+}
+
 test('preserves blocker input after a server failure and retries without re-entry', async ({
     mount,
     page,

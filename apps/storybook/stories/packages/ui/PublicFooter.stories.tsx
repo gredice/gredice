@@ -5,7 +5,6 @@ import {
     PublicFooterLandscape,
     PublicFooterOrigin,
 } from '@gredice/ui/PublicChrome';
-import { Switch } from '@gredice/ui/Switch';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
 const meta = {
@@ -38,15 +37,6 @@ const meta = {
             },
         ],
         features: [
-            {
-                tagline: 'FooterUtility',
-                asset: (
-                    <div className="flex items-center gap-6 text-xs text-muted-foreground">
-                        Ambijent vrta
-                        <Switch aria-label="Ambijentalna pozadina" size="sm" />
-                    </div>
-                ),
-            },
             {
                 header: 'Informacije',
                 ctas: [

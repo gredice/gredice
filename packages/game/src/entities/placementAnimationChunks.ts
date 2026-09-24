@@ -92,8 +92,12 @@ export function createPlacementDropAnimationRenderIdsSelector(
 
 export function addressPlacementAnimationChunks<
     T extends PlacementAnimationInstance,
->(instances: T[]): AddressedPlacementAnimationChunks<T> {
-    const chunks = chunkMeshInstances(instances);
+>(
+    instances: T[],
+    previous?: AddressedPlacementAnimationChunks<T>,
+): AddressedPlacementAnimationChunks<T> {
+    const chunks = chunkMeshInstances(instances, undefined, previous?.chunks);
+    if (previous?.chunks === chunks) return previous;
     const orderByInstance = new Map<T, number>();
     const addressByBlockId = new Map<
         string,

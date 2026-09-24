@@ -50,7 +50,7 @@ export function SurveyQuestionField({
             {question.type === 'long_text' &&
             question.settings.type === 'long_text' ? (
                 <textarea
-                    className="min-h-28 w-full rounded-md border bg-background px-3 py-2 text-sm outline-hidden focus:border-ring focus:ring-2 focus:ring-ring/30"
+                    className="min-h-28 w-full rounded-md border bg-field px-3 py-2 text-sm outline-hidden focus:border-ring focus:ring-2 focus:ring-ring/30"
                     maxLength={question.settings.maxLength}
                     placeholder={question.settings.placeholder ?? undefined}
                     value={typeof answer === 'string' ? answer : ''}

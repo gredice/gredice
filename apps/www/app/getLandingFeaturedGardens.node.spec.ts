@@ -14,10 +14,10 @@ function garden(id: number) {
         latitude: 45.815,
         longitude: 15.982,
         name: `Vrt ${id}`,
+        previewImage: { url: `https://cdn.gredice.com/garden-${id}.webp` },
         members: id === 12 ? [] : [summary(id).owner],
         raisedBeds: [],
         stacks: {},
-        structures: [],
         updatedAt: '2026-09-14T12:00:00.000Z',
     };
 }
@@ -28,7 +28,14 @@ function summary(id: number, likeCount = 0, activePlantCount = 0) {
         likeCount,
         activePlantCount,
         owner:
-            id === 12 ? null : { avatarUrl: null, displayName: `Vrtlar ${id}` },
+            id === 12
+                ? null
+                : {
+                      avatarUrl: null,
+                      displayName: `Vrtlar ${id}`,
+                      publicId: `u_${id}`,
+                      achievementCount: id,
+                  },
     };
 }
 
@@ -84,6 +91,7 @@ function mockRequests(
         gardenId: number | null;
         signal: AbortSignal;
         path: string;
+        traceId: string | null;
     }[] = [];
     const fetchMock: typeof fetch = async (input, init) => {
         const path = new URL(input instanceof Request ? input.url : input)
@@ -95,7 +103,12 @@ function mockRequests(
                 : Number(path.split('/').at(-2));
         assert.ok(init?.signal);
         assert.equal(init.cache, 'no-store');
-        requests.push({ gardenId, signal: init.signal, path });
+        requests.push({
+            gardenId,
+            signal: init.signal,
+            path,
+            traceId: new Headers(init.headers).get('x-gredice-featured-trace'),
+        });
         return respond(gardenId, init.signal, path);
     };
     t.mock.method(globalThis, 'fetch', fetchMock);
@@ -131,12 +144,19 @@ test('caps the server-ranked IDs at ten and uses fresh detail owners', async (t)
         requests.map(({ gardenId }) => gardenId),
         [null, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3],
     );
+    assert.match(
+        requests[0]?.traceId ?? '',
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u,
+    );
+    assert.ok(requests.slice(1).every(({ traceId }) => traceId === null));
     await advanceTime(t, 120);
     assert.deepEqual(
         await result,
         items.slice(0, 10).map((item) => ({
-            garden: garden(item.id),
+            garden: { id: item.id, name: `Vrt ${item.id}` },
             owner: item.owner,
+            dayPreviewImageUrl: `https://cdn.gredice.com/garden-${item.id}.webp`,
+            nightPreviewImageUrl: undefined,
         })),
     );
     assert.equal(timeout.mock.callCount(), 2);
@@ -209,10 +229,10 @@ test('gives details a fresh bounded budget after a slow list and preserves compl
     await advanceTime(t, 499);
     assert.equal(settled, false);
     await advanceTime(t, 1);
-    assert.deepEqual(await result, [
-        { garden: garden(1), owner: summary(1).owner },
-        { garden: garden(2), owner: summary(2).owner },
-    ]);
+    assert.deepEqual(
+        (await result).map(({ garden }) => garden.id),
+        [1, 2],
+    );
     assert.equal(Date.now(), 7_109);
     assert.equal(timeout.mock.callCount(), 2);
     assert.deepEqual(
@@ -332,6 +352,7 @@ for (const phase of ['headers', 'body']) {
         assert.partialDeepStrictEqual(errors.mock.calls[0]?.arguments[1], {
             elapsedMs: 3_000,
             listPhase: phase,
+            traceId: requests[0]?.traceId,
             timedOut: true,
             ...(phase === 'body'
                 ? {
@@ -346,9 +367,14 @@ for (const phase of ['headers', 'body']) {
 }
 
 test('near-deadline list success records header, body and API timings', async (t) => {
-    const { warnings } = mockRequests(t, (id, signal) =>
+    const { requests, warnings } = mockRequests(t, (id, signal) =>
         id === null
-            ? delayedResponse(signal, 2_600, { items: [{ id: 1 }] })
+            ? delayedResponse(signal, 2_600, {
+                  items: [{ id: 1 }],
+              }).then((response) => {
+                  response.headers.set('x-vercel-cache', 'MISS');
+                  return response;
+              })
             : Response.json(garden(id)),
     );
     const result = getLandingFeaturedGardens();
@@ -358,6 +384,8 @@ test('near-deadline list success records header, body and API timings', async (t
         listDurationMs: 2_600,
         listHeadersMs: 2_600,
         listBodyMs: 0,
+        apiCacheStatus: 'MISS',
+        traceId: requests[0]?.traceId,
     });
 });
 
@@ -415,4 +443,30 @@ test('legacy fallback HTTP errors retain the empty fallback', async (t) => {
     );
     assert.deepEqual(await getLandingFeaturedGardens(), []);
     assert.equal(requests.length, 2);
+});
+
+test('keeps all carousel content but excludes scene graphs and unused owner fields', async (t) => {
+    const details = {
+        ...garden(1),
+        stacks: { large: 'unused'.repeat(100_000) },
+        members: [{ ...summary(1).owner, extra: 'unused' }],
+        previewImages: {
+            day: { url: 'https://cdn.gredice.com/day.webp' },
+            night: { url: 'https://cdn.gredice.com/night.webp' },
+        },
+    };
+    mockRequests(t, (id) =>
+        Response.json(id === null ? { items: [{ id: 1 }] } : details),
+    );
+    const result = await getLandingFeaturedGardens();
+    assert.deepEqual(result, [
+        {
+            garden: { id: 1, name: 'Vrt 1' },
+            owner: summary(1).owner,
+            dayPreviewImageUrl: details.previewImages.day.url,
+            nightPreviewImageUrl: details.previewImages.night.url,
+        },
+    ]);
+    assert.ok(JSON.stringify(result).length < 500);
+    assert.doesNotMatch(JSON.stringify(result), /stacks|members|unused/);
 });

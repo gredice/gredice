@@ -24,7 +24,6 @@ function garden(id: number): PublicGardenDetail {
         name: `Vrt ${id.toString()}`,
         raisedBeds: [],
         stacks: {},
-        structures: [],
         updatedAt: '2026-08-28T12:00:00.000Z',
     };
 }

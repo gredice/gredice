@@ -1,7 +1,6 @@
 import type { BlockData } from '@gredice/directory-types';
 import { isAppearanceVariantEntityName } from '@gredice/js/entityAppearanceVariants';
 import type { GardenBlockPlacementResult } from '@gredice/js/gardenBlocks';
-import type { GardenOccupancyIndex } from '@gredice/js/gardenOccupancy';
 import {
     AccountDeletionInProgressError,
     AccountNotFoundError,
@@ -16,7 +15,6 @@ import {
     getGardenBlockForUpdate,
     getGardenMutationAuthorityForUpdate,
     getGardenPlacementSnapshotForUpdate,
-    listGardenStructures,
     updateGardenStack,
     withGardenBoxInventoryTransaction,
     withGardenMutationOperation,
@@ -25,12 +23,6 @@ import {
 import { getBlockData } from '../blocks/blockDataService';
 import { resolveGardenBlockPlacement } from './blockPlacementService';
 import { settleGardenEconomicMutationDependency } from './gardenEconomicMutationDependency';
-import {
-    createGardenOccupancyIndexFromStorageSnapshot,
-    type GardenOccupancyServiceError,
-    type GardenOccupancyStorageStructureLike,
-    validatePersistedStructuresAfterBlockMutation,
-} from './gardenOccupancyService';
 
 const maximumStorageInteger = 2_147_483_647;
 const operationIdentifierMaxLength = 96;
@@ -71,7 +63,6 @@ export type GardenBoxBlockPlacementDependencies<Transaction> = Readonly<{
         blockName: string,
         transaction: Transaction,
     ) => Promise<string>;
-    createGardenOccupancyIndexFromStorageSnapshot: typeof createGardenOccupancyIndexFromStorageSnapshot;
     createGardenStack: (
         gardenId: number,
         position: Readonly<{ x: number; y: number }>,
@@ -100,13 +91,8 @@ export type GardenBoxBlockPlacementDependencies<Transaction> = Readonly<{
         gardenId: number,
         transaction: Transaction,
     ) => Promise<GardenBoxPlacementSnapshot | null>;
-    listGardenStructures: (
-        gardenId: number,
-        transaction: Transaction,
-    ) => Promise<readonly GardenOccupancyStorageStructureLike[]>;
     resolveGardenBlockPlacement: (input: {
         blockName: string;
-        blockedCells?: ReadonlySet<string>;
         stacks: {
             positionX: number;
             positionY: number;
@@ -121,7 +107,6 @@ export type GardenBoxBlockPlacementDependencies<Transaction> = Readonly<{
         stack: Readonly<{ x: number; y: number; blocks: string[] }>,
         transaction: Transaction,
     ) => Promise<void>;
-    validatePersistedStructuresAfterBlockMutation: typeof validatePersistedStructuresAfterBlockMutation;
     withGardenBoxInventoryTransaction: <Result>(
         accountId: string,
         gardenId: number,
@@ -166,9 +151,6 @@ type GardenBoxBlockPlacementFailureCode =
     | 'BLOCK_PLACEMENT_INVALID'
     | 'GARDEN_BOX_INVENTORY_INSUFFICIENT'
     | 'GARDEN_BOX_NOT_FOUND'
-    | 'GARDEN_OCCUPANCY_CONFLICT'
-    | 'GARDEN_OCCUPANCY_INVALID_INPUT'
-    | 'GARDEN_OCCUPANCY_INVALID_STATE'
     | 'GARDEN_STATE_CHANGED'
     | 'INVALID_OPERATION_RECEIPT'
     | 'INVALID_REQUEST'
@@ -212,14 +194,6 @@ function fail(
     message: string,
 ): never {
     throw new GardenBoxBlockPlacementError(code, status, message);
-}
-
-function failOccupancy(error: GardenOccupancyServiceError): never {
-    throw new GardenBoxBlockPlacementError(
-        error.code,
-        error.status,
-        error.message,
-    );
 }
 
 function assertCommand(command: GardenBoxBlockPlacementCommand) {
@@ -329,16 +303,6 @@ function assertPlaceableGardenBoxBlock(blockName: string) {
             'Životinju s odabranom bojom nije moguće postaviti iz vrtne kutije.',
         );
     }
-}
-
-function structureOccupiedCellKeys(index: GardenOccupancyIndex) {
-    const blockedCells = new Set<string>();
-    for (const [key, cell] of index.cells) {
-        if (cell.structureIds.length > 0) {
-            blockedCells.add(key);
-        }
-    }
-    return blockedCells;
 }
 
 export function createGardenBoxBlockPlacementService<Transaction>(
@@ -459,26 +423,6 @@ export function createGardenBoxBlockPlacementService<Transaction>(
                                             blockName,
                                         );
 
-                                        const structures =
-                                            await dependencies.listGardenStructures(
-                                                command.gardenId,
-                                                operationTransaction,
-                                            );
-                                        const occupancy =
-                                            dependencies.createGardenOccupancyIndexFromStorageSnapshot(
-                                                {
-                                                    blockData,
-                                                    snapshot: {
-                                                        blocks: snapshot.blocks,
-                                                        stacks: snapshot.stacks,
-                                                        structures,
-                                                    },
-                                                },
-                                            );
-                                        if (!occupancy.valid) {
-                                            failOccupancy(occupancy.error);
-                                        }
-
                                         const blockNameById = new Map(
                                             snapshot.blocks.map((block) => [
                                                 block.id,
@@ -501,10 +445,6 @@ export function createGardenBoxBlockPlacementService<Transaction>(
                                             dependencies.resolveGardenBlockPlacement(
                                                 {
                                                     blockName,
-                                                    blockedCells:
-                                                        structureOccupiedCellKeys(
-                                                            occupancy.index,
-                                                        ),
                                                     stacks: snapshot.stacks.map(
                                                         (stack) => ({
                                                             blocks: [
@@ -562,35 +502,6 @@ export function createGardenBoxBlockPlacementService<Transaction>(
                                             },
                                             operationTransaction,
                                         );
-
-                                        const postMutationSnapshot =
-                                            await dependencies.getGardenPlacementSnapshotForUpdate(
-                                                command.gardenId,
-                                                operationTransaction,
-                                            );
-                                        if (!postMutationSnapshot) {
-                                            fail(
-                                                'GARDEN_STATE_CHANGED',
-                                                409,
-                                                'Garden changed while placing block',
-                                            );
-                                        }
-                                        const postMutationValidation =
-                                            dependencies.validatePersistedStructuresAfterBlockMutation(
-                                                {
-                                                    blockData,
-                                                    snapshot: {
-                                                        blocks: postMutationSnapshot.blocks,
-                                                        stacks: postMutationSnapshot.stacks,
-                                                        structures,
-                                                    },
-                                                },
-                                            );
-                                        if (!postMutationValidation.valid) {
-                                            failOccupancy(
-                                                postMutationValidation.error,
-                                            );
-                                        }
 
                                         await dependencies.consumeGardenBoxInventoryItem(
                                             command.accountId,
@@ -682,16 +593,13 @@ const defaultDependencies: GardenBoxBlockPlacementDependencies<GardenPlacementTr
         consumeGardenBoxInventoryItem,
         createGardenBlock: (gardenId, blockName, transaction) =>
             createGardenBlock(gardenId, blockName, transaction),
-        createGardenOccupancyIndexFromStorageSnapshot,
         createGardenStack,
         getBlockData,
         getGardenBlockForUpdate,
         getGardenMutationAuthorityForUpdate,
         getGardenPlacementSnapshotForUpdate,
-        listGardenStructures,
         resolveGardenBlockPlacement,
         updateGardenStack,
-        validatePersistedStructuresAfterBlockMutation,
         withGardenBoxInventoryTransaction: (
             accountId,
             gardenId,

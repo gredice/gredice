@@ -17,19 +17,19 @@
         "typecheck": "tsc --noEmit --pretty false"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.5.3",
-        "@types/node": "24.12.4",
+        "@biomejs/biome": "2.5.14",
+        "@types/node": "24.13.6",
         "@types/react": "19.2.18",
-        "tsx": "4.23.0",
+        "tsx": "4.23.15",
         "typescript": "7.0.2"
     },
     "dependencies": {
-        "@azure/communication-common": "2.4.0",
+        "@azure/communication-common": "2.5.0",
         "@azure/communication-email": "1.1.0",
-        "@azure/core-lro": "3.3.1",
-        "@azure/core-rest-pipeline": "1.22.2",
+        "@azure/core-lro": "3.4.1",
+        "@azure/core-rest-pipeline": "1.25.0",
         "@gredice/storage": "workspace:*",
         "react": "19.2.8",
-        "react-email": "6.6.9"
+        "react-email": "6.9.5"
     }
 }

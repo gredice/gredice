@@ -679,10 +679,11 @@ async function getCommunityEditableEntity(
     return entity;
 }
 
-async function plantStageInfoById() {
+async function plantStageInfoById(db: DatabaseClient = storage()) {
     const stages = (await getEntitiesRaw(
         'plantStage',
         'published',
+        db,
     )) as EntityRaw[];
 
     return new Map(
@@ -1304,13 +1305,16 @@ function normalizeRequiredSuggestionText(
     return normalized;
 }
 
-async function resolveOperationSuggestionTarget(input: {
-    operationId: number;
-    stage: NonNullable<
-        CommunityEditableFieldDefinition['operationSuggestionStage']
-    >;
-}) {
-    const operation = await getEntityRaw(input.operationId);
+async function resolveOperationSuggestionTarget(
+    input: {
+        operationId: number;
+        stage: NonNullable<
+            CommunityEditableFieldDefinition['operationSuggestionStage']
+        >;
+    },
+    db: DatabaseClient = storage(),
+) {
+    const operation = await getEntityRaw(input.operationId, db);
     if (
         operation?.entityTypeName !== 'operation' ||
         operation.state !== 'published'
@@ -1339,7 +1343,7 @@ async function resolveOperationSuggestionTarget(input: {
         );
     }
 
-    const stage = operationStageInfo(operation, await plantStageInfoById());
+    const stage = operationStageInfo(operation, await plantStageInfoById(db));
     if (stage?.name !== input.stage.name) {
         throw new CommunityEditRequestError(
             'invalid_value',
@@ -2508,13 +2512,16 @@ async function applyOperationSuggestionChange(input: {
             return;
         }
 
-        await resolveOperationSuggestionTarget({
-            operationId: suggestion.operationId,
-            stage: {
-                name: suggestion.stageName,
-                label: suggestion.stageLabel,
+        await resolveOperationSuggestionTarget(
+            {
+                operationId: suggestion.operationId,
+                stage: {
+                    name: suggestion.stageName,
+                    label: suggestion.stageLabel,
+                },
             },
-        });
+            input.db,
+        );
         await upsertAttributeValue(
             {
                 attributeDefinitionId: input.attributeDefinitionId,

@@ -1,6 +1,10 @@
+import { useFrame } from '@react-three/fiber';
+import { useLayoutEffect, useRef, useState } from 'react';
+import type { Group } from 'three';
 import { useDeferredSingleClick } from '../../controls/useDeferredSingleClick';
 import { useHoveredBlockStore } from '../../controls/useHoveredBlockStore';
 import { RainWetOverlay } from '../../rain/RainWetOverlay';
+import { useRegisterAutumnPart } from '../../scene/AutumnParts';
 import { animated, useSpring } from '../../scene/sceneSpring';
 import { SnowOverlay } from '../../snow/SnowOverlay';
 import { snowPresets } from '../../snow/snowPresets';
@@ -8,15 +12,23 @@ import type { EntityInstanceProps } from '../../types/runtime/EntityInstanceProp
 import { useGameState } from '../../useGameState';
 import { useStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
+import { autumnPartLeafSurfaces } from './autumnLeafSurfaces';
+import {
+    gardenBoxLidHingePosition,
+    gardenBoxOpenLidRotation,
+    gardenBoxRootQuarterTurns,
+} from './gardenBoxLidTransform';
 import { HoverOutline } from './HoverOutline';
 import { useAnimatedEntityRotation } from './useAnimatedEntityRotation';
 
 const lidClosedRotation = 0;
-const lidOpenRotation = -Math.PI / 2;
+const lidOpenRotation = gardenBoxOpenLidRotation[0];
 
 export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials } = useGameGLTF('GardenBox');
-    const [animatedRotation] = useAnimatedEntityRotation(rotation + 2);
+    const [animatedRotation] = useAnimatedEntityRotation(
+        rotation + gardenBoxRootQuarterTurns,
+    );
     const currentStackHeight = useStackHeight(stack, block);
     const isLocalSandbox = useGameState(
         (state) => state.localSandboxStorageKey !== null,
@@ -39,6 +51,24 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
         !isLocalSandbox &&
         (hoveredGardenBoxBlockId === block.id ||
             openGardenBoxBlockId === block.id);
+    const lidRef = useRef<Group>(null);
+    const isLidOpenRef = useRef(isLidOpen);
+    isLidOpenRef.current = isLidOpen;
+    const [lidSettled, setLidSettled] = useState(!isLidOpen);
+    useLayoutEffect(() => {
+        if (isLidOpen) setLidSettled(false);
+    }, [isLidOpen]);
+    useRegisterAutumnPart({
+        blockId: block.id,
+        partId: 'GardenBox_Lid_HingeOrigin',
+        eligibilityPolicy: 'closed-and-settled',
+        ref: lidRef,
+        surfaces: autumnPartLeafSurfaces.GardenBox_Lid_HingeOrigin,
+        eligible: !isLidOpen && lidSettled,
+        covered: stack.blocks
+            .slice(stack.blocks.indexOf(block) + 1)
+            .some((above) => above.name.startsWith('Block_')),
+    });
     const showHoverOutline =
         !isLocalSandbox && ((!hasActiveDragPreview && hovered) || isLidOpen);
     const { rotation: lidRotation } = useSpring({
@@ -51,6 +81,18 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
             friction: 18,
         },
         rotation: [isLidOpen ? lidOpenRotation : lidClosedRotation, 0, 0],
+        onRest: () => {
+            if (!isLidOpenRef.current) setLidSettled(true);
+        },
+    });
+    useFrame(() => {
+        if (
+            !isLidOpenRef.current &&
+            !lidSettled &&
+            lidRotation.idle &&
+            Math.abs(lidRotation.get()[0]) < 0.001
+        )
+            setLidSettled(true);
     });
 
     const handleClick = useDeferredSingleClick(() => {
@@ -82,7 +124,9 @@ export function GardenBox({ stack, block, rotation }: EntityInstanceProps) {
                     geometry={nodes.GardenBox_Body_Planks.geometry}
                 />
                 <animated.group
-                    position={[0, 0.6, -0.38]}
+                    ref={lidRef}
+                    name="GardenBox_Lid_HingeOrigin"
+                    position={gardenBoxLidHingePosition}
                     rotation={
                         lidRotation as unknown as [number, number, number]
                     }

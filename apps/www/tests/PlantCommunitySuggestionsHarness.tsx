@@ -1,15 +1,35 @@
+import type { PlantData } from '@gredice/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import { PlantHealthSection } from '../app/biljke/[alias]/PlantHealthSection';
 import { PlantTips } from '../app/biljke/[alias]/PlantTips';
 
+const additionalDiseases = [
+    {
+        id: 12,
+        kind: 'disease',
+        name: 'Druga bolest',
+        slug: 'druga-bolest',
+        shortDescription: 'Druga česta bolest.',
+    },
+    {
+        id: 13,
+        kind: 'disease',
+        name: 'Treća bolest',
+        slug: 'treca-bolest',
+        shortDescription: 'Treća česta bolest.',
+    },
+] satisfies NonNullable<NonNullable<PlantData['health']>['diseases']>;
+
 export function PlantCommunitySuggestionsHarness({
     populated = false,
+    threeDiseases = false,
     plantId = 7,
     plantName = 'Bob',
     publicPath = '/biljke/bob',
 }: {
     populated?: boolean;
+    threeDiseases?: boolean;
     plantId?: number;
     plantName?: string;
     publicPath?: string;
@@ -43,7 +63,7 @@ export function PlantCommunitySuggestionsHarness({
                     />
                     <PlantHealthSection
                         health={
-                            populated
+                            populated || threeDiseases
                                 ? {
                                       diseases: [
                                           {
@@ -54,6 +74,9 @@ export function PlantCommunitySuggestionsHarness({
                                               shortDescription:
                                                   'Gljivična bolest koja stvara smeđe pjege na listovima.',
                                           },
+                                          ...(threeDiseases
+                                              ? additionalDiseases
+                                              : []),
                                       ],
                                       pests: [
                                           {

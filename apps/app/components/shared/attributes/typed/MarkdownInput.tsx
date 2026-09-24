@@ -28,7 +28,7 @@ import '@mdxeditor/editor/style.css';
 export function MarkdownInput({ value, onChange }: AttributeInputProps) {
     const [inputValue, setInputValue] = useState<string>(value || '');
     return (
-        <div className="overflow-hidden rounded-md border border-input bg-background">
+        <div className="overflow-hidden rounded-md border border-input bg-field">
             <MDXEditor
                 placeholder="Nema informacija..."
                 className={cx(markdownEditorClassNames)}

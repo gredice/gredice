@@ -7,7 +7,6 @@ import {
     type GardenPlacementTransaction,
     getGardenPlacementSnapshotForUpdate,
     listGardenRaisedBedMetadataForUpdate,
-    listGardenStructures,
     SunflowerEarnAmountConflictError,
     softDeleteGardenBlockOnce,
     softDeleteNewRaisedBedOnce,
@@ -102,10 +101,6 @@ export type GardenStacksPatchServiceDependencies<Transaction> = Readonly<{
         gardenId: number,
         transaction: Transaction,
     ) => Promise<readonly GardenStacksPatchRaisedBed[]>;
-    listGardenStructures: (
-        gardenId: number,
-        transaction: Transaction,
-    ) => Promise<GardenStacksPatchPlannerInput['snapshot']['structures']>;
     planGardenStacksPatch: (
         input: GardenStacksPatchPlannerInput,
     ) => GardenStacksPatchPlannerResult;
@@ -358,11 +353,6 @@ export function createGardenStacksPatchService<Transaction>(
                                                 command.gardenId,
                                                 gardenTransaction,
                                             );
-                                        const structures =
-                                            await dependencies.listGardenStructures(
-                                                command.gardenId,
-                                                gardenTransaction,
-                                            );
                                         const planned =
                                             dependencies.planGardenStacksPatch({
                                                 blockData,
@@ -376,7 +366,6 @@ export function createGardenStacksPatchService<Transaction>(
                                                     },
                                                     raisedBeds,
                                                     stacks: snapshot.stacks,
-                                                    structures,
                                                 },
                                             });
                                         if (!planned.ok) {
@@ -516,7 +505,6 @@ const defaultDependencies: GardenStacksPatchServiceDependencies<GardenPlacementT
         getBlockData,
         getGardenPlacementSnapshotForUpdate,
         listGardenRaisedBedMetadataForUpdate,
-        listGardenStructures,
         planGardenStacksPatch,
         softDeleteGardenBlockOnce,
         softDeleteNewRaisedBedOnce,

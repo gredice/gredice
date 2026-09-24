@@ -5,8 +5,6 @@ import {
     events,
     gardenBlocks,
     gardenStacks,
-    gardenStructureOperations,
-    gardenStructures,
     gardens,
     notifications,
     operations,
@@ -29,6 +27,7 @@ import {
     deleteRaisedBedField,
     upsertRaisedBedField,
 } from './gardensRepo';
+import { deleteLegacyGardenStructureRows } from './legacyGardenStructuresCleanup';
 import { createLegacyRaisedBedPlantPlaceWithProjection } from './raisedBedPlantingsRepo';
 import { lockAndAssertCartItemsMutable } from './stripeCheckoutAttemptRepo';
 
@@ -741,57 +740,6 @@ async function deleteSandboxGardenBlockBatch(
     return rows.length;
 }
 
-async function deleteSandboxGardenStructureOperationBatch(
-    gardenId: number,
-    batchSize: number,
-) {
-    const rows = await storage()
-        .select({ operationId: gardenStructureOperations.operationId })
-        .from(gardenStructureOperations)
-        .where(eq(gardenStructureOperations.gardenId, gardenId))
-        .limit(batchSize);
-    if (rows.length === 0) {
-        return 0;
-    }
-
-    await storage()
-        .delete(gardenStructureOperations)
-        .where(
-            and(
-                eq(gardenStructureOperations.gardenId, gardenId),
-                inArray(
-                    gardenStructureOperations.operationId,
-                    rows.map((row) => row.operationId),
-                ),
-            ),
-        );
-    return rows.length;
-}
-
-async function deleteSandboxGardenStructureBatch(
-    gardenId: number,
-    batchSize: number,
-) {
-    const rows = await storage()
-        .select({ id: gardenStructures.id })
-        .from(gardenStructures)
-        .where(eq(gardenStructures.gardenId, gardenId))
-        .limit(batchSize);
-    if (rows.length === 0) {
-        return 0;
-    }
-
-    await storage()
-        .delete(gardenStructures)
-        .where(
-            inArray(
-                gardenStructures.id,
-                rows.map((row) => row.id),
-            ),
-        );
-    return rows.length;
-}
-
 async function deleteSandboxRaisedBedPlantingBatch(
     raisedBedIds: number[],
     batchSize: number,
@@ -955,21 +903,7 @@ async function deleteNextSandboxGardenDependencyBatch(
         return raisedBedRows;
     }
 
-    // Receipts deliberately do not cascade: remove durable idempotency records
-    // before their authoritative structure rows during sandbox hard deletion.
-    const structureOperationRows =
-        await deleteSandboxGardenStructureOperationBatch(garden.id, batchSize);
-    if (structureOperationRows > 0) {
-        return structureOperationRows;
-    }
-
-    const structureRows = await deleteSandboxGardenStructureBatch(
-        garden.id,
-        batchSize,
-    );
-    if (structureRows > 0) {
-        return structureRows;
-    }
+    await deleteLegacyGardenStructureRows(garden.id);
 
     const stackRows = await deleteSandboxGardenStackBatch(garden.id, batchSize);
     if (stackRows > 0) {

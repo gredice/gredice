@@ -116,14 +116,90 @@ Entity cluster caps are 24/48/96/160/128 for low/constrained/medium/high/custom;
 flat surfaces share one or two batches and the two stone slopes add at most four.
 Profile metadata exposes `autumnEntityLeafClusters`.
 
-Animals, crops, lights, water, undersides and unsupported props are excluded.
-Standalone WoodenBench/OutletDisplayTable need integration with their animated
-world transforms; GardenBox needs its articulated lid tracked. These and other
-unreviewed tools, gates/extensions, broad stones and large props remain follow-up
-work in [#4921](https://github.com/gredice/gredice/issues/4921). There is no automatic fallback that decorates arbitrary meshes.
+### Part-local expansion and exported-geometry audit (#4921)
 
-The `dense-autumn` mock profile places 25 trees beside 50 supported props to
-exercise both accumulation layers and their scene caps in production profiling.
+`autumnLeafSurfaces` remains block-local and keeps the original anchor IDs.
+`autumnPartLeafSurfaces` is part-local: the key is the stable exported part ID,
+and the anchor ID is stable within that part. A scene-local `AutumnPartsProvider`
+registers the **rendered** mesh/group (not a GLTF cache node). One sorted
+allocator applies the same 24/48/96/160/128 cap to both coordinate spaces.
+Each part candidate declares `coordinateSpace: 'part-local'` and an
+`eligibilityPolicy`; fixed exposed parts use `always`, while the box lid uses
+`closed-and-settled`. Current eligibility and cover are checked separately.
+The dynamic batch samples `inverse(batchRoot.matrixWorld) × renderedPart.matrixWorld
+× localAnchorMatrix` after scene spring writes and before rendering. It applies
+the part's node, root, pickup and hinge transforms once. The 0.45 local scale
+on the bench slats becomes 0.234 in world units under the bench's 0.52 root
+scale; the other new clusters use 0.45 world scale. Both leaf geometry yaw
+variants must fit their entire footprint, not just the anchor center.
+
+The audit below uses triangles from `apps/garden/public/assets/models`, with
+manifest versions from `assets/game-assets.json` as of 2026-09-23. Coordinates
+are `(x,y,z)` and the listed normal is in the anchor's local space. A 0.006
+surface lift is added at render time. `autumnSurfaceGeometry.unit.ts` samples
+every vertex of both three-leaf variants against the exported supporting face.
+
+| Entity / GLB version | Exported mesh node; variant/state | Space, anchor, normal | Render transform; footprint and decision |
+| --- | --- | --- | --- |
+| WoodenBench `238606505a28` | `WoodenBench_SeatSlatFront/Center/Back`; all rotations, exposed | Part-local, each slat `x=±0.4, y=0.065, z=0`, up | Node translation `(0,0.71,±0.205 or 0)`, root scale `0.52`, stack/root spring, pickup/drop wrappers. A 0.45 local cluster stays inside the flat center of the 0.17-wide slat and away from end pins; six anchors. Rails, braces, legs and pins excluded. |
+| OutletDisplayTable `88f3aa524c7f` | `OutletDisplayTable_TopPlanks`; exposed, no displayed item at the corners | Part-local, `x=±0.27, y=0.67, z=±0.255`, up | Node transform, stack/root spring and pickup/drop wrappers. Four outer-plank anchors clear the seams, edge and center display area. `LowerShelf` is sheltered; frame excluded. |
+| GardenBox `c007d6f4b671` | `GardenBox_Lid_HingeOrigin`; closed and settled only | Part-local, `x=±0.23, y=0.06, z=0.3`, up | Standalone rendered hinge group; instanced root rotation `+2` quarter turns then hinge `(0,0.6,-0.38)`. Two clusters fit the flat exterior panel, clear of raised strip/hinge/edges. Open, opening and closing lids, interior and body rim excluded. A hover/open request removes leaves immediately; the standalone closing spring's `onRest` restores the same IDs. |
+| StoneLarge `StoneLarge.glb` (manifest unversioned; SHA-256 `b2de5f92d275`) | `Stone Large`; exposed top facet | Block-local `(-0.10343,0.58665,-0.05734)`, slope `(0.081585,0.329026)` or normal `(-0.081585,1,-0.329026)` | Renderer scale `(0.263,0.426,0.291)`, block quarter-turn and stack. One cluster fits wholly inside the broad upper triangle. Other stone heights/slopes are not reused. |
+| FenceGate `ce707c4e9253` | `FenceGate_Posts`; fixed caps, all gate states | Part-local `x=±0.43, y=0.55, z=0`, up | Rendered posts mesh under root/placement spring. The 0.15-wide caps support two clusters; moving leaf and narrow rails excluded. |
+| StoneFenceGate `1e715ef5972d` | `StoneFenceGate_Posts_Mesh`; fixed caps, all gate states | Part-local `x=±0.43, y=0.68, z=0`, up | Rendered posts mesh under root/placement spring. Two clusters fit the 0.32-wide caps; moving leaf excluded. |
+| PolishedStoneFenceGate `6a06de6cfa10` | `PolishedStoneFenceGate_Posts`; fixed caps, all gate states | Part-local `x=±0.43, y=0.68, z=0`, up | Rendered posts mesh under root/placement spring. Two clusters fit the 0.28-wide caps; moving leaf excluded. |
+
+| Reviewed exclusion | Reason |
+| --- | --- |
+| `StoneSmall.glb` and `DesertStoneSmall/Medium/Large.glb` (manifest unversioned) | Smaller or irregular sloped tops and desert crevice geometry need their own footprint/slope set; copying StoneLarge or StoneMedium coordinates would float or intersect. No anchors enabled. |
+| Connected `Fence` (`dbd149ee3e7b`), `WhiteFence` (`6da3db488a19`), `StoneFence` (`e8bb66423669`), `PolishedStoneFence` (`2c5f40e1afc5`) extensions | Existing `Fence` central cap remains the single block-local owner. The resolved extension shapes add narrow rails/posts with topology-dependent ownership; none pass the current exposed whole-cluster review. No extension ID is registered, preventing duplicate central caps. |
+| `WhiteFenceGate` (`7b2247eff49b`) and all moving gate leaves | White posts are too narrow for the three-leaf footprint. Moving leaves rotate at a separate hinge and have narrow tops; fixed-cap registrations on the other three families never attach to a moving leaf. |
+| Bucket `651d759c9d56`, WateringCan `8b128e30b990`, ShovelSmall (unversioned), Composter `932e7624a5c1` | Bucket/watering-can openings, handles and shovel blade/shaft are occupied or too narrow. Composter top has separate overlapping meshes and no verified exposed footprint. No generic tool/container fallback is used. There is no separate crate entity in the current runtime inventory. |
+| MoonRainBarrel `7425319b60fc`, WaterWell `1f8ed0929e90`, BirdHouse (unversioned), EnamelGardenLamp `c945af2c0198` and other large decorative props | Barrel lid is inclined above occupied water/leaf details; well has water and frame overhead; birdhouse roof/platform is sloped/sheltered; lamp shade is a light/fixture. These are deliberately left clear. Animals, crops and foliage also remain excluded. |
+
+The `dense-autumn` mock profile retains 25 trees and 50 nearby props, now
+mixing Stool/gift boxes with repeated benches, tables, closed boxes, large
+stones and gates. A changed fixture cannot be compared with an older profile
+report; run baseline and candidate with this same profile, viewport, DPR, tier
+and production build. Profile metadata keeps `autumnEntityLeafClusters` as the
+combined rendered count. Dynamic batches have no raycast, no shadow casting
+and no idle animation lease; the scene render scheduler updates them only on
+requested frames.
+The scene samples a discrete visible-anchor count after each requested spring
+frame. When a prop or deciduous tree crosses a density threshold, it refreshes
+the shared allocation from current world matrices; this also admits a part
+that had zero candidates before a drag. Existing batch matrices still follow
+the rendered part each frame without a React update for every pose.
+
+### Validation record (2026-09-23)
+
+The `chromium-webgl` season fixture captures both quality tiers at four
+quarter-turns, rain, partial snow, each reviewed face and a grazing lid view.
+An animation-enabled case samples the real placement-drop wrapper while the
+bench rotates and the box lid opens; its leaf/part matrices agree in every
+sampled frame. Separate cases cover rapid reopen, reduced motion and two Canvas
+roots, plus a bench spring moving from zero tree influence into range and back.
+`autumnSurfaceGeometry.unit.ts` checks both leaf variants against the
+exported triangles of every enabled new face, including the three gate caps.
+
+A same-fixture production profile on macOS arm64, Node 24 and headless Chromium
+149 compared current `main` plus the revised dense fixture with this feature.
+Two independent runs per side used the `autumn` scenario set, 5-second
+warmup/sample, the same quality viewport/DPR, and clean build/harness
+provenance. All per-tier budgets passed. Draw calls and triangles per **rendered**
+frame were stable across repeats; per browser frame varied with host FPS.
+
+| Tier | Entity clusters baseline → candidate | Draw calls/render baseline → candidate | Triangles/render baseline → candidate | p95 frame baseline → candidate |
+| --- | ---: | ---: | ---: | ---: |
+| low | 24 → 14 | 131 → 132 | 116,368 → 116,320 | 26.1–26.2 → 27.1–27.2 ms |
+| medium | 44 → 59 | 280 → 288 | 142,132 → 142,756 | 26.1 → 21.4–26.8 ms |
+| high | 44 → 59 | 224 → 232 | 122,895 → 123,555 | 26.1–26.2 → 27.1–27.2 ms |
+
+The final low-tier allocation contains 14 eligible clusters, below its cap of
+24; the medium and high scenes include the new reviewed surfaces.
+The new path is visibly populated in the high-tier screenshot and directly
+counted by the part-only WebGL fixture. These are headless desktop measurements;
+physical-device visual and performance checks remain separate.
 
 ## Leaf-rustle ambience
 
@@ -146,6 +222,32 @@ third-party samples. The versioned filename supports cache invalidation. Peak is
 0.42, RMS is approximately 0.0648, and both loop endpoints are zero. Browser tests
 verify decoding, one-source continuity, mute and missing-asset behavior; final
 speaker/headphone mix tuning remains a listening check.
+
+## Ground leaf gusts
+
+The airborne leaf mesh now also draws a short ground-level gust every 12 live
+seconds when blended wind reaches 0.75. One seeded event selects a visible exposed
+grass, sand or swamp block within four tiles of a mounted deciduous tree. The
+same exposure, slope, rotation and stack-height rules used by settled leaves
+place the gust just above the surface. An event lasts 1.4 seconds and uses at
+most 2/2/3/4/3 leaves on low/constrained/medium/high/custom quality. Those
+instances come out of the existing airborne-leaf cap for that frame; the
+interaction-particle pool is untouched. The mesh has no raycast target.
+
+Calm wind, heavy rain, accumulating snow, reduced motion and disabled weather
+silence gusts. A scene deadline wakes each gust; the render lease is held only
+during the burst and is released while quiet or hidden. Audio disablement
+still mutes rustle independently of the visual layer. Event selection and
+trajectory use garden, block, autumn year and elapsed-time seeds, so
+`fixedTimeSeconds=10.7` gives a repeatable active burst and `14` gives a quiet
+frame at the same frozen calendar date. The normal still fixture remains at 12.
+
+Profile metadata exposes `autumnGustCount`, `autumnGustPeakCount` and
+`autumnGustCapacity` beside the combined `autumnLeafCount` and the settled
+ground/entity counts. Run `GAME_PROFILE_SCENARIO_SET=autumn pnpm --filter garden
+profile:game` to measure the dense autumn layers together. The WebGL component
+checks exercise low/high caps, wind/rain/snow/reduced-motion combinations and
+cleanup.
 
 For QA open `/debug/profile/game?mode=autumn&profile=dense-autumn&date=2024-10-22&sound=1&leafWind=light&hud=1&debugHud=1`
 and click inside the page to unlock browser audio. Combine dates `2024-06-21`,

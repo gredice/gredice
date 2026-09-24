@@ -652,6 +652,13 @@
       "when": 1788907945077,
       "tag": "0092_normal_silverclaw",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1790196776806,
+      "tag": "0093_drop_legacy_garden_structures",
+      "breakpoints": true
     }
   ]
 }

@@ -9,11 +9,17 @@ import {
     useMemo,
     useState,
 } from 'react';
+import type {
+    PhotoAnalysisAttachment,
+    PhotoAnalysisRequest,
+} from './raisedBed/photoAnalysisChat';
 import type { SuncokretContextSuggestion } from './suncokretChatContext';
 
 export type SuncokretChatSeedMessage = {
     role: 'assistant' | 'user';
     text: string;
+    createdAt?: string;
+    photoAnalysis?: PhotoAnalysisAttachment;
 };
 
 /**
@@ -34,6 +40,7 @@ export type SuncokretChatTarget = {
     positionIndex: number | null;
     raisedBedId: number | null;
     seed?: SuncokretChatSeed;
+    photoAnalysis?: PhotoAnalysisRequest;
     uiContext: SuncokretUiContext;
 };
 
@@ -50,12 +57,24 @@ const SuncokretChatContext = createContext<SuncokretChatController | null>(
     null,
 );
 
-export function SuncokretChatProvider({ children }: PropsWithChildren) {
+export function SuncokretChatProvider({
+    children,
+    gardenId,
+}: PropsWithChildren<{ gardenId: number | null }>) {
+    const [previousGardenId, setPreviousGardenId] = useState(gardenId);
     const [open, setOpen] = useState(false);
     const [target, setTarget] = useState<SuncokretChatTarget | null>(null);
     const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(
         null,
     );
+
+    // Garden changes end the retained context before any trigger can reopen it.
+    if (previousGardenId !== gardenId) {
+        setPreviousGardenId(gardenId);
+        setTarget(null);
+        setAnchorElement(null);
+        setOpen(false);
+    }
 
     const closeChat = useCallback(() => setOpen(false), []);
     const openChat = useCallback(
@@ -73,11 +92,11 @@ export function SuncokretChatProvider({ children }: PropsWithChildren) {
                 return;
             }
 
-            setTarget(null);
+            if (!target?.photoAnalysis) setTarget(null);
             setAnchorElement(nextAnchorElement);
             setOpen(true);
         },
-        [open],
+        [open, target],
     );
     const value = useMemo(
         () => ({

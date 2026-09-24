@@ -1,9 +1,14 @@
 import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
-import { useMemo } from 'react';
+import { type ReactNode, useMemo } from 'react';
 import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
-import { currentGardenKeys } from '../../../packages/game/src/hooks/useCurrentGarden';
+import {
+    currentGardenKeys,
+    useCurrentGarden,
+} from '../../../packages/game/src/hooks/useCurrentGarden';
+import { gardenAccountGroupsKeys } from '../../../packages/game/src/hooks/useGardenAccountGroups';
 import { useShoppingCartQueryKey } from '../../../packages/game/src/hooks/useShoppingCart';
+import { RaisedBedDiaryAiAction } from '../../../packages/game/src/hud/raisedBed/RaisedBedDiaryAiAction';
 import { SuncokretChatHud } from '../../../packages/game/src/hud/SuncokretChatHud';
 import {
     SuncokretChatProvider,
@@ -15,6 +20,7 @@ import {
     createGameState,
     GameStateContext,
 } from '../../../packages/game/src/useGameState';
+import { useCurrentGardenIdParam } from '../../../packages/game/src/useUrlState';
 import {
     allSorts,
     buildField,
@@ -121,14 +127,35 @@ function createQueryClient() {
     });
     queryClient.setQueryData(
         ['gardens'],
-        [{ id: gardenId, name: garden.name, isSandbox: false }],
+        [
+            { id: gardenId, name: garden.name, isSandbox: false },
+            { id: 2, name: 'Drugi vrt', isSandbox: false },
+        ],
     );
     queryClient.setQueryData(currentGardenKeys('summer', gardenId), garden);
+    queryClient.setQueryData(gardenAccountGroupsKeys, [
+        {
+            accountId: 'review-account',
+            isCurrent: true,
+            gardens: [
+                { id: gardenId, name: garden.name, isSandbox: false },
+                { id: 2, name: 'Drugi vrt', isSandbox: false },
+            ],
+        },
+    ]);
+    queryClient.setQueryData(currentGardenKeys('summer', 2), {
+        ...garden,
+        id: 2,
+        name: 'Drugi vrt',
+        raisedBeds: [],
+        stacks: [],
+    });
     queryClient.setQueryData(
         ['operations'],
         [wateringOperation, resistanceOperation],
     );
     queryClient.setQueryData(['sorts'], recommendationSorts);
+    queryClient.setQueryData(['currentUser'], { id: 'review-user' });
     return queryClient;
 }
 
@@ -147,7 +174,46 @@ function ShoppingCartQueryProbe() {
     return <output aria-label="Verzija košarice">{data}</output>;
 }
 
+function ReviewContainer({
+    inModal,
+    children,
+}: {
+    inModal: boolean;
+    children: ReactNode;
+}) {
+    return inModal ? (
+        <GameModal open title="Dnevnik gredice">
+            {children}
+        </GameModal>
+    ) : (
+        children
+    );
+}
+
+function ChatProvider({ children }: { children: ReactNode }) {
+    const { data: currentGarden } = useCurrentGarden();
+    return (
+        <SuncokretChatProvider gardenId={currentGarden?.id ?? null}>
+            {children}
+        </SuncokretChatProvider>
+    );
+}
+
+function GardenSwitch() {
+    const [, setGardenId] = useCurrentGardenIdParam();
+    return (
+        <button type="button" onClick={() => void setGardenId(2)}>
+            Otvori drugi vrt
+        </button>
+    );
+}
+
 export function SuncokretChatHudStory({
+    reviewImageUrls = ['/web-app-manifest-192x192.png'],
+    review = false,
+    reviewInModal = false,
+    switchGarden = false,
+    freshReview = false,
     contextTarget,
     debug = false,
     fieldUiTarget,
@@ -155,6 +221,11 @@ export function SuncokretChatHudStory({
     observeShoppingCart = false,
     settingsSection,
 }: {
+    reviewImageUrls?: string[];
+    review?: boolean;
+    reviewInModal?: boolean;
+    switchGarden?: boolean;
+    freshReview?: boolean;
     contextTarget?: SuncokretChatTarget;
     debug?: boolean;
     fieldUiTarget?: SuncokretChatTarget;
@@ -192,7 +263,46 @@ export function SuncokretChatHudStory({
                             enableSuncokretDebugFlag: debug,
                         }}
                     >
-                        <SuncokretChatProvider>
+                        <ChatProvider>
+                            {switchGarden && <GardenSwitch />}
+                            {review && (
+                                <ReviewContainer inModal={reviewInModal}>
+                                    <RaisedBedDiaryAiAction
+                                        gardenId={gardenId}
+                                        raisedBedId={raisedBedId}
+                                        positionIndex={1}
+                                        entryName="Fotografiranje gredice"
+                                        imageUrls={reviewImageUrls}
+                                        referenceDate="2026-09-22T12:00:00Z"
+                                        historyEntries={
+                                            freshReview
+                                                ? []
+                                                : [
+                                                      {
+                                                          id: 501,
+                                                          description:
+                                                              '## Sažetak stanja\nGrah ima zrele mahune.',
+                                                          timestamp: new Date(
+                                                              '2026-09-22T12:00:00Z',
+                                                          ),
+                                                          imageUrls:
+                                                              reviewImageUrls,
+                                                      },
+                                                      {
+                                                          id: 500,
+                                                          description:
+                                                              '## Prethodna analiza\nGrah raste.',
+                                                          timestamp: new Date(
+                                                              '2026-09-21T12:00:00Z',
+                                                          ),
+                                                          imageUrls:
+                                                              reviewImageUrls,
+                                                      },
+                                                  ]
+                                        }
+                                    />
+                                </ReviewContainer>
+                            )}
                             {observeShoppingCart ? (
                                 <ShoppingCartQueryProbe />
                             ) : null}
@@ -210,7 +320,7 @@ export function SuncokretChatHudStory({
                                 />
                             ) : null}
                             <SuncokretChatHud />
-                        </SuncokretChatProvider>
+                        </ChatProvider>
                     </GameFlagsContext.Provider>
                 </GameStateContext.Provider>
             </ReactQuery.QueryClientProvider>

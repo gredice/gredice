@@ -221,7 +221,7 @@ function WeatherHudTestProviders({
             <NuqsTestingAdapter>
                 <GameStateContext.Provider value={gameStore}>
                     <GameFlagsContext.Provider value={{}}>
-                        <SuncokretChatProvider>
+                        <SuncokretChatProvider gardenId={currentGarden.id}>
                             {children}
                         </SuncokretChatProvider>
                     </GameFlagsContext.Provider>

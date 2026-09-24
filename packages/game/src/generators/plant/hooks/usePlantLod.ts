@@ -10,6 +10,8 @@ import {
     useState,
 } from 'react';
 import * as THREE from 'three';
+import type { CameraFrame } from '../../../spatial/cameraFrame';
+import { useCameraFrame } from '../../../spatial/useCameraFrame';
 import { useGameState } from '../../../useGameState';
 import {
     type PlantLodLevel,
@@ -37,14 +39,14 @@ function getOrthographicCameraZoom(camera: THREE.Camera) {
 
 function resolvePlantVisibility({
     approximatePlantHeight,
-    camera,
+    frame,
     cullOffscreen,
     visibilityMargin,
     viewportHeight,
     worldPosition,
 }: {
     approximatePlantHeight: number;
-    camera: THREE.Camera;
+    frame: CameraFrame;
     cullOffscreen: boolean;
     visibilityMargin: number;
     viewportHeight: number;
@@ -54,7 +56,7 @@ function resolvePlantVisibility({
         return true;
     }
 
-    const projected = worldPosition.clone().project(camera);
+    const projected = frame.project(worldPosition, new THREE.Vector3());
     if (
         !Number.isFinite(projected.x) ||
         !Number.isFinite(projected.y) ||
@@ -81,8 +83,14 @@ export function usePlantLodState(
     }: PlantLodOptions = {},
 ) {
     const camera = useThree((state) => state.camera);
+    const readCameraFrame = useCameraFrame();
+    const evaluatedFrameRef = useRef<{
+        frame: CameraFrame;
+        version: number;
+    } | null>(null);
     const viewport = useThree((state) => state.viewport);
     const gameCamera = useGameState((state) => state.gameCamera);
+    const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
     const worldPosition = useMemo(() => new THREE.Vector3(), []);
     const [lodState, setLodState] = useState<PlantLodState>(() => ({
         level: cullOffscreen ? 'far' : resolvePlantLodLevel(1),
@@ -97,6 +105,8 @@ export function usePlantLodState(
     }, [lodState]);
 
     const updateLod = useCallback(() => {
+        const frame = readCameraFrame();
+        evaluatedFrameRef.current = { frame, version: frame.version };
         const object = objectRef.current;
         if (!object) {
             return;
@@ -113,7 +123,7 @@ export function usePlantLodState(
             Math.max(approximatePlantHeight, 0.25) / viewportHeight;
         const visible = resolvePlantVisibility({
             approximatePlantHeight,
-            camera,
+            frame,
             cullOffscreen,
             visibilityMargin,
             viewportHeight,
@@ -148,6 +158,7 @@ export function usePlantLodState(
         camera,
         cullOffscreen,
         objectRef,
+        readCameraFrame,
         viewport,
         visibilityMargin,
         worldPosition,
@@ -164,12 +175,18 @@ export function usePlantLodState(
     }, [gameCamera, updateLod]);
 
     useFrame(() => {
-        if (gameCamera) {
+        // Overview changes already publish through the camera subscription.
+        // Avatar movement writes the camera directly and needs this fallback.
+        if (gameCamera && gardenAvatarView === 'overview') return;
+        const frame = readCameraFrame();
+        if (
+            gameCamera &&
+            evaluatedFrameRef.current?.frame === frame &&
+            evaluatedFrameRef.current.version === frame.version
+        )
             return;
-        }
-
         updateLod();
-    });
+    }, -90);
 
     return lodState;
 }

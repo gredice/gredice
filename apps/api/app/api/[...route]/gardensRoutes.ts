@@ -88,7 +88,6 @@ import {
     isPlantStatusEffectiveDateAllowed,
     knownEvents,
     knownEventTypes,
-    listGardenStructures,
     maxNotificationReadBatchSize,
     PublicGardenLikeTargetNotFoundError,
     queueGardenPreviewBlobDeletion,
@@ -130,7 +129,6 @@ import {
     gardenBlockPurchaseParamSchema,
 } from '../../../lib/garden/gardenBlockPurchaseSchemas';
 import { storeGardenBlockInGardenBoxForAccount } from '../../../lib/garden/gardenBoxBlockStorageService';
-import { getGardenBuildingSystemAvailability } from '../../../lib/garden/gardenBuildingSystemServerFlag';
 import {
     deleteRealGardenForAccount,
     parseGardenDeletionId,
@@ -147,13 +145,11 @@ import {
     processGardenPreviewBlobDeletions,
 } from '../../../lib/garden/gardenPreviewBlobDeletion';
 import { patchGardenStacksForAccount } from '../../../lib/garden/gardenStacksPatchService';
-import { serializeGardenStructures } from '../../../lib/garden/gardenStructureSerialization';
 import {
     countPublicGardenActivePlants,
     serializePublicRaisedBedField,
     serializeRaisedBedPlantingsForGardenView,
 } from '../../../lib/garden/publicGardenSerialization';
-import { listPublicGardenStructures } from '../../../lib/garden/publicGardenStructuresRead';
 import {
     publicGardenVisitorClientAddress,
     publicGardenVisitorPresenceBodySchema,
@@ -181,7 +177,6 @@ import {
 import { queryBooleanSchema } from '../../../lib/http/queryBoolean';
 import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
 import { getPostHogClient } from '../../../lib/posthog-server';
-import gardenStructuresRoutes from './gardenStructuresRoutes';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
 
@@ -733,7 +728,6 @@ function serializePublicGardenPreviewImages(
 
 type GardenDetail = NonNullable<Awaited<ReturnType<typeof getGarden>>>;
 type GardenBlocks = Awaited<ReturnType<typeof getGardenBlocks>>;
-type GardenStructures = Awaited<ReturnType<typeof listGardenStructures>>;
 type AppliedGardenOperations = Awaited<
     ReturnType<typeof getAppliedRaisedBedOperationsForGarden>
 >;
@@ -807,7 +801,6 @@ async function serializeGardenDetails(
     garden: GardenDetail,
     blocks: GardenBlocks,
     operations: AppliedGardenOperations,
-    structures: GardenStructures,
     options: { publicView?: boolean } = {},
 ) {
     const blockNameById = new Map(
@@ -873,17 +866,6 @@ async function serializeGardenDetails(
         garden.stacks,
         blockNameById,
     );
-    const serializedStructures = serializeGardenStructures(structures, {
-        publicView: options.publicView,
-        onInvalid: ({ code, structureId }) => {
-            console.error('Skipped invalid garden structure serialization', {
-                code,
-                gardenId: garden.id,
-                structureId,
-            });
-        },
-    });
-
     return {
         id: garden.id,
         name: garden.name,
@@ -897,7 +879,6 @@ async function serializeGardenDetails(
         latitude: garden.farm.latitude,
         longitude: garden.farm.longitude,
         stacks: serializeGardenStacks(garden, blocks),
-        structures: serializedStructures,
         raisedBeds: garden.raisedBeds.map((raisedBed) => ({
             id: raisedBed.id,
             name: raisedBed.name,
@@ -953,18 +934,12 @@ async function getAuthorizedGardenPreviewSource(
         return null;
     }
 
-    const [blocks, operations, structures] = await Promise.all([
+    const [blocks, operations] = await Promise.all([
         getGardenBlocks(gardenId),
         getAppliedRaisedBedOperationsForGarden(garden.accountId, gardenId),
-        listGardenStructures(gardenId),
     ]);
 
-    const details = await serializeGardenDetails(
-        garden,
-        blocks,
-        operations,
-        structures,
-    );
+    const details = await serializeGardenDetails(garden, blocks, operations);
     return {
         details,
         garden,
@@ -1086,7 +1061,6 @@ async function getGardenQueuedTasks(garden: GardenDetail) {
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .route('/', featuredPublicGardensRoute(getFeaturedPublicGardens))
-    .route('/:gardenId/structures', gardenStructuresRoutes)
     .get(
         '/',
         describeRoute({
@@ -2150,11 +2124,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             return context.json({
                 ...source.details,
-                // The managed Garden flag controls discovery, but mutation
-                // authority remains fail-closed in this API deployment.
-                gardenBuildingSystem: getGardenBuildingSystemAvailability(
-                    source.garden.isSandbox,
-                ),
                 previewSourceRevision: source.sourceRevision,
             });
         },
@@ -2187,19 +2156,17 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
-            const [operations, queuedTasks, structures] = await Promise.all([
+            const [operations, queuedTasks] = await Promise.all([
                 getAppliedRaisedBedOperationsForGarden(
                     garden.accountId,
                     gardenIdNumber,
                 ),
                 getGardenQueuedTasks(garden),
-                listPublicGardenStructures(gardenIdNumber),
             ]);
             const gardenDetails = await serializeGardenDetails(
                 garden,
                 blocks,
                 operations,
-                structures,
                 { publicView: true },
             );
             const {
@@ -2364,7 +2331,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId',
         describeRoute({
             description:
-                'Delete a garden accessible to the current user. Sandbox gardens are deleted completely, including related blocks, raised beds, notifications, operations, cart rows, transactions, and events. Real gardens are soft-deleted only when they have no active raised beds or structures. Large sandbox deletions may return 202 and should be retried until complete.',
+                'Delete a garden accessible to the current user. Sandbox gardens are deleted completely, including related blocks, raised beds, notifications, operations, cart rows, transactions, and events. Real gardens are soft-deleted only when they have no active raised beds. Large sandbox deletions may return 202 and should be retried until complete.',
             security: authSecurity,
         }),
         zValidator(
@@ -2410,12 +2377,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 : {
                                       activeRaisedBedCount:
                                           result.activeRaisedBedCount,
-                                  }),
-                            ...(result.activeStructureCount === undefined
-                                ? {}
-                                : {
-                                      activeStructureCount:
-                                          result.activeStructureCount,
                                   }),
                         },
                         result.status,

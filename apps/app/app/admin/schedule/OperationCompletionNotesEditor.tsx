@@ -128,7 +128,7 @@ export function OperationCompletionNotesEditor({
                 disabled={disabled}
                 rows={5}
                 maxLength={2000}
-                className="min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-hidden focus:border-primary focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-28 w-full resize-y rounded-md border border-input bg-field px-3 py-2 text-sm shadow-xs outline-hidden focus:border-primary focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             />
             <Row justifyContent="space-between" className="flex-wrap gap-2">
                 <Typography level="body3" className="text-muted-foreground">

@@ -638,7 +638,7 @@ export function WallpaperStudio() {
                             <label className="grid gap-2 text-sm font-medium">
                                 Vrt
                                 <select
-                                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                                    className="h-10 w-full rounded-md border border-input bg-field px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                                     disabled={isBusy}
                                     onChange={(event) => {
                                         const value = Number.parseInt(
@@ -701,7 +701,7 @@ export function WallpaperStudio() {
                                 Veličina
                                 <select
                                     aria-label="Veličina pozadine"
-                                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                                    className="h-10 w-full rounded-md border border-input bg-field px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                                     disabled={isBusy}
                                     onChange={(event) => {
                                         const selectedSizeKey =

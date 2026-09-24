@@ -1,5 +1,5 @@
 import { Html } from '@react-three/drei';
-import { type ReactNode, Suspense, useEffect, useMemo } from 'react';
+import { type ReactNode, Suspense, useEffect, useMemo, useRef } from 'react';
 import {
     Color,
     DoubleSide,
@@ -22,10 +22,7 @@ import { getRaisedBedFootprintSegments } from '../utils/raisedBedBlocks';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useWaterBlockMaterial } from './BlockWater';
 import { getCactusVariantConfig } from './Cactus';
-import {
-    chunkMeshInstances,
-    type MeshInstanceChunk,
-} from './chunkedMeshGeometry';
+import type { MeshInstanceChunk } from './chunkedMeshGeometry';
 import { dryGroundBaseColor } from './dryGroundPalette';
 import {
     type EntityBlockInstance,
@@ -41,6 +38,11 @@ import {
 import { fenceExtensionName, fenceVariantNames } from './Fence';
 import type { FenceConnectionShape } from './fenceConnections';
 import { GardenFlowerModel } from './helpers/GardenFlowerModel';
+import {
+    gardenBoxLidHingePosition,
+    gardenBoxOpenLidRotation,
+    gardenBoxRootQuarterTurns,
+} from './helpers/gardenBoxLidTransform';
 import {
     type GroundPatchSurface,
     useGroundPatchMaterial,
@@ -60,8 +62,14 @@ import {
     getRaisedBedSoilWetPatches,
     resolveRaisedBedWateringVisualRewards,
 } from './raisedBed/raisedBedSoilWetPatches';
+import {
+    waterSideInstancesEqual,
+    waterSideNeighbors,
+    waterTopInstancesEqual,
+} from './retainedWaterChunks';
 import { stoneFenceExtensionNames, stoneFenceVariantNames } from './StoneFence';
 import { swampGroundBaseColor } from './swampGroundPalette';
+import { useRetainedMeshChunks } from './useRetainedMeshChunks';
 import {
     whiteFenceExtensionName,
     whiteFencePoleName,
@@ -89,7 +97,6 @@ import {
 } from './waterBlockNames';
 import { isWaterBlockTopSurfaceVisible } from './waterBlockSurface';
 import {
-    chunkWaterTopInstances,
     createWaterTopChunkGeometry,
     type WaterTopChunkInstance,
 } from './waterChunkGeometry';
@@ -898,10 +905,7 @@ function WaterBlockTopChunks({
     instances: StyledWaterTopChunkInstance[];
     style: WaterBlockStyle;
 }) {
-    const chunks = useMemo(
-        () => chunkWaterTopInstances(instances),
-        [instances],
-    );
+    const chunks = useRetainedMeshChunks(instances, waterTopInstancesEqual);
     const material = useWaterBlockMaterial(
         mergedWaterTopFoamEdges,
         false,
@@ -974,7 +978,7 @@ function WaterBlockMergedSides({
             useShoreDepthAttribute: true,
         },
     );
-    const chunks = useMemo(() => chunkMeshInstances(instances), [instances]);
+    const chunks = useRetainedMeshChunks(instances, waterSideInstancesEqual);
 
     return chunks.map((chunk) => (
         <WaterBlockMergedSideChunk
@@ -995,12 +999,23 @@ function WaterBlockMergedSideChunk({
     chunk: MeshInstanceChunk<WaterBlockInstance>;
     material: ReturnType<typeof useWaterBlockMaterial>;
 }) {
+    const previousNeighbors = useRef<WaterBlockInstance[]>([]);
+    const neighbors = waterSideNeighbors(chunk.instances, allInstances);
+    if (
+        neighbors.length !== previousNeighbors.current.length ||
+        !neighbors.every((neighbor, index) =>
+            waterSideInstancesEqual(neighbor, previousNeighbors.current[index]),
+        )
+    ) {
+        previousNeighbors.current = neighbors;
+    }
+    const retainedNeighbors = previousNeighbors.current;
     const geometry = useMemo(
         () =>
             createMergedWaterSideGeometry(chunk.instances, {
-                neighborInstances: allInstances,
+                neighborInstances: retainedNeighbors,
             }),
-        [allInstances, chunk.instances],
+        [retainedNeighbors, chunk.instances],
     );
     const hasSideFaces = (geometry.getIndex()?.count ?? 0) > 0;
 
@@ -1884,7 +1899,12 @@ function GardenBoxInstances({
     const instances = useEntityBlockInstances({
         name: 'GardenBox',
         stacks,
-    })?.map((instance) => mapInstanceRotation(instance, instance.rotation + 2));
+    })?.map((instance) =>
+        mapInstanceRotation(
+            instance,
+            instance.rotation + gardenBoxRootQuarterTurns,
+        ),
+    );
     const hoveredGardenBoxBlockId = useGameState(
         (state) => state.activeDragPreview?.hoveredGardenBoxBlockId ?? null,
     );
@@ -1924,7 +1944,7 @@ function GardenBoxInstances({
                 instances={closedLidInstances}
                 geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
                 material={materials[planksMaterialName]}
-                localPosition={[0, 0.6, -0.38]}
+                localPosition={gardenBoxLidHingePosition}
                 castShadow={false}
                 renderRainWetOverlay
                 snow={snowPresets.giftBox}
@@ -1935,8 +1955,8 @@ function GardenBoxInstances({
                 instances={openLidInstances}
                 geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
                 material={materials[planksMaterialName]}
-                localPosition={[0, 0.6, -0.38]}
-                localRotation={[-Math.PI / 2, 0, 0]}
+                localPosition={gardenBoxLidHingePosition}
+                localRotation={gardenBoxOpenLidRotation}
                 castShadow={false}
                 renderRainWetOverlay
                 snow={snowPresets.giftBox}
@@ -2065,8 +2085,10 @@ function GardenBoxHoverOutlines({
                     </mesh>
                     <mesh
                         geometry={nodes.GardenBox_Lid_HingeOrigin.geometry}
-                        position={[0, 0.6, -0.38]}
-                        rotation={lidOpen ? [-Math.PI / 2, 0, 0] : undefined}
+                        position={gardenBoxLidHingePosition}
+                        rotation={
+                            lidOpen ? gardenBoxOpenLidRotation : undefined
+                        }
                         raycast={() => null}
                     >
                         <meshBasicMaterial visible={false} />

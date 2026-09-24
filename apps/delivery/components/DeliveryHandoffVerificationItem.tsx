@@ -224,7 +224,7 @@ export function DeliveryHandoffVerificationItem({
                         <label className="min-w-0 flex-1 text-xs font-medium">
                             Razlog preskakanja
                             <select
-                                className="mt-1 h-11 min-w-11 w-full rounded-md border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+                                className="mt-1 h-11 min-w-11 w-full rounded-md border bg-field px-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
                                 value={skipReason}
                                 disabled={actionsDisabled}
                                 aria-label={`Razlog preskakanja za ${identityLabel}`}

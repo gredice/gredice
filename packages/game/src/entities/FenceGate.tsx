@@ -18,6 +18,7 @@ import {
     isFenceGateBlockName,
 } from './fenceConnections';
 import { getToggledFenceGateVariant, isFenceGateOpen } from './fenceGateState';
+import { FenceGatePostsPart } from './helpers/FenceGatePostsPart';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 type FenceGateNodeName = Extract<
@@ -90,6 +91,9 @@ export function FenceGate({ stack, block, rotation }: EntityInstanceProps) {
         Boolean(state.activeDragPreview),
     );
     const currentStackHeight = useStackHeight(stack, block);
+    const covered = stack.blocks
+        .slice(stack.blocks.indexOf(block) + 1)
+        .some((above) => above.name.startsWith('Block_'));
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const open = isFenceGateOpen(block);
     const requestAnimatedShadowRefresh = useCallback(() => {
@@ -135,21 +139,14 @@ export function FenceGate({ stack, block, rotation }: EntityInstanceProps) {
             {config.postsNodeNames.map((nodeName) => {
                 const node = nodes[nodeName];
                 return (
-                    <mesh
+                    <FenceGatePostsPart
                         key={nodeName}
-                        castShadow
-                        receiveShadow
-                        geometry={node.geometry}
-                        material={node.material}
-                    >
-                        <SnowOverlay
-                            geometry={node.geometry}
-                            maxThickness={config.snowThickness}
-                            slopeExponent={2.9}
-                            noiseScale={3.3}
-                        />
-                        <RainWetOverlay geometry={node.geometry} />
-                    </mesh>
+                        node={node}
+                        nodeName={nodeName}
+                        blockId={block.id}
+                        covered={covered}
+                        snowThickness={config.snowThickness}
+                    />
                 );
             })}
             <animated.group

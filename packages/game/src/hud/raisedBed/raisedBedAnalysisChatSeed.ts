@@ -1,5 +1,6 @@
 import type { SuncokretChatSeed } from '../SuncokretChatProvider';
 import type { SuncokretContextSuggestion } from '../suncokretChatContext';
+import type { PhotoAnalysisAttachment } from './photoAnalysisChat';
 
 const raisedBedAnalysisSuggestions: SuncokretContextSuggestion[] = [
     {
@@ -39,11 +40,15 @@ function formatAnalysisDate(value: Date | string | null | undefined) {
  */
 export function buildRaisedBedAnalysisChatSeed({
     analysisMarkdown,
+    analyzedAt,
+    photoAnalysis,
     id,
     positionIndex,
     referenceDate,
 }: {
     analysisMarkdown: string;
+    analyzedAt?: Date | null;
+    photoAnalysis?: PhotoAnalysisAttachment;
     id: string;
     positionIndex?: number;
     referenceDate?: Date | string | null;
@@ -63,9 +68,22 @@ export function buildRaisedBedAnalysisChatSeed({
         messages: [
             {
                 role: 'assistant',
+                photoAnalysis,
+                createdAt:
+                    analyzedAt && !Number.isNaN(analyzedAt.getTime())
+                        ? analyzedAt.toISOString()
+                        : undefined,
                 text: `${intro}\n\n${analysisMarkdown}`,
             },
         ],
         suggestions: raisedBedAnalysisSuggestions,
     };
+}
+
+/** A saved analysis has one durable conversation per user; the API still enforces ownership. */
+export function getRaisedBedAnalysisConversationId(
+    analysisId: number,
+    userId: string,
+) {
+    return `analysis-${analysisId}-${userId}`;
 }

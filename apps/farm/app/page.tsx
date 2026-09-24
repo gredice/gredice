@@ -1,3 +1,4 @@
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import { getUser } from '@gredice/storage';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Settings } from '@gredice/ui/icons';
@@ -38,8 +39,9 @@ async function FarmTodayDashboard({
             return null;
         }),
     ]);
-    const displayName =
-        dbUser?.displayName ?? dbUser?.userName ?? fallbackDisplayName;
+    const displayName = safeUserDisplayName(
+        dbUser?.displayName ?? dbUser?.userName ?? fallbackDisplayName,
+    );
 
     return (
         <FarmTodayView

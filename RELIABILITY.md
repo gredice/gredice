@@ -70,19 +70,14 @@ and transport health even when the associated HTTP request succeeded.
 Run its isolated regression without a database:
 `pnpm --filter @gredice/storage exec node --import tsx --test --conditions=react-server tests/neonStoragePool.node.spec.ts`.
 
-Two public-garden reads retry once when an awaited query fails with a Neon
-`ErrorEvent`, a transport code, or a PostgreSQL connection exception:
-
-- one page of operation-history hydration, reported as
-  `hydrate-garden-operation-events` with bounded query counts and the garden ID;
-- the active-structure list, reported as `list-public-garden-structures` with
-  the garden ID.
-
-The pool discards the failed active connection and the retry checks out a
-replacement; it does not reset the shared pool. Stable
-`storage.database.read.retry`, `.recovered`, and `.failed` events omit SQL,
-aggregate IDs, messages, URLs, stacks, clients, and causes. Other reads and every
-write remain non-retrying.
+The public-garden operation-history read retries one page once when an awaited
+query fails with a Neon `ErrorEvent`, a transport code, or a PostgreSQL
+connection exception. It is reported as `hydrate-garden-operation-events` with
+bounded query counts and the garden ID. The pool discards the failed active
+connection and the retry checks out a replacement; it does not reset the shared
+pool. Stable `storage.database.read.retry`, `.recovered`, and `.failed` events
+omit SQL, aggregate IDs, messages, URLs, stacks, clients, and causes. Other reads
+and every write remain non-retrying.
 
 - Keep console messages stable and action-oriented; put request, account, garden, operation, and entity IDs in the second argument object.
 - Include the caught `error` in that context object when logging failed critical-path work, except for the explicitly sanitized Neon diagnostics above.

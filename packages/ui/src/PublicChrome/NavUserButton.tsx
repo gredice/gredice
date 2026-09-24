@@ -1,5 +1,6 @@
 'use client';
 
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import { SquareArrowRightEnter } from '../icons';
 import { NavigatingButton } from '../NavigatingButton';
 import { UserAvatarLink } from '../UserAvatar';
@@ -29,7 +30,9 @@ export function NavUserButton({
                         }
                         avatarUrl={user.avatarUrl}
                         achievementCount={user.achievementCount}
-                        displayName={user.displayName ?? user.userName}
+                        displayName={safeUserDisplayName(
+                            user.displayName ?? user.userName,
+                        )}
                         animate
                     />
                 </span>

@@ -1,5 +1,6 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { createRequire } from 'node:module';
-import type { PGlite } from '@electric-sql/pglite';
+import type { PGlite, Transaction } from '@electric-sql/pglite';
 import { Pool } from '@neondatabase/serverless';
 import {
     type NeonDatabase,
@@ -74,11 +75,78 @@ function loadPgliteMigrator() {
     return migratorModule.migrate;
 }
 
+const PGLITE_TRANSACTION_SCOPE_WAIT_MS = 10_000;
+const pgliteTransactionScope = new AsyncLocalStorage<{
+    settled: Promise<void>;
+}>();
+
+// PGlite serializes every call on one connection. A call made through the
+// shared client from inside a transaction callback (instead of through `tx`)
+// cannot run until that transaction ends. Hold such calls here until the
+// transaction settles: deliberately unawaited competing writers then run as
+// before, while a call the transaction awaits (a deadlock) is rejected after a
+// deadline with the offending stack and never reaches PGlite, so it cannot
+// execute after the transaction rolls back.
+function deferUntilPgliteTransactionSettles<T>(
+    method: string,
+    run: () => Promise<T>,
+): Promise<T> {
+    const scope = pgliteTransactionScope.getStore();
+    if (!scope) {
+        return run();
+    }
+
+    const deadlockError = new Error(
+        `PGlite ${method} on the shared storage client waited ${PGLITE_TRANSACTION_SCOPE_WAIT_MS}ms inside an open transaction. ` +
+            'PGlite has a single connection, so an awaited query here deadlocks; ' +
+            'pass the transaction client through or run the query before the transaction.',
+    );
+    return new Promise<T>((resolve, reject) => {
+        let timedOut = false;
+        const timeout = setTimeout(() => {
+            timedOut = true;
+            reject(deadlockError);
+        }, PGLITE_TRANSACTION_SCOPE_WAIT_MS);
+        void scope.settled.then(() => {
+            clearTimeout(timeout);
+            if (!timedOut) {
+                run().then(resolve, reject);
+            }
+        });
+    });
+}
+
+function runInPgliteTransactionScope<T>(run: () => Promise<T>): Promise<T> {
+    let settle: () => void = () => {};
+    const settled = new Promise<void>((resolve) => {
+        settle = resolve;
+    });
+    const result = pgliteTransactionScope.run({ settled }, run);
+    result.then(settle, settle);
+    return result;
+}
+
+function guardPgliteTransactionDeadlocks(client: PGlite) {
+    const transaction = client.transaction.bind(client);
+    const query = client.query.bind(client);
+    const exec = client.exec.bind(client);
+
+    client.transaction = <T>(callback: (tx: Transaction) => Promise<T>) =>
+        deferUntilPgliteTransactionSettles('transaction', () =>
+            runInPgliteTransactionScope(() => transaction(callback)),
+        );
+    client.query = <T>(...args: Parameters<PGlite['query']>) =>
+        deferUntilPgliteTransactionSettles('query', () => query<T>(...args));
+    client.exec = (...args: Parameters<PGlite['exec']>) =>
+        deferUntilPgliteTransactionSettles('exec', () => exec(...args));
+}
+
 function pgliteStorage() {
     if (!pgliteStorageClient) {
         console.debug('Instantiating PgliteDatabase for testing');
         const { PGlite: PGliteClient, pgliteDrizzle } = loadPgliteDriver();
         pgliteClient = new PGliteClient(getPgliteDataDir());
+        guardPgliteTransactionDeadlocks(pgliteClient);
         pgliteStorageClient = pgliteDrizzle(pgliteClient, { schema });
     }
     return pgliteStorageClient;

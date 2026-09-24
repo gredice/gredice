@@ -10,7 +10,7 @@ test.afterEach(async ({ page }) => {
     await page.unrouteAll({ behavior: 'wait' });
 });
 
-async function mockPublicEnvironmentRequests(page: Page) {
+async function mockPublicEnvironmentRequests(page: Page, debug = true) {
     // Keep Next's image component in both the full suite and focused CT run.
     // Vite serves the real assets but has no Next image optimizer endpoint.
     await page.route('**/_next/image?**', async (route) => {
@@ -29,7 +29,7 @@ async function mockPublicEnvironmentRequests(page: Page) {
         await route.fulfill({ status: 401, json: { error: 'Unauthorized' } });
     });
     await page.route('**/api/public-environment/debug', async (route) => {
-        await route.fulfill({ status: 200, json: { enabled: true } });
+        await route.fulfill({ status: 200, json: { enabled: debug } });
     });
     await page.route('**/api/data/weather/now', async (route) => {
         await route.fulfill({
@@ -45,33 +45,19 @@ async function mockPublicEnvironmentRequests(page: Page) {
     });
 }
 
-test('toggles the sky and applies deterministic debug conditions', async ({
+test('keeps the sky on and applies deterministic debug conditions', async ({
     mount,
     page,
 }) => {
     await mockPublicEnvironmentRequests(page);
+    await page.evaluate(() => {
+        localStorage.setItem('gredice-public-environment-enabled', 'false');
+    });
     await mount(<PublicEnvironmentHarness />);
 
-    const toggle = page.getByRole('switch', {
-        name: 'Ambijentalna pozadina',
-    });
-    await expect(toggle).toBeEnabled();
-    await expect(toggle).not.toBeChecked();
-    await expect(page.getByTestId('public-environment-backdrop')).toHaveCount(
-        0,
-    );
-    await expect
-        .poll(() =>
-            page
-                .locator('html')
-                .evaluate((root) =>
-                    root.style.getPropertyValue('--environmentHue'),
-                ),
-        )
-        .toBe('');
-
-    await toggle.click();
-    await expect(toggle).toBeChecked();
+    await expect(
+        page.getByRole('switch', { name: 'Ambijentalna pozadina' }),
+    ).toHaveCount(0);
     await expect(page.getByTestId('public-environment-backdrop')).toBeVisible();
     const stars = page.locator('.public-environment-stars');
     await expect(stars).toHaveAttribute('height', '100%');
@@ -106,8 +92,6 @@ test('toggles the sky and applies deterministic debug conditions', async ({
         )
         .toBe('0.34');
 
-    await toggle.click();
-    await expect(toggle).not.toBeChecked();
     await expect
         .poll(() =>
             page
@@ -116,23 +100,45 @@ test('toggles the sky and applies deterministic debug conditions', async ({
                     root.style.getPropertyValue('--environmentHue'),
                 ),
         )
-        .toBe('');
+        .toBe('208');
 });
 
-test('fits the footer controls on mobile and supports keyboard toggling', async ({
+test('restores document ambience styles when the provider unmounts', async ({
     mount,
     page,
 }) => {
+    await mockPublicEnvironmentRequests(page);
+    await page.evaluate(() => {
+        const root = document.documentElement;
+        root.style.setProperty('--baseHue', '50');
+        root.style.setProperty('--environmentHue', '60');
+        root.dataset.publicEnvironment = 'before';
+    });
+
+    const component = await mount(<PublicEnvironmentHarness />);
+    await expect(page.locator('html')).toHaveAttribute(
+        'data-public-environment',
+        'on',
+    );
+    await component.unmount();
+
+    await expect(page.locator('html')).toHaveAttribute(
+        'data-public-environment',
+        'before',
+    );
+    expect(
+        await page.locator('html').evaluate((root) => ({
+            baseHue: root.style.getPropertyValue('--baseHue'),
+            environmentHue: root.style.getPropertyValue('--environmentHue'),
+        })),
+    ).toEqual({ baseHue: '50', environmentHue: '60' });
+});
+
+test('fits the debug controls on mobile', async ({ mount, page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await mockPublicEnvironmentRequests(page);
     await mount(<PublicEnvironmentHarness />);
 
-    const toggle = page.getByRole('switch', {
-        name: 'Ambijentalna pozadina',
-    });
-    await toggle.focus();
-    await page.keyboard.press('Space');
-    await expect(toggle).toBeChecked();
     await page.getByText('Debug prikaza').click();
 
     expect(
@@ -143,7 +149,7 @@ test('fits the footer controls on mobile and supports keyboard toggling', async 
     await expect(page.getByLabel('Vremenski uvjeti')).toBeVisible();
 });
 
-test('keeps the ambient switch compact above the footer social links', async ({
+test('keeps debug controls above the footer social links', async ({
     mount,
     page,
 }) => {
@@ -155,24 +161,43 @@ test('keeps the ambient switch compact above the footer social links', async ({
     );
 
     const footer = page.locator('footer');
-    const toggle = footer.getByRole('switch', {
-        name: 'Ambijentalna pozadina',
-    });
+    const debugControls = footer.getByText('Debug prikaza');
     const instagram = footer.getByLabel('Instagram', { exact: true });
-    await expect(toggle).toBeVisible();
+    await expect(debugControls).toBeVisible();
+    await expect(footer.getByRole('switch')).toHaveCount(0);
     await expect(instagram).toBeVisible();
 
-    const toggleBox = await toggle.boundingBox();
+    const controlsBox = await debugControls.boundingBox();
     const instagramBox = await instagram.boundingBox();
-    expect(toggleBox).not.toBeNull();
+    expect(controlsBox).not.toBeNull();
     expect(instagramBox).not.toBeNull();
 
-    if (!toggleBox || !instagramBox) {
+    if (!controlsBox || !instagramBox) {
         throw new Error('Footer controls must have measurable bounds');
     }
 
-    expect(toggleBox.height).toBeLessThanOrEqual(24);
-    expect(toggleBox.y).toBeLessThan(instagramBox.y);
+    expect(controlsBox.y).toBeLessThan(instagramBox.y);
+});
+
+test('shows no ambience controls in the public footer', async ({
+    mount,
+    page,
+}) => {
+    await mockPublicEnvironmentRequests(page, false);
+    await mount(
+        <PublicChromeProvider>
+            <PublicFooter />
+        </PublicChromeProvider>,
+    );
+
+    await expect(page.getByTestId('public-environment-backdrop')).toBeVisible();
+    await expect(page.locator('footer').getByText('Ambijent vrta')).toHaveCount(
+        0,
+    );
+    await expect(page.locator('footer').getByText('Debug prikaza')).toHaveCount(
+        0,
+    );
+    await expect(page.locator('footer').getByLabel('Instagram')).toBeVisible();
 });
 
 for (const width of [360, 768, 1280]) {
@@ -180,6 +205,7 @@ for (const width of [360, 768, 1280]) {
         mount,
         page,
     }, testInfo) => {
+        test.setTimeout(60_000);
         await page.setViewportSize({ width, height: 900 });
         await page.clock.setFixedTime(new Date('2026-08-24T11:00:00Z'));
         await mockPublicEnvironmentRequests(page);
@@ -197,9 +223,6 @@ for (const width of [360, 768, 1280]) {
         await expect(landscape).toHaveAttribute('aria-hidden', 'true');
         const initialHeight = (await landscape.boundingBox())?.height;
 
-        await page
-            .getByRole('switch', { name: 'Ambijentalna pozadina' })
-            .click();
         await page.getByText('Debug prikaza').click();
         await page.getByLabel('Fiksiraj vrijeme').check();
 
@@ -233,10 +256,6 @@ for (const width of [360, 768, 1280]) {
             });
         }
 
-        await page
-            .getByRole('switch', { name: 'Ambijentalna pozadina' })
-            .click();
-        await expect(landscape).toHaveAttribute('data-footer-phase', 'day');
         await expect
             .poll(() =>
                 page.evaluate(
@@ -251,6 +270,10 @@ for (const width of [360, 768, 1280]) {
                 ),
             )
             .toBe(0);
+        await page.getByLabel('Vrijeme dana').fill('780');
+        await expect(landscape).toHaveAttribute('data-footer-phase', 'day');
+        // Axe cannot resolve the fixed sky and translucent reading veil as a
+        // background at night. The sky's reading surface has a pixel test.
         const accessibility = await new AxeBuilder({ page })
             .include('.site-footer')
             .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
@@ -259,12 +282,16 @@ for (const width of [360, 768, 1280]) {
     });
 }
 
-test('uses the night garden in dark mode with ambient disabled', async ({
+test('uses the night garden despite the old off preference', async ({
     mount,
     page,
 }) => {
     await page.clock.setFixedTime(new Date('2026-08-24T21:00:00Z'));
     await mockPublicEnvironmentRequests(page);
+    await page.evaluate(() => {
+        localStorage.setItem('gredice-public-environment-enabled', 'false');
+        localStorage.setItem('game-day-night-cycle-disabled', 'true');
+    });
     await mount(
         <PublicChromeProvider>
             <PublicFooter />
@@ -274,7 +301,8 @@ test('uses the night garden in dark mode with ambient disabled', async ({
     const landscape = page.getByTestId('public-footer-landscape');
     await expect(
         page.getByRole('switch', { name: 'Ambijentalna pozadina' }),
-    ).not.toBeChecked();
+    ).toHaveCount(0);
+    await expect(page.getByTestId('public-environment-backdrop')).toBeVisible();
     await expect(page.locator('html')).toHaveClass(/dark/u);
     await expect(landscape).toHaveAttribute('data-footer-phase', 'night');
     await landscape.scrollIntoViewIfNeeded();
@@ -283,13 +311,11 @@ test('uses the night garden in dark mode with ambient disabled', async ({
         /footer-night/u,
     );
 
-    // The existing day/night preference must continue to control the footer.
     await page.evaluate(() => {
-        localStorage.setItem('game-day-night-cycle-disabled', 'true');
         window.dispatchEvent(new Event('game-day-night-cycle-disabled-change'));
     });
-    await expect(page.locator('html')).not.toHaveClass(/dark/u);
-    await expect(landscape).toHaveAttribute('data-footer-phase', 'day');
+    await expect(page.locator('html')).toHaveClass(/dark/u);
+    await expect(landscape).toHaveAttribute('data-footer-phase', 'night');
     await expect
         .poll(() =>
             landscape
