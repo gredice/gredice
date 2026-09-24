@@ -1388,7 +1388,7 @@ importers:
         version: 0.0.1
       soap:
         specifier: 1.13.0
-        version: 1.13.0(supports-color@10.2.2)
+        version: 1.13.0(supports-color@8.1.1)
       undici:
         specifier: 8.10.2
         version: 8.10.2
@@ -1618,8 +1618,8 @@ importers:
   packages/label-printer:
     dependencies:
       '@mmote/niimbluelib':
-        specifier: 0.0.1-alpha.40
-        version: 0.0.1-alpha.40
+        specifier: 0.47.0
+        version: 0.47.0
       qrcode:
         specifier: 1.5.4
         version: 1.5.4
@@ -3721,8 +3721,8 @@ packages:
   '@microsoft/tsdoc@0.17.0':
     resolution: {integrity: sha512-p68VexhnH7ojf3U27RdryUDqnKJgKaWUbCL96vJR7N0mqDuhKG5OIECk3sCPPdynxjk+yoVhRkScqtv5KQjzsw==}
 
-  '@mmote/niimbluelib@0.0.1-alpha.40':
-    resolution: {integrity: sha512-3y4u4GT5T9rDi3FOdF7MnI6muYC+gEscyp14MiBs1tFqS3zd9E5bprHphm9wJeWQbttKue9o7IQrLn6bbTFpww==}
+  '@mmote/niimbluelib@0.47.0':
+    resolution: {integrity: sha512-mcJco+GypEk7uCJWgqJYU73nAmMlpQ2fPD4pgvOdED9X1ypjTXizjuk5/EofThGcXrKZoTDGtThAqXEHh5BKLA==}
 
   '@modelcontextprotocol/sdk@1.30.0':
     resolution: {integrity: sha512-xKd8OIzlqNzcqcNumGAa6g+PW2kjD5vrpcKOnfldAUPP3j7lnqMPwlTXQm8gF+UwH72z0lqaRbjr9hqGz0eITA==}
@@ -12816,7 +12816,7 @@ snapshots:
 
   '@microsoft/tsdoc@0.17.0': {}
 
-  '@mmote/niimbluelib@0.0.1-alpha.40':
+  '@mmote/niimbluelib@0.47.0':
     dependencies:
       '@capacitor-community/bluetooth-le': 8.3.0(@capacitor/core@8.5.2)
       '@capacitor/core': 8.5.2
@@ -15468,6 +15468,7 @@ snapshots:
       debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   agent-base@6.0.2(supports-color@8.1.1):
     dependencies:
@@ -15639,19 +15640,9 @@ snapshots:
 
   axe-core@4.13.0: {}
 
-  axios-ntlm@1.4.6(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2):
+  axios-ntlm@1.4.6(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1):
     dependencies:
-      axios: 1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2)
-      des.js: 1.1.0
-      dev-null: 0.1.1
-      js-md4: 0.3.2
-    transitivePeerDependencies:
-      - debug
-      - supports-color
-
-  axios-ntlm@1.4.6(debug@4.4.3(supports-color@10.2.2))(supports-color@8.1.1):
-    dependencies:
-      axios: 1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@8.1.1)
+      axios: 1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       des.js: 1.1.0
       dev-null: 0.1.1
       js-md4: 0.3.2
@@ -15668,10 +15659,11 @@ snapshots:
     transitivePeerDependencies:
       - debug
       - supports-color
+    optional: true
 
-  axios@1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@8.1.1):
+  axios@1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1):
     dependencies:
-      follow-redirects: 1.16.0(debug@4.4.3(supports-color@10.2.2))
+      follow-redirects: 1.16.0(debug@4.4.3(supports-color@8.1.1))
       form-data: 4.0.6
       https-proxy-agent: 5.0.1(supports-color@8.1.1)
       proxy-from-env: 2.1.0
@@ -16769,6 +16761,10 @@ snapshots:
     optionalDependencies:
       debug: 4.4.3(supports-color@10.2.2)
 
+  follow-redirects@1.16.0(debug@4.4.3(supports-color@8.1.1)):
+    optionalDependencies:
+      debug: 4.4.3(supports-color@8.1.1)
+
   form-data@4.0.6:
     dependencies:
       asynckit: 0.4.0
@@ -17230,6 +17226,7 @@ snapshots:
       debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   https-proxy-agent@5.0.1(supports-color@8.1.1):
     dependencies:
@@ -19406,25 +19403,12 @@ snapshots:
 
   sisteransi@1.0.5: {}
 
-  soap@1.13.0(supports-color@10.2.2):
-    dependencies:
-      axios: 1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2)
-      axios-ntlm: 1.4.6(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2)
-      debug: 4.4.3(supports-color@10.2.2)
-      follow-redirects: 1.16.0(debug@4.4.3(supports-color@10.2.2))
-      formidable: 3.5.4
-      sax: 1.6.1
-      whatwg-mimetype: 5.0.0
-      xml-crypto: 6.3.1
-    transitivePeerDependencies:
-      - supports-color
-
   soap@1.13.0(supports-color@8.1.1):
     dependencies:
-      axios: 1.20.0(debug@4.4.3(supports-color@10.2.2))(supports-color@8.1.1)
-      axios-ntlm: 1.4.6(debug@4.4.3(supports-color@10.2.2))(supports-color@8.1.1)
+      axios: 1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      axios-ntlm: 1.4.6(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       debug: 4.4.3(supports-color@8.1.1)
-      follow-redirects: 1.16.0(debug@4.4.3(supports-color@10.2.2))
+      follow-redirects: 1.16.0(debug@4.4.3(supports-color@8.1.1))
       formidable: 3.5.4
       sax: 1.6.1
       whatwg-mimetype: 5.0.0

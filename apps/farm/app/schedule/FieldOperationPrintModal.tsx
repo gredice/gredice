@@ -3,7 +3,6 @@
 import {
     DEFAULT_HARVEST_LABEL_PRESET,
     type FieldOperationLabelData,
-    GrediceLabelPrinter,
     getLabelPrinterAvailabilityMessage,
 } from '@gredice/label-printer';
 import { Button, type ButtonProps } from '@gredice/ui/Button';
@@ -14,9 +13,8 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { type ReactNode, useEffect, useState } from 'react';
 import { FieldOperationLabelPreviewCanvas } from '../../components/labels/FieldOperationLabelPreviewCanvas';
+import { sharedLabelPrinter } from '../../components/labels/sharedLabelPrinter';
 import { LabelPrinterStatusSummary } from './LabelPrinterStatusSummary';
-
-const sharedLabelPrinter = new GrediceLabelPrinter();
 
 function getErrorMessage(error: unknown) {
     if (error instanceof Error && error.message) {
