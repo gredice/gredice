@@ -3,6 +3,22 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "AutumnShrub",
+            "source": "AutumnShrub.blend",
+            "output": "AutumnShrub.glb",
+            "version": "a02e38e13da7",
+            "preload": "lazy",
+            "objects": [
+                "AutumnShrub_Wood",
+                "AutumnShrub_FullGold",
+                "AutumnShrub_FullRusset",
+                "AutumnShrub_ThinningGold",
+                "AutumnShrub_ThinningRusset",
+                "AutumnShrub_SparseGold",
+                "AutumnShrub_SparseRusset"
+            ]
+        },
+        {
             "name": "AutumnAsterPot",
             "source": "AutumnAsterPot.blend",
             "output": "AutumnAsterPot.glb",
