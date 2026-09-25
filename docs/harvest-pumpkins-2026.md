@@ -100,8 +100,11 @@ For catalogue image regeneration, create the ignored
 `apps/www/generate/test-cases.json` from `harvestPumpkins` in `@gredice/js`,
 mapping `name` into `information.name`, retaining `information`/`attributes`,
 and setting `prices.sunflowers`. Run the standard WWW generator with
-`-g HarvestPumpkin`; repeat with `BLOCK_SNAPSHOT_CAMERA_VIEW=orthographic` and
-`BLOCK_SNAPSHOT_OUTPUT_DIRECTORY=../garden/public/assets/blocks/top-down`.
+`-g HarvestPumpkin`. For plan views, run the dedicated
+`generate/blocks-top-down-snapshots.specgen.tsx` with the same config and grep.
+Copy each generated `_1.webp` to its base `.webp` in the top-down directory.
+The orthographic option on the standard generator creates side elevations,
+so it is not the garden plan-view renderer.
 Refresh the release manifest hashes if any exported bytes change.
 
 With an explicitly configured storage environment, the importer also accepts

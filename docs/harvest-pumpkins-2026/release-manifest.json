@@ -67,7 +67,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatOrange.webp",
-          "sha256": "442d550b722ea5df67f8f7f98e5fcc1964b0272363875dd2425933cbfa2010ef"
+          "sha256": "c7ce6f84a840364ebbf858ce1616f50ee42740fd69b5d27462cbf288429c5e34"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatOrange_1.webp",
@@ -75,7 +75,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatOrange_1.webp",
-          "sha256": "442d550b722ea5df67f8f7f98e5fcc1964b0272363875dd2425933cbfa2010ef"
+          "sha256": "c7ce6f84a840364ebbf858ce1616f50ee42740fd69b5d27462cbf288429c5e34"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatOrange_2.webp",
@@ -83,7 +83,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatOrange_2.webp",
-          "sha256": "fd1948092ab3dd83edb0e246e6f293e770484174a71ac188b29e5963995aae8f"
+          "sha256": "9d2081f4df3ca689857e9eabdd9ec2db8a98a6d386d1b724877ef8dabed32f13"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatOrange_3.webp",
@@ -91,7 +91,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatOrange_3.webp",
-          "sha256": "f904ff81fcf7919ebe065b212984b967eb271c49e6993c9722763b124c5cd0d3"
+          "sha256": "41dbe595a0ebb2579f89a200edf7b65c0b1c383f20a6428a0cfbd4af23985407"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatOrange_4.webp",
@@ -99,7 +99,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatOrange_4.webp",
-          "sha256": "b643cc0325776f4a3fc84c789746b2b6cc396874cff14a5cc2c7b50e70c27064"
+          "sha256": "06e7a72aa8392b216b4bfe329b6585294adb148a8dddf935ffd56b2c44a99812"
         }
       ]
     },
@@ -135,7 +135,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatCream.webp",
-          "sha256": "b7caf642be36f79ef78d5c70280dd8330ea72fac860f61bb019da4cbe74c8411"
+          "sha256": "0902ed316f6a5dad0cfe32c0f6a1c93dde62d9532d739e401be147b917af0e61"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatCream_1.webp",
@@ -143,7 +143,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatCream_1.webp",
-          "sha256": "b7caf642be36f79ef78d5c70280dd8330ea72fac860f61bb019da4cbe74c8411"
+          "sha256": "0902ed316f6a5dad0cfe32c0f6a1c93dde62d9532d739e401be147b917af0e61"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatCream_2.webp",
@@ -151,7 +151,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatCream_2.webp",
-          "sha256": "925e54066370ae62757737b32fdadeb2386f40142e422c90d5c2dc442c1ebecc"
+          "sha256": "39852c122fb61df1279b97bab25fbdebe54f836e40788b4972149be443fd0863"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatCream_3.webp",
@@ -159,7 +159,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatCream_3.webp",
-          "sha256": "fe416456e830073a4c6a754a25620b6c602b632087f9617aa46658c877c96a87"
+          "sha256": "791b419af24b28218cab88f2215f3837cc29b55dc2fc9c183e13a69beaf20bca"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatCream_4.webp",
@@ -167,7 +167,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatCream_4.webp",
-          "sha256": "75c592779674300930ce13c9278c2b8061da30a62b42e6cde887ceeccd528053"
+          "sha256": "e912f5d9ff8cc5de78b8568596850ee8f7979d5eb6ec4eb4ba60b09434839991"
         }
       ]
     },
@@ -203,7 +203,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatGreen.webp",
-          "sha256": "e2ca9029de18e4e68da5cf2b0aed41bfad950e5d0ab40daf3452e28c0acbecf8"
+          "sha256": "a2f540e4d7d04cd4e294e4b85a629793adc0bea0f201f569fccee5a4a5c8ee64"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatGreen_1.webp",
@@ -211,7 +211,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatGreen_1.webp",
-          "sha256": "e2ca9029de18e4e68da5cf2b0aed41bfad950e5d0ab40daf3452e28c0acbecf8"
+          "sha256": "a2f540e4d7d04cd4e294e4b85a629793adc0bea0f201f569fccee5a4a5c8ee64"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatGreen_2.webp",
@@ -219,7 +219,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatGreen_2.webp",
-          "sha256": "4e7612ba17a6d2717a4d095c2307cc3e9f54e60cc2f2d46fe6978e46370a328a"
+          "sha256": "55f16446fe8b4f4cd2f82844d8206715477ff67234ed28e2d7c221eee823cd2f"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatGreen_3.webp",
@@ -227,7 +227,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatGreen_3.webp",
-          "sha256": "2d45b4c61fa3451062b3419f87b5ccc97d44532fa24a40feda0a1dad3936e0e9"
+          "sha256": "6444d4055b62e7a0f91cb7d52bae91bd78cef624f395a39da54e891f45413803"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatGreen_4.webp",
@@ -235,7 +235,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatGreen_4.webp",
-          "sha256": "8d8b283e320a7589cec3c2ea2cc2726777fae34e7667def1d557dadf04cae294"
+          "sha256": "c5f5b37c267c3e5ccc9b64227c89cb5f3da4175931d4e029f5afa0d3359c6fbf"
         }
       ]
     },
@@ -271,7 +271,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdOrange.webp",
-          "sha256": "bbe46f61b23b39960690441f38d2b8c1acab0bc4ca6bb0893480db19690c5082"
+          "sha256": "bc3a7adabc55bb311cc6f3210b2b9941a6a6fff143a8c68811699c8dcee2ff21"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdOrange_1.webp",
@@ -279,7 +279,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdOrange_1.webp",
-          "sha256": "bbe46f61b23b39960690441f38d2b8c1acab0bc4ca6bb0893480db19690c5082"
+          "sha256": "bc3a7adabc55bb311cc6f3210b2b9941a6a6fff143a8c68811699c8dcee2ff21"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdOrange_2.webp",
@@ -287,7 +287,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdOrange_2.webp",
-          "sha256": "59db543dc8e4bcd0558863e72872960bdba94f9dfd3d9413045b63f24b424f22"
+          "sha256": "67cd6875b277e5e0cc1605ca2521e74b3228ecb1f8eadda68a6e0b42bb34a8d2"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdOrange_3.webp",
@@ -295,7 +295,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdOrange_3.webp",
-          "sha256": "1db30e8419661bc7bafc5fb05168015103c9d887e178d54dffdf5ac8e8a2b6ce"
+          "sha256": "cd5d057cb053f42c305cc1ddc89eb2ab835f75321e262f0c8edb634304e4a373"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdOrange_4.webp",
@@ -303,7 +303,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdOrange_4.webp",
-          "sha256": "e50976855a99fe005f859c0553bce3e635f2a44dff97bf84caa56ed3c25f5016"
+          "sha256": "958d57a94e04cba4ab96eddf38205ab2d6a53c2092794658bad1263f120f9e7b"
         }
       ]
     },
@@ -339,7 +339,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdCream.webp",
-          "sha256": "51c04605be1472970ad4e89c7d3d34293dc9686bb5f2a319937b0a0f6e23f744"
+          "sha256": "7176f49c7622f81b46c6225fba551e63192ae7549e54bb85b425e477b2270c1e"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdCream_1.webp",
@@ -347,7 +347,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdCream_1.webp",
-          "sha256": "51c04605be1472970ad4e89c7d3d34293dc9686bb5f2a319937b0a0f6e23f744"
+          "sha256": "7176f49c7622f81b46c6225fba551e63192ae7549e54bb85b425e477b2270c1e"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdCream_2.webp",
@@ -355,7 +355,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdCream_2.webp",
-          "sha256": "3d7a7658da2fc11a27e14d3556e34b6018c5b437760e0d53bb84910994337b85"
+          "sha256": "dfe30a1743baea2408b990b4690651f3ce31fb4f682d62a619458a8015e98fba"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdCream_3.webp",
@@ -363,7 +363,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdCream_3.webp",
-          "sha256": "ab807b4a2eea23cdd73a2618c314ddd5e4e1f127c0bcadefabea16f4db6bf321"
+          "sha256": "d5d76cbce2cc34650429bf62d51e38d84060d81702995027f1f7093361d78b2d"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdCream_4.webp",
@@ -371,7 +371,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdCream_4.webp",
-          "sha256": "6cfea049f9aa8f9007d36b27ab4ba7d0ab31c74fb7c6c27882fdc7fd43c136bc"
+          "sha256": "5ca2857025049307c533f3ff8772547ecf18ba68ba336e71f9f44955029c2791"
         }
       ]
     },
@@ -407,7 +407,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdGreen.webp",
-          "sha256": "60f461009f2a5a587361de41b1d8bb47c145eac728f8c763c37bd5a240b44ce1"
+          "sha256": "0440bc86598ee9b165e4f74d7156b3d5d6efbc8a8719265a035227393fa4501a"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdGreen_1.webp",
@@ -415,7 +415,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdGreen_1.webp",
-          "sha256": "60f461009f2a5a587361de41b1d8bb47c145eac728f8c763c37bd5a240b44ce1"
+          "sha256": "0440bc86598ee9b165e4f74d7156b3d5d6efbc8a8719265a035227393fa4501a"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdGreen_2.webp",
@@ -423,7 +423,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdGreen_2.webp",
-          "sha256": "eb1da919885e94b79ab7d25d1b8fb4d3a0e9647849b6711100a7f4f08ac44322"
+          "sha256": "e6475afc9c3c257a44ab0a42be43e08d06927f6232e23d84bca3425b10395945"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdGreen_3.webp",
@@ -431,7 +431,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdGreen_3.webp",
-          "sha256": "934db060e98870a78b59e7983d0f0ff78266b457eed29ea59476d53b31626a24"
+          "sha256": "d22a235b1766a8613793bf2ef49178092e01493c8f1352ee1d5c13a7840031da"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdGreen_4.webp",
@@ -439,7 +439,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdGreen_4.webp",
-          "sha256": "f75d5d4a7771aa9549a957225627fdc0ccf2b3508d97815c68c61e598976f537"
+          "sha256": "dcd9df3755b937e37c04c2d4f9d4e4fc5f4b063d883372921fa9822edc9166f8"
         }
       ]
     },
@@ -475,7 +475,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupOrange.webp",
-          "sha256": "e18875bcbe33b26549716ed073f62aaeb497e37f18c0084652f995d3799e3857"
+          "sha256": "9192332a3acd38d97b1ff380c4f3fd540db12835b9637b0b63ce3c1a01333022"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupOrange_1.webp",
@@ -483,7 +483,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupOrange_1.webp",
-          "sha256": "e18875bcbe33b26549716ed073f62aaeb497e37f18c0084652f995d3799e3857"
+          "sha256": "9192332a3acd38d97b1ff380c4f3fd540db12835b9637b0b63ce3c1a01333022"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupOrange_2.webp",
@@ -491,7 +491,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupOrange_2.webp",
-          "sha256": "c242cfe73c57465626b522985d0c678661c85f9fc9ec37acf64b5d4fbf12af72"
+          "sha256": "6e173a29e4587b76c3de5717f963f5f44072ba60a12e358d2c3ac4666fc0722a"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupOrange_3.webp",
@@ -499,7 +499,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupOrange_3.webp",
-          "sha256": "65581e3f2eba5b79d7e146283cfb5bb99a24f295ffb4c8731bc74be0cf22ffb0"
+          "sha256": "4586541b063ed31597100b0464337daf7c76ef10beee810105e22859adb60802"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupOrange_4.webp",
@@ -507,7 +507,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupOrange_4.webp",
-          "sha256": "540436700451c5a58c9e501db1440e45f37ebd2ebee01f103dccd16aaac3380f"
+          "sha256": "1cbf73dd859bc30bb48c46115f7fe22e4ec9dee9486c277e0b4c3d367e504d8c"
         }
       ]
     },
@@ -543,7 +543,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupCream.webp",
-          "sha256": "ab2c381c6593524efa72f315057a9a083809cbd30519e29d79b4d0afbe331859"
+          "sha256": "afe64b0316e4e570b2c54275cbd17d716605042862bce2e028cf0463b51b06c8"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupCream_1.webp",
@@ -551,7 +551,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupCream_1.webp",
-          "sha256": "ab2c381c6593524efa72f315057a9a083809cbd30519e29d79b4d0afbe331859"
+          "sha256": "afe64b0316e4e570b2c54275cbd17d716605042862bce2e028cf0463b51b06c8"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupCream_2.webp",
@@ -559,7 +559,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupCream_2.webp",
-          "sha256": "2caee9449d80591e203583739fc5d0d2d35236a5122992ba33a80f7180434f86"
+          "sha256": "832607682333ce67c8c15ab13119b594b6a9351c482c4602e9cc1e7fd2541bc3"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupCream_3.webp",
@@ -567,7 +567,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupCream_3.webp",
-          "sha256": "3db8d443753c88c9682996cf998f93444ed76ca7ce11ee3fe0ff6928072ce41c"
+          "sha256": "bf40ae9b9c6f858fd11a9b57611d51e575ad4e4adf98b8676035b9d1726d54c0"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupCream_4.webp",
@@ -575,7 +575,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupCream_4.webp",
-          "sha256": "526c5d5cf716e623be2858ac68ac56c3780656690b08587f7c5054cf745f92c0"
+          "sha256": "6ea3496f375f0f4c1a71d4ab478220a00ff75acdb7f9c22a2dbed64a02531d00"
         }
       ]
     },
@@ -611,7 +611,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupGreen.webp",
-          "sha256": "414ed473a50b55af5a0eef4c4ae7d43d50ccca02e2773a55a7f5d931999f5c63"
+          "sha256": "5905105a2d7109a2a0f9fc69cd0284ed46cec0c58cff4e54dfb40f28c46ea17e"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupGreen_1.webp",
@@ -619,7 +619,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupGreen_1.webp",
-          "sha256": "414ed473a50b55af5a0eef4c4ae7d43d50ccca02e2773a55a7f5d931999f5c63"
+          "sha256": "5905105a2d7109a2a0f9fc69cd0284ed46cec0c58cff4e54dfb40f28c46ea17e"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupGreen_2.webp",
@@ -627,7 +627,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupGreen_2.webp",
-          "sha256": "f118795af9c0129cecfae0b86690d30733f7937a2d83d080c4b76c6a6ee4da5e"
+          "sha256": "5e7f1859b6cf62098db8e199bf8b529a11b36b3d6d7685b7ed5333d39fa4c26a"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupGreen_3.webp",
@@ -635,7 +635,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupGreen_3.webp",
-          "sha256": "431dbb9a599c7a483ecf73ae89dd1ea73b072927d48edaaecedc32243f9286ea"
+          "sha256": "e3c551ec24cc6d1bb970302b91e7bbd617c51cab5f4a3a6661db7998778a91db"
         },
         {
           "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupGreen_4.webp",
@@ -643,7 +643,7 @@
         },
         {
           "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupGreen_4.webp",
-          "sha256": "d3cb823315f27c7cd646bbe63b102a2d4703c23fdf461038311011d0ecdb0563"
+          "sha256": "f77fa77b7fb934196850e1eb3f761b62fc1df2b10c569541d7388386cb6b827d"
         }
       ]
     }
