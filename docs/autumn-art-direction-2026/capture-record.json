@@ -1,6 +1,9 @@
 {
-  "capturedAt": "2026-09-25T10:53:16.317Z",
-  "sourceCommit": "c5a42da459d5c68b1a89a9e002ac00ece7e35cef",
+  "capturedAt": "2026-09-25T11:07:18.199Z",
+  "sourceCommit": "edc05365d52bceef6a880e3a4f0c5366ec94fdeb",
+  "sourceTree": "65bcb00639fdfc6919724170777c7273b5226b7a",
+  "sourceStatus": "",
+  "excludedOutputPath": "docs/autumn-art-direction-2026",
   "browser": "151.0.7922.34",
   "timezone": "Europe/Zagreb",
   "camera": {
