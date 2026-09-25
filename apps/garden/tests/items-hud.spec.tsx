@@ -1,3 +1,4 @@
+import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
 import { harvestPumpkins } from '@gredice/js/harvestPumpkins';
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Locator, Page } from '@playwright/test';
@@ -22,6 +23,11 @@ const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 const newBlockCatalogItems = [
+    {
+        label: gardenScarecrow.information.label,
+        price: gardenScarecrow.sunflowers,
+        picker: 'Dekoracija',
+    },
     ...harvestPumpkins.map((item) => ({
         label: item.information.label,
         price: item.sunflowers,
@@ -1497,5 +1503,42 @@ test('harvest pumpkin drag keeps the exact purchased shape and colour', async ({
     await page.mouse.up();
     await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
         'HarvestPumpkinGourdGreen:drop',
+    );
+});
+
+test('scarecrow stays hidden before catalogue publication', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ItemsHudAlignmentStory includeGardenScarecrow={false} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', { name: 'Vrtno strašilo', exact: true }),
+    ).toHaveCount(0);
+});
+
+test('scarecrow appears once in the local sandbox', async ({ mount, page }) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<LocalSandboxItemsHudStory />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', { name: 'Vrtno strašilo', exact: true }),
+    ).toHaveCount(1);
+});
+
+test('scarecrow drag keeps the catalogue identity', async ({ mount, page }) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudDragStateStory accountSunflowers={100} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await dragLocatorByMouse(
+        page,
+        page.getByRole('button', { name: 'Vrtno strašilo', exact: true }),
+    );
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'GardenScarecrow:drag',
+    );
+    await page.mouse.up();
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'GardenScarecrow:drop',
     );
 });

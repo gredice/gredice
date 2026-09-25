@@ -53,6 +53,7 @@ import { FireflyJar } from './FireflyJar';
 import { FishingBoat } from './FishingBoat';
 import { Goat } from './farmAnimals/FarmAnimals';
 import { GardenBox } from './GardenBox';
+import { GardenScarecrow } from './GardenScarecrow';
 import { GiftBoxBlueWhite } from './GiftBoxBlueWhite';
 import { GiftBoxGoldRed } from './GiftBoxGoldRed';
 import { GiftBoxGreenGold } from './GiftBoxGreenGold';
@@ -185,6 +186,7 @@ export const entityNameMap = {
     LemonadeStand: LemonadeStand,
     IceCreamCart: IceCreamCart,
     SummerHat: SummerHat,
+    GardenScarecrow,
     HarvestPumpkinSquatOrange: HarvestPumpkin,
     HarvestPumpkinSquatCream: HarvestPumpkin,
     HarvestPumpkinSquatGreen: HarvestPumpkin,

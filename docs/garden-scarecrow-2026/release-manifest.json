@@ -1,0 +1,99 @@
+{
+  "state": "unpublished",
+  "publicationIssue": 5000,
+  "source": {
+    "path": "assets/game-assets/GardenScarecrow.blend",
+    "bytes": 134067,
+    "sha256": "fe7be8713c111a35f9f7b43427538d06755f6d509d2eac3a2e66bc72c4f1ce80"
+  },
+  "models": [
+    {
+      "name": "GardenScarecrow",
+      "path": "apps/garden/public/assets/models/GardenScarecrow.glb",
+      "bytes": 147720,
+      "sha256": "0992b65228bd35bd25e80f47a2b9ec76bdbe158ea09667e900bef631e8a6a7ee",
+      "url": "https://vrt.gredice.com/assets/models/GardenScarecrow.glb?v=0992b65228bd",
+      "triangles": 2088,
+      "meshCount": 6,
+      "materialCount": 6
+    }
+  ],
+  "items": [
+    {
+      "name": "GardenScarecrow",
+      "information": {
+        "label": "Vrtno strašilo",
+        "shortDescription": "Vedro strašilo sa slamnatim šeširom, plavom košuljom i rukama od grančica.",
+        "fullDescription": "Malo vrtno strašilo s nakrivljenim slamnatim šeširom i zakrpama na plavoj košulji. Postavi ga iza gredice ili uz stazu, tako da biljke ostanu na vidiku. Zauzima jedno polje. Služi samo za ukrašavanje: ne štiti od nametnika i ne utječe na urod."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 1.41,
+        "hitboxHeight": 1.41,
+        "hitboxWidth": 0.86,
+        "hitboxDepth": 0.42,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 80,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/GardenScarecrow.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/GardenScarecrow.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/GardenScarecrow.webp",
+          "bytes": 10092,
+          "sha256": "f1de8abe5d21b1ec196a8cb0e9bf0d389d0197290428b408e894ca85165b8263"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/GardenScarecrow_1.webp",
+          "bytes": 9622,
+          "sha256": "0b21cffa637a14ec2ebe5924847d5e319f737f78f4122a78b8fc78c3cbc3226a"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/GardenScarecrow_2.webp",
+          "bytes": 9238,
+          "sha256": "07a884376b8ef0466aa0fce343b51f8b9941b4af2f41390690be0f1f7d096f67"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/GardenScarecrow_3.webp",
+          "bytes": 10092,
+          "sha256": "f1de8abe5d21b1ec196a8cb0e9bf0d389d0197290428b408e894ca85165b8263"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/GardenScarecrow_4.webp",
+          "bytes": 10022,
+          "sha256": "57cc0c2fbba369ca65c785557139dc0700165c92c0befd52122243183a9f1f9e"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/GardenScarecrow.webp",
+          "bytes": 3276,
+          "sha256": "a71d1aa21428ef0a958c6a15485addb63b404f7dab13cdfc5095138b3c8caf7b"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/GardenScarecrow_1.webp",
+          "bytes": 3276,
+          "sha256": "a71d1aa21428ef0a958c6a15485addb63b404f7dab13cdfc5095138b3c8caf7b"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/GardenScarecrow_2.webp",
+          "bytes": 2956,
+          "sha256": "4f961585e5b103bbf8e45113db6b4fdae962a359394740b580e11d97c4257749"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/GardenScarecrow_3.webp",
+          "bytes": 3276,
+          "sha256": "1196c2c49a01ae2ae37a49954519629dba3e1161468c8c4f827217dd18768c7c"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/GardenScarecrow_4.webp",
+          "bytes": 2972,
+          "sha256": "ea3616d96175f1409610e3e74780179d97b66928847b8769e7a18670213d571d"
+        }
+      ]
+    }
+  ]
+}

@@ -847,6 +847,12 @@ export type GLTFResult = GLTF & {
         GardenFlower_Leaves: THREE.Mesh;
         GardenFlower_Petals: THREE.Mesh;
         GardenFlower_Stem: THREE.Mesh;
+        GardenScarecrow_Face: THREE.Mesh;
+        GardenScarecrow_Linen: THREE.Mesh;
+        GardenScarecrow_Patch: THREE.Mesh;
+        GardenScarecrow_Shirt: THREE.Mesh;
+        GardenScarecrow_Straw: THREE.Mesh;
+        GardenScarecrow_Timber: THREE.Mesh;
         GardenScissors_Blade_L: THREE.Mesh;
         GardenScissors_Blade_R: THREE.Mesh;
         GardenScissors_Handle_L: THREE.Mesh;
@@ -1864,6 +1870,12 @@ export type GLTFResult = GLTF & {
         'Material.GardenFlower.Leaf': THREE.MeshStandardMaterial;
         'Material.GardenFlower.PetalGradient': THREE.MeshStandardMaterial;
         'Material.GardenFlower.Stem': THREE.MeshStandardMaterial;
+        'Material.GardenScarecrow.Face': THREE.MeshStandardMaterial;
+        'Material.GardenScarecrow.Linen': THREE.MeshStandardMaterial;
+        'Material.GardenScarecrow.Patch': THREE.MeshStandardMaterial;
+        'Material.GardenScarecrow.Shirt': THREE.MeshStandardMaterial;
+        'Material.GardenScarecrow.Straw': THREE.MeshStandardMaterial;
+        'Material.GardenScarecrow.Timber': THREE.MeshStandardMaterial;
         'Material.GardenScissors.DarkMetal': THREE.MeshStandardMaterial;
         'Material.GardenScissors.HandleGreen': THREE.MeshStandardMaterial;
         'Material.GardenScissors.PivotBrass': THREE.MeshStandardMaterial;
