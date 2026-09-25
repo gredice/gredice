@@ -1,4 +1,8 @@
 import type { BlockData } from '@gredice/client';
+import {
+    getHarvestPumpkin,
+    harvestPumpkinNames,
+} from '@gredice/js/harvestPumpkins';
 import { cx } from '@gredice/ui/utils';
 import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
@@ -441,7 +445,14 @@ const blockFixtures: Record<
 };
 
 function createBlockData(name: string, index: number) {
-    const fixture = blockFixtures[name];
+    const pumpkin = getHarvestPumpkin(name);
+    const fixture = pumpkin
+        ? {
+              ...pumpkin.information,
+              ...pumpkin.attributes,
+              sunflowers: pumpkin.sunflowers,
+          }
+        : blockFixtures[name];
 
     return {
         id: index + 1,
@@ -499,6 +510,7 @@ function createMockGameCamera(
 }
 
 const blockNames = [
+    ...harvestPumpkinNames,
     'Raised_Bed',
     'Bucket',
     'WateringCan',
@@ -628,6 +640,7 @@ const blockNames = [
 ];
 
 type ItemsHudStoryOptions = {
+    includeHarvestPumpkins?: boolean;
     accountSunflowers?: number;
     cameraTarget?: [x: number, y: number, z: number];
     closeup?: boolean;
@@ -639,6 +652,7 @@ type ItemsHudStoryOptions = {
 
 function createItemsHudQueryClient({
     accountSunflowers = 50,
+    includeHarvestPumpkins = true,
     isSandbox = false,
 }: ItemsHudStoryOptions) {
     const queryClient = new ReactQuery.QueryClient({
@@ -647,7 +661,14 @@ function createItemsHudQueryClient({
         },
     });
 
-    queryClient.setQueryData(['blocks'], blockNames.map(createBlockData));
+    queryClient.setQueryData(
+        ['blocks'],
+        blockNames
+            .filter(
+                (name) => includeHarvestPumpkins || !getHarvestPumpkin(name),
+            )
+            .map(createBlockData),
+    );
     queryClient.setQueryData(['currentUser'], { id: 'test-user' });
     queryClient.setQueryData(currentAccountKeys, {
         id: 'test-account',
@@ -671,6 +692,7 @@ function createItemsHudQueryClient({
 }
 
 function ItemsHudTestProviders({
+    includeHarvestPumpkins = true,
     children,
     accountSunflowers,
     cameraTarget,
@@ -681,8 +703,13 @@ function ItemsHudTestProviders({
     pickupHudDropTargetActive = false,
 }: PropsWithChildren<ItemsHudStoryOptions>) {
     const queryClient = useMemo(
-        () => createItemsHudQueryClient({ accountSunflowers, isSandbox }),
-        [accountSunflowers, isSandbox],
+        () =>
+            createItemsHudQueryClient({
+                accountSunflowers,
+                isSandbox,
+                includeHarvestPumpkins,
+            }),
+        [accountSunflowers, isSandbox, includeHarvestPumpkins],
     );
     const gameStore = useMemo(() => {
         const store = createGameState({
@@ -774,9 +801,13 @@ function HudPlacementDragStateProbe() {
     );
 }
 
-export function ItemsHudAlignmentStory() {
+export function ItemsHudAlignmentStory({
+    includeHarvestPumpkins = true,
+}: {
+    includeHarvestPumpkins?: boolean;
+}) {
     return (
-        <ItemsHudTestProviders>
+        <ItemsHudTestProviders includeHarvestPumpkins={includeHarvestPumpkins}>
             <div className="relative h-screen w-screen overflow-hidden">
                 <div
                     data-testid="bottom-hud"

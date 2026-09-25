@@ -1,5 +1,9 @@
 import type { BlockData } from '@gredice/client';
 import {
+    getHarvestPumpkin,
+    harvestPumpkinNames,
+} from '@gredice/js/harvestPumpkins';
+import {
     type ArrowSignDirection,
     arrowSignConfigs,
     arrowSignNames,
@@ -62,6 +66,7 @@ export const localSandboxBlockNames = [
     'LemonadeStand',
     'IceCreamCart',
     'SummerHat',
+    ...harvestPumpkinNames,
     'BeachTowelStriped',
     'InflatablePoolSmall',
     'BeachChair',
@@ -880,7 +885,8 @@ function createLocalSandboxBlockData(
     const isGroundBlock = name.startsWith('Block_');
     const isRaisedBed = name === 'Raised_Bed';
     const isOutletDisplayTable = name === 'OutletDisplayTable';
-    const metadata = localSandboxBlockMetadata[name];
+    const pumpkin = getHarvestPumpkin(name);
+    const metadata = pumpkin?.information ?? localSandboxBlockMetadata[name];
     return {
         id: index + 1,
         entityType: {
@@ -915,6 +921,7 @@ function createLocalSandboxBlockData(
             nightOnlyPurchase: false,
             ...localSandboxHitboxAttributes[name],
             ...localSandboxPlacementAttributes[name],
+            ...pumpkin?.attributes,
             ...(['LemonadeStand', 'IceCreamCart'].includes(name)
                 ? { spanDepth: 2, spanWidth: 3 }
                 : {}),

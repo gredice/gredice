@@ -1,3 +1,4 @@
+import { harvestPumpkins } from '@gredice/js/harvestPumpkins';
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Locator, Page } from '@playwright/test';
 import {
@@ -21,6 +22,11 @@ const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 const newBlockCatalogItems = [
+    ...harvestPumpkins.map((item) => ({
+        label: item.information.label,
+        price: item.sunflowers,
+        picker: 'Ukrasne bundeve',
+    })),
     { label: 'Kućica za zeca', price: 350, picker: 'Ljubimci' },
     { label: 'Kokošinjac', price: 500, picker: 'Ljubimci' },
     { label: 'Zaklon za kozu', price: 500, picker: 'Ljubimci' },
@@ -1433,4 +1439,63 @@ test('decoration picker scrolls when the viewport is too short for all items', a
     await expect(lastItem).not.toBeInViewport();
     await lastItem.scrollIntoViewIfNeeded();
     await expect(lastItem).toBeInViewport();
+});
+
+test('harvest pumpkin picker stays hidden before catalogue publication', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ItemsHudAlignmentStory includeHarvestPumpkins={false} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', { name: 'Ukrasne bundeve' }),
+    ).toHaveCount(0);
+    await expect(
+        page.getByRole('button', { name: 'Ukrasna bundeva – narančasta' }),
+    ).toHaveCount(0);
+});
+
+test('harvest pumpkin sandbox items appear only inside their picker', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<LocalSandboxItemsHudStory />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', { name: 'Ukrasna bundeva – narančasta' }),
+    ).toHaveCount(0);
+    await page.getByRole('button', { name: 'Ukrasne bundeve' }).click();
+    for (const item of harvestPumpkins) {
+        await expect(
+            page.getByRole('button', {
+                name: item.information.label,
+                exact: true,
+            }),
+        ).toHaveCount(1);
+    }
+});
+
+test('harvest pumpkin drag keeps the exact purchased shape and colour', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudDragStateStory />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await page.getByRole('button', { name: 'Ukrasne bundeve' }).click();
+    await dragLocatorByMouse(
+        page,
+        page.getByRole('button', {
+            name: 'Ukrasna tikvica – zelena',
+            exact: true,
+        }),
+    );
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'HarvestPumpkinGourdGreen:drag',
+    );
+    await page.mouse.up();
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'HarvestPumpkinGourdGreen:drop',
+    );
 });

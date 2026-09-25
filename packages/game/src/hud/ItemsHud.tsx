@@ -3,6 +3,7 @@ import {
     type HorseAppearanceVariant,
     horseAppearanceVariants,
 } from '@gredice/js/entityAppearanceVariants';
+import { harvestPumpkinNames } from '@gredice/js/harvestPumpkins';
 import { BlockImage, getBlockImageUrl } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
@@ -714,7 +715,10 @@ function collectEntityNames(hudItems: HudItem[], names = new Set<string>()) {
     return names;
 }
 
-const defaultHudEntityNames = collectEntityNames(items);
+const defaultHudEntityNames = new Set([
+    ...collectEntityNames(items),
+    ...harvestPumpkinNames,
+]);
 
 function getSandboxExtraItemsByPicker(
     blockData: BlockData[] | null | undefined,
@@ -885,7 +889,37 @@ function getHudItems({
     blockData: BlockData[] | null | undefined;
     isSandbox: boolean;
 }) {
-    const userPlaceableItems = filterUserPlaceableHudItems(items);
+    // Only expose this release's picker when its catalogue rows are available.
+    // Local sandbox data can preview the deployed models without a live sale.
+    const pumpkinItems = harvestPumpkinNames.filter((name) =>
+        blockData?.some(
+            (block) =>
+                block.information.name === name &&
+                !isInternalSceneBlockData(block),
+        ),
+    );
+    const releasedItems = items.map<HudItem>((item) =>
+        item.type === 'picker' &&
+        item.label === 'Dekoracija' &&
+        pumpkinItems.length > 0
+            ? {
+                  ...item,
+                  items: [
+                      ...item.items,
+                      {
+                          type: 'picker',
+                          label: 'Ukrasne bundeve',
+                          imageSrc: getBlockImageUrl(pumpkinItems[0]),
+                          items: pumpkinItems.map((name) => ({
+                              type: 'entity',
+                              name,
+                          })),
+                      },
+                  ],
+              }
+            : item,
+    );
+    const userPlaceableItems = filterUserPlaceableHudItems(releasedItems);
 
     if (!isSandbox) {
         return userPlaceableItems;

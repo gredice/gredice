@@ -1,0 +1,651 @@
+{
+  "issue": 4948,
+  "publicationIssue": 5000,
+  "state": "unpublished",
+  "models": [
+    {
+      "name": "HarvestPumpkinSquat",
+      "path": "apps/garden/public/assets/models/HarvestPumpkinSquat.glb",
+      "url": "/assets/models/HarvestPumpkinSquat.glb?v=0f247954af35",
+      "sha256": "0f247954af35585f3d318da7360d1147b62572421f56e4ea80df7cb5cc117593",
+      "bytes": 41264,
+      "triangles": 760,
+      "meshCount": 2,
+      "materialCount": 2
+    },
+    {
+      "name": "HarvestPumpkinGourd",
+      "path": "apps/garden/public/assets/models/HarvestPumpkinGourd.glb",
+      "url": "/assets/models/HarvestPumpkinGourd.glb?v=15948c584b77",
+      "sha256": "15948c584b77b72ebfc41a29b18519b6ec086f74901a08e60c05fdcd3f50c658",
+      "bytes": 41264,
+      "triangles": 760,
+      "meshCount": 2,
+      "materialCount": 2
+    },
+    {
+      "name": "HarvestPumpkinGroup",
+      "path": "apps/garden/public/assets/models/HarvestPumpkinGroup.glb",
+      "url": "/assets/models/HarvestPumpkinGroup.glb?v=bdeb4f10688c",
+      "sha256": "bdeb4f10688cf139e74be1f1c217bbdd07ec693ac497bbb4cb7ac6fa681b3f5b",
+      "bytes": 119704,
+      "triangles": 2280,
+      "meshCount": 2,
+      "materialCount": 2
+    }
+  ],
+  "items": [
+    {
+      "name": "HarvestPumpkinSquatOrange",
+      "asset": "HarvestPumpkinSquat",
+      "color": "#E08A3C",
+      "information": {
+        "label": "Ukrasna bundeva – narančasta",
+        "shortDescription": "Niska, rebrasta bundeva sa savijenom peteljkom.",
+        "fullDescription": "Niska, rebrasta bundeva sa savijenom peteljkom. Ukras za jesenski kutak vrta, uvijek u odabranoj boji. Zauzima jedno polje. Služi samo za ukrašavanje i ne daje urod."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.42,
+        "hitboxHeight": 0.42,
+        "hitboxWidth": 0.72,
+        "hitboxDepth": 0.72,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 30,
+      "catalogueId": null,
+      "cover": "/assets/blocks/HarvestPumpkinSquatOrange.webp",
+      "topDown": "/assets/blocks/top-down/HarvestPumpkinSquatOrange.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatOrange.webp",
+          "sha256": "7a4eb07c76004e044dd5c59b8441098acc580719cda887175828d1991197cf64"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatOrange.webp",
+          "sha256": "442d550b722ea5df67f8f7f98e5fcc1964b0272363875dd2425933cbfa2010ef"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatOrange_1.webp",
+          "sha256": "7a4eb07c76004e044dd5c59b8441098acc580719cda887175828d1991197cf64"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatOrange_1.webp",
+          "sha256": "442d550b722ea5df67f8f7f98e5fcc1964b0272363875dd2425933cbfa2010ef"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatOrange_2.webp",
+          "sha256": "00593c0742efe02b19020b715a94fe99ed9b2f532d6e928a69682ba725597581"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatOrange_2.webp",
+          "sha256": "fd1948092ab3dd83edb0e246e6f293e770484174a71ac188b29e5963995aae8f"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatOrange_3.webp",
+          "sha256": "e525dbd4ba6573e25d4b774b392472222584c8c993399a0d2a1d22c7c35760fc"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatOrange_3.webp",
+          "sha256": "f904ff81fcf7919ebe065b212984b967eb271c49e6993c9722763b124c5cd0d3"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatOrange_4.webp",
+          "sha256": "82a885e54dcf2a5ffb8b12c927da972086f1223697ed914a4059aec3bc12aa7f"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatOrange_4.webp",
+          "sha256": "b643cc0325776f4a3fc84c789746b2b6cc396874cff14a5cc2c7b50e70c27064"
+        }
+      ]
+    },
+    {
+      "name": "HarvestPumpkinSquatCream",
+      "asset": "HarvestPumpkinSquat",
+      "color": "#EEE3CB",
+      "information": {
+        "label": "Ukrasna bundeva – krem",
+        "shortDescription": "Niska, rebrasta bundeva sa savijenom peteljkom.",
+        "fullDescription": "Niska, rebrasta bundeva sa savijenom peteljkom. Ukras za jesenski kutak vrta, uvijek u odabranoj boji. Zauzima jedno polje. Služi samo za ukrašavanje i ne daje urod."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.42,
+        "hitboxHeight": 0.42,
+        "hitboxWidth": 0.72,
+        "hitboxDepth": 0.72,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 30,
+      "catalogueId": null,
+      "cover": "/assets/blocks/HarvestPumpkinSquatCream.webp",
+      "topDown": "/assets/blocks/top-down/HarvestPumpkinSquatCream.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatCream.webp",
+          "sha256": "9799dd6cbbb3d4cb3f0dc9699e6a817f5f3fc1707bc5f858e83e789d11d6a435"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatCream.webp",
+          "sha256": "b7caf642be36f79ef78d5c70280dd8330ea72fac860f61bb019da4cbe74c8411"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatCream_1.webp",
+          "sha256": "9799dd6cbbb3d4cb3f0dc9699e6a817f5f3fc1707bc5f858e83e789d11d6a435"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatCream_1.webp",
+          "sha256": "b7caf642be36f79ef78d5c70280dd8330ea72fac860f61bb019da4cbe74c8411"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatCream_2.webp",
+          "sha256": "05691dd002226833474218a6d7b57a1333952489566e52ab1a9e974f1b75e5b7"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatCream_2.webp",
+          "sha256": "925e54066370ae62757737b32fdadeb2386f40142e422c90d5c2dc442c1ebecc"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatCream_3.webp",
+          "sha256": "4a1c465e5c4ac2fb10ca9739a5e8d89d374aa10e2442c4df382b88284749493d"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatCream_3.webp",
+          "sha256": "fe416456e830073a4c6a754a25620b6c602b632087f9617aa46658c877c96a87"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatCream_4.webp",
+          "sha256": "5c3fe2ae98c8c8128e1785d8a68bc38557f962e25ead893a78b702aa9e82fe54"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatCream_4.webp",
+          "sha256": "75c592779674300930ce13c9278c2b8061da30a62b42e6cde887ceeccd528053"
+        }
+      ]
+    },
+    {
+      "name": "HarvestPumpkinSquatGreen",
+      "asset": "HarvestPumpkinSquat",
+      "color": "#7D8F68",
+      "information": {
+        "label": "Ukrasna bundeva – zelena",
+        "shortDescription": "Niska, rebrasta bundeva sa savijenom peteljkom.",
+        "fullDescription": "Niska, rebrasta bundeva sa savijenom peteljkom. Ukras za jesenski kutak vrta, uvijek u odabranoj boji. Zauzima jedno polje. Služi samo za ukrašavanje i ne daje urod."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.42,
+        "hitboxHeight": 0.42,
+        "hitboxWidth": 0.72,
+        "hitboxDepth": 0.72,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 30,
+      "catalogueId": null,
+      "cover": "/assets/blocks/HarvestPumpkinSquatGreen.webp",
+      "topDown": "/assets/blocks/top-down/HarvestPumpkinSquatGreen.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatGreen.webp",
+          "sha256": "f4f5114347c7b1ad082b78dde51981787f4e86492b5be618574289fc232974b4"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatGreen.webp",
+          "sha256": "e2ca9029de18e4e68da5cf2b0aed41bfad950e5d0ab40daf3452e28c0acbecf8"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatGreen_1.webp",
+          "sha256": "f4f5114347c7b1ad082b78dde51981787f4e86492b5be618574289fc232974b4"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatGreen_1.webp",
+          "sha256": "e2ca9029de18e4e68da5cf2b0aed41bfad950e5d0ab40daf3452e28c0acbecf8"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatGreen_2.webp",
+          "sha256": "ea432723b555554975b4e97c1d7a004b53831543a2bfb345614b8431dd88fda1"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatGreen_2.webp",
+          "sha256": "4e7612ba17a6d2717a4d095c2307cc3e9f54e60cc2f2d46fe6978e46370a328a"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatGreen_3.webp",
+          "sha256": "13bd778a59b6fedfbb47e69fdd3b2a37dbec46b9fd9b2f63c7394e7b3dd7761d"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatGreen_3.webp",
+          "sha256": "2d45b4c61fa3451062b3419f87b5ccc97d44532fa24a40feda0a1dad3936e0e9"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinSquatGreen_4.webp",
+          "sha256": "469be034732cef446de61fe6a2197ffea7cb34af2aa15d8fb2865ade9a065509"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinSquatGreen_4.webp",
+          "sha256": "8d8b283e320a7589cec3c2ea2cc2726777fae34e7667def1d557dadf04cae294"
+        }
+      ]
+    },
+    {
+      "name": "HarvestPumpkinGourdOrange",
+      "asset": "HarvestPumpkinGourd",
+      "color": "#E08A3C",
+      "information": {
+        "label": "Ukrasna tikvica – narančasta",
+        "shortDescription": "Kruškolika tikvica s izduženim, blago savijenim vratom.",
+        "fullDescription": "Kruškolika tikvica s izduženim, blago savijenim vratom. Ukras za jesenski kutak vrta, uvijek u odabranoj boji. Zauzima jedno polje. Služi samo za ukrašavanje i ne daje urod."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.55,
+        "hitboxHeight": 0.55,
+        "hitboxWidth": 0.5,
+        "hitboxDepth": 0.5,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 30,
+      "catalogueId": null,
+      "cover": "/assets/blocks/HarvestPumpkinGourdOrange.webp",
+      "topDown": "/assets/blocks/top-down/HarvestPumpkinGourdOrange.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdOrange.webp",
+          "sha256": "bbd8a271ab1860b9ca37a3f280feb764465599c91a6555aae7767726476b6023"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdOrange.webp",
+          "sha256": "bbe46f61b23b39960690441f38d2b8c1acab0bc4ca6bb0893480db19690c5082"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdOrange_1.webp",
+          "sha256": "bbd8a271ab1860b9ca37a3f280feb764465599c91a6555aae7767726476b6023"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdOrange_1.webp",
+          "sha256": "bbe46f61b23b39960690441f38d2b8c1acab0bc4ca6bb0893480db19690c5082"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdOrange_2.webp",
+          "sha256": "660595802319a0d4cbdb908f6b16bd673a1def45e8b033a24a07a314c11e0459"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdOrange_2.webp",
+          "sha256": "59db543dc8e4bcd0558863e72872960bdba94f9dfd3d9413045b63f24b424f22"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdOrange_3.webp",
+          "sha256": "794565dd03560e5cabc7f24a2248b1336e0b36fde80605172cdd5ecae4f2f631"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdOrange_3.webp",
+          "sha256": "1db30e8419661bc7bafc5fb05168015103c9d887e178d54dffdf5ac8e8a2b6ce"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdOrange_4.webp",
+          "sha256": "8914c78445166d64dddd66139b5126473e53f75c4237cd380fe9f9b69f8ed6de"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdOrange_4.webp",
+          "sha256": "e50976855a99fe005f859c0553bce3e635f2a44dff97bf84caa56ed3c25f5016"
+        }
+      ]
+    },
+    {
+      "name": "HarvestPumpkinGourdCream",
+      "asset": "HarvestPumpkinGourd",
+      "color": "#EEE3CB",
+      "information": {
+        "label": "Ukrasna tikvica – krem",
+        "shortDescription": "Kruškolika tikvica s izduženim, blago savijenim vratom.",
+        "fullDescription": "Kruškolika tikvica s izduženim, blago savijenim vratom. Ukras za jesenski kutak vrta, uvijek u odabranoj boji. Zauzima jedno polje. Služi samo za ukrašavanje i ne daje urod."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.55,
+        "hitboxHeight": 0.55,
+        "hitboxWidth": 0.5,
+        "hitboxDepth": 0.5,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 30,
+      "catalogueId": null,
+      "cover": "/assets/blocks/HarvestPumpkinGourdCream.webp",
+      "topDown": "/assets/blocks/top-down/HarvestPumpkinGourdCream.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdCream.webp",
+          "sha256": "79774454915b8873feec7c747b41a1073bd5e9cb34f61bbf21d9bce5e08e9566"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdCream.webp",
+          "sha256": "51c04605be1472970ad4e89c7d3d34293dc9686bb5f2a319937b0a0f6e23f744"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdCream_1.webp",
+          "sha256": "79774454915b8873feec7c747b41a1073bd5e9cb34f61bbf21d9bce5e08e9566"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdCream_1.webp",
+          "sha256": "51c04605be1472970ad4e89c7d3d34293dc9686bb5f2a319937b0a0f6e23f744"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdCream_2.webp",
+          "sha256": "5da482c6501d30dc859c176fa16c523817d5e6038d5cea4dd5c6cc2d7e53ffa7"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdCream_2.webp",
+          "sha256": "3d7a7658da2fc11a27e14d3556e34b6018c5b437760e0d53bb84910994337b85"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdCream_3.webp",
+          "sha256": "1a13f3fba74559b0c1adda5dd496e06357ef3a3f5b148269f089ee2cb5a6bebf"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdCream_3.webp",
+          "sha256": "ab807b4a2eea23cdd73a2618c314ddd5e4e1f127c0bcadefabea16f4db6bf321"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdCream_4.webp",
+          "sha256": "1ff4716fa436cdd58f3154f2dc862ba3f19468485e359017fc158ef2bf6a0597"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdCream_4.webp",
+          "sha256": "6cfea049f9aa8f9007d36b27ab4ba7d0ab31c74fb7c6c27882fdc7fd43c136bc"
+        }
+      ]
+    },
+    {
+      "name": "HarvestPumpkinGourdGreen",
+      "asset": "HarvestPumpkinGourd",
+      "color": "#7D8F68",
+      "information": {
+        "label": "Ukrasna tikvica – zelena",
+        "shortDescription": "Kruškolika tikvica s izduženim, blago savijenim vratom.",
+        "fullDescription": "Kruškolika tikvica s izduženim, blago savijenim vratom. Ukras za jesenski kutak vrta, uvijek u odabranoj boji. Zauzima jedno polje. Služi samo za ukrašavanje i ne daje urod."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.55,
+        "hitboxHeight": 0.55,
+        "hitboxWidth": 0.5,
+        "hitboxDepth": 0.5,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 30,
+      "catalogueId": null,
+      "cover": "/assets/blocks/HarvestPumpkinGourdGreen.webp",
+      "topDown": "/assets/blocks/top-down/HarvestPumpkinGourdGreen.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdGreen.webp",
+          "sha256": "4f8c00bb358253a244e50e4c61e42ff95ed9356996f1de8995422d67a2e25c3b"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdGreen.webp",
+          "sha256": "60f461009f2a5a587361de41b1d8bb47c145eac728f8c763c37bd5a240b44ce1"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdGreen_1.webp",
+          "sha256": "4f8c00bb358253a244e50e4c61e42ff95ed9356996f1de8995422d67a2e25c3b"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdGreen_1.webp",
+          "sha256": "60f461009f2a5a587361de41b1d8bb47c145eac728f8c763c37bd5a240b44ce1"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdGreen_2.webp",
+          "sha256": "e326f85667f0a95143f7af716a762e57a2362b64e972b5ed1f8c6cfd33ac2b03"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdGreen_2.webp",
+          "sha256": "eb1da919885e94b79ab7d25d1b8fb4d3a0e9647849b6711100a7f4f08ac44322"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdGreen_3.webp",
+          "sha256": "b5071df219264ff69a59e5077f0e1121e92a1eb2a2794b3da490315ad1430ba9"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdGreen_3.webp",
+          "sha256": "934db060e98870a78b59e7983d0f0ff78266b457eed29ea59476d53b31626a24"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGourdGreen_4.webp",
+          "sha256": "0665ea9e140532a70281d43474c812192d3849f1b15af3f117df3fc4c4e049a3"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGourdGreen_4.webp",
+          "sha256": "f75d5d4a7771aa9549a957225627fdc0ccf2b3508d97815c68c61e598976f537"
+        }
+      ]
+    },
+    {
+      "name": "HarvestPumpkinGroupOrange",
+      "asset": "HarvestPumpkinGroup",
+      "color": "#E08A3C",
+      "information": {
+        "label": "Skupina ukrasnih bundeva – narančasta",
+        "shortDescription": "Tri rebraste bundeve različitih veličina u jednom malom ukrasu.",
+        "fullDescription": "Tri rebraste bundeve različitih veličina u jednom malom ukrasu. Ukras za jesenski kutak vrta, uvijek u odabranoj boji. Zauzima jedno polje. Služi samo za ukrašavanje i ne daje urod."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.41,
+        "hitboxHeight": 0.41,
+        "hitboxWidth": 0.86,
+        "hitboxDepth": 0.88,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 60,
+      "catalogueId": null,
+      "cover": "/assets/blocks/HarvestPumpkinGroupOrange.webp",
+      "topDown": "/assets/blocks/top-down/HarvestPumpkinGroupOrange.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupOrange.webp",
+          "sha256": "fe65a591d81b088fc1a93c855e918def64cd2f5f8c9b07d515977b65b959f4ec"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupOrange.webp",
+          "sha256": "e18875bcbe33b26549716ed073f62aaeb497e37f18c0084652f995d3799e3857"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupOrange_1.webp",
+          "sha256": "fe65a591d81b088fc1a93c855e918def64cd2f5f8c9b07d515977b65b959f4ec"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupOrange_1.webp",
+          "sha256": "e18875bcbe33b26549716ed073f62aaeb497e37f18c0084652f995d3799e3857"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupOrange_2.webp",
+          "sha256": "3d1ca92200c7ea2363bd858d0ae0f09fadbdf3104d01a30905b4ab2b60171c62"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupOrange_2.webp",
+          "sha256": "c242cfe73c57465626b522985d0c678661c85f9fc9ec37acf64b5d4fbf12af72"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupOrange_3.webp",
+          "sha256": "bcd22a2acf2a286229bc9eaae3d421578307d885e8bc55026bfb4d9f5ff7845b"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupOrange_3.webp",
+          "sha256": "65581e3f2eba5b79d7e146283cfb5bb99a24f295ffb4c8731bc74be0cf22ffb0"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupOrange_4.webp",
+          "sha256": "f3c921ef1c542eaaa7b6ac5afccfffc3d88001998328c205351f18ddd6d1dcc8"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupOrange_4.webp",
+          "sha256": "540436700451c5a58c9e501db1440e45f37ebd2ebee01f103dccd16aaac3380f"
+        }
+      ]
+    },
+    {
+      "name": "HarvestPumpkinGroupCream",
+      "asset": "HarvestPumpkinGroup",
+      "color": "#EEE3CB",
+      "information": {
+        "label": "Skupina ukrasnih bundeva – krem",
+        "shortDescription": "Tri rebraste bundeve različitih veličina u jednom malom ukrasu.",
+        "fullDescription": "Tri rebraste bundeve različitih veličina u jednom malom ukrasu. Ukras za jesenski kutak vrta, uvijek u odabranoj boji. Zauzima jedno polje. Služi samo za ukrašavanje i ne daje urod."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.41,
+        "hitboxHeight": 0.41,
+        "hitboxWidth": 0.86,
+        "hitboxDepth": 0.88,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 60,
+      "catalogueId": null,
+      "cover": "/assets/blocks/HarvestPumpkinGroupCream.webp",
+      "topDown": "/assets/blocks/top-down/HarvestPumpkinGroupCream.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupCream.webp",
+          "sha256": "a12932312d3e9fa6620c4fd1aff00244eb19c855609e4e21989681b0ff516393"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupCream.webp",
+          "sha256": "ab2c381c6593524efa72f315057a9a083809cbd30519e29d79b4d0afbe331859"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupCream_1.webp",
+          "sha256": "a12932312d3e9fa6620c4fd1aff00244eb19c855609e4e21989681b0ff516393"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupCream_1.webp",
+          "sha256": "ab2c381c6593524efa72f315057a9a083809cbd30519e29d79b4d0afbe331859"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupCream_2.webp",
+          "sha256": "59c405c6bde2a754ab8b203d0d3ea85f5de2bdb4d76fcc17fb1cf97d8b47bb7d"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupCream_2.webp",
+          "sha256": "2caee9449d80591e203583739fc5d0d2d35236a5122992ba33a80f7180434f86"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupCream_3.webp",
+          "sha256": "a4c8e435604712c28dd82b7dc93f952c45ce0d6024a083b627c215e2d1fb389a"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupCream_3.webp",
+          "sha256": "3db8d443753c88c9682996cf998f93444ed76ca7ce11ee3fe0ff6928072ce41c"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupCream_4.webp",
+          "sha256": "ae5079bcfcbf763b4481f2697d03332d2bb7dae365340ebd768eb14df584db94"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupCream_4.webp",
+          "sha256": "526c5d5cf716e623be2858ac68ac56c3780656690b08587f7c5054cf745f92c0"
+        }
+      ]
+    },
+    {
+      "name": "HarvestPumpkinGroupGreen",
+      "asset": "HarvestPumpkinGroup",
+      "color": "#7D8F68",
+      "information": {
+        "label": "Skupina ukrasnih bundeva – zelena",
+        "shortDescription": "Tri rebraste bundeve različitih veličina u jednom malom ukrasu.",
+        "fullDescription": "Tri rebraste bundeve različitih veličina u jednom malom ukrasu. Ukras za jesenski kutak vrta, uvijek u odabranoj boji. Zauzima jedno polje. Služi samo za ukrašavanje i ne daje urod."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.41,
+        "hitboxHeight": 0.41,
+        "hitboxWidth": 0.86,
+        "hitboxDepth": 0.88,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 60,
+      "catalogueId": null,
+      "cover": "/assets/blocks/HarvestPumpkinGroupGreen.webp",
+      "topDown": "/assets/blocks/top-down/HarvestPumpkinGroupGreen.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupGreen.webp",
+          "sha256": "fe87fbc823a67c6c48210b052eeab6ac9f44faf90891c900327cd1839bcc3061"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupGreen.webp",
+          "sha256": "414ed473a50b55af5a0eef4c4ae7d43d50ccca02e2773a55a7f5d931999f5c63"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupGreen_1.webp",
+          "sha256": "fe87fbc823a67c6c48210b052eeab6ac9f44faf90891c900327cd1839bcc3061"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupGreen_1.webp",
+          "sha256": "414ed473a50b55af5a0eef4c4ae7d43d50ccca02e2773a55a7f5d931999f5c63"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupGreen_2.webp",
+          "sha256": "44fd79b1682e9ac08f0683859477f252ab01a49249f1f83e665f5f3f92a61b2c"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupGreen_2.webp",
+          "sha256": "f118795af9c0129cecfae0b86690d30733f7937a2d83d080c4b76c6a6ee4da5e"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupGreen_3.webp",
+          "sha256": "9f2124263fe309d9b410635ee0d1f70f14543820ada5e288b4bb770959ca240e"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupGreen_3.webp",
+          "sha256": "431dbb9a599c7a483ecf73ae89dd1ea73b072927d48edaaecedc32243f9286ea"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/HarvestPumpkinGroupGreen_4.webp",
+          "sha256": "d9621ae1df74885fd0bd4da819f1b6f22ffd4b210b485a6b7dc5e1063b4b62b2"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/HarvestPumpkinGroupGreen_4.webp",
+          "sha256": "d3cb823315f27c7cd646bbe63b102a2d4703c23fdf461038311011d0ecdb0563"
+        }
+      ]
+    }
+  ]
+}
