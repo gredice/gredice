@@ -1,5 +1,6 @@
 import type { BlockData } from '@gredice/client';
 import { autumnAsterPotNames } from '@gredice/js/autumnAsterPots';
+import { autumnShrub } from '@gredice/js/autumnShrub';
 import {
     type HorseAppearanceVariant,
     horseAppearanceVariants,
@@ -354,6 +355,7 @@ const items: HudItem[] = [
         imageSrc: getBlockImageUrl('Tree'),
         items: [
             { type: 'entity', name: gardenScarecrow.name },
+            { type: 'entity', name: autumnShrub.name },
             {
                 type: 'entity',
                 name: harvestWheelbarrow.name,
