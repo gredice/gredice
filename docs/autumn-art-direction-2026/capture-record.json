@@ -1,0 +1,166 @@
+{
+  "capturedAt": "2026-09-25T10:53:16.317Z",
+  "sourceCommit": "c5a42da459d5c68b1a89a9e002ac00ece7e35cef",
+  "browser": "151.0.7922.34",
+  "timezone": "Europe/Zagreb",
+  "camera": {
+    "position": [
+      -100,
+      100,
+      -100
+    ],
+    "target": [
+      -0.5,
+      0.4,
+      -0.5
+    ],
+    "zoom": 76
+  },
+  "viewport": {
+    "width": 960,
+    "height": 680,
+    "dpr": 1
+  },
+  "fixedTimeSeconds": 12,
+  "records": [
+    {
+      "file": "early-sun.png",
+      "light": "sun",
+      "date": "2026-09-23T10:00:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.0012839988425925927,
+        "leafRetention": 1,
+        "fallingLeafIntensity": 0,
+        "settledLeafAmount": 0
+      }
+    },
+    {
+      "file": "early-overcast.png",
+      "light": "overcast",
+      "date": "2026-09-23T10:00:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.0012839988425925927,
+        "leafRetention": 1,
+        "fallingLeafIntensity": 0,
+        "settledLeafAmount": 0
+      }
+    },
+    {
+      "file": "early-dusk.png",
+      "light": "dusk",
+      "date": "2026-09-23T16:49:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.0018114466979266884,
+        "leafRetention": 1,
+        "fallingLeafIntensity": 0,
+        "settledLeafAmount": 0
+      }
+    },
+    {
+      "file": "early-night.png",
+      "light": "night",
+      "date": "2026-09-23T20:30:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.002133427006390523,
+        "leafRetention": 1,
+        "fallingLeafIntensity": 0,
+        "settledLeafAmount": 0
+      }
+    },
+    {
+      "file": "mid-sun.png",
+      "light": "sun",
+      "date": "2026-10-22T10:00:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.38630816508058985,
+        "leafRetention": 0.8014564127733399,
+        "fallingLeafIntensity": 0.995986384189402,
+        "settledLeafAmount": 0.20377233145353862
+      }
+    },
+    {
+      "file": "mid-overcast.png",
+      "light": "overcast",
+      "date": "2026-10-22T10:00:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.38630816508058985,
+        "leafRetention": 0.8014564127733399,
+        "fallingLeafIntensity": 0.995986384189402,
+        "settledLeafAmount": 0.20377233145353862
+      }
+    },
+    {
+      "file": "mid-dusk.png",
+      "light": "dusk",
+      "date": "2026-10-22T15:56:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.3913437335715085,
+        "leafRetention": 0.7970801837951003,
+        "fallingLeafIntensity": 0.9977113516620988,
+        "settledLeafAmount": 0.20783921354593074
+      }
+    },
+    {
+      "file": "mid-night.png",
+      "light": "night",
+      "date": "2026-10-22T20:30:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.39522647857666016,
+        "leafRetention": 0.7936910248298917,
+        "fallingLeafIntensity": 0.9987160011574074,
+        "settledLeafAmount": 0.21098593750000003
+      }
+    },
+    {
+      "file": "late-sun.png",
+      "light": "sun",
+      "date": "2026-11-21T11:00:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.9316158425497256,
+        "leafRetention": 0.2171130391602598,
+        "fallingLeafIntensity": 0.8898327114502471,
+        "settledLeafAmount": 0.729365381293502
+      }
+    },
+    {
+      "file": "late-overcast.png",
+      "light": "overcast",
+      "date": "2026-11-21T11:00:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.9316158425497256,
+        "leafRetention": 0.2171130391602598,
+        "fallingLeafIntensity": 0.8898327114502471,
+        "settledLeafAmount": 0.729365381293502
+      }
+    },
+    {
+      "file": "late-dusk.png",
+      "light": "dusk",
+      "date": "2026-11-21T15:17:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.9335993458211149,
+        "leafRetention": 0.21436110119786556,
+        "fallingLeafIntensity": 0.8842092294106056,
+        "settledLeafAmount": 0.7317946648621781
+      }
+    },
+    {
+      "file": "late-night.png",
+      "light": "night",
+      "date": "2026-11-21T21:30:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.9364331210101091,
+        "leafRetention": 0.210404664117673,
+        "fallingLeafIntensity": 0.8758507619317566,
+        "settledLeafAmount": 0.7352866919581618
+      }
+    }
+  ],
+  "lowQuality": {
+    "file": "early-sun-low.png",
+    "width": 390,
+    "height": 440,
+    "zoom": 42
+  },
+  "errors": []
+}

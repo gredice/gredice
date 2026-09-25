@@ -1,5 +1,10 @@
 # Seasonal scene debugging
 
+The [Autumn 2026 art brief](autumn-art-direction-2026.md) defines collection
+palettes, footprints, small-garden targets and the early/mid/late lighting review.
+Its launch decision retains these seasonal curves and uses new decorative props
+for immediate identity.
+
 All seasonal presentation reads `seasonState` from the game store. Lighting,
 seasonal effects and debug controls share `freezeTime`; no seasonal component
 should create its own current date. Debug date changes also affect plant growth
