@@ -910,6 +910,12 @@ export type GLTFResult = GLTF & {
         HarvestPumpkinGroup_Stem: THREE.Mesh;
         HarvestPumpkinSquat_Body: THREE.Mesh;
         HarvestPumpkinSquat_Stem: THREE.Mesh;
+        HarvestWheelbarrow_Cream: THREE.Mesh;
+        HarvestWheelbarrow_Frame: THREE.Mesh;
+        HarvestWheelbarrow_Hardware: THREE.Mesh;
+        HarvestWheelbarrow_Pumpkins: THREE.Mesh;
+        HarvestWheelbarrow_Stems: THREE.Mesh;
+        HarvestWheelbarrow_Timber: THREE.Mesh;
         HazelLightArch_Bulbs: THREE.Mesh;
         HazelLightArch_Cords: THREE.Mesh;
         HazelLightArch_Poles: THREE.Mesh;
@@ -1922,6 +1928,12 @@ export type GLTFResult = GLTF & {
         'Material.HarvestCrateOrchard.Timber': THREE.MeshStandardMaterial;
         'Material.HarvestPumpkin.Skin': THREE.MeshStandardMaterial;
         'Material.HarvestPumpkin.Stem': THREE.MeshStandardMaterial;
+        'Material.HarvestWheelbarrow.Cream': THREE.MeshStandardMaterial;
+        'Material.HarvestWheelbarrow.Frame': THREE.MeshStandardMaterial;
+        'Material.HarvestWheelbarrow.Hardware': THREE.MeshStandardMaterial;
+        'Material.HarvestWheelbarrow.Pumpkins': THREE.MeshStandardMaterial;
+        'Material.HarvestWheelbarrow.Stems': THREE.MeshStandardMaterial;
+        'Material.HarvestWheelbarrow.Timber': THREE.MeshStandardMaterial;
         'Material.HazelLightArch.DarkCord': THREE.MeshStandardMaterial;
         'Material.HazelLightArch.Glow': THREE.MeshStandardMaterial;
         'Material.HazelLightArch.HazelWood': THREE.MeshStandardMaterial;

@@ -5,6 +5,7 @@ import {
     getHarvestPumpkin,
     harvestPumpkinNames,
 } from '@gredice/js/harvestPumpkins';
+import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
 import {
     type ArrowSignDirection,
     arrowSignConfigs,
@@ -71,6 +72,7 @@ export const localSandboxBlockNames = [
     ...harvestPumpkinNames,
     gardenScarecrow.name,
     ...harvestCrateNames,
+    harvestWheelbarrow.name,
     'BeachTowelStriped',
     'InflatablePoolSmall',
     'BeachChair',
@@ -892,7 +894,9 @@ function createLocalSandboxBlockData(
     const decoration =
         name === gardenScarecrow.name
             ? gardenScarecrow
-            : (getHarvestCrate(name) ?? getHarvestPumpkin(name));
+            : name === harvestWheelbarrow.name
+              ? harvestWheelbarrow
+              : (getHarvestCrate(name) ?? getHarvestPumpkin(name));
     const metadata = decoration?.information ?? localSandboxBlockMetadata[name];
     return {
         id: index + 1,

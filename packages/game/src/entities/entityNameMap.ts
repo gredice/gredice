@@ -62,6 +62,7 @@ import { GiftBoxRedWhite } from './GiftBoxRedWhite';
 import { GiftBoxWhiteGreen } from './GiftBoxWhiteGreen';
 import { HarvestCrate } from './HarvestCrate';
 import { HarvestPumpkin } from './HarvestPumpkin';
+import { HarvestWheelbarrow } from './HarvestWheelbarrow';
 import { HazelLightArch } from './HazelLightArch';
 import { Horse } from './horses/Horse';
 import { IceCreamCart } from './IceCreamCart';
@@ -189,6 +190,7 @@ export const entityNameMap = {
     SummerHat: SummerHat,
     GardenScarecrow,
     HarvestCrate,
+    HarvestWheelbarrow,
     HarvestCrateOrchard: HarvestCrate,
     HarvestPumpkinSquatOrange: HarvestPumpkin,
     HarvestPumpkinSquatCream: HarvestPumpkin,
