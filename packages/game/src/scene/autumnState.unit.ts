@@ -7,6 +7,29 @@ import { autumnSeed, getAutumnState } from './autumnState';
 import { getSeasonDebugDates } from './seasonDebugDates';
 import { getSeasonState } from './seasonState';
 
+test('yellowing starts on August 22 in leap and common years, before leaf fall', () => {
+    for (const year of [2024, 2025, 2026]) {
+        const at = (month: number, day: number, hour = 0) =>
+            getAutumnState(
+                getSeasonState(new Date(year, month - 1, day, hour)),
+            );
+        assert.equal(at(8, 21, 23).foliageColorProgress, 0);
+        assert.equal(at(8, 22).foliageColorProgress, 0);
+        const onset = at(8, 22, 12);
+        const september = at(9, 10);
+        assert.ok(onset.foliageColorProgress > 0);
+        assert.ok(september.foliageColorProgress > onset.foliageColorProgress);
+        assert.ok(
+            at(9, 22).foliageColorProgress > september.foliageColorProgress,
+        );
+        for (const state of [onset, september]) {
+            assert.equal(state.leafRetention, 1);
+            assert.equal(state.fallingLeafIntensity, 0);
+            assert.equal(state.settledLeafAmount, 0);
+        }
+    }
+});
+
 test('autumn curves stay normalized and continuous through every seasonal handoff', () => {
     for (const date of Object.values(getSeasonDebugDates())) {
         date.setHours(0, 0, 0, 0);

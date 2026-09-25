@@ -46,6 +46,7 @@ function MovingAutumnBench({ targetX }: { targetX: number }) {
 
 export function AutumnVisualFixture({
     stage = 'midAutumn',
+    calendarDate,
     disabled = false,
     snow = 0,
     lighting = 'day',
@@ -68,6 +69,7 @@ export function AutumnVisualFixture({
     cameraHeight = 4,
 }: {
     stage?: keyof ReturnType<typeof getSeasonDebugDates>;
+    calendarDate?: readonly [year: number, month: number, day: number];
     disabled?: boolean;
     snow?: number;
     lighting?: 'day' | 'twilight' | 'cloudy';
@@ -199,7 +201,14 @@ export function AutumnVisualFixture({
         const next = createGameState({
             appBaseUrl: '',
             isMock: true,
-            freezeTime: getSeasonDebugDates()[stage],
+            freezeTime: calendarDate
+                ? new Date(
+                      calendarDate[0],
+                      calendarDate[1] - 1,
+                      calendarDate[2],
+                      12,
+                  )
+                : getSeasonDebugDates()[stage],
         });
         next.setState({
             weatherVisualizationDisabled: disabled,
@@ -207,7 +216,7 @@ export function AutumnVisualFixture({
             rainSurfaceIntensity: rain,
         });
         return next;
-    }, [stage, disabled, snow, rain]);
+    }, [stage, calendarDate, disabled, snow, rain]);
     useDisposeGameStateStore(store);
     return (
         <QueryClientProvider client={client}>

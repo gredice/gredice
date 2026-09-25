@@ -43,8 +43,12 @@ Run the HUD browser checks with
 `autumnState` is resolved alongside the shared season state at every scene-clock
 write. It exposes foliage colour, retention, shedding and settled-leaf curves.
 Winter keeps the brown/low-retention endpoint; spring gradually regrows foliage.
-`Tree` alone opts into the colour curve. Its existing canopy material receives a
-memoized HSL colour derived from the stable block ID; cached GLTF materials,
+`Tree` alone opts into the colour curve. Yellowing starts on **August 22** and
+progresses from the crown downwards, with lower foliage staying green longer.
+Both the canopy and its sprigs receive vertex colours using the full canopy's
+local height range, including in the instanced renderer. The palette retains
+stable block-ID variation. The astronomical season labels, leaf retention,
+shedding and settled-leaf timing are unchanged. Cached GLTF geometry/materials,
 trunk, palms, crops and grass materials stay unchanged. Weather visualization
 disablement restores the base canopy. Frozen seasonal stories and WebGL captures
 cover summer, early/mid/late autumn, winter, cloudy/twilight light and snow.
