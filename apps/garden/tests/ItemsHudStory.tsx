@@ -5,6 +5,7 @@ import {
     getHarvestPumpkin,
     harvestPumpkinNames,
 } from '@gredice/js/harvestPumpkins';
+import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
 import { cx } from '@gredice/ui/utils';
 import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
@@ -450,7 +451,9 @@ function createBlockData(name: string, index: number) {
     const decoration =
         name === gardenScarecrow.name
             ? gardenScarecrow
-            : (getHarvestCrate(name) ?? getHarvestPumpkin(name));
+            : name === harvestWheelbarrow.name
+              ? harvestWheelbarrow
+              : (getHarvestCrate(name) ?? getHarvestPumpkin(name));
     const fixture = decoration
         ? {
               ...decoration.information,
@@ -518,6 +521,7 @@ const blockNames = [
     ...harvestPumpkinNames,
     gardenScarecrow.name,
     ...harvestCrateNames,
+    harvestWheelbarrow.name,
     'Raised_Bed',
     'Bucket',
     'WateringCan',
@@ -650,6 +654,7 @@ type ItemsHudStoryOptions = {
     includeHarvestPumpkins?: boolean;
     includeGardenScarecrow?: boolean;
     includeHarvestCrates?: boolean;
+    includeHarvestWheelbarrow?: boolean;
     accountSunflowers?: number;
     cameraTarget?: [x: number, y: number, z: number];
     closeup?: boolean;
@@ -664,6 +669,7 @@ function createItemsHudQueryClient({
     includeHarvestPumpkins = true,
     includeGardenScarecrow = true,
     includeHarvestCrates = true,
+    includeHarvestWheelbarrow = true,
     isSandbox = false,
 }: ItemsHudStoryOptions) {
     const queryClient = new ReactQuery.QueryClient({
@@ -683,6 +689,11 @@ function createItemsHudQueryClient({
                     includeGardenScarecrow || name !== gardenScarecrow.name,
             )
             .filter((name) => includeHarvestCrates || !getHarvestCrate(name))
+            .filter(
+                (name) =>
+                    includeHarvestWheelbarrow ||
+                    name !== harvestWheelbarrow.name,
+            )
             .map(createBlockData),
     );
     queryClient.setQueryData(['currentUser'], { id: 'test-user' });
@@ -711,6 +722,7 @@ function ItemsHudTestProviders({
     includeHarvestPumpkins = true,
     includeGardenScarecrow = true,
     includeHarvestCrates = true,
+    includeHarvestWheelbarrow = true,
     children,
     accountSunflowers,
     cameraTarget,
@@ -728,6 +740,7 @@ function ItemsHudTestProviders({
                 includeHarvestPumpkins,
                 includeGardenScarecrow,
                 includeHarvestCrates,
+                includeHarvestWheelbarrow,
             }),
         [
             accountSunflowers,
@@ -735,6 +748,7 @@ function ItemsHudTestProviders({
             includeHarvestPumpkins,
             includeGardenScarecrow,
             includeHarvestCrates,
+            includeHarvestWheelbarrow,
         ],
     );
     const gameStore = useMemo(() => {
@@ -831,16 +845,19 @@ export function ItemsHudAlignmentStory({
     includeHarvestPumpkins = true,
     includeGardenScarecrow = true,
     includeHarvestCrates = true,
+    includeHarvestWheelbarrow = true,
 }: {
     includeHarvestPumpkins?: boolean;
     includeGardenScarecrow?: boolean;
     includeHarvestCrates?: boolean;
+    includeHarvestWheelbarrow?: boolean;
 }) {
     return (
         <ItemsHudTestProviders
             includeHarvestPumpkins={includeHarvestPumpkins}
             includeGardenScarecrow={includeGardenScarecrow}
             includeHarvestCrates={includeHarvestCrates}
+            includeHarvestWheelbarrow={includeHarvestWheelbarrow}
         >
             <div className="relative h-screen w-screen overflow-hidden">
                 <div

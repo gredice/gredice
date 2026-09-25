@@ -3,6 +3,21 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "HarvestWheelbarrow",
+            "source": "HarvestWheelbarrow.blend",
+            "output": "HarvestWheelbarrow.glb",
+            "version": "85ff185c5486",
+            "preload": "lazy",
+            "objects": [
+                "HarvestWheelbarrow_Timber",
+                "HarvestWheelbarrow_Frame",
+                "HarvestWheelbarrow_Hardware",
+                "HarvestWheelbarrow_Pumpkins",
+                "HarvestWheelbarrow_Cream",
+                "HarvestWheelbarrow_Stems"
+            ]
+        },
+        {
             "name": "HarvestCrate",
             "source": "HarvestCrate.blend",
             "output": "HarvestCrate.glb",
