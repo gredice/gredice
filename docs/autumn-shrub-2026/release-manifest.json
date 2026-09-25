@@ -1,0 +1,109 @@
+{
+  "state": "unpublished",
+  "publicationIssue": 5000,
+  "snapshotDate": "2026-10-22T12:00:00+02:00",
+  "source": {
+    "path": "assets/game-assets/AutumnShrub.blend",
+    "bytes": 107361,
+    "sha256": "6da3cecbadafe23631744c53cdad41e7a3950790fb0afb5e401669d3e2952ad3"
+  },
+  "models": [
+    {
+      "name": "AutumnShrub",
+      "path": "apps/garden/public/assets/models/AutumnShrub.glb",
+      "bytes": 96420,
+      "sha256": "a02e38e13da7ffbde9843c0d4d7fde41159eee3d278b3f3c777b1f73c7ea2e3d",
+      "url": "https://vrt.gredice.com/assets/models/AutumnShrub.glb?v=a02e38e13da7",
+      "triangles": 1000,
+      "trianglesByMesh": {
+        "AutumnShrub_FullGold": 180,
+        "AutumnShrub_FullRusset": 120,
+        "AutumnShrub_SparseGold": 84,
+        "AutumnShrub_SparseRusset": 56,
+        "AutumnShrub_ThinningGold": 132,
+        "AutumnShrub_ThinningRusset": 88,
+        "AutumnShrub_Wood": 340
+      },
+      "meshCount": 7,
+      "materialCount": 3
+    }
+  ],
+  "items": [
+    {
+      "name": "AutumnShrub",
+      "information": {
+        "label": "Listopadni ukrasni grm",
+        "shortDescription": "Nizak, razgranat grm sa zlatnim i riđim jesenskim lišćem.",
+        "fullDescription": "Ukrasni listopadni grm koji zauzima jedno polje. Ljeti je zelen, ujesen poprima zlatne i riđe tonove te gubi lišće, zimi ostaju gole grane, a u proljeće lišće ponovno raste. Kad su vremenski prikazi isključeni, grm ostaje zelen. Služi samo za ukrašavanje i ne daje urod."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.72,
+        "hitboxHeight": 0.72,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 55,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/AutumnShrub.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/AutumnShrub.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/AutumnShrub.webp",
+          "bytes": 6906,
+          "sha256": "7c65f7a4f3742810d15c65e76d3fd77b61a3061457c9e14b879d66d1701364b9"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnShrub_1.webp",
+          "bytes": 6906,
+          "sha256": "7c65f7a4f3742810d15c65e76d3fd77b61a3061457c9e14b879d66d1701364b9"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnShrub_2.webp",
+          "bytes": 7066,
+          "sha256": "131fdee883f1b7b5a8cb50a326eaca93b2160318df53425c69fad18c3d29c2e3"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnShrub_3.webp",
+          "bytes": 6496,
+          "sha256": "869d1c4c07f212a23cd09679ae7dd073f76678ccc11535546b780f89e8d7ce62"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnShrub_4.webp",
+          "bytes": 6612,
+          "sha256": "0bb9d635b720b55782457b5ddfbab8cab829b8c353c71055494c42dddf6a1ba6"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnShrub.webp",
+          "bytes": 4436,
+          "sha256": "5d0ddd38c1f9c0e9bf1e208ef6921c121907ae67d3dc399cd9b48f904aa7e8bb"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnShrub_1.webp",
+          "bytes": 4436,
+          "sha256": "5d0ddd38c1f9c0e9bf1e208ef6921c121907ae67d3dc399cd9b48f904aa7e8bb"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnShrub_2.webp",
+          "bytes": 4212,
+          "sha256": "ebe3754f71e3b3505c416d8966a6119418ef2d6689e673f1e205ccd4027e9511"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnShrub_3.webp",
+          "bytes": 4312,
+          "sha256": "662de18cad1db76668bba04eca138015cca1e946b0f62f64297504978dfdc6ef"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnShrub_4.webp",
+          "bytes": 4324,
+          "sha256": "3f248c7c6f42b2aa5263c2ec6de70c37b0a34bedd6b8f5126870fb64c17d6291"
+        }
+      ]
+    }
+  ]
+}

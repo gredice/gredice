@@ -583,6 +583,13 @@ export type GLTFResult = GLTF & {
         AutumnAsterPot_Petals: THREE.Mesh;
         AutumnAsterPot_Pot: THREE.Mesh;
         AutumnAsterPot_Soil: THREE.Mesh;
+        AutumnShrub_FullGold: THREE.Mesh;
+        AutumnShrub_FullRusset: THREE.Mesh;
+        AutumnShrub_SparseGold: THREE.Mesh;
+        AutumnShrub_SparseRusset: THREE.Mesh;
+        AutumnShrub_ThinningGold: THREE.Mesh;
+        AutumnShrub_ThinningRusset: THREE.Mesh;
+        AutumnShrub_Wood: THREE.Mesh;
         BaleHey: THREE.Mesh;
         BeachBall_Cap: THREE.Mesh;
         BeachBall_ContactPatch: THREE.Mesh;
@@ -1716,6 +1723,9 @@ export type GLTFResult = GLTF & {
         'Material.AutumnAster.Petals': THREE.MeshStandardMaterial;
         'Material.AutumnAster.Soil': THREE.MeshStandardMaterial;
         'Material.AutumnAster.Terracotta': THREE.MeshStandardMaterial;
+        'Material.AutumnShrub.Gold': THREE.MeshStandardMaterial;
+        'Material.AutumnShrub.Russet': THREE.MeshStandardMaterial;
+        'Material.AutumnShrub.Wood': THREE.MeshStandardMaterial;
         'Material.BasketInner': THREE.MeshStandardMaterial;
         'Material.BasketPin': THREE.MeshStandardMaterial;
         'Material.BasketRim': THREE.MeshStandardMaterial;

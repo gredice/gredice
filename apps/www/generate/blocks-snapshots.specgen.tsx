@@ -12,6 +12,7 @@ import {
     getStandardBlockSnapshotBaseRotation,
     parseBlockSnapshotCameraView,
 } from './blockSnapshotCamera';
+import { snapshotFreezeTime } from './blockSnapshotFreezeTime';
 // Load EntityViewer through a lazy wrapper (not the @gredice/game barrel) so the
 // component-test bundle does not pull in GameSceneDynamic -> next/dynamic, and
 // resolves three.js deps through a dynamic chunk that Rollup can build.
@@ -186,13 +187,6 @@ if (
 const snapshotOutputDirectory = resolve(
     configuredSnapshotOutputDirectory ?? defaultSnapshotOutputDirectory,
 );
-const snapshotFreezeTime = process.env.BLOCK_SNAPSHOT_FREEZE_TIME
-    ? new Date(process.env.BLOCK_SNAPSHOT_FREEZE_TIME)
-    : undefined;
-
-if (snapshotFreezeTime && Number.isNaN(snapshotFreezeTime.getTime())) {
-    throw new Error('BLOCK_SNAPSHOT_FREEZE_TIME must be a valid date.');
-}
 
 if (
     snapshotCameraView === 'orthographic' &&
