@@ -1,4 +1,4 @@
-import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from '@playwright/experimental-ct-react';
 import { config } from './playwright.config';
 
@@ -16,8 +16,11 @@ export default defineConfig({
         .map((project) => ({
             ...project,
             testMatch: 'tests/autumn-art.capture.tsx',
-            snapshotPathTemplate: path.resolve(
-                '../../docs/autumn-art-direction-2026/{arg}{ext}',
+            snapshotPathTemplate: fileURLToPath(
+                new URL(
+                    '../../docs/autumn-art-direction-2026/{arg}{ext}',
+                    import.meta.url,
+                ),
             ),
             use: {
                 ...project.use,

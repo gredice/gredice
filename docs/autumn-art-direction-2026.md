@@ -183,7 +183,10 @@ real crops or moving their date.
 ## Reproduction and handoff
 
 The [capture record](autumn-art-direction-2026/capture-record.json) contains the
-source revision, browser version, resolved ISO instants, camera and curve values.
+source commit/tree, clean-input status, browser version, resolved ISO instants,
+camera and curve values. Commit input changes before capture: staged, unstaged
+and untracked changes outside the generated output directory are rejected. The
+same source check runs after capture to catch inputs changed during generation.
 The fixture uses local models and mock data, blocks remote requests and non-read
 requests, and has no authenticated garden queries. It is outside the normal
 regression snapshot inventory and mounts no real plants or farm-operation flows.
@@ -198,7 +201,9 @@ pnpm --filter @gredice/game exec tsx --test src/scene/autumnState.unit.ts src/sc
 git diff --check
 ```
 
-The explicit capture command replaces the 13 PNGs and capture record in
+Both output paths are anchored to their source files, so launching Playwright
+from the repository root or the garden app writes to the same directory. The
+explicit capture command replaces the 13 PNGs and capture record in
 `docs/autumn-art-direction-2026`; inspect the images before accepting an update.
 It does not launch the customer app or require credentials. The fixed clock
 stabilizes the seasonal state and motion; randomized star/cloud placement in the

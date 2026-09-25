@@ -1,10 +1,41 @@
 import { execFileSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/experimental-ct-react';
 import { AutumnArtDirectionFixture } from '../../../packages/game/tests/AutumnArtDirectionFixture';
 
-const output = path.resolve('../../docs/autumn-art-direction-2026');
+const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
+const output = fileURLToPath(
+    new URL('../../../docs/autumn-art-direction-2026', import.meta.url),
+);
+const generatedOutputPath = 'docs/autumn-art-direction-2026';
+
+function captureSource() {
+    const git = (...args: string[]) =>
+        execFileSync('git', args, {
+            cwd: repositoryRoot,
+            encoding: 'utf8',
+        }).trim();
+    const sourceStatus = git(
+        'status',
+        '--porcelain',
+        '--untracked-files=all',
+        '--',
+        '.',
+        `:(exclude)${generatedOutputPath}`,
+    );
+    expect(
+        sourceStatus,
+        'Commit capture inputs before regenerating; only generated outputs may be dirty.',
+    ).toBe('');
+    return {
+        sourceCommit: git('rev-parse', 'HEAD'),
+        sourceTree: git('rev-parse', 'HEAD^{tree}'),
+        sourceStatus,
+        excludedOutputPath: generatedOutputPath,
+    };
+}
 const stages = [
     { name: 'early', month: 9, day: 23 },
     { name: 'mid', month: 10, day: 22 },
@@ -22,6 +53,7 @@ test('capture collection art-direction baseline', async ({
     page,
     browser,
 }) => {
+    const source = captureSource();
     await mkdir(output, { recursive: true });
     const records = [];
     const errors: string[] = [];
@@ -91,14 +123,16 @@ test('capture collection art-direction baseline', async ({
     });
     await mobile.unmount();
     expect(errors).toEqual([]);
+    expect(
+        captureSource(),
+        'Capture inputs changed during generation.',
+    ).toEqual(source);
     await writeFile(
         path.join(output, 'capture-record.json'),
         `${JSON.stringify(
             {
                 capturedAt: new Date().toISOString(),
-                sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], {
-                    encoding: 'utf8',
-                }).trim(),
+                ...source,
                 browser: browser.version(),
                 timezone: 'Europe/Zagreb',
                 camera: {
