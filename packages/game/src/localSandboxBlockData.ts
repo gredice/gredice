@@ -1,4 +1,8 @@
 import type { BlockData } from '@gredice/client';
+import {
+    autumnAsterPotNames,
+    getAutumnAsterPot,
+} from '@gredice/js/autumnAsterPots';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
 import { getHarvestCrate, harvestCrateNames } from '@gredice/js/harvestCrates';
 import {
@@ -70,6 +74,7 @@ export const localSandboxBlockNames = [
     'IceCreamCart',
     'SummerHat',
     ...harvestPumpkinNames,
+    ...autumnAsterPotNames,
     gardenScarecrow.name,
     ...harvestCrateNames,
     harvestWheelbarrow.name,
@@ -896,7 +901,9 @@ function createLocalSandboxBlockData(
             ? gardenScarecrow
             : name === harvestWheelbarrow.name
               ? harvestWheelbarrow
-              : (getHarvestCrate(name) ?? getHarvestPumpkin(name));
+              : (getAutumnAsterPot(name) ??
+                getHarvestCrate(name) ??
+                getHarvestPumpkin(name));
     const metadata = decoration?.information ?? localSandboxBlockMetadata[name];
     return {
         id: index + 1,
