@@ -1,5 +1,6 @@
 import type { BlockData } from '@gredice/client';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
+import { getHarvestCrate, harvestCrateNames } from '@gredice/js/harvestCrates';
 import {
     getHarvestPumpkin,
     harvestPumpkinNames,
@@ -449,7 +450,7 @@ function createBlockData(name: string, index: number) {
     const decoration =
         name === gardenScarecrow.name
             ? gardenScarecrow
-            : getHarvestPumpkin(name);
+            : (getHarvestCrate(name) ?? getHarvestPumpkin(name));
     const fixture = decoration
         ? {
               ...decoration.information,
@@ -516,6 +517,7 @@ function createMockGameCamera(
 const blockNames = [
     ...harvestPumpkinNames,
     gardenScarecrow.name,
+    ...harvestCrateNames,
     'Raised_Bed',
     'Bucket',
     'WateringCan',
@@ -647,6 +649,7 @@ const blockNames = [
 type ItemsHudStoryOptions = {
     includeHarvestPumpkins?: boolean;
     includeGardenScarecrow?: boolean;
+    includeHarvestCrates?: boolean;
     accountSunflowers?: number;
     cameraTarget?: [x: number, y: number, z: number];
     closeup?: boolean;
@@ -660,6 +663,7 @@ function createItemsHudQueryClient({
     accountSunflowers = 50,
     includeHarvestPumpkins = true,
     includeGardenScarecrow = true,
+    includeHarvestCrates = true,
     isSandbox = false,
 }: ItemsHudStoryOptions) {
     const queryClient = new ReactQuery.QueryClient({
@@ -678,6 +682,7 @@ function createItemsHudQueryClient({
                 (name) =>
                     includeGardenScarecrow || name !== gardenScarecrow.name,
             )
+            .filter((name) => includeHarvestCrates || !getHarvestCrate(name))
             .map(createBlockData),
     );
     queryClient.setQueryData(['currentUser'], { id: 'test-user' });
@@ -705,6 +710,7 @@ function createItemsHudQueryClient({
 function ItemsHudTestProviders({
     includeHarvestPumpkins = true,
     includeGardenScarecrow = true,
+    includeHarvestCrates = true,
     children,
     accountSunflowers,
     cameraTarget,
@@ -721,12 +727,14 @@ function ItemsHudTestProviders({
                 isSandbox,
                 includeHarvestPumpkins,
                 includeGardenScarecrow,
+                includeHarvestCrates,
             }),
         [
             accountSunflowers,
             isSandbox,
             includeHarvestPumpkins,
             includeGardenScarecrow,
+            includeHarvestCrates,
         ],
     );
     const gameStore = useMemo(() => {
@@ -822,14 +830,17 @@ function HudPlacementDragStateProbe() {
 export function ItemsHudAlignmentStory({
     includeHarvestPumpkins = true,
     includeGardenScarecrow = true,
+    includeHarvestCrates = true,
 }: {
     includeHarvestPumpkins?: boolean;
     includeGardenScarecrow?: boolean;
+    includeHarvestCrates?: boolean;
 }) {
     return (
         <ItemsHudTestProviders
             includeHarvestPumpkins={includeHarvestPumpkins}
             includeGardenScarecrow={includeGardenScarecrow}
+            includeHarvestCrates={includeHarvestCrates}
         >
             <div className="relative h-screen w-screen overflow-hidden">
                 <div

@@ -4,6 +4,7 @@ import {
     horseAppearanceVariants,
 } from '@gredice/js/entityAppearanceVariants';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
+import { harvestCrateNames } from '@gredice/js/harvestCrates';
 import { harvestPumpkinNames } from '@gredice/js/harvestPumpkins';
 import { BlockImage, getBlockImageUrl } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
@@ -351,6 +352,9 @@ const items: HudItem[] = [
         imageSrc: getBlockImageUrl('Tree'),
         items: [
             { type: 'entity', name: gardenScarecrow.name },
+            ...harvestCrateNames.map(
+                (name): HudItem => ({ type: 'entity', name }),
+            ),
             {
                 type: 'picker',
                 label: 'Posude',

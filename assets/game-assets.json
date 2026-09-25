@@ -3,6 +3,34 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "HarvestCrate",
+            "source": "HarvestCrate.blend",
+            "output": "HarvestCrate.glb",
+            "version": "ff4ae49fa93b",
+            "preload": "lazy",
+            "objects": [
+                "HarvestCrate_Timber",
+                "HarvestCrate_Frame",
+                "HarvestCrate_ProducePrimary",
+                "HarvestCrate_ProduceSecondary",
+                "HarvestCrate_Stems"
+            ]
+        },
+        {
+            "name": "HarvestCrateOrchard",
+            "source": "HarvestCrateOrchard.blend",
+            "output": "HarvestCrateOrchard.glb",
+            "version": "715049a6ea13",
+            "preload": "lazy",
+            "objects": [
+                "HarvestCrateOrchard_Timber",
+                "HarvestCrateOrchard_Frame",
+                "HarvestCrateOrchard_ProducePrimary",
+                "HarvestCrateOrchard_ProduceSecondary",
+                "HarvestCrateOrchard_Stems"
+            ]
+        },
+        {
             "name": "GardenScarecrow",
             "source": "GardenScarecrow.blend",
             "output": "GardenScarecrow.glb",

@@ -157,7 +157,8 @@ def audit(asset):
                       "triangles": triangles, "meshes": len(objects), "materials": 2}))
 
 
-for name in ASSETS:
-    if "--check" not in sys.argv:
-        generate(name)
-    audit(name)
+if __name__ == "__main__":
+    for name in ASSETS:
+        if "--check" not in sys.argv:
+            generate(name)
+        audit(name)
