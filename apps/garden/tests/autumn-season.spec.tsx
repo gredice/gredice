@@ -31,6 +31,64 @@ test('disabled seasonal weather keeps summer color', async ({ mount }) => {
 });
 
 for (const instanced of [false, true]) {
+    test(`yellowing starts in August with a downward gradient when instanced=${instanced}`, async ({
+        mount,
+        page,
+    }) => {
+        const fixture = await mount(
+            <AutumnVisualFixture
+                instanced={instanced}
+                calendarDate={[2024, 8, 21]}
+            />,
+        );
+        await expect(fixture).toHaveAttribute('data-sprigs', /.+/);
+        const summer = await fixture.getAttribute('data-sprigs');
+        for (const pair of (summer ?? '').split(',')) {
+            const [bottom, top] = pair.split('-');
+            expect(top).toBe(bottom);
+        }
+        await fixture.update(
+            <AutumnVisualFixture
+                instanced={instanced}
+                calendarDate={[2024, 8, 29]}
+            />,
+        );
+        await expect(fixture).not.toHaveAttribute('data-sprigs', summer ?? '');
+        for (const attribute of ['data-canopies', 'data-sprigs']) {
+            const colors = await fixture.getAttribute(attribute);
+            for (const entry of (colors ?? '').split(',')) {
+                const [bottom, top] = entry.split(':')[0].split('-');
+                const redToGreen = (color: string) =>
+                    Number.parseInt(color.slice(0, 2), 16) /
+                    Number.parseInt(color.slice(2, 4), 16);
+                expect(redToGreen(top)).toBeGreaterThan(redToGreen(bottom));
+            }
+        }
+        const augustColors = await fixture.getAttribute('data-canopies');
+        await fixture.update(
+            <AutumnVisualFixture
+                instanced={instanced}
+                calendarDate={[2024, 9, 10]}
+            />,
+        );
+        await expect(fixture).not.toHaveAttribute(
+            'data-canopies',
+            augustColors ?? '',
+        );
+        await expect(page.locator('canvas')).toHaveScreenshot(
+            `autumn-september-gradient-${instanced ? 'instanced' : 'individual'}.png`,
+            { maxDiffPixelRatio: 0.005, threshold: 0.05 },
+        );
+        await fixture.update(
+            <AutumnVisualFixture
+                instanced={instanced}
+                calendarDate={[2024, 9, 10]}
+                disabled
+            />,
+        );
+        await expect(fixture).toHaveAttribute('data-sprigs', summer ?? '');
+    });
+
     test(`full autumn tree sprigs change color when instanced=${instanced}`, async ({
         mount,
     }) => {

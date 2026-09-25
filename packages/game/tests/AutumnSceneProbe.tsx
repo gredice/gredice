@@ -1,6 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useLayoutEffect, useRef } from 'react';
 import {
+    Color,
     InstancedMesh,
     Matrix4,
     Mesh,
@@ -10,6 +11,26 @@ import {
 import { autumnPartLeafSurfaces } from '../src/entities/helpers/autumnLeafSurfaces';
 import { readGameProfileMetadata } from '../src/scene/gameProfileMetadata';
 import { useSceneTimeInvalidation } from '../src/scene/SceneTime';
+
+function foliageColors(mesh: Mesh, material: MeshStandardMaterial) {
+    const colors = mesh.geometry.getAttribute('color');
+    const positions = mesh.geometry.getAttribute('position');
+    if (!material.vertexColors || !colors) return material.color.getHexString();
+    let bottom = 0;
+    let top = 0;
+    for (let index = 1; index < positions.count; index++) {
+        if (positions.getY(index) < positions.getY(bottom)) bottom = index;
+        if (positions.getY(index) > positions.getY(top)) top = index;
+    }
+    return [bottom, top]
+        .map((index) =>
+            new Color()
+                .fromBufferAttribute(colors, index)
+                .multiply(material.color)
+                .getHexString(),
+        )
+        .join('-');
+}
 
 export function AutumnSceneProbe({
     onReady,
@@ -114,7 +135,7 @@ export function AutumnSceneProbe({
                     index++
                 )
                     canopies.push(
-                        `${object.material.color.getHexString()}:${object.geometry.index?.count ?? object.geometry.attributes.position.count}`,
+                        `${foliageColors(object, object.material)}:${object.geometry.index?.count ?? object.geometry.attributes.position.count}`,
                     );
             }
             if (
@@ -129,7 +150,7 @@ export function AutumnSceneProbe({
                     (object instanceof InstancedMesh ? object.count : 1);
                     index++
                 )
-                    sprigs.push(object.material.color.getHexString());
+                    sprigs.push(foliageColors(object, object.material));
             }
         });
         onGroundCount?.(groundCount);
