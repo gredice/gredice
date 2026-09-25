@@ -1,5 +1,6 @@
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { ArrowSign } from './ArrowSign';
+import { AutumnAsterPot } from './AutumnAsterPot';
 import { BaleHey } from './BaleHey';
 import { BeachBall } from './BeachBall';
 import { BeachChair } from './BeachChair';
@@ -190,6 +191,9 @@ export const entityNameMap = {
     SummerHat: SummerHat,
     GardenScarecrow,
     HarvestCrate,
+    AutumnAsterPotMauve: AutumnAsterPot,
+    AutumnAsterPotCream: AutumnAsterPot,
+    AutumnAsterPotGold: AutumnAsterPot,
     HarvestWheelbarrow,
     HarvestCrateOrchard: HarvestCrate,
     HarvestPumpkinSquatOrange: HarvestPumpkin,

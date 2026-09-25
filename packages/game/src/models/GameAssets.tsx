@@ -578,6 +578,11 @@ export type GLTFResult = GLTF & {
         ArrowSign_Arrow: THREE.Mesh;
         ArrowSign_Fastener: THREE.Mesh;
         ArrowSign_Post: THREE.Mesh;
+        AutumnAsterPot_Centers: THREE.Mesh;
+        AutumnAsterPot_Foliage: THREE.Mesh;
+        AutumnAsterPot_Petals: THREE.Mesh;
+        AutumnAsterPot_Pot: THREE.Mesh;
+        AutumnAsterPot_Soil: THREE.Mesh;
         BaleHey: THREE.Mesh;
         BeachBall_Cap: THREE.Mesh;
         BeachBall_ContactPatch: THREE.Mesh;
@@ -1706,6 +1711,11 @@ export type GLTFResult = GLTF & {
         'Material.ArrowSign.Color': THREE.MeshStandardMaterial;
         'Material.ArrowSign.DeepWood': THREE.MeshStandardMaterial;
         'Material.ArrowSign.WarmWood': THREE.MeshStandardMaterial;
+        'Material.AutumnAster.Centers': THREE.MeshStandardMaterial;
+        'Material.AutumnAster.Foliage': THREE.MeshStandardMaterial;
+        'Material.AutumnAster.Petals': THREE.MeshStandardMaterial;
+        'Material.AutumnAster.Soil': THREE.MeshStandardMaterial;
+        'Material.AutumnAster.Terracotta': THREE.MeshStandardMaterial;
         'Material.BasketInner': THREE.MeshStandardMaterial;
         'Material.BasketPin': THREE.MeshStandardMaterial;
         'Material.BasketRim': THREE.MeshStandardMaterial;
