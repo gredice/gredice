@@ -3,6 +3,20 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "AutumnAsterPot",
+            "source": "AutumnAsterPot.blend",
+            "output": "AutumnAsterPot.glb",
+            "version": "f6a6dc858dbb",
+            "preload": "lazy",
+            "objects": [
+                "AutumnAsterPot_Pot",
+                "AutumnAsterPot_Soil",
+                "AutumnAsterPot_Foliage",
+                "AutumnAsterPot_Petals",
+                "AutumnAsterPot_Centers"
+            ]
+        },
+        {
             "name": "HarvestWheelbarrow",
             "source": "HarvestWheelbarrow.blend",
             "output": "HarvestWheelbarrow.glb",
