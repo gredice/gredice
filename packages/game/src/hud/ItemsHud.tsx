@@ -1,4 +1,5 @@
 import type { BlockData } from '@gredice/client';
+import { autumnAsterPotNames } from '@gredice/js/autumnAsterPots';
 import {
     type HorseAppearanceVariant,
     horseAppearanceVariants,
@@ -358,6 +359,9 @@ const items: HudItem[] = [
                 name: harvestWheelbarrow.name,
                 footprintLabel: '2 × 1',
             },
+            ...autumnAsterPotNames.map(
+                (name): HudItem => ({ type: 'entity', name }),
+            ),
             ...harvestCrateNames.map(
                 (name): HudItem => ({ type: 'entity', name }),
             ),
