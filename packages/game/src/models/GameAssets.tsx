@@ -1457,6 +1457,10 @@ export type GLTFResult = GLTF & {
         SandcastleSmallA_SandBlock05: THREE.Mesh;
         SandcastleSmallA_SandBlock06: THREE.Mesh;
         SandcastleSmallA_UpperWindowRecess: THREE.Mesh;
+        SeasonalMaple_Full: THREE.Mesh;
+        SeasonalMaple_Sparse: THREE.Mesh;
+        SeasonalMaple_Thinning: THREE.Mesh;
+        SeasonalMaple_Wood: THREE.Mesh;
         Seed: THREE.Mesh;
         SeedDryingRack_Arrangement: THREE.Mesh;
         SensorStakeMeter_Display_Back: THREE.Mesh;
@@ -2136,6 +2140,8 @@ export type GLTFResult = GLTF & {
         'Material.RoofTileLantern.Terracotta': THREE.MeshStandardMaterial;
         'Material.Sand': THREE.MeshStandardMaterial;
         'Material.Sand.001': THREE.MeshStandardMaterial;
+        'Material.SeasonalMaple.Leaves': THREE.MeshStandardMaterial;
+        'Material.SeasonalMaple.Wood': THREE.MeshStandardMaterial;
         'Material.SensorStakeMeter.Charcoal': THREE.MeshStandardMaterial;
         'Material.SensorStakeMeter.FaceCream': THREE.MeshStandardMaterial;
         'Material.SensorStakeMeter.ScreenBlue': THREE.MeshStandardMaterial;

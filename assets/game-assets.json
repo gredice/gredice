@@ -3,6 +3,19 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "SeasonalMaple",
+            "source": "SeasonalMaple.blend",
+            "output": "SeasonalMaple.glb",
+            "version": "ee04fd1802d0",
+            "preload": "lazy",
+            "objects": [
+                "SeasonalMaple_Wood",
+                "SeasonalMaple_Full",
+                "SeasonalMaple_Thinning",
+                "SeasonalMaple_Sparse"
+            ]
+        },
+        {
             "name": "AutumnWreathPost",
             "source": "AutumnWreathPost.blend",
             "output": "AutumnWreathPost.glb",
