@@ -108,9 +108,9 @@ function frogSpawnStatesEqual(
     );
 }
 
-const frogScale = 0.42;
-const frogGroundLift = 0.018;
-const frogSwimDepth = 0.055;
+const frogScale = 0.21;
+const frogGroundLift = 0.009;
+const frogSwimDepth = 0.0275;
 const frogDebugColor = '#84cc16';
 const frogDebugBehaviors = ['idle', 'croak', 'hop', 'escape'];
 const frogCroakDurationSeconds = 1.1;
@@ -697,7 +697,7 @@ function Frog({ candidate }: { candidate: FrogSpawnCandidate }) {
                 <ActorSpeechBubble
                     actorRef={groupRef}
                     message="Kre-kre!"
-                    offsetY={0.42}
+                    offsetY={frogScale}
                 />
             ) : null}
             <AnimalTargetDebugMarker
