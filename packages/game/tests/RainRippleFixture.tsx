@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Vector3 } from 'three';
 import { EntityInstances } from '../src/entities/EntityInstances';
 import { RainRipples } from '../src/rain/RainRipples';
@@ -41,7 +41,13 @@ export function RainRippleFixture({
     date?: 'summer' | 'lateAutumn' | 'winter';
     fixedTime?: number;
 }) {
-    const [sample, setSample] = useState('{}');
+    const sampleElement = useRef<HTMLDivElement>(null);
+    const reportSample = useCallback((sample: string) => {
+        // Keep per-frame telemetry out of React so observation does not keep
+        // rebuilding the scene or compete with screenshot actionability.
+        if (sampleElement.current)
+            sampleElement.current.dataset.sample = sample;
+    }, []);
     const client = useMemo(() => new QueryClient(), []);
     const store = useMemo(
         () =>
@@ -109,12 +115,13 @@ export function RainRippleFixture({
             <GameStateContext.Provider value={store}>
                 <div
                     data-testid="rain-ripple-scene"
-                    data-sample={sample}
-                    style={{ width: 900, height: 640 }}
+                    ref={sampleElement}
+                    data-sample="{}"
+                    style={{ width: 640, height: 420 }}
                 >
                     <Scene
                         position={[8, 9, 12]}
-                        zoom={65}
+                        zoom={45}
                         quality={gameQualityProfiles.low}
                         fixedTimeSeconds={live ? undefined : fixedTime}
                         profileStats
@@ -153,7 +160,7 @@ export function RainRippleFixture({
                                     snow={snow}
                                 />
                             )}
-                            <RainRippleProbe onSample={setSample} />
+                            <RainRippleProbe onSample={reportSample} />
                         </Suspense>
                     </Scene>
                 </div>
