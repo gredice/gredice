@@ -697,7 +697,7 @@ function Frog({ candidate }: { candidate: FrogSpawnCandidate }) {
                 <ActorSpeechBubble
                     actorRef={groupRef}
                     message="Kre-kre!"
-                    offsetY={0.42}
+                    offsetY={frogScale}
                 />
             ) : null}
             <AnimalTargetDebugMarker
