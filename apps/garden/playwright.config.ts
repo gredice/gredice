@@ -84,6 +84,7 @@ export const config: PlaywrightTestConfig = {
         {
             name: 'chromium-webgl',
             testMatch: [
+                squirrelCachingComponentTestPattern,
                 webglComponentTestPattern,
                 leafStepsComponentTestPattern,
             ],
