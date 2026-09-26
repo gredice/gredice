@@ -20,6 +20,7 @@ export const fenceGateBlockNames = [
     'WhiteFenceGate',
     'StoneFenceGate',
     'PolishedStoneFenceGate',
+    'AutumnFenceGate',
 ] as const;
 
 export type FenceGateBlockName = (typeof fenceGateBlockNames)[number];

@@ -754,6 +754,7 @@ test('closed gates block the avatar and open gates leave a center passage', () =
         'WhiteFenceGate',
         'StoneFenceGate',
         'PolishedStoneFenceGate',
+        'AutumnFenceGate',
     ]) {
         const createWorld = (variant: number) =>
             createGardenAvatarCollisionWorld({

@@ -585,6 +585,12 @@ export type GLTFResult = GLTF & {
         AutumnAsterPot_Soil: THREE.Mesh;
         AutumnBlanketBench_Textile: THREE.Mesh;
         AutumnBlanketBench_Timber: THREE.Mesh;
+        AutumnFenceGate_Decor: THREE.Mesh;
+        AutumnFenceGate_Leaf_Mesh: THREE.Mesh;
+        AutumnFenceGate_Leaf_Mesh_1: THREE.Mesh;
+        AutumnFenceGate_Posts: THREE.Mesh;
+        AutumnGarland_Foliage: THREE.Mesh;
+        AutumnGarland_Support: THREE.Mesh;
         AutumnGrassTuft_Base: THREE.Mesh;
         AutumnGrassTuft_Foliage: THREE.Mesh;
         AutumnLeafPileCrescent_Leaves: THREE.Mesh;
@@ -598,6 +604,8 @@ export type GLTFResult = GLTF & {
         AutumnShrub_ThinningGold: THREE.Mesh;
         AutumnShrub_ThinningRusset: THREE.Mesh;
         AutumnShrub_Wood: THREE.Mesh;
+        AutumnWreathPost_Foliage: THREE.Mesh;
+        AutumnWreathPost_Support: THREE.Mesh;
         BaleHey: THREE.Mesh;
         BeachBall_Cap: THREE.Mesh;
         BeachBall_ContactPatch: THREE.Mesh;
@@ -1747,6 +1755,9 @@ export type GLTFResult = GLTF & {
         'Material.AutumnAster.Terracotta': THREE.MeshStandardMaterial;
         'Material.AutumnBlanketBench.Textile': THREE.MeshStandardMaterial;
         'Material.AutumnBlanketBench.Timber': THREE.MeshStandardMaterial;
+        'Material.AutumnEntrance.Leaves': THREE.MeshStandardMaterial;
+        'Material.AutumnEntrance.Pumpkins': THREE.MeshStandardMaterial;
+        'Material.AutumnEntrance.Timber': THREE.MeshStandardMaterial;
         'Material.AutumnGrasses.Blades': THREE.MeshStandardMaterial;
         'Material.AutumnGrasses.Gravel': THREE.MeshStandardMaterial;
         'Material.AutumnLeafPileCrescent.Palette': THREE.MeshStandardMaterial;

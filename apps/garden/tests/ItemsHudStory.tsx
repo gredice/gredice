@@ -4,6 +4,10 @@ import {
     getAutumnAsterPot,
 } from '@gredice/js/autumnAsterPots';
 import { autumnBlanketBench } from '@gredice/js/autumnBlanketBench';
+import {
+    autumnEntranceNames,
+    getAutumnEntrance,
+} from '@gredice/js/autumnEntrances';
 import { autumnGrassNames, getAutumnGrass } from '@gredice/js/autumnGrasses';
 import {
     autumnLeafPileNames,
@@ -472,6 +476,7 @@ const blockFixtures: Record<
 
 function createBlockData(name: string, index: number) {
     const decoration =
+        getAutumnEntrance(name) ??
         getWoodlandArrangement(name) ??
         getAutumnGrass(name) ??
         getAutumnLeafPile(name) ??
@@ -584,6 +589,7 @@ const blockNames = [
     ...autumnLeafPileNames,
     ...autumnGrassNames,
     ...woodlandArrangementNames,
+    ...autumnEntranceNames,
     'Raised_Bed',
     'Bucket',
     'WateringCan',
@@ -731,6 +737,7 @@ type ItemsHudStoryOptions = {
     includeAutumnLeafPiles?: boolean;
     includeAutumnGrasses?: boolean;
     includeWoodlandArrangements?: boolean;
+    includeAutumnEntrances?: boolean;
     accountSunflowers?: number;
     cameraTarget?: [x: number, y: number, z: number];
     closeup?: boolean;
@@ -760,6 +767,7 @@ function createItemsHudQueryClient({
     includeAutumnLeafPiles = true,
     includeAutumnGrasses = true,
     includeWoodlandArrangements = true,
+    includeAutumnEntrances = true,
     isSandbox = false,
 }: ItemsHudStoryOptions) {
     const queryClient = new ReactQuery.QueryClient({
@@ -771,6 +779,9 @@ function createItemsHudQueryClient({
     queryClient.setQueryData(
         ['blocks'],
         blockNames
+            .filter(
+                (name) => includeAutumnEntrances || !getAutumnEntrance(name),
+            )
             .filter(
                 (name) =>
                     includeWoodlandArrangements ||
@@ -869,6 +880,7 @@ function ItemsHudTestProviders({
     includeAutumnLeafPiles = true,
     includeAutumnGrasses = true,
     includeWoodlandArrangements = true,
+    includeAutumnEntrances = true,
     children,
     accountSunflowers,
     cameraTarget,
@@ -901,6 +913,7 @@ function ItemsHudTestProviders({
                 includeAutumnLeafPiles,
                 includeAutumnGrasses,
                 includeWoodlandArrangements,
+                includeAutumnEntrances,
             }),
         [
             accountSunflowers,
@@ -923,6 +936,7 @@ function ItemsHudTestProviders({
             includeAutumnLeafPiles,
             includeAutumnGrasses,
             includeWoodlandArrangements,
+            includeAutumnEntrances,
         ],
     );
     const gameStore = useMemo(() => {
@@ -1034,6 +1048,7 @@ export function ItemsHudAlignmentStory({
     includeAutumnLeafPiles = true,
     includeAutumnGrasses = true,
     includeWoodlandArrangements = true,
+    includeAutumnEntrances = true,
 }: {
     includeHarvestPumpkins?: boolean;
     includeGardenScarecrow?: boolean;
@@ -1053,6 +1068,7 @@ export function ItemsHudAlignmentStory({
     includeAutumnLeafPiles?: boolean;
     includeAutumnGrasses?: boolean;
     includeWoodlandArrangements?: boolean;
+    includeAutumnEntrances?: boolean;
 }) {
     return (
         <ItemsHudTestProviders
@@ -1074,6 +1090,7 @@ export function ItemsHudAlignmentStory({
             includeAutumnLeafPiles={includeAutumnLeafPiles}
             includeAutumnGrasses={includeAutumnGrasses}
             includeWoodlandArrangements={includeWoodlandArrangements}
+            includeAutumnEntrances={includeAutumnEntrances}
         >
             <div className="relative h-screen w-screen overflow-hidden">
                 <div
