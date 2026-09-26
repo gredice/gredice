@@ -11,6 +11,7 @@ import {
 } from 'three';
 import { useGameFlags } from '../../GameFlagsContext';
 import {
+    useSceneDeadline,
     useSceneFixedTimeSeconds,
     useSceneResume,
     useSceneRuntimeVisible,
@@ -544,8 +545,29 @@ export function Squirrel({
     const lastPresenceUpdateRef = useRef(0);
     const lastDebugCommandSequenceRef = useRef(0);
     const lastFleeAtRef = useRef(Number.NEGATIVE_INFINITY);
-    const visitEndsAtRef = useRef<number | null>(null);
+    // Lifetime is independent of pose animation: reduced motion releases the
+    // render lease, but the existing visit must still enter its cooldown.
+    const [visitDeadlineMs] = useState(
+        () =>
+            performance.now() +
+            getSquirrelVisitDurationSeconds({
+                habitatSeed: habitat.seed,
+                spawnSequence,
+            }) *
+                1000,
+    );
     const despawnedRef = useRef(false);
+    useSceneDeadline({
+        owner: `fauna:squirrel:${habitat.id}:visit`,
+        deadlineMs:
+            reducedMotion && fixedTime === undefined ? visitDeadlineMs : null,
+        callback: () => {
+            if (despawnedRef.current) return;
+            despawnedRef.current = true;
+            if (groupRef.current) groupRef.current.visible = false;
+            onDespawn(habitat.id);
+        },
+    });
     const pathDebugKeyRef = useRef('');
     const [pathDebugPoints, setPathDebugPoints] = useState<
         AnimalDebugPathPoint[]
@@ -766,12 +788,6 @@ export function Squirrel({
             runtimeRef.current = runtime;
             cacheFinishedRef.current = !cachingEnabled;
             group.position.copy(habitat.spawnTarget.position);
-            visitEndsAtRef.current ??=
-                now +
-                getSquirrelVisitDurationSeconds({
-                    habitatSeed: habitat.seed,
-                    spawnSequence,
-                });
         }
 
         if (
@@ -833,7 +849,8 @@ export function Squirrel({
         if (
             runtime.phase !== 'exiting' &&
             runtime.behavior !== 'flee' &&
-            now >= (visitEndsAtRef.current ?? Number.POSITIVE_INFINITY)
+            fixedTime === undefined &&
+            performance.now() >= visitDeadlineMs
         ) {
             const departure = createScheduledDepartureState({
                 from: group.position,

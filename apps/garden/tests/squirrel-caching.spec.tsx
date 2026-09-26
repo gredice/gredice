@@ -208,6 +208,33 @@ test('close-up frozen carrying pose stays clear of the muzzle and garden interac
     });
 });
 
+test('reduced motion still expires the visit and enters cooldown without an animation lease', async ({
+    mount,
+    page,
+}) => {
+    await page.clock.install();
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const fixture = await mount(
+        <RainRippleFixture squirrels live renderLayers={false} rain={0} />,
+    );
+    const sample = async () =>
+        JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
+    await expect
+        .poll(async () => (await sample()).squirrel?.nut?.visible)
+        .toBe(false);
+    expect(
+        await page.evaluate(
+            () =>
+                window.__grediceGameProfile?.runtimeFrameLoop
+                    ?.renderLeaseOwners,
+        ),
+    ).not.toContain('fauna:squirrels');
+    await page.clock.fastForward(66_000);
+    await expect.poll(async () => (await sample()).squirrel).toBe(null);
+    await page.clock.fastForward(60_000);
+    expect((await sample()).squirrel).toBe(null);
+});
+
 test.afterEach(async ({ page }, testInfo) => {
     if (testInfo.status === testInfo.expectedStatus) return;
     const sample = await page

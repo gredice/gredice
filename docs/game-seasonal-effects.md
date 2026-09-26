@@ -362,8 +362,10 @@ cached GLTF resources remain untouched.
 
 The calendar comes from shared seasonal state and animation from `SceneTime`.
 Fixed animation seconds reproduce both the path position and rig pose without
-replaying intermediate frames. Hidden scenes pause the visit; reduced motion
-holds a still squirrel without the nut or an animation lease. Weather disablement,
+replaying intermediate frames. Hidden scenes pause animation; reduced motion
+holds a still squirrel without the nut or an animation lease. Visit expiry uses
+the shared deadline scheduler independently of pose animation, so a still
+squirrel enters cooldown on time (or on visibility resume). Weather disablement,
 rain intensity at least 0.7, or snow coverage at least 0.01 suppress caching.
 Audio preferences need no extra handling because this effect adds no sound.
 
