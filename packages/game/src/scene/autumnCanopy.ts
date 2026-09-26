@@ -9,7 +9,10 @@ export function getAutumnCanopyShadowKey(
         stacks
             ?.flatMap((stack) =>
                 stack.blocks
-                    .filter((block) => block.name === 'Tree')
+                    .filter(
+                        (block) =>
+                            block.name === 'Tree' || block.name === 'Bush',
+                    )
                     .map(
                         (block) =>
                             `${block.id}:${getAutumnCanopyStage(retention, block.id)}`,

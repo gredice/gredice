@@ -363,7 +363,8 @@ export function AutumnLeaves({
                 visibleIndex,
                 descriptorIndex,
             ] of scratch.visibleIndices.entries()) {
-                const { origin, leaves } = descriptors[descriptorIndex];
+                const { source, origin, leaves } = descriptors[descriptorIndex];
+                const bush = source.kind === 'bush';
                 for (
                     let index = 0;
                     index < scratch.allocations[visibleIndex];
@@ -375,10 +376,11 @@ export function AutumnLeaves({
                         time.value,
                         windSpeed,
                         windDirection,
+                        bush ? 0.5 : 1.75,
                     );
                     scratch.transform.position.set(
                         origin.x + sample.x,
-                        origin.y - 0.5 + sample.y,
+                        origin.y + (bush ? 0 : -0.5) + sample.y,
                         origin.z + sample.z,
                     );
                     scratch.transform.rotation.set(
@@ -386,7 +388,9 @@ export function AutumnLeaves({
                         sample.rotation * 0.7,
                         sample.rotation * 0.3,
                     );
-                    scratch.transform.scale.setScalar(sample.scale);
+                    scratch.transform.scale.setScalar(
+                        sample.scale * (bush ? 0.65 : 1),
+                    );
                     scratch.transform.updateMatrix();
                     mesh.setMatrixAt(active, scratch.transform.matrix);
                     mesh.setColorAt(active++, leaf.color);
