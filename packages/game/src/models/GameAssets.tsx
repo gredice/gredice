@@ -1398,6 +1398,12 @@ export type GLTFResult = GLTF & {
         PotVariant_Soil_08: THREE.Mesh;
         PotVariant_Soil_09: THREE.Mesh;
         PotVariant_Soil_10: THREE.Mesh;
+        PumpkinLanternSmile_Body: THREE.Mesh;
+        PumpkinLanternSmile_Glow: THREE.Mesh;
+        PumpkinLanternSmile_Stem: THREE.Mesh;
+        PumpkinLanternWink_Body: THREE.Mesh;
+        PumpkinLanternWink_Glow: THREE.Mesh;
+        PumpkinLanternWink_Stem: THREE.Mesh;
         RabbitHutch_EntranceRamp_1: THREE.Mesh;
         RabbitHutch_EntranceRamp_2: THREE.Mesh;
         RabbitHutch_Oak: THREE.Mesh;
@@ -2126,6 +2132,9 @@ export type GLTFResult = GLTF & {
         'Material.PlantTieLoop.Twine': THREE.MeshStandardMaterial;
         'Material.PlantTieLoop.TwineLight': THREE.MeshStandardMaterial;
         'Material.PolishedStoneFence.Surface': THREE.MeshStandardMaterial;
+        'Material.PumpkinLantern.Glow': THREE.MeshStandardMaterial;
+        'Material.PumpkinLantern.Skin': THREE.MeshStandardMaterial;
+        'Material.PumpkinLantern.Stem': THREE.MeshStandardMaterial;
         'Material.Rabbit.Charcoal': THREE.MeshStandardMaterial;
         'Material.Rabbit.EyeGlint': THREE.MeshStandardMaterial;
         'Material.Rabbit.FurPrimary': THREE.MeshStandardMaterial;
