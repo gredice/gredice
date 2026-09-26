@@ -4,11 +4,12 @@ import type { GLTFResult } from '../../models/GameAssets';
 import { RainWetOverlay } from '../../rain/RainWetOverlay';
 import { useRegisterAutumnPart } from '../../scene/AutumnParts';
 import { SnowOverlay } from '../../snow/SnowOverlay';
+import type { FenceGateBlockName } from '../fenceConnections';
 import { autumnPartLeafSurfaces } from './autumnLeafSurfaces';
 
 type FenceGateNodeName = Extract<
     keyof GLTFResult['nodes'],
-    `${'FenceGate' | 'WhiteFenceGate' | 'StoneFenceGate' | 'PolishedStoneFenceGate'}_${string}`
+    `${FenceGateBlockName}_${string}`
 >;
 
 export function FenceGatePostsPart({
