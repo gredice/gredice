@@ -61,11 +61,11 @@ test('mist respects quality, weather, morning time, drag and reduced motion', as
     mount,
     page,
 }) => {
-    const fixture = await mount(<MorningMistFixture />);
+    const fixture = await mount(<MorningMistFixture compact />);
     const count = async () =>
         JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}').count;
     await expect.poll(count).toBe(32);
-    await fixture.update(<MorningMistFixture tier="medium" />);
+    await fixture.update(<MorningMistFixture compact tier="medium" />);
     await expect.poll(count).toBe(16);
     for (const props of [
         { tier: 'low' },
@@ -78,10 +78,10 @@ test('mist respects quality, weather, morning time, drag and reduced motion', as
         { disabled: true },
         { dragging: true },
     ] as const) {
-        await fixture.update(<MorningMistFixture {...props} />);
+        await fixture.update(<MorningMistFixture compact {...props} />);
         await expect.poll(count).toBe(0);
     }
-    await fixture.update(<MorningMistFixture />);
+    await fixture.update(<MorningMistFixture compact />);
     await expect.poll(count).toBe(32);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await expect.poll(count).toBe(0);
@@ -91,15 +91,15 @@ test('mist respects quality, weather, morning time, drag and reduced motion', as
 
 for (const date of ['summer', 'winter'] as const) {
     test(`mist uses weather at a frozen ${date} morning`, async ({ mount }) => {
-        const fixture = await mount(<MorningMistFixture date={date} />);
+        const fixture = await mount(<MorningMistFixture compact date={date} />);
         await expect
             .poll(
                 async () =>
                     JSON.parse(
                         (await fixture.getAttribute('data-sample')) ?? '{}',
-                    ).density,
+                    ).count,
             )
-            .toBe(1);
+            .toBe(32);
     });
 }
 
@@ -107,17 +107,17 @@ test('mist fades on weather changes and suspends offscreen, then cleans up', asy
     mount,
     page,
 }) => {
-    const fixture = await mount(<MorningMistFixture live />);
+    const fixture = await mount(<MorningMistFixture compact live />);
     const sample = async () =>
         JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
     await expect
         .poll(async () => (await sample()).density)
         .toBeGreaterThanOrEqual(0.995);
-    await fixture.update(<MorningMistFixture live fog={0} />);
+    await fixture.update(<MorningMistFixture compact live fog={0} />);
     const fading = (await sample()).density;
     expect(fading).toBeGreaterThan(0);
     await expect.poll(async () => (await sample()).density).toBe(0);
-    await fixture.update(<MorningMistFixture live />);
+    await fixture.update(<MorningMistFixture compact live />);
     await expect
         .poll(async () => (await sample()).density)
         .toBeGreaterThanOrEqual(0.995);
@@ -179,7 +179,7 @@ test('mist fades on weather changes and suspends offscreen, then cleans up', asy
             page.evaluate(() => window.__grediceGameProfile?.morningMistCount),
         )
         .toBe(32);
-    await fixture.update(<MorningMistFixture live mounted={false} />);
+    await fixture.update(<MorningMistFixture compact live mounted={false} />);
     await expect
         .poll(() =>
             page.evaluate(
@@ -200,7 +200,7 @@ for (const tier of ['low', 'medium', 'high'] as const) {
     test(`mist with autumn layers has bounded rendering cost on ${tier}`, async ({
         mount,
     }) => {
-        const fixture = await mount(<MorningMistFixture tier={tier} />);
+        const fixture = await mount(<MorningMistFixture compact tier={tier} />);
         const sample = async () =>
             JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
         const count = tier === 'low' ? 0 : tier === 'medium' ? 16 : 32;
@@ -214,7 +214,7 @@ for (const tier of ['low', 'medium', 'high'] as const) {
                 .toBeGreaterThanOrEqual(0.995);
         const active = await sample();
         await fixture.update(
-            <MorningMistFixture tier={tier} mounted={false} />,
+            <MorningMistFixture compact tier={tier} mounted={false} />,
         );
         await expect.poll(async () => (await sample()).count).toBe(0);
         await expect

@@ -20,6 +20,7 @@ import { MorningMistProbe } from './MorningMistProbe';
 
 export function MorningMistFixture({
     tier = 'high',
+    compact = false,
     rain = 0,
     fog = 1,
     wind = 0.4,
@@ -34,6 +35,7 @@ export function MorningMistFixture({
     fixedTime = 12,
 }: {
     tier?: GameQualityTier;
+    compact?: boolean;
     rain?: number;
     fog?: number;
     wind?: number;
@@ -128,11 +130,14 @@ export function MorningMistFixture({
                     data-testid="morning-mist-scene"
                     ref={sampleElement}
                     data-sample="{}"
-                    style={{ width: 640, height: 420 }}
+                    style={{
+                        width: compact ? 320 : 640,
+                        height: compact ? 210 : 420,
+                    }}
                 >
                     <Scene
                         position={[8, 9, 12]}
-                        zoom={45}
+                        zoom={compact ? 22.5 : 45}
                         quality={gameQualityProfiles.low}
                         fixedTimeSeconds={live ? undefined : fixedTime}
                         profileStats
