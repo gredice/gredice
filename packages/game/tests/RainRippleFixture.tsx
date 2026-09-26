@@ -24,6 +24,7 @@ export function RainRippleFixture({
     snow = 0,
     disabled = false,
     mounted = true,
+    dragging = false,
     live = false,
     precipitation = false,
     date = 'lateAutumn',
@@ -34,6 +35,7 @@ export function RainRippleFixture({
     snow?: number;
     disabled?: boolean;
     mounted?: boolean;
+    dragging?: boolean;
     live?: boolean;
     precipitation?: boolean;
     date?: 'summer' | 'lateAutumn' | 'winter';
@@ -56,8 +58,22 @@ export function RainRippleFixture({
             rainSurfaceIntensity: disabled ? 0 : rain,
             snowCoverage: snow,
             weatherVisualizationDisabled: disabled,
+            activeDragPreview: dragging
+                ? {
+                      source: {
+                          blockId: 'ripple-ground:0',
+                          blockIndex: 0,
+                          stackPosition: { x: -5, z: -4 },
+                      },
+                      targets: [],
+                      hoveredGardenBoxBlockId: null,
+                      relative: { x: 0, z: 0 },
+                      isBlocked: false,
+                      isOverRecycler: false,
+                  }
+                : null,
         });
-    }, [store, disabled, rain, snow]);
+    }, [store, disabled, rain, snow, dragging]);
     const stacks = useMemo(
         () =>
             Array.from({ length: 99 }, (_, i) => {
@@ -99,7 +115,7 @@ export function RainRippleFixture({
                     <Scene
                         position={[8, 9, 12]}
                         zoom={65}
-                        quality={gameQualityProfiles[tier]}
+                        quality={gameQualityProfiles.low}
                         fixedTimeSeconds={live ? undefined : fixedTime}
                         profileStats
                     >

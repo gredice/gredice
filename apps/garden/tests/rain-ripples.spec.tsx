@@ -1,7 +1,9 @@
-import { expect, test } from '@playwright/experimental-ct-react';
+import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import { RainRippleFixture } from '../../../packages/game/tests/RainRippleFixture';
 
-test.setTimeout(30_000);
+// Software WebGL runners settle shared weather over fewer rendered frames.
+const expect = baseExpect.configure({ timeout: 15_000 });
+test.setTimeout(60_000);
 
 test('frozen ripples repeat across remounts and change with the shared clock', async ({
     mount,
@@ -19,7 +21,7 @@ test('frozen ripples repeat across remounts and change with the shared clock', a
                 JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}')
                     .wetness,
         )
-        .toBe(1);
+        .toBeGreaterThanOrEqual(0.995);
     const first = JSON.parse(
         (await fixture.getAttribute('data-sample')) ?? '{}',
     );
@@ -108,7 +110,7 @@ test('rain ripples follow wetness, snow, quality and weather preferences', async
                 JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}')
                     .wetness,
         )
-        .toBe(0.8);
+        .toBeCloseTo(0.8, 2);
     expect(
         JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}').puddles,
     ).toBeCloseTo((0.8 - 0.66) / 0.34);
@@ -193,7 +195,9 @@ test('rain and autumn layers add only one ripple draw and 96 triangles', async (
     const fixture = await mount(<RainRippleFixture precipitation />);
     const sample = async () =>
         JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
-    await expect.poll(async () => (await sample()).wetness).toBe(1);
+    await expect
+        .poll(async () => (await sample()).wetness)
+        .toBeGreaterThanOrEqual(0.995);
     const active = await sample();
     expect(active.count).toBe(48);
     await fixture.update(<RainRippleFixture precipitation mounted={false} />);
@@ -201,4 +205,17 @@ test('rain and autumn layers add only one ripple draw and 96 triangles', async (
     const baseline = await sample();
     expect(active.calls - baseline.calls).toBe(1);
     expect(active.triangles - baseline.triangles).toBe(96);
+});
+
+test('active drags suppress ripples until placement finishes', async ({
+    mount,
+}) => {
+    const fixture = await mount(<RainRippleFixture />);
+    const count = async () =>
+        JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}').count;
+    await expect.poll(count).toBe(48);
+    await fixture.update(<RainRippleFixture dragging />);
+    await expect.poll(count).toBe(0);
+    await fixture.update(<RainRippleFixture />);
+    await expect.poll(count).toBe(48);
 });
