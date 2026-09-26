@@ -4,6 +4,7 @@ import {
     getAutumnAsterPot,
 } from '@gredice/js/autumnAsterPots';
 import { autumnBlanketBench } from '@gredice/js/autumnBlanketBench';
+import { autumnGrassNames, getAutumnGrass } from '@gredice/js/autumnGrasses';
 import {
     autumnLeafPileNames,
     getAutumnLeafPile,
@@ -466,6 +467,7 @@ const blockFixtures: Record<
 
 function createBlockData(name: string, index: number) {
     const decoration =
+        getAutumnGrass(name) ??
         getAutumnLeafPile(name) ??
         (name === gardenBrazier.name
             ? gardenBrazier
@@ -571,6 +573,7 @@ const blockNames = [
     autumnBlanketBench.name,
     chestnutRoastingCart.name,
     ...autumnLeafPileNames,
+    ...autumnGrassNames,
     'Raised_Bed',
     'Bucket',
     'WateringCan',
@@ -716,6 +719,7 @@ type ItemsHudStoryOptions = {
     includeGardenTeaTable?: boolean;
     includeChestnutRoastingCart?: boolean;
     includeAutumnLeafPiles?: boolean;
+    includeAutumnGrasses?: boolean;
     accountSunflowers?: number;
     cameraTarget?: [x: number, y: number, z: number];
     closeup?: boolean;
@@ -742,6 +746,7 @@ function createItemsHudQueryClient({
     includeGardenTeaTable = true,
     includeChestnutRoastingCart = true,
     includeAutumnLeafPiles = true,
+    includeAutumnGrasses = true,
     isSandbox = false,
 }: ItemsHudStoryOptions) {
     const queryClient = new ReactQuery.QueryClient({
@@ -753,6 +758,7 @@ function createItemsHudQueryClient({
     queryClient.setQueryData(
         ['blocks'],
         blockNames
+            .filter((name) => includeAutumnGrasses || !getAutumnGrass(name))
             .filter(
                 (name) => includeGardenBrazier || name !== gardenBrazier.name,
             )
@@ -839,6 +845,7 @@ function ItemsHudTestProviders({
     includeGardenTeaTable = true,
     includeChestnutRoastingCart = true,
     includeAutumnLeafPiles = true,
+    includeAutumnGrasses = true,
     children,
     accountSunflowers,
     cameraTarget,
@@ -868,6 +875,7 @@ function ItemsHudTestProviders({
                 includeGardenTeaTable,
                 includeChestnutRoastingCart,
                 includeAutumnLeafPiles,
+                includeAutumnGrasses,
             }),
         [
             accountSunflowers,
@@ -887,6 +895,7 @@ function ItemsHudTestProviders({
             includeGardenTeaTable,
             includeChestnutRoastingCart,
             includeAutumnLeafPiles,
+            includeAutumnGrasses,
         ],
     );
     const gameStore = useMemo(() => {
@@ -995,6 +1004,7 @@ export function ItemsHudAlignmentStory({
     includeGardenTeaTable = true,
     includeChestnutRoastingCart = true,
     includeAutumnLeafPiles = true,
+    includeAutumnGrasses = true,
 }: {
     includeHarvestPumpkins?: boolean;
     includeGardenScarecrow?: boolean;
@@ -1011,6 +1021,7 @@ export function ItemsHudAlignmentStory({
     includeGardenTeaTable?: boolean;
     includeChestnutRoastingCart?: boolean;
     includeAutumnLeafPiles?: boolean;
+    includeAutumnGrasses?: boolean;
 }) {
     return (
         <ItemsHudTestProviders
@@ -1029,6 +1040,7 @@ export function ItemsHudAlignmentStory({
             includeGardenTeaTable={includeGardenTeaTable}
             includeChestnutRoastingCart={includeChestnutRoastingCart}
             includeAutumnLeafPiles={includeAutumnLeafPiles}
+            includeAutumnGrasses={includeAutumnGrasses}
         >
             <div className="relative h-screen w-screen overflow-hidden">
                 <div

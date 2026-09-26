@@ -1,5 +1,6 @@
 import { autumnAsterPots } from '@gredice/js/autumnAsterPots';
 import { autumnBlanketBench } from '@gredice/js/autumnBlanketBench';
+import { autumnGrasses } from '@gredice/js/autumnGrasses';
 import { autumnLeafPiles } from '@gredice/js/autumnLeafPiles';
 import { autumnShrub } from '@gredice/js/autumnShrub';
 import { chestnutRoastingCart } from '@gredice/js/chestnutRoastingCart';
@@ -36,6 +37,11 @@ const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 const newBlockCatalogItems = [
+    ...autumnGrasses.map((item) => ({
+        label: item.information.label,
+        price: item.sunflowers,
+        picker: 'Dekoracija',
+    })),
     {
         label: gardenBrazier.information.label,
         price: gardenBrazier.sunflowers,
@@ -2292,5 +2298,55 @@ test('garden brazier drag keeps the catalogue identity', async ({
     await page.mouse.up();
     await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
         'GardenBrazier:drop',
+    );
+});
+
+test('autumn grasses stays hidden before catalogue publication', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ItemsHudAlignmentStory includeAutumnGrasses={false} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', {
+            name: /Ukrasne jesenske trave/,
+        }),
+    ).toHaveCount(0);
+});
+
+test('autumn grasses appears once in the local sandbox', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<LocalSandboxItemsHudStory />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', {
+            name: /Ukrasne jesenske trave/,
+        }),
+    ).toHaveCount(2);
+});
+
+test('autumn grasses drag keeps the catalogue identity', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudDragStateStory accountSunflowers={150} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await dragLocatorByMouse(
+        page,
+        page.getByRole('button', {
+            name: 'Ukrasne jesenske trave – niski zlatni busen',
+            exact: true,
+        }),
+    );
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'AutumnGrassTuft:drag',
+    );
+    await page.mouse.up();
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'AutumnGrassTuft:drop',
     );
 });
