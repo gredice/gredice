@@ -38,6 +38,46 @@ incompatible. Use a fixed browser timezone when comparing captures across machin
 Run the HUD browser checks with
 `pnpm --filter garden exec playwright test --config playwright.season.config.ts`.
 
+## Localized morning mist
+
+`MorningMist` extends distance fog with small ground-hugging patches on exposed
+flat grass, swamp ground and standard/swamp water. It reads Environment's actual
+blended fog, precipitation and wind plus the shared normalized solar time. There
+is no autumn-only or calendar-based fog inference. Density rises from dawn to
+sunrise, falls away by solar time 0.48, and disappears with strong wind, heavy
+rain or snow. Changes fade with a 0.5-second time constant; the shared animation
+clock drives slow seeded wisps without per-frame React updates.
+
+A conservative footprint/overhang mask keeps raised beds, crops and props clear.
+Sand paths, slopes, covered tiles and pickup targets are excluded; active drags
+suppress the layer. Water uses the existing vertical-range helper, including
+shaped-terrain fills. Each patch stays inside its own tile, 0.09 units above the
+surface, with a radius at most 0.44 and fragment alpha at most 0.12. It tests depth,
+writes no depth or shadows, and has no raycast targets. Distance fog still applies.
+
+Low/auto-constrained quality and reduced motion disable mist. Medium/high/custom
+cap it at 16/32/24 two-triangle patches in one instanced draw, with no texture,
+render target or full-screen pass. Weather disablement and hidden/offscreen
+scenes stop it immediately. Steady live mist acquires a 20 frames/second lease through the shared scheduler;
+transitions request frames until settled. Frozen mist applies the exact target density
+on its first frame and holds no animation lease. Resource
+and preference subscriptions clean up on unmount. It adds no audio; existing
+ambient audio preferences continue to apply independently.
+
+Validation:
+
+- `pnpm --filter @gredice/game exec tsx --import ./scripts/register-test-assets.mjs --test src/scene/morningMistState.unit.ts`
+- `pnpm --filter garden exec playwright test --config playwright.season.config.ts tests/morning-mist.spec.tsx --workers=1`
+- `GAME_PROFILE_SCENARIO_SET=morning-mist GAME_PROFILE_FAIL_ON_BUDGET=1 pnpm --filter garden profile:game`
+
+The browser fixture includes water, a path, props and the existing autumn and
+rain layers. It checks repeatability, weather/time transitions, low/high quality,
+reduced motion, dragging, offscreen/hidden suspension, disposal and incremental
+draw/triangle cost. The production profile uses the dense autumn scene at
+October 22, 08:00, on low/medium/high quality. `morningMistCount` and
+`morningMistCapacity` report the active allocation. For manual inspection use
+`/debug/profile/game?mode=mist&profile=dense-autumn&date=2024-10-22&quality=high&hud=1&controls=1`.
+
 ## Deciduous canopy
 
 `autumnState` is resolved alongside the shared season state at every scene-clock
@@ -340,45 +380,41 @@ The profiling matrix combines heavy rain with the existing dense autumn scene
 at October 22 on low/medium/high, sharing the dense weather budgets. Commit the
 candidate before profiling so the report's comparability check can identify it.
 
-## Localized morning mist
+## Squirrel nut carrying and caching
 
-`MorningMist` extends distance fog with small ground-hugging patches on exposed
-flat grass, swamp ground and standard/swamp water. It reads Environment's actual
-blended fog, precipitation and wind plus the shared normalized solar time. There
-is no autumn-only or calendar-based fog inference. Density rises from dawn to
-sunrise, falls away by solar time 0.48, and disappears with strong wind, heavy
-rain or snow. Changes fade with a 0.5-second time constant; the shared animation
-clock drives slow seeded wisps without per-frame React updates.
+During autumn, the existing squirrel begins an eligible visit with a short forage,
+scamper, cache and pause sequence, then returns to its ordinary routines. One
+seeded route is selected from its existing ground habitat, with at most eight
+pathfinding attempts and six world units of travel. The whole sequence lasts
+less than 14 seconds. Blocked routes fall back to ordinary behavior; clicks,
+avatar flee reactions and scheduled departures interrupt caching. The existing
+one-squirrel garden cap, 35–65 second visits and four-minute respawn cooldown
+remain in force. Nuts never read or change crops, inventory, rewards or garden
+blocks, and no cache object is left behind.
 
-A conservative footprint/overhang mask keeps raised beds, crops and props clear.
-Sand paths, slopes, covered tiles and pickup targets are excluded; active drags
-suppress the layer. Water uses the existing vertical-range helper, including
-shaped-terrain fills. Each patch stays inside its own tile, 0.09 units above the
-surface, with a radius at most 0.44 and fragment alpha at most 0.12. It tests depth,
-writes no depth or shadows, and has no raycast targets. Distance fog still applies.
+A single 20-triangle chestnut is parented to the cloned model's animated
+`Squirrel_HeadPivot`, below the muzzle in exported head-local coordinates. It
+follows the rig through movement and turning, then shrinks away during the
+existing forage animation. It has no raycast, shadow pass or audio. Low quality
+uses the same small mesh; it adds at most one draw call and 20 triangles. The
+attachment geometry/material and actor animation mixer are released on unmount;
+cached GLTF resources remain untouched.
 
-Low/auto-constrained quality and reduced motion disable mist. Medium/high/custom
-cap it at 16/32/24 two-triangle patches in one instanced draw, with no texture,
-render target or full-screen pass. Weather disablement and hidden/offscreen
-scenes stop it immediately. Steady live mist acquires a 20 frames/second lease through the shared scheduler;
-transitions request frames until settled. Frozen mist applies the exact target density
-on its first frame and holds no animation lease. Resource
-and preference subscriptions clean up on unmount. It adds no audio; existing
-ambient audio preferences continue to apply independently.
+The calendar comes from shared seasonal state and animation from `SceneTime`.
+Fixed animation seconds reproduce both the path position and rig pose without
+replaying intermediate frames. Hidden scenes pause animation; reduced motion
+holds a still squirrel without the nut or an animation lease. Visit expiry uses
+the shared deadline scheduler independently of pose animation, so a still
+squirrel enters cooldown on time (or on visibility resume). Weather disablement,
+rain intensity at least 0.7, or snow coverage at least 0.01 suppress caching.
+Audio preferences need no extra handling because this effect adds no sound.
 
-Validation:
-
-- `pnpm --filter @gredice/game exec tsx --import ./scripts/register-test-assets.mjs --test src/scene/morningMistState.unit.ts`
-- `pnpm --filter garden exec playwright test --config playwright.season.config.ts tests/morning-mist.spec.tsx --workers=1`
-- `GAME_PROFILE_SCENARIO_SET=morning-mist GAME_PROFILE_FAIL_ON_BUDGET=1 pnpm --filter garden profile:game`
-
-The browser fixture includes water, a path, props and the existing autumn and
-rain layers. It checks repeatability, weather/time transitions, low/high quality,
-reduced motion, dragging, offscreen/hidden suspension, disposal and incremental
-draw/triangle cost. The production profile uses the dense autumn scene at
-October 22, 08:00, on low/medium/high quality. `morningMistCount` and
-`morningMistCapacity` report the active allocation. For manual inspection use
-`/debug/profile/game?mode=mist&profile=dense-autumn&date=2024-10-22&quality=high&hud=1&controls=1`.
+Validation: squirrel unit tests cover deterministic sampling, blocked paths,
+season/weather gating and attachment transforms through every exported animation.
+`pnpm --filter garden exec playwright test --config playwright.season.config.ts
+ tests/squirrel-caching.spec.tsx` exercises the real actor with existing autumn
+layers at low/high quality, frozen remounts, live completion, visibility and
+resource cleanup, including the incremental draw/triangle count.
 
 ## Cold-condition frost and breath
 

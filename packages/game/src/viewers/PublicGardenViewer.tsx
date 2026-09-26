@@ -666,6 +666,9 @@ function PublicGardenScene({
                                             {renderTransientDetails && (
                                                 <Suspense fallback={null}>
                                                     <Squirrels
+                                                        seasonalEffectsEnabled={
+                                                            !noWeather
+                                                        }
                                                         farmId={garden?.farmId}
                                                         stacks={
                                                             retainedScene.stacks
