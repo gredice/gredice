@@ -27,6 +27,9 @@ type ActionName =
     | 'Frog_Hop'
     | 'Frog_Croak'
     | 'Frog_Blink'
+    | 'HedgehogIdle'
+    | 'HedgehogWalk'
+    | 'HedgehogSniff'
     | 'Horse_Idle'
     | 'Horse_Graze'
     | 'Horse_Walk'
@@ -384,6 +387,12 @@ export type GLTFResult = GLTF & {
         Goat_Body: THREE.Mesh;
         Goat_Chest: THREE.Mesh;
         Goat_CoatPatches: THREE.Mesh;
+        Hedgehog_Body: THREE.Mesh;
+        Hedgehog_Head: THREE.Mesh;
+        Hedgehog_Foot0: THREE.Mesh;
+        Hedgehog_Foot1: THREE.Mesh;
+        Hedgehog_Foot2: THREE.Mesh;
+        Hedgehog_Foot3: THREE.Mesh;
         Horse_Hoof_FL: THREE.Mesh;
         Horse_LowerLeg_FL: THREE.Mesh;
         Horse_Sock_FL: THREE.Mesh;
@@ -957,6 +966,7 @@ export type GLTFResult = GLTF & {
         HazelLightArch_Cords: THREE.Mesh;
         HazelLightArch_Poles: THREE.Mesh;
         HazelLightArch_TerracottaShades: THREE.Mesh;
+        HedgehogShelter_Arrangement: THREE.Mesh;
         HorseStable_Frame: THREE.Mesh;
         HorseStable_Roof: THREE.Mesh;
         HorseStable_Stone: THREE.Mesh;
@@ -2020,6 +2030,8 @@ export type GLTFResult = GLTF & {
         'Material.HazelLightArch.Glow': THREE.MeshStandardMaterial;
         'Material.HazelLightArch.HazelWood': THREE.MeshStandardMaterial;
         'Material.HazelLightArch.Terracotta': THREE.MeshStandardMaterial;
+        'Material.Hedgehog.Palette': THREE.MeshStandardMaterial;
+        'Material.HedgehogShelter.Palette': THREE.MeshStandardMaterial;
         'Material.Horse.Coat': THREE.MeshStandardMaterial;
         'Material.Horse.CoatDark': THREE.MeshStandardMaterial;
         'Material.Horse.Eye': THREE.MeshStandardMaterial;

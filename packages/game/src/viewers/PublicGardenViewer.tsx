@@ -45,6 +45,7 @@ import { Dogs } from '../entities/dogs/Dogs';
 import { EntityInstances } from '../entities/EntityInstances';
 import { Chickens, Piglets, Sheep } from '../entities/farmAnimals/FarmAnimals';
 import { Frogs } from '../entities/frogs/Frogs';
+import { Hedgehogs } from '../entities/hedgehogs/Hedgehogs';
 import { Ladybugs } from '../entities/ladybugs/Ladybugs';
 import { RetainedEntityChunks } from '../entities/RetainedEntityChunks';
 import { RaisedBedMulchOverlays } from '../entities/raisedBed/RaisedBedMulchOverlays';
@@ -669,6 +670,21 @@ function PublicGardenScene({
                                                         farmId={garden?.farmId}
                                                         stacks={
                                                             retainedScene.stacks
+                                                        }
+                                                    />
+                                                    <Hedgehogs
+                                                        stacks={
+                                                            retainedScene.stacks
+                                                        }
+                                                        gardenId={garden?.id}
+                                                        quality={qualityProfile}
+                                                        weather={
+                                                            noWeather
+                                                                ? {
+                                                                      rainy: 0,
+                                                                      snowy: 0,
+                                                                  }
+                                                                : undefined
                                                         }
                                                     />
                                                 </Suspense>

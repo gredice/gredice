@@ -30,6 +30,10 @@ import {
     harvestPumpkinNames,
 } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
+import {
+    getHedgehogShelter,
+    hedgehogShelterNames,
+} from '@gredice/js/hedgehogShelter';
 import { leafRake } from '@gredice/js/leafRake';
 import {
     getPumpkinLantern,
@@ -487,6 +491,7 @@ const blockFixtures: Record<
 function createBlockData(name: string, index: number) {
     const decoration =
         getAutumnEntrance(name) ??
+        getHedgehogShelter(name) ??
         getHalloweenAccent(name) ??
         getPumpkinLantern(name) ??
         getWoodlandArrangement(name) ??
@@ -599,6 +604,7 @@ const blockNames = [
     stackedFirewood.name,
     seedDryingRack.name,
     birdFeeder.name,
+    ...hedgehogShelterNames,
     gardenBrazier.name,
     gardenTeaTable.name,
     fallenLog.name,
@@ -753,6 +759,7 @@ type ItemsHudStoryOptions = {
     includeStackedFirewood?: boolean;
     includeSeedDryingRack?: boolean;
     includeBirdFeeder?: boolean;
+    includeHedgehogShelter?: boolean;
     includeGardenBrazier?: boolean;
     includeGardenTeaTable?: boolean;
     includeChestnutRoastingCart?: boolean;
@@ -787,6 +794,7 @@ function createItemsHudQueryClient({
     includeStackedFirewood = true,
     includeSeedDryingRack = true,
     includeBirdFeeder = true,
+    includeHedgehogShelter = true,
     includeGardenBrazier = true,
     includeGardenTeaTable = true,
     includeChestnutRoastingCart = true,
@@ -807,6 +815,9 @@ function createItemsHudQueryClient({
     queryClient.setQueryData(
         ['blocks'],
         blockNames
+            .filter(
+                (name) => includeHedgehogShelter || !getHedgehogShelter(name),
+            )
             .filter(
                 (name) => includeHalloweenAccents || !getHalloweenAccent(name),
             )
@@ -914,6 +925,7 @@ function ItemsHudTestProviders({
     includeStackedFirewood = true,
     includeSeedDryingRack = true,
     includeBirdFeeder = true,
+    includeHedgehogShelter = true,
     includeGardenBrazier = true,
     includeGardenTeaTable = true,
     includeChestnutRoastingCart = true,
@@ -951,6 +963,7 @@ function ItemsHudTestProviders({
                 includeStackedFirewood,
                 includeSeedDryingRack,
                 includeBirdFeeder,
+                includeHedgehogShelter,
                 includeGardenBrazier,
                 includeGardenTeaTable,
                 includeChestnutRoastingCart,
@@ -978,6 +991,7 @@ function ItemsHudTestProviders({
             includeStackedFirewood,
             includeSeedDryingRack,
             includeBirdFeeder,
+            includeHedgehogShelter,
             includeGardenBrazier,
             includeGardenTeaTable,
             includeChestnutRoastingCart,
@@ -1094,6 +1108,7 @@ export function ItemsHudAlignmentStory({
     includeStackedFirewood = true,
     includeSeedDryingRack = true,
     includeBirdFeeder = true,
+    includeHedgehogShelter = true,
     includeGardenBrazier = true,
     includeGardenTeaTable = true,
     includeChestnutRoastingCart = true,
@@ -1118,6 +1133,7 @@ export function ItemsHudAlignmentStory({
     includeStackedFirewood?: boolean;
     includeSeedDryingRack?: boolean;
     includeBirdFeeder?: boolean;
+    includeHedgehogShelter?: boolean;
     includeGardenBrazier?: boolean;
     includeGardenTeaTable?: boolean;
     includeChestnutRoastingCart?: boolean;
@@ -1144,6 +1160,7 @@ export function ItemsHudAlignmentStory({
             includeStackedFirewood={includeStackedFirewood}
             includeSeedDryingRack={includeSeedDryingRack}
             includeBirdFeeder={includeBirdFeeder}
+            includeHedgehogShelter={includeHedgehogShelter}
             includeGardenBrazier={includeGardenBrazier}
             includeGardenTeaTable={includeGardenTeaTable}
             includeChestnutRoastingCart={includeChestnutRoastingCart}
