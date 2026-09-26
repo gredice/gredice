@@ -2,6 +2,7 @@ import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { ArrowSign } from './ArrowSign';
 import { AutumnAsterPot } from './AutumnAsterPot';
 import { AutumnBlanketBench } from './AutumnBlanketBench';
+import { AutumnGrass } from './AutumnGrass';
 import { AutumnLeafPile } from './AutumnLeafPile';
 import { AutumnShrub } from './AutumnShrub';
 import { BaleHey } from './BaleHey';
@@ -215,6 +216,8 @@ export const entityNameMap = {
     GardenBrazier,
     GardenTeaTable,
     AutumnLeafPileMound: AutumnLeafPile,
+    AutumnGrassTuft: AutumnGrass,
+    AutumnSeedHeads: AutumnGrass,
     AutumnLeafPileCrescent: AutumnLeafPile,
     HarvestCrateOrchard: HarvestCrate,
     HarvestPumpkinSquatOrange: HarvestPumpkin,

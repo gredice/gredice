@@ -4,6 +4,7 @@ import {
     getAutumnAsterPot,
 } from '@gredice/js/autumnAsterPots';
 import { autumnBlanketBench } from '@gredice/js/autumnBlanketBench';
+import { autumnGrassNames, getAutumnGrass } from '@gredice/js/autumnGrasses';
 import {
     autumnLeafPileNames,
     getAutumnLeafPile,
@@ -101,6 +102,7 @@ export const localSandboxBlockNames = [
     autumnBlanketBench.name,
     chestnutRoastingCart.name,
     ...autumnLeafPileNames,
+    ...autumnGrassNames,
     'BeachTowelStriped',
     'InflatablePoolSmall',
     'BeachChair',
@@ -920,6 +922,7 @@ function createLocalSandboxBlockData(
     const isRaisedBed = name === 'Raised_Bed';
     const isOutletDisplayTable = name === 'OutletDisplayTable';
     const decoration =
+        getAutumnGrass(name) ??
         getAutumnLeafPile(name) ??
         (name === gardenBrazier.name
             ? gardenBrazier
