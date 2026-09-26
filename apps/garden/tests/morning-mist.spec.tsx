@@ -16,7 +16,9 @@ test('frozen mist repeats, follows the shared clock and stays below interactive 
     const fixture = await mount(<MorningMistFixture />);
     const sample = async () =>
         JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
-    await expect.poll(async () => (await sample()).density).toBeGreaterThanOrEqual(0.995);
+    await expect
+        .poll(async () => (await sample()).density)
+        .toBeGreaterThanOrEqual(0.995);
     const first = await sample();
     expect(first.count).toBe(32);
     expect(first.time).toBe(12);
@@ -31,7 +33,9 @@ test('frozen mist repeats, follows the shared clock and stays below interactive 
     expect(disposed.material).toBeGreaterThan(0);
     expect(disposed.mesh).toBeGreaterThan(0);
     await fixture.update(<MorningMistFixture />);
-    await expect.poll(async () => (await sample()).density).toBeGreaterThanOrEqual(0.995);
+    await expect
+        .poll(async () => (await sample()).density)
+        .toBeGreaterThanOrEqual(0.995);
     const second = await sample();
     expect(second.matrices).toEqual(first.matrices);
     expect(second.seeds).toEqual(first.seeds);
@@ -106,13 +110,17 @@ test('mist fades on weather changes and suspends offscreen, then cleans up', asy
     const fixture = await mount(<MorningMistFixture live />);
     const sample = async () =>
         JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
-    await expect.poll(async () => (await sample()).density).toBeGreaterThanOrEqual(0.995);
+    await expect
+        .poll(async () => (await sample()).density)
+        .toBeGreaterThanOrEqual(0.995);
     await fixture.update(<MorningMistFixture live fog={0} />);
     const fading = (await sample()).density;
     expect(fading).toBeGreaterThan(0);
     await expect.poll(async () => (await sample()).density).toBe(0);
     await fixture.update(<MorningMistFixture live />);
-    await expect.poll(async () => (await sample()).density).toBeGreaterThanOrEqual(0.995);
+    await expect
+        .poll(async () => (await sample()).density)
+        .toBeGreaterThanOrEqual(0.995);
     expect(
         await page.evaluate(
             () =>
@@ -192,22 +200,21 @@ for (const tier of ['low', 'medium', 'high'] as const) {
     test(`mist with autumn layers has bounded rendering cost on ${tier}`, async ({
         mount,
     }) => {
-        const fixture = await mount(
-            <MorningMistFixture tier={tier} />,
-        );
+        const fixture = await mount(<MorningMistFixture tier={tier} />);
         const sample = async () =>
             JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
         const count = tier === 'low' ? 0 : tier === 'medium' ? 16 : 32;
         await expect.poll(async () => (await sample()).count).toBe(count);
-        await expect.poll(async () => (await sample()).frames).toBeGreaterThanOrEqual(10);
+        await expect
+            .poll(async () => (await sample()).frames)
+            .toBeGreaterThanOrEqual(10);
         if (count)
-            await expect.poll(async () => (await sample()).density).toBeGreaterThanOrEqual(0.995);
+            await expect
+                .poll(async () => (await sample()).density)
+                .toBeGreaterThanOrEqual(0.995);
         const active = await sample();
         await fixture.update(
-            <MorningMistFixture
-                tier={tier}
-                mounted={false}
-            />,
+            <MorningMistFixture tier={tier} mounted={false} />,
         );
         await expect.poll(async () => (await sample()).count).toBe(0);
         await expect
