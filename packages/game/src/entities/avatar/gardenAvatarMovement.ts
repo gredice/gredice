@@ -635,6 +635,12 @@ const fenceGateCollisionProfiles: Record<
     FenceGateBlockName,
     FenceGateCollisionProfile
 > = {
+    AutumnFenceGate: {
+        height: 0.72,
+        leafThickness: 0.09,
+        postDepth: 0.16,
+        postWidth: 0.16,
+    },
     FenceGate: {
         height: 0.72,
         leafThickness: 0.09,

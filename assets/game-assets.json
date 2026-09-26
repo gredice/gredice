@@ -3,6 +3,40 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "AutumnWreathPost",
+            "source": "AutumnWreathPost.blend",
+            "output": "AutumnWreathPost.glb",
+            "version": "3f647ea3a7e4",
+            "preload": "lazy",
+            "objects": [
+                "AutumnWreathPost_Support",
+                "AutumnWreathPost_Foliage"
+            ]
+        },
+        {
+            "name": "AutumnGarland",
+            "source": "AutumnGarland.blend",
+            "output": "AutumnGarland.glb",
+            "version": "a8563cbfee9a",
+            "preload": "lazy",
+            "objects": [
+                "AutumnGarland_Support",
+                "AutumnGarland_Foliage"
+            ]
+        },
+        {
+            "name": "AutumnFenceGate",
+            "source": "AutumnFenceGate.blend",
+            "output": "AutumnFenceGate.glb",
+            "version": "71388daaed2d",
+            "preload": "lazy",
+            "objects": [
+                "AutumnFenceGate_Posts",
+                "AutumnFenceGate_Leaf",
+                "AutumnFenceGate_Decor"
+            ]
+        },
+        {
             "name": "WoodlandAcorns",
             "source": "WoodlandAcorns.blend",
             "output": "WoodlandAcorns.glb",
