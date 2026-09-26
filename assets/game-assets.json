@@ -3,6 +3,38 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "Hedgehog",
+            "source": "Hedgehog.blend",
+            "output": "Hedgehog.glb",
+            "version": "cde12d271bb2",
+            "preload": "lazy",
+            "objects": [
+                "Hedgehog_Root",
+                "Hedgehog_BodyPivot",
+                "Hedgehog_Body",
+                "Hedgehog_HeadPivot",
+                "Hedgehog_Head",
+                "Hedgehog_LegPivot0",
+                "Hedgehog_Foot0",
+                "Hedgehog_LegPivot1",
+                "Hedgehog_Foot1",
+                "Hedgehog_LegPivot2",
+                "Hedgehog_Foot2",
+                "Hedgehog_LegPivot3",
+                "Hedgehog_Foot3"
+            ]
+        },
+        {
+            "name": "HedgehogShelter",
+            "source": "HedgehogShelter.blend",
+            "output": "HedgehogShelter.glb",
+            "version": "c2116bf92e35",
+            "preload": "lazy",
+            "objects": [
+                "HedgehogShelter_Arrangement"
+            ]
+        },
+        {
             "name": "FriendlyGhost",
             "source": "FriendlyGhost.blend",
             "output": "FriendlyGhost.glb",
