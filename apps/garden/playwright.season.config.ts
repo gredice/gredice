@@ -7,6 +7,7 @@ export default defineConfig({
         'tests/autumn-season.spec.tsx',
         'tests/rain-ripples.spec.tsx',
         'tests/autumn-audio.spec.tsx',
+        'tests/weather-audio.spec.tsx',
     ],
     projects: config.projects
         ?.filter((p) => p.name === 'chromium' || p.name === 'chromium-webgl')
@@ -17,6 +18,7 @@ export default defineConfig({
                     ? [
                           'tests/season-date-control.spec.tsx',
                           'tests/autumn-audio.spec.tsx',
+                          'tests/weather-audio.spec.tsx',
                       ]
                     : [
                           'tests/autumn-season.spec.tsx',

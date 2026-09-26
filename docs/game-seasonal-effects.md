@@ -220,10 +220,10 @@ constant smooths changes without restarting the source, and silent loops stop
 after five time constants. Disablement, mute, backgrounding and unmount stop the
 layer; a missing asset fails quietly and is not retried on each weather update.
 
-`useMusic().setTargetVolume(target, fadeSeconds)` is available for future weather
-layers. It preserves buffer caching and the existing channel/master controls.
-General wind (#2631) and broader weather crossfades (#2726) remain separate work;
-the sparse, high-frequency leaf grains leave low-frequency space for wind.
+`useMusic().setTargetVolume(target, fadeSeconds)` also drives the
+[weather ambience crossfades](./game-weather-audio.md). It preserves buffer
+caching and the existing channel/master controls. General wind (#2631) remains
+separate work; the sparse, high-frequency leaf grains leave space for wind.
 
 `assets/generate-autumn-leaf-rustle.py` reproducibly creates the original six-second
 mono WAV in both garden and WWW public assets. It uses no external recording or
