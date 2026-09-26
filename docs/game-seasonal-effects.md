@@ -220,6 +220,55 @@ The new path is visibly populated in the high-tier screenshot and directly
 counted by the part-only WebGL fixture. These are headless desktop measurements;
 physical-device visual and performance checks remain separate.
 
+## Localized prop steam
+
+`SteamSourcesProvider` registers only rendered hot-surface anchors within one
+Canvas. `GardenTeaTable` uses the two mug anchors authored in its GLB and shared
+catalogue module; their world positions follow rotation, raised supports and
+placement transforms. Future chestnut-cart integration must supply its own
+verified, unobstructed anchors through `SteamEmitter`. No chestnut cart exists
+in the tea-table stack, so no guessed emitter or new asset is introduced.
+
+`LocalizedSteam` renders one depth-tested, non-shadowing instanced batch with no
+raycast targets. Each emitter contributes six soft billboards. Steam stays less
+than 0.33 world units above its anchor and within the tea table's footprint;
+wind drift remains world-aligned when the prop rotates. Stable emitter IDs seed
+closed-form motion on the shared animation clock, independent of calendar date,
+frame history and mounting order. `fixedTimeSeconds` reproduces a still without
+holding an animation lease.
+
+Low and auto-constrained quality omit steam. Medium/high/custom cap the entire
+scene at 4/8/6 emitters and 24/48/36 particles: at most one draw call and 96
+triangles. The sorted registry admits a stable prefix before frame sampling;
+hidden ancestors and camera-frustum exclusions remove inactive plumes. Camera
+and prop movement request a new frame through the existing scheduler, so an
+offscreen pool does not hold an idle animation lease. Hidden tabs and offscreen
+Canvases also release the lease through shared scene visibility. Geometry,
+material and instance resources dispose when the layer unmounts or changes tier.
+
+Reduced motion and disabled weather suppress steam. Light rain reduces opacity;
+rain at 1.5 or above, active snowfall or accumulated snow coverage of at least
+0.01 suppress it. The static prop remains intact. There is no steam audio;
+muting or disabling ambience leaves this visual cue independent of the mixer.
+Profile metadata exposes `steamEmitterCount`, `steamParticleCount` and
+`steamParticleCapacity` alongside existing autumn-layer counts.
+
+Validation:
+
+- `pnpm --filter @gredice/game exec tsx --import ./scripts/register-test-assets.mjs --test src/scene/steamMotion.unit.ts src/data/gardenTeaTableAssets.unit.ts`
+- `GREDICE_GARDEN_CT_PORT=4972 pnpm --filter garden exec playwright test --config playwright.steam.config.ts`
+
+The WebGL suite covers all quarter turns on a raised support, actual prop and
+crop-button selection, frozen summer/autumn/winter dates, low/high quality,
+rain/snow/reduced-motion disablement, muted ambience, emitter removal, resource
+disposal, hidden/resumed scenes, frustum culling and separate Canvas roots. Its
+profile fixture compares steam off/on with the same 225 ground tiles, 25 trees,
+50 autumn props and four tea tables. It measures 120 rendered frames after 60
+warmup frames per state, including falling, ground and entity leaves. Frame
+timings from software WebGL on a shared host are diagnostic, not device budgets.
+See the [steam validation record](localized-steam-2026.md) for captures and the
+measured per-tier costs.
+
 ## Leaf-rustle ambience
 
 `AutumnRustle` uses one registered loop on the existing ambient mixer. Its target
