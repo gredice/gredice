@@ -357,6 +357,9 @@ export type GameProfileMetadata = {
     autumnGustCapacity?: number;
     autumnGustCount?: number;
     autumnGustPeakCount?: number;
+    steamEmitterCount?: number;
+    steamParticleCount?: number;
+    steamParticleCapacity?: number;
     adaptiveHighAmbientFps?: number;
     adaptiveHighCloudUpdateMs?: number;
     adaptiveHighDeclineCount?: number;

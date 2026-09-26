@@ -27,7 +27,7 @@ export const gardenTeaTable = {
     sunflowers: number;
 };
 
-/** Base-centred Y-up anchors above the authored mug rims; reserved for #4972. */
+/** Base-centred Y-up anchors above the authored mug rims for localized steam. */
 export const gardenTeaTableMugAnchors: {
     id: string;
     position: [number, number, number];
