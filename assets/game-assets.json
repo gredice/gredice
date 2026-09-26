@@ -3,6 +3,16 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "StackedFirewood",
+            "source": "StackedFirewood.blend",
+            "output": "StackedFirewood.glb",
+            "version": "8e3be71b6f23",
+            "preload": "lazy",
+            "objects": [
+                "StackedFirewood_Timber"
+            ]
+        },
+        {
             "name": "ChestnutRoastingCart",
             "source": "ChestnutRoastingCart.blend",
             "output": "ChestnutRoastingCart.glb",
