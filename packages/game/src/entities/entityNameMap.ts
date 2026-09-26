@@ -43,6 +43,7 @@ import { Bucket } from './Bucket';
 import { Bush } from './Bush';
 import { Cactus } from './Cactus';
 import { CatPillow } from './CatPillow';
+import { ChestnutRoastingCart } from './ChestnutRoastingCart';
 import { ChickenCoop } from './ChickenCoop';
 import { Composter } from './Composter';
 import { Cow } from './Cow';
@@ -207,6 +208,7 @@ export const entityNameMap = {
     WoodlandMushrooms,
     FallenLog,
     AutumnBlanketBench,
+    ChestnutRoastingCart,
     LeafRake,
     GardenTeaTable,
     AutumnLeafPileMound: AutumnLeafPile,
