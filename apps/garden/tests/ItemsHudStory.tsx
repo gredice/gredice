@@ -26,6 +26,7 @@ import {
 } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
 import { leafRake } from '@gredice/js/leafRake';
+import { seasonalMaple } from '@gredice/js/seasonalMaple';
 import { seedDryingRack } from '@gredice/js/seedDryingRack';
 import { stackedFirewood } from '@gredice/js/stackedFirewood';
 import {
@@ -498,15 +499,17 @@ function createBlockData(name: string, index: number) {
                           ? fallenLog
                           : name === woodlandMushrooms.name
                             ? woodlandMushrooms
-                            : name === autumnShrub.name
-                              ? autumnShrub
-                              : name === gardenScarecrow.name
-                                ? gardenScarecrow
-                                : name === harvestWheelbarrow.name
-                                  ? harvestWheelbarrow
-                                  : (getAutumnAsterPot(name) ??
-                                    getHarvestCrate(name) ??
-                                    getHarvestPumpkin(name)));
+                            : name === seasonalMaple.name
+                              ? seasonalMaple
+                              : name === autumnShrub.name
+                                ? autumnShrub
+                                : name === gardenScarecrow.name
+                                  ? gardenScarecrow
+                                  : name === harvestWheelbarrow.name
+                                    ? harvestWheelbarrow
+                                    : (getAutumnAsterPot(name) ??
+                                      getHarvestCrate(name) ??
+                                      getHarvestPumpkin(name)));
     const fixture = decoration
         ? {
               ...decoration.information,
@@ -577,6 +580,7 @@ const blockNames = [
     ...harvestCrateNames,
     harvestWheelbarrow.name,
     autumnShrub.name,
+    seasonalMaple.name,
     woodlandMushrooms.name,
     leafRake.name,
     stackedFirewood.name,
@@ -725,6 +729,7 @@ type ItemsHudStoryOptions = {
     includeAutumnAsterPots?: boolean;
     includeHarvestWheelbarrow?: boolean;
     includeAutumnShrub?: boolean;
+    includeSeasonalMaple?: boolean;
     includeWoodlandMushrooms?: boolean;
     includeFallenLog?: boolean;
     includeAutumnBlanketBench?: boolean;
@@ -755,6 +760,7 @@ function createItemsHudQueryClient({
     includeAutumnAsterPots = true,
     includeHarvestWheelbarrow = true,
     includeAutumnShrub = true,
+    includeSeasonalMaple = true,
     includeWoodlandMushrooms = true,
     includeFallenLog = true,
     includeAutumnBlanketBench = true,
@@ -779,6 +785,9 @@ function createItemsHudQueryClient({
     queryClient.setQueryData(
         ['blocks'],
         blockNames
+            .filter(
+                (name) => includeSeasonalMaple || name !== seasonalMaple.name,
+            )
             .filter(
                 (name) => includeAutumnEntrances || !getAutumnEntrance(name),
             )
@@ -868,6 +877,7 @@ function ItemsHudTestProviders({
     includeAutumnAsterPots = true,
     includeHarvestWheelbarrow = true,
     includeAutumnShrub = true,
+    includeSeasonalMaple = true,
     includeWoodlandMushrooms = true,
     includeFallenLog = true,
     includeAutumnBlanketBench = true,
@@ -901,6 +911,7 @@ function ItemsHudTestProviders({
                 includeAutumnAsterPots,
                 includeHarvestWheelbarrow,
                 includeAutumnShrub,
+                includeSeasonalMaple,
                 includeWoodlandMushrooms,
                 includeFallenLog,
                 includeAutumnBlanketBench,
@@ -924,6 +935,7 @@ function ItemsHudTestProviders({
             includeAutumnAsterPots,
             includeHarvestWheelbarrow,
             includeAutumnShrub,
+            includeSeasonalMaple,
             includeWoodlandMushrooms,
             includeFallenLog,
             includeAutumnBlanketBench,
@@ -1036,6 +1048,7 @@ export function ItemsHudAlignmentStory({
     includeAutumnAsterPots = true,
     includeHarvestWheelbarrow = true,
     includeAutumnShrub = true,
+    includeSeasonalMaple = true,
     includeWoodlandMushrooms = true,
     includeFallenLog = true,
     includeAutumnBlanketBench = true,
@@ -1056,6 +1069,7 @@ export function ItemsHudAlignmentStory({
     includeAutumnAsterPots?: boolean;
     includeHarvestWheelbarrow?: boolean;
     includeAutumnShrub?: boolean;
+    includeSeasonalMaple?: boolean;
     includeWoodlandMushrooms?: boolean;
     includeFallenLog?: boolean;
     includeAutumnBlanketBench?: boolean;
@@ -1078,6 +1092,7 @@ export function ItemsHudAlignmentStory({
             includeAutumnAsterPots={includeAutumnAsterPots}
             includeHarvestWheelbarrow={includeHarvestWheelbarrow}
             includeAutumnShrub={includeAutumnShrub}
+            includeSeasonalMaple={includeSeasonalMaple}
             includeWoodlandMushrooms={includeWoodlandMushrooms}
             includeFallenLog={includeFallenLog}
             includeAutumnBlanketBench={includeAutumnBlanketBench}
