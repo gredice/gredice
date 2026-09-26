@@ -18,7 +18,10 @@ export function ColdWeatherProbe({
 }) {
     const { camera, scene, gl } = useThree();
     const frost = useFrostIntensityUniform();
-    const snowAmount = useSnowSurfaceAmountUniform({ coverageMultiplier: 1 });
+    const snowAmount = useSnowSurfaceAmountUniform({
+        coverageMultiplier: 1,
+        overrideSnow: undefined,
+    });
     const snow = useGameState((state) => state.snowCoverage);
     const subscribeAfterRender = useSceneAfterRenderSubscription();
     useSceneTimeInvalidation('test:cold-weather-probe');
