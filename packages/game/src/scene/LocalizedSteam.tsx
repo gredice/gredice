@@ -1,5 +1,11 @@
 import { useFrame } from '@react-three/fiber';
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import {
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    useSyncExternalStore,
+} from 'react';
 import {
     DynamicDrawUsage,
     Frustum,
@@ -144,6 +150,7 @@ export function LocalizedSteam({
         }),
         [],
     );
+    const profileCounts = useRef({ count: -1, emitters: -1 });
     const [inView, setInView] = useState(false);
     useSceneTimeInvalidation(
         'localized-steam',
@@ -171,6 +178,7 @@ export function LocalizedSteam({
         [mesh],
     );
     useEffect(() => {
+        profileCounts.current = { count: -1, emitters: -1 };
         updateGameProfileMetadata({ steamParticleCapacity: capacity });
         return () =>
             updateGameProfileMetadata({
@@ -233,10 +241,17 @@ export function LocalizedSteam({
         }
         // Only visibility boundaries affect React; particle motion stays outside it.
         if (inView !== emitters > 0) setInView(emitters > 0);
-        updateGameProfileMetadata({
-            steamParticleCount: count,
-            steamEmitterCount: emitters,
-        });
+        if (
+            profileCounts.current.count !== count ||
+            profileCounts.current.emitters !== emitters
+        ) {
+            profileCounts.current.count = count;
+            profileCounts.current.emitters = emitters;
+            updateGameProfileMetadata({
+                steamParticleCount: count,
+                steamEmitterCount: emitters,
+            });
+        }
     });
     return <primitive object={mesh} />;
 }

@@ -1,0 +1,132 @@
+{
+  "sourceCommit": "b767f7eeafd1e70c42afe4adfb81ca929fe65259",
+  "parentCommit": "5ea7dfdb3b0b1d2a662d3bcb2d0f1a8d75bd2e86",
+  "command": "GOMAXPROCS=2 GREDICE_GARDEN_CT_PORT=4972 pnpm --filter garden exec playwright test --config playwright.steam.config.ts --max-failures=1",
+  "renderer": "Headless Chromium SwiftShader, macOS arm64",
+  "viewport": [
+    720,
+    580
+  ],
+  "canvas": [
+    680,
+    520
+  ],
+  "devicePixelRatio": 1,
+  "node": "24.15.0",
+  "pnpm": "12.5.1",
+  "playwright": "1.62.1",
+  "fixture": {
+    "date": "2026-10-22",
+    "animation": "live",
+    "groundTiles": 225,
+    "trees": 25,
+    "autumnProps": 50,
+    "teaTables": 4,
+    "windSpeed": 3,
+    "warmupFrames": 60,
+    "sampleFrames": 120
+  },
+  "comparison": "Same scene with only steam-anchor visibility toggled; all autumn layers continue rendering.",
+  "timingLimit": "Software WebGL timings on a shared host are diagnostic only. No physical-device frame budget is claimed.",
+  "results": [
+    {
+      "tier": "low",
+      "baseline": {
+        "enabled": false,
+        "frames": 120,
+        "calls": 196,
+        "triangles": 159850,
+        "p95FrameMs": 83.80000000004657,
+        "steam": 0,
+        "falling": 24,
+        "ground": 48,
+        "entity": 20
+      },
+      "candidate": {
+        "enabled": true,
+        "frames": 120,
+        "calls": 196,
+        "triangles": 159850,
+        "p95FrameMs": 84,
+        "steam": 0,
+        "falling": 24,
+        "ground": 48,
+        "entity": 20
+      }
+    },
+    {
+      "tier": "medium",
+      "baseline": {
+        "enabled": false,
+        "frames": 120,
+        "calls": 214,
+        "triangles": 163132,
+        "p95FrameMs": 114.5,
+        "steam": 0,
+        "falling": 80,
+        "ground": 221,
+        "entity": 20
+      },
+      "candidate": {
+        "enabled": true,
+        "frames": 120,
+        "calls": 215,
+        "triangles": 163180,
+        "p95FrameMs": 122.19999999995343,
+        "steam": 24,
+        "falling": 80,
+        "ground": 221,
+        "entity": 20
+      }
+    },
+    {
+      "tier": "high",
+      "baseline": {
+        "enabled": false,
+        "frames": 120,
+        "calls": 214,
+        "triangles": 163974,
+        "p95FrameMs": 107.90000000002328,
+        "steam": 0,
+        "falling": 160,
+        "ground": 221,
+        "entity": 20
+      },
+      "candidate": {
+        "enabled": true,
+        "frames": 120,
+        "calls": 215,
+        "triangles": 164070,
+        "p95FrameMs": 134.5,
+        "steam": 48,
+        "falling": 160,
+        "ground": 221,
+        "entity": 20
+      }
+    }
+  ],
+  "sourceSha256": {
+    "apps/garden/playwright.steam.config.ts": "7e04339d1724e960dc4ad4847df1fc141b63a0ac578b3d83f3ea6d1857e21fe0",
+    "apps/garden/tests/localized-steam.spec.tsx": "5920a2056b01adaac87f48acf7cabf2a8135834278b33214f76d56258728ba19",
+    "packages/game/src/entities/GardenTeaTable.tsx": "8569495c1d0ebb37311a20b0f950859cc90431df0ddece9920a2c5d9e7a59601",
+    "packages/game/src/scene/Environment.tsx": "e609695c86de1b719f01c7c4acd29ea3eb167d22ed7db23fe36e444a8729c9a0",
+    "packages/game/src/scene/LocalizedSteam.tsx": "bdd28761d73bfde6234144a531d8f6802c6e0cbd52362cfb309a48e4bb1f7329",
+    "packages/game/src/scene/Scene.tsx": "82bf037573934471cfc9e5c1405772bbed8035949593a1f5276a7b58b325509e",
+    "packages/game/src/scene/SteamEmitter.tsx": "51ee2c11f2aec8b50b014374f2e64375bee43308c9459b2cfc2bc8b33785164d",
+    "packages/game/src/scene/SteamSources.tsx": "ffdcbd70b2078d97379856e335673fa0a65cec33315186afdc2ace4563483dfc",
+    "packages/game/src/scene/gameProfileMetadata.ts": "0e36d0bc28fd845793c404d844ca9d163d05e1ed11c7ba71766df8aef06bc717",
+    "packages/game/src/scene/steamMotion.ts": "3015bb1a04c968eecde17728b4c23317185235293b51ca1c54af86f5907c8b43",
+    "packages/game/src/scene/steamMotion.unit.ts": "08de98587304e4e8d50026e088f2d2304bcb6349a98dcb5b43d534c4e5554aec",
+    "packages/game/tests/GardenTeaTableFixture.tsx": "2b91b44636a222e01f3e918065f52c8f89306352458b4fe27f54de9bb8bb1b55",
+    "packages/game/tests/SteamLifecycleFixture.tsx": "894667eb7538d7c33ff12c86ff8862678b95d23f637d84ad1d7aaa64e27656a1",
+    "packages/game/tests/SteamProbe.tsx": "4c0215a79b446a7b31ecb8d4012421d13a5e6b21d3bc325b041845b949c2f226",
+    "packages/game/tests/SteamProfileFixture.tsx": "fd8bcd5ee4d96ce053242a995927089475766e31f35bcbf09ea2778f3244ffe1",
+    "packages/game/tests/SteamProfileProbe.tsx": "6f8ae9c84b18d6ba55da9b1f19f41f06cc2adc6ad9480d7ab6a5a24045fa719e",
+    "packages/game/tests/SteamResourceProbe.tsx": "9e116c70ff7c11cb686782de770c7969ac0e3fb30d6dfa59cafb6c5df32916fe",
+    "packages/js/src/gardenTeaTable/index.ts": "00371804bba753c64ba88235e2ca9bba285c5dce78f0b1fb1d41f3de2c0e0744"
+  },
+  "captures": {
+    "day-raised.png": "dd4d97f1fa76542403c5d2b406009cd21767496e9beae83e72096d6a49fcc93f",
+    "night.png": "9f9db537c7a591abffcf92151a6e578832a2ebfb6cdf4ec387a5a11efc462224"
+  }
+}
