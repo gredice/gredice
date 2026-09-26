@@ -862,6 +862,8 @@ export type GLTFResult = GLTF & {
         FishingBoat_Rope: THREE.Mesh;
         GardenBox_Body_Planks: THREE.Mesh;
         GardenBox_Lid_HingeOrigin: THREE.Mesh;
+        GardenBrazier_Embers: THREE.Mesh;
+        GardenBrazier_Metal: THREE.Mesh;
         GardenFlower_Center: THREE.Mesh;
         GardenFlower_Leaves: THREE.Mesh;
         GardenFlower_Petals: THREE.Mesh;
@@ -1921,6 +1923,8 @@ export type GLTFResult = GLTF & {
         'Material.Frog.MossGreen': THREE.MeshStandardMaterial;
         'Material.Frog.MossLight': THREE.MeshStandardMaterial;
         'Material.Frog.ThroatGold': THREE.MeshStandardMaterial;
+        'Material.GardenBrazier.Embers': THREE.MeshStandardMaterial;
+        'Material.GardenBrazier.Metal': THREE.MeshStandardMaterial;
         'Material.GardenFlower.Center': THREE.MeshStandardMaterial;
         'Material.GardenFlower.Leaf': THREE.MeshStandardMaterial;
         'Material.GardenFlower.PetalGradient': THREE.MeshStandardMaterial;

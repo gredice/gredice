@@ -3,6 +3,17 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "GardenBrazier",
+            "source": "GardenBrazier.blend",
+            "output": "GardenBrazier.glb",
+            "version": "1e7f678336c5",
+            "preload": "lazy",
+            "objects": [
+                "GardenBrazier_Metal",
+                "GardenBrazier_Embers"
+            ]
+        },
+        {
             "name": "StackedFirewood",
             "source": "StackedFirewood.blend",
             "output": "StackedFirewood.glb",
