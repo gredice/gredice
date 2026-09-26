@@ -3,6 +3,17 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "ChestnutRoastingCart",
+            "source": "ChestnutRoastingCart.blend",
+            "output": "ChestnutRoastingCart.glb",
+            "version": "16c0c2064987",
+            "preload": "lazy",
+            "objects": [
+                "ChestnutRoastingCart_Cart",
+                "ChestnutRoastingCart_Roaster"
+            ]
+        },
+        {
             "name": "GardenTeaTable",
             "source": "GardenTeaTable.blend",
             "output": "GardenTeaTable.glb",
