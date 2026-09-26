@@ -1,13 +1,17 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import { LeafStepFixture } from '../../../packages/game/tests/LeafStepFixture';
 
+// Include cold WebGL/audio instrumentation in the same budget as the scene test.
+test.setTimeout(60_000);
+
 test.beforeEach(async ({ page }) => {
     await page.evaluate(() => {
+        const durations: number[] = [];
         const metrics = {
             steps: 0,
             active: 0,
             peak: 0,
-            durations: [] as number[],
+            durations,
         };
         Reflect.set(window, '__leafStepMetrics', metrics);
         const original = AudioContext.prototype.createBufferSource;
@@ -34,7 +38,6 @@ for (const tier of ['low', 'high'] as const) {
         mount,
         page,
     }) => {
-        test.setTimeout(60_000);
         await page.emulateMedia({ reducedMotion: 'reduce' });
         const fixture = await mount(<LeafStepFixture tier={tier} />);
         const count = () =>
@@ -100,7 +103,6 @@ for (const conditions of [
         mount,
         page,
     }) => {
-        test.setTimeout(60_000);
         await mount(<LeafStepFixture {...conditions} />);
         await expect(
             page.getByRole('button', { name: 'Prošetaj vrtom' }),
@@ -130,7 +132,6 @@ test('rain softens steps; leaving leafy terrain, backgrounding and returning do 
     mount,
     page,
 }, testInfo) => {
-    test.setTimeout(60_000);
     const fixture = await mount(<LeafStepFixture rain={0.8} />);
     await expect(
         page.getByRole('button', { name: 'Prošetaj vrtom' }),
