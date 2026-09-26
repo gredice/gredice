@@ -3,6 +3,16 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "FallenLog",
+            "source": "FallenLog.blend",
+            "output": "FallenLog.glb",
+            "version": "dd66f61eb3e5",
+            "preload": "lazy",
+            "objects": [
+                "FallenLog_Timber"
+            ]
+        },
+        {
             "name": "WoodlandMushrooms",
             "source": "WoodlandMushrooms.blend",
             "output": "WoodlandMushrooms.glb",

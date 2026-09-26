@@ -1,11 +1,17 @@
 import type { BlockData } from '@gredice/client';
+import { fallenLog } from '@gredice/js/fallenLog';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
 import { resolvePickupPlacementPreviewForRelative } from '../controls/PickupPlacementResolver';
 import type { GardenStack } from '../types/Stack';
 import { getStackHeight } from '../utils/stackHeightCore';
 
-/** Keep the wheelbarrow's optimistic/local rotation inside supported free cells. */
-export function canRotateHarvestWheelbarrows({
+const guardedDecorations = new Set<string>([
+    harvestWheelbarrow.name,
+    fallenLog.name,
+]);
+
+/** Keep long decorations inside supported free cells during optimistic/local rotation. */
+export function canRotateSpanningDecorations({
     blockData,
     blockIds,
     rotation,
@@ -18,10 +24,7 @@ export function canRotateHarvestWheelbarrows({
 }) {
     for (const stack of stacks) {
         for (const [index, block] of stack.blocks.entries()) {
-            if (
-                !blockIds.has(block.id) ||
-                block.name !== harvestWheelbarrow.name
-            )
+            if (!blockIds.has(block.id) || !guardedDecorations.has(block.name))
                 continue;
             if (
                 !blockData?.some((item) => item.information.name === block.name)

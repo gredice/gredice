@@ -786,6 +786,7 @@ export type GLTFResult = GLTF & {
         EnamelGardenLamp_LimestoneFoot: THREE.Mesh;
         EnamelGardenLamp_MetalTrim: THREE.Mesh;
         EnamelGardenLamp_WoodPost: THREE.Mesh;
+        FallenLog_Timber: THREE.Mesh;
         FarmSupplyKit_Crate_Back: THREE.Mesh;
         FarmSupplyKit_Crate_Base: THREE.Mesh;
         FarmSupplyKit_Crate_Front: THREE.Mesh;
@@ -1852,6 +1853,7 @@ export type GLTFResult = GLTF & {
         'Material.EnamelGardenLamp.Glow': THREE.MeshStandardMaterial;
         'Material.EnamelGardenLamp.Limestone': THREE.MeshStandardMaterial;
         'Material.EnamelGardenLamp.Wood': THREE.MeshStandardMaterial;
+        'Material.FallenLog.Palette': THREE.MeshStandardMaterial;
         'Material.FarmerAvatar.Boots': THREE.MeshStandardMaterial;
         'Material.FarmerAvatar.BootSoles': THREE.MeshStandardMaterial;
         'Material.FarmerAvatar.Brass': THREE.MeshStandardMaterial;
