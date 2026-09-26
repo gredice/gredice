@@ -208,6 +208,32 @@ test('unregister while loading cannot leave an orphaned audible source', async (
     await setImmediate();
     assert.equal(sources.length, 0);
 });
+test('weather changes during a slow load use only the latest target', async (t) => {
+    const { audio, sources, gains, fetch } = harness(t);
+    const { promise, resolve } = Promise.withResolvers<Response>();
+    fetch.mock.mockImplementation(() => promise);
+    for (const target of [0.2, 0, 0.1, 0.05]) {
+        audio.setLoopTargetVolume('rustle', target, 0.2);
+    }
+    resolve(new Response(new Uint8Array(4)));
+    await setImmediate();
+    assert.equal(sources.length, 1);
+    assert.equal(fetch.mock.callCount(), 1);
+    assert.equal(gains[4].gain.target, 0.05);
+    assert.equal(gains[4].gain.value, 0);
+});
+test('identical weather refreshes do not postpone fade-out disposal', async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const { audio, sources } = harness(t);
+    audio.setLoopTargetVolume('rustle', 0.2, 0.2);
+    await setImmediate();
+    audio.setLoopTargetVolume('rustle', 0, 0.2);
+    for (let tick = 0; tick < 10; tick++) {
+        t.mock.timers.tick(100);
+        audio.setLoopTargetVolume('rustle', 0, 0.2);
+    }
+    assert.equal(sources[0].stops, 1);
+});
 for (const outcome of ['fails', 'succeeds']) {
     test(`replacing a loop while its previous load ${outcome} starts the replacement`, async (t) => {
         const { audio, sources, fetch } = harness(t);
