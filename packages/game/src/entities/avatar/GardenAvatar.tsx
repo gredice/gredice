@@ -20,6 +20,8 @@ import {
     Vector2,
     Vector3,
 } from 'three';
+import { avatarStrideLength } from '../../audio/leafStepState';
+import { useAvatarLeafCrunch } from '../../audio/useAvatarLeafCrunch';
 import { blockInteractionPassthroughUserDataKey } from '../../controls/BlockInteractionResolver';
 import { useBlockData } from '../../hooks/useBlockData';
 import {
@@ -321,7 +323,7 @@ export function animateGardenAvatarRig({
     rig: AvatarRig;
     seated?: boolean;
 }) {
-    const walkPhase = (distanceWalked / 0.82) * Math.PI * 2;
+    const walkPhase = (distanceWalked / avatarStrideLength) * Math.PI * 2;
     const phaseSine = Math.sin(walkPhase);
     const legSwing = grounded ? phaseSine * 0.44 * walkAmount : -0.2;
     const armSwing = grounded ? phaseSine * 0.34 * walkAmount : -0.48;
@@ -679,6 +681,7 @@ export function GardenAvatar({
     const gltf = useGameGLTF('FarmerAvatar');
     const { data: blockData } = useBlockData();
     const gameStateStore = useGameStateStore();
+    const leafCrunch = useAvatarLeafCrunch(roamSeed);
     const view = useGameState((state) => state.gardenAvatarView);
     const collisionDebugVisible = useGameState(
         (state) => state.gardenAvatarCollisionDebugVisible,
@@ -1461,6 +1464,7 @@ export function GardenAvatar({
     useFrame(({ clock }, frameDelta) => {
         const actor = actorRef.current;
         if (!actor?.visible) {
+            leafCrunch.reset();
             return;
         }
         const delta = Math.min(frameDelta, 0.05);
@@ -1982,6 +1986,16 @@ export function GardenAvatar({
                 }
             }
         }
+
+        leafCrunch.update({
+            x: actor.position.x,
+            y: groundYRef.current,
+            z: actor.position.z,
+            time: now,
+            distance: distanceWalkedRef.current,
+            grounded:
+                groundedRef.current && !mountedBoatRef.current && !seatPose,
+        });
 
         gaitAmountRef.current = MathUtils.damp(
             gaitAmountRef.current,

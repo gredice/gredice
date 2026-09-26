@@ -21,6 +21,7 @@ const reporter: PlaywrightTestConfig['reporter'] = [
 ];
 const webglComponentTestPattern =
     /(morning-mist|rain-ripples|autumn-season|actor-speech-bubble|cursor-anchored-zoom|detailed-inspection-farmer|garden-preview-capture|hover-outline|instanced-mesh-material-swap|precipitation-camera-follow|public-garden-switch|r3f-root-isolation|raised-bed-notification-bubble|scene-root-isolation|solar-eclipse|spatial-interaction)\.spec\.tsx/;
+const leafStepsComponentTestPattern = /leaf-steps\.spec\.tsx/;
 const outletGardenRouteTestPattern = /outlet-garden-route\.spec\.ts/;
 
 // Plugin to intercept next/font/google before Vite's resolver
@@ -72,13 +73,17 @@ export const config: PlaywrightTestConfig = {
             name: 'chromium',
             testIgnore: [
                 webglComponentTestPattern,
+                leafStepsComponentTestPattern,
                 outletGardenRouteTestPattern,
             ],
             use: { ...devices['Desktop Chrome'] },
         },
         {
             name: 'chromium-webgl',
-            testMatch: webglComponentTestPattern,
+            testMatch: [
+                webglComponentTestPattern,
+                leafStepsComponentTestPattern,
+            ],
             snapshotPathTemplate:
                 '{snapshotDir}/{testFilePath}-snapshots/{arg}{ext}',
             use: {

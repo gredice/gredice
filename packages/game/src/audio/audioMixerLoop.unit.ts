@@ -126,6 +126,65 @@ function harness(t: TestContext, missing = false) {
     return { audio, context, gains, sources, fetch, document: documentValue };
 }
 
+test('transient one-shots cancel during loading and stop active sources on abort/unmount', async (t) => {
+    const { audio, sources, fetch } = harness(t);
+    const { promise, resolve } = Promise.withResolvers<Response>();
+    fetch.mock.mockImplementation(async () => promise);
+    const controller = new AbortController();
+    const play = audio.playOneShot('ambient', '/step.wav', {
+        signal: controller.signal,
+        queueWhenLocked: false,
+    });
+    controller.abort();
+    resolve(new Response(new Uint8Array(4)));
+    await play;
+    assert.equal(sources.length, 0);
+    const next = new AbortController();
+    await audio.playOneShot('ambient', '/step.wav', { signal: next.signal });
+    assert.equal(sources.length, 1);
+    next.abort();
+    assert.equal(sources[0].stops, 1);
+});
+test('late decodes never replay a transient step, while later steps use the cached buffer', async (t) => {
+    const { audio, sources, fetch } = harness(t);
+    let time = 0;
+    t.mock.method(performance, 'now', () => time);
+    const { promise, resolve } = Promise.withResolvers<Response>();
+    fetch.mock.mockImplementation(async () => promise);
+    const play = audio.playOneShot('ambient', '/step.wav', { maxDelayMs: 100 });
+    time = 101;
+    resolve(new Response(new Uint8Array(4)));
+    await play;
+    assert.equal(sources.length, 0);
+    await audio.playOneShot('ambient', '/step.wav', { maxDelayMs: 100 });
+    assert.equal(sources.length, 1);
+    assert.equal(fetch.mock.callCount(), 1);
+});
+test('one-shots end on backgrounding and dispose; missing optional foley is attempted once', async (t) => {
+    const { audio, sources, document, fetch } = harness(t);
+    await audio.playOneShot('ambient', '/step.wav');
+    document.hidden = true;
+    document.dispatchEvent(new Event('visibilitychange'));
+    await setImmediate();
+    assert.equal(sources[0].stops, 1);
+    document.hidden = false;
+    await audio.resume();
+    await audio.playOneShot('ambient', '/step.wav');
+    audio.dispose();
+    assert.equal(sources[1].stops, 1);
+    fetch.mock.mockImplementation(
+        async () => new Response(null, { status: 404 }),
+    );
+    const warn = t.mock.method(console, 'warn', () => {});
+    const calls = fetch.mock.callCount();
+    for (let i = 0; i < 3; i++)
+        await audio.playOneShot('ambient', '/missing.wav', {
+            silentFailure: true,
+        });
+    assert.equal(fetch.mock.callCount() - calls, 1);
+    assert.equal(warn.mock.callCount(), 0);
+});
+
 test('gain changes converge continuously while keeping one cached loop source', async (t) => {
     const { audio, context, gains, sources, fetch } = harness(t);
     audio.setLoopTargetVolume('rustle', 0.12, 0.3);
@@ -207,6 +266,32 @@ test('unregister while loading cannot leave an orphaned audible source', async (
     audio.unregisterLoop('rustle');
     await setImmediate();
     assert.equal(sources.length, 0);
+});
+test('weather changes during a slow load use only the latest target', async (t) => {
+    const { audio, sources, gains, fetch } = harness(t);
+    const { promise, resolve } = Promise.withResolvers<Response>();
+    fetch.mock.mockImplementation(() => promise);
+    for (const target of [0.2, 0, 0.1, 0.05]) {
+        audio.setLoopTargetVolume('rustle', target, 0.2);
+    }
+    resolve(new Response(new Uint8Array(4)));
+    await setImmediate();
+    assert.equal(sources.length, 1);
+    assert.equal(fetch.mock.callCount(), 1);
+    assert.equal(gains[4].gain.target, 0.05);
+    assert.equal(gains[4].gain.value, 0);
+});
+test('identical weather refreshes do not postpone fade-out disposal', async (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const { audio, sources } = harness(t);
+    audio.setLoopTargetVolume('rustle', 0.2, 0.2);
+    await setImmediate();
+    audio.setLoopTargetVolume('rustle', 0, 0.2);
+    for (let tick = 0; tick < 10; tick++) {
+        t.mock.timers.tick(100);
+        audio.setLoopTargetVolume('rustle', 0, 0.2);
+    }
+    assert.equal(sources[0].stops, 1);
 });
 for (const outcome of ['fails', 'succeeds']) {
     test(`replacing a loop while its previous load ${outcome} starts the replacement`, async (t) => {
