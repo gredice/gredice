@@ -263,8 +263,14 @@
             "name": "Bush",
             "source": "Bush.blend",
             "output": "Bush.glb",
+            "version": "56b79aabe4f3",
             "preload": "primary",
-            "objects": ["Bush 1"]
+            "objects": [
+                "Bush 1",
+                "Bush_AutumnThinning",
+                "Bush_AutumnSparse",
+                "Bush_AutumnBranches"
+            ]
         },
         {
             "name": "StoneSmall",

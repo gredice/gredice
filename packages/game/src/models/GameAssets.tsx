@@ -638,6 +638,9 @@ export type GLTFResult = GLTF & {
         DeadTreeStump_BrokenTop: THREE.Mesh;
         DeadTreeStump_BrokenTop001: THREE.Mesh;
         DeadTreeStump_SideStub: THREE.Mesh;
+        Bush_AutumnBranches: THREE.Mesh;
+        Bush_AutumnSparse: THREE.Mesh;
+        Bush_AutumnThinning: THREE.Mesh;
         Bush_1_1: THREE.Mesh;
         Bush_1_2: THREE.Mesh;
         Stone_Small: THREE.Mesh;
@@ -1613,6 +1616,7 @@ export type GLTFResult = GLTF & {
         WoodenSign_Fasteners: THREE.Mesh;
     };
     materials: {
+        'Material.BushBranches': THREE.MeshStandardMaterial;
         BeachBall_Cap: THREE.MeshStandardMaterial;
         BeachBall_ContactPatch: THREE.MeshStandardMaterial;
         BeachBall_Coral: THREE.MeshStandardMaterial;

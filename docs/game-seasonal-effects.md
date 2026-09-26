@@ -43,7 +43,7 @@ Run the HUD browser checks with
 `autumnState` is resolved alongside the shared season state at every scene-clock
 write. It exposes foliage colour, retention, shedding and settled-leaf curves.
 Winter keeps the brown/low-retention endpoint; spring gradually regrows foliage.
-`Tree` alone opts into the colour curve. Yellowing starts on **August 22** and
+`Tree` and `Bush` opt into the colour curve. Yellowing starts on **August 22** and
 progresses from the crown downwards, with lower foliage staying green longer.
 Both the canopy and its sprigs receive vertex colours using the full canopy's
 local height range, including in the instanced renderer. The palette retains
@@ -52,6 +52,10 @@ shedding and settled-leaf timing are unchanged. Cached GLTF geometry/materials,
 trunk, palms, crops and grass materials stay unchanged. Weather visualization
 disablement restores the base canopy. Frozen seasonal stories and WebGL captures
 cover summer, early/mid/late autumn, winter, cloudy/twilight light and snow.
+The bush retains its original palette texture: seasonal vertex colours compensate
+for the green swatch, so the core can turn gold/brown while summer and disabled
+weather preserve its original appearance. Both individual previews and garden
+batches colour the core and sprigs using the core's local height range.
 
 ## Canopy retention
 
@@ -70,17 +74,28 @@ Blender 5.1.2 export counts: full tree 1,170 triangles (124 trunk, 80 canopy,
 (124 trunk, 40 canopy, 80 branches). All stages use three opaque meshes plus
 the optional snow pass; no transparent duplicate canopy is mounted.
 
+`Bush.blend` follows the same retention stages with named thinning/sparse clusters
+and low woody branches. Reproduce them with `assets/create-bush-autumn-variants.py`,
+export with `assets/export-game-assets.py -- --asset Bush`, update the manifest
+version to the exported GLB's SHA-256 prefix, then run `pnpm generate:models-types`.
+The original summer core and sprigs remain intact (321 triangles); thinning uses
+160 triangles and sparse uses 120, including branches. Snow follows the selected
+foliage; spring restores the full bush. Bush stage changes invalidate shadows too.
+
 ## Falling leaves
 
-A scene-local registry receives only mounted deciduous tree anchors, including
-batched trees. The ambient pool is separate from interaction particles and uses
+A scene-local registry receives mounted deciduous tree and bush anchors, including
+batches. Bush leaves start at the half-tile canopy height and shrink at the bush's
+base; tree emission keeps its existing height. Both contribute to nearby ground
+and prop accumulation, gusts and rustle through the shared registry.
+The ambient pool is separate from interaction particles and uses
 closed-form seeded trajectories on the shared animation clock. Wind is clamped
 to the existing 0–3 weather scale. Leaves drift, flutter and shrink at ground
 contact; no particle landing is persisted. Camera-frustum culling works with the
 orthographic garden camera, and scene visibility suspends the animation lease.
 
 Active-leaf caps: low 24, auto-constrained 40, medium 80, high 160, custom 120.
-At most eight leaves are sampled per tree, with intensity-dependent occupancy.
+At most eight leaves are sampled per tree or bush, with intensity-dependent occupancy.
 The mesh and its geometry/material are disposed on unmount. Profile metadata
 exposes `autumnLeafCount` and `autumnLeafCapacity`.
 

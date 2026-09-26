@@ -11,7 +11,7 @@ import {
 import type { Group } from 'three';
 import { LeafStepCoverageProvider } from '../audio/LeafStepCoverageProvider';
 
-type AutumnSource = { id: string; object: Group };
+type AutumnSource = { id: string; object: Group; kind?: 'tree' | 'bush' };
 const emptySources: AutumnSource[] = [];
 const AutumnSourcesContext = createContext({
     sources: emptySources,
@@ -20,7 +20,7 @@ const AutumnSourcesContext = createContext({
         () => {},
 });
 
-/** Scene-local anchors: only mounted deciduous trees participate. */
+/** Scene-local anchors: only mounted deciduous trees and bushes participate. */
 export function AutumnSourcesProvider({ children }: PropsWithChildren) {
     const [sources, setSources] = useState<AutumnSource[]>([]);
     const register = useCallback((source: AutumnSource) => {
@@ -55,10 +55,11 @@ export function useRegisterAutumnSource(
     id: string,
     ref: RefObject<Group | null>,
     enabled: boolean,
+    kind: 'tree' | 'bush' = 'tree',
 ) {
     const { register } = useContext(AutumnSourcesContext);
     useLayoutEffect(() => {
         if (enabled && ref.current)
-            return register({ id, object: ref.current });
-    }, [enabled, id, ref, register]);
+            return register({ id, object: ref.current, kind });
+    }, [enabled, id, ref, register, kind]);
 }

@@ -8,6 +8,18 @@ import {
     writeAutumnLeafSourceCounts,
 } from './autumnLeafMotion';
 
+test('bush leaves fall from the half-tile canopy down to its base', () => {
+    const leaf = createAutumnLeafDescriptor('bush:a', 0);
+    for (let time = 0; time < 20; time += 0.1) {
+        const bush = sampleAutumnLeaf(leaf, time, 2, 90, 0.5);
+        const tree = sampleAutumnLeaf(leaf, time, 2, 90);
+        assert.ok(bush.y >= 0 && bush.y <= 0.5);
+        assert.equal(bush.x, tree.x);
+        assert.equal(bush.z, tree.z);
+        assert.ok(Math.abs(bush.y / 0.5 - tree.y / 1.75) < 1e-10);
+    }
+});
+
 test('ambient leaf pools stay bounded and stop outside shedding or when disabled', () => {
     for (const tier of [
         'low',

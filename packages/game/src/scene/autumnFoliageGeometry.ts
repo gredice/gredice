@@ -18,6 +18,7 @@ export function createAutumnFoliageGeometry(
     base: Color,
     progress: number,
     seed: string,
+    textureColor?: Color,
 ) {
     const geometry = source.clone();
     const positions = geometry.getAttribute('position');
@@ -30,15 +31,22 @@ export function createAutumnFoliageGeometry(
         maxY = Math.max(maxY, canopyPositions.getY(index));
     }
     const height = maxY - minY;
+    const baseColor = textureColor ? base.clone().multiply(textureColor) : base;
     const colors = new Float32BufferAttribute(positions.count * 3, 3);
     for (let index = 0; index < positions.count; index++) {
         const relativeHeight =
             height > 0 ? (positions.getY(index) - minY) / height : 1;
         const color = getAutumnLeafColor(
-            base,
+            baseColor,
             getAutumnFoliageProgress(progress, relativeHeight),
             seed,
         );
+        // Keep palette textures intact; compensate for their green multiplication.
+        if (textureColor) {
+            color.r /= textureColor.r;
+            color.g /= textureColor.g;
+            color.b /= textureColor.b;
+        }
         colors.setXYZ(index, color.r, color.g, color.b);
     }
     geometry.setAttribute('color', colors);
