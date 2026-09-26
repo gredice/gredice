@@ -6,6 +6,7 @@ import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
+import { WindWeatheredEntityPart } from './helpers/WindWeatheredEntityPart';
 
 export function AutumnEntrance({
     stack,
@@ -60,9 +61,11 @@ export function AutumnEntrance({
                     ...autumnEntranceSway[name],
                 }}
             >
-                <WeatheredEntityPart
+                <WindWeatheredEntityPart
                     node={foliage}
-                    material={foliage.material}
+                    windRole={name === 'AutumnGarland' ? 'garland' : 'wreath'}
+                    seed={block.id}
+                    disabled={Boolean(disabled)}
                     snow={
                         disabled
                             ? false
