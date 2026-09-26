@@ -31,6 +31,7 @@ import {
     resolveGameQualityProfile,
 } from './gameQuality';
 import { enableGeneratedPlantShadowLayer } from './generatedPlantShadowLayer';
+import { LocalizedSteam } from './LocalizedSteam';
 import { getMoonlitNightScales } from './moonlight';
 import { Perseids } from './PerseidMeteorShower';
 import { getPerseidsMeteorRatePerHour, shouldRenderPerseids } from './perseids';
@@ -1158,6 +1159,14 @@ export function Environment({
             <AutumnRustle
                 windSpeed={blendedWeather?.windSpeed ?? 0}
                 enabled={!noSound && !weatherDisabled && sceneRuntimeVisible}
+            />
+            <LocalizedSteam
+                tier={qualityProfile.tier}
+                enabled={!weatherDisabled}
+                windSpeed={blendedWeather?.windSpeed ?? 0}
+                windDirection={windDirection}
+                rain={rain}
+                snow={snowParticles}
             />
             <AutumnLeaves
                 tier={qualityProfile.tier}
