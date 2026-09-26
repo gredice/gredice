@@ -16,6 +16,7 @@ export function MorningMistProbe({
     const disposed = useRef({ geometry: 0, material: 0, mesh: 0 });
     const frames = useRef(0);
     const mistDraws = useRef(0);
+    const mistCost = useRef({ calls: 0, triangles: 0 });
     const subscribeAfterRender = useSceneAfterRenderSubscription();
     useSceneTimeInvalidation('test:morning-mist-probe');
     useLayoutEffect(() => {
@@ -32,7 +33,10 @@ export function MorningMistProbe({
                     disposed: disposed.current,
                     frames: ++frames.current,
                     mistDraws: mistDraws.current,
+                    mistCalls: mistCost.current.calls,
+                    mistTriangles: mistCost.current.triangles,
                 };
+                mistCost.current = { calls: 0, triangles: 0 };
                 if (
                     !(mesh instanceof InstancedMesh) ||
                     !(mesh.material instanceof ShaderMaterial)
@@ -42,7 +46,21 @@ export function MorningMistProbe({
                 }
                 if (!observedMeshes.current.has(mesh)) {
                     observedMeshes.current.add(mesh);
-                    mesh.onBeforeRender = () => mistDraws.current++;
+                    let callsBefore = 0;
+                    let trianglesBefore = 0;
+                    // Measure the renderer's actual submissions for this mesh.
+                    // Other scene batches may finish loading between frames.
+                    mesh.onBeforeRender = () => {
+                        mistDraws.current++;
+                        callsBefore = gl.info.render.calls;
+                        trianglesBefore = gl.info.render.triangles;
+                    };
+                    mesh.onAfterRender = () => {
+                        mistCost.current.calls +=
+                            gl.info.render.calls - callsBefore;
+                        mistCost.current.triangles +=
+                            gl.info.render.triangles - trianglesBefore;
+                    };
                     mesh.geometry.addEventListener(
                         'dispose',
                         () => disposed.current.geometry++,

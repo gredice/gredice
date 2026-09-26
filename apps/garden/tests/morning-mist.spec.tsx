@@ -205,10 +205,12 @@ for (const tier of ['low', 'medium', 'high'] as const) {
             .poll(async () => (await sample()).frames)
             .toBeGreaterThanOrEqual(10);
         if (count)
-            await expect
-                .poll(async () => (await sample()).density)
-                .toBeGreaterThanOrEqual(0.995);
+            await expect.poll(async () => (await sample()).density).toBe(1);
+        await expect
+            .poll(async () => (await sample()).mistCalls)
+            .toBe(count ? 1 : 0);
         const active = await sample();
+        expect(active.mistTriangles).toBe(count * 2);
         await fixture.update(
             <MorningMistFixture compact tier={tier} mounted={false} />,
         );
@@ -217,12 +219,9 @@ for (const tier of ['low', 'medium', 'high'] as const) {
             .poll(async () => (await sample()).disposed.mesh)
             .toBeGreaterThan(0);
         const baseline = await sample();
-        if (count) {
-            expect(active.calls - baseline.calls).toBe(1);
-            expect(active.triangles - baseline.triangles).toBe(count * 2);
-        } else {
-            // Low has no fade-in to await. Unrelated asynchronous terrain/tree
-            // batches can still settle, so observe the mist's own submissions.
+        expect(baseline.mistCalls).toBe(0);
+        expect(baseline.mistTriangles).toBe(0);
+        if (!count) {
             expect(active.mistDraws).toBe(0);
             expect(baseline.mistDraws).toBe(0);
         }
