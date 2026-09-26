@@ -743,6 +743,8 @@ export type GLTFResult = GLTF & {
         CameraPhone_Screen: THREE.Mesh;
         CatPillow_Cushion: THREE.Mesh;
         CatPillow_Seam: THREE.Mesh;
+        ChestnutRoastingCart_Cart: THREE.Mesh;
+        ChestnutRoastingCart_Roaster: THREE.Mesh;
         ChickenCoop_Bowl: THREE.Mesh;
         ChickenCoop_Entrance: THREE.Mesh;
         ChickenCoop_Roof: THREE.Mesh;
@@ -1803,6 +1805,8 @@ export type GLTFResult = GLTF & {
         'Material.Cat.Whisker': THREE.MeshStandardMaterial;
         'Material.Cat.WhiteFur': THREE.MeshStandardMaterial;
         'Material.Cat.WhiteFurShadow': THREE.MeshStandardMaterial;
+        'Material.ChestnutRoastingCart.Roaster': THREE.MeshStandardMaterial;
+        'Material.ChestnutRoastingCart.WoodPaper': THREE.MeshStandardMaterial;
         'Material.Chicken.Charcoal': THREE.MeshStandardMaterial;
         'Material.Chicken.Cream': THREE.MeshStandardMaterial;
         'Material.Chicken.CreamDark': THREE.MeshStandardMaterial;
