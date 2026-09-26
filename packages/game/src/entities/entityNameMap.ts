@@ -71,6 +71,7 @@ import { HazelLightArch } from './HazelLightArch';
 import { Horse } from './horses/Horse';
 import { IceCreamCart } from './IceCreamCart';
 import { InflatablePoolSmall } from './InflatablePoolSmall';
+import { LeafRake } from './LeafRake';
 import { LemonadeStand } from './LemonadeStand';
 import { LiquidPreparationBottle } from './LiquidPreparationBottle';
 import { MoonRainBarrel } from './MoonRainBarrel';
@@ -202,6 +203,7 @@ export const entityNameMap = {
     AutumnShrub,
     WoodlandMushrooms,
     FallenLog,
+    LeafRake,
     AutumnLeafPileMound: AutumnLeafPile,
     AutumnLeafPileCrescent: AutumnLeafPile,
     HarvestCrateOrchard: HarvestCrate,
