@@ -230,17 +230,17 @@ for (const surface of ['Block_Water', 'Block_Swamp_Water']) {
         );
         const sample = async () =>
             JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
-        await expect.poll(async () => (await sample()).count).toBe(48);
+        await expect.poll(async () => (await sample()).count).toBe(16);
         const active = await sample();
         expect(active.puddles).toBe(0);
         expect(active.rain).toBe(0.4);
         expect(active.wetness).toBeLessThanOrEqual(0.4);
         expect(
             active.surfaces.filter((_: number, i: number) => i % 2 === 0),
-        ).toEqual(Array(48).fill(1));
+        ).toEqual(Array(16).fill(1));
         expect(
             active.matrices.filter((_: number, i: number) => i % 16 === 13),
-        ).toEqual(Array(48).fill(0.344));
+        ).toEqual(Array(16).fill(0.344));
         const withRings = await page.locator('canvas').screenshot();
         await fixture.update(
             <RainRippleFixture
@@ -288,12 +288,12 @@ for (const surface of [
             .toBeCloseTo(0.4, 2);
         expect((await sample()).count).toBe(0);
         await fixture.update(<RainRippleFixture surface={surface} />);
-        await expect.poll(async () => (await sample()).count).toBe(48);
+        await expect.poll(async () => (await sample()).count).toBe(16);
         expect(
             (await sample()).matrices.filter(
                 (_: number, i: number) => i % 16 === 13,
             ),
-        ).toEqual(Array(48).fill(0.404));
+        ).toEqual(Array(16).fill(0.404));
         await fixture.update(<RainRippleFixture surface={surface} rain={0} />);
         await expect.poll(async () => (await sample()).count).toBe(0);
     });
@@ -349,7 +349,7 @@ test('water rings sit inside exposed rotated shorelines', async ({
     );
     const sample = async () =>
         JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
-    await expect.poll(async () => (await sample()).count).toBe(48);
+    await expect.poll(async () => (await sample()).count).toBe(16);
     await expect
         .poll(async () => (await sample()).wetness)
         .toBeGreaterThanOrEqual(0.995);
