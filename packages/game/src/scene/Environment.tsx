@@ -32,6 +32,7 @@ import {
     resolveGameQualityProfile,
 } from './gameQuality';
 import { enableGeneratedPlantShadowLayer } from './generatedPlantShadowLayer';
+import { MorningMist } from './MorningMist';
 import { getMoonlitNightScales } from './moonlight';
 import { Perseids } from './PerseidMeteorShower';
 import { getPerseidsMeteorRatePerHour, shouldRenderPerseids } from './perseids';
@@ -1169,6 +1170,14 @@ export function Environment({
                 windDirection={windDirection}
                 rain={blendedWeather?.rainy ?? 0}
                 snow={blendedWeather?.snowy ?? 0}
+            />
+            <MorningMist
+                stacks={sceneGarden?.stacks}
+                gardenId={garden?.id}
+                tier={qualityProfile.tier}
+                enabled={!weatherDisabled}
+                timeOfDay={timeOfDay}
+                weather={blendedWeather}
             />
             <RainRipples
                 stacks={sceneGarden?.stacks}

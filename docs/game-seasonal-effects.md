@@ -301,3 +301,42 @@ Validation commands:
 The profiling matrix combines heavy rain with the existing dense autumn scene
 at October 22 on low/medium/high, sharing the dense weather budgets. Commit the
 candidate before profiling so the report's comparability check can identify it.
+
+## Localized morning mist
+
+`MorningMist` extends distance fog with small ground-hugging patches on exposed
+flat grass, swamp ground and standard/swamp water. It reads Environment's actual
+blended fog, precipitation and wind plus the shared normalized solar time. There
+is no autumn-only or calendar-based fog inference. Density rises from dawn to
+sunrise, falls away by solar time 0.48, and disappears with strong wind, heavy
+rain or snow. Changes fade with a 0.5-second time constant; the shared animation
+clock drives slow seeded wisps without per-frame React updates.
+
+A conservative footprint/overhang mask keeps raised beds, crops and props clear.
+Sand paths, slopes, covered tiles and pickup targets are excluded; active drags
+suppress the layer. Water uses the existing vertical-range helper, including
+shaped-terrain fills. Each patch stays inside its own tile, 0.09 units above the
+surface, with a radius at most 0.44 and fragment alpha at most 0.12. It tests depth,
+writes no depth or shadows, and has no raycast targets. Distance fog still applies.
+
+Low/auto-constrained quality and reduced motion disable mist. Medium/high/custom
+cap it at 16/32/24 two-triangle patches in one instanced draw, with no texture,
+render target or full-screen pass. Weather disablement and hidden/offscreen
+scenes stop it immediately. Steady live mist acquires a 20 frames/second lease through the shared scheduler;
+transitions request frames until settled. Frozen settled mist holds no animation lease. Resource
+and preference subscriptions clean up on unmount. It adds no audio; existing
+ambient audio preferences continue to apply independently.
+
+Validation:
+
+- `pnpm --filter @gredice/game exec tsx --import ./scripts/register-test-assets.mjs --test src/scene/morningMistState.unit.ts`
+- `pnpm --filter garden exec playwright test --config playwright.season.config.ts tests/morning-mist.spec.tsx --workers=1`
+- `GAME_PROFILE_SCENARIO_SET=morning-mist GAME_PROFILE_FAIL_ON_BUDGET=1 pnpm --filter garden profile:game`
+
+The browser fixture includes water, a path, props and the existing autumn and
+rain layers. It checks repeatability, weather/time transitions, low/high quality,
+reduced motion, dragging, offscreen/hidden suspension, disposal and incremental
+draw/triangle cost. The production profile uses the dense autumn scene at
+October 22, 08:00, on low/medium/high quality. `morningMistCount` and
+`morningMistCapacity` report the active allocation. For manual inspection use
+`/debug/profile/game?mode=mist&profile=dense-autumn&date=2024-10-22&quality=high&hud=1&controls=1`.

@@ -504,6 +504,8 @@ export type GameProfileMetadata = {
     rainParticleCount?: number;
     rainRippleCapacity?: number;
     rainRippleCount?: number;
+    morningMistCapacity?: number;
+    morningMistCount?: number;
     rainWetOverlayDistinctUniformCount?: number;
     rainWetOverlayMaterialConsumerCount?: number;
     raisedBedFieldVisualBatchCount?: number;

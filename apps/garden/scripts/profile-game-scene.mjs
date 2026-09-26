@@ -1253,7 +1253,16 @@ const rainRippleScenarios = autumnScenarios.map((scenario) => ({
         .replace('2024-11-21', '2024-10-22'),
 }));
 
+const morningMistScenarios = autumnScenarios.map((scenario) => ({
+    ...scenario,
+    name: scenario.name.replace('autumn-accumulation', 'morning-mist'),
+    path: scenario.path
+        .replace('mode=windy', 'mode=mist')
+        .replace('2024-11-21', '2024-10-22'),
+}));
+
 const scenarioSets = {
+    'morning-mist': morningMistScenarios,
     'rain-ripples': rainRippleScenarios,
     autumn: autumnScenarios,
     'adaptive-high': adaptiveHighScenarios,
@@ -10928,6 +10937,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.autumnGroundLeafClusters === 'number'
                     ? metadata.autumnGroundLeafClusters
                     : null,
+            morningMistCount: numberOrNull(metadata.morningMistCount),
+            morningMistCapacity: numberOrNull(metadata.morningMistCapacity),
             autumnRustleTargetGain: numberOrNull(
                 metadata.autumnRustleTargetGain,
             ),

@@ -6,6 +6,7 @@ export default defineConfig({
         'tests/season-date-control.spec.tsx',
         'tests/autumn-season.spec.tsx',
         'tests/rain-ripples.spec.tsx',
+        'tests/morning-mist.spec.tsx',
         'tests/autumn-audio.spec.tsx',
     ],
     projects: config.projects
@@ -21,6 +22,7 @@ export default defineConfig({
                     : [
                           'tests/autumn-season.spec.tsx',
                           'tests/rain-ripples.spec.tsx',
+                          'tests/morning-mist.spec.tsx',
                       ],
         })),
     webServer: undefined,
