@@ -879,6 +879,8 @@ export type GLTFResult = GLTF & {
         GardenScissors_Pivot_Slot: THREE.Mesh;
         GardenScissors_Tang_L: THREE.Mesh;
         GardenScissors_Tang_R: THREE.Mesh;
+        GardenTeaTable_TeaSet: THREE.Mesh;
+        GardenTeaTable_Timber: THREE.Mesh;
         GiftBox_Bow: THREE.Mesh;
         GiftBox_Box: THREE.Mesh;
         GiftBox_Strip: THREE.Mesh;
@@ -1929,6 +1931,8 @@ export type GLTFResult = GLTF & {
         'Material.GardenScissors.PivotBrass': THREE.MeshStandardMaterial;
         'Material.GardenScissors.Steel': THREE.MeshStandardMaterial;
         'Material.GardenScissors.SteelEdge': THREE.MeshStandardMaterial;
+        'Material.GardenTeaTable.Enamel': THREE.MeshStandardMaterial;
+        'Material.GardenTeaTable.Timber': THREE.MeshStandardMaterial;
         'Material.Goat.Charcoal': THREE.MeshStandardMaterial;
         'Material.Goat.Collar': THREE.MeshStandardMaterial;
         'Material.Goat.Cream': THREE.MeshStandardMaterial;
