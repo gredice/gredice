@@ -1245,7 +1245,16 @@ const autumnScenarios = ['low', 'medium', 'high'].map((tier) => ({
     budget: tier === 'low' ? 'gameDenseWeatherMobile' : 'gameDenseWeather',
 }));
 
+const rainRippleScenarios = autumnScenarios.map((scenario) => ({
+    ...scenario,
+    name: scenario.name.replace('autumn-accumulation', 'rain-ripples'),
+    path: scenario.path
+        .replace('mode=windy', 'mode=rain')
+        .replace('2024-11-21', '2024-10-22'),
+}));
+
 const scenarioSets = {
+    'rain-ripples': rainRippleScenarios,
     autumn: autumnScenarios,
     'adaptive-high': adaptiveHighScenarios,
     'auto-quality': autoQualityScenarios,
@@ -10893,6 +10902,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.groundDecorationChunkCount === 'number'
                     ? metadata.groundDecorationChunkCount
                     : null,
+            rainRippleCount: numberOrNull(metadata.rainRippleCount),
+            rainRippleCapacity: numberOrNull(metadata.rainRippleCapacity),
             autumnLeafCount:
                 typeof metadata.autumnLeafCount === 'number'
                     ? metadata.autumnLeafCount

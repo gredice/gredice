@@ -20,6 +20,7 @@ import { useSceneCurrentGarden } from '../hooks/useSceneCurrentGarden';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useSyncGameTime } from '../hooks/useSyncGameTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
+import { RainRipples } from '../rain/RainRipples';
 import { type GameState, useGameState } from '../useGameState';
 import { AutumnLeaves } from './AutumnLeaves';
 import { getAutumnCanopyShadowKey } from './autumnCanopy';
@@ -1167,6 +1168,13 @@ export function Environment({
                 windSpeed={blendedWeather?.windSpeed ?? 0}
                 windDirection={windDirection}
                 rain={blendedWeather?.rainy ?? 0}
+                snow={blendedWeather?.snowy ?? 0}
+            />
+            <RainRipples
+                stacks={sceneGarden?.stacks}
+                gardenId={garden?.id}
+                tier={qualityProfile.tier}
+                enabled={!weatherDisabled}
                 snow={blendedWeather?.snowy ?? 0}
             />
             {!weatherDisabled && blendedWeather && (
