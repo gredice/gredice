@@ -14,6 +14,7 @@ import * as SunCalc from 'suncalc';
 import { Color, type DirectionalLight } from 'three';
 import { AutumnRustle } from '../audio/AutumnRustle';
 import { WeatherAmbience } from '../audio/WeatherAmbience';
+import { WindAmbience } from '../audio/WindAmbience';
 import { PlantShaderPrewarm } from '../generators/plant/PlantShaderPrewarm';
 import { useAutumnState } from '../hooks/useAutumnState';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
@@ -1079,6 +1080,12 @@ export function Environment({
                 weather={actualWeather}
                 timeOfDay={timeOfDay}
                 enabled={!noSound && sceneRuntimeVisible}
+                debug={hasWeatherOverride}
+            />
+            <WindAmbience
+                windSpeed={actualWeather?.windSpeed ?? 0}
+                rainIntensity={actualWeather?.rainy ?? 0}
+                enabled={!noSound && !weatherDisabled && sceneRuntimeVisible}
                 debug={hasWeatherOverride}
             />
             <AutumnRustle

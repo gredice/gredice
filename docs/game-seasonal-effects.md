@@ -222,8 +222,8 @@ layer; a missing asset fails quietly and is not retried on each weather update.
 
 `useMusic().setTargetVolume(target, fadeSeconds)` also drives the
 [weather ambience crossfades](./game-weather-audio.md). It preserves buffer
-caching and the existing channel/master controls. General wind (#2631) remains
-separate work; the sparse, high-frequency leaf grains leave space for wind.
+caching and the existing channel/master controls. The sparse, high-frequency
+leaf grains leave space for the light/medium/strong wind textures.
 
 `assets/generate-autumn-leaf-rustle.py` reproducibly creates the original six-second
 mono WAV in both garden and WWW public assets. It uses no external recording or

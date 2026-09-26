@@ -47,3 +47,29 @@ Web Audio decoding and React updates. Its rain recordings are intercepted with
 a deterministic local WAV to keep CI offline. These checks verify scheduling,
 source/cache ownership and browser gain changes; speaker/headphone mix quality
 requires listening.
+
+## Wind layers
+
+`WindAmbience` adds light, medium and strong wind under the same mixer controls.
+It reads the instantaneous resolved `windSpeed` on the **0–3 scene/API scale**,
+using the same normal/debug envelopes as rain. Calm (0–0.25) stays silent, light
+wind fades in by 1, and textures crossfade from light to medium over 1–2 and
+medium to strong over 2–3. Their total gain rises from 0.12 at 1 to at most 0.26
+at 3; full rain ducks wind by 30%. Snow does not switch wind off. Low/mid-band
+wind and the sparse high-frequency leaf layer can play together.
+
+`python3 assets/generate-wind-ambience.py` deterministically generates three
+original 12-second, 22,050 Hz, mono 16-bit WAVs in both garden and WWW public
+assets. The files use versioned `wind-{light,medium,strong}-v1.wav` names and
+load lazily through the existing decoded-buffer cache. There are no external
+samples or licensing dependencies. Circular filtered noise and periodic gusts
+produce continuous loop seams. RMS is 0.10 / 0.12 / 0.14 and peak is below 0.57;
+assets total about 1.6 MB per host. They add no synthesis work during playback.
+
+For wind QA, use the debug Wind slider at 0, 1, 2 and 3, then switch quickly
+between 0 and 3 and back. Allow at least 12 seconds to hear a complete loop.
+Combine rain, snow, autumn leaves and day/night; verify wind remains subordinate
+to the scene and that master/ambient mute and volume still control every layer.
+`tests/wind-audio.spec.tsx` decodes all three shipped files in Chromium and checks
+rapid retargeting, calm fade-out, caching, mute, volume, disablement and missing
+assets. PCM checks verify identical host copies, format, level and loop seams.
