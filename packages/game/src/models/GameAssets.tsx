@@ -1468,6 +1468,7 @@ export type GLTFResult = GLTF & {
         SmallWoodenBridge_PlanksWarm: THREE.Mesh;
         SmallWoodenBridge_Stringers: THREE.Mesh;
         Snowman: THREE.Mesh;
+        StackedFirewood_Timber: THREE.Mesh;
         Stick: THREE.Mesh;
         Stone_Large: THREE.Mesh;
         Stone_Medium: THREE.Mesh;
@@ -2143,6 +2144,7 @@ export type GLTFResult = GLTF & {
         'Material.Squirrel.RustFur': THREE.MeshStandardMaterial;
         'Material.Squirrel.ShadowFur': THREE.MeshStandardMaterial;
         'Material.Squirrel.WarmFur': THREE.MeshStandardMaterial;
+        'Material.StackedFirewood.Timber': THREE.MeshStandardMaterial;
         'Material.Stone': THREE.MeshStandardMaterial;
         'Material.Stone.001': THREE.MeshStandardMaterial;
         'Material.Stone.002': THREE.MeshStandardMaterial;

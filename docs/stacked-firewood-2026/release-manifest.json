@@ -1,0 +1,103 @@
+{
+  "state": "unpublished",
+  "publicationIssue": 5000,
+  "snapshotDate": "2026-10-22T12:00:00+02:00",
+  "source": {
+    "path": "assets/game-assets/StackedFirewood.blend",
+    "bytes": 95488,
+    "sha256": "286b0315fa4e5ff4bc1d367f2d9945aff1013e5985efba7fae1b15f23362c6bf"
+  },
+  "models": [
+    {
+      "name": "StackedFirewood",
+      "path": "apps/garden/public/assets/models/StackedFirewood.glb",
+      "bytes": 21788,
+      "sha256": "8e3be71b6f2349ffe6f69c15172e8b4da846040f7678e327e4236d78ed1a376b",
+      "url": "https://vrt.gredice.com/assets/models/StackedFirewood.glb?v=8e3be71b6f23",
+      "triangles": 408,
+      "trianglesByMesh": {
+        "StackedFirewood_Timber": 408
+      },
+      "meshCount": 1,
+      "materialCount": 1
+    }
+  ],
+  "items": [
+    {
+      "name": "StackedFirewood",
+      "information": {
+        "label": "Složena drva za ogrjev",
+        "shortDescription": "Niska i uredna hrpa cijepanih drva sa svijetlim presjecima.",
+        "fullDescription": "Šest komada cijepanog drva složeno je u nisku hrpu koja zauzima jedno polje. Svijetli presjeci i tamna kora ukrašavaju kutak uz klupu ili vrtnu svjetiljku. Drva su ukras: ne troše se, ne daju resurse i ne utječu na biljke. Na njih se ne slažu drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.45,
+        "hitboxHeight": 0.45,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 35,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/StackedFirewood.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/StackedFirewood.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/StackedFirewood.webp",
+          "bytes": 13394,
+          "sha256": "43fd89b3a19d2b42ddc9e88eeec61cac4d9619eabe498064f6c220c4d441aedc"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/StackedFirewood_1.webp",
+          "bytes": 13394,
+          "sha256": "43fd89b3a19d2b42ddc9e88eeec61cac4d9619eabe498064f6c220c4d441aedc"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/StackedFirewood_2.webp",
+          "bytes": 12084,
+          "sha256": "0b7d08a6b580616cd7b86fa292efc24c32a272c3714bca98a71795cf9ec5fcc1"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/StackedFirewood_3.webp",
+          "bytes": 13268,
+          "sha256": "fee1ad40d07c7f7add7acabb4e8058e187cd515b14690d5b850efb54d8dd24f2"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/StackedFirewood_4.webp",
+          "bytes": 12428,
+          "sha256": "61937bf64057cecf0b786c4cb1fdf6b34853a7cd64f6b6c0ef427c48055804f7"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/StackedFirewood.webp",
+          "bytes": 2490,
+          "sha256": "ec79eea8a29bac2d275a924ef63b5ec4502dcbcf1607fa40da28ccab89222530"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/StackedFirewood_1.webp",
+          "bytes": 2490,
+          "sha256": "ec79eea8a29bac2d275a924ef63b5ec4502dcbcf1607fa40da28ccab89222530"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/StackedFirewood_2.webp",
+          "bytes": 1830,
+          "sha256": "df069e7064b3922db71a25c9286b8d66548745e811444173093a3e4ba5d8f450"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/StackedFirewood_3.webp",
+          "bytes": 2544,
+          "sha256": "ffd824bcd6bb69375978841b0a2e5f6e4dd29ff9d3a0e11ea7e04182fd6b7c0d"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/StackedFirewood_4.webp",
+          "bytes": 1798,
+          "sha256": "4e7a50399533b0052b67151167853569319977ac5b8795e9f607671ea29b1cdf"
+        }
+      ]
+    }
+  ]
+}

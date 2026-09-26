@@ -107,6 +107,7 @@ import { Sheep } from './Sheep';
 import { ShovelSmall } from './ShovelSmall';
 import { SmallWoodenBridge } from './SmallWoodenBridge';
 import { Snowman } from './Snowman';
+import { StackedFirewood } from './StackedFirewood';
 import { StoneFence } from './StoneFence';
 import { StoneLarge } from './StoneLarge';
 import { StoneMedium } from './StoneMedium';
@@ -209,6 +210,7 @@ export const entityNameMap = {
     AutumnBlanketBench,
     ChestnutRoastingCart,
     LeafRake,
+    StackedFirewood,
     GardenTeaTable,
     AutumnLeafPileMound: AutumnLeafPile,
     AutumnLeafPileCrescent: AutumnLeafPile,
