@@ -19,6 +19,7 @@ import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
 import { leafRake } from '@gredice/js/leafRake';
 import { seedDryingRack } from '@gredice/js/seedDryingRack';
 import { stackedFirewood } from '@gredice/js/stackedFirewood';
+import { woodlandArrangementNames } from '@gredice/js/woodlandArrangements';
 import { woodlandMushrooms } from '@gredice/js/woodlandMushrooms';
 import { BlockImage, getBlockImageUrl } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
@@ -384,6 +385,9 @@ const items: HudItem[] = [
                 name: autumnBlanketBench.name,
                 footprintLabel: '2 × 1',
             },
+            ...woodlandArrangementNames.map(
+                (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
+            ),
             ...autumnGrassNames.map(
                 (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
             ),

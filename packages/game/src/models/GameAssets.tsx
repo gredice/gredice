@@ -1687,6 +1687,9 @@ export type GLTFResult = GLTF & {
         WoodenWalkway_Pegs: THREE.Mesh;
         WoodenWalkway_PlanksLight: THREE.Mesh;
         WoodenWalkway_PlanksWarm: THREE.Mesh;
+        WoodlandAcorns_Arrangement: THREE.Mesh;
+        WoodlandConkers_Arrangement: THREE.Mesh;
+        WoodlandMushroomBasket_Arrangement: THREE.Mesh;
         WoodlandMushrooms_Cluster: THREE.Mesh;
         X_Half: THREE.Mesh;
     };
@@ -2209,6 +2212,7 @@ export type GLTFResult = GLTF & {
         'Material.WoodenWalkway.LightWood': THREE.MeshStandardMaterial;
         'Material.WoodenWalkway.Pegs': THREE.MeshStandardMaterial;
         'Material.WoodenWalkway.WarmWood': THREE.MeshStandardMaterial;
+        'Material.Woodland.Arrangement': THREE.MeshStandardMaterial;
         'Material.WoodlandMushrooms.Palette': THREE.MeshStandardMaterial;
         metal: THREE.MeshStandardMaterial;
         mint: THREE.MeshStandardMaterial;

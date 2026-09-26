@@ -14,6 +14,7 @@ import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
 import { leafRake } from '@gredice/js/leafRake';
 import { seedDryingRack } from '@gredice/js/seedDryingRack';
 import { stackedFirewood } from '@gredice/js/stackedFirewood';
+import { woodlandArrangements } from '@gredice/js/woodlandArrangements';
 import { woodlandMushrooms } from '@gredice/js/woodlandMushrooms';
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Locator, Page } from '@playwright/test';
@@ -38,6 +39,11 @@ const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 const newBlockCatalogItems = [
+    ...woodlandArrangements.map((item) => ({
+        label: item.information.label,
+        price: item.sunflowers,
+        picker: 'Dekoracija',
+    })),
     {
         label: seedDryingRack.information.label,
         price: seedDryingRack.sunflowers,
@@ -2406,5 +2412,55 @@ test('seed drying rack drag keeps the catalogue identity', async ({
     await page.mouse.up();
     await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
         'SeedDryingRack:drop',
+    );
+});
+
+test('woodland arrangements stays hidden before catalogue publication', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ItemsHudAlignmentStory includeWoodlandArrangements={false} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', {
+            name: /Šumski ukras/,
+        }),
+    ).toHaveCount(0);
+});
+
+test('woodland arrangements appears once in the local sandbox', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<LocalSandboxItemsHudStory />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', {
+            name: /Šumski ukras/,
+        }),
+    ).toHaveCount(3);
+});
+
+test('woodland arrangements drag keeps the catalogue identity', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudDragStateStory accountSunflowers={150} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await dragLocatorByMouse(
+        page,
+        page.getByRole('button', {
+            name: 'Šumski ukras – žirevi',
+            exact: true,
+        }),
+    );
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'WoodlandAcorns:drag',
+    );
+    await page.mouse.up();
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'WoodlandAcorns:drop',
     );
 });
