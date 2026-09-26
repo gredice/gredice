@@ -3,6 +3,17 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "GardenTeaTable",
+            "source": "GardenTeaTable.blend",
+            "output": "GardenTeaTable.glb",
+            "version": "36d8a3e3ed2d",
+            "preload": "lazy",
+            "objects": [
+                "GardenTeaTable_Timber",
+                "GardenTeaTable_TeaSet"
+            ]
+        },
+        {
             "name": "AutumnBlanketBench",
             "source": "AutumnBlanketBench.blend",
             "output": "AutumnBlanketBench.glb",
