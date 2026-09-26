@@ -3,6 +3,30 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "PumpkinLanternSmile",
+            "source": "PumpkinLanternSmile.blend",
+            "output": "PumpkinLanternSmile.glb",
+            "version": "0daf694271bb",
+            "preload": "lazy",
+            "objects": [
+                "PumpkinLanternSmile_Body",
+                "PumpkinLanternSmile_Stem",
+                "PumpkinLanternSmile_Glow"
+            ]
+        },
+        {
+            "name": "PumpkinLanternWink",
+            "source": "PumpkinLanternWink.blend",
+            "output": "PumpkinLanternWink.glb",
+            "version": "5d9efb1da02b",
+            "preload": "lazy",
+            "objects": [
+                "PumpkinLanternWink_Body",
+                "PumpkinLanternWink_Stem",
+                "PumpkinLanternWink_Glow"
+            ]
+        },
+        {
             "name": "BirdFeeder",
             "source": "BirdFeeder.blend",
             "output": "BirdFeeder.glb",

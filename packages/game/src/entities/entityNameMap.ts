@@ -90,6 +90,7 @@ import { Pine } from './Pine';
 import { PineAdvent } from './PineAdvent';
 import { PolishedStoneFence } from './PolishedStoneFence';
 import { Pot } from './Pot';
+import { PumpkinLantern } from './PumpkinLantern';
 import {
     CowShelter,
     GoatShelter,
@@ -221,6 +222,8 @@ export const entityNameMap = {
     StackedFirewood,
     SeedDryingRack,
     BirdFeeder,
+    PumpkinLanternSmile: PumpkinLantern,
+    PumpkinLanternWink: PumpkinLantern,
     GardenBrazier,
     GardenTeaTable,
     AutumnLeafPileMound: AutumnLeafPile,
