@@ -26,6 +26,7 @@ import {
 } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
 import { leafRake } from '@gredice/js/leafRake';
+import { seasonalMaple } from '@gredice/js/seasonalMaple';
 import { seedDryingRack } from '@gredice/js/seedDryingRack';
 import { stackedFirewood } from '@gredice/js/stackedFirewood';
 import {
@@ -102,6 +103,7 @@ export const localSandboxBlockNames = [
     ...harvestCrateNames,
     harvestWheelbarrow.name,
     autumnShrub.name,
+    seasonalMaple.name,
     woodlandMushrooms.name,
     leafRake.name,
     stackedFirewood.name,
@@ -956,15 +958,17 @@ function createLocalSandboxBlockData(
                           ? fallenLog
                           : name === woodlandMushrooms.name
                             ? woodlandMushrooms
-                            : name === autumnShrub.name
-                              ? autumnShrub
-                              : name === gardenScarecrow.name
-                                ? gardenScarecrow
-                                : name === harvestWheelbarrow.name
-                                  ? harvestWheelbarrow
-                                  : (getAutumnAsterPot(name) ??
-                                    getHarvestCrate(name) ??
-                                    getHarvestPumpkin(name)));
+                            : name === seasonalMaple.name
+                              ? seasonalMaple
+                              : name === autumnShrub.name
+                                ? autumnShrub
+                                : name === gardenScarecrow.name
+                                  ? gardenScarecrow
+                                  : name === harvestWheelbarrow.name
+                                    ? harvestWheelbarrow
+                                    : (getAutumnAsterPot(name) ??
+                                      getHarvestCrate(name) ??
+                                      getHarvestPumpkin(name)));
     const metadata = decoration?.information ?? localSandboxBlockMetadata[name];
     return {
         id: index + 1,
