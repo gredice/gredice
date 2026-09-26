@@ -59,6 +59,7 @@ import { FireflyJar } from './FireflyJar';
 import { FishingBoat } from './FishingBoat';
 import { Goat } from './farmAnimals/FarmAnimals';
 import { GardenBox } from './GardenBox';
+import { GardenBrazier } from './GardenBrazier';
 import { GardenScarecrow } from './GardenScarecrow';
 import { GardenTeaTable } from './GardenTeaTable';
 import { GiftBoxBlueWhite } from './GiftBoxBlueWhite';
@@ -212,6 +213,7 @@ export const entityNameMap = {
     ChestnutRoastingCart,
     LeafRake,
     StackedFirewood,
+    GardenBrazier,
     GardenTeaTable,
     AutumnLeafPileMound: AutumnLeafPile,
     AutumnLeafPileCrescent: AutumnLeafPile,
