@@ -266,6 +266,8 @@ profile fixture compares steam off/on with the same 225 ground tiles, 25 trees,
 50 autumn props and four tea tables. It measures 120 rendered frames after 60
 warmup frames per state, including falling, ground and entity leaves. Frame
 timings from software WebGL on a shared host are diagnostic, not device budgets.
+See the [steam validation record](localized-steam-2026.md) for captures and the
+measured per-tier costs.
 
 ## Leaf-rustle ambience
 

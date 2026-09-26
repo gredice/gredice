@@ -1,8 +1,12 @@
-import { expect, test } from '@playwright/experimental-ct-react';
+import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import type { Locator } from '@playwright/test';
 import { GardenTeaTableFixture } from '../../../packages/game/tests/GardenTeaTableFixture';
 import { SteamLifecycleFixture } from '../../../packages/game/tests/SteamLifecycleFixture';
 import { SteamProfileFixture } from '../../../packages/game/tests/SteamProfileFixture';
+
+// Also runs in the regular CI WebGL project, whose default timeouts suit smaller fixtures.
+test.setTimeout(120_000);
+const expect = baseExpect.configure({ timeout: 60_000 });
 
 async function readSteam(fixture: Locator) {
     return JSON.parse((await fixture.getAttribute('data-steam')) || '{}');
