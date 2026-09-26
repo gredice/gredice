@@ -379,6 +379,10 @@ export type GameProfileMetadata = {
     autumnRustleTargetGain?: number;
     autumnLeafCapacity?: number;
     autumnLeafCount?: number;
+    warmPropCount?: number;
+    warmPropSmokeCount?: number;
+    warmPropCapacity?: number;
+    warmPropCrackleGain?: number;
     autumnGustCapacity?: number;
     autumnGustCount?: number;
     autumnGustPeakCount?: number;

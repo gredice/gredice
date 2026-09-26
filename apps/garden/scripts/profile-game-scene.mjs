@@ -11264,6 +11264,10 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.groundDecorationChunkCount === 'number'
                     ? metadata.groundDecorationChunkCount
                     : null,
+            warmPropCount: numberOrNull(metadata.warmPropCount),
+            warmPropSmokeCount: numberOrNull(metadata.warmPropSmokeCount),
+            warmPropCapacity: numberOrNull(metadata.warmPropCapacity),
+            warmPropCrackleGain: numberOrNull(metadata.warmPropCrackleGain),
             rainRippleCount: numberOrNull(metadata.rainRippleCount),
             rainRippleCapacity: numberOrNull(metadata.rainRippleCapacity),
             autumnLeafCount:
