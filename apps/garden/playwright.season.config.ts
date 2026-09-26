@@ -3,6 +3,7 @@ import { config } from './playwright.config';
 export default defineConfig({
     ...config,
     testMatch: [
+        'tests/squirrel-caching.spec.tsx',
         'tests/leaf-steps.spec.tsx',
         'tests/season-date-control.spec.tsx',
         'tests/autumn-season.spec.tsx',
@@ -25,6 +26,7 @@ export default defineConfig({
                           'tests/wind-audio.spec.tsx',
                       ]
                     : [
+                          'tests/squirrel-caching.spec.tsx',
                           'tests/leaf-steps.spec.tsx',
                           'tests/autumn-season.spec.tsx',
                           'tests/rain-ripples.spec.tsx',

@@ -42,6 +42,8 @@ function nextFontMockPlugin() {
     };
 }
 
+const squirrelCachingComponentTestPattern = /squirrel-caching\.spec\.tsx/;
+
 export const config: PlaywrightTestConfig = {
     testDir: './',
     snapshotDir: './__snapshots__',
@@ -72,6 +74,7 @@ export const config: PlaywrightTestConfig = {
         {
             name: 'chromium',
             testIgnore: [
+                squirrelCachingComponentTestPattern,
                 webglComponentTestPattern,
                 leafStepsComponentTestPattern,
                 outletGardenRouteTestPattern,
@@ -81,6 +84,7 @@ export const config: PlaywrightTestConfig = {
         {
             name: 'chromium-webgl',
             testMatch: [
+                squirrelCachingComponentTestPattern,
                 webglComponentTestPattern,
                 leafStepsComponentTestPattern,
             ],

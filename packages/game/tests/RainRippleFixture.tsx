@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Suspense, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Vector3 } from 'three';
 import { EntityInstances } from '../src/entities/EntityInstances';
+import { Squirrels } from '../src/entities/squirrels/Squirrels';
 import { RainRipples } from '../src/rain/RainRipples';
 import { AutumnLeaves } from '../src/scene/AutumnLeaves';
 import {
@@ -19,6 +20,11 @@ import {
 import { RainRippleProbe } from './RainRippleProbe';
 
 export function RainRippleFixture({
+    squirrels = false,
+    renderLayers = true,
+    focusSquirrel = false,
+    startleSquirrel = false,
+    seasonalSquirrels = true,
     tier = 'high',
     rain = 1,
     snow = 0,
@@ -30,6 +36,11 @@ export function RainRippleFixture({
     date = 'lateAutumn',
     fixedTime = 12,
 }: {
+    squirrels?: boolean;
+    renderLayers?: boolean;
+    focusSquirrel?: boolean;
+    startleSquirrel?: boolean;
+    seasonalSquirrels?: boolean;
     tier?: GameQualityTier;
     rain?: number;
     snow?: number;
@@ -80,6 +91,13 @@ export function RainRippleFixture({
                 : null,
         });
     }, [store, disabled, rain, snow, dragging]);
+    useEffect(() => {
+        if (startleSquirrel)
+            store.getState().triggerAnimalDebugBehavior({
+                species: 'Squirrel',
+                behavior: 'flee',
+            });
+    }, [store, startleSquirrel]);
     const stacks = useMemo(
         () =>
             Array.from({ length: 99 }, (_, i) => {
@@ -121,7 +139,7 @@ export function RainRippleFixture({
                 >
                     <Scene
                         position={[8, 9, 12]}
-                        zoom={45}
+                        zoom={focusSquirrel ? 500 : 45}
                         quality={gameQualityProfiles.low}
                         fixedTimeSeconds={live ? undefined : fixedTime}
                         profileStats
@@ -133,34 +151,51 @@ export function RainRippleFixture({
                             intensity={1.5}
                         />
                         <Suspense fallback={null}>
-                            <EntityInstances
-                                stacks={stacks}
-                                quality={gameQualityProfiles[tier]}
-                                weather={{ windSpeed: 1, windDirection: 90 }}
-                                renderGroundDecorations={false}
-                            />
-                            <AutumnLeaves
-                                stacks={stacks}
-                                gardenId={7}
-                                tier={tier}
-                                windSpeed={1}
-                                rain={rain}
-                                snow={snow}
-                                enabled={!disabled}
-                            />
-                            {precipitation && rain > 0 && (
-                                <Drops intensity={rain} count={700} />
+                            {renderLayers && (
+                                <>
+                                    <EntityInstances
+                                        stacks={stacks}
+                                        quality={gameQualityProfiles[tier]}
+                                        weather={{
+                                            windSpeed: 1,
+                                            windDirection: 90,
+                                        }}
+                                        renderGroundDecorations={false}
+                                    />
+                                    <AutumnLeaves
+                                        stacks={stacks}
+                                        gardenId={7}
+                                        tier={tier}
+                                        windSpeed={1}
+                                        rain={rain}
+                                        snow={snow}
+                                        enabled={!disabled}
+                                    />
+                                    {precipitation && rain > 0 && (
+                                        <Drops intensity={rain} count={700} />
+                                    )}
+                                    {mounted && (
+                                        <RainRipples
+                                            stacks={stacks}
+                                            gardenId={7}
+                                            tier={tier}
+                                            enabled={!disabled}
+                                            snow={snow}
+                                        />
+                                    )}
+                                </>
                             )}
-                            {mounted && (
-                                <RainRipples
+                            {squirrels && (
+                                <Squirrels
+                                    farmId={7}
                                     stacks={stacks}
-                                    gardenId={7}
-                                    tier={tier}
-                                    enabled={!disabled}
-                                    snow={snow}
+                                    seasonalEffectsEnabled={seasonalSquirrels}
                                 />
                             )}
-                            <RainRippleProbe onSample={reportSample} />
+                            <RainRippleProbe
+                                onSample={reportSample}
+                                focusSquirrel={focusSquirrel}
+                            />
                         </Suspense>
                     </Scene>
                 </div>
