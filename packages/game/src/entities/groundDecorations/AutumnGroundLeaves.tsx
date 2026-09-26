@@ -1,5 +1,6 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { Vector3 } from 'three';
+import { useLeafStepCoverage } from '../../audio/LeafStepCoverageProvider';
 import { useAutumnState } from '../../hooks/useAutumnState';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useLiveTime } from '../../hooks/useLiveTime';
@@ -32,6 +33,7 @@ export function AutumnGroundLeaves({
     stacks: Stack[] | undefined;
     tier: GameQualityProfileTier;
 }) {
+    const coverage = useLeafStepCoverage();
     const blocks = useMemo(() => getAutumnGroundBlocks(stacks), [stacks]);
     const names = useMemo(
         () => [...new Set(blocks.map(({ block }) => block.name))],
@@ -94,6 +96,7 @@ export function AutumnGroundLeaves({
         (sum, batch) => sum + batch.instances.length,
         0,
     );
+    useLayoutEffect(() => coverage?.register(batches), [coverage, batches]);
     useEffect(() => {
         updateGameProfileMetadata({ autumnGroundLeafClusters: count });
         return () => updateGameProfileMetadata({ autumnGroundLeafClusters: 0 });

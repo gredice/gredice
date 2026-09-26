@@ -9,6 +9,7 @@ import {
     useState,
 } from 'react';
 import type { Group } from 'three';
+import { LeafStepCoverageProvider } from '../audio/LeafStepCoverageProvider';
 
 type AutumnSource = { id: string; object: Group };
 const emptySources: AutumnSource[] = [];
@@ -37,7 +38,7 @@ export function AutumnSourcesProvider({ children }: PropsWithChildren) {
     const value = useMemo(() => ({ sources, register }), [sources, register]);
     return (
         <AutumnSourcesContext.Provider value={value}>
-            {children}
+            <LeafStepCoverageProvider>{children}</LeafStepCoverageProvider>
         </AutumnSourcesContext.Provider>
     );
 }
