@@ -1,5 +1,6 @@
 import type { BlockData } from '@gredice/client';
 import { autumnBlanketBench } from '@gredice/js/autumnBlanketBench';
+import { chestnutRoastingCart } from '@gredice/js/chestnutRoastingCart';
 import { fallenLog } from '@gredice/js/fallenLog';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
 import { resolvePickupPlacementPreviewForRelative } from '../controls/PickupPlacementResolver';
@@ -10,6 +11,7 @@ const guardedDecorations = new Set<string>([
     harvestWheelbarrow.name,
     fallenLog.name,
     autumnBlanketBench.name,
+    chestnutRoastingCart.name,
 ]);
 
 /** Keep long decorations inside supported free cells during optimistic/local rotation. */

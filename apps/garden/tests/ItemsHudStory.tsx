@@ -9,6 +9,7 @@ import {
     getAutumnLeafPile,
 } from '@gredice/js/autumnLeafPiles';
 import { autumnShrub } from '@gredice/js/autumnShrub';
+import { chestnutRoastingCart } from '@gredice/js/chestnutRoastingCart';
 import { fallenLog } from '@gredice/js/fallenLog';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
 import { gardenTeaTable } from '@gredice/js/gardenTeaTable';
@@ -464,25 +465,27 @@ const blockFixtures: Record<
 function createBlockData(name: string, index: number) {
     const decoration =
         getAutumnLeafPile(name) ??
-        (name === gardenTeaTable.name
-            ? gardenTeaTable
-            : name === autumnBlanketBench.name
-              ? autumnBlanketBench
-              : name === leafRake.name
-                ? leafRake
-                : name === fallenLog.name
-                  ? fallenLog
-                  : name === woodlandMushrooms.name
-                    ? woodlandMushrooms
-                    : name === autumnShrub.name
-                      ? autumnShrub
-                      : name === gardenScarecrow.name
-                        ? gardenScarecrow
-                        : name === harvestWheelbarrow.name
-                          ? harvestWheelbarrow
-                          : (getAutumnAsterPot(name) ??
-                            getHarvestCrate(name) ??
-                            getHarvestPumpkin(name)));
+        (name === chestnutRoastingCart.name
+            ? chestnutRoastingCart
+            : name === gardenTeaTable.name
+              ? gardenTeaTable
+              : name === autumnBlanketBench.name
+                ? autumnBlanketBench
+                : name === leafRake.name
+                  ? leafRake
+                  : name === fallenLog.name
+                    ? fallenLog
+                    : name === woodlandMushrooms.name
+                      ? woodlandMushrooms
+                      : name === autumnShrub.name
+                        ? autumnShrub
+                        : name === gardenScarecrow.name
+                          ? gardenScarecrow
+                          : name === harvestWheelbarrow.name
+                            ? harvestWheelbarrow
+                            : (getAutumnAsterPot(name) ??
+                              getHarvestCrate(name) ??
+                              getHarvestPumpkin(name)));
     const fixture = decoration
         ? {
               ...decoration.information,
@@ -558,6 +561,7 @@ const blockNames = [
     gardenTeaTable.name,
     fallenLog.name,
     autumnBlanketBench.name,
+    chestnutRoastingCart.name,
     ...autumnLeafPileNames,
     'Raised_Bed',
     'Bucket',
@@ -699,6 +703,7 @@ type ItemsHudStoryOptions = {
     includeAutumnBlanketBench?: boolean;
     includeLeafRake?: boolean;
     includeGardenTeaTable?: boolean;
+    includeChestnutRoastingCart?: boolean;
     includeAutumnLeafPiles?: boolean;
     accountSunflowers?: number;
     cameraTarget?: [x: number, y: number, z: number];
@@ -722,6 +727,7 @@ function createItemsHudQueryClient({
     includeAutumnBlanketBench = true,
     includeLeafRake = true,
     includeGardenTeaTable = true,
+    includeChestnutRoastingCart = true,
     includeAutumnLeafPiles = true,
     isSandbox = false,
 }: ItemsHudStoryOptions) {
@@ -734,6 +740,11 @@ function createItemsHudQueryClient({
     queryClient.setQueryData(
         ['blocks'],
         blockNames
+            .filter(
+                (name) =>
+                    includeChestnutRoastingCart ||
+                    name !== chestnutRoastingCart.name,
+            )
             .filter(
                 (name) => includeGardenTeaTable || name !== gardenTeaTable.name,
             )
@@ -804,6 +815,7 @@ function ItemsHudTestProviders({
     includeAutumnBlanketBench = true,
     includeLeafRake = true,
     includeGardenTeaTable = true,
+    includeChestnutRoastingCart = true,
     includeAutumnLeafPiles = true,
     children,
     accountSunflowers,
@@ -830,6 +842,7 @@ function ItemsHudTestProviders({
                 includeAutumnBlanketBench,
                 includeLeafRake,
                 includeGardenTeaTable,
+                includeChestnutRoastingCart,
                 includeAutumnLeafPiles,
             }),
         [
@@ -846,6 +859,7 @@ function ItemsHudTestProviders({
             includeAutumnBlanketBench,
             includeLeafRake,
             includeGardenTeaTable,
+            includeChestnutRoastingCart,
             includeAutumnLeafPiles,
         ],
     );
@@ -951,6 +965,7 @@ export function ItemsHudAlignmentStory({
     includeAutumnBlanketBench = true,
     includeLeafRake = true,
     includeGardenTeaTable = true,
+    includeChestnutRoastingCart = true,
     includeAutumnLeafPiles = true,
 }: {
     includeHarvestPumpkins?: boolean;
@@ -964,6 +979,7 @@ export function ItemsHudAlignmentStory({
     includeAutumnBlanketBench?: boolean;
     includeLeafRake?: boolean;
     includeGardenTeaTable?: boolean;
+    includeChestnutRoastingCart?: boolean;
     includeAutumnLeafPiles?: boolean;
 }) {
     return (
@@ -979,6 +995,7 @@ export function ItemsHudAlignmentStory({
             includeAutumnBlanketBench={includeAutumnBlanketBench}
             includeLeafRake={includeLeafRake}
             includeGardenTeaTable={includeGardenTeaTable}
+            includeChestnutRoastingCart={includeChestnutRoastingCart}
             includeAutumnLeafPiles={includeAutumnLeafPiles}
         >
             <div className="relative h-screen w-screen overflow-hidden">
