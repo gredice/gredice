@@ -119,6 +119,7 @@ import { WoodenBench } from './WoodenBench';
 import { WoodenHandLantern } from './WoodenHandLantern';
 import { WoodenSign } from './WoodenSign';
 import { WoodenWalkway } from './WoodenWalkway';
+import { WoodlandMushrooms } from './WoodlandMushrooms';
 
 export const entityNameMap = {
     Block_Ground: BlockGround,
@@ -197,6 +198,7 @@ export const entityNameMap = {
     AutumnAsterPotGold: AutumnAsterPot,
     HarvestWheelbarrow,
     AutumnShrub,
+    WoodlandMushrooms,
     HarvestCrateOrchard: HarvestCrate,
     HarvestPumpkinSquatOrange: HarvestPumpkin,
     HarvestPumpkinSquatCream: HarvestPumpkin,
