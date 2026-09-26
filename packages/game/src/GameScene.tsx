@@ -37,6 +37,7 @@ import {
 import { isFenceGateBlockName } from './entities/fenceConnections';
 import { getToggledFenceGateVariant } from './entities/fenceGateState';
 import { Frogs } from './entities/frogs/Frogs';
+import { Hedgehogs } from './entities/hedgehogs/Hedgehogs';
 import { PlacementGroundingShadows } from './entities/helpers/PlacementGroundingShadows';
 import { Ladybugs } from './entities/ladybugs/Ladybugs';
 import { HomeSpawnedPersistentPets } from './entities/persistentPets/HomeSpawnedPetActors';
@@ -689,6 +690,12 @@ export function GameScene({
                                             }
                                             farmId={garden?.farmId}
                                             stacks={retainedScene.stacks}
+                                        />
+                                        <Hedgehogs
+                                            stacks={retainedScene.stacks}
+                                            gardenId={garden?.id}
+                                            quality={qualityProfile}
+                                            weather={weather}
                                         />
                                     </Suspense>
                                 )}

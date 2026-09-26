@@ -19,6 +19,7 @@ import { halloweenAccentNames } from '@gredice/js/halloweenAccents';
 import { harvestCrateNames } from '@gredice/js/harvestCrates';
 import { harvestPumpkinNames } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
+import { hedgehogShelterNames } from '@gredice/js/hedgehogShelter';
 import { leafRake } from '@gredice/js/leafRake';
 import { pumpkinLanternNames } from '@gredice/js/pumpkinLanterns';
 import { seasonalMaple } from '@gredice/js/seasonalMaple';
@@ -379,6 +380,9 @@ const items: HudItem[] = [
             { type: 'entity', name: stackedFirewood.name },
             { type: 'entity', name: seedDryingRack.name },
             { type: 'entity', name: birdFeeder.name },
+            ...hedgehogShelterNames.map(
+                (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
+            ),
             { type: 'entity', name: gardenBrazier.name },
             { type: 'entity', name: gardenTeaTable.name },
             { type: 'entity', name: fallenLog.name },

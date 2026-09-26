@@ -76,6 +76,7 @@ import { HarvestCrate } from './HarvestCrate';
 import { HarvestPumpkin } from './HarvestPumpkin';
 import { HarvestWheelbarrow } from './HarvestWheelbarrow';
 import { HazelLightArch } from './HazelLightArch';
+import { HedgehogShelter } from './HedgehogShelter';
 import { Horse } from './horses/Horse';
 import { IceCreamCart } from './IceCreamCart';
 import { InflatablePoolSmall } from './InflatablePoolSmall';
@@ -223,6 +224,7 @@ export const entityNameMap = {
     StackedFirewood,
     SeedDryingRack,
     BirdFeeder,
+    HedgehogShelter,
     FriendlyGhost: HalloweenAccent,
     SupportedCobweb: HalloweenAccent,
     PumpkinLanternSmile: PumpkinLantern,
