@@ -3,6 +3,16 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "BirdFeeder",
+            "source": "BirdFeeder.blend",
+            "output": "BirdFeeder.glb",
+            "version": "2669061f01f9",
+            "preload": "lazy",
+            "objects": [
+                "BirdFeeder_Arrangement"
+            ]
+        },
+        {
             "name": "SeasonalMaple",
             "source": "SeasonalMaple.blend",
             "output": "SeasonalMaple.glb",
