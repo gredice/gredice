@@ -1450,6 +1450,7 @@ export type GLTFResult = GLTF & {
         SandcastleSmallA_SandBlock06: THREE.Mesh;
         SandcastleSmallA_UpperWindowRecess: THREE.Mesh;
         Seed: THREE.Mesh;
+        SeedDryingRack_Arrangement: THREE.Mesh;
         SensorStakeMeter_Display_Back: THREE.Mesh;
         SensorStakeMeter_Display_Face: THREE.Mesh;
         SensorStakeMeter_Display_Screen: THREE.Mesh;
@@ -1947,6 +1948,7 @@ export type GLTFResult = GLTF & {
         'Material.GardenScissors.Steel': THREE.MeshStandardMaterial;
         'Material.GardenScissors.SteelEdge': THREE.MeshStandardMaterial;
         'Material.GardenTeaTable.Enamel': THREE.MeshStandardMaterial;
+        'Material.GardenTeaTable.SeedDryingRack.Timber': THREE.MeshStandardMaterial;
         'Material.GardenTeaTable.Timber': THREE.MeshStandardMaterial;
         'Material.Goat.Charcoal': THREE.MeshStandardMaterial;
         'Material.Goat.Collar': THREE.MeshStandardMaterial;

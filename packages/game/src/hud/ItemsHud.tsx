@@ -17,6 +17,7 @@ import { harvestCrateNames } from '@gredice/js/harvestCrates';
 import { harvestPumpkinNames } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
 import { leafRake } from '@gredice/js/leafRake';
+import { seedDryingRack } from '@gredice/js/seedDryingRack';
 import { stackedFirewood } from '@gredice/js/stackedFirewood';
 import { woodlandMushrooms } from '@gredice/js/woodlandMushrooms';
 import { BlockImage, getBlockImageUrl } from '@gredice/ui/BlockImage';
@@ -369,6 +370,7 @@ const items: HudItem[] = [
             { type: 'entity', name: woodlandMushrooms.name },
             { type: 'entity', name: leafRake.name },
             { type: 'entity', name: stackedFirewood.name },
+            { type: 'entity', name: seedDryingRack.name },
             { type: 'entity', name: gardenBrazier.name },
             { type: 'entity', name: gardenTeaTable.name },
             { type: 'entity', name: fallenLog.name },
