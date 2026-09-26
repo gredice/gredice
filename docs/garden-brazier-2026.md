@@ -1,5 +1,7 @@
 # Garden brazier
 
+The contained runtime effects are now documented in [seasonal effects](game-seasonal-effects.md#contained-warm-prop-effects-4980). The asset review and captures below preserve the dormant base appearance using `Environment.noWarmProps`.
+
 Implementation for [#4962](https://github.com/gredice/gredice/issues/4962), release **C / cozy expansion**. `GardenBrazier` is a compact static decoration with dormant authored effect roles. #4980 owns activation; #5000 owns publication.
 
 ![Unlit brazier beside existing seating and light](garden-brazier-2026/day-0.png)

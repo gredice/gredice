@@ -5,7 +5,7 @@ export const gardenBrazier = {
         shortDescription:
             'Malo metalno ložište na tri noge s oblim rubom i bočnim ručkama.',
         fullDescription:
-            'Ukrasno ložište s nekoliko komada drva stvara kutak za večernji odmor. Zauzima jedno polje i prikazuje se bez plamena. Ne grije vrt, ne štiti biljke od hladnoće i ne troši drva ni druge resurse. Na njega se ne slažu drugi predmeti.',
+            'Ukrasno ložište s nekoliko komada drva stvara kutak za večernji odmor. Zauzima jedno polje i može prikazivati ukrasni plamen uz uključene vremenske efekte. Ne grije vrt, ne štiti biljke od hladnoće i ne troši drva ni druge resurse. Na njega se ne slažu drugi predmeti.',
     },
     attributes: {
         type: 'decoration',

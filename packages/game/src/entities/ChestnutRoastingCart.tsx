@@ -3,11 +3,14 @@ import {
     chestnutRoastingCartEffectAnchors,
 } from '@gredice/js/chestnutRoastingCart';
 import { getGardenBlockSpan } from '@gredice/js/gardenBlocks';
+import { useRef } from 'react';
+import type { Group } from 'three';
 import { animated } from '../scene/sceneSpring';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import { useRegisterWarmProp } from '../warmProps/WarmPropSources';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
@@ -24,6 +27,14 @@ export function ChestnutRoastingCart({
         (state) => state.weatherVisualizationDisabled,
     );
     const disabled = weatherDisabled || globallyDisabled;
+    const rootRef = useRef<Group>(null);
+    useRegisterWarmProp({
+        id: block.id,
+        kind: 'cart',
+        ref: rootRef,
+        anchors: chestnutRoastingCartEffectAnchors,
+        disabled,
+    });
     const span = getGardenBlockSpan(chestnutRoastingCart, rotation);
     const position = stack.position.clone().setY(height);
     // Center the authored timber inside the footprint growing in positive grid coordinates.
@@ -31,6 +42,7 @@ export function ChestnutRoastingCart({
     position.z += (span.depth - 1) / 2;
     return (
         <animated.group
+            ref={rootRef}
             name={`ChestnutRoastingCart:${block.id}`}
             position={position}
             rotation-y={animatedRotation?.to((_, y) => y)}
