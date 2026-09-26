@@ -5,6 +5,7 @@ export default defineConfig({
     testMatch: [
         'tests/season-date-control.spec.tsx',
         'tests/autumn-season.spec.tsx',
+        'tests/rain-ripples.spec.tsx',
         'tests/autumn-audio.spec.tsx',
     ],
     projects: config.projects
@@ -17,7 +18,10 @@ export default defineConfig({
                           'tests/season-date-control.spec.tsx',
                           'tests/autumn-audio.spec.tsx',
                       ]
-                    : 'tests/autumn-season.spec.tsx',
+                    : [
+                          'tests/autumn-season.spec.tsx',
+                          'tests/rain-ripples.spec.tsx',
+                      ],
         })),
     webServer: undefined,
 });

@@ -264,3 +264,40 @@ and click inside the page to unlock browser audio. Combine dates `2024-06-21`,
 Summer and calm are silent. The season slider and wind controls can be changed
 rapidly without restarting an audible rustle loop. Profile metadata exposes only
 the intended `autumnRustleTargetGain`; it is not proof of hardware sound output.
+
+
+## Rain ripples
+
+`RainRipples` adds one depth-tested instanced batch on exposed flat sand and
+swamp-ground blocks, using the same stack height and rotation as the existing
+wet overlays. A block with anything stacked above it is excluded. Prop footprints
+and a conservative one-cell overhang margin exclude nearby ground; trees, palms,
+shade and umbrellas use two cells. Slopes, walls, snow, water blocks, raised beds,
+covered ground and active drag previews do not receive ripples. This is an
+intentional surface allowlist, not a simulation of every puddle or prop surface.
+
+Garden/block IDs seed one small ring per site, ranked independently of stack
+order. The existing scene clock drives closed-form expansion and fading entirely
+in the shader. Wetness and puddle strength are references to the shared weather
+uniforms: ripples emerge only above 0.66 rain and 0.6 rendered wetness, and fade
+with those values. Calendar changes do not reseed rainfall; the same garden and
+fixed animation time reproduce the same rings in any season.
+
+Low and auto-constrained tiers omit ripples. Medium/high/custom cap the entire
+scene at 24/48/32 two-triangle quads, adding at most one draw call and 96 triangles.
+Rings stay inside their terrain tile, test depth, do not write depth or shadows,
+and have no raycast targets or audio. Reduced motion, weather disablement and
+any snow coverage of at least 0.01 suppress them. Hidden/offscreen scenes release
+the ripple animation lease through shared runtime visibility; frozen scenes need
+no ripple lease. Geometry, material and instance resources are disposed on
+unmount. `rainRippleCount` and `rainRippleCapacity` expose the layer to profiling.
+
+Validation commands:
+
+- `pnpm --filter @gredice/game exec tsx --import ./scripts/register-test-assets.mjs --test src/rain/rainRippleState.unit.ts`
+- `pnpm --filter garden exec playwright test --config playwright.season.config.ts tests/rain-ripples.spec.tsx`
+- `GAME_PROFILE_SCENARIO_SET=rain-ripples GAME_PROFILE_FAIL_ON_BUDGET=1 pnpm --filter garden profile:game`
+
+The profiling matrix combines heavy rain with the existing dense autumn scene
+at October 22 on low/medium/high, sharing the dense weather budgets. Commit the
+candidate before profiling so the report's comparability check can identify it.
