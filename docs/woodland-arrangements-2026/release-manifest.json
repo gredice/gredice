@@ -1,0 +1,284 @@
+{
+  "state": "unpublished",
+  "snapshotDate": "2026-10-22T12:00:00+02:00",
+  "publicationIssue": 5000,
+  "sources": [
+    {
+      "path": "assets/game-assets/WoodlandAcorns.blend",
+      "bytes": 98100,
+      "sha256": "5893da40256b67527ad58709ee23d361c651f0be855f1beecc195777998a80cc"
+    },
+    {
+      "path": "assets/game-assets/WoodlandConkers.blend",
+      "bytes": 96533,
+      "sha256": "955d8a48340a4b91ebbde92a34bba4069759671a89f05a7da70063bada0f4117"
+    },
+    {
+      "path": "assets/game-assets/WoodlandMushroomBasket.blend",
+      "bytes": 102877,
+      "sha256": "9a3c41c2c8f3243d50448b7b1513b233f97097014c0dcd68dc17f6dd60f95a4b"
+    }
+  ],
+  "models": [
+    {
+      "name": "WoodlandAcorns",
+      "path": "apps/garden/public/assets/models/WoodlandAcorns.glb",
+      "bytes": 46356,
+      "sha256": "5605282113fada563ebc0934390774b3917d4dbabf477a06a5d0ec96d3d91c40",
+      "url": "https://vrt.gredice.com/assets/models/WoodlandAcorns.glb?v=5605282113fa",
+      "triangles": 620,
+      "meshCount": 1,
+      "materialCount": 1
+    },
+    {
+      "name": "WoodlandConkers",
+      "path": "apps/garden/public/assets/models/WoodlandConkers.glb",
+      "bytes": 38444,
+      "sha256": "0a6640399bf3af4cf5b312d35006b092be5376cc66e7b9164fe4e325eca3ce85",
+      "url": "https://vrt.gredice.com/assets/models/WoodlandConkers.glb?v=0a6640399bf3",
+      "triangles": 486,
+      "meshCount": 1,
+      "materialCount": 1
+    },
+    {
+      "name": "WoodlandMushroomBasket",
+      "path": "apps/garden/public/assets/models/WoodlandMushroomBasket.glb",
+      "bytes": 69732,
+      "sha256": "9e12d7b0f61fa2a7079dfd55f15c4c9e16d10bef98484c15d0e65f91190301fd",
+      "url": "https://vrt.gredice.com/assets/models/WoodlandMushroomBasket.glb?v=9e12d7b0f61f",
+      "triangles": 960,
+      "meshCount": 1,
+      "materialCount": 1
+    }
+  ],
+  "items": [
+    {
+      "name": "WoodlandAcorns",
+      "information": {
+        "label": "Šumski ukras – žirevi",
+        "shortDescription": "Pažljivo složen šumski motiv naglašenih oblika.",
+        "fullDescription": "Skupina šumskih motiva zauzima jedno polje i ostaje na odabranom mjestu tijekom cijele godine. Predmet je samo ukras, ne predstavlja jestivu vrstu ni savjet za branje i ne daje plodove, gljive ili druge resurse. Na njega se ne slažu drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.35,
+        "hitboxHeight": 0.35,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 25,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/WoodlandAcorns.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/WoodlandAcorns.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/WoodlandAcorns.webp",
+          "bytes": 7598,
+          "sha256": "f23fe4a936224d7cfafc234d0891d280330c91148424565ed1bf416f6afdd6c4"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/WoodlandAcorns_1.webp",
+          "bytes": 7598,
+          "sha256": "f23fe4a936224d7cfafc234d0891d280330c91148424565ed1bf416f6afdd6c4"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/WoodlandAcorns_2.webp",
+          "bytes": 7680,
+          "sha256": "cbb806478f17cbbdc3f3d1a33c2461c47c1ccb9dff0d5151b1d28131bebdf49b"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/WoodlandAcorns_3.webp",
+          "bytes": 7772,
+          "sha256": "ea45f71546f86fe98e4de9720b0c8a2c46e7956988e2503e5981158be64765e0"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/WoodlandAcorns_4.webp",
+          "bytes": 7836,
+          "sha256": "cf21676dff4a9b884167ef5d09391450a5c5a6d8d4e23b2703c51ef01b3777a1"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/WoodlandAcorns.webp",
+          "bytes": 4310,
+          "sha256": "e54d9c0f26de6e263e182710d1a98395fba5efe2d15e4bdaaca4f07629089a83"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/WoodlandAcorns_1.webp",
+          "bytes": 4310,
+          "sha256": "e54d9c0f26de6e263e182710d1a98395fba5efe2d15e4bdaaca4f07629089a83"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/WoodlandAcorns_2.webp",
+          "bytes": 3698,
+          "sha256": "59b33ae968e803bfc5d4f7fe8405fa708ac665f74d90b86fc657ed44d66305c0"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/WoodlandAcorns_3.webp",
+          "bytes": 4194,
+          "sha256": "25f6c84961a047fb894548268e2e42c6503806bb10d37821822a0fd50d01a87a"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/WoodlandAcorns_4.webp",
+          "bytes": 3854,
+          "sha256": "91b08d7a978229625fc120482328247ed62814cdecc1bda7b0fb89ff2ba85e70"
+        }
+      ]
+    },
+    {
+      "name": "WoodlandConkers",
+      "information": {
+        "label": "Šumski ukras – divlji kesteni",
+        "shortDescription": "Pažljivo složen šumski motiv naglašenih oblika.",
+        "fullDescription": "Skupina šumskih motiva zauzima jedno polje i ostaje na odabranom mjestu tijekom cijele godine. Predmet je samo ukras, ne predstavlja jestivu vrstu ni savjet za branje i ne daje plodove, gljive ili druge resurse. Na njega se ne slažu drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.25,
+        "hitboxHeight": 0.25,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 25,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/WoodlandConkers.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/WoodlandConkers.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/WoodlandConkers.webp",
+          "bytes": 7764,
+          "sha256": "5f079b7693bca560aa02c250462de15d2c61802f8baed098791d40247af61d19"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/WoodlandConkers_1.webp",
+          "bytes": 7764,
+          "sha256": "5f079b7693bca560aa02c250462de15d2c61802f8baed098791d40247af61d19"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/WoodlandConkers_2.webp",
+          "bytes": 7788,
+          "sha256": "c7831519650e580782f1a5f6497e2ccf7a157cb12f036326de5b8a389cf32dd0"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/WoodlandConkers_3.webp",
+          "bytes": 7758,
+          "sha256": "0a67a69547ce78bcb584c40fb22f7fa3d748317fedd8582beaa71d37e9a4308f"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/WoodlandConkers_4.webp",
+          "bytes": 7860,
+          "sha256": "95d9e6b7098294a8237495c4f123e41e64c1b637f34e9d7f6bac94f100b30306"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/WoodlandConkers.webp",
+          "bytes": 4910,
+          "sha256": "26b7f0744b4d47c92a6f8988e234177f152987df18e7c7272129036c8fd3f2bb"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/WoodlandConkers_1.webp",
+          "bytes": 4910,
+          "sha256": "26b7f0744b4d47c92a6f8988e234177f152987df18e7c7272129036c8fd3f2bb"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/WoodlandConkers_2.webp",
+          "bytes": 4516,
+          "sha256": "1e301c0bad65ddc4b90cc7e4effb86588df28eb3bf2b9f3c92e927a099f19c0d"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/WoodlandConkers_3.webp",
+          "bytes": 4746,
+          "sha256": "1f056582a41c988fc50bf7cd246017c58a92b5d394050ad937e2fa5a663f07d3"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/WoodlandConkers_4.webp",
+          "bytes": 4260,
+          "sha256": "7844cd10d3f3194d87652c6144885f51e9c60757355045f3d4f66d5666b75049"
+        }
+      ]
+    },
+    {
+      "name": "WoodlandMushroomBasket",
+      "information": {
+        "label": "Šumski ukras – košarica s gljivama",
+        "shortDescription": "Pažljivo složen šumski motiv naglašenih oblika.",
+        "fullDescription": "Skupina šumskih motiva zauzima jedno polje i ostaje na odabranom mjestu tijekom cijele godine. Predmet je samo ukras, ne predstavlja jestivu vrstu ni savjet za branje i ne daje plodove, gljive ili druge resurse. Na njega se ne slažu drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.65,
+        "hitboxHeight": 0.65,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 45,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/WoodlandMushroomBasket.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/WoodlandMushroomBasket.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/WoodlandMushroomBasket.webp",
+          "bytes": 9312,
+          "sha256": "c97190f2881d88ca956375f9c6976281892c8dd9fbaded04ce8cefa1c99e9d05"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/WoodlandMushroomBasket_1.webp",
+          "bytes": 9312,
+          "sha256": "c97190f2881d88ca956375f9c6976281892c8dd9fbaded04ce8cefa1c99e9d05"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/WoodlandMushroomBasket_2.webp",
+          "bytes": 9240,
+          "sha256": "3ec3fc734d5c5680d3734952641eac5a499e95fbe1638045064b6742ddf9ccb6"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/WoodlandMushroomBasket_3.webp",
+          "bytes": 9394,
+          "sha256": "e969351a9be2a7f2159fbe641c43e2ff9da318cd4adf850768f9ebdbe25ea0f8"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/WoodlandMushroomBasket_4.webp",
+          "bytes": 9442,
+          "sha256": "f99fe870a8276417d1febe9f955c5488197e7cb5e57f4846a4fdb11e1272bd0d"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/WoodlandMushroomBasket.webp",
+          "bytes": 5140,
+          "sha256": "d96e9dbd44b6a7f0f679f9b729cc9c8bcde8aa5a72bb318038161cbb272dbfa3"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/WoodlandMushroomBasket_1.webp",
+          "bytes": 5140,
+          "sha256": "d96e9dbd44b6a7f0f679f9b729cc9c8bcde8aa5a72bb318038161cbb272dbfa3"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/WoodlandMushroomBasket_2.webp",
+          "bytes": 5312,
+          "sha256": "423a7b42d0ab1829393b4c15b5d65523d1c4d634f1a9012b4cd2020cbbd522a7"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/WoodlandMushroomBasket_3.webp",
+          "bytes": 5238,
+          "sha256": "4639ae03e5cc3a65034182aeff684ca2ea0310f0bf81e909d312ba01886d9b6b"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/WoodlandMushroomBasket_4.webp",
+          "bytes": 5086,
+          "sha256": "d9c259bac95c866f62b178c37c29e2560cc766b843f6accdb414537cb75f4e11"
+        }
+      ]
+    }
+  ]
+}

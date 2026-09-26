@@ -24,6 +24,10 @@ import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
 import { leafRake } from '@gredice/js/leafRake';
 import { seedDryingRack } from '@gredice/js/seedDryingRack';
 import { stackedFirewood } from '@gredice/js/stackedFirewood';
+import {
+    getWoodlandArrangement,
+    woodlandArrangementNames,
+} from '@gredice/js/woodlandArrangements';
 import { woodlandMushrooms } from '@gredice/js/woodlandMushrooms';
 import {
     type ArrowSignDirection,
@@ -105,6 +109,7 @@ export const localSandboxBlockNames = [
     chestnutRoastingCart.name,
     ...autumnLeafPileNames,
     ...autumnGrassNames,
+    ...woodlandArrangementNames,
     'BeachTowelStriped',
     'InflatablePoolSmall',
     'BeachChair',
@@ -924,6 +929,7 @@ function createLocalSandboxBlockData(
     const isRaisedBed = name === 'Raised_Bed';
     const isOutletDisplayTable = name === 'OutletDisplayTable';
     const decoration =
+        getWoodlandArrangement(name) ??
         getAutumnGrass(name) ??
         getAutumnLeafPile(name) ??
         (name === gardenBrazier.name
