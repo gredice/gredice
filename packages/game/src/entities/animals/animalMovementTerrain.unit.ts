@@ -248,6 +248,7 @@ describe('animal movement terrain', () => {
             'WhiteFenceGate',
             'StoneFenceGate',
             'PolishedStoneFenceGate',
+            'AutumnFenceGate',
         ]) {
             const closedGate = stack(3, 4, [
                 block(`${name}-ground`, 'Block_Grass'),

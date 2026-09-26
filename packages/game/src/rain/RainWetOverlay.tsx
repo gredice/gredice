@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import type { BufferGeometry, IUniform, Vector3Tuple } from 'three';
+import type { BufferGeometry, IUniform, Mesh, Vector3Tuple } from 'three';
 import { ShaderMaterial, UniformsLib, UniformsUtils, Vector3 } from 'three';
 import {
     useRainSurfacePuddleStrengthUniform,
@@ -9,6 +9,7 @@ import {
 import { useGameState } from '../useGameState';
 
 type RainWetOverlayProps = {
+    raycast?: Mesh['raycast'];
     geometry: BufferGeometry;
     debugName?: string;
     minRain?: number;
@@ -219,6 +220,7 @@ function useRainWetOverlayMaterialWithWetnessUniform({
 
 function RainWetOverlayEffect({
     debugName = 'RainWetOverlay',
+    raycast,
     geometry,
     minRain = 0.08,
     intensityMultiplier = 1,
@@ -252,5 +254,12 @@ function RainWetOverlayEffect({
         return null;
     }
 
-    return <mesh name={debugName} geometry={geometry} material={material} />;
+    return (
+        <mesh
+            name={debugName}
+            raycast={raycast}
+            geometry={geometry}
+            material={material}
+        />
+    );
 }

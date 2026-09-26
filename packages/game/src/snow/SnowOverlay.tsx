@@ -1,5 +1,10 @@
 import { useEffect, useMemo } from 'react';
-import type { BufferGeometry, ColorRepresentation, Vector3Tuple } from 'three';
+import type {
+    BufferGeometry,
+    ColorRepresentation,
+    Mesh,
+    Vector3Tuple,
+} from 'three';
 import {
     Color,
     ShaderMaterial,
@@ -37,6 +42,7 @@ export type SnowMaterialOptions = {
 };
 
 export type SnowOverlayProps = SnowMaterialOptions & {
+    raycast?: Mesh['raycast'];
     geometry: BufferGeometry;
     debugName?: string;
     minCoverage?: number;
@@ -231,6 +237,7 @@ function SnowOverlayMesh({
     return (
         <mesh
             name={options.debugName ?? 'SnowOverlay'}
+            raycast={options.raycast}
             geometry={overlayGeometry}
             material={material}
             renderOrder={renderOrder}
