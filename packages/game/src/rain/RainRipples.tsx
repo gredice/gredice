@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { useEntityBlockInstances } from '../entities/EntityInstancesBlock';
+import { isWaterBlockName } from '../entities/waterBlockNames';
 import { useBlockData } from '../hooks/useBlockData';
 import { updateGameProfileMetadata } from '../scene/gameProfileMetadata';
 import type { GameQualityProfileTier } from '../scene/gameQuality';
@@ -10,6 +11,7 @@ import {
     useSceneTimeUniform,
 } from '../scene/SceneTime';
 import {
+    useRainSurfaceIntensityUniform,
     useRainSurfacePuddleStrengthUniform,
     useRainSurfaceWetnessState,
 } from '../scene/WeatherSurfaceUniformProvider';
@@ -51,10 +53,13 @@ export function RainRipples({
     const instances = useEntityBlockInstances({
         stacks,
         names: rainRippleSurfaceNames,
-        yOffset: 0.2,
     });
     const snowCoverage = useGameState((state) => state.snowCoverage);
     const raining = useGameState((state) => state.rainSurfaceIntensity > 0.66);
+    const waterRaining = useGameState(
+        (state) => state.rainSurfaceIntensity >= 0.08,
+    );
+    const rain = useRainSurfaceIntensityUniform();
     const dragging = useGameState((state) => state.activeDragPreview !== null);
     const reducedMotion = useSyncExternalStore(
         subscribeReducedMotion,
@@ -81,28 +86,40 @@ export function RainRipples({
         () => getRainCoveredCells(stacks ?? [], blockData ?? []),
         [stacks, blockData],
     );
+    const groundActive = raining && active;
     const anchors = useMemo(
         () =>
             createRainRippleAnchors({
-                instances: blockData ? (instances ?? []) : [],
+                instances: blockData
+                    ? (instances ?? []).filter(
+                          (instance) =>
+                              groundActive ||
+                              isWaterBlockName(instance.block.name),
+                      )
+                    : [],
+                blockData: blockData ?? [],
                 coveredCells,
                 gardenId,
                 tier,
             }),
-        [blockData, instances, coveredCells, gardenId, tier],
+        [blockData, instances, coveredCells, gardenId, tier, groundActive],
     );
     const mesh = useMemo(
         () =>
             createRainRippleMesh({
                 anchors,
                 time,
+                rain,
                 wetness: wetnessUniform,
                 puddleStrength,
             }),
-        [anchors, time, wetnessUniform, puddleStrength],
+        [anchors, time, rain, wetnessUniform, puddleStrength],
     );
     const showing =
-        allowed && raining && active && visible && anchors.length > 0;
+        allowed &&
+        (groundActive || waterRaining) &&
+        visible &&
+        anchors.length > 0;
     useSceneTimeInvalidation(
         'rain-ripples',
         showing && fixedTime === undefined,

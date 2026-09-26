@@ -160,6 +160,8 @@ export function resolveRainPuddleStrength(rainAmount: number) {
 }
 
 export class WeatherSurfaceUniformRegistry {
+    readonly rainIntensityUniform: IUniform<number> = { value: 0 };
+
     readonly rainPuddleStrengthUniform: IUniform<number> = { value: 0 };
 
     private readonly activityListeners = new Set<() => void>();
@@ -245,6 +247,7 @@ export class WeatherSurfaceUniformRegistry {
 
     advance(values: WeatherSurfaceValues, delta: number) {
         this.rainAmount = values.rainAmount;
+        this.rainIntensityUniform.value = values.rainAmount;
         this.snowCoverage = values.snowCoverage;
         this.rainPuddleStrengthUniform.value = resolveRainPuddleStrength(
             values.rainAmount,

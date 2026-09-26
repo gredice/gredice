@@ -75,6 +75,10 @@ export function RainRippleProbe({
                     JSON.stringify({
                         count: mesh.visible ? mesh.count : 0,
                         time: mesh.material.uniforms.uTime.value,
+                        rain: mesh.material.uniforms.uRain.value,
+                        surfaces: Array.from(
+                            mesh.geometry.getAttribute('rippleSurface').array,
+                        ),
                         wetness: Number(
                             mesh.material.uniforms.uWetness.value.toFixed(3),
                         ),

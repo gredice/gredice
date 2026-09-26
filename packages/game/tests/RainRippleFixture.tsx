@@ -20,6 +20,9 @@ import {
 import { RainRippleProbe } from './RainRippleProbe';
 
 export function RainRippleFixture({
+    surface,
+    mixedSurfaces = false,
+    waterOnSlopes = false,
     squirrels = false,
     renderLayers = true,
     focusSquirrel = false,
@@ -36,6 +39,9 @@ export function RainRippleFixture({
     date = 'lateAutumn',
     fixedTime = 12,
 }: {
+    surface?: string;
+    mixedSurfaces?: boolean;
+    waterOnSlopes?: boolean;
     squirrels?: boolean;
     renderLayers?: boolean;
     focusSquirrel?: boolean;
@@ -106,8 +112,32 @@ export function RainRippleFixture({
                 return {
                     position: new Vector3(x, 0, z),
                     blocks: [
+                        ...(waterOnSlopes
+                            ? [
+                                  {
+                                      name: 'Block_Grass_Reverse_Corner',
+                                      id: `ripple-bank:${i}`,
+                                      rotation: i % 4,
+                                  },
+                              ]
+                            : []),
                         {
-                            name: i % 2 ? 'Block_Sand' : 'Block_Swamp_Ground',
+                            name:
+                                surface ??
+                                (mixedSurfaces
+                                    ? [
+                                          'Block_Water',
+                                          'Block_Swamp_Water',
+                                          'Block_Grass',
+                                          'Block_Ground',
+                                          'Block_Dry_Ground',
+                                          'Block_Polished_Stone',
+                                          'Block_Sand',
+                                          'Block_Swamp_Ground',
+                                      ][Math.floor(i / 11) % 8]
+                                    : i % 2
+                                      ? 'Block_Sand'
+                                      : 'Block_Swamp_Ground'),
                             id: `ripple-ground:${i}`,
                             rotation: i % 4,
                         },
@@ -126,7 +156,7 @@ export function RainRippleFixture({
                     ],
                 };
             }),
-        [],
+        [surface, mixedSurfaces, waterOnSlopes],
     );
     return (
         <QueryClientProvider client={client}>

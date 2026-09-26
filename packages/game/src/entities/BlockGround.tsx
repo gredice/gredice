@@ -1,3 +1,4 @@
+import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
@@ -34,6 +35,7 @@ export function BlockGround({
                 geometry={nodes[variantResolved1].geometry}
                 material={groundMaterial1}
             />
+            <RainWetOverlay geometry={nodes[variantResolved1].geometry} />
             <SnowOverlay
                 geometry={nodes[variantResolved1].geometry}
                 maxThickness={0.22}

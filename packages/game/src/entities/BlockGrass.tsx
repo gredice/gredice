@@ -1,3 +1,4 @@
+import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
@@ -30,6 +31,9 @@ export function BlockGrass({ stack, block, rotation }: EntityInstanceProps) {
                 receiveShadow
                 geometry={nodes[`Block_Grass_${variantResolved}_2`].geometry}
                 material={grassMaterial}
+            />
+            <RainWetOverlay
+                geometry={nodes[`Block_Grass_${variantResolved}_2`].geometry}
             />
             <SnowOverlay
                 geometry={nodes[`Block_Grass_${variantResolved}_2`].geometry}

@@ -346,20 +346,28 @@ the intended `autumnRustleTargetGain`; it is not proof of hardware sound output.
 
 ## Rain ripples
 
-`RainRipples` adds one depth-tested instanced batch on exposed flat sand and
-swamp-ground blocks, using the same stack height and rotation as the existing
-wet overlays. A block with anything stacked above it is excluded. Prop footprints
-and a conservative one-cell overhang margin exclude nearby ground; trees, palms,
-shade and umbrellas use two cells. Slopes, walls, snow, water blocks, raised beds,
-covered ground and active drag previews do not receive ripples. This is an
-intentional surface allowlist, not a simulation of every puddle or prop surface.
+`RainRipples` adds one depth-tested instanced batch on exposed flat grass, dirt,
+dry ground, polished stone, sand, swamp ground, water and swamp-water blocks.
+Ground rings sit 0.004 above the rendered 0.4-unit terrain top; water rings use
+the existing water height/depth helpers, including stacked water and water filling
+rotated slopes/corners. Shoreline candidates must keep their entire bounding square
+below the water surface. The batch renders after transparent water.
+
+A block with anything stacked above it is excluded. Prop footprints and a
+conservative one-cell overhang margin exclude nearby sites; trees, palms, shade
+and umbrellas use two cells. Sloped ground, walls, snow, gravel, rough stone,
+raised beds, covered surfaces and active drag previews do not receive ripples.
 
 Garden/block IDs seed one small ring per site, ranked independently of stack
-order. The existing scene clock drives closed-form expansion and fading entirely
-in the shader. Wetness and puddle strength are references to the shared weather
-uniforms: ripples emerge only above 0.66 rain and 0.6 rendered wetness, and fade
-with those values. Calendar changes do not reseed rainfall; the same garden and
-fixed animation time reproduce the same rings in any season.
+order. The existing scene clock drives expansion and fading entirely in the shader.
+Ground rings reuse shared wetness/puddle strength: they emerge only above 0.66 rain
+and 0.6 rendered wetness. Grass and dry-ground rings are subtler than polished-stone
+rings. Flat dirt now shares rain-wet surface shading with the other eligible ground.
+Water impacts start at 0.08 rain without waiting for ground wetness or puddles;
+swamp-water rings are softer than clear-water rings. Light rain allocates the shared
+capacity only to water. Rain stopping hides every ring, even while ground dries.
+Calendar changes do not reseed rainfall; the same garden and fixed animation time
+reproduce the same rings in any season.
 
 Low and auto-constrained tiers omit ripples. Medium/high/custom cap the entire
 scene at 24/48/32 two-triangle quads, adding at most one draw call and 96 triangles.
