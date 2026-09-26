@@ -1,4 +1,5 @@
 import { autumnAsterPots } from '@gredice/js/autumnAsterPots';
+import { autumnLeafPiles } from '@gredice/js/autumnLeafPiles';
 import { autumnShrub } from '@gredice/js/autumnShrub';
 import { fallenLog } from '@gredice/js/fallenLog';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
@@ -29,6 +30,11 @@ const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 const newBlockCatalogItems = [
+    ...autumnLeafPiles.map((item) => ({
+        label: item.information.label,
+        price: item.sunflowers,
+        picker: 'Dekoracija',
+    })),
     {
         label: fallenLog.information.label,
         price: fallenLog.sunflowers,
@@ -1900,5 +1906,55 @@ test('fallen log drag keeps the catalogue identity', async ({
     await page.mouse.up();
     await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
         'FallenLog:drop',
+    );
+});
+
+test('autumn leaf piles stays hidden before catalogue publication', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ItemsHudAlignmentStory includeAutumnLeafPiles={false} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', {
+            name: /Ukrasno jesensko lišće/,
+        }),
+    ).toHaveCount(0);
+});
+
+test('autumn leaf piles appears once in the local sandbox', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<LocalSandboxItemsHudStory />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', {
+            name: /Ukrasno jesensko lišće/,
+        }),
+    ).toHaveCount(2);
+});
+
+test('autumn leaf piles drag keeps the catalogue identity', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudDragStateStory accountSunflowers={150} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await dragLocatorByMouse(
+        page,
+        page.getByRole('button', {
+            name: 'Ukrasno jesensko lišće – niska hrpa',
+            exact: true,
+        }),
+    );
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'AutumnLeafPileMound:drag',
+    );
+    await page.mouse.up();
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'AutumnLeafPileMound:drop',
     );
 });

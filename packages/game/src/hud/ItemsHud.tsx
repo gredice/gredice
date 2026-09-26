@@ -1,5 +1,6 @@
 import type { BlockData } from '@gredice/client';
 import { autumnAsterPotNames } from '@gredice/js/autumnAsterPots';
+import { autumnLeafPileNames } from '@gredice/js/autumnLeafPiles';
 import { autumnShrub } from '@gredice/js/autumnShrub';
 import {
     type HorseAppearanceVariant,
@@ -360,6 +361,9 @@ const items: HudItem[] = [
             { type: 'entity', name: autumnShrub.name },
             { type: 'entity', name: woodlandMushrooms.name },
             { type: 'entity', name: fallenLog.name },
+            ...autumnLeafPileNames.map(
+                (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
+            ),
             {
                 type: 'entity',
                 name: harvestWheelbarrow.name,
