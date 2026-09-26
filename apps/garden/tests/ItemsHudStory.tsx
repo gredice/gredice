@@ -11,6 +11,7 @@ import {
     harvestPumpkinNames,
 } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
+import { woodlandMushrooms } from '@gredice/js/woodlandMushrooms';
 import { cx } from '@gredice/ui/utils';
 import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
@@ -454,15 +455,17 @@ const blockFixtures: Record<
 
 function createBlockData(name: string, index: number) {
     const decoration =
-        name === autumnShrub.name
-            ? autumnShrub
-            : name === gardenScarecrow.name
-              ? gardenScarecrow
-              : name === harvestWheelbarrow.name
-                ? harvestWheelbarrow
-                : (getAutumnAsterPot(name) ??
-                  getHarvestCrate(name) ??
-                  getHarvestPumpkin(name));
+        name === woodlandMushrooms.name
+            ? woodlandMushrooms
+            : name === autumnShrub.name
+              ? autumnShrub
+              : name === gardenScarecrow.name
+                ? gardenScarecrow
+                : name === harvestWheelbarrow.name
+                  ? harvestWheelbarrow
+                  : (getAutumnAsterPot(name) ??
+                    getHarvestCrate(name) ??
+                    getHarvestPumpkin(name));
     const fixture = decoration
         ? {
               ...decoration.information,
@@ -533,6 +536,7 @@ const blockNames = [
     ...harvestCrateNames,
     harvestWheelbarrow.name,
     autumnShrub.name,
+    woodlandMushrooms.name,
     'Raised_Bed',
     'Bucket',
     'WateringCan',
@@ -669,6 +673,7 @@ type ItemsHudStoryOptions = {
     includeAutumnAsterPots?: boolean;
     includeHarvestWheelbarrow?: boolean;
     includeAutumnShrub?: boolean;
+    includeWoodlandMushrooms?: boolean;
     accountSunflowers?: number;
     cameraTarget?: [x: number, y: number, z: number];
     closeup?: boolean;
@@ -686,6 +691,7 @@ function createItemsHudQueryClient({
     includeAutumnAsterPots = true,
     includeHarvestWheelbarrow = true,
     includeAutumnShrub = true,
+    includeWoodlandMushrooms = true,
     isSandbox = false,
 }: ItemsHudStoryOptions) {
     const queryClient = new ReactQuery.QueryClient({
@@ -697,6 +703,10 @@ function createItemsHudQueryClient({
     queryClient.setQueryData(
         ['blocks'],
         blockNames
+            .filter(
+                (name) =>
+                    includeWoodlandMushrooms || name !== woodlandMushrooms.name,
+            )
             .filter((name) => includeAutumnShrub || name !== autumnShrub.name)
             .filter(
                 (name) => includeAutumnAsterPots || !getAutumnAsterPot(name),
@@ -745,6 +755,7 @@ function ItemsHudTestProviders({
     includeAutumnAsterPots = true,
     includeHarvestWheelbarrow = true,
     includeAutumnShrub = true,
+    includeWoodlandMushrooms = true,
     children,
     accountSunflowers,
     cameraTarget,
@@ -765,6 +776,7 @@ function ItemsHudTestProviders({
                 includeAutumnAsterPots,
                 includeHarvestWheelbarrow,
                 includeAutumnShrub,
+                includeWoodlandMushrooms,
             }),
         [
             accountSunflowers,
@@ -775,6 +787,7 @@ function ItemsHudTestProviders({
             includeAutumnAsterPots,
             includeHarvestWheelbarrow,
             includeAutumnShrub,
+            includeWoodlandMushrooms,
         ],
     );
     const gameStore = useMemo(() => {
@@ -874,6 +887,7 @@ export function ItemsHudAlignmentStory({
     includeAutumnAsterPots = true,
     includeHarvestWheelbarrow = true,
     includeAutumnShrub = true,
+    includeWoodlandMushrooms = true,
 }: {
     includeHarvestPumpkins?: boolean;
     includeGardenScarecrow?: boolean;
@@ -881,6 +895,7 @@ export function ItemsHudAlignmentStory({
     includeAutumnAsterPots?: boolean;
     includeHarvestWheelbarrow?: boolean;
     includeAutumnShrub?: boolean;
+    includeWoodlandMushrooms?: boolean;
 }) {
     return (
         <ItemsHudTestProviders
@@ -890,6 +905,7 @@ export function ItemsHudAlignmentStory({
             includeAutumnAsterPots={includeAutumnAsterPots}
             includeHarvestWheelbarrow={includeHarvestWheelbarrow}
             includeAutumnShrub={includeAutumnShrub}
+            includeWoodlandMushrooms={includeWoodlandMushrooms}
         >
             <div className="relative h-screen w-screen overflow-hidden">
                 <div
