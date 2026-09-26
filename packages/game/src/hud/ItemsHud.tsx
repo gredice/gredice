@@ -18,6 +18,7 @@ import { harvestCrateNames } from '@gredice/js/harvestCrates';
 import { harvestPumpkinNames } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
 import { leafRake } from '@gredice/js/leafRake';
+import { seasonalMaple } from '@gredice/js/seasonalMaple';
 import { seedDryingRack } from '@gredice/js/seedDryingRack';
 import { stackedFirewood } from '@gredice/js/stackedFirewood';
 import { woodlandArrangementNames } from '@gredice/js/woodlandArrangements';
@@ -369,6 +370,7 @@ const items: HudItem[] = [
         items: [
             { type: 'entity', name: gardenScarecrow.name },
             { type: 'entity', name: autumnShrub.name },
+            { type: 'entity', name: seasonalMaple.name },
             { type: 'entity', name: woodlandMushrooms.name },
             { type: 'entity', name: leafRake.name },
             { type: 'entity', name: stackedFirewood.name },
