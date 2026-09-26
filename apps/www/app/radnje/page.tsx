@@ -15,6 +15,7 @@ import { getOperationsData } from '../../lib/plants/getOperationsData';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 import { merchantReturnPolicy } from '../../src/merchantReturnPolicy';
+import { OperationStagesNav } from './OperationStagesNav';
 import { OperationsList } from './OperationsList';
 import {
     getAvailableOperationStages,
@@ -71,6 +72,18 @@ export default async function OperationsPage({
                 left.information.label.localeCompare(right.information.label),
             ),
     );
+    const stageNavOperations = operationsData
+        .filter((operation) => operation.attributes.internal !== true)
+        .map((operation) => ({
+            information: { label: operation.information.label },
+            attributes: {
+                stage: {
+                    information: {
+                        name: operation.attributes.stage?.information?.name,
+                    },
+                },
+            },
+        }));
 
     return (
         <Stack spacing={8}>
@@ -112,7 +125,12 @@ export default async function OperationsPage({
                     ),
                 }}
             />
-            <PageHeader header="Radnje" subHeader={pageDescription} padded>
+            <OperationStagesNav
+                operations={stageNavOperations}
+                initialSearch={search}
+                className="mt-8 md:mt-12"
+            />
+            <PageHeader header="Radnje" subHeader={pageDescription}>
                 <div className="flex w-full flex-col items-start gap-3 md:items-end">
                     <CommunityEntitySuggestionButton
                         kind="operation"
