@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import type { BufferGeometry, IUniform, Mesh, Vector3Tuple } from 'three';
 import { ShaderMaterial, UniformsLib, UniformsUtils, Vector3 } from 'three';
+import { useAutumnPropWindOverlay } from '../scene/AutumnPropWindMaterial';
 import {
     useRainSurfacePuddleStrengthUniform,
     useRainSurfaceWetnessState,
@@ -215,6 +216,7 @@ function useRainWetOverlayMaterialWithWetnessUniform({
 
     useEffect(() => () => material.dispose(), [material]);
 
+    useAutumnPropWindOverlay(material);
     return material;
 }
 
