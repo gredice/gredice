@@ -1171,6 +1171,10 @@ function StaticOpaqueSceneCacheRenderer({
         (state) => state.rainSurfaceIntensity,
         0,
     );
+    const frostIntensity = useOptionalGameState(
+        (state) => state.frostIntensity,
+        0,
+    );
     const snowCoverage = useOptionalGameState((state) => state.snowCoverage, 0);
     const closeupView = useOptionalGameState(
         (state) => state.view === 'closeup',
@@ -1268,6 +1272,7 @@ function StaticOpaqueSceneCacheRenderer({
             boundaries.length > 0 &&
             runtimeIneligibleBoundaryCount === 0;
         const weatherActive =
+            frostIntensity > 0.001 ||
             rainSurfaceIntensity > 0.001 ||
             snowCoverage > 0.001 ||
             weatherSurfaceActivity.rainActive ||

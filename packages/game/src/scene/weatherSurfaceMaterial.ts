@@ -2,7 +2,7 @@ import type { ColorRepresentation, IUniform, Material } from 'three';
 import { Color, MeshStandardMaterial, NormalBlending, Vector3 } from 'three';
 import { getMaterialShaderHooksWithoutCloudShadowAttenuation } from './cloudShadowAttenuation';
 
-const WEATHER_SURFACE_PLUGIN_VARIANT_KEY_PREFIX = 'gredice-weather-surface-v2';
+const WEATHER_SURFACE_PLUGIN_VARIANT_KEY_PREFIX = 'gredice-weather-surface-v3';
 
 type Vector3Tuple = readonly [number, number, number];
 
@@ -14,6 +14,7 @@ export type WeatherSurfacePluginActivation = {
 };
 
 export type WeatherSurfaceMaterialOptions = {
+    frostIntensityUniform?: IUniform<number>;
     rain: {
         bounds: {
             max: Vector3Tuple;
@@ -303,6 +304,7 @@ varying float vGrediceWeatherWorldNormalY;
 `;
 
 const weatherRainFragmentPars = `
+uniform float uGrediceFrostIntensity;
 uniform float uGrediceRainDarkness;
 uniform float uGrediceRainGlossiness;
 uniform float uGrediceRainPuddleStrength;
@@ -645,6 +647,8 @@ function injectWeatherSurfaceShader(
     const usesBuiltInSnowViewNormal = mode === 'snow-only' && !flatShaded;
 
     if (includesRain) {
+        shader.uniforms.uGrediceFrostIntensity =
+            options.frostIntensityUniform ?? { value: 0 };
         shader.uniforms.uGrediceRainDarkness = {
             value: options.rain.darkness,
         };
@@ -767,7 +771,16 @@ function injectWeatherSurfaceShader(
         shader.fragmentShader = replaceShaderChunk(
             shader.fragmentShader,
             '#include <dithering_fragment>',
-            `${rainOutputFragment}\n#include <dithering_fragment>`,
+            `${rainOutputFragment}
+// Thin, static crystals on existing ground surfaces; no displacement.
+if (uGrediceFrostIntensity > 0.001) {
+float frostTop = ${mode === 'rain-only' ? 'vGrediceWeatherWorldNormalY' : 'normalize(vGrediceWeatherWorldNormal).y'};
+float frostGrain = grediceWeatherFragmentNoise(vGrediceWeatherWorldPosition * 95.0);
+float frostMask = uGrediceFrostIntensity * pow(max(0.0, frostTop), 4.0) *
+    (0.10 + 0.22 * step(0.68, frostGrain)) * (1.0 - uGrediceRainWetness);
+gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.82, 0.90, 0.95), frostMask);
+}
+#include <dithering_fragment>`,
         );
     }
 }

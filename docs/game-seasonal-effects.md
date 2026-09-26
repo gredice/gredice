@@ -339,3 +339,47 @@ Validation commands:
 The profiling matrix combines heavy rain with the existing dense autumn scene
 at October 22 on low/medium/high, sharing the dense weather budgets. Commit the
 candidate before profiling so the report's comparability check can identify it.
+
+## Cold-condition frost and breath
+
+Cold effects consume `GET /api/data/weather/now`'s **forecast air temperature in
+Celsius** (`temperature`), precipitation strengths and snow accumulation in cm.
+The API's `measuredTemperature` is currently unavailable and is not substituted.
+Missing/non-finite temperature, `isStale`, `source: fallback`, disabled weather,
+and low/auto-constrained quality all produce zero frost and breath. Debug weather
+overrides must explicitly supply `temperature`; cached live temperatures never
+fill that field. A frozen autumn date alone cannot activate cold effects. These
+are presentation thresholds, independent of plant health, growth or storage.
+
+Frost grows from zero at 0°C to full strength at -4°C. It reuses the integrated
+base-ground weather material as a static, upward-facing crystal tint, limited
+to 32% blend, without displacement, overlays, extra geometry or raycast targets.
+Rain fades it out by strength 0.2; snowfall or 3 cm accumulation removes it.
+Rendered wetness additionally masks residual frost, and snow-covered fragments
+retain their existing snow rendering. Existing leaves remain above the ground.
+The legacy weather-surface feature-flag fallback omits frost. Active frost uses
+the existing weather bypass for the static opaque scene cache.
+
+Visible breath begins below 5°C and reaches full strength at -2°C. Supported
+actors are the live cloned goat and sheep rigs; source IDs determine a repeatable
+6–10 second cycle with one soft 1.5 second puff. Medium/high/custom quality cap
+the entire scene at 4/8/6 billboard quads in one batch (at most 16 triangles).
+Source selection is stable and frame work is bounded by that cap. Hidden actors
+are skipped. Breath writes no depth or shadows, accepts no pointer events and
+adds no audio. Reduced motion suppresses breath while retaining static frost.
+Hidden/offscreen scenes release the animation lease, frozen fixtures use the
+shared fixed clock without a breath lease, and unmount disposes batch resources,
+releases source registrations and clears frost/profile state.
+
+Validation:
+
+- `pnpm --filter @gredice/game exec tsx --import ./scripts/register-test-assets.mjs --test src/scene/cold/coldWeather.unit.ts`
+- `pnpm --filter garden exec playwright test --config playwright.season.config.ts tests/cold-weather.spec.tsx --workers=1`
+
+The WebGL fixture combines 99 ground tiles, ten actors, a tree, autumn leaves,
+a stool, and optional rain/snow. At high quality the cold layer adds exactly one
+draw and 16 triangles over the same scene with cold effects unmounted; frost adds
+no geometry. Captures and matrix/opacity readbacks cover frozen late autumn and
+winter, warm/missing/stale inputs, quality, reduced motion, precipitation,
+repeatability, offscreen suspension and unmount. This is a rendering-work budget,
+not a hardware frame-rate claim.

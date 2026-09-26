@@ -1,4 +1,7 @@
 export type EnvironmentWeather = {
+    temperature?: number | null;
+    isStale?: boolean;
+    source?: string;
     cloudy?: number;
     foggy?: number;
     rainy?: number;

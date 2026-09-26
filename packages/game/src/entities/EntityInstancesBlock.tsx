@@ -30,6 +30,7 @@ import {
     type StaticOpaqueSceneCacheGroup,
 } from '../scene/StaticOpaqueSceneCache';
 import {
+    useFrostIntensityUniform,
     useRainSurfacePuddleStrengthUniform,
     useRainSurfaceWetnessActive,
     useRainSurfaceWetnessUniform,
@@ -539,6 +540,8 @@ function IntegratedWeatherEntityInstancesGeometry({
         intensityMultiplier: 1,
         wetSpeed: 5,
     });
+    const frostIntensityUniform = useFrostIntensityUniform();
+    const frostActive = useGameState((state) => state.frostIntensity > 0);
     const puddleStrengthUniform = useRainSurfacePuddleStrengthUniform();
     const rainOverlayVisible = useRainWetOverlayVisible();
     const rainSurfaceActive =
@@ -557,7 +560,7 @@ function IntegratedWeatherEntityInstancesGeometry({
             overrideSnow: snow?.overrideSnow,
         });
     const integratesSnow = snowSurfaceActive && snowIntegrationReady;
-    const integratesRain = rainSurfaceActive;
+    const integratesRain = rainSurfaceActive || frostActive;
     const hasIntegratedWeather = integratesRain || integratesSnow;
     const pluginVariantKey = hasIntegratedWeather
         ? getWeatherSurfacePluginVariantKey(
@@ -594,14 +597,17 @@ function IntegratedWeatherEntityInstancesGeometry({
             return undefined;
         }
         return createIntegratedWeatherSurfaceMaterial(sourceMaterial, {
+            frostIntensityUniform,
             rain: {
                 bounds: rainBounds,
                 darkness: 1,
-                enabled: rainSurfaceActive,
+                enabled: integratesRain,
                 glossiness: 0.7,
                 puddleStrengthUniform,
                 topSurfaceBias: 1.8,
-                wetnessUniform,
+                wetnessUniform: renderRainWetOverlay
+                    ? wetnessUniform
+                    : { value: 0 },
             },
             snow: {
                 amountUniform: snowAmountUniform,
@@ -616,10 +622,12 @@ function IntegratedWeatherEntityInstancesGeometry({
             },
         });
     }, [
+        frostIntensityUniform,
         hasIntegratedWeather,
         puddleStrengthUniform,
         rainBounds,
-        rainSurfaceActive,
+        renderRainWetOverlay,
+        integratesRain,
         integratesSnow,
         snow,
         snowAmountUniform,

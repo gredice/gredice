@@ -34,6 +34,7 @@ import {
     type AdaptiveHighQualityLevelProfile,
     adaptiveHighQualityLevels,
 } from './adaptiveHighQuality';
+import { BreathSourcesProvider } from './cold/BreathSources';
 import { GardenLightProvider } from './GardenLightProvider';
 import {
     createRuntimeFrameLoopProfileTelemetry,
@@ -423,7 +424,9 @@ export function Scene({
                                     />
                                     <AutumnSourcesProvider>
                                         <AutumnPartsProvider>
-                                            {children}
+                                            <BreathSourcesProvider>
+                                                {children}
+                                            </BreathSourcesProvider>
                                         </AutumnPartsProvider>
                                     </AutumnSourcesProvider>
                                     <HoverOutlineEffect />

@@ -28,6 +28,7 @@ import { AutumnLeaves } from './AutumnLeaves';
 import { getAutumnCanopyShadowKey } from './autumnCanopy';
 import { defaultGameBackgroundPaletteIndex } from './backgroundPalettes';
 import { CloudLayer } from './CloudLayer';
+import { ColdWeatherEffects } from './cold/ColdWeatherEffects';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
 import {
     type GameQualityProfile,
@@ -734,6 +735,11 @@ export function Environment({
 
         return {
             ...baseWeather,
+            // Overrides must explicitly provide temperature; never inherit a
+            // cached live temperature into a frozen/debug weather fixture.
+            temperature: overrideWeather.temperature ?? null,
+            isStale: false,
+            source: undefined,
             rainy: overrideWeather.rainy ?? baseWeather.rainy,
             foggy: overrideWeather.foggy ?? baseWeather.foggy,
             cloudy: overrideWeather.cloudy ?? baseWeather.cloudy,
@@ -1101,6 +1107,11 @@ export function Environment({
                 windDirection={windDirection}
                 rain={blendedWeather?.rainy ?? 0}
                 snow={blendedWeather?.snowy ?? 0}
+            />
+            <ColdWeatherEffects
+                weather={actualWeather}
+                tier={qualityProfile.tier}
+                enabled={!weatherDisabled}
             />
             <RainRipples
                 stacks={sceneGarden?.stacks}
