@@ -6,6 +6,7 @@ import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
 import { harvestCrates } from '@gredice/js/harvestCrates';
 import { harvestPumpkins } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
+import { leafRake } from '@gredice/js/leafRake';
 import { woodlandMushrooms } from '@gredice/js/woodlandMushrooms';
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Locator, Page } from '@playwright/test';
@@ -30,6 +31,11 @@ const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 const newBlockCatalogItems = [
+    {
+        label: leafRake.information.label,
+        price: leafRake.sunflowers,
+        picker: 'Dekoracija',
+    },
     ...autumnLeafPiles.map((item) => ({
         label: item.information.label,
         price: item.sunflowers,
@@ -1956,5 +1962,51 @@ test('autumn leaf piles drag keeps the catalogue identity', async ({
     await page.mouse.up();
     await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
         'AutumnLeafPileMound:drop',
+    );
+});
+
+test('leaf rake stays hidden before catalogue publication', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ItemsHudAlignmentStory includeLeafRake={false} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', {
+            name: 'Grablje s hrpom lišća',
+            exact: true,
+        }),
+    ).toHaveCount(0);
+});
+
+test('leaf rake appears once in the local sandbox', async ({ mount, page }) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<LocalSandboxItemsHudStory />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', {
+            name: 'Grablje s hrpom lišća',
+            exact: true,
+        }),
+    ).toHaveCount(1);
+});
+
+test('leaf rake drag keeps the catalogue identity', async ({ mount, page }) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudDragStateStory accountSunflowers={150} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await dragLocatorByMouse(
+        page,
+        page.getByRole('button', {
+            name: 'Grablje s hrpom lišća',
+            exact: true,
+        }),
+    );
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'LeafRake:drag',
+    );
+    await page.mouse.up();
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'LeafRake:drop',
     );
 });
