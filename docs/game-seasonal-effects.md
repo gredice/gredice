@@ -340,6 +340,40 @@ The profiling matrix combines heavy rain with the existing dense autumn scene
 at October 22 on low/medium/high, sharing the dense weather budgets. Commit the
 candidate before profiling so the report's comparability check can identify it.
 
+## Squirrel nut carrying and caching
+
+During autumn, the existing squirrel begins an eligible visit with a short forage,
+scamper, cache and pause sequence, then returns to its ordinary routines. One
+seeded route is selected from its existing ground habitat, with at most eight
+pathfinding attempts and six world units of travel. The whole sequence lasts
+less than 14 seconds. Blocked routes fall back to ordinary behavior; clicks,
+avatar flee reactions and scheduled departures interrupt caching. The existing
+one-squirrel garden cap, 35–65 second visits and four-minute respawn cooldown
+remain in force. Nuts never read or change crops, inventory, rewards or garden
+blocks, and no cache object is left behind.
+
+A single 20-triangle chestnut is parented to the cloned model's animated
+`Squirrel_HeadPivot`, below the muzzle in exported head-local coordinates. It
+follows the rig through movement and turning, then shrinks away during the
+existing forage animation. It has no raycast, shadow pass or audio. Low quality
+uses the same small mesh; it adds at most one draw call and 20 triangles. The
+attachment geometry/material and actor animation mixer are released on unmount;
+cached GLTF resources remain untouched.
+
+The calendar comes from shared seasonal state and animation from `SceneTime`.
+Fixed animation seconds reproduce both the path position and rig pose without
+replaying intermediate frames. Hidden scenes pause the visit; reduced motion
+holds a still squirrel without the nut or an animation lease. Weather disablement,
+rain intensity at least 0.7, or snow coverage at least 0.01 suppress caching.
+Audio preferences need no extra handling because this effect adds no sound.
+
+Validation: squirrel unit tests cover deterministic sampling, blocked paths,
+season/weather gating and attachment transforms through every exported animation.
+`pnpm --filter garden exec playwright test --config playwright.season.config.ts
+ tests/squirrel-caching.spec.tsx` exercises the real actor with existing autumn
+layers at low/high quality, frozen remounts, live completion, visibility and
+resource cleanup, including the incremental draw/triangle count.
+
 ## Cold-condition frost and breath
 
 Cold effects consume `GET /api/data/weather/now`'s **forecast air temperature in
