@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { FaqCategorySection } from '../../components/faq/FaqCategorySection';
 import { groupFaqCategories } from '../../components/faq/groupFaqCategories';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
+import { PageSectionNav } from '../../components/shared/PageSectionNav';
 import { NoDataPlaceholder } from '../../components/shared/placeholders/NoDataPlaceholder';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
 import { getFaqData } from '../../lib/plants/getFaqData';
@@ -27,22 +28,14 @@ export default async function FaqPage() {
 
     return (
         <Stack>
-            {sections.length > 0 && (
-                <nav
-                    aria-label="Kategorije čestih pitanja"
-                    className="mt-8 mb-8 flex gap-2 overflow-x-auto pb-2 sm:flex-wrap sm:gap-3 sm:overflow-visible sm:pb-0 md:mt-12"
-                >
-                    {sections.map(({ category }) => (
-                        <a
-                            key={category.information.name}
-                            href={`#${category.information.name}`}
-                            className="shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                        >
-                            {category.information.label}
-                        </a>
-                    ))}
-                </nav>
-            )}
+            <PageSectionNav
+                label="Kategorije čestih pitanja"
+                items={sections.map(({ category }) => ({
+                    id: category.information.name,
+                    label: category.information.label,
+                }))}
+                className="mt-8 mb-8 md:mt-12"
+            />
             <PageHeader
                 header="Česta pitanja"
                 subHeader="Od prve sadnje do dostave: pronađi odgovor za svoj sljedeći korak."
