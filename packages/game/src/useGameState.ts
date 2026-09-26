@@ -377,6 +377,7 @@ export type GardenAvatarBeachBallKickRequest = {
 };
 
 type WeatherOverride = {
+    temperature?: number | null;
     cloudy: number;
     rainy: number;
     snowy: number;
@@ -586,6 +587,8 @@ export type GameState = {
     clearEnvironmentOverrides: () => void;
 
     // Environment derived state
+    frostIntensity: number;
+    setFrostIntensity: (frostIntensity: number) => void;
     rainSurfaceIntensity: number;
     setRainSurfaceIntensity: (rainSurfaceIntensity: number) => void;
     snowCoverage: number;
@@ -1382,6 +1385,8 @@ export function createGameState({
                 ),
             });
         },
+        frostIntensity: 0,
+        setFrostIntensity: (frostIntensity) => set({ frostIntensity }),
         rainSurfaceIntensity: 0,
         setRainSurfaceIntensity: (rainSurfaceIntensity) =>
             set({ rainSurfaceIntensity }),

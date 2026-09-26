@@ -62,6 +62,10 @@ export function WeatherSurfaceUniformProvider({ children }: PropsWithChildren) {
         (state) => state.rainSurfaceIntensity,
         0,
     );
+    const frostIntensity = useOptionalGameState(
+        (state) => state.frostIntensity,
+        0,
+    );
     const snowCoverage = useOptionalGameState((state) => state.snowCoverage, 0);
     const activity = useSyncExternalStore(
         registry.subscribeActivity,
@@ -73,6 +77,11 @@ export function WeatherSurfaceUniformProvider({ children }: PropsWithChildren) {
         'weather-surface-transition',
         activity.rainSettling || activity.snowSettling,
     );
+
+    useEffect(() => {
+        registry.frostIntensityUniform.value = frostIntensity;
+        requestRender('frost-surface-change');
+    }, [frostIntensity, registry, requestRender]);
 
     useEffect(() => {
         registry.advance({ rainAmount, snowCoverage }, 0);
@@ -290,4 +299,8 @@ export function useWeatherSurfaceUniformActivitySnapshot(): WeatherSurfaceUnifor
         registry.getActivitySnapshot,
         registry.getActivitySnapshot,
     );
+}
+
+export function useFrostIntensityUniform(): IUniform<number> {
+    return useWeatherSurfaceUniformRegistry().frostIntensityUniform;
 }
