@@ -2758,6 +2758,39 @@
             "objects": ["PotVariant_10_Wide_Lipped_Cup", "PotVariant_Soil_10"]
         },
         {
+            "name": "HarvestPumpkinSquat",
+            "source": "HarvestPumpkinSquat.blend",
+            "output": "HarvestPumpkinSquat.glb",
+            "version": "0f247954af35",
+            "preload": "lazy",
+            "objects": [
+                "HarvestPumpkinSquat_Body",
+                "HarvestPumpkinSquat_Stem"
+            ]
+        },
+        {
+            "name": "HarvestPumpkinGourd",
+            "source": "HarvestPumpkinGourd.blend",
+            "output": "HarvestPumpkinGourd.glb",
+            "version": "15948c584b77",
+            "preload": "lazy",
+            "objects": [
+                "HarvestPumpkinGourd_Body",
+                "HarvestPumpkinGourd_Stem"
+            ]
+        },
+        {
+            "name": "HarvestPumpkinGroup",
+            "source": "HarvestPumpkinGroup.blend",
+            "output": "HarvestPumpkinGroup.glb",
+            "version": "bdeb4f10688c",
+            "preload": "lazy",
+            "objects": [
+                "HarvestPumpkinGroup_Body",
+                "HarvestPumpkinGroup_Stem"
+            ]
+        },
+        {
             "name": "HarvestBasket",
             "source": "HarvestBasket.blend",
             "output": "HarvestBasket.glb",

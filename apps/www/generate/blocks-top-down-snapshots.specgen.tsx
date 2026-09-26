@@ -27,6 +27,9 @@ test.beforeAll(async () => {
 
 test.beforeEach(async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.addStyleTag({
+        content: 'html, body, #root { background: transparent !important; }',
+    });
 
     for (const assetName of allGameAssetNames) {
         await page.route(
