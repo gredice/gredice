@@ -20,6 +20,10 @@ import { fallenLog } from '@gredice/js/fallenLog';
 import { gardenBrazier } from '@gredice/js/gardenBrazier';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
 import { gardenTeaTable } from '@gredice/js/gardenTeaTable';
+import {
+    getHalloweenAccent,
+    halloweenAccentNames,
+} from '@gredice/js/halloweenAccents';
 import { getHarvestCrate, harvestCrateNames } from '@gredice/js/harvestCrates';
 import {
     getHarvestPumpkin,
@@ -483,6 +487,7 @@ const blockFixtures: Record<
 function createBlockData(name: string, index: number) {
     const decoration =
         getAutumnEntrance(name) ??
+        getHalloweenAccent(name) ??
         getPumpkinLantern(name) ??
         getWoodlandArrangement(name) ??
         getAutumnGrass(name) ??
@@ -603,6 +608,7 @@ const blockNames = [
     ...autumnGrassNames,
     ...woodlandArrangementNames,
     ...pumpkinLanternNames,
+    ...halloweenAccentNames,
     ...autumnEntranceNames,
     'Raised_Bed',
     'Bucket',
@@ -754,6 +760,7 @@ type ItemsHudStoryOptions = {
     includeAutumnGrasses?: boolean;
     includeWoodlandArrangements?: boolean;
     includePumpkinLanterns?: boolean;
+    includeHalloweenAccents?: boolean;
     includeAutumnEntrances?: boolean;
     accountSunflowers?: number;
     cameraTarget?: [x: number, y: number, z: number];
@@ -787,6 +794,7 @@ function createItemsHudQueryClient({
     includeAutumnGrasses = true,
     includeWoodlandArrangements = true,
     includePumpkinLanterns = true,
+    includeHalloweenAccents = true,
     includeAutumnEntrances = true,
     isSandbox = false,
 }: ItemsHudStoryOptions) {
@@ -799,6 +807,9 @@ function createItemsHudQueryClient({
     queryClient.setQueryData(
         ['blocks'],
         blockNames
+            .filter(
+                (name) => includeHalloweenAccents || !getHalloweenAccent(name),
+            )
             .filter(
                 (name) => includePumpkinLanterns || !getPumpkinLantern(name),
             )
@@ -910,6 +921,7 @@ function ItemsHudTestProviders({
     includeAutumnGrasses = true,
     includeWoodlandArrangements = true,
     includePumpkinLanterns = true,
+    includeHalloweenAccents = true,
     includeAutumnEntrances = true,
     children,
     accountSunflowers,
@@ -946,6 +958,7 @@ function ItemsHudTestProviders({
                 includeAutumnGrasses,
                 includeWoodlandArrangements,
                 includePumpkinLanterns,
+                includeHalloweenAccents,
                 includeAutumnEntrances,
             }),
         [
@@ -972,6 +985,7 @@ function ItemsHudTestProviders({
             includeAutumnGrasses,
             includeWoodlandArrangements,
             includePumpkinLanterns,
+            includeHalloweenAccents,
             includeAutumnEntrances,
         ],
     );
@@ -1087,6 +1101,7 @@ export function ItemsHudAlignmentStory({
     includeAutumnGrasses = true,
     includeWoodlandArrangements = true,
     includePumpkinLanterns = true,
+    includeHalloweenAccents = true,
     includeAutumnEntrances = true,
 }: {
     includeHarvestPumpkins?: boolean;
@@ -1110,6 +1125,7 @@ export function ItemsHudAlignmentStory({
     includeAutumnGrasses?: boolean;
     includeWoodlandArrangements?: boolean;
     includePumpkinLanterns?: boolean;
+    includeHalloweenAccents?: boolean;
     includeAutumnEntrances?: boolean;
 }) {
     return (
@@ -1135,6 +1151,7 @@ export function ItemsHudAlignmentStory({
             includeAutumnGrasses={includeAutumnGrasses}
             includeWoodlandArrangements={includeWoodlandArrangements}
             includePumpkinLanterns={includePumpkinLanterns}
+            includeHalloweenAccents={includeHalloweenAccents}
             includeAutumnEntrances={includeAutumnEntrances}
         >
             <div className="relative h-screen w-screen overflow-hidden">

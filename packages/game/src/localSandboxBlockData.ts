@@ -20,6 +20,10 @@ import { fallenLog } from '@gredice/js/fallenLog';
 import { gardenBrazier } from '@gredice/js/gardenBrazier';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
 import { gardenTeaTable } from '@gredice/js/gardenTeaTable';
+import {
+    getHalloweenAccent,
+    halloweenAccentNames,
+} from '@gredice/js/halloweenAccents';
 import { getHarvestCrate, harvestCrateNames } from '@gredice/js/harvestCrates';
 import {
     getHarvestPumpkin,
@@ -123,6 +127,7 @@ export const localSandboxBlockNames = [
     ...autumnGrassNames,
     ...woodlandArrangementNames,
     ...pumpkinLanternNames,
+    ...halloweenAccentNames,
     ...autumnEntranceNames,
     'BeachTowelStriped',
     'InflatablePoolSmall',
@@ -944,6 +949,7 @@ function createLocalSandboxBlockData(
     const isOutletDisplayTable = name === 'OutletDisplayTable';
     const decoration =
         getAutumnEntrance(name) ??
+        getHalloweenAccent(name) ??
         getPumpkinLantern(name) ??
         getWoodlandArrangement(name) ??
         getAutumnGrass(name) ??

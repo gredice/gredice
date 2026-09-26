@@ -873,6 +873,7 @@ export type GLTFResult = GLTF & {
         FishingBoat_Oars: THREE.Mesh;
         FishingBoat_Ripples: THREE.Mesh;
         FishingBoat_Rope: THREE.Mesh;
+        FriendlyGhost_Arrangement: THREE.Mesh;
         GardenBox_Body_Planks: THREE.Mesh;
         GardenBox_Lid_HingeOrigin: THREE.Mesh;
         GardenBrazier_Embers: THREE.Mesh;
@@ -1618,6 +1619,7 @@ export type GLTFResult = GLTF & {
         Sunflower_Sepal_05: THREE.Mesh;
         Sunflower_Sepal_06: THREE.Mesh;
         Sunflower_Stem: THREE.Mesh;
+        SupportedCobweb_Arrangement: THREE.Mesh;
         Tree_1_1: THREE.Mesh;
         Tree_1_2: THREE.Mesh;
         Tree_1_3: THREE.Mesh;
@@ -1950,6 +1952,7 @@ export type GLTFResult = GLTF & {
         'Material.FishingBoat.Ripple': THREE.MeshStandardMaterial;
         'Material.FishingBoat.Rope': THREE.MeshStandardMaterial;
         'Material.FishingBoat.WarmWood': THREE.MeshStandardMaterial;
+        'Material.FriendlyGhost.Palette': THREE.MeshStandardMaterial;
         'Material.Frog.Charcoal': THREE.MeshStandardMaterial;
         'Material.Frog.EyeGlint': THREE.MeshStandardMaterial;
         'Material.Frog.MossDark': THREE.MeshStandardMaterial;
@@ -2197,6 +2200,7 @@ export type GLTFResult = GLTF & {
         'Material.StoneWalkway.LightStone': THREE.MeshStandardMaterial;
         'Material.StoneWalkway.MidStone': THREE.MeshStandardMaterial;
         'Material.StoneWalkway.WarmStone': THREE.MeshStandardMaterial;
+        'Material.SupportedCobweb.Palette': THREE.MeshStandardMaterial;
         'Material.VeggieGreen': THREE.MeshStandardMaterial;
         'Material.VeggieGreenDark': THREE.MeshStandardMaterial;
         'Material.VeggieLeafy': THREE.MeshStandardMaterial;

@@ -15,6 +15,7 @@ import { fallenLog } from '@gredice/js/fallenLog';
 import { gardenBrazier } from '@gredice/js/gardenBrazier';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
 import { gardenTeaTable } from '@gredice/js/gardenTeaTable';
+import { halloweenAccentNames } from '@gredice/js/halloweenAccents';
 import { harvestCrateNames } from '@gredice/js/harvestCrates';
 import { harvestPumpkinNames } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
@@ -392,6 +393,9 @@ const items: HudItem[] = [
                 footprintLabel: '2 × 1',
             },
             ...autumnEntranceNames.map(
+                (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
+            ),
+            ...halloweenAccentNames.map(
                 (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
             ),
             ...pumpkinLanternNames.map(
