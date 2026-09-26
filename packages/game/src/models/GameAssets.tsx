@@ -583,6 +583,8 @@ export type GLTFResult = GLTF & {
         AutumnAsterPot_Petals: THREE.Mesh;
         AutumnAsterPot_Pot: THREE.Mesh;
         AutumnAsterPot_Soil: THREE.Mesh;
+        AutumnLeafPileCrescent_Leaves: THREE.Mesh;
+        AutumnLeafPileMound_Leaves: THREE.Mesh;
         AutumnShrub_FullGold: THREE.Mesh;
         AutumnShrub_FullRusset: THREE.Mesh;
         AutumnShrub_SparseGold: THREE.Mesh;
@@ -1725,6 +1727,8 @@ export type GLTFResult = GLTF & {
         'Material.AutumnAster.Petals': THREE.MeshStandardMaterial;
         'Material.AutumnAster.Soil': THREE.MeshStandardMaterial;
         'Material.AutumnAster.Terracotta': THREE.MeshStandardMaterial;
+        'Material.AutumnLeafPileCrescent.Palette': THREE.MeshStandardMaterial;
+        'Material.AutumnLeafPileMound.Palette': THREE.MeshStandardMaterial;
         'Material.AutumnShrub.Gold': THREE.MeshStandardMaterial;
         'Material.AutumnShrub.Russet': THREE.MeshStandardMaterial;
         'Material.AutumnShrub.Wood': THREE.MeshStandardMaterial;

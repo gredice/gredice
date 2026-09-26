@@ -3,6 +3,26 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "AutumnLeafPileMound",
+            "source": "AutumnLeafPileMound.blend",
+            "output": "AutumnLeafPileMound.glb",
+            "version": "d2133ce5768a",
+            "preload": "lazy",
+            "objects": [
+                "AutumnLeafPileMound_Leaves"
+            ]
+        },
+        {
+            "name": "AutumnLeafPileCrescent",
+            "source": "AutumnLeafPileCrescent.blend",
+            "output": "AutumnLeafPileCrescent.glb",
+            "version": "b99b88c2b61a",
+            "preload": "lazy",
+            "objects": [
+                "AutumnLeafPileCrescent_Leaves"
+            ]
+        },
+        {
             "name": "FallenLog",
             "source": "FallenLog.blend",
             "output": "FallenLog.glb",
