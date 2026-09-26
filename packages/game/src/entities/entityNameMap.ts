@@ -129,6 +129,7 @@ import { WoodenBench } from './WoodenBench';
 import { WoodenHandLantern } from './WoodenHandLantern';
 import { WoodenSign } from './WoodenSign';
 import { WoodenWalkway } from './WoodenWalkway';
+import { WoodlandArrangement } from './WoodlandArrangement';
 import { WoodlandMushrooms } from './WoodlandMushrooms';
 
 export const entityNameMap = {
@@ -219,6 +220,9 @@ export const entityNameMap = {
     GardenTeaTable,
     AutumnLeafPileMound: AutumnLeafPile,
     AutumnGrassTuft: AutumnGrass,
+    WoodlandAcorns: WoodlandArrangement,
+    WoodlandConkers: WoodlandArrangement,
+    WoodlandMushroomBasket: WoodlandArrangement,
     AutumnSeedHeads: AutumnGrass,
     AutumnLeafPileCrescent: AutumnLeafPile,
     HarvestCrateOrchard: HarvestCrate,
