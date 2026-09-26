@@ -20,6 +20,9 @@ import {
 import { RainRippleProbe } from './RainRippleProbe';
 
 export function RainRippleFixture({
+    surface,
+    mixedSurfaces = false,
+    waterOnSlopes = false,
     squirrels = false,
     renderLayers = true,
     focusSquirrel = false,
@@ -36,6 +39,9 @@ export function RainRippleFixture({
     date = 'lateAutumn',
     fixedTime = 12,
 }: {
+    surface?: string;
+    mixedSurfaces?: boolean;
+    waterOnSlopes?: boolean;
     squirrels?: boolean;
     renderLayers?: boolean;
     focusSquirrel?: boolean;
@@ -98,36 +104,62 @@ export function RainRippleFixture({
                 behavior: 'flee',
             });
     }, [store, startleSquirrel]);
-    const stacks = useMemo(
-        () =>
-            Array.from({ length: 99 }, (_, i) => {
-                const x = (i % 11) - 5;
-                const z = Math.floor(i / 11) - 4;
-                return {
-                    position: new Vector3(x, 0, z),
-                    blocks: [
-                        {
-                            name: i % 2 ? 'Block_Sand' : 'Block_Swamp_Ground',
-                            id: `ripple-ground:${i}`,
-                            rotation: i % 4,
-                        },
-                        ...(x === -5 && z === 0
-                            ? [{ name: 'Tree', id: 'ripple-tree', rotation: 0 }]
-                            : []),
-                        ...(x === 0 && z === 0
-                            ? [
-                                  {
-                                      name: 'Stool',
-                                      id: 'ripple-cover',
-                                      rotation: 0,
-                                  },
-                              ]
-                            : []),
-                    ],
-                };
-            }),
-        [],
-    );
+    const stacks = useMemo(() => {
+        // Individual material/shoreline checks need only a small garden.
+        // Keep the mixed scene and existing cap/performance fixtures at 99.
+        const columns = surface ? 5 : 11;
+        const rows = surface ? 5 : 9;
+        return Array.from({ length: columns * rows }, (_, i) => {
+            const x = (i % columns) - Math.floor(columns / 2);
+            const z = Math.floor(i / columns) - Math.floor(rows / 2);
+            return {
+                position: new Vector3(x, 0, z),
+                blocks: [
+                    ...(waterOnSlopes
+                        ? [
+                              {
+                                  name: 'Block_Grass_Reverse_Corner',
+                                  id: `ripple-bank:${i}`,
+                                  rotation: i % 4,
+                              },
+                          ]
+                        : []),
+                    {
+                        name:
+                            surface ??
+                            (mixedSurfaces
+                                ? [
+                                      'Block_Water',
+                                      'Block_Swamp_Water',
+                                      'Block_Grass',
+                                      'Block_Ground',
+                                      'Block_Dry_Ground',
+                                      'Block_Polished_Stone',
+                                      'Block_Sand',
+                                      'Block_Swamp_Ground',
+                                  ][Math.floor(i / 11) % 8]
+                                : i % 2
+                                  ? 'Block_Sand'
+                                  : 'Block_Swamp_Ground'),
+                        id: `ripple-ground:${i}`,
+                        rotation: i % 4,
+                    },
+                    ...(x === -5 && z === 0
+                        ? [{ name: 'Tree', id: 'ripple-tree', rotation: 0 }]
+                        : []),
+                    ...(x === 0 && z === 0
+                        ? [
+                              {
+                                  name: 'Stool',
+                                  id: 'ripple-cover',
+                                  rotation: 0,
+                              },
+                          ]
+                        : []),
+                ],
+            };
+        });
+    }, [surface, mixedSurfaces, waterOnSlopes]);
     return (
         <QueryClientProvider client={client}>
             <GameStateContext.Provider value={store}>
@@ -139,7 +171,7 @@ export function RainRippleFixture({
                 >
                     <Scene
                         position={[8, 9, 12]}
-                        zoom={focusSquirrel ? 500 : 45}
+                        zoom={focusSquirrel ? 500 : surface ? 75 : 45}
                         quality={gameQualityProfiles.low}
                         fixedTimeSeconds={live ? undefined : fixedTime}
                         profileStats

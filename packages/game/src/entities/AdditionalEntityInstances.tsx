@@ -541,6 +541,8 @@ function BlockGroundInstances({
                 staticOpaqueCacheGroup="base-terrain"
                 geometry={nodes.Block_Ground_1.geometry}
                 material={groundMaterial11}
+                renderRainWetOverlay
+                weatherSurface="base-ground"
                 snow={{
                     maxThickness: 0.22,
                     slopeExponent: 3.2,
@@ -555,6 +557,8 @@ function BlockGroundInstances({
                 staticOpaqueCacheGroup="base-terrain"
                 geometry={nodes.Block_Ground_2.geometry}
                 material={groundMaterial21}
+                renderRainWetOverlay
+                weatherSurface="base-ground"
                 snow={{
                     maxThickness: 0.22,
                     slopeExponent: 3.2,

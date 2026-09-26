@@ -288,6 +288,10 @@ export function useRainSurfaceWetnessActive({
     });
 }
 
+export function useRainSurfaceIntensityUniform(): IUniform<number> {
+    return useWeatherSurfaceUniformRegistry().rainIntensityUniform;
+}
+
 export function useRainSurfacePuddleStrengthUniform(): IUniform<number> {
     return useWeatherSurfaceUniformRegistry().rainPuddleStrengthUniform;
 }

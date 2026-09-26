@@ -219,3 +219,142 @@ test('active drags suppress ripples until placement finishes', async ({
     await fixture.update(<RainRippleFixture />);
     await expect.poll(count).toBe(48);
 });
+
+for (const surface of ['Block_Water', 'Block_Swamp_Water']) {
+    test(`${surface} responds to light rain without ground puddles`, async ({
+        mount,
+        page,
+    }) => {
+        const fixture = await mount(
+            <RainRippleFixture surface={surface} rain={0.4} date="summer" />,
+        );
+        const sample = async () =>
+            JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
+        await expect.poll(async () => (await sample()).count).toBe(16);
+        const active = await sample();
+        expect(active.puddles).toBe(0);
+        expect(active.rain).toBe(0.4);
+        expect(active.wetness).toBeLessThanOrEqual(0.4);
+        expect(
+            active.surfaces.filter((_: number, i: number) => i % 2 === 0),
+        ).toEqual(Array(16).fill(1));
+        expect(
+            active.matrices.filter((_: number, i: number) => i % 16 === 13),
+        ).toEqual(Array(16).fill(0.344));
+        const withRings = await page.locator('canvas').screenshot();
+        await fixture.update(
+            <RainRippleFixture
+                surface={surface}
+                rain={0.4}
+                date="summer"
+                mounted={false}
+            />,
+        );
+        await expect.poll(async () => (await sample()).count).toBe(0);
+        expect(
+            withRings.equals(await page.locator('canvas').screenshot()),
+        ).toBe(false);
+        for (const props of [
+            { rain: 0 },
+            { snow: 1 },
+            { disabled: true },
+            { tier: 'low' },
+            { dragging: true },
+        ] as const) {
+            await fixture.update(
+                <RainRippleFixture surface={surface} rain={0.4} {...props} />,
+            );
+            await expect.poll(async () => (await sample()).count).toBe(0);
+        }
+    });
+}
+
+for (const surface of [
+    'Block_Grass',
+    'Block_Ground',
+    'Block_Dry_Ground',
+    'Block_Polished_Stone',
+]) {
+    test(`${surface} ripples appear only once ground is wet`, async ({
+        mount,
+    }) => {
+        const fixture = await mount(
+            <RainRippleFixture surface={surface} rain={0.4} />,
+        );
+        const sample = async () =>
+            JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
+        await expect
+            .poll(async () => (await sample()).wetness)
+            .toBeCloseTo(0.4, 2);
+        expect((await sample()).count).toBe(0);
+        await fixture.update(<RainRippleFixture surface={surface} />);
+        await expect.poll(async () => (await sample()).count).toBe(16);
+        expect(
+            (await sample()).matrices.filter(
+                (_: number, i: number) => i % 16 === 13,
+            ),
+        ).toEqual(Array(16).fill(0.404));
+        await fixture.update(<RainRippleFixture surface={surface} rain={0} />);
+        await expect.poll(async () => (await sample()).count).toBe(0);
+    });
+}
+
+test('mixed water and ground keep one capped batch across rain transitions', async ({
+    mount,
+    page,
+}) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    page.on('console', (message) => {
+        if (message.type() === 'error') errors.push(message.text());
+    });
+    const fixture = await mount(<RainRippleFixture mixedSurfaces />);
+    const sample = async () =>
+        JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
+    await expect
+        .poll(async () => (await sample()).wetness)
+        .toBeGreaterThanOrEqual(0.995);
+    const active = await sample();
+    expect(active.count).toBe(48);
+    const kinds = active.surfaces.filter((_: number, i: number) => i % 2 === 0);
+    expect(kinds).toContain(0);
+    expect(kinds).toContain(1);
+    await expect(page.locator('canvas')).toHaveScreenshot(
+        'rain-ripples-mixed.png',
+        { maxDiffPixelRatio: 0.005 },
+    );
+    await fixture.update(<RainRippleFixture mixedSurfaces mounted={false} />);
+    await expect.poll(async () => (await sample()).count).toBe(0);
+    const baseline = await sample();
+    expect(active.calls - baseline.calls).toBe(1);
+    expect(active.triangles - baseline.triangles).toBe(96);
+    await fixture.update(<RainRippleFixture mixedSurfaces rain={0.4} />);
+    await expect.poll(async () => (await sample()).count).toBeGreaterThan(0);
+    expect(
+        (await sample()).surfaces
+            .filter((_: number, i: number) => i % 2 === 0)
+            .every((water: number) => water === 1),
+    ).toBe(true);
+    expect(
+        errors.filter((error) => /shader|WebGL|RainRipple/.test(error)),
+    ).toEqual([]);
+});
+
+test('water rings sit inside exposed rotated shorelines', async ({
+    mount,
+    page,
+}) => {
+    const fixture = await mount(
+        <RainRippleFixture surface="Block_Water" waterOnSlopes />,
+    );
+    const sample = async () =>
+        JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
+    await expect.poll(async () => (await sample()).count).toBe(16);
+    await expect
+        .poll(async () => (await sample()).wetness)
+        .toBeGreaterThanOrEqual(0.995);
+    await expect(page.locator('canvas')).toHaveScreenshot(
+        'rain-ripples-shore.png',
+        { maxDiffPixelRatio: 0.005 },
+    );
+});
