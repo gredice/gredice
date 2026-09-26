@@ -1,0 +1,104 @@
+{
+  "state": "unpublished",
+  "publicationIssue": 5000,
+  "snapshotDate": "2026-10-22T12:00:00+02:00",
+  "source": {
+    "path": "assets/game-assets/GardenBrazier.blend",
+    "bytes": 107809,
+    "sha256": "2a30f841896468188b1802659389def6468b757e06bd32a1c93441a147f140f9"
+  },
+  "models": [
+    {
+      "name": "GardenBrazier",
+      "path": "apps/garden/public/assets/models/GardenBrazier.glb",
+      "bytes": 102196,
+      "sha256": "1e7f678336c5b459bf0be8dc8ebc9fe3586969dc1a476b493a696b8962376553",
+      "url": "https://vrt.gredice.com/assets/models/GardenBrazier.glb?v=1e7f678336c5",
+      "triangles": 1088,
+      "trianglesByMesh": {
+        "GardenBrazier_Embers": 176,
+        "GardenBrazier_Metal": 912
+      },
+      "meshCount": 2,
+      "materialCount": 2
+    }
+  ],
+  "items": [
+    {
+      "name": "GardenBrazier",
+      "information": {
+        "label": "Ukrasno vrtno ložište",
+        "shortDescription": "Malo metalno ložište na tri noge s oblim rubom i bočnim ručkama.",
+        "fullDescription": "Ukrasno ložište s nekoliko komada drva stvara kutak za večernji odmor. Zauzima jedno polje i prikazuje se bez plamena. Ne grije vrt, ne štiti biljke od hladnoće i ne troši drva ni druge resurse. Na njega se ne slažu drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.5,
+        "hitboxHeight": 0.5,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 65,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/GardenBrazier.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/GardenBrazier.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/GardenBrazier.webp",
+          "bytes": 7460,
+          "sha256": "939add75453fe0f63c43f6d3d7a56c454d12e141d326bf89422083a94af9c3c6"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/GardenBrazier_1.webp",
+          "bytes": 7460,
+          "sha256": "939add75453fe0f63c43f6d3d7a56c454d12e141d326bf89422083a94af9c3c6"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/GardenBrazier_2.webp",
+          "bytes": 7616,
+          "sha256": "5105c79547baad37a045c3cec864b0dd819b581c7b1755d45388fa6dfc9ae28f"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/GardenBrazier_3.webp",
+          "bytes": 7670,
+          "sha256": "c08dd02895c09da4bdbbba99dbad5aa8ea89489909d8d06b006b5972ebe40de5"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/GardenBrazier_4.webp",
+          "bytes": 7536,
+          "sha256": "f3ef8cc8cf0bbda5eb8666f292c8dc2479969a231f18003f76f8fd90ad1e63c2"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/GardenBrazier.webp",
+          "bytes": 5198,
+          "sha256": "4711e02cce84a38f7867752c007b614c1899a50d1ebb1d3e3da665f31144a2ec"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/GardenBrazier_1.webp",
+          "bytes": 5198,
+          "sha256": "4711e02cce84a38f7867752c007b614c1899a50d1ebb1d3e3da665f31144a2ec"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/GardenBrazier_2.webp",
+          "bytes": 4762,
+          "sha256": "d145c4f3efdacfbec40e0689a96a4da4e0157f670104c8b5befbf26e3d84db35"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/GardenBrazier_3.webp",
+          "bytes": 5060,
+          "sha256": "e7851f8ab771bf8915bc06000879fb4ea2c707e52c76fb5c631aaf814f95be9f"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/GardenBrazier_4.webp",
+          "bytes": 4806,
+          "sha256": "f0f2318921f51b6577b577b83a7e091e8db41ba2097ba495b7a772c7db34faae"
+        }
+      ]
+    }
+  ]
+}
