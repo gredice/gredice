@@ -3,6 +3,16 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "LeafRake",
+            "source": "LeafRake.blend",
+            "output": "LeafRake.glb",
+            "version": "bb43d60ed1ff",
+            "preload": "lazy",
+            "objects": [
+                "LeafRake_Arrangement"
+            ]
+        },
+        {
             "name": "AutumnLeafPileMound",
             "source": "AutumnLeafPileMound.blend",
             "output": "AutumnLeafPileMound.glb",
