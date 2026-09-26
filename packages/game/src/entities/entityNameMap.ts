@@ -11,6 +11,7 @@ import { BeachBall } from './BeachBall';
 import { BeachChair } from './BeachChair';
 import { BeachTowelStriped } from './BeachTowelStriped';
 import { BeachUmbrella } from './BeachUmbrella';
+import { BirdFeeder } from './BirdFeeder';
 import { BirdHouse } from './BirdHouse';
 import { BlockDryGround } from './BlockDryGround';
 import { BlockDryGroundAngle } from './BlockDryGroundAngle';
@@ -219,6 +220,7 @@ export const entityNameMap = {
     LeafRake,
     StackedFirewood,
     SeedDryingRack,
+    BirdFeeder,
     GardenBrazier,
     GardenTeaTable,
     AutumnLeafPileMound: AutumnLeafPile,
