@@ -1055,6 +1055,7 @@ export type GLTFResult = GLTF & {
         InflatablePoolSmall_OuterRingMiddle: THREE.Mesh;
         InflatablePoolSmall_OuterRingTop: THREE.Mesh;
         InflatablePoolSmall_Water: THREE.Mesh;
+        LeafRake_Arrangement: THREE.Mesh;
         LemonadeStand_awning_front_valance: THREE.Mesh;
         LemonadeStand_awning_scallop_1: THREE.Mesh;
         LemonadeStand_awning_scallop_2: THREE.Mesh;
@@ -1985,6 +1986,7 @@ export type GLTFResult = GLTF & {
         'Material.Ladybug.ShellRed': THREE.MeshStandardMaterial;
         'Material.Ladybug.UnderwingAmber': THREE.MeshStandardMaterial;
         'Material.Ladybug.WarmBlack': THREE.MeshStandardMaterial;
+        'Material.LeafRake.Palette': THREE.MeshStandardMaterial;
         'Material.Leaves': THREE.MeshStandardMaterial;
         'Material.LiquidPreparationBottleAphidControl.BaseShadow': THREE.MeshStandardMaterial;
         'Material.LiquidPreparationBottleAphidControl.Body': THREE.MeshStandardMaterial;

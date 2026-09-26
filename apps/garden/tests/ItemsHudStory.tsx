@@ -16,6 +16,7 @@ import {
     harvestPumpkinNames,
 } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
+import { leafRake } from '@gredice/js/leafRake';
 import { woodlandMushrooms } from '@gredice/js/woodlandMushrooms';
 import { cx } from '@gredice/ui/utils';
 import * as ReactQuery from '@tanstack/react-query';
@@ -461,19 +462,21 @@ const blockFixtures: Record<
 function createBlockData(name: string, index: number) {
     const decoration =
         getAutumnLeafPile(name) ??
-        (name === fallenLog.name
-            ? fallenLog
-            : name === woodlandMushrooms.name
-              ? woodlandMushrooms
-              : name === autumnShrub.name
-                ? autumnShrub
-                : name === gardenScarecrow.name
-                  ? gardenScarecrow
-                  : name === harvestWheelbarrow.name
-                    ? harvestWheelbarrow
-                    : (getAutumnAsterPot(name) ??
-                      getHarvestCrate(name) ??
-                      getHarvestPumpkin(name)));
+        (name === leafRake.name
+            ? leafRake
+            : name === fallenLog.name
+              ? fallenLog
+              : name === woodlandMushrooms.name
+                ? woodlandMushrooms
+                : name === autumnShrub.name
+                  ? autumnShrub
+                  : name === gardenScarecrow.name
+                    ? gardenScarecrow
+                    : name === harvestWheelbarrow.name
+                      ? harvestWheelbarrow
+                      : (getAutumnAsterPot(name) ??
+                        getHarvestCrate(name) ??
+                        getHarvestPumpkin(name)));
     const fixture = decoration
         ? {
               ...decoration.information,
@@ -545,6 +548,7 @@ const blockNames = [
     harvestWheelbarrow.name,
     autumnShrub.name,
     woodlandMushrooms.name,
+    leafRake.name,
     fallenLog.name,
     ...autumnLeafPileNames,
     'Raised_Bed',
@@ -684,6 +688,7 @@ type ItemsHudStoryOptions = {
     includeAutumnShrub?: boolean;
     includeWoodlandMushrooms?: boolean;
     includeFallenLog?: boolean;
+    includeLeafRake?: boolean;
     includeAutumnLeafPiles?: boolean;
     accountSunflowers?: number;
     cameraTarget?: [x: number, y: number, z: number];
@@ -704,6 +709,7 @@ function createItemsHudQueryClient({
     includeAutumnShrub = true,
     includeWoodlandMushrooms = true,
     includeFallenLog = true,
+    includeLeafRake = true,
     includeAutumnLeafPiles = true,
     isSandbox = false,
 }: ItemsHudStoryOptions) {
@@ -716,6 +722,7 @@ function createItemsHudQueryClient({
     queryClient.setQueryData(
         ['blocks'],
         blockNames
+            .filter((name) => includeLeafRake || name !== leafRake.name)
             .filter(
                 (name) => includeAutumnLeafPiles || !getAutumnLeafPile(name),
             )
@@ -774,6 +781,7 @@ function ItemsHudTestProviders({
     includeAutumnShrub = true,
     includeWoodlandMushrooms = true,
     includeFallenLog = true,
+    includeLeafRake = true,
     includeAutumnLeafPiles = true,
     children,
     accountSunflowers,
@@ -797,6 +805,7 @@ function ItemsHudTestProviders({
                 includeAutumnShrub,
                 includeWoodlandMushrooms,
                 includeFallenLog,
+                includeLeafRake,
                 includeAutumnLeafPiles,
             }),
         [
@@ -810,6 +819,7 @@ function ItemsHudTestProviders({
             includeAutumnShrub,
             includeWoodlandMushrooms,
             includeFallenLog,
+            includeLeafRake,
             includeAutumnLeafPiles,
         ],
     );
@@ -912,6 +922,7 @@ export function ItemsHudAlignmentStory({
     includeAutumnShrub = true,
     includeWoodlandMushrooms = true,
     includeFallenLog = true,
+    includeLeafRake = true,
     includeAutumnLeafPiles = true,
 }: {
     includeHarvestPumpkins?: boolean;
@@ -922,6 +933,7 @@ export function ItemsHudAlignmentStory({
     includeAutumnShrub?: boolean;
     includeWoodlandMushrooms?: boolean;
     includeFallenLog?: boolean;
+    includeLeafRake?: boolean;
     includeAutumnLeafPiles?: boolean;
 }) {
     return (
@@ -934,6 +946,7 @@ export function ItemsHudAlignmentStory({
             includeAutumnShrub={includeAutumnShrub}
             includeWoodlandMushrooms={includeWoodlandMushrooms}
             includeFallenLog={includeFallenLog}
+            includeLeafRake={includeLeafRake}
             includeAutumnLeafPiles={includeAutumnLeafPiles}
         >
             <div className="relative h-screen w-screen overflow-hidden">
