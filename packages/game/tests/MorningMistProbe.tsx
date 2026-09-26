@@ -15,6 +15,7 @@ export function MorningMistProbe({
     const observedMeshes = useRef(new WeakSet<InstancedMesh>());
     const disposed = useRef({ geometry: 0, material: 0, mesh: 0 });
     const frames = useRef(0);
+    const mistDraws = useRef(0);
     const subscribeAfterRender = useSceneAfterRenderSubscription();
     useSceneTimeInvalidation('test:morning-mist-probe');
     useLayoutEffect(() => {
@@ -30,6 +31,7 @@ export function MorningMistProbe({
                     triangles: gl.info.render.triangles,
                     disposed: disposed.current,
                     frames: ++frames.current,
+                    mistDraws: mistDraws.current,
                 };
                 if (
                     !(mesh instanceof InstancedMesh) ||
@@ -40,6 +42,7 @@ export function MorningMistProbe({
                 }
                 if (!observedMeshes.current.has(mesh)) {
                     observedMeshes.current.add(mesh);
+                    mesh.onBeforeRender = () => mistDraws.current++;
                     mesh.geometry.addEventListener(
                         'dispose',
                         () => disposed.current.geometry++,

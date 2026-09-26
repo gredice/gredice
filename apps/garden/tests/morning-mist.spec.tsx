@@ -221,7 +221,14 @@ for (const tier of ['low', 'medium', 'high'] as const) {
             .poll(async () => (await sample()).disposed.mesh)
             .toBeGreaterThan(0);
         const baseline = await sample();
-        expect(active.calls - baseline.calls).toBe(count ? 1 : 0);
-        expect(active.triangles - baseline.triangles).toBe(count * 2);
+        if (count) {
+            expect(active.calls - baseline.calls).toBe(1);
+            expect(active.triangles - baseline.triangles).toBe(count * 2);
+        } else {
+            // Low has no fade-in to await. Unrelated asynchronous terrain/tree
+            // batches can still settle, so observe the mist's own submissions.
+            expect(active.mistDraws).toBe(0);
+            expect(baseline.mistDraws).toBe(0);
+        }
     });
 }
