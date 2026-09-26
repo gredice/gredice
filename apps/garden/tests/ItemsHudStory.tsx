@@ -3,6 +3,7 @@ import {
     autumnAsterPotNames,
     getAutumnAsterPot,
 } from '@gredice/js/autumnAsterPots';
+import { autumnBlanketBench } from '@gredice/js/autumnBlanketBench';
 import {
     autumnLeafPileNames,
     getAutumnLeafPile,
@@ -462,21 +463,23 @@ const blockFixtures: Record<
 function createBlockData(name: string, index: number) {
     const decoration =
         getAutumnLeafPile(name) ??
-        (name === leafRake.name
-            ? leafRake
-            : name === fallenLog.name
-              ? fallenLog
-              : name === woodlandMushrooms.name
-                ? woodlandMushrooms
-                : name === autumnShrub.name
-                  ? autumnShrub
-                  : name === gardenScarecrow.name
-                    ? gardenScarecrow
-                    : name === harvestWheelbarrow.name
-                      ? harvestWheelbarrow
-                      : (getAutumnAsterPot(name) ??
-                        getHarvestCrate(name) ??
-                        getHarvestPumpkin(name)));
+        (name === autumnBlanketBench.name
+            ? autumnBlanketBench
+            : name === leafRake.name
+              ? leafRake
+              : name === fallenLog.name
+                ? fallenLog
+                : name === woodlandMushrooms.name
+                  ? woodlandMushrooms
+                  : name === autumnShrub.name
+                    ? autumnShrub
+                    : name === gardenScarecrow.name
+                      ? gardenScarecrow
+                      : name === harvestWheelbarrow.name
+                        ? harvestWheelbarrow
+                        : (getAutumnAsterPot(name) ??
+                          getHarvestCrate(name) ??
+                          getHarvestPumpkin(name)));
     const fixture = decoration
         ? {
               ...decoration.information,
@@ -550,6 +553,7 @@ const blockNames = [
     woodlandMushrooms.name,
     leafRake.name,
     fallenLog.name,
+    autumnBlanketBench.name,
     ...autumnLeafPileNames,
     'Raised_Bed',
     'Bucket',
@@ -689,6 +693,7 @@ type ItemsHudStoryOptions = {
     includeAutumnShrub?: boolean;
     includeWoodlandMushrooms?: boolean;
     includeFallenLog?: boolean;
+    includeAutumnBlanketBench?: boolean;
     includeLeafRake?: boolean;
     includeAutumnLeafPiles?: boolean;
     accountSunflowers?: number;
@@ -710,6 +715,7 @@ function createItemsHudQueryClient({
     includeAutumnShrub = true,
     includeWoodlandMushrooms = true,
     includeFallenLog = true,
+    includeAutumnBlanketBench = true,
     includeLeafRake = true,
     includeAutumnLeafPiles = true,
     isSandbox = false,
@@ -723,6 +729,11 @@ function createItemsHudQueryClient({
     queryClient.setQueryData(
         ['blocks'],
         blockNames
+            .filter(
+                (name) =>
+                    includeAutumnBlanketBench ||
+                    name !== autumnBlanketBench.name,
+            )
             .filter((name) => includeLeafRake || name !== leafRake.name)
             .filter(
                 (name) => includeAutumnLeafPiles || !getAutumnLeafPile(name),
@@ -782,6 +793,7 @@ function ItemsHudTestProviders({
     includeAutumnShrub = true,
     includeWoodlandMushrooms = true,
     includeFallenLog = true,
+    includeAutumnBlanketBench = true,
     includeLeafRake = true,
     includeAutumnLeafPiles = true,
     children,
@@ -806,6 +818,7 @@ function ItemsHudTestProviders({
                 includeAutumnShrub,
                 includeWoodlandMushrooms,
                 includeFallenLog,
+                includeAutumnBlanketBench,
                 includeLeafRake,
                 includeAutumnLeafPiles,
             }),
@@ -820,6 +833,7 @@ function ItemsHudTestProviders({
             includeAutumnShrub,
             includeWoodlandMushrooms,
             includeFallenLog,
+            includeAutumnBlanketBench,
             includeLeafRake,
             includeAutumnLeafPiles,
         ],
@@ -923,6 +937,7 @@ export function ItemsHudAlignmentStory({
     includeAutumnShrub = true,
     includeWoodlandMushrooms = true,
     includeFallenLog = true,
+    includeAutumnBlanketBench = true,
     includeLeafRake = true,
     includeAutumnLeafPiles = true,
 }: {
@@ -934,6 +949,7 @@ export function ItemsHudAlignmentStory({
     includeAutumnShrub?: boolean;
     includeWoodlandMushrooms?: boolean;
     includeFallenLog?: boolean;
+    includeAutumnBlanketBench?: boolean;
     includeLeafRake?: boolean;
     includeAutumnLeafPiles?: boolean;
 }) {
@@ -947,6 +963,7 @@ export function ItemsHudAlignmentStory({
             includeAutumnShrub={includeAutumnShrub}
             includeWoodlandMushrooms={includeWoodlandMushrooms}
             includeFallenLog={includeFallenLog}
+            includeAutumnBlanketBench={includeAutumnBlanketBench}
             includeLeafRake={includeLeafRake}
             includeAutumnLeafPiles={includeAutumnLeafPiles}
         >

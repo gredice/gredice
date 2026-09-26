@@ -3,6 +3,17 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "AutumnBlanketBench",
+            "source": "AutumnBlanketBench.blend",
+            "output": "AutumnBlanketBench.glb",
+            "version": "6bc5acbeff92",
+            "preload": "lazy",
+            "objects": [
+                "AutumnBlanketBench_Timber",
+                "AutumnBlanketBench_Textile"
+            ]
+        },
+        {
             "name": "LeafRake",
             "source": "LeafRake.blend",
             "output": "LeafRake.glb",
