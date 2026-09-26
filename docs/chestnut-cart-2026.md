@@ -1,5 +1,7 @@
 # Chestnut roasting cart
 
+The contained runtime effects are now documented in [seasonal effects](game-seasonal-effects.md#contained-warm-prop-effects-4980). The asset review and captures below preserve the dormant base appearance using `Environment.noWarmProps`.
+
 Implementation for [#4960](https://github.com/gredice/gredice/issues/4960), release **C / seasonal expansion**. `ChestnutRoastingCart` is an original Kestenijada decoration with a roasting pan, two composed paper servings and a festive sign. Publication remains under #5000.
 
 ![Chestnut gathering beside the planted bed](chestnut-cart-2026/day-0.png)

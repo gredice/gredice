@@ -274,3 +274,87 @@ and click inside the page to unlock browser audio. Combine dates `2024-06-21`,
 Summer and calm are silent. The season slider and wind controls can be changed
 rapidly without restarting an audible rustle loop. Profile metadata exposes only
 the intended `autumnRustleTargetGain`; it is not proof of hardware sound output.
+
+## Contained warm-prop effects (#4980)
+
+`WarmPropSourcesProvider` registers rendered `GardenBrazier` and
+`ChestnutRoastingCart` roots. The shared metadata authored in #4962/#4960 is the
+only anchor source. The layer samples the current root world matrix after scene
+spring writes, so stack height, the cart's two-cell offset, rotations and pickup
+transforms apply once. Replaced render owners retain the block's deterministic
+seed; source removal clears its instance-owned ember intensity. Cached GLTF
+materials and geometry are never changed.
+
+One scene pool admits visible sources in stable seeded order: low/constrained
+2, medium/custom 4, high 6. Each active source uses three tiny opaque emissive
+cones. Brazier charcoal reuses its owned material; the closed cart's cones stay
+inside the firebox below the pan and test depth normally. There are **zero new
+physical lights**, so the shared garden light/shadow budget is unchanged. The
+cart has no authored smoke outlet: this layer does not emit smoke through its
+closed metal door or reuse its steam anchor. Pan steam remains #4972.
+
+Only brazier smoke anchors emit soft, depth-tested billboards. Each active
+brazier uses 0/2/3 quads on low/medium/high (0 constrained, 2 custom), at most 18
+quads in the scene. The plume rises 0.38 tiles, with at most 0.06 tiles of wind
+drift and 0.13 center opacity. It neither writes depth nor receives selection
+rays. Fire meshes also have no selection rays and cast no shadows. The shared
+live/frozen animation clock drives closed-form flicker and smoke, with no
+simulation backlog or per-frame React state.
+
+Low/constrained quality and reduced motion keep static emissive fire and omit
+smoke; they acquire no animation lease. Weather disablement, hidden/offscreen
+Canvas, rain at least 0.66, or snow/coverage at least 0.1 make the effect dormant.
+Light rain can retain it. The shared scheduler suspends the live lease when the
+scene is hidden. Calendar season alone does not switch off a placed decoration.
+This is presentation only: there is no heat, crop protection, fuel consumption,
+or garden/domain mutation.
+
+One six-second original mono crackle loop uses the existing **ambient** mixer.
+Its target is the maximum source gain, never the sum across repeated props,
+capped at 0.14 before channel/master gain. Distance is measured from each authored
+sound anchor to the orthographic camera's ground focus; it falls quadratically
+to zero at eight tiles, smoothing changes over 0.3 seconds. Off-frustum sources
+are excluded. Audio disablement, channel/master mute or zero volume, scene
+visibility and unmount stop the loop. A missing asset fails quietly without
+repeated requests. `assets/generate-warm-prop-crackle.py` reproduces both public
+host copies without external samples (22,050 Hz, six seconds, peak 0.4, RMS
+0.0302, silent loop endpoints). Hardware listening remains separate from
+browser decoding/mixer checks.
+
+`Environment.noWarmProps` preserves dormant asset catalogue/review captures.
+The original asset fixtures use that option; the new warm-prop fixture exercises
+actual rendered entities, an elevated support, all three leaf layers, and real
+mixer lifecycle. Profile output includes `warmPropCount`, `warmPropCapacity`,
+`warmPropSmokeCount`, and `warmPropCrackleGain`.
+
+Validation commands:
+
+```bash
+pnpm --filter @gredice/game test
+pnpm typecheck --filter @gredice/game --filter garden --filter www
+pnpm --filter garden exec playwright test --config playwright.warm-props.config.ts
+pnpm build --filter garden
+```
+
+The Playwright cost comparison toggles only the warm-prop layer in the same
+frozen autumn scene and records draw calls and triangles after rendering. It
+uses an orthographic 680×520 canvas at zoom 57 with shadows disabled to isolate
+the added effect. This is a bounded rendering-cost measurement, not a physical
+mobile-device frame-time claim. The scene contains ten warm props, three
+seasonal trees, ground leaves and an eligible leaf-covered stool.
+
+Measured on 2026-09-26 with the checked-in fixture and Chromium WebGL, toggling
+only `WarmProps` at fixed time 12:
+
+| Effect tier | Active sources / smoke quads | Draws, dormant → active | Triangles, dormant → active | Existing airborne / ground / entity leaves |
+| --- | ---: | ---: | ---: | ---: |
+| low | 2 / 0 | 44 → 45 | 15,664 → 15,724 | 18 / 48 / 2 |
+| medium | 4 / 8 | 54 → 56 | 16,162 → 16,298 | 18 / 73 / 2 |
+| high | 6 / 12 | 54 → 56 | 16,280 → 16,484 | 18 / 73 / 2 |
+
+Seven browser cases cover deterministic remounts and frozen clock changes,
+rotation and elevated placement, geometry selection, frozen summer/autumn/winter,
+low/high and reduced motion, light/heavy rain and snow, all three cost tiers,
+real audio decoding/one-loop continuity, distance and channel/master controls,
+offscreen suspension, missing audio, and unmount. Five focused unit cases cover
+policy limits, seeded flicker, attenuation, resource disposal and WAV integrity.
