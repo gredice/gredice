@@ -685,6 +685,7 @@ export type GLTFResult = GLTF & {
         BeachUmbrella_Pole: THREE.Mesh;
         BeachUmbrella_Ribs: THREE.Mesh;
         BeachUmbrella_Stake: THREE.Mesh;
+        BirdFeeder_Arrangement: THREE.Mesh;
         Birdhouse_Angled_Supports: THREE.Mesh;
         Birdhouse_Cabin_Walls: THREE.Mesh;
         Birdhouse_Center_Post: THREE.Mesh;
@@ -1793,6 +1794,7 @@ export type GLTFResult = GLTF & {
         'Material.Bee.Gold': THREE.MeshStandardMaterial;
         'Material.Bee.Wing': THREE.MeshStandardMaterial;
         'Material.Bee.Yellow': THREE.MeshStandardMaterial;
+        'Material.BirdFeeder.Timber': THREE.MeshStandardMaterial;
         'Material.BirdSmall.Beak': THREE.MeshStandardMaterial;
         'Material.BirdSmall.Belly': THREE.MeshStandardMaterial;
         'Material.BirdSmall.Body': THREE.MeshStandardMaterial;
