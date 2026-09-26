@@ -175,6 +175,7 @@ export class WeatherSurfaceUniformRegistry {
         SnowIntegrationTracker
     >();
     private readonly snowEntries = new Map<string, SnowSurfaceUniformEntry>();
+    readonly frostIntensityUniform = { value: 0 };
     private snowCoverage = 0;
     private snowIntegrationTransitionCount = 0;
 
