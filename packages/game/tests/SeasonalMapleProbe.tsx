@@ -74,7 +74,12 @@ export function SeasonalMapleProbe({
                         foliage.push({
                             name: node.name,
                             color: `#${node.material.color.getHexString()}`,
-                            firstColor: new Color().fromBufferAttribute(node.geometry.getAttribute('color'),0).getHexString(),
+                            firstColor: new Color()
+                                .fromBufferAttribute(
+                                    node.geometry.getAttribute('color'),
+                                    0,
+                                )
+                                .getHexString(),
                             colors: Array.from(
                                 node.geometry.getAttribute('color').array,
                             ),
