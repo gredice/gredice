@@ -9,6 +9,7 @@ import {
 } from '@gredice/js/entityAppearanceVariants';
 import { fallenLog } from '@gredice/js/fallenLog';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
+import { gardenTeaTable } from '@gredice/js/gardenTeaTable';
 import { harvestCrateNames } from '@gredice/js/harvestCrates';
 import { harvestPumpkinNames } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
@@ -363,6 +364,7 @@ const items: HudItem[] = [
             { type: 'entity', name: autumnShrub.name },
             { type: 'entity', name: woodlandMushrooms.name },
             { type: 'entity', name: leafRake.name },
+            { type: 'entity', name: gardenTeaTable.name },
             { type: 'entity', name: fallenLog.name },
             {
                 type: 'entity',

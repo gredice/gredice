@@ -4,6 +4,7 @@ import { autumnLeafPiles } from '@gredice/js/autumnLeafPiles';
 import { autumnShrub } from '@gredice/js/autumnShrub';
 import { fallenLog } from '@gredice/js/fallenLog';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
+import { gardenTeaTable } from '@gredice/js/gardenTeaTable';
 import { harvestCrates } from '@gredice/js/harvestCrates';
 import { harvestPumpkins } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
@@ -32,6 +33,11 @@ const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 const newBlockCatalogItems = [
+    {
+        label: gardenTeaTable.information.label,
+        price: gardenTeaTable.sunflowers,
+        picker: 'Dekoracija',
+    },
     {
         label: autumnBlanketBench.information.label,
         price: autumnBlanketBench.sunflowers,
@@ -2066,5 +2072,51 @@ test('blanket bench drag keeps the catalogue identity', async ({
     await page.mouse.up();
     await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
         'AutumnBlanketBench:drop',
+    );
+});
+
+test('tea table stays hidden before catalogue publication', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ItemsHudAlignmentStory includeGardenTeaTable={false} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', {
+            name: 'Vrtni stolić s čajem',
+            exact: true,
+        }),
+    ).toHaveCount(0);
+});
+
+test('tea table appears once in the local sandbox', async ({ mount, page }) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<LocalSandboxItemsHudStory />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', {
+            name: 'Vrtni stolić s čajem',
+            exact: true,
+        }),
+    ).toHaveCount(1);
+});
+
+test('tea table drag keeps the catalogue identity', async ({ mount, page }) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudDragStateStory accountSunflowers={150} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await dragLocatorByMouse(
+        page,
+        page.getByRole('button', {
+            name: 'Vrtni stolić s čajem',
+            exact: true,
+        }),
+    );
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'GardenTeaTable:drag',
+    );
+    await page.mouse.up();
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'GardenTeaTable:drop',
     );
 });
