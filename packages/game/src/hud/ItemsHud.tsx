@@ -19,6 +19,7 @@ import { harvestCrateNames } from '@gredice/js/harvestCrates';
 import { harvestPumpkinNames } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
 import { leafRake } from '@gredice/js/leafRake';
+import { pumpkinLanternNames } from '@gredice/js/pumpkinLanterns';
 import { seasonalMaple } from '@gredice/js/seasonalMaple';
 import { seedDryingRack } from '@gredice/js/seedDryingRack';
 import { stackedFirewood } from '@gredice/js/stackedFirewood';
@@ -391,6 +392,9 @@ const items: HudItem[] = [
                 footprintLabel: '2 × 1',
             },
             ...autumnEntranceNames.map(
+                (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
+            ),
+            ...pumpkinLanternNames.map(
                 (name) => ({ type: 'entity', name }) satisfies HudItemEntity,
             ),
             ...woodlandArrangementNames.map(

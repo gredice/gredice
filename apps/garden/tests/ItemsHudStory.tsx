@@ -27,6 +27,10 @@ import {
 } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
 import { leafRake } from '@gredice/js/leafRake';
+import {
+    getPumpkinLantern,
+    pumpkinLanternNames,
+} from '@gredice/js/pumpkinLanterns';
 import { seasonalMaple } from '@gredice/js/seasonalMaple';
 import { seedDryingRack } from '@gredice/js/seedDryingRack';
 import { stackedFirewood } from '@gredice/js/stackedFirewood';
@@ -479,6 +483,7 @@ const blockFixtures: Record<
 function createBlockData(name: string, index: number) {
     const decoration =
         getAutumnEntrance(name) ??
+        getPumpkinLantern(name) ??
         getWoodlandArrangement(name) ??
         getAutumnGrass(name) ??
         getAutumnLeafPile(name) ??
@@ -597,6 +602,7 @@ const blockNames = [
     ...autumnLeafPileNames,
     ...autumnGrassNames,
     ...woodlandArrangementNames,
+    ...pumpkinLanternNames,
     ...autumnEntranceNames,
     'Raised_Bed',
     'Bucket',
@@ -747,6 +753,7 @@ type ItemsHudStoryOptions = {
     includeAutumnLeafPiles?: boolean;
     includeAutumnGrasses?: boolean;
     includeWoodlandArrangements?: boolean;
+    includePumpkinLanterns?: boolean;
     includeAutumnEntrances?: boolean;
     accountSunflowers?: number;
     cameraTarget?: [x: number, y: number, z: number];
@@ -779,6 +786,7 @@ function createItemsHudQueryClient({
     includeAutumnLeafPiles = true,
     includeAutumnGrasses = true,
     includeWoodlandArrangements = true,
+    includePumpkinLanterns = true,
     includeAutumnEntrances = true,
     isSandbox = false,
 }: ItemsHudStoryOptions) {
@@ -791,6 +799,9 @@ function createItemsHudQueryClient({
     queryClient.setQueryData(
         ['blocks'],
         blockNames
+            .filter(
+                (name) => includePumpkinLanterns || !getPumpkinLantern(name),
+            )
             .filter((name) => includeBirdFeeder || name !== birdFeeder.name)
             .filter(
                 (name) => includeSeasonalMaple || name !== seasonalMaple.name,
@@ -898,6 +909,7 @@ function ItemsHudTestProviders({
     includeAutumnLeafPiles = true,
     includeAutumnGrasses = true,
     includeWoodlandArrangements = true,
+    includePumpkinLanterns = true,
     includeAutumnEntrances = true,
     children,
     accountSunflowers,
@@ -933,6 +945,7 @@ function ItemsHudTestProviders({
                 includeAutumnLeafPiles,
                 includeAutumnGrasses,
                 includeWoodlandArrangements,
+                includePumpkinLanterns,
                 includeAutumnEntrances,
             }),
         [
@@ -958,6 +971,7 @@ function ItemsHudTestProviders({
             includeAutumnLeafPiles,
             includeAutumnGrasses,
             includeWoodlandArrangements,
+            includePumpkinLanterns,
             includeAutumnEntrances,
         ],
     );
@@ -1072,6 +1086,7 @@ export function ItemsHudAlignmentStory({
     includeAutumnLeafPiles = true,
     includeAutumnGrasses = true,
     includeWoodlandArrangements = true,
+    includePumpkinLanterns = true,
     includeAutumnEntrances = true,
 }: {
     includeHarvestPumpkins?: boolean;
@@ -1094,6 +1109,7 @@ export function ItemsHudAlignmentStory({
     includeAutumnLeafPiles?: boolean;
     includeAutumnGrasses?: boolean;
     includeWoodlandArrangements?: boolean;
+    includePumpkinLanterns?: boolean;
     includeAutumnEntrances?: boolean;
 }) {
     return (
@@ -1118,6 +1134,7 @@ export function ItemsHudAlignmentStory({
             includeAutumnLeafPiles={includeAutumnLeafPiles}
             includeAutumnGrasses={includeAutumnGrasses}
             includeWoodlandArrangements={includeWoodlandArrangements}
+            includePumpkinLanterns={includePumpkinLanterns}
             includeAutumnEntrances={includeAutumnEntrances}
         >
             <div className="relative h-screen w-screen overflow-hidden">
