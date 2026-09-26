@@ -4,6 +4,7 @@ import {
     getAutumnAsterPot,
 } from '@gredice/js/autumnAsterPots';
 import { autumnShrub } from '@gredice/js/autumnShrub';
+import { fallenLog } from '@gredice/js/fallenLog';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
 import { getHarvestCrate, harvestCrateNames } from '@gredice/js/harvestCrates';
 import {
@@ -82,6 +83,7 @@ export const localSandboxBlockNames = [
     harvestWheelbarrow.name,
     autumnShrub.name,
     woodlandMushrooms.name,
+    fallenLog.name,
     'BeachTowelStriped',
     'InflatablePoolSmall',
     'BeachChair',
@@ -901,17 +903,19 @@ function createLocalSandboxBlockData(
     const isRaisedBed = name === 'Raised_Bed';
     const isOutletDisplayTable = name === 'OutletDisplayTable';
     const decoration =
-        name === woodlandMushrooms.name
-            ? woodlandMushrooms
-            : name === autumnShrub.name
-              ? autumnShrub
-              : name === gardenScarecrow.name
-                ? gardenScarecrow
-                : name === harvestWheelbarrow.name
-                  ? harvestWheelbarrow
-                  : (getAutumnAsterPot(name) ??
-                    getHarvestCrate(name) ??
-                    getHarvestPumpkin(name));
+        name === fallenLog.name
+            ? fallenLog
+            : name === woodlandMushrooms.name
+              ? woodlandMushrooms
+              : name === autumnShrub.name
+                ? autumnShrub
+                : name === gardenScarecrow.name
+                  ? gardenScarecrow
+                  : name === harvestWheelbarrow.name
+                    ? harvestWheelbarrow
+                    : (getAutumnAsterPot(name) ??
+                      getHarvestCrate(name) ??
+                      getHarvestPumpkin(name));
     const metadata = decoration?.information ?? localSandboxBlockMetadata[name];
     return {
         id: index + 1,
