@@ -27,6 +27,7 @@ import {
     HoverOutlineProvider,
 } from '../entities/helpers/HoverOutline';
 import { useOptionalGameState } from '../useGameState';
+import { WarmPropSourcesProvider } from '../warmProps/WarmPropSources';
 import { AdaptiveHighQualityController } from './AdaptiveHighQualityController';
 import { AutumnPartsProvider } from './AutumnParts';
 import { AutumnSourcesProvider } from './AutumnSources';
@@ -425,7 +426,9 @@ export function Scene({
                                     <AutumnSourcesProvider>
                                         <AutumnPartsProvider>
                                             <SteamSourcesProvider>
-                                                {children}
+                                                <WarmPropSourcesProvider>
+                                                    {children}
+                                                </WarmPropSourcesProvider>
                                             </SteamSourcesProvider>
                                         </AutumnPartsProvider>
                                     </AutumnSourcesProvider>

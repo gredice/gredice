@@ -21,6 +21,7 @@ import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useSyncGameTime } from '../hooks/useSyncGameTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import { type GameState, useGameState } from '../useGameState';
+import { WarmProps } from '../warmProps/WarmProps';
 import { AutumnLeaves } from './AutumnLeaves';
 import { getAutumnCanopyShadowKey } from './autumnCanopy';
 import { defaultGameBackgroundPaletteIndex } from './backgroundPalettes';
@@ -306,6 +307,8 @@ export type EnvironmentProps = {
     noBackground?: boolean;
     noSound?: boolean;
     noWeather?: boolean;
+    /** Static catalogue/review captures can preserve the dormant asset appearance. */
+    noWarmProps?: boolean;
     quality?: GameQualityProfile;
     weather?: Partial<GameState['weather']>;
 };
@@ -635,6 +638,7 @@ export function Environment({
     noBackground,
     noSound,
     noWeather,
+    noWarmProps,
     quality,
     weather,
 }: EnvironmentProps) {
@@ -1156,6 +1160,17 @@ export function Environment({
                     enabled={qualityProfile.shadows}
                 />
             </directionalLight>
+            {!noWarmProps && (
+                <WarmProps
+                    tier={qualityProfile.tier}
+                    enabled={!weatherDisabled}
+                    soundEnabled={!noSound}
+                    rain={blendedWeather?.rainy ?? 0}
+                    snow={blendedWeather?.snowy ?? 0}
+                    windSpeed={blendedWeather?.windSpeed ?? 0}
+                    windDirection={windDirection}
+                />
+            )}
             <AutumnRustle
                 windSpeed={blendedWeather?.windSpeed ?? 0}
                 enabled={!noSound && !weatherDisabled && sceneRuntimeVisible}
