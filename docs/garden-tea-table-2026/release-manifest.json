@@ -1,0 +1,104 @@
+{
+  "state": "unpublished",
+  "publicationIssue": 5000,
+  "snapshotDate": "2026-10-22T12:00:00+02:00",
+  "source": {
+    "path": "assets/game-assets/GardenTeaTable.blend",
+    "bytes": 113743,
+    "sha256": "267062eb1a59ded238b21dcb3e8644a9ee99b5469eb47bd4bd0452b7781fdc34"
+  },
+  "models": [
+    {
+      "name": "GardenTeaTable",
+      "path": "apps/garden/public/assets/models/GardenTeaTable.glb",
+      "bytes": 108248,
+      "sha256": "36d8a3e3ed2db49ceb6fc75983dc306462112f6d90bd763674d84c93941ad1bc",
+      "url": "https://vrt.gredice.com/assets/models/GardenTeaTable.glb?v=36d8a3e3ed2d",
+      "triangles": 1280,
+      "trianglesByMesh": {
+        "GardenTeaTable_TeaSet": 664,
+        "GardenTeaTable_Timber": 616
+      },
+      "meshCount": 2,
+      "materialCount": 2
+    }
+  ],
+  "items": [
+    {
+      "name": "GardenTeaTable",
+      "information": {
+        "label": "Vrtni stolić s čajem",
+        "shortDescription": "Drveni stolić s termosicom i dvije emajlirane šalice toplog čaja.",
+        "fullDescription": "Mali drveni stolić s termosicom i dvije šalice stvara ugodan kutak za predah. Stolić i posuđe čine jedan ukras koji zauzima jedno polje. Posuđe se ne premješta zasebno. Na stolić se ne mogu slagati drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 1,
+        "hitboxHeight": 1,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 70,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/GardenTeaTable.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/GardenTeaTable.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/GardenTeaTable.webp",
+          "bytes": 13178,
+          "sha256": "11179ce529906fd592c8d33a636913cc3480e1fd91eb6817c3d00e44965c0e32"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/GardenTeaTable_1.webp",
+          "bytes": 13178,
+          "sha256": "11179ce529906fd592c8d33a636913cc3480e1fd91eb6817c3d00e44965c0e32"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/GardenTeaTable_2.webp",
+          "bytes": 13868,
+          "sha256": "d6dde3a28eb9c2cedb1af7ded1028a715c0f7599a6ac5523fbd1f4355f61f212"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/GardenTeaTable_3.webp",
+          "bytes": 12642,
+          "sha256": "e0f1234db35925c66c91f2390a509a72ee2b485e1d597e4a8bb2efcf4da091cf"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/GardenTeaTable_4.webp",
+          "bytes": 13448,
+          "sha256": "1706b500bc6007c854ba5370840eab26bf88798cac5ad5de118bbea9d4ad5739"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/GardenTeaTable.webp",
+          "bytes": 3668,
+          "sha256": "45b9afdc9ed887e65abd0cd2e17bde3e0a9984fe81d6883d61cb363f0438e912"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/GardenTeaTable_1.webp",
+          "bytes": 3668,
+          "sha256": "45b9afdc9ed887e65abd0cd2e17bde3e0a9984fe81d6883d61cb363f0438e912"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/GardenTeaTable_2.webp",
+          "bytes": 3326,
+          "sha256": "a4f815db45a52a84516aba22521a6a67c5d3b309522fae38fd490e6d8a300166"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/GardenTeaTable_3.webp",
+          "bytes": 3352,
+          "sha256": "2e87918d03a796af610c1ba0e4f3ebf5db3e37866e8b15c833376d0a1b6efd75"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/GardenTeaTable_4.webp",
+          "bytes": 3352,
+          "sha256": "75fdd9bd13aede28477f4d19c535873917033bdd07463c30ea0aab2354cfdf02"
+        }
+      ]
+    }
+  ]
+}
