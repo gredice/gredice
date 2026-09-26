@@ -361,7 +361,8 @@ Low/auto-constrained quality and reduced motion disable mist. Medium/high/custom
 cap it at 16/32/24 two-triangle patches in one instanced draw, with no texture,
 render target or full-screen pass. Weather disablement and hidden/offscreen
 scenes stop it immediately. Steady live mist acquires a 20 frames/second lease through the shared scheduler;
-transitions request frames until settled. Frozen settled mist holds no animation lease. Resource
+transitions request frames until settled. Frozen mist applies the exact target density
+on its first frame and holds no animation lease. Resource
 and preference subscriptions clean up on unmount. It adds no audio; existing
 ambient audio preferences continue to apply independently.
 

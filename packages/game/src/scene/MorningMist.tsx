@@ -104,10 +104,13 @@ export function MorningMist({
     }, [allowed, density, mesh, requestRender]);
     useFrame((_, delta) => {
         const uniform = mesh.material.uniforms.uDensity;
-        // Preference/visibility changes stop immediately. Weather and solar changes fade.
+        // Frozen captures apply the exact target without accumulating rendered frames.
+        // Live weather and solar changes fade; preference/visibility changes stop immediately.
         uniform.value = allowed
-            ? uniform.value +
-              (density - uniform.value) * (1 - Math.exp(-delta * 2))
+            ? fixedTime !== undefined
+                ? density
+                : uniform.value +
+                  (density - uniform.value) * (1 - Math.exp(-delta * 2))
             : 0;
         if (Math.abs(uniform.value - density) < 0.0005) uniform.value = density;
         else requestRender('morning-mist-fade');

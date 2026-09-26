@@ -16,9 +16,7 @@ test('frozen mist repeats, follows the shared clock and stays below interactive 
     const fixture = await mount(<MorningMistFixture />);
     const sample = async () =>
         JSON.parse((await fixture.getAttribute('data-sample')) ?? '{}');
-    await expect
-        .poll(async () => (await sample()).density)
-        .toBeGreaterThanOrEqual(0.995);
+    await expect.poll(async () => (await sample()).density).toBe(1);
     const first = await sample();
     expect(first.count).toBe(32);
     expect(first.time).toBe(12);
@@ -33,9 +31,7 @@ test('frozen mist repeats, follows the shared clock and stays below interactive 
     expect(disposed.material).toBeGreaterThan(0);
     expect(disposed.mesh).toBeGreaterThan(0);
     await fixture.update(<MorningMistFixture />);
-    await expect
-        .poll(async () => (await sample()).density)
-        .toBeGreaterThanOrEqual(0.995);
+    await expect.poll(async () => (await sample()).density).toBe(1);
     const second = await sample();
     expect(second.matrices).toEqual(first.matrices);
     expect(second.seeds).toEqual(first.seeds);
