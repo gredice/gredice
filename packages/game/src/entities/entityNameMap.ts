@@ -105,6 +105,7 @@ import { MulchWood } from './raisedBed/MulchWood';
 import { Seed } from './raisedBed/Seed';
 import { Stick } from './raisedBed/Stick';
 import { SandcastleSmallA } from './SandcastleSmall';
+import { SeedDryingRack } from './SeedDryingRack';
 import { Shade } from './Shade';
 import { Sheep } from './Sheep';
 import { ShovelSmall } from './ShovelSmall';
@@ -214,6 +215,7 @@ export const entityNameMap = {
     ChestnutRoastingCart,
     LeafRake,
     StackedFirewood,
+    SeedDryingRack,
     GardenBrazier,
     GardenTeaTable,
     AutumnLeafPileMound: AutumnLeafPile,

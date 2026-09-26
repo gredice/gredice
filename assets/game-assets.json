@@ -3,6 +3,16 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "SeedDryingRack",
+            "source": "SeedDryingRack.blend",
+            "output": "SeedDryingRack.glb",
+            "version": "87d42acc7817",
+            "preload": "lazy",
+            "objects": [
+                "SeedDryingRack_Arrangement"
+            ]
+        },
+        {
             "name": "AutumnGrassTuft",
             "source": "AutumnGrassTuft.blend",
             "output": "AutumnGrassTuft.glb",
