@@ -1,0 +1,193 @@
+{
+  "state": "unpublished",
+  "snapshotDate": "2026-10-22T12:00:00+02:00",
+  "publicationIssue": 5000,
+  "sources": [
+    {
+      "path": "assets/game-assets/FriendlyGhost.blend",
+      "bytes": 98528,
+      "sha256": "568b4d43d9bc92617dbe9e088aaebb1575085c60e36415d6832ff2e214630c73"
+    },
+    {
+      "path": "assets/game-assets/SupportedCobweb.blend",
+      "bytes": 100861,
+      "sha256": "82670d7f1c154da4771c84846227e6d04459d3286a95dd48c7b22b2b07fdbcdb"
+    }
+  ],
+  "models": [
+    {
+      "name": "FriendlyGhost",
+      "path": "apps/garden/public/assets/models/FriendlyGhost.glb",
+      "bytes": 47100,
+      "sha256": "533808c570548c7abb33db5a9a1ef18fc1dcae7e5a4fbd8f6ccdb12ec587a8c3",
+      "url": "https://vrt.gredice.com/assets/models/FriendlyGhost.glb?v=533808c57054",
+      "triangles": 468,
+      "meshCount": 1,
+      "materialCount": 1
+    },
+    {
+      "name": "SupportedCobweb",
+      "path": "apps/garden/public/assets/models/SupportedCobweb.glb",
+      "bytes": 55884,
+      "sha256": "db82dafef4be49817fb6406c580d3095b7411c78feff369760c7741514bcbb61",
+      "url": "https://vrt.gredice.com/assets/models/SupportedCobweb.glb?v=db82dafef4be",
+      "triangles": 596,
+      "meshCount": 1,
+      "materialCount": 1
+    }
+  ],
+  "items": [
+    {
+      "name": "FriendlyGhost",
+      "information": {
+        "label": "Dobroćudni duh",
+        "shortDescription": "Nasmiješeni duh od svijetlog platna na vlastitom drvenom stalku.",
+        "fullDescription": "Nasmiješeni duh od svijetlog platna na vlastitom drvenom stalku. Zauzima jedno polje i ostaje dostupan tijekom cijele godine. Čisto ukrasni predmet ne mijenja urod niti privlači dodatne životinje. Na njega se ne slažu drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "nightOnlyPurchase": false,
+        "height": 1,
+        "hitboxHeight": 1,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false
+      },
+      "sunflowers": 45,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/FriendlyGhost.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/FriendlyGhost.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/FriendlyGhost.webp",
+          "bytes": 5262,
+          "sha256": "1f129d58799d48db9782d20ae26cc599b63e05e865cb45a884b80728448f670f"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/FriendlyGhost_1.webp",
+          "bytes": 4596,
+          "sha256": "6572356c82e53678c74a8bf7dac0db48b37a00e170c3b58e4c82f965cff317a1"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/FriendlyGhost_2.webp",
+          "bytes": 4706,
+          "sha256": "2385d6eeea9a3e69f378c6dfebc60daf78cfbb7a6173b99ea9a2b7da3134f5e5"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/FriendlyGhost_3.webp",
+          "bytes": 5262,
+          "sha256": "1f129d58799d48db9782d20ae26cc599b63e05e865cb45a884b80728448f670f"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/FriendlyGhost_4.webp",
+          "bytes": 4614,
+          "sha256": "a0b626586d16ad7780a1af87ee7ec58eea329e0ce5c3e1fb3b7e223b6238bf3e"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/FriendlyGhost.webp",
+          "bytes": 2674,
+          "sha256": "fec06288998d70f13f765f564edf5743d7476c48caabd98e954e9dcc29f3940e"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/FriendlyGhost_1.webp",
+          "bytes": 2674,
+          "sha256": "fec06288998d70f13f765f564edf5743d7476c48caabd98e954e9dcc29f3940e"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/FriendlyGhost_2.webp",
+          "bytes": 2136,
+          "sha256": "0bea1311d353e3bfc9fd2f6632ca2a14f9bdaa8348bcc9bff9bec4deb7db598f"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/FriendlyGhost_3.webp",
+          "bytes": 2362,
+          "sha256": "46283b5b9c1394245165e9bd42c1f1f9abc87bc3abefe0e8fb4cdcaf2848277a"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/FriendlyGhost_4.webp",
+          "bytes": 2536,
+          "sha256": "46a09e95033d2ab26b27fa7b9f693229c919817e67b33ea6141e22ee3f6ee193"
+        }
+      ]
+    },
+    {
+      "name": "SupportedCobweb",
+      "information": {
+        "label": "Paučina na drvenom okviru",
+        "shortDescription": "Sitna ukrasna paučina razapeta na vlastitom drvenom okviru.",
+        "fullDescription": "Sitna ukrasna paučina razapeta na vlastitom drvenom okviru. Zauzima jedno polje i ostaje dostupan tijekom cijele godine. Čisto ukrasni predmet ne mijenja urod niti privlači dodatne životinje. Na njega se ne slažu drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "nightOnlyPurchase": false,
+        "height": 1,
+        "hitboxHeight": 1,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false
+      },
+      "sunflowers": 30,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/SupportedCobweb.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/SupportedCobweb.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/SupportedCobweb.webp",
+          "bytes": 6606,
+          "sha256": "412c4624652003cd636f60e6ea2cf4e91ae8f5c4bf444483cf82b3018c0af866"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/SupportedCobweb_1.webp",
+          "bytes": 6488,
+          "sha256": "840c036d56bbc53398f28b66bf64909569672dfd6ea47c9e4585359581b8a49d"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/SupportedCobweb_2.webp",
+          "bytes": 2636,
+          "sha256": "9eea3d7b47b5ce9135bdf2d8dc71485c7a9dd3098d2f2a718cb427f79939b57f"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/SupportedCobweb_3.webp",
+          "bytes": 6606,
+          "sha256": "412c4624652003cd636f60e6ea2cf4e91ae8f5c4bf444483cf82b3018c0af866"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/SupportedCobweb_4.webp",
+          "bytes": 3308,
+          "sha256": "1e0ddb301e5d1a2117a6b9860456ba49395ed75da4920f4c9f602aaa5f59596d"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/SupportedCobweb.webp",
+          "bytes": 3364,
+          "sha256": "45e3441ed17565ad22c17dc2010571622cd3853460a2f832c9ab5cdcaafe5c3f"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/SupportedCobweb_1.webp",
+          "bytes": 3364,
+          "sha256": "45e3441ed17565ad22c17dc2010571622cd3853460a2f832c9ab5cdcaafe5c3f"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/SupportedCobweb_2.webp",
+          "bytes": 3290,
+          "sha256": "888fe3cba0943844404168b1a1925e0793cfaec909fc542ffc3faf0b4f7d771e"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/SupportedCobweb_3.webp",
+          "bytes": 3442,
+          "sha256": "976c8fa7e4ebab2eecbed5311120e712906a88ef3f32478caad057ffb90dcf4a"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/SupportedCobweb_4.webp",
+          "bytes": 3046,
+          "sha256": "4bc22e04137b5a2619837264f8373255063019a7930e1b5c564c77f3fadf3f01"
+        }
+      ]
+    }
+  ]
+}

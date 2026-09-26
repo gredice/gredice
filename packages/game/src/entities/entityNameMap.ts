@@ -71,6 +71,7 @@ import { GiftBoxGreenGold } from './GiftBoxGreenGold';
 import { GiftBoxPurpleSilver } from './GiftBoxPurpleSilver';
 import { GiftBoxRedWhite } from './GiftBoxRedWhite';
 import { GiftBoxWhiteGreen } from './GiftBoxWhiteGreen';
+import { HalloweenAccent } from './HalloweenAccent';
 import { HarvestCrate } from './HarvestCrate';
 import { HarvestPumpkin } from './HarvestPumpkin';
 import { HarvestWheelbarrow } from './HarvestWheelbarrow';
@@ -222,6 +223,8 @@ export const entityNameMap = {
     StackedFirewood,
     SeedDryingRack,
     BirdFeeder,
+    FriendlyGhost: HalloweenAccent,
+    SupportedCobweb: HalloweenAccent,
     PumpkinLanternSmile: PumpkinLantern,
     PumpkinLanternWink: PumpkinLantern,
     GardenBrazier,
