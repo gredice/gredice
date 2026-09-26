@@ -2,6 +2,8 @@ export type BlockSnapshotCameraView = 'default' | 'orthographic';
 
 const reversedStandardSnapshotEntities = new Set([
     'BirdHouse',
+    'FriendlyGhost',
+    'SupportedCobweb',
     'PumpkinLanternSmile',
     'PumpkinLanternWink',
     'GardenScarecrow',
