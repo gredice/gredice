@@ -1,0 +1,193 @@
+{
+  "state": "unpublished",
+  "snapshotDate": "2026-10-22T12:00:00+02:00",
+  "publicationIssue": 5000,
+  "sources": [
+    {
+      "path": "assets/game-assets/PumpkinLanternSmile.blend",
+      "bytes": 116325,
+      "sha256": "4bf2ed865db5f640289fb1790c71a6f0a749cab179c539780bf3fa2a711d1959"
+    },
+    {
+      "path": "assets/game-assets/PumpkinLanternWink.blend",
+      "bytes": 116725,
+      "sha256": "f7ede8f3e50db376eeb23032ab002c72cd7ef94058db8f78c5cb9ced337356ac"
+    }
+  ],
+  "models": [
+    {
+      "name": "PumpkinLanternSmile",
+      "path": "apps/garden/public/assets/models/PumpkinLanternSmile.glb",
+      "bytes": 105528,
+      "sha256": "0daf694271bb40bf38b9a10bdd0316d3dbfd6232c9e14cc837e6a0df02fa7c13",
+      "url": "https://vrt.gredice.com/assets/models/PumpkinLanternSmile.glb?v=0daf694271bb",
+      "triangles": 1560,
+      "meshCount": 3,
+      "materialCount": 3
+    },
+    {
+      "name": "PumpkinLanternWink",
+      "path": "apps/garden/public/assets/models/PumpkinLanternWink.glb",
+      "bytes": 106400,
+      "sha256": "5d9efb1da02b40f5d1b69b51357f38acf88848584d66bbd87ffba1432f54f41e",
+      "url": "https://vrt.gredice.com/assets/models/PumpkinLanternWink.glb?v=5d9efb1da02b",
+      "triangles": 1578,
+      "meshCount": 3,
+      "materialCount": 3
+    }
+  ],
+  "items": [
+    {
+      "name": "PumpkinLanternSmile",
+      "information": {
+        "label": "Bundeva svjetiljka – osmijeh",
+        "shortDescription": "Izrezbarena rebrasta bundeva s toplim večernjim sjajem.",
+        "fullDescription": "Ukrasna bundeva s izrezbarenim licem zauzima jedno polje. Lice se uvečer nježno osvijetli, a danju ostaje vidljivo u izdubljenoj kori. Kupljena svjetiljka ostaje dostupna tijekom cijele godine, i nakon sezonskog događanja. Ne daje urod ni nagrade i na nju se ne slažu drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.55,
+        "hitboxHeight": 0.55,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 55,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/PumpkinLanternSmile.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/PumpkinLanternSmile.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/PumpkinLanternSmile.webp",
+          "bytes": 7576,
+          "sha256": "67b50fc6e1b2d5f5552374c7aabb8ca428535ebe35dc1bd2890f8b343125e197"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/PumpkinLanternSmile_1.webp",
+          "bytes": 5728,
+          "sha256": "6efd1dbfbcec261a2aaa1b31400e43f1facfbdb9ffd0237a4944999e1ab24ff5"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/PumpkinLanternSmile_2.webp",
+          "bytes": 6220,
+          "sha256": "616bf5efa627dd1e342ec147bb35ab5c6e5be86ba42879cff9b3439e50b8448c"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/PumpkinLanternSmile_3.webp",
+          "bytes": 7576,
+          "sha256": "67b50fc6e1b2d5f5552374c7aabb8ca428535ebe35dc1bd2890f8b343125e197"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/PumpkinLanternSmile_4.webp",
+          "bytes": 5804,
+          "sha256": "fcee76ca5495f73990ad2185769f7ad4163ac5111543a35e4960ca1a66098f8a"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternSmile.webp",
+          "bytes": 3146,
+          "sha256": "d5b02b33f5042d309af36eed5f418a5cdf293b7281bd3cc4d9742d03191c9e9f"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternSmile_1.webp",
+          "bytes": 3146,
+          "sha256": "d5b02b33f5042d309af36eed5f418a5cdf293b7281bd3cc4d9742d03191c9e9f"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternSmile_2.webp",
+          "bytes": 3272,
+          "sha256": "057da2018c0ddb037c8f117125954c799842edabcf5b95353b5ca057bb6dc007"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternSmile_3.webp",
+          "bytes": 3256,
+          "sha256": "b4efd959a0bd825c59da602d0ae8ed010163e8c3901e0006b9f0239f726a4490"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternSmile_4.webp",
+          "bytes": 3078,
+          "sha256": "d5e57b51b9cb7fceb6e1c7b3004810c3357e38cb9b75f89478d25dfc6a8fc9f1"
+        }
+      ]
+    },
+    {
+      "name": "PumpkinLanternWink",
+      "information": {
+        "label": "Bundeva svjetiljka – namigivanje",
+        "shortDescription": "Izrezbarena rebrasta bundeva s toplim večernjim sjajem.",
+        "fullDescription": "Ukrasna bundeva s izrezbarenim licem zauzima jedno polje. Lice se uvečer nježno osvijetli, a danju ostaje vidljivo u izdubljenoj kori. Kupljena svjetiljka ostaje dostupna tijekom cijele godine, i nakon sezonskog događanja. Ne daje urod ni nagrade i na nju se ne slažu drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.55,
+        "hitboxHeight": 0.55,
+        "hitboxWidth": 0.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 55,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/PumpkinLanternWink.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/PumpkinLanternWink.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/PumpkinLanternWink.webp",
+          "bytes": 7722,
+          "sha256": "26688eaa5cdb1b3b0f35122e1637d6de2d0aa855f20f7dcc7748c74a7a7d6d24"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/PumpkinLanternWink_1.webp",
+          "bytes": 5728,
+          "sha256": "6efd1dbfbcec261a2aaa1b31400e43f1facfbdb9ffd0237a4944999e1ab24ff5"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/PumpkinLanternWink_2.webp",
+          "bytes": 6188,
+          "sha256": "ae035f9437040dee0ac7ce91385a15d25ddf8d915ea6a3c84fe2e09c7040a5f0"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/PumpkinLanternWink_3.webp",
+          "bytes": 7722,
+          "sha256": "26688eaa5cdb1b3b0f35122e1637d6de2d0aa855f20f7dcc7748c74a7a7d6d24"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/PumpkinLanternWink_4.webp",
+          "bytes": 5732,
+          "sha256": "c56627702621c63762f7573e11f1740eeaee1c840538cdeacf8714e33cf9baef"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternWink.webp",
+          "bytes": 3182,
+          "sha256": "4a243e514d059f3553c6fc34dcc27fdc25ae99b800243bafb3fe80d1582d2651"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternWink_1.webp",
+          "bytes": 3182,
+          "sha256": "4a243e514d059f3553c6fc34dcc27fdc25ae99b800243bafb3fe80d1582d2651"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternWink_2.webp",
+          "bytes": 3292,
+          "sha256": "4b119eb3342d67494bdb629e70643af25d64ab5e1501514d9469ed767c9fbd9a"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternWink_3.webp",
+          "bytes": 3232,
+          "sha256": "5a3723bbe0e129cf469cf31b93557222ff809954de8cfb2281dc931112b89d19"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/PumpkinLanternWink_4.webp",
+          "bytes": 3102,
+          "sha256": "8497d592f7598a703df72b516ff13d4077d7f28f4baefbc4de06fbc7bc3b5911"
+        }
+      ]
+    }
+  ]
+}
