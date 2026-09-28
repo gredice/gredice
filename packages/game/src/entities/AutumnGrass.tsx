@@ -10,6 +10,7 @@ import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
+import { WindWeatheredEntityPart } from './helpers/WindWeatheredEntityPart';
 
 export function AutumnGrass({
     stack,
@@ -64,9 +65,13 @@ export function AutumnGrass({
                 name={`AutumnGrass:wind-foliage:${block.id}`}
                 userData={{ role: 'ornamental-grass', ...autumnGrassWind }}
             >
-                <WeatheredEntityPart
+                <WindWeatheredEntityPart
                     node={node}
-                    material={node.material}
+                    windRole={
+                        modelName === 'AutumnGrassTuft' ? 'grass' : 'seed-heads'
+                    }
+                    seed={block.id}
+                    disabled={Boolean(disabled)}
                     snow={
                         disabled
                             ? false
