@@ -140,11 +140,15 @@ export function WarmProps({
                 source.embers.current.emissiveIntensity = 0;
         updateGameProfileMetadata({ warmPropCount: 0, warmPropSmokeCount: 0 });
     }, [policy.capacity, meshes, sources]);
+    // Unmount only: source membership changes must not restart the shared
+    // crackle loop, and deregistration already clears its own ember material.
+    const latestSources = useRef(sources);
+    latestSources.current = sources;
     useEffect(
         () => () => {
             loop.stop();
             previousGain.current = -1;
-            for (const source of sources)
+            for (const source of latestSources.current)
                 if (source.embers?.current)
                     source.embers.current.emissiveIntensity = 0;
             updateGameProfileMetadata({
@@ -154,7 +158,7 @@ export function WarmProps({
                 warmPropCrackleGain: 0,
             });
         },
-        [sources, loop.stop],
+        [loop.stop],
     );
 
     useFrame(({ camera }) => {
@@ -184,6 +188,12 @@ export function WarmProps({
         let smokeCount = 0;
         let gain = 0;
         const smokeOpacity = meshes.smoke.geometry.getAttribute('smokeOpacity');
+        // Shared world-space wind, matching the cloud and snow convention
+        // (0° = north = -Z), so rotated props drift the same way.
+        const windAngle = (windDirection * Math.PI) / 180;
+        const windStrength = Math.min(3, Math.max(0, windSpeed)) * 0.02;
+        const windX = Math.sin(windAngle) * windStrength;
+        const windZ = -Math.cos(windAngle) * windStrength;
         for (const source of ranked) {
             if (source.embers?.current)
                 source.embers.current.emissiveIntensity = 0;
@@ -229,34 +239,31 @@ export function WarmProps({
                 transform.matrix.premultiply(source.object.matrixWorld);
                 meshes.fire.setMatrixAt(fireCount++, transform.matrix);
             }
-            if (source.smoke)
+            if (source.smoke) {
+                const maxScale = Math.max(
+                    Math.abs(worldScale.x),
+                    Math.abs(worldScale.y),
+                    Math.abs(worldScale.z),
+                );
                 for (let index = 0; index < policy.smokePerSource; index++) {
                     const age =
                         (seconds / 2.8 +
                             source.phase +
                             index / policy.smokePerSource) %
                         1;
-                    const drift =
-                        Math.min(3, Math.max(0, windSpeed)) * 0.02 * age;
-                    const windAngle = (windDirection * Math.PI) / 180;
+                    const drift = age * maxScale;
                     transform.position
                         .set(
-                            source.smoke.position[0] +
-                                Math.sin(windAngle) * drift,
+                            source.smoke.position[0],
                             source.smoke.position[1] + age * 0.38,
-                            source.smoke.position[2] +
-                                Math.cos(windAngle) * drift,
+                            source.smoke.position[2],
                         )
                         .applyMatrix4(source.object.matrixWorld);
+                    transform.position.x += windX * drift;
+                    transform.position.z += windZ * drift;
                     transform.quaternion.copy(camera.quaternion);
                     transform.scale.setScalar(
-                        source.smoke.radius *
-                            (0.5 + age * 0.8) *
-                            Math.max(
-                                Math.abs(worldScale.x),
-                                Math.abs(worldScale.y),
-                                Math.abs(worldScale.z),
-                            ),
+                        source.smoke.radius * (0.5 + age * 0.8) * maxScale,
                     );
                     transform.updateMatrix();
                     meshes.smoke.setMatrixAt(smokeCount, transform.matrix);
@@ -265,6 +272,7 @@ export function WarmProps({
                         Math.sin(age * Math.PI) * 0.13,
                     );
                 }
+            }
             if (audible && hasListener && source.sound) {
                 position
                     .set(...source.sound.position)
