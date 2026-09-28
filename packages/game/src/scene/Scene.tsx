@@ -30,6 +30,7 @@ import {
 import { useOptionalGameState } from '../useGameState';
 import { AdaptiveHighQualityController } from './AdaptiveHighQualityController';
 import { AutumnPartsProvider } from './AutumnParts';
+import { AutumnPropWindProvider } from './AutumnPropWindProvider';
 import { AutumnSourcesProvider } from './AutumnSources';
 import {
     type AdaptiveHighQualityLevelProfile,
@@ -421,6 +422,7 @@ export function Scene({
                                         {(debugStats || profileStats) && (
                                             <RendererStatsReporter />
                                         )}
+<<<<<<< HEAD
                                         <SceneWireframeMode
                                             enabled={Boolean(
                                                 debugStats &&
@@ -437,6 +439,20 @@ export function Scene({
                                         <HoverOutlineEffect />
                                     </HoverOutlineProvider>
                                 </FaunaRuntimeProvider>
+=======
+                                    />
+                                    <AutumnSourcesProvider>
+                                        <AutumnPartsProvider>
+                                            <AutumnPropWindProvider
+                                                tier={qualityProfile.tier}
+                                            >
+                                                {children}
+                                            </AutumnPropWindProvider>
+                                        </AutumnPartsProvider>
+                                    </AutumnSourcesProvider>
+                                    <HoverOutlineEffect />
+                                </HoverOutlineProvider>
+>>>>>>> f56da2f5e (feat(game): add restrained wind sway to autumn props (#5062))
                             </ActorGroundingShadowProvider>
                         </StaticOpaqueSceneCacheProvider>
                     </WeatherSurfaceUniformProvider>
