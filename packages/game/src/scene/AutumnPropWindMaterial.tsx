@@ -1,8 +1,9 @@
 import { createContext, useContext, useLayoutEffect } from 'react';
-import type { Material } from 'three';
+import type { BufferGeometry, Material } from 'three';
 import {
     type AutumnPropWindBinding,
     bindAutumnPropWindMaterial,
+    padAutumnPropWindCullingBounds,
 } from './autumnPropWind';
 
 export const AutumnPropWindMaterialContext =
@@ -14,4 +15,12 @@ export function useAutumnPropWindOverlay(material: Material) {
     useLayoutEffect(() => {
         if (binding) return bindAutumnPropWindMaterial(material, binding);
     }, [binding, material]);
+}
+
+/** Derived overlay geometry sways with its prop, so it needs the same culling allowance. */
+export function useAutumnPropWindOverlayGeometry(geometry: BufferGeometry) {
+    const binding = useContext(AutumnPropWindMaterialContext);
+    useLayoutEffect(() => {
+        if (binding) padAutumnPropWindCullingBounds(geometry);
+    }, [binding, geometry]);
 }
