@@ -10,6 +10,7 @@ import {
     type AutumnPropWindRole,
     bindAutumnPropWindMaterial,
     createAutumnPropWindUniforms,
+    getAutumnPropWindGeometry,
 } from '../../scene/autumnPropWind';
 import { WeatheredEntityPart } from './WeatheredEntityPart';
 
@@ -45,11 +46,8 @@ export function WindWeatheredEntityPart({
         const clone = node.clone(false);
         // Keep shader motion inside conservative culling bounds without changing
         // source vertices or raycast targets, including during entity rotation.
-        clone.geometry = node.geometry.clone();
-        clone.geometry.computeBoundingBox();
-        clone.geometry.computeBoundingSphere();
-        if (clone.geometry.boundingSphere)
-            clone.geometry.boundingSphere.radius += 0.04;
+        // The padded geometry is shared per model, so it is not disposed here.
+        clone.geometry = getAutumnPropWindGeometry(node.geometry);
         clone.material = Array.isArray(node.material)
             ? node.material.map((material) => material.clone())
             : node.material.clone();
@@ -77,7 +75,6 @@ export function WindWeatheredEntityPart({
                 ? owned.material
                 : [owned.material])
                 material.dispose();
-            owned.geometry.dispose();
             owned.customDepthMaterial?.dispose();
             owned.customDistanceMaterial?.dispose();
         },

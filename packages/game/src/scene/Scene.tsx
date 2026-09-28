@@ -422,7 +422,6 @@ export function Scene({
                                         {(debugStats || profileStats) && (
                                             <RendererStatsReporter />
                                         )}
-<<<<<<< HEAD
                                         <SceneWireframeMode
                                             enabled={Boolean(
                                                 debugStats &&
@@ -431,28 +430,18 @@ export function Scene({
                                         />
                                         <AutumnSourcesProvider>
                                             <AutumnPartsProvider>
-                                                <BreathSourcesProvider>
-                                                    {children}
-                                                </BreathSourcesProvider>
+                                                <AutumnPropWindProvider
+                                                    tier={qualityProfile.tier}
+                                                >
+                                                    <BreathSourcesProvider>
+                                                        {children}
+                                                    </BreathSourcesProvider>
+                                                </AutumnPropWindProvider>
                                             </AutumnPartsProvider>
                                         </AutumnSourcesProvider>
                                         <HoverOutlineEffect />
                                     </HoverOutlineProvider>
                                 </FaunaRuntimeProvider>
-=======
-                                    />
-                                    <AutumnSourcesProvider>
-                                        <AutumnPartsProvider>
-                                            <AutumnPropWindProvider
-                                                tier={qualityProfile.tier}
-                                            >
-                                                {children}
-                                            </AutumnPropWindProvider>
-                                        </AutumnPartsProvider>
-                                    </AutumnSourcesProvider>
-                                    <HoverOutlineEffect />
-                                </HoverOutlineProvider>
->>>>>>> f56da2f5e (feat(game): add restrained wind sway to autumn props (#5062))
                             </ActorGroundingShadowProvider>
                         </StaticOpaqueSceneCacheProvider>
                     </WeatherSurfaceUniformProvider>

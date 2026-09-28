@@ -1,6 +1,6 @@
 import { autumnEntranceSway } from '@gredice/js/autumnEntrances';
 import { autumnGrassWind } from '@gredice/js/autumnGrasses';
-import type { IUniform, Material, Vector2 } from 'three';
+import type { BufferGeometry, IUniform, Material, Vector2 } from 'three';
 import { SeededRNG } from '../generators/plant/lib/rng';
 import type { GameQualityProfileTier } from './gameQuality';
 
@@ -54,6 +54,36 @@ export function createAutumnPropWindUniforms(
             value: new SeededRNG(seed).nextRange(0, Math.PI * 2),
         },
     };
+}
+
+/** Largest authored sway offset, kept as a culling allowance around swaying geometry. */
+export const autumnPropWindCullingPadding = 0.04;
+
+const paddedGeometries = new WeakSet<BufferGeometry>();
+const windGeometries = new WeakMap<BufferGeometry, BufferGeometry>();
+
+/** Expands culling bounds once so shader sway never pops out at frustum edges. */
+export function padAutumnPropWindCullingBounds(geometry: BufferGeometry) {
+    if (paddedGeometries.has(geometry)) return geometry;
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+    if (geometry.boundingSphere)
+        geometry.boundingSphere.radius += autumnPropWindCullingPadding;
+    paddedGeometries.add(geometry);
+    return geometry;
+}
+
+/**
+ * Model-level padded clone, shared by every swaying placement of the source so
+ * derived overlay caches stay per model. It lives as long as its GLTF source.
+ */
+export function getAutumnPropWindGeometry(source: BufferGeometry) {
+    let geometry = windGeometries.get(source);
+    if (!geometry) {
+        geometry = padAutumnPropWindCullingBounds(source.clone());
+        windGeometries.set(source, geometry);
+    }
+    return geometry;
 }
 
 export type AutumnPropWindBinding = {
