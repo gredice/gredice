@@ -274,3 +274,67 @@ and click inside the page to unlock browser audio. Combine dates `2024-06-21`,
 Summer and calm are silent. The season slider and wind controls can be changed
 rapidly without restarting an audible rustle loop. Profile metadata exposes only
 the intended `autumnRustleTargetGain`; it is not proof of hardware sound output.
+
+## Supported autumn prop sway
+
+`AutumnPropWindProvider` shares the scene animation uniform and one
+`autumn-prop-wind` render lease across mounted props. `Environment` supplies its
+existing blended wind and snow values. Animation is a seeded, closed-form vertex
+shader: no per-prop frame callback, timer, React frame state or domain write.
+Frozen animation seconds reproduce the same pose independently of the calendar
+and frame history. The supported roles are:
+
+- `AutumnGrassTuft` / `AutumnSeedHeads`: foliage bends above the authored
+  0.033-tile root height; gravel and selection anchors stay fixed. Maximum travel
+  is the authored 0.04 tiles.
+- `AutumnWreathPost` / `AutumnGarland`: foliage weights fade to zero at the
+  authored sway roots, with a 0.025-tile cap. Supports and cord stay fixed.
+- `GardenScarecrow`: only the loose scarf-tail island of the authored `Patch`
+  mesh moves, up to 0.018 tiles. Its collar attachment, shirt patches, hat band,
+  face, straw and structural timber remain still. The positional mask follows
+  `assets/scripts/generate-garden-scarecrow.py`; revalidate it when that mesh is
+  reauthored.
+
+World wind direction is transformed into each mesh's local space, so quarter
+turns and placement springs retain the same wind direction. Cached GLTF
+materials and vertices are untouched. Each moving part owns cloned geometry
+(with a conservative culling sphere), base/depth/distance materials, and disposes
+those resources on unmount. Rain and generated snow overlays share that part's
+shader uniforms. Shadow shaders use the same pose when the existing shadow
+scheduler refreshes; sway does not request continuous shadow-map renders.
+Original mesh vertices still determine picking; hitboxes, footprint contracts,
+selection anchors and the decorated gate's hinge/input behavior are unchanged.
+
+Low and automatic-constrained quality, reduced motion, disabled weather, calm
+wind and hidden scenes set the displacement to zero. Snow gradually damps sway
+and makes it static at coverage 0.25. Wind saturates at the existing visual scale
+of 3; stronger values never expand the motion envelope. Fixed time and scenes
+without moving parts acquire no continuous sway lease. Audio disablement does
+not affect this silent visual layer, and it registers no audio source.
+
+Run the focused runtime and combined autumn-scene checks with:
+
+```bash
+pnpm --filter @gredice/game exec tsx --import ./scripts/register-test-assets.mjs --test src/scene/autumnPropWind.unit.ts
+pnpm --filter garden exec playwright test --config playwright.prop-wind.config.ts
+```
+
+The WebGL fixture combines the five moving props with trees, falling/settled
+leaves, ground, a raised bed, crop controls and the decorated gate. It compares
+identical scenes with sway enabled/disabled, records renderer calls/triangles,
+and checks frozen poses, rain/snow alignment, quality/accessibility changes,
+hidden-tab leases and resource disposal. Captures use Europe/Zagreb, DPR 1 and a
+512-pixel shadow map to keep software-WebGL validation bounded; they are not
+physical-device frame-rate measurements.
+
+Validation on 2026-09-26: 1,963 game unit tests and five dedicated WebGL cases
+pass, alongside Game/Garden/WWW typechecks and focused lint. In the 16-tile
+fixture (five moving parts, two trees, wind 3, October 22 at animation second
+12), both enabled and disabled sway render **56 calls, 25,976 triangles and 47
+geometries**. The final 40-frame software-WebGL sample measured median render
+submission of 210.2 ms enabled and 170.8 ms disabled. An earlier matched run was
+176.7 ms / 201.8 ms; these noisy software-renderer timings do not establish a
+hardware frame-rate change. Ground-decoration billboards are excluded from
+frozen-frame comparisons; autumn ground leaves remain enabled. The test records
+raw measurements in `combined-cost.json` and verifies exact repeated prop
+captures, actual prop ray hits and a clickable crop control.
