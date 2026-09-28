@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { MeshStandardMaterial, ShaderLib, Vector2 } from 'three';
+import { BoxGeometry, MeshStandardMaterial, ShaderLib, Vector2 } from 'three';
+import { createSnowOverlayGeometry } from '../snow/createSnowOverlayGeometry';
 import { snowOverlayVertexShader } from '../snow/snowShader';
 import {
+    autumnPropWindCullingPadding,
     bindAutumnPropWindMaterial,
     createAutumnPropWindUniforms,
+    getAutumnPropWindGeometry,
+    padAutumnPropWindCullingBounds,
     patchAutumnPropWindShader,
     resolveAutumnPropWindStrength,
 } from './autumnPropWind';
@@ -121,5 +125,34 @@ test('base, shadow, rain and snow shaders all move the same position exactly onc
     assert.throws(
         () => patchAutumnPropWindShader('void main() {}', 'grass'),
         /Unsupported/,
+    );
+});
+
+test('padded wind geometry is shared per model and keeps snow overlays cached', () => {
+    const source = new BoxGeometry(1, 1, 1);
+    source.computeBoundingSphere();
+    const sourceRadius = source.boundingSphere?.radius ?? 0;
+    const geometry = getAutumnPropWindGeometry(source);
+    assert.equal(getAutumnPropWindGeometry(source), geometry);
+    assert.notEqual(geometry, source);
+    assert.equal(source.boundingSphere?.radius, sourceRadius);
+    assert.equal(
+        geometry.boundingSphere?.radius,
+        sourceRadius + autumnPropWindCullingPadding,
+    );
+    assert.equal(
+        createSnowOverlayGeometry(getAutumnPropWindGeometry(source)),
+        createSnowOverlayGeometry(geometry),
+    );
+});
+
+test('culling padding is applied once to derived overlay geometry', () => {
+    const overlay = createSnowOverlayGeometry(new BoxGeometry(1, 1, 1));
+    const radius = overlay.boundingSphere?.radius ?? 0;
+    padAutumnPropWindCullingBounds(overlay);
+    padAutumnPropWindCullingBounds(overlay);
+    assert.equal(
+        overlay.boundingSphere?.radius,
+        radius + autumnPropWindCullingPadding,
     );
 });

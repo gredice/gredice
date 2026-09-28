@@ -1,6 +1,6 @@
 # Autumn entrance decorations
 
-Implementation for [#4966](https://github.com/gredice/gredice/issues/4966), release C / garden expansion. Supported wreath and garland compositions accompany a pumpkin-decorated variant of the existing wooden gate. #4981 owns optional future sway; #5000 owns publication.
+Implementation for [#4966](https://github.com/gredice/gredice/issues/4966), release C / garden expansion. Supported wreath and garland compositions accompany a pumpkin-decorated variant of the existing wooden gate. #4981 supplies the active optional foliage sway; #5000 owns publication.
 
 ![Supported wreath, garland and decorated gate beside an existing fence](autumn-entrances-2026/day-0.png)
 
@@ -8,7 +8,7 @@ Implementation for [#4966](https://github.com/gredice/gredice/issues/4966), rele
 
 Inspected first-party references: [FenceGate](../apps/www/public/assets/blocks/FenceGate.webp) for the exact wooden gate, [Fence](../apps/www/public/assets/blocks/Fence.webp) for connections and material continuity, [HarvestPumpkinSquatOrange](../apps/www/public/assets/blocks/HarvestPumpkinSquatOrange.webp) for the original ribbed fruit, and the previously reviewed autumn leaf pile for broad warm foliage. The wreath has its own grounded post and a twig ring with sixteen folded leaves. The garland has two grounded posts, a draped cord and ten broad leaves. Solid backs prevent disappearing foliage from reverse views.
 
-Each asset has its own editable Blender source. Wreath/garland split into fixed `Support` and `Foliage` meshes, with named part vertex groups and sway empties. `Material.AutumnEntrance.Timber` and `.Leaves` use roughness 0.90/0.93 and vertex colours. They remain static on all quality levels and do not mutate cached geometry/materials.
+Each asset has its own editable Blender source. Wreath/garland split into fixed `Support` and `Foliage` meshes, with named part vertex groups and sway empties. `Material.AutumnEntrance.Timber` and `.Leaves` use roughness 0.90/0.93 and vertex colours. Supports remain static on all quality levels. Foliage sways on medium/high quality with nonzero wind; low quality, reduced motion and hidden scenes suppress displacement. Cached geometry/materials are not mutated.
 
 The gate copies the original first-party `FenceGate_Posts` and hinge-relative `FenceGate_Leaf` geometry and materials. Two ribbed pumpkins sit on fixed post caps, improving visibility in all four rotations. The leaf carries no new decoration. Unit tests compare the original and decorated post/leaf vertex and index arrays exactly and check pumpkin clearance at nineteen points across the entire 90-degree hinge sweep.
 
@@ -28,7 +28,7 @@ All footprints remain **1×1**, nonstackable and not placeable on water, with co
 
 The fixed pumpkin mesh ignores pointer rays. Its snow/rain overlays also ignore rays through an optional `raycast` prop added to the shared overlay components; default behavior for other consumers is unchanged. Browser tests assert zero decorative ray hits in dry, rainy and snowy views. Gate posts/leaf still receive normal input. The sandbox test uses the production variant hook, verifies animated opening/closing and remounts from persisted local storage to confirm reload behavior. No network writes are allowed in the review fixture.
 
-Wreath sway root is `[0,0.73,-0.07]`; garland roots are `[-0.34,0.84,-0.07]` and `[0.34,0.84,-0.07]`, in base-centred Y-up coordinates. Exported empties match shared metadata. The `AutumnEntrance:foliage:<id>` group marks the approved future motion role; the fixed supports and gate are excluded. A tested 0.025-tile displacement reserve stays inside each ordinary tile. #4981 must use the shared clock/wind and respect quality, reduced motion, visibility and immutable cached materials. No sway is active here.
+Wreath sway root is `[0,0.73,-0.07]`; garland roots are `[-0.34,0.84,-0.07]` and `[0.34,0.84,-0.07]`, in base-centred Y-up coordinates. Exported empties match shared metadata. The `AutumnEntrance:foliage:<id>` group marks the active foliage motion role; the fixed supports and gate are excluded. A tested 0.025-tile displacement reserve stays inside each ordinary tile. #4981 uses the shared scene clock and blended wind through `AutumnPropWindProvider` and `WindWeatheredEntityPart`, respecting quality, reduced motion, visibility and immutable cached materials.
 
 ## Catalogue and reproduction
 
