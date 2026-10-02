@@ -7,6 +7,7 @@ import { markAccountDeletionStarted } from '../src/repositories/accountDeletionF
 import {
     createAutomationRun,
     retryFailedAutomationRun,
+    upsertAutomationDefinitionByKey,
 } from '../src/repositories/automationsRepo';
 import { enqueueCheckoutOperationScheduledNotification } from '../src/repositories/checkoutNotificationOutboxRepo';
 import {
@@ -307,6 +308,57 @@ test('Admin manual automation retry signals its exact eligibility timestamp', as
     await storage()
         .delete(automationDefinitions)
         .where(eq(automationDefinitions.id, definition.id));
+});
+
+test('unchanged automation upserts do not write or signal and preserve configured overrides', async () => {
+    const input = {
+        key: `due-definition-${randomUUID()}`,
+        name: 'Managed definition',
+        preserveExistingStatus: true,
+    };
+    const published: string[] = [];
+    const publish = async (job: string) => {
+        published.push(job);
+    };
+    const created = await withDueWorkCommitSignals(
+        () => upsertAutomationDefinitionByKey(input),
+        publish,
+    );
+    assert.deepEqual(published, ['automations']);
+    published.length = 0;
+    const configuredAt = new Date('2026-01-01T00:00:00.000Z');
+    await storage()
+        .update(automationDefinitions)
+        .set({
+            status: 'enabled',
+            maxConcurrentRuns: 4,
+            updatedAt: configuredAt,
+        })
+        .where(eq(automationDefinitions.id, created.id));
+    const unchanged = await withDueWorkCommitSignals(
+        () => upsertAutomationDefinitionByKey(input),
+        publish,
+    );
+    assert.equal(unchanged.id, created.id);
+    assert.equal(unchanged.updatedAt.getTime(), configuredAt.getTime());
+    assert.equal(unchanged.status, 'enabled');
+    assert.equal(unchanged.maxConcurrentRuns, 4);
+    assert.deepEqual(published, []);
+    const changed = await withDueWorkCommitSignals(
+        () =>
+            upsertAutomationDefinitionByKey({
+                ...input,
+                name: 'Changed managed definition',
+            }),
+        publish,
+    );
+    assert.equal(changed.name, 'Changed managed definition');
+    assert.equal(changed.status, 'enabled');
+    assert.equal(changed.maxConcurrentRuns, 4);
+    assert.deepEqual(published, ['automations']);
+    await storage()
+        .delete(automationDefinitions)
+        .where(eq(automationDefinitions.id, created.id));
 });
 
 test('raw domain events publish after commit, while replay and rollback publish nothing', async () => {

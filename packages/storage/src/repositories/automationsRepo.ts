@@ -228,11 +228,30 @@ export async function upsertAutomationDefinitionByKey(
                 updatedByUserId: values.updatedByUserId,
                 updatedAt: new Date(),
             },
+            setWhere: or(
+                sql`${automationDefinitions.name} is distinct from ${values.name}`,
+                sql`${automationDefinitions.description} is distinct from ${values.description}`,
+                input.preserveExistingStatus
+                    ? undefined
+                    : sql`${automationDefinitions.status} is distinct from ${values.status}`,
+                input.maxConcurrentRuns === undefined
+                    ? undefined
+                    : sql`${automationDefinitions.maxConcurrentRuns} is distinct from ${values.maxConcurrentRuns}`,
+                sql`${automationDefinitions.triggerModuleKey} is distinct from ${values.triggerModuleKey}`,
+                sql`${automationDefinitions.triggerEventType} is distinct from ${values.triggerEventType}`,
+                sql`${automationDefinitions.graph} is distinct from ${JSON.stringify(values.graph)}::jsonb`,
+                sql`${automationDefinitions.metadata} is distinct from ${JSON.stringify(values.metadata)}::jsonb`,
+                sql`${automationDefinitions.updatedByUserId} is distinct from ${values.updatedByUserId}`,
+            ),
         })
         .returning();
 
     if (!definition) {
-        throw new Error('Failed to upsert automation definition.');
+        const existing = await getAutomationDefinitionByKey(input.key);
+        if (!existing) {
+            throw new Error('Failed to upsert automation definition.');
+        }
+        return existing;
     }
 
     await signalDueWork('automations');
