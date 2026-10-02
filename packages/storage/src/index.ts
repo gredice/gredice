@@ -13,6 +13,7 @@ export * from './cmsPageContent';
 export * from './databaseReadRetry';
 export * from './deliveryNotificationPolicy';
 export * from './deliveryTrackingPolicy';
+export * from './gardenPackContract';
 export * from './helpers/communityEditableFields';
 export * from './helpers/deliveryEmail';
 export * from './helpers/entityCompleteness';
