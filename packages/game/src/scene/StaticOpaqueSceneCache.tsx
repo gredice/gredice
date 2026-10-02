@@ -74,6 +74,7 @@ import {
 import {
     createStaticOpaqueSceneCacheRuntime,
     isStaticOpaqueSceneCacheMaterialEligible,
+    resolveStaticOpaqueSceneCacheShadowBypass,
     resolveStaticOpaqueSceneCacheTarget,
     type StaticOpaqueSceneCacheReason,
     type StaticOpaqueSceneCacheRuntime,
@@ -1405,6 +1406,9 @@ function StaticOpaqueSceneCacheRenderer({
         };
         const supported =
             targetConfig.supported && webGlSupported && boundaries.length > 0;
+        const shadowBypassReason = resolveStaticOpaqueSceneCacheShadowBypass(
+            gl.shadowMap,
+        );
         let bypassReason: StaticOpaqueSceneCacheReason | undefined;
         if (boundaries.length === 0) {
             bypassReason = 'empty';
@@ -1414,11 +1418,11 @@ function StaticOpaqueSceneCacheRenderer({
             bypassReason = 'interaction';
         } else if (
             gl.xr.isPresenting ||
-            (gl.shadowMap.enabled && gl.shadowMap.autoUpdate) ||
+            shadowBypassReason === 'unsupported' ||
             scene.overrideMaterial !== null
         ) {
             bypassReason = 'unsupported';
-        } else if (gl.shadowMap.needsUpdate) {
+        } else if (shadowBypassReason === 'shadow-update') {
             bypassReason = 'shadow-update';
         } else if (layerChanges.becameLive > 0) {
             bypassReason = 'layer-change';
