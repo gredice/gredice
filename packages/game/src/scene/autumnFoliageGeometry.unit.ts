@@ -7,7 +7,49 @@ import {
 } from './autumnFoliageGeometry';
 import { getAutumnLeafColor } from './autumnPalette';
 import { getAutumnState } from './autumnState';
+import { bushTextureColor } from './bushFoliage';
 import { getSeasonState } from './seasonState';
+
+test('textured bush foliage preserves summer and compensates the green palette in winter', () => {
+    const source = new BufferGeometry().setAttribute(
+        'position',
+        new Float32BufferAttribute([0, 0, 0, 0, 1, 0], 3),
+    );
+    const white = new Color('white');
+    for (const progress of [0, 0.4, 1]) {
+        const geometry = createAutumnFoliageGeometry(
+            source,
+            source,
+            white,
+            progress,
+            'bush',
+            bushTextureColor,
+        );
+        const colors = geometry.getAttribute('color');
+        for (let index = 0; index < 2; index++) {
+            const rendered = new Color()
+                .fromBufferAttribute(colors, index)
+                .multiply(bushTextureColor);
+            const expected = getAutumnLeafColor(
+                bushTextureColor,
+                getAutumnFoliageProgress(progress, index),
+                'bush',
+            );
+            assert.equal(rendered.getHexString(), expected.getHexString());
+            if (progress === 0)
+                assert.equal(
+                    new Color()
+                        .fromBufferAttribute(colors, index)
+                        .getHexString(),
+                    'ffffff',
+                );
+        }
+        geometry.dispose();
+    }
+    assert.equal(source.getAttribute('color'), undefined);
+    assert.equal(white.getHexString(), 'ffffff');
+    source.dispose();
+});
 
 test('yellowing advances downwards with exact summer and winter endpoints', () => {
     for (const progress of [0, 0.05, 0.2, 0.5, 0.8, 1]) {
