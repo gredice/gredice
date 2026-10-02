@@ -635,12 +635,13 @@ export function createFaunaWorld({
         countRemovedActor(id, removedPresence || removedDebug);
     }
 
-    function recordActorPose(posed: boolean) {
+    function recordActorPose(posed: boolean, now: number) {
         if (posed) {
             stats.actorPoseUpdateCount += 1;
         } else {
             stats.actorPoseSkipCount += 1;
         }
+        requestStatsPublishForReport(now);
     }
 
     function dispose() {

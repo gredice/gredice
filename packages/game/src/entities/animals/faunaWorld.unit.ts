@@ -386,3 +386,20 @@ test('stats refresh while only report counters change', () => {
 
     assert.deepEqual(reportCounts, [1, 11, 21]);
 });
+
+test('pose counters refresh stats without presence reports', () => {
+    const timers = createManualTimers();
+    const skipCounts: number[] = [];
+    const world = createFaunaWorld({
+        onStats: (stats) => skipCounts.push(stats.actorPoseSkipCount),
+        publishDebugEntries: () => {},
+        schedule: timers.schedule,
+    });
+
+    for (let frame = 0; frame < 90; frame += 1) {
+        world.recordActorPose(false, frame / 30);
+        timers.runAll();
+    }
+
+    assert.deepEqual(skipCounts, [1, 31, 61]);
+});
