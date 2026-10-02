@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import {
     AI_USD_TO_EUR_REFERENCE_RATE,
     convertAiUsdToEur,
@@ -6,7 +7,7 @@ import {
     type AiChatPricing,
     calculateAiChatUsageCostMicroEur,
 } from '@gredice/storage';
-import { gateway } from 'ai';
+import { createGateway, gateway } from 'ai';
 
 type SuncokretLongContextPricing = {
     inputTokenThreshold: number;
@@ -269,23 +270,117 @@ export function suncokretGatewayGenerationIds(
 
 export async function getSuncokretGatewayBilledCostMicroEur(
     steps: readonly SuncokretGatewayStep[],
-    loadGeneration: (id: string) => Promise<GatewayGenerationInfo> = (id) =>
-        gateway.getGenerationInfo({ id }),
+    loadGeneration: (
+        id: string,
+        signal: AbortSignal,
+    ) => Promise<GatewayGenerationInfo> = (id, signal) =>
+        createGateway({
+            fetch: (url, init) =>
+                fetch(url, {
+                    ...init,
+                    signal: init?.signal
+                        ? AbortSignal.any([signal, init.signal])
+                        : signal,
+                }),
+        }).getGenerationInfo({ id }),
+    wait: (ms: number, signal: AbortSignal) => Promise<void> = (ms, signal) =>
+        delay(ms, undefined, { signal }),
+    timeoutMs = 15_000,
 ) {
     const generationIds = suncokretGatewayGenerationIds(steps);
     if (generationIds.length === 0) {
         return null;
     }
 
-    const generations = await Promise.all(generationIds.map(loadGeneration));
-    const totalCostUsd = generations.reduce(
-        (sum, generation) => sum + generation.totalCost,
-        0,
-    );
+    // Gateway ingests usage asynchronously. Retry only the documented not-yet
+    // response, including the SDK's GatewayResponseError wrapper from production.
+    // One deadline covers all generations, network calls and backoff waits.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+        controller.abort(new Error('Suncokret Gateway cost lookup timed out'));
+    }, timeoutMs);
+    const { signal } = controller;
+    const retryDelays = [1_000, 2_000, 4_000];
+    const aborted = new Promise<never>((_, reject) => {
+        signal.addEventListener('abort', () => reject(signal.reason), {
+            once: true,
+        });
+    });
+    try {
+        const lookups = Promise.all(
+            generationIds.map(async (id) => {
+                for (let attempt = 0; ; attempt++) {
+                    try {
+                        return await loadGeneration(id, signal);
+                    } catch (error) {
+                        const retryDelay = retryDelays[attempt];
+                        if (
+                            signal.aborted ||
+                            retryDelay === undefined ||
+                            !isGatewayUsageNotYetAvailable(error)
+                        ) {
+                            throw error;
+                        }
+                        await wait(retryDelay, signal);
+                    }
+                }
+            }),
+        );
+        const generations = await Promise.race([lookups, aborted]);
+        if (
+            generations.some(
+                (generation, index) =>
+                    generation.id !== generationIds[index] ||
+                    !Number.isFinite(generation.totalCost) ||
+                    generation.totalCost < 0,
+            )
+        ) {
+            return null;
+        }
+        const totalCostUsd = generations.reduce(
+            (sum, generation) => sum + generation.totalCost,
+            0,
+        );
 
-    return Number.isFinite(totalCostUsd) && totalCostUsd >= 0
-        ? Math.round(usdToEur(totalCostUsd) * EUR_TO_MICRO_EUR)
-        : null;
+        return Number.isFinite(totalCostUsd)
+            ? Math.round(usdToEur(totalCostUsd) * EUR_TO_MICRO_EUR)
+            : null;
+    } finally {
+        clearTimeout(timeout);
+        // Stop other pending generations if one lookup failed permanently.
+        controller.abort();
+    }
+}
+
+function isGatewayUsageNotYetAvailable(error: unknown) {
+    if (
+        typeof error !== 'object' ||
+        error === null ||
+        !('statusCode' in error) ||
+        error.statusCode !== 404
+    ) {
+        return false;
+    }
+    // Structured errors become GatewayNotFoundError (without a response field).
+    if ('message' in error && error.message === 'Usage event not found') {
+        return true;
+    }
+    if (!('response' in error)) return false;
+    const response = error.response;
+    if (
+        typeof response !== 'object' ||
+        response === null ||
+        !('error' in response)
+    ) {
+        return false;
+    }
+    return (
+        response.error === 'Usage event not found' ||
+        (typeof response.error === 'object' &&
+            response.error !== null &&
+            'message' in response.error &&
+            response.error.message === 'Usage event not found')
+    );
 }
 
 export function estimateSuncokretPromptTokens(value: unknown) {

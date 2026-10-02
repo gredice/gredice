@@ -8,7 +8,6 @@ import {
 } from '@gredice/js/ai';
 import {
     ensureAiChatConversation,
-    finalizeAiChatUsage,
     getAiChatAccountLimitState,
     getAiChatConversationForUser,
     getAiChatConversationsForUser,
@@ -45,7 +44,6 @@ import { visibleRaisedBedsForGarden } from '../../../lib/ai/suncokretGardenConte
 import {
     estimateSuncokretPromptTokens,
     estimateSuncokretRequestCostMicroEur,
-    getSuncokretGatewayBilledCostMicroEur,
     getSuncokretModel,
     getSuncokretModelRegistry,
     getSuncokretPricedModel,
@@ -54,6 +52,7 @@ import {
     suncokretPricingForInputTokens,
 } from '../../../lib/ai/suncokretModels';
 import { buildSuncokretUsageStatus } from '../../../lib/ai/suncokretUsage';
+import { scheduleSuncokretUsageSettlement } from '../../../lib/ai/suncokretUsageSettlement';
 import { createJwt } from '../../../lib/auth/auth';
 import { authSecurity } from '../../../lib/docs/security';
 import {
@@ -1207,7 +1206,7 @@ const app = new Hono<{ Variables: ChatVariables }>()
                 : null;
             const token = await mcpToken(auth.userId, auth.accountId);
             const origin = new URL(context.req.url).origin;
-            let finalized = false;
+            let usageSettlementScheduled = false;
             let finishMetadata: Record<string, unknown> | null = null;
             const mcpTelemetryByToolCallId = new Map<
                 string,
@@ -1260,54 +1259,27 @@ const app = new Hono<{ Variables: ChatVariables }>()
                             ],
                         },
                     },
-                    onFinish: async ({ steps, totalUsage }) => {
+                    onFinish: ({ steps, totalUsage }) => {
+                        if (usageSettlementScheduled) return;
                         const usage = usageTokens(totalUsage);
-                        let billedTotalMicroEur: number | null = null;
-                        try {
-                            billedTotalMicroEur =
-                                await getSuncokretGatewayBilledCostMicroEur(
-                                    steps,
-                                );
-                            if (billedTotalMicroEur === null) {
-                                console.warn(
-                                    'Suncokret AI Gateway billed cost is unavailable; using token estimate',
-                                    {
-                                        accountId: auth.accountId,
-                                        conversationId,
-                                        modelId: model.id,
-                                        requestId,
-                                    },
-                                );
-                            }
-                        } catch (error) {
-                            console.warn(
-                                'Suncokret AI Gateway billed cost lookup failed; using token estimate',
-                                {
-                                    accountId: auth.accountId,
-                                    conversationId,
-                                    modelId: model.id,
-                                    requestId,
-                                    error,
-                                },
-                            );
-                        }
-                        const cost = await finalizeAiChatUsage({
-                            ledgerId: reservation.ledgerId,
-                            inputTokens: usage.inputTokens,
-                            noCacheTokens: usage.noCacheTokens,
-                            cacheReadTokens: usage.cacheReadTokens,
-                            cacheWriteTokens: usage.cacheWriteTokens,
-                            outputTokens: usage.outputTokens,
-                            totalTokens: usage.totalTokens,
-                            pricing: suncokretPricingForInputTokens(
-                                model,
-                                largestSuncokretStepInputTokens(steps),
-                            ),
-                            ...(billedTotalMicroEur === null
-                                ? {}
-                                : { billedTotalMicroEur }),
+                        const cost = scheduleSuncokretUsageSettlement({
+                            context: {
+                                accountId: auth.accountId,
+                                conversationId,
+                                modelId: model.id,
+                                requestId,
+                            },
+                            steps,
+                            usage: {
+                                ledgerId: reservation.ledgerId,
+                                ...usage,
+                                pricing: suncokretPricingForInputTokens(
+                                    model,
+                                    largestSuncokretStepInputTokens(steps),
+                                ),
+                            },
                         });
-                        finalized = true;
+                        usageSettlementScheduled = true;
                         finishMetadata = {
                             suncokret: {
                                 usage,
@@ -1316,6 +1288,7 @@ const app = new Hono<{ Variables: ChatVariables }>()
                                     ? {
                                           model: model.id,
                                           cost,
+                                          costSource: 'token-estimate',
                                           conversationId,
                                       }
                                     : {}),
@@ -1323,7 +1296,7 @@ const app = new Hono<{ Variables: ChatVariables }>()
                         };
                     },
                     onError: async ({ error }) => {
-                        if (!finalized) {
+                        if (!usageSettlementScheduled) {
                             await releaseAiChatUsageReservation({
                                 ledgerId: reservation.ledgerId,
                                 status: 'failed',
@@ -1400,7 +1373,7 @@ const app = new Hono<{ Variables: ChatVariables }>()
                                 }
                             }
                         }
-                        if (isAborted && !finalized) {
+                        if (isAborted && !usageSettlementScheduled) {
                             await releaseAiChatUsageReservation({
                                 ledgerId: reservation.ledgerId,
                             });
@@ -1408,7 +1381,7 @@ const app = new Hono<{ Variables: ChatVariables }>()
                     },
                 });
             } catch (error) {
-                if (!finalized) {
+                if (!usageSettlementScheduled) {
                     await releaseAiChatUsageReservation({
                         ledgerId: reservation.ledgerId,
                         status: 'failed',
