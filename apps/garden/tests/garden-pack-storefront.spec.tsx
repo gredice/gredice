@@ -15,7 +15,7 @@ async function catalogue(
                 contentType: 'application/json',
                 body: JSON.stringify({
                     enabled: true,
-                    accountId: 'pack-account',
+                    accountId: '00000000-0000-4000-8000-000000000010',
                     offers,
                 }),
             }),
@@ -31,7 +31,9 @@ async function account(page: Page) {
     await page.route('**/api/accounts/current', (route) =>
         route.fulfill({
             contentType: 'application/json',
-            body: JSON.stringify({ id: 'pack-account' }),
+            body: JSON.stringify({
+                id: '00000000-0000-4000-8000-000000000010',
+            }),
         }),
     );
     await page.route('**/api/accounts/current/sunflowers', (route) =>
@@ -45,7 +47,7 @@ async function account(page: Page) {
             contentType: 'application/json',
             body: JSON.stringify({
                 enabled: true,
-                accountId: 'pack-account',
+                accountId: '00000000-0000-4000-8000-000000000010',
                 purchases: [
                     createOwnedGardenPackFixture('storefront-purchase'),
                 ],
@@ -188,7 +190,7 @@ test('uncertain committed purchase survives close and remount with unchanged UUI
                 contentType: 'application/json',
                 body: JSON.stringify({
                     enabled: true,
-                    accountId: 'pack-account',
+                    accountId: '00000000-0000-4000-8000-000000000010',
                     offers: [offer],
                 }),
             }),
@@ -375,7 +377,7 @@ test('catalogue loading and temporary failures expose keyboard retry, expired of
                         ? { error: 'unavailable' }
                         : {
                               enabled: true,
-                              accountId: 'pack-account',
+                              accountId: '00000000-0000-4000-8000-000000000010',
                               offers: [
                                   {
                                       ...createGardenPackOfferFixture(),
@@ -610,6 +612,76 @@ test('reauthentication after a lost response cannot erase pending identity befor
     await expect.poll(() => commands.length).toBe(3);
     expect(commands[1]).toEqual(commands[0]);
     expect(commands[2]).toEqual(commands[0]);
+    await expect(
+        page.locator('[data-owned-pack="storefront-purchase"]'),
+    ).toBeVisible();
+});
+
+test('shared cookie owner switching without any cache change cannot debit a second account and retains replay identity', async ({
+    mount,
+    page,
+}) => {
+    await catalogue(page);
+    await account(page);
+    const ownerA = '00000000-0000-4000-8000-000000000010';
+    const ownerB = '00000000-0000-4000-8000-000000000020';
+    let serverOwner = ownerA;
+    const debits: string[] = [];
+    const commands: unknown[] = [];
+    await page.route(
+        '**/api/accounts/current/garden-packs/purchase',
+        (route) => {
+            const command = route.request().postDataJSON();
+            commands.push(command);
+            if (command.expectedAccountId !== serverOwner)
+                return route.fulfill({
+                    status: 409,
+                    contentType: 'application/json',
+                    body: JSON.stringify({
+                        code: 'EXPECTED_ACCOUNT_MISMATCH',
+                        error: 'Račun se promijenio. Vrati se na račun za ovu kupnju.',
+                    }),
+                });
+            if (commands.length === 1) {
+                debits.push(serverOwner);
+                serverOwner = ownerB;
+                return route.abort('failed');
+            }
+            return route.fulfill({
+                contentType: 'application/json',
+                body: JSON.stringify(receipt(true)),
+            });
+        },
+    );
+    let component = await mount(<GardenPackStorefrontStory />);
+    await review(page);
+    await page
+        .getByRole('button', { name: 'Potvrdi kupnju', exact: true })
+        .click();
+    await page
+        .getByRole('button', { name: 'Provjeri kupnju', exact: true })
+        .click();
+    await expect(page.getByRole('alert')).toContainText('Račun se promijenio.');
+    await expect(
+        page.getByRole('button', { name: 'Provjeri kupnju', exact: true }),
+    ).toBeVisible();
+    expect(debits).toEqual([ownerA]);
+    await component.unmount();
+    component = await mount(<GardenPackStorefrontStory />);
+    serverOwner = ownerA;
+    await page
+        .getByRole('button', { name: 'Paketi za vrt', exact: true })
+        .click();
+    await expect(
+        page.getByText('Jedan primjerak: 11 suncokreta'),
+    ).toBeVisible();
+    await page
+        .getByRole('button', { name: 'Provjeri kupnju', exact: true })
+        .click();
+    await expect.poll(() => commands.length).toBe(3);
+    expect(commands[1]).toEqual(commands[0]);
+    expect(commands[2]).toEqual(commands[0]);
+    expect(debits).toEqual([ownerA]);
     await expect(
         page.locator('[data-owned-pack="storefront-purchase"]'),
     ).toBeVisible();

@@ -117,6 +117,7 @@ export function useGardenPackPurchase() {
         if (
             !session ||
             !context.eligible ||
+            !context.accountId ||
             busy.current ||
             session.receipt ||
             (!session.command && !session.offer)
@@ -125,6 +126,7 @@ export function useGardenPackPurchase() {
         if (!session.command && session.offer)
             session.command = {
                 operationId: crypto.randomUUID(),
+                expectedAccountId: context.accountId,
                 productId: session.offer.productId,
                 quote: { ...session.offer.quote },
             };
@@ -136,7 +138,7 @@ export function useGardenPackPurchase() {
         try {
             session.receipt = await mutation.mutateAsync({
                 input: session.command,
-                accountId: context.accountId,
+                accountId: session.command.expectedAccountId,
                 userId: context.userId,
             });
             session.uncertain = false;

@@ -32,6 +32,7 @@ export class GardenPackPurchaseRequestError extends Error {
     }
     get uncertain() {
         return (
+            this.code === 'EXPECTED_ACCOUNT_MISMATCH' ||
             this.status === null ||
             this.status >= 500 ||
             [401, 403, 408, 429].includes(this.status)

@@ -85,6 +85,7 @@ test('comparison omits invalid totals and reports only the actual arithmetic', (
 test('pending browser recovery keeps only validated immutable command fields', () => {
     const command = {
         operationId: '00000000-0000-4000-8000-000000000001',
+        expectedAccountId: '00000000-0000-4000-8000-000000000010',
         productId: 'fixture',
         quote: {
             productVersionId: 'fixture:v1',
