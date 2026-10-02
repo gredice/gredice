@@ -254,12 +254,7 @@ function Bat({
     const animalTargetsDebugVisible = useGameState(
         (state) => state.animalTargetsDebugVisible,
     );
-    const setAnimalDebugEntry = useGameState(
-        (state) => state.setAnimalDebugEntry,
-    );
-    const removeAnimalDebugEntry = useGameState(
-        (state) => state.removeAnimalDebugEntry,
-    );
+    const faunaWorld = useGameState((state) => state.faunaWorld);
     const cameraSphereRef = useRef<BatAvoidSphere>({
         center: { x: 0, y: 0, z: 0 },
         radius: batCameraAvoidRadius,
@@ -315,8 +310,8 @@ function Bat({
     }, [actions, animation, seed]);
 
     useEffect(() => {
-        return () => removeAnimalDebugEntry(id);
-    }, [id, removeAnimalDebugEntry]);
+        return () => faunaWorld.removeDebug(id);
+    }, [id, faunaWorld]);
 
     useEffect(() => {
         if (!active) {
@@ -626,7 +621,7 @@ function Bat({
             batDebugUpdateIntervalSeconds
         ) {
             lastDebugUpdateAtRef.current = now;
-            setAnimalDebugEntry(
+            faunaWorld.reportDebug(
                 createBatDebugEntry({ group, habitat, id, now, runtime }),
             );
         }

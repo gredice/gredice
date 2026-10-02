@@ -864,12 +864,7 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
     const animalDebugCommand = useGameState(
         (state) => state.animalDebugCommand,
     );
-    const setAnimalDebugEntry = useGameState(
-        (state) => state.setAnimalDebugEntry,
-    );
-    const removeAnimalDebugEntry = useGameState(
-        (state) => state.removeAnimalDebugEntry,
-    );
+    const faunaWorld = useGameState((state) => state.faunaWorld);
     const animalDisturbance = useGameState((state) => state.animalDisturbance);
 
     const beeModel = useMemo(() => {
@@ -908,11 +903,11 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
 
     useEffect(() => {
         if (!enableDebugHudFlag) {
-            removeAnimalDebugEntry(habitat.id);
+            faunaWorld.removeDebug(habitat.id);
         }
 
-        return () => removeAnimalDebugEntry(habitat.id);
-    }, [enableDebugHudFlag, habitat.id, removeAnimalDebugEntry]);
+        return () => faunaWorld.removeDebug(habitat.id);
+    }, [enableDebugHudFlag, habitat.id, faunaWorld]);
 
     useEffect(() => {
         if (!animalTargetsDebugVisible && targetDebugRef.current) {
@@ -1153,7 +1148,7 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
             now - lastAnimalDebugUpdateRef.current >= 0.5
         ) {
             lastAnimalDebugUpdateRef.current = now;
-            setAnimalDebugEntry(
+            faunaWorld.reportDebug(
                 createBeeDebugEntry({ group, habitat, now, runtime }),
             );
         }

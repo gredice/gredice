@@ -17,6 +17,10 @@ import {
     activeDragPreviewTargetMatches,
 } from './dragPreviewIdentity';
 import {
+    createFaunaWorld,
+    type FaunaWorld,
+} from './entities/animals/faunaWorld';
+import {
     defaultGardenAvatarCameraZoom,
     scaleGardenAvatarCameraZoom,
 } from './entities/avatar/gardenAvatarCameraZoom';
@@ -27,6 +31,7 @@ import {
     getNextGameBackgroundPaletteIndex,
     normalizeGameBackgroundPaletteIndex,
 } from './scene/backgroundPalettes';
+import { updateGameProfileMetadata } from './scene/gameProfileMetadata';
 import {
     type GameQualityCustomProfile,
     type GameQualitySetting,
@@ -510,12 +515,10 @@ export type GameState = {
         highlight: Omit<GardenTargetHighlight, 'createdAt' | 'sequence'>,
     ) => void;
     clearGardenTargetHighlight: () => void;
+    /** Batched HUD snapshot published by `faunaWorld` after semantic changes. */
     animalDebugEntries: AnimalDebugEntry[];
-    setAnimalDebugEntry: (entry: AnimalDebugEntry) => void;
-    removeAnimalDebugEntry: (id: string) => void;
-    animalPresenceEntries: AnimalPresenceEntry[];
-    setAnimalPresenceEntry: (entry: AnimalPresenceEntry) => void;
-    removeAnimalPresenceEntry: (id: string) => void;
+    /** Per-root fauna registry for presence, spatial queries, and debug state. */
+    faunaWorld: FaunaWorld;
     animalDebugCommand: AnimalDebugCommand | null;
     triggerAnimalDebugBehavior: (
         command: Omit<AnimalDebugCommand, 'createdAt' | 'sequence'>,
@@ -1128,59 +1131,11 @@ export function createGameState({
             })),
         clearGardenTargetHighlight: () => set({ gardenTargetHighlight: null }),
         animalDebugEntries: [],
-        setAnimalDebugEntry: (entry) =>
-            set((state) => {
-                const existingIndex = state.animalDebugEntries.findIndex(
-                    (candidate) => candidate.id === entry.id,
-                );
-                if (existingIndex === -1) {
-                    return {
-                        animalDebugEntries: [
-                            ...state.animalDebugEntries,
-                            entry,
-                        ].sort((left, right) =>
-                            left.label.localeCompare(right.label),
-                        ),
-                    };
-                }
-
-                const animalDebugEntries = [...state.animalDebugEntries];
-                animalDebugEntries[existingIndex] = entry;
-                return { animalDebugEntries };
-            }),
-        removeAnimalDebugEntry: (id) =>
-            set((state) => ({
-                animalDebugEntries: state.animalDebugEntries.filter(
-                    (entry) => entry.id !== id,
-                ),
-            })),
-        animalPresenceEntries: [],
-        setAnimalPresenceEntry: (entry) =>
-            set((state) => {
-                const existingIndex = state.animalPresenceEntries.findIndex(
-                    (candidate) => candidate.id === entry.id,
-                );
-                if (existingIndex === -1) {
-                    return {
-                        animalPresenceEntries: [
-                            ...state.animalPresenceEntries,
-                            entry,
-                        ].sort((left, right) =>
-                            left.id.localeCompare(right.id),
-                        ),
-                    };
-                }
-
-                const animalPresenceEntries = [...state.animalPresenceEntries];
-                animalPresenceEntries[existingIndex] = entry;
-                return { animalPresenceEntries };
-            }),
-        removeAnimalPresenceEntry: (id) =>
-            set((state) => ({
-                animalPresenceEntries: state.animalPresenceEntries.filter(
-                    (entry) => entry.id !== id,
-                ),
-            })),
+        faunaWorld: createFaunaWorld({
+            onStats: (faunaWorld) => updateGameProfileMetadata({ faunaWorld }),
+            publishDebugEntries: (animalDebugEntries) =>
+                set({ animalDebugEntries }),
+        }),
         animalDebugCommand: null,
         triggerAnimalDebugBehavior: (command) =>
             set((state) => ({
@@ -1432,6 +1387,7 @@ export function useDisposeGameStateStore(store: GameStateStore | null) {
 
                 pendingStoreDisposals.delete(store);
                 store.getState().audio.dispose();
+                store.getState().faunaWorld.dispose();
             }, 0);
             pendingStoreDisposals.set(store, disposeTimeout);
         };

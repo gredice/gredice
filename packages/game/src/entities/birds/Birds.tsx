@@ -1540,12 +1540,7 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
         (state) => state.animalDebugCommand,
     );
     const animalDisturbance = useGameState((state) => state.animalDisturbance);
-    const setAnimalDebugEntry = useGameState(
-        (state) => state.setAnimalDebugEntry,
-    );
-    const removeAnimalDebugEntry = useGameState(
-        (state) => state.removeAnimalDebugEntry,
-    );
+    const faunaWorld = useGameState((state) => state.faunaWorld);
 
     const birdModel = useMemo(() => {
         const clone = gltf.scene.clone(true);
@@ -1609,8 +1604,8 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
     }, [habitat.home.facingYaw, habitat.home.position]);
 
     useEffect(() => {
-        return () => removeAnimalDebugEntry(habitat.id);
-    }, [habitat.id, removeAnimalDebugEntry]);
+        return () => faunaWorld.removeDebug(habitat.id);
+    }, [habitat.id, faunaWorld]);
 
     useEffect(() => {
         if (!animalTargetsDebugVisible && targetDebugRef.current) {
@@ -2057,7 +2052,7 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
 
         if (runtime && group && now - lastAnimalDebugUpdateRef.current >= 0.5) {
             lastAnimalDebugUpdateRef.current = now;
-            setAnimalDebugEntry(
+            faunaWorld.reportDebug(
                 createBirdDebugEntry({ group, habitat, now, runtime }),
             );
         }

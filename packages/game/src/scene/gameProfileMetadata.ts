@@ -1,6 +1,7 @@
 'use client';
 
 import type { GameCameraSnapshot } from '../controls/GameCameraRigApi';
+import type { FaunaWorldStats } from '../entities/animals/faunaWorld';
 import type { PlantInstanceBufferMetricsSnapshot } from '../generators/plant/lib/plantInstanceBufferMetrics';
 import type { CameraFrame } from '../spatial/cameraFrame';
 import type { GardenSpatialIndex } from '../spatial/GardenSpatialIndex';
@@ -350,6 +351,7 @@ export function bindRuntimeFrameLoopProfileTelemetry(
 export type GameProfileMetadata = {
     chunkCompiler?: ChunkCompilerMetrics;
     autumnGroundLeafClusters?: number;
+    faunaWorld?: FaunaWorldStats;
     autumnEntityLeafClusters?: number;
     autumnRustleTargetGain?: number;
     autumnLeafCapacity?: number;

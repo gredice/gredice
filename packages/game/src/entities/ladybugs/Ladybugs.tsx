@@ -837,12 +837,7 @@ function LadybugActor({
         (state) => state.animalDebugCommand,
     );
     const animalDisturbance = useGameState((state) => state.animalDisturbance);
-    const setAnimalDebugEntry = useGameState(
-        (state) => state.setAnimalDebugEntry,
-    );
-    const removeAnimalDebugEntry = useGameState(
-        (state) => state.removeAnimalDebugEntry,
-    );
+    const faunaWorld = useGameState((state) => state.faunaWorld);
     const actorId = `ladybug-${slot + 1}`;
     const reportRuntimeActive = (nextActive: boolean) => {
         if (runtimeActiveRef.current === nextActive) {
@@ -886,10 +881,10 @@ function LadybugActor({
 
     useEffect(() => {
         if (!enableDebugHudFlag) {
-            removeAnimalDebugEntry(actorId);
+            faunaWorld.removeDebug(actorId);
         }
-        return () => removeAnimalDebugEntry(actorId);
-    }, [actorId, enableDebugHudFlag, removeAnimalDebugEntry]);
+        return () => faunaWorld.removeDebug(actorId);
+    }, [actorId, enableDebugHudFlag, faunaWorld]);
 
     useEffect(() => {
         if (!animalTargetsDebugVisible && targetDebugRef.current) {
@@ -1256,7 +1251,7 @@ function LadybugActor({
             now - lastDebugUpdateRef.current >= 0.5
         ) {
             lastDebugUpdateRef.current = now;
-            setAnimalDebugEntry(
+            faunaWorld.reportDebug(
                 createDebugEntry({ actor: group, id: actorId, now, runtime }),
             );
         }
