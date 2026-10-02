@@ -826,6 +826,7 @@ function LadybugActor({
     const { enableDebugHudFlag = false } = useGameFlags();
     const groupRef = useRef<Group>(null);
     const targetDebugRef = useRef<Group>(null);
+    const poseProgressRef = useRef({ progress: 0, at: 0, duration: 1 });
     const runtimeRef = useRef<LadybugRuntimeState>({ phase: 'hidden' });
     const randomRef = useRef(createLadybugRandom(assignment?.seed ?? slot));
     const assignmentSeedRef = useRef<number | null>(null);
@@ -1063,6 +1064,13 @@ function LadybugActor({
         }
 
         const progress = phaseProgress(runtime, now);
+        // Preserve the phase sample used by the legacy pose even on a
+        // transition tick; recomputing from the replacement runtime resets it.
+        poseProgressRef.current = {
+            progress,
+            at: now,
+            duration: 'duration' in runtime ? runtime.duration : 1,
+        };
         switch (runtime.phase) {
             case 'crawl': {
                 const eased = smoothLadybugTransition(progress);
@@ -1247,14 +1255,12 @@ function LadybugActor({
         const runtime = runtimeRef.current;
         if (!group || runtime.phase === 'hidden') return;
         const now = clock.elapsedTime;
-        const progress =
-            'startedAt' in runtime
-                ? MathUtils.clamp(
-                      (now - runtime.startedAt) / runtime.duration,
-                      0,
-                      1,
-                  )
-                : 0;
+        const poseSample = poseProgressRef.current;
+        const progress = MathUtils.clamp(
+            poseSample.progress + (now - poseSample.at) / poseSample.duration,
+            0,
+            1,
+        );
         const target = runtimeTarget(runtime);
         updateLadybugRig({
             delta,

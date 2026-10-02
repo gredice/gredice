@@ -769,339 +769,352 @@ export function Squirrel({
         }
     }
 
-    useFaunaFrame(({ clock }, delta) => {
-        const group = groupRef.current;
-        if (!group || despawnedRef.current || !visible) {
-            return;
-        }
-        const sharedTime = fixedTime ?? clock.elapsedTime;
-        const lastTime = lastSharedTimeRef.current;
-        lastSharedTimeRef.current = sharedTime;
-        if (!reducedMotion)
-            elapsedRef.current +=
-                lastTime === null ? 0 : Math.max(0, sharedTime - lastTime);
-        const now = fixedTime ?? elapsedRef.current;
-        const random = randomRef.current;
-        let runtime = runtimeRef.current;
-
-        if (!runtime) {
-            runtime = createSettledState({
-                behavior: 'pause',
-                now,
-                random,
-                target: habitat.spawnTarget,
-            });
-            runtimeRef.current = runtime;
-            cacheFinishedRef.current = !cachingEnabled;
-            group.position.copy(habitat.spawnTarget.position);
-        }
-
-        if (
-            animalDebugCommand &&
-            animalDebugCommand.sequence !==
-                lastDebugCommandSequenceRef.current &&
-            animalDebugCommand.species === 'Squirrel'
-        ) {
-            lastDebugCommandSequenceRef.current = animalDebugCommand.sequence;
-            if (
-                !animalDebugCommand.targetId ||
-                animalDebugCommand.targetId === habitat.id
-            ) {
-                cacheFinishedRef.current = true;
-                const behavior = squirrelDebugBehaviors.find(
-                    (candidate) => candidate === animalDebugCommand.behavior,
-                );
-                if (behavior === 'flee') {
-                    const target = habitat.escapeTargets[0];
-                    const moving = target
-                        ? createMovingState({
-                              behavior,
-                              despawnOnArrival: true,
-                              from: group.position.clone(),
-                              habitat,
-                              now,
-                              target,
-                          })
-                        : null;
-                    if (moving) {
-                        runtime = moving;
-                    }
-                } else if (behavior === 'scamper' || behavior === 'bound') {
-                    runtime =
-                        chooseRoutineMovement({
-                            behavior,
-                            currentTarget: runtime.target,
-                            from: group.position,
-                            habitat,
-                            now,
-                            random,
-                        }) ?? runtime;
-                } else if (
-                    behavior === 'sit' ||
-                    behavior === 'forage' ||
-                    behavior === 'pause'
-                ) {
-                    runtime = createSettledState({
-                        behavior,
-                        now,
-                        random,
-                        target: runtime.target,
-                    });
-                }
-                runtimeRef.current = runtime;
-            }
-        }
-
-        if (
-            runtime.phase !== 'exiting' &&
-            runtime.behavior !== 'flee' &&
-            fixedTime === undefined &&
-            performance.now() >= visitDeadlineMs
-        ) {
-            const departure = createScheduledDepartureState({
-                from: group.position,
-                habitat,
-                now,
-            });
-            if (departure) {
-                runtime = departure;
-                runtimeRef.current = runtime;
-            }
-        }
-
-        if (
-            runtime.phase !== 'exiting' &&
-            runtime.behavior !== 'flee' &&
-            now - lastFleeAtRef.current >=
-                squirrelFleeReactionCooldownSeconds &&
-            isFreshGardenAvatarPresence(gardenAvatarPresence, sharedTime)
-        ) {
-            const avatarPosition = new Vector3(
-                gardenAvatarPresence.position.x,
-                gardenAvatarPresence.position.y,
-                gardenAvatarPresence.position.z,
-            );
-            if (
-                horizontalDistance(group.position, avatarPosition) <=
-                squirrelAvatarFleeDistance
-            ) {
-                const flee = chooseSquirrelFleeState({
-                    avatarPosition,
-                    from: group.position,
-                    habitat,
-                    now,
-                });
-                if (flee) {
-                    lastFleeAtRef.current = now;
-                    runtime = flee;
-                    runtimeRef.current = runtime;
-                }
-            }
-        }
-
-        if (!cachingEnabled && cacheStartedAtRef.current !== null)
-            cacheFinishedRef.current = true;
-        if (runtime.behavior === 'flee') cacheFinishedRef.current = true;
-        if (
-            cachingEnabled &&
-            cachePlan &&
-            (!cacheFinishedRef.current || fixedTime !== undefined)
-        ) {
-            cacheStartedAtRef.current ??= fixedTime === undefined ? now : 0;
-        }
-        const cacheSample =
-            cachePlan &&
-            cachingEnabled &&
-            (!cacheFinishedRef.current || fixedTime !== undefined) &&
-            cacheStartedAtRef.current !== null
-                ? sampleSquirrelCache(
-                      cachePlan,
-                      now - cacheStartedAtRef.current,
-                  )
-                : null;
-        if (squirrelModel.nut) {
-            squirrelModel.nut.mesh.visible = (cacheSample?.nutScale ?? 0) > 0;
-            squirrelModel.nut.mesh.scale.setScalar(cacheSample?.nutScale ?? 1);
-        }
-        group.userData.cachePhase = cacheSample?.phase ?? 'none';
-        if (cacheSample && cachePlan) {
-            group.position.copy(cacheSample.position);
-            group.position.y = getAnimalMovementYAt(
-                group.position,
-                habitat.groundSurfaces,
-            );
-            // A closed-form heading also reproduces turns in frozen captures.
-            const direction = cacheSample.lookAt
-                .clone()
-                .sub(cacheSample.position);
-            if (direction.lengthSq() > 0.000001) {
-                if (fixedTime === undefined)
-                    facePosition(group, cacheSample.lookAt, delta);
-                else group.rotation.y = Math.atan2(direction.x, direction.z);
-            } else {
-                const last = cachePlan.path.at(-1);
-                const previous = cachePlan.path.at(-2);
-                if (last && previous)
-                    group.rotation.y = Math.atan2(
-                        last.x - previous.x,
-                        last.z - previous.z,
-                    );
-            }
-            runtime =
-                cacheSample.behavior === 'scamper'
-                    ? {
-                          behavior: 'scamper',
-                          phase: 'moving',
-                          despawnOnArrival: false,
-                          duration: cachePlan.carrySeconds,
-                          from: habitat.spawnTarget.position,
-                          path: cachePlan.path,
-                          pathDistance: cachePlan.distance,
-                          pathfinding: cachePlan.pathfinding,
-                          startedAt:
-                              (cacheStartedAtRef.current ?? 0) +
-                              cachePlan.forageSeconds,
-                          target: cachePlan.target,
-                      }
-                    : {
-                          behavior: cacheSample.behavior,
-                          phase: 'settled',
-                          dwellUntil:
-                              (cacheStartedAtRef.current ?? now) +
-                              cachePlan.duration,
-                          target:
-                              cacheSample.phase === 'forage'
-                                  ? habitat.spawnTarget
-                                  : cachePlan.target,
-                      };
-            runtimeRef.current = runtime;
-            setAnimation(animationByBehavior[cacheSample.behavior]);
-            if (cacheSample.complete) cacheFinishedRef.current = true;
-        } else if (reducedMotion || fixedTime !== undefined) {
-            // Reduced motion and frozen non-cache poses never advance the actor.
-            setAnimation('Squirrel_Pause');
-        } else if (runtime.phase === 'moving') {
-            const progress = MathUtils.clamp(
-                (now - runtime.startedAt) / runtime.duration,
-                0,
-                1,
-            );
-            const distance = runtime.pathDistance * progress;
-            const position = pathPositionAtDistance(runtime.path, distance);
-            position.y = getAnimalMovementYAt(position, habitat.groundSurfaces);
-            group.position.copy(position);
-            const lookAhead = pathPositionAtDistance(
-                runtime.path,
-                Math.min(runtime.pathDistance, distance + 0.18),
-            );
-            facePosition(group, lookAhead, delta);
-            setAnimation(animationByBehavior[runtime.behavior]);
-
-            if (progress >= 1) {
-                if (runtime.despawnOnArrival) {
-                    runtime = createExitingState({
-                        from: group.position,
-                        habitat,
-                        now,
-                        target: runtime.target,
-                    });
-                } else {
-                    runtime = createSettledState({
-                        behavior: chooseSettledBehavior(random),
-                        now,
-                        random,
-                        target: runtime.target,
-                    });
-                }
-                runtimeRef.current = runtime;
-            }
-        } else if (runtime.phase === 'exiting') {
-            const progress = MathUtils.clamp(
-                (now - runtime.startedAt) / squirrelTreeExitSeconds,
-                0,
-                1,
-            );
-            group.position.lerpVectors(
-                runtime.from,
-                runtime.destination,
-                progress,
-            );
-            group.scale.setScalar(squirrelActorScale * (1 - progress));
-            setAnimation('Squirrel_Flee');
-            if (progress >= 1) {
-                group.visible = false;
-                despawnedRef.current = true;
-                onDespawn(habitat.id);
+    useFaunaFrame(
+        ({ clock }, delta) => {
+            const group = groupRef.current;
+            if (!group || despawnedRef.current || !visible) {
                 return;
             }
-        } else {
-            setAnimation(animationByBehavior[runtime.behavior]);
-            if (now >= runtime.dwellUntil) {
-                const behavior = pickSquirrelRoutineBehavior(random);
-                if (behavior === 'scamper' || behavior === 'bound') {
-                    runtime =
-                        chooseRoutineMovement({
+            const sharedTime = fixedTime ?? clock.elapsedTime;
+            const lastTime = lastSharedTimeRef.current;
+            lastSharedTimeRef.current = sharedTime;
+            if (!reducedMotion)
+                elapsedRef.current +=
+                    lastTime === null ? 0 : Math.max(0, sharedTime - lastTime);
+            const now = fixedTime ?? elapsedRef.current;
+            const random = randomRef.current;
+            let runtime = runtimeRef.current;
+
+            if (!runtime) {
+                runtime = createSettledState({
+                    behavior: 'pause',
+                    now,
+                    random,
+                    target: habitat.spawnTarget,
+                });
+                runtimeRef.current = runtime;
+                cacheFinishedRef.current = !cachingEnabled;
+                group.position.copy(habitat.spawnTarget.position);
+            }
+
+            if (
+                animalDebugCommand &&
+                animalDebugCommand.sequence !==
+                    lastDebugCommandSequenceRef.current &&
+                animalDebugCommand.species === 'Squirrel'
+            ) {
+                lastDebugCommandSequenceRef.current =
+                    animalDebugCommand.sequence;
+                if (
+                    !animalDebugCommand.targetId ||
+                    animalDebugCommand.targetId === habitat.id
+                ) {
+                    cacheFinishedRef.current = true;
+                    const behavior = squirrelDebugBehaviors.find(
+                        (candidate) =>
+                            candidate === animalDebugCommand.behavior,
+                    );
+                    if (behavior === 'flee') {
+                        const target = habitat.escapeTargets[0];
+                        const moving = target
+                            ? createMovingState({
+                                  behavior,
+                                  despawnOnArrival: true,
+                                  from: group.position.clone(),
+                                  habitat,
+                                  now,
+                                  target,
+                              })
+                            : null;
+                        if (moving) {
+                            runtime = moving;
+                        }
+                    } else if (behavior === 'scamper' || behavior === 'bound') {
+                        runtime =
+                            chooseRoutineMovement({
+                                behavior,
+                                currentTarget: runtime.target,
+                                from: group.position,
+                                habitat,
+                                now,
+                                random,
+                            }) ?? runtime;
+                    } else if (
+                        behavior === 'sit' ||
+                        behavior === 'forage' ||
+                        behavior === 'pause'
+                    ) {
+                        runtime = createSettledState({
                             behavior,
-                            currentTarget: runtime.target,
-                            from: group.position,
-                            habitat,
-                            now,
-                            random,
-                        }) ??
-                        createSettledState({
-                            behavior: 'pause',
                             now,
                             random,
                             target: runtime.target,
                         });
-                } else {
-                    runtime = createSettledState({
-                        behavior,
-                        now,
-                        random,
-                        target: runtime.target,
-                    });
+                    }
+                    runtimeRef.current = runtime;
                 }
-                runtimeRef.current = runtime;
             }
-        }
 
-        if (
-            now - lastPresenceUpdateRef.current >=
-            animalPresenceUpdateIntervalSeconds
-        ) {
-            lastPresenceUpdateRef.current = now;
-            faunaWorld.reportPresence({
-                behavior: runtime.behavior,
-                id: habitat.id,
-                position: {
-                    x: Number(group.position.x.toFixed(3)),
-                    y: Number(group.position.y.toFixed(3)),
-                    z: Number(group.position.z.toFixed(3)),
-                },
-                species: 'Squirrel',
-                updatedAt: sharedTime,
-            });
-        }
-
-        if (enableDebugHudFlag && now - lastDebugUpdateRef.current >= 0.5) {
-            lastDebugUpdateRef.current = now;
-            faunaWorld.reportDebug({
-                ...createDebugEntry({
-                    group,
+            if (
+                runtime.phase !== 'exiting' &&
+                runtime.behavior !== 'flee' &&
+                fixedTime === undefined &&
+                performance.now() >= visitDeadlineMs
+            ) {
+                const departure = createScheduledDepartureState({
+                    from: group.position,
                     habitat,
-                    now: sharedTime,
-                    runtime,
-                }),
-                ...(cacheSample
-                    ? {
-                          activity: `nut-${cacheSample.phase}`,
-                          behavior: cacheSample.behavior,
-                      }
-                    : {}),
-            });
-        }
-    }, groupRef);
+                    now,
+                });
+                if (departure) {
+                    runtime = departure;
+                    runtimeRef.current = runtime;
+                }
+            }
+
+            if (
+                runtime.phase !== 'exiting' &&
+                runtime.behavior !== 'flee' &&
+                now - lastFleeAtRef.current >=
+                    squirrelFleeReactionCooldownSeconds &&
+                isFreshGardenAvatarPresence(gardenAvatarPresence, sharedTime)
+            ) {
+                const avatarPosition = new Vector3(
+                    gardenAvatarPresence.position.x,
+                    gardenAvatarPresence.position.y,
+                    gardenAvatarPresence.position.z,
+                );
+                if (
+                    horizontalDistance(group.position, avatarPosition) <=
+                    squirrelAvatarFleeDistance
+                ) {
+                    const flee = chooseSquirrelFleeState({
+                        avatarPosition,
+                        from: group.position,
+                        habitat,
+                        now,
+                    });
+                    if (flee) {
+                        lastFleeAtRef.current = now;
+                        runtime = flee;
+                        runtimeRef.current = runtime;
+                    }
+                }
+            }
+
+            if (!cachingEnabled && cacheStartedAtRef.current !== null)
+                cacheFinishedRef.current = true;
+            if (runtime.behavior === 'flee') cacheFinishedRef.current = true;
+            if (
+                cachingEnabled &&
+                cachePlan &&
+                (!cacheFinishedRef.current || fixedTime !== undefined)
+            ) {
+                cacheStartedAtRef.current ??= fixedTime === undefined ? now : 0;
+            }
+            const cacheSample =
+                cachePlan &&
+                cachingEnabled &&
+                (!cacheFinishedRef.current || fixedTime !== undefined) &&
+                cacheStartedAtRef.current !== null
+                    ? sampleSquirrelCache(
+                          cachePlan,
+                          now - cacheStartedAtRef.current,
+                      )
+                    : null;
+            if (squirrelModel.nut) {
+                squirrelModel.nut.mesh.visible =
+                    (cacheSample?.nutScale ?? 0) > 0;
+                squirrelModel.nut.mesh.scale.setScalar(
+                    cacheSample?.nutScale ?? 1,
+                );
+            }
+            group.userData.cachePhase = cacheSample?.phase ?? 'none';
+            if (cacheSample && cachePlan) {
+                group.position.copy(cacheSample.position);
+                group.position.y = getAnimalMovementYAt(
+                    group.position,
+                    habitat.groundSurfaces,
+                );
+                // A closed-form heading also reproduces turns in frozen captures.
+                const direction = cacheSample.lookAt
+                    .clone()
+                    .sub(cacheSample.position);
+                if (direction.lengthSq() > 0.000001) {
+                    if (fixedTime === undefined)
+                        facePosition(group, cacheSample.lookAt, delta);
+                    else
+                        group.rotation.y = Math.atan2(direction.x, direction.z);
+                } else {
+                    const last = cachePlan.path.at(-1);
+                    const previous = cachePlan.path.at(-2);
+                    if (last && previous)
+                        group.rotation.y = Math.atan2(
+                            last.x - previous.x,
+                            last.z - previous.z,
+                        );
+                }
+                runtime =
+                    cacheSample.behavior === 'scamper'
+                        ? {
+                              behavior: 'scamper',
+                              phase: 'moving',
+                              despawnOnArrival: false,
+                              duration: cachePlan.carrySeconds,
+                              from: habitat.spawnTarget.position,
+                              path: cachePlan.path,
+                              pathDistance: cachePlan.distance,
+                              pathfinding: cachePlan.pathfinding,
+                              startedAt:
+                                  (cacheStartedAtRef.current ?? 0) +
+                                  cachePlan.forageSeconds,
+                              target: cachePlan.target,
+                          }
+                        : {
+                              behavior: cacheSample.behavior,
+                              phase: 'settled',
+                              dwellUntil:
+                                  (cacheStartedAtRef.current ?? now) +
+                                  cachePlan.duration,
+                              target:
+                                  cacheSample.phase === 'forage'
+                                      ? habitat.spawnTarget
+                                      : cachePlan.target,
+                          };
+                runtimeRef.current = runtime;
+                setAnimation(animationByBehavior[cacheSample.behavior]);
+                if (cacheSample.complete) cacheFinishedRef.current = true;
+            } else if (reducedMotion || fixedTime !== undefined) {
+                // Reduced motion and frozen non-cache poses never advance the actor.
+                setAnimation('Squirrel_Pause');
+            } else if (runtime.phase === 'moving') {
+                const progress = MathUtils.clamp(
+                    (now - runtime.startedAt) / runtime.duration,
+                    0,
+                    1,
+                );
+                const distance = runtime.pathDistance * progress;
+                const position = pathPositionAtDistance(runtime.path, distance);
+                position.y = getAnimalMovementYAt(
+                    position,
+                    habitat.groundSurfaces,
+                );
+                group.position.copy(position);
+                const lookAhead = pathPositionAtDistance(
+                    runtime.path,
+                    Math.min(runtime.pathDistance, distance + 0.18),
+                );
+                facePosition(group, lookAhead, delta);
+                setAnimation(animationByBehavior[runtime.behavior]);
+
+                if (progress >= 1) {
+                    if (runtime.despawnOnArrival) {
+                        runtime = createExitingState({
+                            from: group.position,
+                            habitat,
+                            now,
+                            target: runtime.target,
+                        });
+                    } else {
+                        runtime = createSettledState({
+                            behavior: chooseSettledBehavior(random),
+                            now,
+                            random,
+                            target: runtime.target,
+                        });
+                    }
+                    runtimeRef.current = runtime;
+                }
+            } else if (runtime.phase === 'exiting') {
+                const progress = MathUtils.clamp(
+                    (now - runtime.startedAt) / squirrelTreeExitSeconds,
+                    0,
+                    1,
+                );
+                group.position.lerpVectors(
+                    runtime.from,
+                    runtime.destination,
+                    progress,
+                );
+                group.scale.setScalar(squirrelActorScale * (1 - progress));
+                setAnimation('Squirrel_Flee');
+                if (progress >= 1) {
+                    group.visible = false;
+                    despawnedRef.current = true;
+                    onDespawn(habitat.id);
+                    return;
+                }
+            } else {
+                setAnimation(animationByBehavior[runtime.behavior]);
+                if (now >= runtime.dwellUntil) {
+                    const behavior = pickSquirrelRoutineBehavior(random);
+                    if (behavior === 'scamper' || behavior === 'bound') {
+                        runtime =
+                            chooseRoutineMovement({
+                                behavior,
+                                currentTarget: runtime.target,
+                                from: group.position,
+                                habitat,
+                                now,
+                                random,
+                            }) ??
+                            createSettledState({
+                                behavior: 'pause',
+                                now,
+                                random,
+                                target: runtime.target,
+                            });
+                    } else {
+                        runtime = createSettledState({
+                            behavior,
+                            now,
+                            random,
+                            target: runtime.target,
+                        });
+                    }
+                    runtimeRef.current = runtime;
+                }
+            }
+
+            if (
+                now - lastPresenceUpdateRef.current >=
+                animalPresenceUpdateIntervalSeconds
+            ) {
+                lastPresenceUpdateRef.current = now;
+                faunaWorld.reportPresence({
+                    behavior: runtime.behavior,
+                    id: habitat.id,
+                    position: {
+                        x: Number(group.position.x.toFixed(3)),
+                        y: Number(group.position.y.toFixed(3)),
+                        z: Number(group.position.z.toFixed(3)),
+                    },
+                    species: 'Squirrel',
+                    updatedAt: sharedTime,
+                });
+            }
+
+            if (enableDebugHudFlag && now - lastDebugUpdateRef.current >= 0.5) {
+                lastDebugUpdateRef.current = now;
+                faunaWorld.reportDebug({
+                    ...createDebugEntry({
+                        group,
+                        habitat,
+                        now: sharedTime,
+                        runtime,
+                    }),
+                    ...(cacheSample
+                        ? {
+                              activity: `nut-${cacheSample.phase}`,
+                              behavior: cacheSample.behavior,
+                          }
+                        : {}),
+                });
+            }
+        },
+        // Closed-form frozen poses must not retain a mount-dependent blend.
+        fixedTime !== undefined || reducedMotion ? undefined : groupRef,
+    );
 
     useFaunaAnimationFrame((_, delta) => {
         if (despawnedRef.current || !visible || !runtimeRef.current) return;
