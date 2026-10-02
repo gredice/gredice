@@ -110,6 +110,8 @@ The inferred authenticated `@gredice/client` helpers expose `getGardenPackInvent
 
 ### Purchase validation
 
-`pnpm --filter @gredice/storage exec node --import tsx --test --conditions=react-server tests/gardenPackPurchase.node.spec.ts` creates in-memory PGlite from current source DDL plus guards and exercises the real wallet repository, exact receipts, insufficient funds, concurrent requests, rollback, availability/quotes, malformed directory identities, account-deletion fencing, readiness and cursor/owner isolation.
+`pnpm --filter api exec node --import tsx --test --conditions=react-server lib/garden/gardenPackPurchase.storage.node.spec.ts` creates in-memory PGlite from current source DDL plus guards and exercises the real wallet repository, exact receipts, insufficient funds, concurrent requests, rollback, availability/quotes, malformed directory identities, account-deletion fencing, readiness and cursor/owner isolation.
 
 For independent PostgreSQL connection scheduling, set `GREDICE_PACK_TEST_ADMIN_URL` to a **local disposable** `packtest` cluster's `/postgres` database and run that same command. The harness validates local host/user, creates a random `gredice_pack_purchase_*` database, installs source-derived DDL/guards, uses an eight-connection pool, asserts concurrent calls use different backend PIDs, and drops only that database in teardown. It never targets an existing service database. Route regressions run with `pnpm --filter api exec node --import tsx --test --conditions=react-server lib/garden/gardenPackRoutes.node.spec.ts`; the codec has a focused JS unit test.
+
+Service integration tests belong to the API workspace; storage CI installs only storage and its dependencies. `@gredice/storage/testing/gardenPackTestSchema` supplies source-derived disposable DDL/guards for those tests without importing API application code into storage tests.
