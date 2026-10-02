@@ -112,12 +112,21 @@ counter for the same window. The compact revision projection and zero idle
 writes are covered locally, but production transfer savings require this
 deployment-window readback and cannot be inferred from JSON sizes alone.
 
-The API cron route is protected with `CRON_SECRET` and is registered in
-`apps/api/vercel.json` on a one-minute schedule:
+The automation worker route is protected with `CRON_SECRET`. The shared
+due-work dispatcher is registered in `apps/api/vercel.json` on a one-minute
+schedule and invokes it when a Redis hint is due:
 
 ```json
-{ "path": "/api/internal/cron/automations", "schedule": "* * * * *" }
+{ "path": "/api/internal/cron/work-dispatch", "schedule": "* * * * *" }
 ```
+
+Committed definition edits, new events/runs and retries publish hints. An idle
+dispatcher pass skips the automation worker and its PostgreSQL queries; the
+first pass each UTC hour runs recovery, including calendar schedule discovery
+and missed producer hints. Calendar occurrences are still enqueued on the
+previous local day. Redis failure falls back to running the worker. See
+[cron cadences](./cron-cadences.md) for producer configuration, recovery and
+optional dispatcher attribution.
 
 The cron remains bounded and idempotent: it enqueues due schedule/event runs,
 recovers stale locks, and claims limited batches of due queued/retrying runs.

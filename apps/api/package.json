@@ -16,6 +16,7 @@
         "test": "pnpm run /^test:.*/",
         "test:run": "playwright test",
         "test:node": "node --import tsx --test --conditions=react-server ./lib/**/*.node.spec.ts",
+        "test:infrastructure-cost-report": "node --test ../../scripts/infrastructure-cost-report.test.mjs",
         "mcp:smoke:public": "node ./scripts/smokePublicMcp.mjs",
         "checkout:resume-direct": "node --conditions=react-server --env-file=.env --import tsx ./scripts/resumeDirectCheckout.ts",
         "migrate:raised-beds:single-block": "node --conditions=react-server --env-file=.env --import tsx ./scripts/migrateRaisedBedsToSingleBlock.ts",
