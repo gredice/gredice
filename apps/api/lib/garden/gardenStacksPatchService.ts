@@ -5,6 +5,7 @@ import {
     createGardenStack,
     earnSunflowersOnce,
     GardenPackConflictError,
+    GardenPackLifecyclePendingError,
     GardenPackNotFoundError,
     type GardenPlacementTransaction,
     getGardenPlacementSnapshotForUpdate,
@@ -47,7 +48,8 @@ export type GardenStacksPatchServiceFailureCode =
     | 'GARDEN_NOT_FOUND'
     | 'GARDEN_STATE_CHANGED'
     | 'INVALID_REQUEST'
-    | 'SUNFLOWER_OPERATION_CONFLICT';
+    | 'SUNFLOWER_OPERATION_CONFLICT'
+    | 'PACK_LIFECYCLE_PENDING';
 
 export type GardenStacksPatchCommand = Readonly<{
     accountId: string;
@@ -302,6 +304,14 @@ function failureFrom(error: unknown): GardenStacksPatchServiceResult | null {
             ok: false,
             code: 'ACCOUNT_UNAVAILABLE',
             error: 'The account is unavailable for garden changes.',
+            status: 409,
+        };
+    }
+    if (error instanceof GardenPackLifecyclePendingError) {
+        return {
+            ok: false,
+            code: 'PACK_LIFECYCLE_PENDING',
+            error: error.message,
             status: 409,
         };
     }

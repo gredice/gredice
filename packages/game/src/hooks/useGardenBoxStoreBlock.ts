@@ -5,8 +5,13 @@ import { canAddBlockToGardenBox } from '../gardenBoxInventoryLimits';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { useGameState } from '../useGameState';
 import { ensureBlockPlaceOperationId } from './blockPlaceOperation';
-import { useCurrentAccount } from './useCurrentAccount';
+import { resolveExplicitGarden } from './gardenSelection';
+import { currentAccountKeys, useCurrentAccount } from './useCurrentAccount';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
+import {
+    type GardenAccountGroups,
+    gardenAccountGroupsKeys,
+} from './useGardenAccountGroups';
 import { inventoryQueryKey } from './useInventory';
 import { tutorialChecklistKeys } from './useTutorialChecklist';
 
@@ -17,6 +22,7 @@ type InventoryItemData = {
     entityId: string;
     amount: number;
     name?: string;
+    packUnit?: { purchaseId: string; lineId: string; unitOrdinal: number };
 };
 
 type GardenBoxInventoryData = {
@@ -55,7 +61,10 @@ function incrementInventoryItem(
     }
 
     const existingItemIndex = items.findIndex(
-        (item) => item.entityTypeName === 'block' && item.entityId === entityId,
+        (item) =>
+            item.entityTypeName === 'block' &&
+            item.entityId === entityId &&
+            !item.packUnit,
     );
 
     if (existingItemIndex < 0) {
@@ -138,7 +147,20 @@ export function useGardenBoxStoreBlock() {
             accountId,
             gardenId,
         }: StoreBlockArgs) => {
+            const cachedAccount = queryClient.getQueryData<{ id: string }>(
+                currentAccountKeys,
+            );
+            const cachedGroups = queryClient.getQueryData<GardenAccountGroups>(
+                gardenAccountGroupsKeys,
+            );
+            const cachedGarden = gardenId
+                ? resolveExplicitGarden(cachedGroups, gardenId)
+                : null;
             if (
+                cachedAccount?.id !== accountId ||
+                (cachedGroups &&
+                    (!cachedGarden?.isCurrent ||
+                        cachedGarden.accountId !== accountId)) ||
                 !gardenId ||
                 accountId !== authority.current.accountId ||
                 gardenId !== authority.current.gardenId
@@ -242,6 +264,7 @@ export function useGardenBoxStoreBlock() {
             }
 
             return {
+                gardenQueryKey,
                 previousGarden,
                 previousInventory,
             };
@@ -285,7 +308,7 @@ export function useGardenBoxStoreBlock() {
             });
             if (context?.previousGarden) {
                 queryClient.setQueryData(
-                    gardenQueryKey,
+                    context.gardenQueryKey,
                     context.previousGarden,
                 );
             }
@@ -296,7 +319,11 @@ export function useGardenBoxStoreBlock() {
                 );
             }
         },
-        onSettled: async () => {
+        onSettled: async (_data, _error, variables) => {
+            const gardenQueryKey = currentGardenKeys(
+                winterMode,
+                variables.gardenId,
+            );
             if (queryClient.isMutating({ mutationKey }) === 1) {
                 await queryClient.invalidateQueries({
                     queryKey: gardenQueryKey,

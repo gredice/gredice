@@ -2,8 +2,12 @@ import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useMemo } from 'react';
 import { currentAccountKeys } from '../../../packages/game/src/hooks/useCurrentAccount';
-import { currentGardenKeys } from '../../../packages/game/src/hooks/useCurrentGarden';
+import {
+    currentGardenKeys,
+    useCurrentGarden,
+} from '../../../packages/game/src/hooks/useCurrentGarden';
 import { gardenAccountGroupsKeys } from '../../../packages/game/src/hooks/useGardenAccountGroups';
+import { useGardenBoxStoreBlock } from '../../../packages/game/src/hooks/useGardenBoxStoreBlock';
 import { useGardensKeys } from '../../../packages/game/src/hooks/useGardens';
 import { InventoryHud } from '../../../packages/game/src/hud/InventoryHud';
 import {
@@ -36,6 +40,7 @@ function createInventoryHudQueryClient({
     });
 
     queryClient.setQueryData(['currentUser'], { id: 'test-user' });
+    queryClient.setQueryData(currentAccountKeys, { id: 'pack-account' });
     queryClient.setQueryData(['inventory'], {
         items:
             backpackItemAmount > 0 || includePlantSort
@@ -92,7 +97,6 @@ function createInventoryHudQueryClient({
             location: { lat: 45.8, lon: 16 },
             backgroundPalette: 'default',
         };
-        queryClient.setQueryData(currentAccountKeys, { id: 'pack-account' });
         queryClient.setQueryData(useGardensKeys, [garden]);
         queryClient.setQueryData(gardenAccountGroupsKeys, [
             {
@@ -247,6 +251,60 @@ export function InventoryHudStoredPacksStory() {
             <div className="relative h-screen w-screen p-8">
                 <InventoryHud />
             </div>
+        </InventoryHudTestProviders>
+    );
+}
+
+function GardenBoxStoreHookControls() {
+    const queryClient = ReactQuery.useQueryClient();
+    const store = useGardenBoxStoreBlock();
+    const { data: garden } = useCurrentGarden();
+    const storeBlock = (switchAccount = false, switchGarden = false) =>
+        store.mutate({
+            sourcePosition: { x: 0, z: 0 },
+            blockIndex: 1,
+            sourceBlockId: 'placed-pack-block',
+            blockName: 'Bucket',
+            blockEntityId: '1',
+            gardenBoxBlockId: 'garden-box-1',
+            onOptimisticUpdate: () => {
+                if (switchAccount)
+                    queryClient.setQueryData(currentAccountKeys, {
+                        id: 'other-account',
+                    });
+                if (switchGarden)
+                    queryClient.setQueryData(gardenAccountGroupsKeys, [
+                        {
+                            accountId: 'pack-account',
+                            name: 'Moj račun',
+                            isCurrent: true,
+                            gardens: [{ ...garden, id: 2 }],
+                        },
+                    ]);
+            },
+        });
+    return (
+        <>
+            <button type="button" onClick={() => storeBlock()}>
+                Store exact fixture block
+            </button>
+            <button type="button" onClick={() => storeBlock(true)}>
+                Store and switch account
+            </button>
+            <button type="button" onClick={() => storeBlock(false, true)}>
+                Store and switch garden
+            </button>
+            <output data-testid="store-error">{store.error?.message}</output>
+            <output data-testid="store-inventory">
+                {JSON.stringify(queryClient.getQueryData(['inventory']))}
+            </output>
+        </>
+    );
+}
+export function GardenBoxStoreHookStory() {
+    return (
+        <InventoryHudTestProviders inventoryOptions={{ storedPackUnits: true }}>
+            <GardenBoxStoreHookControls />
         </InventoryHudTestProviders>
     );
 }
