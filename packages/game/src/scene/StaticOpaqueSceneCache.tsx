@@ -1480,25 +1480,24 @@ function StaticOpaqueSceneCacheRenderer({
             renderLive();
         };
         // A probe renders one valid hit frame live so the gate can compare
-        // measured live and cached GPU time on the same scene.
+        // measured live and cached GPU time on the same scene. It runs only
+        // once its timer query is open, so a timer held by another owner
+        // never turns hits into unmeasured live frames.
+        const timingAllowed = benefitRef.current.status !== 'disabled';
         const probeLive =
+            timingAllowed &&
             transition.action === 'hit' &&
             shouldProbeStaticOpaqueSceneCacheLive(
                 benefitRef.current,
                 gpuTimer.isAvailable(nowMs),
-            );
-        const timedKind =
-            transition.action === 'capture'
-                ? 'capture'
-                : transition.action === 'hit'
-                  ? probeLive
-                      ? 'live'
-                      : 'hit'
-                  : null;
+            ) &&
+            gpuTimer.begin('live', nowMs);
         const gpuTimed =
-            timedKind !== null &&
-            benefitRef.current.status !== 'disabled' &&
-            gpuTimer.begin(timedKind, nowMs);
+            probeLive ||
+            (timingAllowed &&
+                (transition.action === 'capture' ||
+                    transition.action === 'hit') &&
+                gpuTimer.begin(transition.action, nowMs));
         let cachedFrame = false;
 
         const previousInfoAutoReset = gl.info.autoReset;

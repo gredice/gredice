@@ -92,8 +92,26 @@ describe('static opaque scene cache GPU timer', () => {
     it('yields to a query another owner already opened', () => {
         const { context, state, timer } = createTimer();
         context.beginQuery(TIME_ELAPSED_EXT, context.createQuery());
+        assert.equal(timer.isAvailable(0), false);
         assert.equal(timer.begin('hit', 0), false);
         assert.equal(state.queries.length, 1);
+
+        context.endQuery();
+        assert.equal(timer.isAvailable(0), true);
+    });
+
+    it('is unavailable while a query is open or results are backed up', () => {
+        const { timer } = createTimer();
+        timer.begin('hit', 0);
+        assert.equal(timer.isAvailable(0), false);
+        timer.end();
+        for (let index = 1; index < 4; index += 1) {
+            assert.equal(timer.isAvailable(index), true);
+            timer.begin('hit', index);
+            timer.end();
+        }
+        assert.equal(timer.isAvailable(4), false);
+        assert.equal(timer.begin('live', 4), false);
     });
 
     it('drops pending samples and quarantines after a disjoint event', () => {

@@ -82,6 +82,7 @@ export class StaticOpaqueSceneCacheGpuTimer {
         this.supported = this.extension !== null;
     }
 
+    /** True when `begin` would open a query right now. */
     isAvailable(nowMs: number) {
         const { context, extension } = this;
         return Boolean(
@@ -90,23 +91,19 @@ export class StaticOpaqueSceneCacheGpuTimer {
                 this.supported === true &&
                 !this.contextLost &&
                 !hasExternalGpuTimer() &&
-                nowMs >= this.quarantinedUntilMs,
+                nowMs >= this.quarantinedUntilMs &&
+                !this.active &&
+                this.pending.length < maximumPendingQueries &&
+                context.getQuery(
+                    extension.TIME_ELAPSED_EXT,
+                    context.CURRENT_QUERY,
+                ) === null,
         );
     }
 
     begin(kind: StaticOpaqueSceneCacheBenefitSampleKind, nowMs: number) {
         const { context, extension } = this;
-        if (
-            !context ||
-            !extension ||
-            !this.isAvailable(nowMs) ||
-            this.active ||
-            this.pending.length >= maximumPendingQueries ||
-            context.getQuery(
-                extension.TIME_ELAPSED_EXT,
-                context.CURRENT_QUERY,
-            ) !== null
-        ) {
+        if (!context || !extension || !this.isAvailable(nowMs)) {
             return false;
         }
 
