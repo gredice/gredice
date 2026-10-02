@@ -1,3 +1,4 @@
+import { isGardenPackLifecycleStorageReady } from './gardenPackLifecycleRepo';
 import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
@@ -10,8 +11,10 @@ import {
     gardenPackPlacementResponseSchema,
 } from '../gardenPackPlacementContract';
 import {
+    gardenPackLifecycleReceipts,
     gardenPackPurchases,
     gardenPackUnitEvents,
+    gardenPackUnitLocations,
     gardenPackUnits,
 } from '../schema';
 import { storage } from '../storage';
@@ -49,7 +52,29 @@ export async function getGardenPackPlacementReplay(
             ),
         )
         .limit(1);
-    if (!event) return null;
+    if (!event) {
+        const [lifecycle] = await tx
+            .select({ id: gardenPackLifecycleReceipts.id })
+            .from(gardenPackLifecycleReceipts)
+            .where(
+                and(
+                    eq(
+                        gardenPackLifecycleReceipts.accountId,
+                        command.accountId,
+                    ),
+                    eq(
+                        gardenPackLifecycleReceipts.operationId,
+                        command.operationId,
+                    ),
+                ),
+            )
+            .limit(1);
+        if (lifecycle)
+            throw new GardenPackConflictError(
+                'Operation already belongs to a lifecycle mutation',
+            );
+        return null;
+    }
     if (
         event.kind !== 'placed' ||
         !isDeepStrictEqual(
@@ -124,6 +149,13 @@ export async function recordGardenPackPlacement(
     tx: GardenPackTransaction,
 ) {
     gardenPackPlacementResponseSchema.parse(response);
+    await tx.insert(gardenPackUnitLocations).values({
+        purchaseId: command.purchaseId,
+        lineId: command.lineId,
+        unitOrdinal: command.unitOrdinal,
+        gardenId: command.gardenId,
+        blockId: response.blockId,
+    });
     await tx.insert(gardenPackUnitEvents).values({
         id: randomUUID(),
         accountId: command.accountId,
@@ -203,6 +235,7 @@ export async function isGardenPackPlacementStorageReady(
     return (
         z
             .object({ rows: z.array(z.object({ ready: z.boolean() })) })
-            .parse(result).rows[0]?.ready === true
+            .parse(result).rows[0]?.ready === true &&
+        (await isGardenPackLifecycleStorageReady(db))
     );
 }

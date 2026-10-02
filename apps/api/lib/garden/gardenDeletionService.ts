@@ -7,9 +7,12 @@ import {
     getGardenDeletionTargetForUpdate,
     getGardenPlacementSnapshotForUpdate,
     listGardenRaisedBedMetadataForUpdate,
+    lockGardenPackUnitsForGardenDeletion,
+    recycleGardenPackUnitsForGardenDeletion,
     softDeleteGardenOnce,
     withAccountDeletionFenceTransaction,
     withGardenPlacementTransaction,
+    withSunflowerAccountTransaction,
 } from '@gredice/storage';
 
 const maximumGardenIdentifier = 2_147_483_647;
@@ -241,7 +244,28 @@ export const deleteRealGardenForAccount = createGardenDeletionService({
     getGardenDeletionTargetForUpdate,
     getGardenPlacementSnapshotForUpdate,
     listGardenRaisedBedMetadataForUpdate,
-    softDeleteGardenOnce,
-    withAccountDeletionFenceTransaction,
-    withGardenPlacementTransaction,
+    softDeleteGardenOnce: async (gardenId, tx) => {
+        const target = await getGardenDeletionTargetForUpdate(gardenId, tx);
+        if (target && !target.isDeleted)
+            await recycleGardenPackUnitsForGardenDeletion(
+                target.accountId,
+                gardenId,
+                tx,
+            );
+        return softDeleteGardenOnce(gardenId, tx);
+    },
+    withAccountDeletionFenceTransaction: (accountId, callback) =>
+        withSunflowerAccountTransaction(accountId, (tx) =>
+            withAccountDeletionFenceTransaction(accountId, callback, tx),
+        ),
+    withGardenPlacementTransaction: async (gardenId, callback, tx) => {
+        const target = await getGardenDeletionTargetForUpdate(gardenId, tx);
+        if (target && !target.isDeleted)
+            await lockGardenPackUnitsForGardenDeletion(
+                target.accountId,
+                gardenId,
+                tx,
+            );
+        return withGardenPlacementTransaction(gardenId, callback, tx);
+    },
 } satisfies GardenDeletionDependencies<GardenPlacementTransaction>);

@@ -73,6 +73,7 @@ export * from './repositories/gardenDiaryRescheduleRepo';
 export * from './repositories/gardenMutationOperationsRepo';
 export * from './repositories/gardenPackReadRepo';
 export * from './repositories/gardenPackPlacementRepo';
+export * from './repositories/gardenPackLifecycleRepo';
 export * from './repositories/gardenPacksRepo';
 export * from './repositories/gardenPlacementRepo';
 export * from './repositories/gardenPreviewsRepo';

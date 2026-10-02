@@ -1,5 +1,6 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRef } from 'react';
 import { useGameState } from '../useGameState';
 import { ensureBlockPlaceOperationId } from './blockPlaceOperation';
 import {
@@ -7,6 +8,7 @@ import {
     replaceOptimisticBlockId,
 } from './optimisticBlockPlacement';
 import { useBlockData } from './useBlockData';
+import { useCurrentAccount } from './useCurrentAccount';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 import { inventoryQueryKey } from './useInventory';
 import { tutorialChecklistKeys } from './useTutorialChecklist';
@@ -22,6 +24,7 @@ type InventoryItemData = {
     entityTypeName: string;
     entityId: string;
     amount: number;
+    packUnit?: { purchaseId: string; lineId: string; unitOrdinal: number };
     name?: string;
     image?: string;
 };
@@ -43,6 +46,8 @@ export type GardenBoxPlaceBlockArgs = {
     gardenBoxBlockId: string;
     entityId: string;
     operationId?: string;
+    accountId?: string | null;
+    packUnit?: { purchaseId: string; lineId: string; unitOrdinal: number };
 };
 
 function decrementGardenBoxInventoryItem(
@@ -65,7 +70,14 @@ function decrementGardenBoxInventoryItem(
                 items: gardenBox.items.flatMap((item) => {
                     const isTargetItem =
                         item.entityTypeName === 'block' &&
-                        item.entityId === args.entityId;
+                        item.entityId === args.entityId &&
+                        (args.packUnit
+                            ? item.packUnit?.purchaseId ===
+                                  args.packUnit.purchaseId &&
+                              item.packUnit.lineId === args.packUnit.lineId &&
+                              item.packUnit.unitOrdinal ===
+                                  args.packUnit.unitOrdinal
+                            : !item.packUnit);
                     if (!isTargetItem) {
                         return [item];
                     }
@@ -94,9 +106,27 @@ async function getGardenBoxPlaceBlockError(response: Response) {
     return 'Failed to place block from garden box';
 }
 
+class GardenBoxRequestError extends Error {
+    constructor(
+        readonly status: number,
+        message: string,
+    ) {
+        super(message);
+    }
+}
 export function useGardenBoxPlaceBlock() {
+    const pendingOperations = useRef(new Map<string, string>());
     const queryClient = useQueryClient();
     const { data: currentGarden } = useCurrentGarden();
+    const { data: currentAccount } = useCurrentAccount();
+    const authority = useRef({
+        accountId: currentAccount?.id ?? null,
+        gardenId: currentGarden?.id,
+    });
+    authority.current = {
+        accountId: currentAccount?.id ?? null,
+        gardenId: currentGarden?.id,
+    };
     const { data: blockData } = useBlockData();
     const winterMode = useGameState((state) => state.winterMode);
     const queueBlockPlacementDropAnimation = useGameState(
@@ -114,6 +144,44 @@ export function useGardenBoxPlaceBlock() {
         mutationFn: async (variables: GardenBoxPlaceBlockArgs) => {
             const operationId = ensureBlockPlaceOperationId(variables);
             const { entityId, gardenBoxBlockId, gardenId } = variables;
+            if (
+                variables.accountId !== authority.current.accountId ||
+                (variables.packUnit &&
+                    variables.gardenId !== authority.current.gardenId)
+            )
+                throw new GardenBoxRequestError(
+                    409,
+                    'Račun ili odabrani vrt promijenio se. Pokušaj ponovno.',
+                );
+            if (variables.packUnit) {
+                const unit = variables.packUnit;
+                const response =
+                    await clientAuthenticated().api.accounts.current[
+                        'garden-packs'
+                    ][':purchaseId'].units[':lineId'][
+                        ':unitOrdinal'
+                    ].retrieve.$post({
+                        param: {
+                            purchaseId: unit.purchaseId,
+                            lineId: unit.lineId,
+                            unitOrdinal: unit.unitOrdinal.toString(),
+                        },
+                        json: { operationId, gardenId, gardenBoxBlockId },
+                    });
+                const result = await response.json();
+                if (!response.ok || !('blockId' in result))
+                    throw new GardenBoxRequestError(
+                        response.status,
+                        'error' in result
+                            ? result.error
+                            : 'Postavljanje predmeta nije uspjelo.',
+                    );
+                return {
+                    id: result.blockId,
+                    position: result.position,
+                    item: { entityTypeName: 'block', entityId, amount: 1 },
+                };
+            }
             const response = await clientAuthenticated().api.inventory[
                 'garden-boxes'
             ][':gardenId'][':blockId'].items.block[':entityId'].place.$post({
@@ -126,13 +194,28 @@ export function useGardenBoxPlaceBlock() {
             });
 
             if (!response.ok) {
-                throw new Error(await getGardenBoxPlaceBlockError(response));
+                throw new GardenBoxRequestError(
+                    response.status,
+                    await getGardenBoxPlaceBlockError(response),
+                );
             }
 
             return await response.json();
         },
         onMutate: async (args) => {
-            ensureBlockPlaceOperationId(args);
+            args.accountId ??= authority.current.accountId;
+            const key = JSON.stringify({
+                accountId: args.accountId,
+                gardenId: args.gardenId,
+                gardenBoxBlockId: args.gardenBoxBlockId,
+                entityId: args.entityId,
+                packUnit: args.packUnit,
+            });
+            args.operationId ??= pendingOperations.current.get(key);
+            pendingOperations.current.set(
+                key,
+                ensureBlockPlaceOperationId(args),
+            );
             const gardenQueryKey = currentGardenKeys(winterMode, args.gardenId);
             await Promise.all([
                 queryClient.cancelQueries({ queryKey: inventoryQueryKey }),
@@ -158,11 +241,12 @@ export function useGardenBoxPlaceBlock() {
             );
             const blockName = targetBlockData?.information.name;
             const garden = previousGarden ?? currentGarden;
-            const optimisticBlockId = blockName
-                ? `${optimisticBlockIdPrefix}:${blockName}:${Date.now().toString(36)}`
-                : null;
+            const optimisticBlockId =
+                !args.packUnit && blockName
+                    ? `${optimisticBlockIdPrefix}:${blockName}:${Date.now().toString(36)}`
+                    : null;
             const optimisticPlacement =
-                garden && blockName && optimisticBlockId
+                !args.packUnit && garden && blockName && optimisticBlockId
                     ? createOptimisticBlockPlacement(
                           garden,
                           blockData,
@@ -186,7 +270,16 @@ export function useGardenBoxPlaceBlock() {
                 previousInventory,
             };
         },
-        onSuccess: (data, _variables, context) => {
+        onSuccess: (data, variables, context) => {
+            pendingOperations.current.delete(
+                JSON.stringify({
+                    accountId: variables.accountId,
+                    gardenId: variables.gardenId,
+                    gardenBoxBlockId: variables.gardenBoxBlockId,
+                    entityId: variables.entityId,
+                    packUnit: variables.packUnit,
+                }),
+            );
             if (!context?.optimisticBlockId) {
                 return;
             }
@@ -205,7 +298,22 @@ export function useGardenBoxPlaceBlock() {
                         : garden,
             );
         },
-        onError: (error, _variables, context) => {
+        onError: (error, variables, context) => {
+            if (
+                error instanceof GardenBoxRequestError &&
+                error.status >= 400 &&
+                error.status < 500
+            )
+                pendingOperations.current.delete(
+                    JSON.stringify({
+                        accountId: variables.accountId,
+                        gardenId: variables.gardenId,
+                        gardenBoxBlockId: variables.gardenBoxBlockId,
+                        entityId: variables.entityId,
+                        packUnit: variables.packUnit,
+                    }),
+                );
+            if (variables.accountId !== authority.current.accountId) return;
             console.error('Error placing block from garden box', error);
             if (context?.previousInventory) {
                 queryClient.setQueryData(

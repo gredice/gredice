@@ -3,6 +3,7 @@ import {
     InventoryHudBackpackOpenStory,
     InventoryHudClosedStory,
     InventoryHudGardenBoxesOpenStory,
+    InventoryHudStoredPacksStory,
     InventoryHudTriggerlessStory,
 } from './InventoryHudStory';
 
@@ -144,4 +145,97 @@ test('inventory opens without a HUD shell for avatar garden box interactions', a
     await expect(page.getByText('Vrtna kutija 1')).toBeVisible();
     await expect(page.locator('[data-inventory-hud-shell]')).toHaveCount(0);
     await expect(page.locator('button[title="Inventar"]')).toHaveCount(0);
+});
+
+test('exact stored units stay separate from ordinary blocks and retain retry identity after a lost response', async ({
+    mount,
+    page,
+}) => {
+    const operations: string[] = [];
+    let placed = false;
+    const purchaseId = '12345678-1234-4234-8234-123456789012';
+    await page.route(
+        '**/api/accounts/current/garden-packs/**/retrieve',
+        async (route) => {
+            const request = route.request().postDataJSON();
+            operations.push(request.operationId);
+            expect(route.request().url()).toContain(
+                `${purchaseId}/units/bucket/1/retrieve`,
+            );
+            expect(request.gardenBoxBlockId).toBe('garden-box-1');
+            if (operations.length === 1) {
+                await route.abort('failed');
+                return;
+            }
+            placed = true;
+            await route.fulfill({
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    blockId: 'stored-block-1',
+                    variant: null,
+                    position: { x: 0, y: 0 },
+                }),
+            });
+        },
+    );
+    await page.route('**/api/inventory', (route) =>
+        route.fulfill({
+            contentType: 'application/json',
+            body: JSON.stringify({
+                items: [],
+                gardenBoxes: [
+                    {
+                        blockId: 'garden-box-1',
+                        gardenId: 1,
+                        gardenName: 'Test garden',
+                        items: [
+                            {
+                                entityId: '1',
+                                entityTypeName: 'block',
+                                amount: 1,
+                                name: 'Bucket',
+                            },
+                            ...(placed ? [2] : [1, 2]).map((unitOrdinal) => ({
+                                entityId: '1',
+                                entityTypeName: 'block',
+                                amount: 1,
+                                name: 'Bucket',
+                                packUnit: {
+                                    purchaseId,
+                                    lineId: 'bucket',
+                                    unitOrdinal,
+                                },
+                                blockId: `stored-block-${unitOrdinal}`,
+                                variant: null,
+                            })),
+                        ],
+                    },
+                ],
+            }),
+        }),
+    );
+    await mount(<InventoryHudStoredPacksStory />);
+    await expect(page.locator('[data-stored-pack-unit]')).toHaveCount(2);
+    await expect(page.getByText('1/6 vrsta · 3/60 blokova')).toBeVisible();
+    await page
+        .locator(`[data-stored-pack-unit="${purchaseId}:bucket:1"]`)
+        .click();
+    await page
+        .getByRole('button', { name: 'Dodaj u vrt', exact: true })
+        .click();
+    await expect(
+        page.getByText(/Failed to fetch|NetworkError|Load failed/u),
+    ).toBeVisible();
+    await expect(page.locator('[data-stored-pack-unit]')).toHaveCount(2);
+    await page
+        .getByRole('button', { name: 'Dodaj u vrt', exact: true })
+        .click();
+    await expect(
+        page.locator(`[data-stored-pack-unit="${purchaseId}:bucket:1"]`),
+    ).toHaveCount(0);
+    await expect(
+        page.locator(`[data-stored-pack-unit="${purchaseId}:bucket:2"]`),
+    ).toHaveCount(1);
+    expect(operations).toHaveLength(2);
+    expect(operations[1]).toBe(operations[0]);
 });

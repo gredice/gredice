@@ -4,9 +4,13 @@ import {
     bustScheduleCache,
     createGardenStack,
     earnSunflowersOnce,
+    GardenPackConflictError,
+    GardenPackNotFoundError,
     type GardenPlacementTransaction,
     getGardenPlacementSnapshotForUpdate,
+    isPurchasedGardenPackBlock,
     listGardenRaisedBedMetadataForUpdate,
+    recycleGardenPackUnitForAccount,
     SunflowerEarnAmountConflictError,
     softDeleteGardenBlockOnce,
     softDeleteNewRaisedBedOnce,
@@ -15,6 +19,7 @@ import {
     withGardenPlacementTransaction,
     withSunflowerAccountTransaction,
 } from '@gredice/storage';
+import { z } from 'zod';
 import { getBlockData } from '../blocks/blockDataService';
 import {
     type GardenStacksPatchDirectoryBlock,
@@ -514,5 +519,76 @@ const defaultDependencies: GardenStacksPatchServiceDependencies<GardenPlacementT
         withSunflowerAccountTransaction,
     };
 
-export const patchGardenStacksForAccount =
+const patchOrdinaryGardenStacks =
     createGardenStacksPatchService(defaultDependencies);
+export async function patchGardenStacksForAccount(
+    rawCommand: GardenStacksPatchCommand,
+): Promise<GardenStacksPatchServiceResult> {
+    try {
+        const command = normalizeCommand(rawCommand);
+        const [test, removal] = command.operations;
+        if (
+            command.operations.length === 2 &&
+            test?.op === 'test' &&
+            typeof test.value === 'string' &&
+            removal?.op === 'remove' &&
+            removal.path === test.path &&
+            (await isPurchasedGardenPackBlock(test.value))
+        ) {
+            const match = /^\/(-?\d+)\/(-?\d+)\/(\d+)$/u.exec(test.path);
+            if (!match)
+                fail(
+                    'INVALID_REQUEST',
+                    400,
+                    'Invalid purchased-unit removal path',
+                );
+            const x = Number(match[1]),
+                y = Number(match[2]),
+                blockIndex = Number(match[3]);
+            if (![x, y, blockIndex].every(Number.isSafeInteger))
+                fail(
+                    'INVALID_REQUEST',
+                    400,
+                    'Invalid purchased-unit removal path',
+                );
+            const result = await recycleGardenPackUnitForAccount(
+                command.accountId,
+                {
+                    gardenId: command.gardenId,
+                    blockId: test.value,
+                    expectedSource: { x, y, blockIndex },
+                },
+            );
+            return {
+                ok: true,
+                appliedStackDeltas: 1,
+                gardenId: command.gardenId,
+                recycledBlock: true,
+                refundedSunflowers: z
+                    .number()
+                    .int()
+                    .nonnegative()
+                    .parse(result.refundedSunflowers),
+            };
+        }
+        return patchOrdinaryGardenStacks(command);
+    } catch (error) {
+        if (error instanceof GardenPackConflictError)
+            return {
+                ok: false,
+                code: 'GARDEN_STATE_CHANGED',
+                error: error.message,
+                status: 409,
+            };
+        if (error instanceof GardenPackNotFoundError)
+            return {
+                ok: false,
+                code: 'GARDEN_NOT_FOUND',
+                error: error.message,
+                status: 404,
+            };
+        const failure = failureFrom(error);
+        if (failure) return failure;
+        throw error;
+    }
+}
