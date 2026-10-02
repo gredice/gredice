@@ -15,13 +15,16 @@ function outboxMetadataDueAt(
 ) {
     const value = sql`nullif(metadata->>${field}, '')`;
     // PostgreSQL validates the entire value before casting, including calendar
-    // ranges. Invalid/non-finite values stay due now; only missing values use
-    // the normal queue or submission fallback and its delay.
+    // ranges. Invalid/non-finite values and values beyond JavaScript Date's
+    // range stay due now; only missing values use the normal fallback. Check
+    // the delayed epoch before adding the interval to avoid SQL overflow.
     return sql`case
         when ${value} is null then ${fallback}
         when not pg_input_is_valid(${value}, 'timestamp with time zone') then ${now}::timestamptz
-        when isfinite(${value}::timestamptz) then ${value}::timestamptz + ${delaySeconds} * interval '1 second'
-        else ${now}::timestamptz end`;
+        when not isfinite(${value}::timestamptz) then ${now}::timestamptz
+        when extract(epoch from ${value}::timestamptz) not between -8640000000000 and 8640000000000 - ${delaySeconds}
+            then ${now}::timestamptz
+        else ${value}::timestamptz + ${delaySeconds} * interval '1 second' end`;
 }
 
 async function minimumDueAt(query: ReturnType<typeof sql>, now: Date) {

@@ -203,6 +203,8 @@ test('outbox due projections safely validate metadata timestamps and retain miss
                     '2026-02-29T12:00:00Z',
                     'infinity',
                     '-infinity',
+                    '294276-12-31 23:59:59+00',
+                    '275761-01-01 00:00:00+00',
                 ]) {
                     await db
                         .update(emailMessages)
@@ -265,6 +267,22 @@ test('outbox due projections safely validate metadata timestamps and retain miss
                     expectedDueAt.toISOString(),
                     `${kind}/${scenario.field}/valid`,
                 );
+                if (scenario.providerStatus?.startsWith('submission_')) {
+                    await db
+                        .update(emailMessages)
+                        .set({
+                            metadata: {
+                                outboxKind: kind,
+                                [scenario.field]: '275760-09-12 23:59:59+00',
+                            },
+                        })
+                        .where(eq(emailMessages.id, row.id));
+                    assert.equal(
+                        (await getNextDueWorkAt(job, now))?.toISOString(),
+                        now.toISOString(),
+                        `${kind}/${scenario.field}/delay-outside-Date-range`,
+                    );
+                }
             }
         } finally {
             await db.delete(emailMessages).where(eq(emailMessages.id, row.id));
