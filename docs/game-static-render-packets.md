@@ -129,10 +129,19 @@ remain on the safe fallback path until their own overlap comparisons establish
 an ordering-preserving batching strategy.
 
 The deterministic `GardenPalettePacketFixture` and
-`apps/garden/tests/garden-palette-packets.spec.tsx` compare authored meshes with
-compiled palette geometry under day/night lighting and clear/rain/snow/combined
+`apps/garden/tests/garden-palette-packets.spec.tsx` compare authored and palette
+shaders with identical compiled transforms under day/night lighting and clear/rain/snow/combined
 weather. They include mapped PBR inputs, vertex colors, cutout shadows,
 foreground depth occlusion, in-place palette mutation, StrictMode mounting and
 last-user disposal/remount. PNGs and numeric difference diagnostics are attached
 to each browser test result; this fixture proves visual parity, not device GPU
 savings.
+
+A separate diagnostic comparison of an uncompiled authored mesh against its
+compiled palette mesh found 378 of 196,608 pixels (0.1923%) differing by more
+than two channel values, with a maximum channel difference of 8/255. The
+differences were confined to the rain-only frost grain on ground tops. Baking
+world transforms to Float32 geometry changes the high-frequency world-noise
+rounding relative to a shader-applied model matrix. Existing stable weather
+chunks already use compiled transforms; the palette parity fixture uses that
+same production transform path on both sides and keeps its original thresholds.

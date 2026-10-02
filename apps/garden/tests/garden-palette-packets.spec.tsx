@@ -47,7 +47,14 @@ for (const weather of ['clear', 'rain', 'snow', 'combined'] as const) {
             );
             const originalPng = await fixture.locator('canvas').screenshot();
             const original = await pixels(originalPng);
-            expect(new Set(original).size).toBeGreaterThan(100);
+            const colors = new Set<number>();
+            for (let index = 0; index < original.length; index += 4)
+                colors.add(
+                    original[index] * 65536 +
+                        original[index + 1] * 256 +
+                        original[index + 2],
+                );
+            expect(colors.size).toBeGreaterThan(100);
             await fixture.update(
                 <GardenPalettePacketFixture
                     weather={weather}
@@ -67,8 +74,6 @@ for (const weather of ['clear', 'rain', 'snow', 'combined'] as const) {
             expect(readback.meshes).toBe(6);
             expect(readback.paletteVertices).toBeGreaterThan(100);
             const result = compare(original, palette);
-            expect(result.differentPixelRatio).toBeLessThan(0.001);
-            expect(result.maxChannelError).toBeLessThanOrEqual(8);
             await testInfo.attach('original', {
                 body: originalPng,
                 contentType: 'image/png',
@@ -81,6 +86,8 @@ for (const weather of ['clear', 'rain', 'snow', 'combined'] as const) {
                 body: JSON.stringify({ result, readback }),
                 contentType: 'application/json',
             });
+            expect(result.differentPixelRatio).toBeLessThan(0.001);
+            expect(result.maxChannelError).toBeLessThanOrEqual(8);
             expect(errors).toEqual([]);
         });
     }

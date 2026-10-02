@@ -78,7 +78,8 @@ export function GardenPaletteFixtureMesh({
         palette,
     );
     const compiled = useMemo(() => {
-        if (!prepared.palette) return undefined;
+        // Use identical compiler transforms on both sides to isolate shader
+        // parity from Float32 model-matrix rounding in procedural world noise.
         const matrix = new Matrix4().makeTranslation(
             source.position[0],
             source.position[1],
@@ -90,24 +91,21 @@ export function GardenPaletteFixtureMesh({
                 new Float64Array(matrix.elements),
             ),
         );
-    }, [prepared.geometry, prepared.palette, source]);
+    }, [prepared.geometry, source]);
     useLayoutEffect(() => () => integrated?.dispose(), [integrated]);
     useLayoutEffect(() => () => compiled?.dispose(), [compiled]);
+    useLayoutEffect(
+        () => () => {
+            if (weatherGeometry !== source.geometry) weatherGeometry.dispose();
+        },
+        [source.geometry, weatherGeometry],
+    );
     return (
         <mesh
             name={`GardenPaletteFixture:${source.name}:revision:${revision}`}
             castShadow
             receiveShadow
-            position={
-                compiled
-                    ? [0, 0, 0]
-                    : [
-                          source.position[0],
-                          source.position[1],
-                          source.position[2],
-                      ]
-            }
-            geometry={compiled ?? prepared.geometry}
+            geometry={compiled}
             material={prepared.material}
         />
     );
