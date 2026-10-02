@@ -1,5 +1,10 @@
 import type { ScheduleTaskBlockPayload } from './scheduleTaskBlock';
 
+export type HarvestTraceGroupCreatedPayload = {
+    traceLinkIds: number[];
+    fieldLabel: string;
+};
+
 // ============================================================================
 // Checkout event payload types
 // ============================================================================
