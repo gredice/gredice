@@ -284,6 +284,30 @@ test('supported no-op must release the probe targets', () => {
     assert.equal(evaluateStaticCacheClearance(input).pass, false);
 });
 
+test('serialized unpaired rows accept an absent comparison role but reject conflicting roles', () => {
+    // The profiler serializes unpaired depth/lifecycle/layer/soak roles as null.
+    const input = JSON.parse(JSON.stringify(fixture()));
+    for (const comparisonRole of [null, undefined, 'cache']) {
+        input.requested.comparisonRole = comparisonRole;
+        assert.equal(evaluateStaticCacheClearance(input).pass, true);
+    }
+    for (const comparisonRole of ['legacy', '', false, 'other']) {
+        input.requested.comparisonRole = comparisonRole;
+        const result = evaluateStaticCacheClearance(input);
+        assert.equal(result.pass, false);
+        assert.equal(
+            result.checks.find(
+                (check) => check.name === 'cacheClearanceRequestedRole',
+            ).pass,
+            false,
+        );
+    }
+    // An absent optional pair role never authorizes a missing cache request.
+    input.requested.comparisonRole = null;
+    input.requested.staticSceneCache = null;
+    assert.equal(evaluateStaticCacheClearance(input).pass, false);
+});
+
 test('every cache-requested row rejects legacy runtime decisions including earlier witnesses', () => {
     const legacy = {
         ...measured,

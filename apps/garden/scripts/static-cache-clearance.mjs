@@ -416,6 +416,7 @@ export function evaluateStaticCacheClearance({
     const cacheRequestValid =
         ['legacy', 'cache'].includes(requestedCache) &&
         (requested.comparisonRole === undefined ||
+            requested.comparisonRole === null ||
             requested.comparisonRole === requestedCache);
     add(
         'cacheClearanceRequestedRole',
