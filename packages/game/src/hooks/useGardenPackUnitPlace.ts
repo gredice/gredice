@@ -1,7 +1,9 @@
 import { placeGardenPackUnit } from '@gredice/client';
 import { resolveGardenPackLineVariant } from '@gredice/js/gardenPackAppearanceVariant';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRef } from 'react';
 import { useGameState } from '../useGameState';
+import { withGardenOptimisticMutationLock } from './gardenOptimisticMutationLock';
 import {
     createOptimisticBlockPlacement,
     getPreferredBlockPlacementPosition,
@@ -25,13 +27,13 @@ export type GardenPackUnitPlaceInput = {
     operationId?: string;
     position?: { x: number; y: number };
     expectedExistingBlocks?: string[];
+    gardenId?: number;
+    accountId?: string;
 };
 const mutationKey = ['gardens', 'current', 'pack-unit-place'];
 export function useGardenPackUnitPlace() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
-    const { data: account } = useCurrentAccount();
-    const { data: user } = useCurrentUser();
     const { data: blockData } = useBlockData();
     const enabled = useGameState((state) => state.gardenPacksEnabled);
     const authenticated = useGameState(
@@ -39,6 +41,18 @@ export function useGardenPackUnitPlace() {
     );
     const isMock = useGameState((state) => state.isMock);
     const sandboxKey = useGameState((state) => state.localSandboxStorageKey);
+    const authEnabled = enabled && authenticated && !isMock && !sandboxKey;
+    const { data: user } = useCurrentUser(authEnabled);
+    const { data: account } = useCurrentAccount(authEnabled && Boolean(user));
+    const pendingCommands = useRef(new Map<string, GardenPackUnitPlaceInput>());
+    const unitKey = (input: GardenPackUnitPlaceInput) =>
+        JSON.stringify([
+            input.accountId,
+            input.gardenId,
+            input.purchaseId,
+            input.lineId,
+            input.unitOrdinal,
+        ]);
     const winterMode = useGameState((state) => state.winterMode);
     const camera = useGameState((state) => state.gameCamera);
     const queueAnimation = useGameState(
@@ -77,7 +91,8 @@ export function useGardenPackUnitPlace() {
         mutationFn: async (input: GardenPackUnitPlaceInput) => {
             assertEnabled();
             if (
-                !garden ||
+                !input.gardenId ||
+                input.accountId !== account?.id ||
                 !input.operationId ||
                 !input.position ||
                 !input.expectedExistingBlocks
@@ -87,7 +102,7 @@ export function useGardenPackUnitPlace() {
                 purchaseId: input.purchaseId,
                 lineId: input.lineId,
                 unitOrdinal: input.unitOrdinal,
-                gardenId: garden.id,
+                gardenId: input.gardenId,
                 operationId: input.operationId,
                 position: input.position,
                 expectedExistingBlocks: input.expectedExistingBlocks,
@@ -97,46 +112,63 @@ export function useGardenPackUnitPlace() {
         onMutate: async (input) => {
             assertEnabled();
             if (!garden) throw new Error('Vrt nije odabran.');
-            // Keep the exact command on variables so network retry can reuse its durable identity.
-            input.operationId ??= globalThis.crypto.randomUUID();
-            const variant = resolveGardenPackLineVariant(input);
-            await queryClient.cancelQueries({ queryKey });
-            const current =
-                queryClient.getQueryData<CurrentGarden>(queryKey) ?? garden;
-            const optimisticId = `optimistic-pack:${input.operationId}`;
-            const placement = createOptimisticBlockPlacement(
-                current,
-                blockData,
-                input.modelName,
-                optimisticId,
-                {
-                    preferredPosition:
-                        input.position ??
-                        getPreferredBlockPlacementPosition(
-                            camera?.getSnapshot(),
-                        ),
-                    requestedPosition: input.position,
-                    variant: variant ?? undefined,
+            input.gardenId = garden.id;
+            input.accountId = garden.accountId;
+            const key = unitKey(input);
+            const pending = pendingCommands.current.get(key);
+            if (pending) {
+                Object.assign(input, pending);
+                // An earlier response may have been lost after commit; replay without requiring free space again.
+                return { queryKey, key, optimisticId: undefined };
+            }
+            return withGardenOptimisticMutationLock(
+                JSON.stringify(queryKey),
+                async () => {
+                    input.operationId ??= globalThis.crypto.randomUUID();
+                    const variant = resolveGardenPackLineVariant(input);
+                    await queryClient.cancelQueries({ queryKey });
+                    const current =
+                        queryClient.getQueryData<CurrentGarden>(queryKey) ??
+                        garden;
+                    const optimisticId = `optimistic-pack:${input.operationId}`;
+                    const placement = createOptimisticBlockPlacement(
+                        current,
+                        blockData,
+                        input.modelName,
+                        optimisticId,
+                        {
+                            preferredPosition:
+                                input.position ??
+                                getPreferredBlockPlacementPosition(
+                                    camera?.getSnapshot(),
+                                ),
+                            requestedPosition: input.position,
+                            variant: variant ?? undefined,
+                        },
+                    );
+                    if (!placement)
+                        throw new Error(
+                            'U vrtu nema odgovarajućeg mjesta za ovaj predmet.',
+                        );
+                    input.position ??= {
+                        x: placement.position.x,
+                        y: placement.position.z,
+                    };
+                    input.expectedExistingBlocks ??= placement.existingBlocks;
+                    pendingCommands.current.set(key, structuredClone(input));
+                    queueAnimation(optimisticId);
+                    queryClient.setQueryData<CurrentGarden>(queryKey, {
+                        ...current,
+                        stacks: placement.stacks,
+                    });
+                    return { optimisticId, queryKey, key };
                 },
             );
-            if (!placement)
-                throw new Error(
-                    'U vrtu nema odgovarajućeg mjesta za ovaj predmet.',
-                );
-            input.position ??= {
-                x: placement.position.x,
-                y: placement.position.z,
-            };
-            input.expectedExistingBlocks ??= placement.existingBlocks;
-            queueAnimation(optimisticId);
-            queryClient.setQueryData<CurrentGarden>(queryKey, {
-                ...current,
-                stacks: placement.stacks,
-            });
-            return { optimisticId, queryKey };
         },
         onSuccess: (result, _input, context) => {
             if (!context) return;
+            pendingCommands.current.delete(context.key);
+            if (!context.optimisticId) return;
             confirmAnimation(context.optimisticId, result.blockId);
             queryClient.setQueryData<CurrentGarden>(
                 context.queryKey,
@@ -152,7 +184,7 @@ export function useGardenPackUnitPlace() {
             );
         },
         onError: (_error, _input, context) => {
-            if (!context) return;
+            if (!context?.optimisticId) return;
             cancelAnimation(context.optimisticId);
             queryClient.setQueryData<CurrentGarden>(
                 context.queryKey,
@@ -162,9 +194,11 @@ export function useGardenPackUnitPlace() {
                         : current,
             );
         },
-        onSettled: async () => {
+        onSettled: async (_result, _error, _input, context) => {
             await Promise.all([
-                queryClient.invalidateQueries({ queryKey }),
+                queryClient.invalidateQueries({
+                    queryKey: context?.queryKey ?? queryKey,
+                }),
                 queryClient.invalidateQueries({
                     queryKey: ['garden-pack-inventory'],
                 }),

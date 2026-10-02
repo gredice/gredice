@@ -120,20 +120,9 @@ export function createGardenPackPlacementService<Transaction>(
                             'Podaci o predmetima trenutačno nisu dostupni.',
                         );
                     const blockData = directory.value;
-                    const matches = blockData.filter(
-                        (block) =>
-                            block.id.toString() === unit.entityId &&
-                            block.information.name === unit.modelName,
-                    );
-                    if (
-                        matches.length !== 1 ||
-                        !isGardenPackModelEligible(unit.modelName)
-                    )
-                        throw new PlacementError(
-                            'BLOCK_NOT_ELIGIBLE',
-                            409,
-                            'Kupljeni predmet trenutačno nije dostupan za postavljanje.',
-                        );
+                    const matches = blockData.filter((block) => block.id.toString() === unit.entityId);
+                    const modelMatches = blockData.filter((block) => block.information.name === unit.modelName);
+                    if (matches.length !== 1 || modelMatches.length !== 1 || matches[0] !== modelMatches[0] || matches[0]?.entityType.name !== 'block' || !isGardenPackModelEligible(unit.modelName)) throw new PlacementError('BLOCK_NOT_ELIGIBLE',409,'Kupljeni predmet trenutačno nije dostupan za postavljanje.');
                     const requestedBlock = matches[0];
                     if (
                         requestedBlock?.attributes.type !== 'decoration' ||

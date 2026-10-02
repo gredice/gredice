@@ -1,3 +1,4 @@
+import { isGardenPackPlacementStorageReady } from '@gredice/storage';
 import {
     gardenPackPlacementBodySchema,
     gardenPackPlacementIdentitySchema,
@@ -37,7 +38,7 @@ export const gardenPackPlacementRoutes = new Hono<{
                 },
                 404,
             );
-        if (!(await getGardenPackStorageReadiness()))
+        if ((!(await getGardenPackStorageReadiness()) || !(await isGardenPackPlacementStorageReady())))
             return context.json(
                 {
                     error: 'Garden pack storage is not ready',
