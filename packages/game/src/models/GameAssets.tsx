@@ -738,6 +738,9 @@ export type GLTFResult = GLTF & {
         'Bucket_-_Handle': THREE.Mesh;
         Bush_1_1: THREE.Mesh;
         Bush_1_2: THREE.Mesh;
+        Bush_AutumnBranches: THREE.Mesh;
+        Bush_AutumnSparse: THREE.Mesh;
+        Bush_AutumnThinning: THREE.Mesh;
         Cactus_Barrel_Body: THREE.Mesh;
         Cactus_Barrel_Spines: THREE.Mesh;
         Cactus_ColumnCluster_Body: THREE.Mesh;
@@ -1817,6 +1820,7 @@ export type GLTFResult = GLTF & {
         'Material.BlockStone.Dark': THREE.MeshStandardMaterial;
         'Material.BlockStone.Large': THREE.MeshStandardMaterial;
         'Material.BlockStone.Mid': THREE.MeshStandardMaterial;
+        'Material.BushBranches': THREE.MeshStandardMaterial;
         'Material.Butterfly.Body': THREE.MeshStandardMaterial;
         'Material.Butterfly.BodyWarm': THREE.MeshStandardMaterial;
         'Material.Butterfly.Charcoal': THREE.MeshStandardMaterial;
