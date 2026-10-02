@@ -9,6 +9,7 @@ import {
 import { Button } from '@gredice/ui/Button';
 import { GameSunflowerIcon, GameTrophyIcon } from '@gredice/ui/GameIcons';
 import { Link } from '@gredice/ui/Link';
+import { PageSectionNav } from '../../components/shared/PageSectionNav';
 import { KnownPages } from '../../src/KnownPages';
 import { achievementAvailability } from './achievementAvailability';
 
@@ -23,6 +24,20 @@ export function AchievementCatalog({ now }: { now: string }) {
 
     return (
         <div className="space-y-12">
+            <PageSectionNav
+                label="Zbirke postignuća"
+                items={families.map((family) => ({
+                    id: family.key,
+                    label: (
+                        <>
+                            {family.label}{' '}
+                            <span className="text-muted-foreground">
+                                ({family.levels.length})
+                            </span>
+                        </>
+                    ),
+                }))}
+            />
             <header className="grid items-center gap-6 md:grid-cols-[1fr_auto]">
                 <div className="max-w-2xl">
                     <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
@@ -113,24 +128,6 @@ export function AchievementCatalog({ now }: { now: string }) {
                     Kako skupljati XP i napredovati kroz razine
                 </Link>
             </section>
-
-            <nav
-                aria-label="Zbirke postignuća"
-                className="flex flex-wrap gap-2"
-            >
-                {families.map((family) => (
-                    <Link
-                        key={family.key}
-                        href={`#${family.key}`}
-                        className="rounded-full border px-4 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                    >
-                        {family.label}{' '}
-                        <span className="text-muted-foreground">
-                            ({family.levels.length})
-                        </span>
-                    </Link>
-                ))}
-            </nav>
 
             {families.map((family) => (
                 <section

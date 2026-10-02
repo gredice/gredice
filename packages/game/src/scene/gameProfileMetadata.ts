@@ -502,6 +502,13 @@ export type GameProfileMetadata = {
     placementShadowFlushCount?: number;
     qualityTier?: GameQualityProfileTier;
     rainParticleCount?: number;
+    rainRippleCapacity?: number;
+    frostIntensity?: number;
+    coldBreathCapacity?: number;
+    coldBreathCount?: number;
+    rainRippleCount?: number;
+    morningMistCapacity?: number;
+    morningMistCount?: number;
     rainWetOverlayDistinctUniformCount?: number;
     rainWetOverlayMaterialConsumerCount?: number;
     raisedBedFieldVisualBatchCount?: number;
