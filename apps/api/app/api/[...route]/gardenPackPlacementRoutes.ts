@@ -30,10 +30,11 @@ export const gardenPackPlacementRoutes = new Hono<{
     zValidator('param', gardenPackPlacementIdentitySchema),
     zValidator('json', gardenPackPlacementBodySchema),
     async (context) => {
+        context.header('Cache-Control', 'private, no-store');
         if (!isGardenPackStorageEnabled())
             return context.json(
                 {
-                    error: 'Garden packs are not enabled',
+                    error: 'Paketi trenutačno nisu dostupni.',
                     code: 'PACKS_DISABLED',
                 },
                 404,
@@ -44,7 +45,7 @@ export const gardenPackPlacementRoutes = new Hono<{
         )
             return context.json(
                 {
-                    error: 'Garden pack storage is not ready',
+                    error: 'Postavljanje iz paketa trenutačno nije dostupno.',
                     code: 'PACK_STORAGE_NOT_READY',
                 },
                 503,
@@ -70,7 +71,7 @@ export const gardenPackPlacementRoutes = new Hono<{
             });
             return context.json(
                 {
-                    error: 'Prepaid placement failed; retry the same request',
+                    error: 'Postavljanje nije potvrđeno. Pokušaj ponovno s istim zahtjevom.',
                     code: 'PLACEMENT_FAILED',
                 },
                 500,

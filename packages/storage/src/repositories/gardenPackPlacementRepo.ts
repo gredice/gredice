@@ -37,7 +37,7 @@ export function gardenPackPlacementPayload(
 }
 export async function getGardenPackPlacementReplay(
     command: GardenPackPlacementCommand,
-    tx: GardenPackTransaction,
+    tx: GardenPackTransaction | ReturnType<typeof storage> = storage(),
 ) {
     const [event] = await tx
         .select()

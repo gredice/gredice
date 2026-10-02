@@ -31,7 +31,7 @@ model name and the immutable variant snapshot. It must use the dedicated prepaid
 endpoint, never ordinary `useBlockPlace`. Without an adapter, placement is visibly
 disabled. The inventory does not decrement counts optimistically. It closes only
 after the adapter confirms success; errors retain the list and expose refresh/retry.
-The #4988 adapter owns operation replay and invalidation of owned inventory and
+The #4988 `useGardenPackUnitPlace` adapter is wired through GameHud and owns operation replay and invalidation of owned inventory and
 garden queries. Existing backpack and garden-box behavior remains independent.
 
 Local validation uses the pure projection/gating tests and a focused browser

@@ -98,6 +98,7 @@ function service(options: { directoryDown?: boolean; failure?: boolean } = {}) {
         getUnit: getGardenPackPlacementUnitForUpdate,
         getSnapshot: getGardenPlacementSnapshotForUpdate,
         getBlockData: async () => {
+            await options.prepare?.();
             if (options.directoryDown) throw new Error('Directory down');
             return directory;
         },
@@ -359,5 +360,55 @@ test('ordinary move remains allowed but unsafe store/recycle/variant/garden dele
         (await getPurchasedGardenPack(command.accountId, command.purchaseId))
             ?.remainingQuantity,
         0,
+    );
+});
+
+test('directory preparation performs real shared-client reads before economic locks', {
+    skip: !enabled,
+}, async () => {
+    const command = await fixture();
+    let reads = 0;
+    const result = await service({
+        prepare: async () => {
+            await withSunflowerAccountTransaction(
+                command.accountId,
+                async (tx) => {
+                    const rows = await tx
+                        .select({ id: gardens.id })
+                        .from(gardens)
+                        .where(eq(gardens.id, command.gardenId));
+                    assert.equal(rows.length, 1);
+                    reads++;
+                },
+            );
+            await storage()
+                .select({ id: gardens.id })
+                .from(gardens)
+                .where(eq(gardens.id, command.gardenId));
+        },
+    })(command);
+    assert.equal(result.ok, true);
+    assert.equal(reads, 1);
+});
+
+test('a concurrent exact receipt committed during failed preparation wins over directory outage', {
+    skip: !enabled,
+}, async () => {
+    const command = await fixture();
+    const result = await service({
+        prepare: async () => {
+            assert.equal((await service()(command)).ok, true);
+            throw new Error('Preparation outage after competing commit');
+        },
+    })(command);
+    assert.equal(result.ok && result.replayed, true);
+    assert.equal(
+        (
+            await getPurchasedGardenPackAudit(
+                command.accountId,
+                command.purchaseId,
+            )
+        ).length,
+        1,
     );
 });
