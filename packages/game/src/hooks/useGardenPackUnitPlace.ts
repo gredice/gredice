@@ -1,4 +1,7 @@
-import { placeGardenPackUnit } from '@gredice/client';
+import {
+    GardenPackPlacementRequestError,
+    placeGardenPackUnit,
+} from '@gredice/client';
 import { resolveGardenPackLineVariant } from '@gredice/js/gardenPackAppearanceVariant';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
@@ -14,6 +17,7 @@ import { useBlockData } from './useBlockData';
 import { useCurrentAccount } from './useCurrentAccount';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 import { useCurrentUser } from './useCurrentUser';
+import { useGardenAccountGroups } from './useGardenAccountGroups';
 import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 type CurrentGarden = NonNullable<ReturnType<typeof useCurrentGarden>['data']>;
@@ -44,6 +48,11 @@ export function useGardenPackUnitPlace() {
     const authEnabled = enabled && authenticated && !isMock && !sandboxKey;
     const { data: user } = useCurrentUser(authEnabled);
     const { data: account } = useCurrentAccount(authEnabled && Boolean(user));
+    const { data: groups } = useGardenAccountGroups(!authEnabled || !user);
+    const currentGroup = groups?.find((group) => group.isCurrent);
+    const ownedGarden = currentGroup?.gardens.some(
+        (candidate) => candidate.id === garden?.id,
+    );
     const pendingCommands = useRef(new Map<string, GardenPackUnitPlaceInput>());
     const unitKey = (input: GardenPackUnitPlaceInput) =>
         JSON.stringify([
@@ -79,7 +88,8 @@ export function useGardenPackUnitPlace() {
             !user ||
             !garden ||
             garden.isSandbox ||
-            account?.id !== garden.accountId
+            !ownedGarden ||
+            account?.id !== currentGroup?.accountId
         )
             throw new Error(
                 'Odaberi vlastiti vrt za postavljanje predmeta iz paketa.',
@@ -113,7 +123,7 @@ export function useGardenPackUnitPlace() {
             assertEnabled();
             if (!garden) throw new Error('Vrt nije odabran.');
             input.gardenId = garden.id;
-            input.accountId = garden.accountId;
+            input.accountId = account?.id;
             const key = unitKey(input);
             const pending = pendingCommands.current.get(key);
             if (pending) {
@@ -183,7 +193,14 @@ export function useGardenPackUnitPlace() {
                         : current,
             );
         },
-        onError: (_error, _input, context) => {
+        onError: (error, _input, context) => {
+            if (
+                context &&
+                error instanceof GardenPackPlacementRequestError &&
+                error.status >= 400 &&
+                error.status < 500
+            )
+                pendingCommands.current.delete(context.key);
             if (!context?.optimisticId) return;
             cancelAnimation(context.optimisticId);
             queryClient.setQueryData<CurrentGarden>(

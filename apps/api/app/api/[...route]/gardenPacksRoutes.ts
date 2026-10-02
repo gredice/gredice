@@ -1,4 +1,3 @@
-import { gardenPackPlacementRoutes } from './gardenPackPlacementRoutes';
 import {
     type GardenPackInventoryPurchase,
     gardenPackInventoryQuerySchema,
@@ -19,6 +18,7 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { gardenPackPlacementRoutes } from './gardenPackPlacementRoutes';
 
 export type GardenPacksRouteDependencies = {
     authValidator: (
