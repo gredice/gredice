@@ -336,13 +336,14 @@ describe('production news archive metadata', () => {
         );
 
         const articlePath =
-            /href="(\/novosti\/(?!sto-je-novo|api|archive-filter)[^"?]+)"/u.exec(
+            /<a\b[^>]*href="(\/novosti\/(?!sto-je-novo|api|archive-filter|_next)[^"?]+)"/u.exec(
                 html,
             )?.[1];
         assert.ok(
             articlePath,
             'Published article fixture required for cache freshness check',
         );
+        console.info(JSON.stringify({ articlePath }));
         const articleBefore = await fetch(`${origin}${articlePath}`);
         assert.equal(articleBefore.status, 200);
         assert.equal(articleBefore.headers.get('x-nextjs-cache'), 'HIT');
