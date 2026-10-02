@@ -23,19 +23,19 @@ these totals include sources whose native dimensions have not been established.
 They are an attribution baseline, not a claim that every large variant is waste.
 Quality was 75 for the dominant groups.
 
-The source-hash query returned its maximum 500 groups, accounting for 6,568
+The WWW source-hash query returned its maximum 500 groups, accounting for 6,568
 of WWW's 7,440 transformations. Vercel exposes source ETag hashes, not source
 URLs. Public HTML from `/`, `/biljke`, `/blokovi` and `/sjeme` supplied 376
 source URLs for header inspection. Direct header requests matched 169 ETags.
-Direct requests for 184 CDN sources returned 403; authorized read-only R 2
+Direct requests for 184 CDN sources returned 403; authorized read-only R2
 `HeadObject` metadata resolved all 184 without downloading images. One complete
-R 2 metadata listing returned 425 objects. Local static-image content MD 5s
-resolved the remaining 52 WWW hashes; the matched Snow source's MD 5 also agrees
+R2 metadata listing returned 425 objects. Local static-image content MD5s
+resolved the remaining 52 WWW hashes; the matched Snow source's MD5 also agrees
 with its live HTTP ETag.
 
 Together these identify **438 of 500** hostname/ETag groups and **6,441 of 6,568**
 transformations in the top-500 sample (98.1%). All 252 CDN and 185 WWW groups in
-that sample are attributed. Of these,421 groups have one known candidate and
+that sample are attributed. Of these, 421 groups have one known candidate and
 17 have duplicate ETag candidates, accounting for 409 transformations. A hash
 can represent identical bytes at multiple URLs; count its transformations once.
 The remaining 62 groups contain 127 transformations from local/Blob sources.
@@ -44,19 +44,19 @@ complete source-cardinality measurement.
 
 | Attributed source path | Transformations |
 | --- | ---: |
-| CDN `entity-attributes/{51d 215da-929e-4d 88-a 1d 0-ba 9e 01373a 2d,b 56944bb-08c 6-4b 46-8a 6c-5d 9a 4ac 6ec 44}-MulchHey_1.png` (two identical candidates) | 81 total |
-| CDN `entity-attributes/da 0310d 6-4245-41be-bce 5-adfde 24f 1b 67-kadulja.png` | 44 |
+| CDN `entity-attributes/{51d215da-929e-4d88-a1d0-ba9e01373a2d,b56944bb-08c6-4b46-8a6c-5d9a4ac6ec44}-MulchHey_1.png` (two identical candidates) | 81 total |
+| CDN `entity-attributes/da0310d6-4245-41be-bce5-adfde24f1b67-kadulja.png` | 44 |
 | WWW `/assets/operation-icons/raisedBedFullPhoto.webp` | 44 |
-| CDN `entity-attributes/14d 28d 60-aad 4-44e 4-9a 67-b 519a 1e 8eee 0-spinach-realistic-340.png` | 43 |
+| CDN `entity-attributes/14d28d60-aad4-44e4-9a67-b519a1e8eee0-spinach-realistic-340.png` | 43 |
 | WWW `/assets/operation-icons/plantPhoto.webp` | 42 |
-| CDN `entity-attributes/94441e 3a-ac 27-4d 0c-ab 08-1becba 600e 96-turnip-realistic-340.png` | 41 |
-| CDN `entity-attributes/e 4b 97d 0b-d 97d-4317-bde 4-5402e 3c 4e 4d 1-kohlrabi-realistic-340.png` | 41 |
+| CDN `entity-attributes/94441e3a-ac27-4d0c-ab08-1becba600e96-turnip-realistic-340.png` | 41 |
+| CDN `entity-attributes/e4b97d0b-d97d-4317-bde4-5402e3c4e4d1-kohlrabi-realistic-340.png` | 41 |
 
 A fully attributed generated source is:
 
-`/assets/blocks/Block_Snow_Falling.webp?v=07e 7774754828298`
+`/assets/blocks/Block_Snow_Falling.webp?v=07e7774754828298`
 
-Its ETag was `"3fab 8592ff 4d 46c 5301e 47abd 021b 304"`. The exact-source query
+Its ETag was `"3fab8592ff4d46c5301e47abd021b304"`. The exact-source query
 returned **27 transformations at 14 widths**, all quality 75:
 32, 64, 96, 128, 256, 384, 640, 750, 828, 1080, 1200, 1920, 2048 and 3840.
 The same source/version appeared across those variants. All **806** checked-in
@@ -80,7 +80,7 @@ Plant photos retain the normal optimizer and needed high-resolution variants.
 Block source URLs retain the existing content hash. The hash is derived from
 asset contents rather than a deployment ID, so unrelated deployments retain
 source keys and changed assets receive a new key. Existing source cache headers
-remain unchanged: generated assets use browser `max-age=86400` and CDN
+remain unchanged: block assets use browser `max-age=86400` and CDN
 `s-maxage=31536000`; static imports are immutable. The observed Blob garden
 preview used a content-addressed path and a one-year source cache lifetime.
 No global optimizer TTL increase is justified by this source sample.
