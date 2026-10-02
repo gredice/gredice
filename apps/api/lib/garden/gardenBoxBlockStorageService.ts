@@ -11,18 +11,23 @@ import {
     GardenMutationOperationConflictError,
     type GardenMutationOperationExecution,
     type GardenMutationOperationStoredResponse,
+    GardenPackConflictError,
     GardenPackLifecyclePendingError,
+    GardenPackNotFoundError,
     type GardenPlacementTransaction,
     getGardenBlockForUpdate,
     getGardenMutationAuthorityForUpdate,
     getGardenMutationOperationReceipt,
     getGardenPlacementSnapshotForUpdate,
     getGardenStackForUpdate,
+    isPurchasedGardenPackBlock,
+    storeGardenPackBlock,
     updateGardenStack,
     withGardenBoxInventoryTransaction,
     withGardenMutationOperation,
     withGardenPlacementTransaction,
 } from '@gredice/storage';
+import { z } from 'zod';
 import { getBlockData } from '../blocks/blockDataService';
 import { settleGardenEconomicMutationDependency } from './gardenEconomicMutationDependency';
 
@@ -143,6 +148,7 @@ export type GardenBoxBlockStorageDependencies<Transaction> = Readonly<{
 
 export type GardenBoxBlockStorageCommand = Readonly<{
     accountId: string;
+    operationId?: string;
     blockId: string;
     blockIndex: number;
     entityId?: string;
@@ -754,5 +760,62 @@ const defaultDependencies: GardenBoxBlockStorageDependencies<GardenPlacementTran
         withGardenPlacementTransaction,
     };
 
-export const storeGardenBlockInGardenBoxForAccount =
+const storeOrdinaryGardenBlock =
     createGardenBoxBlockStorageService(defaultDependencies);
+export async function storeGardenBlockInGardenBoxForAccount(
+    command: GardenBoxBlockStorageCommand,
+): Promise<GardenBoxBlockStorageResult> {
+    if (!(await isPurchasedGardenPackBlock(command.blockId)))
+        return storeOrdinaryGardenBlock(command);
+    try {
+        const response = await storeGardenPackBlock(command.accountId, {
+            gardenId: command.gardenId,
+            blockId: command.blockId,
+            gardenBoxBlockId: command.gardenBoxBlockId,
+            blockIndex: command.blockIndex,
+            sourcePosition: command.sourcePosition,
+            operationId: command.operationId,
+        });
+        return {
+            ok: true,
+            gardenBoxBlockId: command.gardenBoxBlockId,
+            item: {
+                entityTypeName: 'block',
+                entityId: z
+                    .string()
+                    .parse(
+                        z
+                            .object({
+                                item: z.object({ entityId: z.string() }),
+                            })
+                            .parse(response).item.entityId,
+                    ),
+                amount: 1,
+            },
+            replayed: z.object({ replayed: z.boolean() }).parse(response).replayed,
+        };
+    } catch (error) {
+        if (error instanceof GardenPackConflictError)
+            return {
+                ok: false,
+                code: 'OPERATION_CONFLICT',
+                error: error.message,
+                status: 409,
+            };
+        if (error instanceof GardenPackNotFoundError)
+            return {
+                ok: false,
+                code: 'BLOCK_NOT_FOUND',
+                error: error.message,
+                status: 404,
+            };
+        if (error instanceof GardenBoxInventoryLimitError)
+            return {
+                ok: false,
+                code: 'GARDEN_BOX_INVENTORY_LIMIT',
+                error: error.message,
+                status: 400,
+            };
+        throw error;
+    }
+}

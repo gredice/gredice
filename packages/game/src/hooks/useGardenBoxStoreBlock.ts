@@ -1,8 +1,11 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRef } from 'react';
 import { canAddBlockToGardenBox } from '../gardenBoxInventoryLimits';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { useGameState } from '../useGameState';
+import { ensureBlockPlaceOperationId } from './blockPlaceOperation';
+import { useCurrentAccount } from './useCurrentAccount';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 import { inventoryQueryKey } from './useInventory';
 import { tutorialChecklistKeys } from './useTutorialChecklist';
@@ -29,6 +32,9 @@ type InventoryData = {
 };
 
 type StoreBlockArgs = {
+    operationId?: string;
+    accountId?: string | null;
+    gardenId?: number;
     sourcePosition: { x: number; z: number };
     blockIndex: number;
     sourceBlockId: string;
@@ -90,9 +96,27 @@ function addBlockToGardenBoxInventory(
     };
 }
 
+class GardenBoxRequestError extends Error {
+    constructor(
+        readonly status: number,
+        message: string,
+    ) {
+        super(message);
+    }
+}
 export function useGardenBoxStoreBlock() {
+    const pendingOperations = useRef(new Map<string, string>());
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
+    const { data: currentAccount } = useCurrentAccount();
+    const authority = useRef({
+        accountId: currentAccount?.id ?? null,
+        gardenId: garden?.id,
+    });
+    authority.current = {
+        accountId: currentAccount?.id ?? null,
+        gardenId: garden?.id,
+    };
     const winterMode = useGameState((state) => state.winterMode);
     const showGardenBoxTooltip = useGameState(
         (state) => state.showGardenBoxTooltip,
@@ -110,16 +134,26 @@ export function useGardenBoxStoreBlock() {
             gardenBoxBlockId,
             sourceBlockId,
             sourcePosition,
+            operationId,
+            accountId,
+            gardenId,
         }: StoreBlockArgs) => {
-            if (!garden) {
-                throw new Error('No garden selected');
+            if (
+                !gardenId ||
+                accountId !== authority.current.accountId ||
+                gardenId !== authority.current.gardenId
+            ) {
+                throw new GardenBoxRequestError(
+                    409,
+                    'Račun ili odabrani vrt promijenio se. Pokušaj ponovno.',
+                );
             }
 
             const response = await clientAuthenticated().api.gardens[
                 ':gardenId'
             ].blocks[':blockId']['store-in-garden-box'].$post({
                 param: {
-                    gardenId: garden.id.toString(),
+                    gardenId: gardenId.toString(),
                     blockId: sourceBlockId,
                 },
                 json: {
@@ -127,6 +161,7 @@ export function useGardenBoxStoreBlock() {
                     entityId: blockEntityId,
                     gardenBoxBlockId,
                     sourcePosition,
+                    operationId,
                 },
             });
 
@@ -139,10 +174,25 @@ export function useGardenBoxStoreBlock() {
                     typeof errorBody.error === 'string'
                         ? errorBody.error
                         : 'Failed to store block in garden box';
-                throw new Error(errorMessage);
+                throw new GardenBoxRequestError(response.status, errorMessage);
             }
         },
         onMutate: async (args) => {
+            args.accountId ??= authority.current.accountId;
+            args.gardenId ??= authority.current.gardenId;
+            const key = JSON.stringify({
+                accountId: args.accountId,
+                gardenId: args.gardenId,
+                sourceBlockId: args.sourceBlockId,
+                gardenBoxBlockId: args.gardenBoxBlockId,
+                sourcePosition: args.sourcePosition,
+                blockIndex: args.blockIndex,
+            });
+            args.operationId ??= pendingOperations.current.get(key);
+            pendingOperations.current.set(
+                key,
+                ensureBlockPlaceOperationId(args),
+            );
             if (!garden) {
                 return;
             }
@@ -196,7 +246,35 @@ export function useGardenBoxStoreBlock() {
                 previousInventory,
             };
         },
+        onSuccess: (_data, variables) => {
+            pendingOperations.current.delete(
+                JSON.stringify({
+                    accountId: variables.accountId,
+                    gardenId: variables.gardenId,
+                    sourceBlockId: variables.sourceBlockId,
+                    gardenBoxBlockId: variables.gardenBoxBlockId,
+                    sourcePosition: variables.sourcePosition,
+                    blockIndex: variables.blockIndex,
+                }),
+            );
+        },
         onError: (error, variables, context) => {
+            if (
+                error instanceof GardenBoxRequestError &&
+                error.status >= 400 &&
+                error.status < 500
+            )
+                pendingOperations.current.delete(
+                    JSON.stringify({
+                        accountId: variables.accountId,
+                        gardenId: variables.gardenId,
+                        sourceBlockId: variables.sourceBlockId,
+                        gardenBoxBlockId: variables.gardenBoxBlockId,
+                        sourcePosition: variables.sourcePosition,
+                        blockIndex: variables.blockIndex,
+                    }),
+                );
+            if (variables.accountId !== authority.current.accountId) return;
             console.error('Error storing block in garden box', error);
             showGardenBoxTooltip({
                 blockId: variables.gardenBoxBlockId,
