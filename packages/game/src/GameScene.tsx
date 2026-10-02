@@ -375,9 +375,7 @@ export function GameScene({
                 (quality === undefined && gameQualitySetting === 'high')),
     );
     const staticOpaqueCacheEnabled = Boolean(
-        staticOpaqueSceneCache &&
-            qualityProfile.tier === 'high' &&
-            !gardenAvatarActive,
+        staticOpaqueSceneCache && !gardenAvatarActive,
     );
     const adaptiveHighInteractionActive = useAdaptiveHighInteractionActivity(
         adaptiveHighEnabled || staticOpaqueCacheEnabled,

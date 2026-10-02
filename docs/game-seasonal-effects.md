@@ -456,8 +456,10 @@ to 32% blend, without displacement, overlays, extra geometry or raycast targets.
 Rain fades it out by strength 0.2; snowfall or 3 cm accumulation removes it.
 Rendered wetness additionally masks residual frost, and snow-covered fragments
 retain their existing snow rendering. Existing leaves remain above the ground.
-The legacy weather-surface feature-flag fallback omits frost. Active frost uses
-the existing weather bypass for the static opaque scene cache.
+The legacy weather-surface feature-flag fallback omits frost. Active frost moves
+the integrated base-ground layer of the static opaque scene cache to live
+rendering, while other cached layers stay cached (see
+[game-layered-static-cache.md](./game-layered-static-cache.md)).
 
 Visible breath begins below 5°C and reaches full strength at -2°C. Supported
 actors are the live cloned goat and sheep rigs; source IDs determine a repeatable
