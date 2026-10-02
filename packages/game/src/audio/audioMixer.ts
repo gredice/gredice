@@ -14,6 +14,9 @@ type LoopAudioOptions = {
 type SoundEffectOptions = {
     volume?: number;
     queueWhenLocked?: boolean;
+    signal?: AbortSignal;
+    maxDelayMs?: number;
+    silentFailure?: boolean;
 };
 
 type QueuedEffect = {
@@ -94,6 +97,9 @@ function useSoundEffect(
     const srcRef = useRef(src);
     const volume = options?.volume ?? 1;
     const queueWhenLocked = options?.queueWhenLocked ?? true;
+    const signal = options?.signal;
+    const maxDelayMs = options?.maxDelayMs;
+    const silentFailure = options?.silentFailure;
 
     useEffect(() => {
         srcRef.current = src;
@@ -104,8 +110,19 @@ function useSoundEffect(
             manager.playOneShot(channel, srcRef.current, {
                 volume,
                 queueWhenLocked,
+                signal,
+                maxDelayMs,
+                silentFailure,
             }),
-        [channel, manager, queueWhenLocked, volume],
+        [
+            channel,
+            manager,
+            queueWhenLocked,
+            volume,
+            signal,
+            maxDelayMs,
+            silentFailure,
+        ],
     );
 
     return useMemo(() => ({ play }), [play]);
@@ -160,6 +177,8 @@ class GameAudioManager {
     private readonly startingLoops = new Set<string>();
     private readonly queuedEffects: QueuedEffect[] = [];
     private readonly subscribers = new Set<() => void>();
+    private readonly activeOneShots = new Set<() => void>();
+    private readonly failedSilentEffects = new Set<string>();
     private resumePromise: Promise<void> | null = null;
     private hasUnlockedAudio = false;
     private config: GameAudioConfig;
@@ -306,7 +325,16 @@ class GameAudioManager {
         src: string,
         options?: SoundEffectOptions,
     ) => {
-        if (!isPageVisible()) {
+        const requestedAt = performance.now();
+        const expired = () =>
+            options?.signal?.aborted ||
+            (options?.maxDelayMs !== undefined &&
+                performance.now() - requestedAt > options.maxDelayMs);
+        if (
+            !isPageVisible() ||
+            expired() ||
+            this.failedSilentEffects.has(src)
+        ) {
             return;
         }
 
@@ -320,7 +348,11 @@ class GameAudioManager {
         }
 
         if (context.state !== 'running') {
-            if (options?.queueWhenLocked ?? true) {
+            if (
+                !options?.signal &&
+                !expired() &&
+                (options?.queueWhenLocked ?? true)
+            ) {
                 this.queueEffect({
                     channel,
                     src,
@@ -332,7 +364,7 @@ class GameAudioManager {
 
         try {
             const buffer = await this.loadBuffer(src);
-            if (context.state !== 'running' || !isPageVisible()) {
+            if (context.state !== 'running' || !isPageVisible() || expired()) {
                 return;
             }
 
@@ -342,13 +374,19 @@ class GameAudioManager {
             gain.gain.value = clampVolume(options?.volume ?? 1);
             source.connect(gain);
             gain.connect(this.getChannelGain(channel));
+            const stop = () => source.stop();
             source.addEventListener('ended', () => {
+                this.activeOneShots.delete(stop);
+                options?.signal?.removeEventListener('abort', stop);
                 source.disconnect();
                 gain.disconnect();
             });
+            this.activeOneShots.add(stop);
+            options?.signal?.addEventListener('abort', stop, { once: true });
             source.start();
         } catch (error) {
-            console.warn('Failed to play sound effect', src, error);
+            if (options?.silentFailure) this.failedSilentEffects.add(src);
+            else console.warn('Failed to play sound effect', src, error);
         }
     };
 
@@ -488,6 +526,9 @@ class GameAudioManager {
     };
 
     dispose = () => {
+        for (const stop of this.activeOneShots) stop();
+        this.activeOneShots.clear();
+        this.failedSilentEffects.clear();
         for (const loop of this.loops.values()) {
             this.stopLoopSource(loop);
         }
@@ -783,6 +824,8 @@ class GameAudioManager {
     };
 
     private pauseForBackground() {
+        for (const stop of this.activeOneShots) stop();
+        this.activeOneShots.clear();
         for (const loop of this.loops.values()) {
             this.stopLoopSource(loop);
         }

@@ -380,6 +380,8 @@ export function Stars({ visibility = 1 }: StarsProps) {
                         );
                         gl_PointSize = uPointSize;
                         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                        // Stars belong to the sky, regardless of their camera-relative distance.
+                        gl_Position.z = gl_Position.w;
                     }
                 `
                 }
@@ -401,7 +403,7 @@ export function Stars({ visibility = 1 }: StarsProps) {
                 `
                 }
                 transparent
-                depthTest={false}
+                depthTest
                 depthWrite={false}
                 blending={AdditiveBlending}
             />
