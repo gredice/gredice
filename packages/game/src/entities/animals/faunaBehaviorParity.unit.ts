@@ -214,7 +214,10 @@ const factories = new Map<string, DecisionFactory>([
                     behavior: escaping ? 'escape' : 'hop',
                     dwellSeconds:
                         getFrogDwellSeconds(random) +
-                        getFrogHopDurationSeconds({ distance, escape: escaping }),
+                        getFrogHopDurationSeconds({
+                            distance,
+                            escape: escaping,
+                        }),
                     detail: {
                         blinkDelay: getFrogBlinkDelaySeconds(random),
                         croakDelay: getFrogCroakDelaySeconds(random),

@@ -631,10 +631,13 @@ function updateButterflyRig({
     descriptor: ButterflySpawnDescriptor;
     now: number;
     rig: ButterflyRig;
-    runtime: ButterflyRuntimeState;
+    runtime: ButterflyRuntimeState | null;
 }) {
-    const resting = runtime.phase === 'resting';
-    const landing = runtime.phase === 'landing';
+    // A newly mounted butterfly can render between fixed simulation steps.
+    // Both initial path alternatives are flight, so its render-time damped
+    // rig starts immediately without advancing decisions or locomotion.
+    const resting = runtime?.phase === 'resting';
+    const landing = runtime?.phase === 'landing';
     const slowWingMotion = Math.sin(now * 0.75 + descriptor.seed) * 0.045;
     const flap =
         Math.sin(
@@ -1178,7 +1181,7 @@ function Butterfly({
     useFaunaRenderFrame(({ clock }, delta) => {
         const group = groupRef.current;
         const runtime = runtimeRef.current;
-        if (!group || !runtime) return;
+        if (!group) return;
         const now = clock.elapsedTime;
         updateButterflyRig({
             delta,
@@ -1187,7 +1190,7 @@ function Butterfly({
             rig: butterflyModel.rig,
             runtime,
         });
-        if (updateGroundingShadow) {
+        if (updateGroundingShadow && runtime) {
             updateGroundingShadow({
                 actorY: group.position.y,
                 receiverY:
