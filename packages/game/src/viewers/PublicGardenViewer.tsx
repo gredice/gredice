@@ -655,6 +655,26 @@ function PublicGardenScene({
                                                     />
                                                 </Suspense>
                                             ) : null}
+                                            <Suspense fallback={null}>
+                                                <Hedgehogs
+                                                    enabled={
+                                                        renderTransientDetails
+                                                    }
+                                                    stacks={
+                                                        retainedScene.stacks
+                                                    }
+                                                    gardenId={garden?.id}
+                                                    quality={qualityProfile}
+                                                    weather={
+                                                        noWeather
+                                                            ? {
+                                                                  rainy: 0,
+                                                                  snowy: 0,
+                                                              }
+                                                            : undefined
+                                                    }
+                                                />
+                                            </Suspense>
                                             {renderTransientDetails && (
                                                 <Suspense fallback={null}>
                                                     <Birds
@@ -673,21 +693,6 @@ function PublicGardenScene({
                                                         farmId={garden?.farmId}
                                                         stacks={
                                                             retainedScene.stacks
-                                                        }
-                                                    />
-                                                    <Hedgehogs
-                                                        stacks={
-                                                            retainedScene.stacks
-                                                        }
-                                                        gardenId={garden?.id}
-                                                        quality={qualityProfile}
-                                                        weather={
-                                                            noWeather
-                                                                ? {
-                                                                      rainy: 0,
-                                                                      snowy: 0,
-                                                                  }
-                                                                : undefined
                                                         }
                                                     />
                                                 </Suspense>

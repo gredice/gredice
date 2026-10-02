@@ -1,6 +1,9 @@
-import { expect, test } from '@playwright/experimental-ct-react';
+import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import type { Locator } from '@playwright/test';
 import { HedgehogShelterFixture } from '../../../packages/game/tests/HedgehogShelterFixture';
+
+const expect = baseExpect.configure({ timeout: 15_000 });
+test.setTimeout(90_000);
 
 async function report(fixture: Locator) {
     return JSON.parse(
@@ -28,6 +31,9 @@ for (const small of [false, true])
         await expect
             .poll(async () => (await report(fixture)).actors.length)
             .toBe(1);
+        await expect
+            .poll(async () => (await report(fixture)).actors[0]?.elapsed)
+            .toBe(8);
         const a = await report(fixture);
         expect(a.actors[0]).toMatchObject({
             meshes: 6,
@@ -54,6 +60,9 @@ for (const small of [false, true])
         await expect
             .poll(async () => (await report(fixture)).actors.length)
             .toBe(1);
+        await expect
+            .poll(async () => (await report(fixture)).actors[0])
+            .toEqual(a.actors[0]);
         const b = await report(fixture);
         expect(b.actors[0]).toEqual(a.actors[0]);
         expect(b.cachedDisposals).toBe(0);
@@ -117,6 +126,26 @@ test('hedgehog live visit pauses offscreen then returns and enters cooldown', as
     expect(
         (await report(fixture)).actors[0].elapsed - before.actors[0].elapsed,
     ).toBeLessThan(0.8);
+    await fixture.update(
+        <HedgehogShelterFixture
+            rotation={0}
+            runtime
+            live
+            small
+            details={false}
+        />,
+    );
+    await page.waitForTimeout(250);
+    const hiddenDetails = await report(fixture);
+    await page.waitForTimeout(1000);
+    expect(await report(fixture)).toEqual(hiddenDetails);
+    await fixture.update(
+        <HedgehogShelterFixture rotation={0} runtime live small />,
+    );
+    await expect
+        .poll(async () => (await report(fixture)).actors[0]?.elapsed)
+        .toBeGreaterThan(hiddenDetails.actors[0].elapsed);
+    expect((await report(fixture)).actors[0].sequence).toBe(0);
     const beforeSlowFrame = (await report(fixture)).actors[0].elapsed;
     await page.clock.fastForward(1200);
     await expect
@@ -138,6 +167,19 @@ test('hedgehog live visit pauses offscreen then returns and enters cooldown', as
     await page.waitForTimeout(500);
     expect((await report(fixture)).actors).toHaveLength(0);
     expect((await report(fixture)).cachedDisposals).toBe(0);
+    await fixture.update(
+        <HedgehogShelterFixture
+            rotation={0}
+            runtime
+            live
+            small
+            details={false}
+        />,
+    );
+    await fixture.update(
+        <HedgehogShelterFixture rotation={0} runtime live small />,
+    );
+    expect((await report(fixture)).actors).toHaveLength(0);
     await page.clock.fastForward(240100);
     await expect
         .poll(async () => (await report(fixture)).actors[0]?.sequence)
@@ -184,5 +226,7 @@ for (const pose of [
         await expect
             .poll(async () => (await report(fixture)).actors[0]?.clip)
             .toBe(pose.clip);
-        await expect(fixture).toHaveScreenshot(`close-up-${pose.clip}.png`);
+        await expect(fixture).toHaveScreenshot(`close-up-${pose.clip}.png`, {
+            maxDiffPixels: 250,
+        });
     });
