@@ -26,8 +26,33 @@ test('initial, late and remounted mixers precede poses and same-frame grounding 
         expect(sample.maxDelta).toBeLessThanOrEqual(1 / 30 + 1e-9);
     };
     await check(b);
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () => window.__grediceGameProfile?.faunaSimulation?.rootCount,
+            ),
+        )
+        .toBe(2);
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () =>
+                    window.__grediceGameProfile?.faunaSimulation
+                        ?.simulationCallbacks,
+            ),
+        )
+        .toBe(1);
     await fixture.getByRole('button', { name: 'Toggle animal' }).click();
     await check(a);
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () =>
+                    window.__grediceGameProfile?.faunaSimulation
+                        ?.simulationCallbacks,
+            ),
+        )
+        .toBe(2);
     await fixture.getByRole('button', { name: 'Switch garden' }).click();
     await check(a);
     await fixture.getByRole('button', { name: 'Toggle animal' }).click();
@@ -65,4 +90,27 @@ test('initial, late and remounted mixers precede poses and same-frame grounding 
         )
         .toBeGreaterThan(before.frames);
     await check(b);
+    await fixture.getByRole('button', { name: 'Toggle second root' }).click();
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () => window.__grediceGameProfile?.faunaSimulation?.rootCount,
+            ),
+        )
+        .toBe(1);
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () =>
+                    window.__grediceGameProfile?.faunaSimulation
+                        ?.simulationCallbacks,
+            ),
+        )
+        .toBe(1);
+    await fixture.unmount();
+    await expect
+        .poll(() =>
+            page.evaluate(() => window.__grediceGameProfile?.faunaSimulation),
+        )
+        .toBeUndefined();
 });

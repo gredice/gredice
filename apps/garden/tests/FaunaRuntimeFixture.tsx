@@ -14,6 +14,7 @@ export function FaunaRuntimeFixture() {
     }, []);
     const [mounted, setMounted] = useState(false);
     const [generation, setGeneration] = useState(0);
+    const [secondMounted, setSecondMounted] = useState(true);
     return (
         <div>
             <button type="button" onClick={() => setMounted((value) => !value)}>
@@ -24,6 +25,12 @@ export function FaunaRuntimeFixture() {
                 onClick={() => setGeneration((value) => value + 1)}
             >
                 Switch garden
+            </button>
+            <button
+                type="button"
+                onClick={() => setSecondMounted((value) => !value)}
+            >
+                Toggle second root
             </button>
             <div
                 ref={first}
@@ -60,16 +67,18 @@ export function FaunaRuntimeFixture() {
                     top: 0,
                 }}
             >
-                <Scene
-                    position={[0, 4, 8]}
-                    zoom={30}
-                    quality={gameQualityProfiles.medium}
-                    pixelRatio={1}
-                    staticOpaqueCacheEnabled={false}
-                    adaptiveHighEnabled={false}
-                >
-                    <FaunaRuntimeProbe id="b" onSample={reportSecond} />
-                </Scene>
+                {secondMounted ? (
+                    <Scene
+                        position={[0, 4, 8]}
+                        zoom={30}
+                        quality={gameQualityProfiles.medium}
+                        pixelRatio={1}
+                        staticOpaqueCacheEnabled={false}
+                        adaptiveHighEnabled={false}
+                    >
+                        <FaunaRuntimeProbe id="b" onSample={reportSecond} />
+                    </Scene>
+                ) : null}
             </div>
         </div>
     );

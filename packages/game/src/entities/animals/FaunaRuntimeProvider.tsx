@@ -20,6 +20,12 @@ import {
     createFaunaWalkDistance,
 } from './faunaSimulation';
 
+import { createFaunaSimulationProfile } from './faunaSimulationProfile';
+
+const faunaSimulationProfile = createFaunaSimulationProfile((stats) =>
+    updateGameProfileMetadata({ faunaSimulation: stats }),
+);
+
 type FaunaSimulation = ReturnType<typeof createFaunaSimulation<RootState>>;
 const FaunaRuntimeContext = createContext<FaunaSimulation | null>(null);
 
@@ -62,6 +68,20 @@ export function FaunaRuntimeProvider({ children }: PropsWithChildren) {
             }),
         [clock],
     );
+    const profileRegistration = useRef<ReturnType<
+        typeof faunaSimulationProfile.register
+    > | null>(null);
+    useLayoutEffect(() => {
+        const registration = faunaSimulationProfile.register(
+            runtime.getStats(),
+        );
+        profileRegistration.current = registration;
+        lastStatsTime.current = Number.NEGATIVE_INFINITY;
+        return () => {
+            profileRegistration.current = null;
+            registration.dispose();
+        };
+    }, [runtime]);
     useSceneResume(runtime.resume);
     // SceneTime (-1000) advances shared time first. All species movement then
     // runs here, before the render-cadence pose and grounding-shadow phase.
@@ -77,7 +97,7 @@ export function FaunaRuntimeProvider({ children }: PropsWithChildren) {
             state.clock.elapsedTime - lastStatsTime.current >= 1
         ) {
             lastStatsTime.current = state.clock.elapsedTime;
-            updateGameProfileMetadata({ faunaSimulation: runtime.getStats() });
+            profileRegistration.current?.update(runtime.getStats());
         }
     }, -25);
 

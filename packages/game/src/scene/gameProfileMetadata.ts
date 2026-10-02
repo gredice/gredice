@@ -1,7 +1,7 @@
 'use client';
 
 import type { GameCameraSnapshot } from '../controls/GameCameraRigApi';
-import type { createFaunaSimulation } from '../entities/animals/faunaSimulation';
+import type { FaunaSimulationProfileStats } from '../entities/animals/faunaSimulationProfile';
 import type { FaunaWorldStats } from '../entities/animals/faunaWorld';
 import type { PlantInstanceBufferMetricsSnapshot } from '../generators/plant/lib/plantInstanceBufferMetrics';
 import type { CameraFrame } from '../spatial/cameraFrame';
@@ -374,9 +374,7 @@ export type GameProfileMetadata = {
     renderPackets?: StaticRenderPacketMetrics;
     autumnGroundLeafClusters?: number;
     faunaWorld?: FaunaWorldStats;
-    faunaSimulation?: ReturnType<
-        ReturnType<typeof createFaunaSimulation>['getStats']
-    >;
+    faunaSimulation?: FaunaSimulationProfileStats;
     autumnEntityLeafClusters?: number;
     autumnRustleTargetGain?: number;
     autumnLeafCapacity?: number;
