@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { createAutumnFoliageGeometry } from '../scene/autumnFoliageGeometry';
 
 export function useAutumnFoliageGeometry(
-    ...[source, fullCanopy, base, progress, seed]: Parameters<
+    ...[source, fullCanopy, base, progress, seed, textureColor]: Parameters<
         typeof createAutumnFoliageGeometry
     >
 ) {
@@ -14,8 +14,9 @@ export function useAutumnFoliageGeometry(
                 base,
                 progress,
                 seed,
+                textureColor,
             ),
-        [source, fullCanopy, base, progress, seed],
+        [source, fullCanopy, base, progress, seed, textureColor],
     );
     useEffect(() => () => geometry.dispose(), [geometry]);
     return geometry;

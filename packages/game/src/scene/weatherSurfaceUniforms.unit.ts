@@ -508,3 +508,28 @@ describe('WeatherSurfaceUniformRegistry', () => {
         });
     });
 });
+
+describe('rain intensity shared uniform', () => {
+    it('tracks impacts immediately while puddles and wetness retain their own thresholds', () => {
+        const registry = new WeatherSurfaceUniformRegistry();
+        const rain = registry.rainIntensityUniform;
+        const entry = registry.getRainEntry({
+            drySpeed: 1.8,
+            wetSpeed: 5,
+            intensityMultiplier: 1,
+        });
+        const release = registry.retain(entry);
+        registry.advance({ rainAmount: 0.4, snowCoverage: 0 }, 0);
+        assert.equal(rain.value, 0.4);
+        assert.equal(registry.rainPuddleStrengthUniform.value, 0);
+        assert.equal(entry.uniform.value, 0);
+        registry.advance({ rainAmount: 1, snowCoverage: 0 }, 1);
+        assert.equal(registry.rainIntensityUniform, rain);
+        assert.equal(rain.value, 1);
+        assert(entry.uniform.value > 0.6);
+        registry.advance({ rainAmount: 0, snowCoverage: 0 }, 0);
+        assert.equal(rain.value, 0);
+        assert(entry.uniform.value > 0.6);
+        release();
+    });
+});
