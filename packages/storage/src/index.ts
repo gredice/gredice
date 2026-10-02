@@ -71,6 +71,7 @@ export * from './repositories/fiscalizationRepo';
 export * from './repositories/gardenDiaryCancelRepo';
 export * from './repositories/gardenDiaryRescheduleRepo';
 export * from './repositories/gardenMutationOperationsRepo';
+export * from './repositories/gardenPackReadRepo';
 export * from './repositories/gardenPacksRepo';
 export * from './repositories/gardenPlacementRepo';
 export * from './repositories/gardenPreviewsRepo';
