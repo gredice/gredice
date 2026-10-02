@@ -53,8 +53,16 @@ export function createGameProfileWeatherWitness(
         snowy: weather?.snowy ?? 0,
         snowAccumulation: weather?.snowAccumulation ?? 0,
         temperature: weather?.temperature ?? null,
-        source: weather?.source ?? null,
-        isStale: weather?.isStale ?? null,
+        source:
+            weather && 'source' in weather && typeof weather.source === 'string'
+                ? weather.source
+                : null,
+        isStale:
+            weather &&
+            'isStale' in weather &&
+            typeof weather.isStale === 'boolean'
+                ? weather.isStale
+                : null,
     };
 }
 

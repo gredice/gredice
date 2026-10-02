@@ -25,6 +25,14 @@ test('committed input receipts preserve zero values and fresh cold input', () =>
     assert.equal(cold.temperature, -4);
     assert.equal(cold.source, 'profile');
     assert.equal(cold.isStale, false);
+    const malformedMetadata = {
+        ...gameProfileSnowSparseWeather,
+        source: 7,
+        isStale: 'fresh',
+    };
+    const malformed = createGameProfileWeatherWitness(malformedMetadata);
+    assert.equal(malformed.source, null);
+    assert.equal(malformed.isStale, null);
 });
 
 test('snow surface transition requests remain particle-free and deterministic', () => {
