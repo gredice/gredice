@@ -1,4 +1,5 @@
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
+import { harvestCrates } from '@gredice/js/harvestCrates';
 import { harvestPumpkins } from '@gredice/js/harvestPumpkins';
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Locator, Page } from '@playwright/test';
@@ -23,6 +24,11 @@ const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 const newBlockCatalogItems = [
+    ...harvestCrates.map((item) => ({
+        label: item.information.label,
+        price: item.sunflowers,
+        picker: 'Dekoracija',
+    })),
     {
         label: gardenScarecrow.information.label,
         price: gardenScarecrow.sunflowers,
@@ -1542,3 +1548,61 @@ test('scarecrow drag keeps the catalogue identity', async ({ mount, page }) => {
         'GardenScarecrow:drop',
     );
 });
+
+test('harvest crates stay hidden before catalogue publication', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ItemsHudAlignmentStory includeHarvestCrates={false} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    for (const item of harvestCrates) {
+        await expect(
+            page.getByRole('button', {
+                name: item.information.label,
+                exact: true,
+            }),
+        ).toHaveCount(0);
+    }
+});
+
+test('harvest crates each appear once in the local sandbox', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<LocalSandboxItemsHudStory />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    for (const item of harvestCrates) {
+        await expect(
+            page.getByRole('button', {
+                name: item.information.label,
+                exact: true,
+            }),
+        ).toHaveCount(1);
+    }
+});
+
+for (const item of harvestCrates) {
+    test(`harvest crate drag keeps ${item.name} identity`, async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize(TABLET_VIEWPORT);
+        await mount(<ItemsHudDragStateStory accountSunflowers={100} />);
+        await page.getByRole('button', { name: 'Dekoracija' }).click();
+        await dragLocatorByMouse(
+            page,
+            page.getByRole('button', {
+                name: item.information.label,
+                exact: true,
+            }),
+        );
+        await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+            `${item.name}:drag`,
+        );
+        await page.mouse.up();
+        await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+            `${item.name}:drop`,
+        );
+    });
+}
