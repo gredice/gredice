@@ -26,6 +26,7 @@ export function useBlockRotate() {
     );
 
     return useMutation({
+        mutationKey,
         mutationFn: async ({
             blockId,
             rotation,
@@ -47,9 +48,9 @@ export function useBlockRotate() {
             );
             await Promise.all(
                 targetBlockIds.map(async (targetBlockId) => {
-                    await clientAuthenticated().api.gardens[':gardenId'].blocks[
-                        ':blockId'
-                    ].$put({
+                    const response = await clientAuthenticated().api.gardens[
+                        ':gardenId'
+                    ].blocks[':blockId'].$put({
                         param: {
                             gardenId: gardenId.toString(),
                             blockId: targetBlockId,
@@ -58,6 +59,11 @@ export function useBlockRotate() {
                             rotation: rotation,
                         },
                     });
+                    if (!response.ok) {
+                        throw new Error(
+                            'Okretanje predmeta trenutačno se ne može spremiti.',
+                        );
+                    }
                 }),
             );
         },
