@@ -51,7 +51,7 @@ export const gameAssetModels = {
     Pine: { url: '/assets/models/Pine.glb' },
     DeadTreeTall: { url: '/assets/models/DeadTreeTall.glb' },
     DeadTreeStump: { url: '/assets/models/DeadTreeStump.glb' },
-    Bush: { url: '/assets/models/Bush.glb' },
+    Bush: { url: '/assets/models/Bush.glb?v=56b79aabe4f3' },
     StoneSmall: { url: '/assets/models/StoneSmall.glb' },
     MulchHey: { url: '/assets/models/MulchHey.glb' },
     MulchCoconut: { url: '/assets/models/MulchCoconut.glb' },
