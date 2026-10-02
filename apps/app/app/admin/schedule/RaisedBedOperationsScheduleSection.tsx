@@ -284,6 +284,7 @@ export function RaisedBedOperationsScheduleSection({
                     {raisedBedDetailsLink ? (
                         <Link
                             href={raisedBedDetailsLink}
+                            prefetch={false}
                             aria-label={`Gredica ${physicalId}`}
                         >
                             <RaisedBedIcon
@@ -694,6 +695,7 @@ export function RaisedBedOperationsScheduleSection({
                                     />
                                     <Link
                                         className="min-w-0 flex-1"
+                                        prefetch={false}
                                         href={getScheduleOperationHref(
                                             operation.id,
                                         )}

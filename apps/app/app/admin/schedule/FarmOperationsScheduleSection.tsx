@@ -199,7 +199,7 @@ export function FarmOperationsScheduleSection({
                     spacing={2}
                     className="min-w-0 grow items-center flex-wrap gap-y-1"
                 >
-                    <Link href={KnownPages.Farm(farm.id)}>
+                    <Link href={KnownPages.Farm(farm.id)} prefetch={false}>
                         <Typography semiBold>{farm.name}</Typography>
                     </Link>
                     <Typography level="body2" className="text-muted-foreground">
@@ -585,6 +585,7 @@ export function FarmOperationsScheduleSection({
                                 />
                                 <Link
                                     className="min-w-0 flex-1"
+                                    prefetch={false}
                                     href={getScheduleOperationHref(
                                         operation.id,
                                     )}

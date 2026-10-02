@@ -87,6 +87,25 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+export const LinkWithoutPrefetch: Story = {
+    args: {
+        children: 'Otvori povezanu radnju',
+        href: '/admin/operations/1',
+        prefetch: false,
+        size: 'sm',
+        type: undefined,
+        variant: 'plain',
+        endDecorator: <Navigate className="size-4" />,
+    },
+    parameters: {
+        docs: {
+            description: {
+                story: 'Link buttons accept Next Link prefetch options. Admin record actions use prefetch=false to fetch private details when selected; the default for other links is unchanged.',
+            },
+        },
+    },
+};
+
 export const Variants: Story = {
     parameters: {
         docs: {

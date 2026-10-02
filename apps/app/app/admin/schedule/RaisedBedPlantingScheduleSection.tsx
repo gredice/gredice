@@ -329,6 +329,7 @@ export function RaisedBedPlantingScheduleSection({
                     {raisedBedDetailsLink ? (
                         <Link
                             href={raisedBedDetailsLink}
+                            prefetch={false}
                             aria-label={`Gredica ${physicalId}`}
                         >
                             <RaisedBedIcon
