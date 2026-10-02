@@ -77,9 +77,9 @@ import type { Stack } from '../types/Stack';
 import { type ActiveDragPreview, useGameState } from '../useGameState';
 import { getStackHeight } from '../utils/getStackHeight';
 import {
-    createMeshInstanceMatrix,
     type MeshInstanceChunk,
     type MeshInstanceLocalTransform,
+    writeMeshInstanceMatrices,
 } from './chunkedMeshGeometry';
 import {
     getIndexedEntityBlocks,
@@ -1353,12 +1353,12 @@ export const ChunkedInstancedMesh = memo(function ChunkedInstancedMesh({
             mesh?.geometry === geometry &&
             (material === undefined || mesh.material === material);
         if (mesh && meshUsesCurrentConstructorArguments) {
-            chunk.instances.forEach((instance, index) => {
-                mesh.setMatrixAt(
-                    index,
-                    createMeshInstanceMatrix(instance, localTransform, scale),
-                );
-            });
+            writeMeshInstanceMatrices(
+                chunk.instances,
+                localTransform,
+                scale,
+                (matrix, index) => mesh.setMatrixAt(index, matrix),
+            );
             mesh.count = chunk.instances.length;
             mesh.instanceMatrix.needsUpdate = true;
             mesh.computeBoundingBox();
