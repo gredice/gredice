@@ -12,7 +12,8 @@
         "./deliveryTrackingPolicy": "./src/deliveryTrackingPolicy.ts",
         "./entityCompleteness": "./src/helpers/entityCompleteness.ts",
         "./entityPageSections": "./src/helpers/entityPageSections.ts",
-        "./cmsPageSections": "./src/cmsPageSections.ts"
+        "./cmsPageSections": "./src/cmsPageSections.ts",
+        "./testing/gardenPackTestSchema": "./tests/helpers/gardenPackTestSchema.ts"
     },
     "scripts": {
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
