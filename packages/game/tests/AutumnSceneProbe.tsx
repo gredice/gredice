@@ -9,6 +9,7 @@ import {
     Vector3,
 } from 'three';
 import { autumnPartLeafSurfaces } from '../src/entities/helpers/autumnLeafSurfaces';
+import { bushTextureColor } from '../src/scene/bushFoliage';
 import { readGameProfileMetadata } from '../src/scene/gameProfileMetadata';
 import { useSceneTimeInvalidation } from '../src/scene/SceneTime';
 
@@ -27,6 +28,11 @@ function foliageColors(mesh: Mesh, material: MeshStandardMaterial) {
             new Color()
                 .fromBufferAttribute(colors, index)
                 .multiply(material.color)
+                .multiply(
+                    material.map && mesh.name.includes('Bush')
+                        ? bushTextureColor
+                        : new Color('white'),
+                )
                 .getHexString(),
         )
         .join('-');
@@ -36,6 +42,7 @@ export function AutumnSceneProbe({
     onReady,
     onSprigColors,
     onLeafCount,
+    onLeafHeights,
     onGustCount,
     onGroundCount,
     onEntityCount,
@@ -57,6 +64,7 @@ export function AutumnSceneProbe({
     focus?: readonly [number, number, number];
     onGroundCount?: (count: number) => void;
     onLeafCount?: (count: number) => void;
+    onLeafHeights?: (heights: string) => void;
     onGustCount?: (count: number) => void;
 }) {
     const camera = useThree((state) => state.camera);
@@ -74,7 +82,16 @@ export function AutumnSceneProbe({
     useFrame(() => {
         if (++frames.current < 5) return;
         const leaves = scene.getObjectByName('Weather:AutumnLeaves');
-        if (leaves instanceof InstancedMesh) onLeafCount?.(leaves.count);
+        if (leaves instanceof InstancedMesh) {
+            onLeafCount?.(leaves.count);
+            const matrix = new Matrix4();
+            const heights = [];
+            for (let index = 0; index < leaves.count; index++) {
+                leaves.getMatrixAt(index, matrix);
+                heights.push(new Vector3().setFromMatrixPosition(matrix).y);
+            }
+            onLeafHeights?.(heights.join(','));
+        }
         onGustCount?.(readGameProfileMetadata()?.autumnGustCount ?? 0);
         const canopies: string[] = [];
         const sprigs: string[] = [];
@@ -124,6 +141,8 @@ export function AutumnSceneProbe({
                 groundCount += object.count;
             if (
                 (object.name.startsWith('Autumn:Canopy:') ||
+                    object.name.startsWith('Autumn:BushCanopy:') ||
+                    object.name.startsWith('BlockInstances:Bush:canopy:') ||
                     object.name.startsWith('BlockInstances:Tree:canopy:')) &&
                 object instanceof Mesh &&
                 object.material instanceof MeshStandardMaterial
@@ -140,6 +159,8 @@ export function AutumnSceneProbe({
             }
             if (
                 (object.name.startsWith('Autumn:Sprigs:') ||
+                    object.name.startsWith('Autumn:BushSprigs:') ||
+                    object.name.startsWith('BlockInstances:Bush:sprigs:') ||
                     object.name.startsWith('BlockInstances:Tree:sprigs:')) &&
                 object instanceof Mesh &&
                 object.material instanceof MeshStandardMaterial
@@ -192,7 +213,7 @@ export function AutumnSceneProbe({
         if (drop && drop.position.y > 0.005) dropMotionSamples.current++;
         onDropMotionSamples?.(dropMotionSamples.current);
         if (canopies.length >= 3) onReady(canopies.join(','));
-        if (sprigs.length === 3) onSprigColors?.(sprigs.join(','));
+        onSprigColors?.(sprigs.join(','));
     });
     return null;
 }
