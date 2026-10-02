@@ -41,7 +41,7 @@ export type GardenPackPlacementDependencies<Transaction> = {
     ) => Promise<T>;
     getReplay: (
         command: GardenPackPlacementCommand,
-        tx: Transaction,
+        tx?: Transaction,
     ) => Promise<GardenPackPlacementResponse | null>;
     getUnit: (
         command: GardenPackPlacementCommand,
@@ -102,6 +102,14 @@ export function createGardenPackPlacementService<Transaction>(
             };
         const command = parsed.data;
         try {
+            // A preliminary owner-scoped lookup avoids preparing dependencies on exact replay.
+            // Recheck authoritatively under the account fence before using any preparation result.
+            const knownReceipt = await dependencies.getReplay(command);
+            const directory = knownReceipt
+                ? null
+                : await settleGardenEconomicMutationDependency(
+                      dependencies.getBlockData,
+                  );
             return await dependencies.withAccountTransaction(
                 command.accountId,
                 async (tx) => {
@@ -109,11 +117,7 @@ export function createGardenPackPlacementService<Transaction>(
                     const replay = await dependencies.getReplay(command, tx);
                     if (replay) return { ok: true, ...replay, replayed: true };
                     const unit = await dependencies.getUnit(command, tx);
-                    const directory =
-                        await settleGardenEconomicMutationDependency(
-                            dependencies.getBlockData,
-                        );
-                    if (directory.status === 'rejected')
+                    if (!directory || directory.status === 'rejected')
                         throw new PlacementError(
                             'BLOCK_DIRECTORY_UNAVAILABLE',
                             503,
@@ -207,7 +211,7 @@ export function createGardenPackPlacementService<Transaction>(
                                 throw new PlacementError(
                                     'BLOCK_PLACEMENT_INVALID',
                                     400,
-                                    placement.error,
+                                    'Na odabrano mjesto nije moguće postaviti ovaj predmet.',
                                 );
                             const { x, y, existingBlocks } =
                                 placement.placement;
