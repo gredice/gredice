@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { Vector3 } from 'three';
+import { Bush } from '../src/entities/Bush';
 import { EntityInstances } from '../src/entities/EntityInstances';
 import { FenceGate } from '../src/entities/FenceGate';
 import { GardenBox } from '../src/entities/GardenBox';
@@ -46,6 +47,8 @@ function MovingAutumnBench({ targetX }: { targetX: number }) {
 
 export function AutumnVisualFixture({
     stage = 'midAutumn',
+    vegetation = 'Tree',
+    weatherDisabled = false,
     calendarDate,
     disabled = false,
     snow = 0,
@@ -68,6 +71,8 @@ export function AutumnVisualFixture({
     focus,
     cameraHeight = 4,
 }: {
+    vegetation?: 'Tree' | 'Bush';
+    weatherDisabled?: boolean;
     stage?: keyof ReturnType<typeof getSeasonDebugDates>;
     calendarDate?: readonly [year: number, month: number, day: number];
     disabled?: boolean;
@@ -94,6 +99,7 @@ export function AutumnVisualFixture({
     const [ready, setReady] = useState('');
     const [sprigColors, setSprigColors] = useState('');
     const [leafCount, setLeafCount] = useState(0);
+    const [leafHeights, setLeafHeights] = useState('');
     const [gustCount, setGustCount] = useState(0);
     const [groundCount, setGroundCount] = useState(0);
     const [entityCount, setEntityCount] = useState(0);
@@ -133,7 +139,7 @@ export function AutumnVisualFixture({
                           ]
                         : []),
                     {
-                        name: 'Tree',
+                        name: vegetation,
                         id: `autumn-fixture:${index}`,
                         rotation: 0,
                     },
@@ -194,7 +200,7 @@ export function AutumnVisualFixture({
                   }))
                 : []),
         ],
-        [ground, entities, partEntities, partRotation],
+        [ground, entities, partEntities, partRotation, vegetation],
     );
     const client = useMemo(() => new QueryClient(), []);
     const store = useMemo(() => {
@@ -218,6 +224,7 @@ export function AutumnVisualFixture({
         return next;
     }, [stage, calendarDate, disabled, snow, rain]);
     useDisposeGameStateStore(store);
+    const Foliage = vegetation === 'Bush' ? Bush : Tree;
     return (
         <QueryClientProvider client={client}>
             <GameStateContext.Provider value={store}>
@@ -226,6 +233,7 @@ export function AutumnVisualFixture({
                     data-canopies={ready}
                     data-sprigs={sprigColors}
                     data-leaves={leafCount}
+                    data-leaf-heights={leafHeights}
                     data-gust-leaves={gustCount}
                     data-ground-leaves={groundCount}
                     data-entity-leaves={entityCount}
@@ -417,7 +425,8 @@ export function AutumnVisualFixture({
                                 </>
                             ) : (
                                 stacks.map((stack) => (
-                                    <Tree
+                                    <Foliage
+                                        weatherDisabled={weatherDisabled}
                                         key={stack.blocks[0].id}
                                         stack={stack}
                                         block={stack.blocks[0]}
@@ -429,6 +438,7 @@ export function AutumnVisualFixture({
                                 onReady={setReady}
                                 onSprigColors={setSprigColors}
                                 onLeafCount={setLeafCount}
+                                onLeafHeights={setLeafHeights}
                                 onGustCount={setGustCount}
                                 onGroundCount={setGroundCount}
                                 onEntityCount={setEntityCount}

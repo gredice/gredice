@@ -6,7 +6,7 @@ import {
     chooseSquirrelFleeState,
     createScheduledDepartureState,
     squirrelActorScale,
-} from './Squirrels';
+} from './Squirrel';
 import type { SquirrelHabitat, SquirrelTarget } from './squirrelHabitat';
 
 function target(id: string, x: number, z: number): SquirrelTarget {
