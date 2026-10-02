@@ -29,6 +29,7 @@ import {
 import { useOptionalGameState } from '../useGameState';
 import { AdaptiveHighQualityController } from './AdaptiveHighQualityController';
 import { AutumnPartsProvider } from './AutumnParts';
+import { AutumnPropWindProvider } from './AutumnPropWindProvider';
 import { AutumnSourcesProvider } from './AutumnSources';
 import {
     type AdaptiveHighQualityLevelProfile,
@@ -424,9 +425,13 @@ export function Scene({
                                     />
                                     <AutumnSourcesProvider>
                                         <AutumnPartsProvider>
-                                            <BreathSourcesProvider>
-                                                {children}
-                                            </BreathSourcesProvider>
+                                            <AutumnPropWindProvider
+                                                tier={qualityProfile.tier}
+                                            >
+                                                <BreathSourcesProvider>
+                                                    {children}
+                                                </BreathSourcesProvider>
+                                            </AutumnPropWindProvider>
                                         </AutumnPartsProvider>
                                     </AutumnSourcesProvider>
                                     <HoverOutlineEffect />

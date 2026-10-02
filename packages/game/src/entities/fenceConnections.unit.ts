@@ -40,6 +40,7 @@ describe('fence connections', () => {
             'WhiteFenceGate',
             'StoneFenceGate',
             'PolishedStoneFenceGate',
+            'AutumnFenceGate',
         ]);
         assert.ok(fenceGateBlockNames.every(isFenceGateBlockName));
         assert.ok(fenceGateBlockNames.every(isFenceTopologyBlockName));
