@@ -98,7 +98,10 @@ test('shrub canopy stages invalidate cached shadows and include the seasonal bus
             ],
         },
     ];
-    assert.equal(getAutumnCanopyShadowKey(stacks, 1), 'tree:full|shrub:full|bush:full');
+    assert.equal(
+        getAutumnCanopyShadowKey(stacks, 1),
+        'tree:full|shrub:full|bush:full',
+    );
     assert.equal(
         getAutumnCanopyShadowKey(stacks, 0.45),
         'tree:thinning|shrub:thinning|bush:thinning',
