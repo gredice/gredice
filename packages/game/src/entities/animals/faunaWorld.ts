@@ -6,6 +6,9 @@ import type { AnimalDebugEntry, AnimalPresenceEntry } from '../../useGameState';
  */
 export const faunaDebugPublishIntervalSeconds = 0.5;
 
+/** Scene seconds between stats refreshes driven by report workload. */
+export const faunaStatsPublishIntervalSeconds = 1;
+
 const presenceStride = 4;
 const presenceX = 0;
 const presenceY = 1;
@@ -46,7 +49,10 @@ export type FaunaWorldStats = {
 
 export type FaunaWorldOptions = {
     debugPublishIntervalSeconds?: number;
-    /** Coalesced stats after membership changes and debug publications. */
+    /**
+     * Coalesced stats after membership changes, debug publications, and at
+     * most once per `faunaStatsPublishIntervalSeconds` of reports.
+     */
     onStats?: (stats: FaunaWorldStats) => void;
     /** Receives one sorted snapshot per batch, only after semantic changes. */
     publishDebugEntries: (entries: AnimalDebugEntry[]) => void;
@@ -192,6 +198,7 @@ export function createFaunaWorld({
     let lastDebugPublishAt = Number.NEGATIVE_INFINITY;
     let cancelTrailingPublish: (() => void) | null = null;
     let cancelStatsPublish: (() => void) | null = null;
+    let lastStatsReportAt = Number.NEGATIVE_INFINITY;
     let disposed = false;
 
     const stats: FaunaWorldStats = {
@@ -218,6 +225,15 @@ export function createFaunaWorld({
                 onStats({ ...stats });
             }
         }, 0);
+    }
+
+    function requestStatsPublishForReport(now: number) {
+        const elapsed = now - lastStatsReportAt;
+        // A smaller clock means a restarted root clock.
+        if (elapsed >= faunaStatsPublishIntervalSeconds || elapsed < 0) {
+            lastStatsReportAt = now;
+            requestStatsPublish();
+        }
     }
 
     function bumpSpeciesVersion(species: string) {
@@ -325,6 +341,7 @@ export function createFaunaWorld({
         );
         bumpSpeciesVersion(entry.species);
         stats.presenceReportCount += 1;
+        requestStatsPublishForReport(entry.updatedAt);
     }
 
     function readPresence(slot: number): AnimalPresenceEntry {
@@ -571,6 +588,7 @@ export function createFaunaWorld({
         }
 
         stats.debugReportCount += 1;
+        requestStatsPublishForReport(entry.updatedAt);
         const previous = debugEntries.get(entry.id);
         debugEntries.set(entry.id, entry);
         debugLiveVersion += 1;
@@ -596,12 +614,20 @@ export function createFaunaWorld({
         return true;
     }
 
+    /** Counts an actor once its last presence or debug record is gone. */
+    function countRemovedActor(id: string, removed: boolean) {
+        if (!removed || slotById.has(id) || debugEntries.has(id)) {
+            return;
+        }
+
+        stats.removedActorCount += 1;
+        requestStatsPublish();
+    }
+
     function removeActor(id: string) {
         const removedPresence = deletePresence(id);
         const removedDebug = deleteDebug(id);
-        if (removedPresence || removedDebug) {
-            stats.removedActorCount += 1;
-        }
+        countRemovedActor(id, removedPresence || removedDebug);
     }
 
     function dispose() {
@@ -621,10 +647,10 @@ export function createFaunaWorld({
         queryPresences,
         removeActor,
         removeDebug: (id: string) => {
-            deleteDebug(id);
+            countRemovedActor(id, deleteDebug(id));
         },
         removePresence: (id: string) => {
-            deletePresence(id);
+            countRemovedActor(id, deletePresence(id));
         },
         reportDebug,
         reportPresence,
