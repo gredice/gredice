@@ -10,6 +10,7 @@ import type {
     FaunaTrajectoryScenario,
 } from '../../../packages/game/tests/faunaTrajectoryState';
 import {
+    analyzeLegacyFaunaCadence,
     compareFaunaBaseline,
     compareFaunaRenderCadences,
     validateFaunaTrajectoryReport,
@@ -28,6 +29,8 @@ const fixtureFiles = [
     'packages/game/tests/FaunaTrajectoryActors.tsx',
     'packages/game/tests/FaunaTrajectoryDriver.tsx',
     'packages/game/tests/faunaTrajectoryState.ts',
+    'packages/game/tests/faunaPoseOracle.ts',
+    'apps/garden/playwright/faunaPoseOraclePlugin.mjs',
     'apps/garden/tests/fauna-trajectory.spec.tsx',
     'apps/garden/scripts/fauna-trajectory-contract.mjs',
 ];
@@ -159,6 +162,7 @@ test.describe('actual production fauna trajectories', () => {
                     <FaunaTrajectoryFixture
                         appBaseUrl={baseUrl}
                         scenario={scenario}
+                        mode={mode}
                     />,
                 );
                 await expect(
@@ -368,6 +372,10 @@ test.describe('actual production fauna trajectories', () => {
                   )
                 : undefined;
             if (reference) {
+                await testInfo.attach('actual-fauna-legacy-cadence-diagnosis', {
+                    body: JSON.stringify(analyzeLegacyFaunaCadence(reference)),
+                    contentType: 'application/json',
+                });
                 const comparison = compareFaunaBaseline(reference, report);
                 await testInfo.attach('actual-fauna-baseline-parity', {
                     body: JSON.stringify(comparison),
@@ -387,24 +395,7 @@ test.describe('actual production fauna trajectories', () => {
                     throw new Error(
                         'Incomplete actual render cadence captures',
                     );
-                return compareFaunaRenderCadences(
-                    ambient,
-                    interactive,
-                    reference
-                        ? {
-                              ambient: reference.captures.find(
-                                  (capture: (typeof captures)[number]) =>
-                                      capture.scenario === scenario &&
-                                      capture.fps === 30,
-                              ),
-                              interactive: reference.captures.find(
-                                  (capture: (typeof captures)[number]) =>
-                                      capture.scenario === scenario &&
-                                      capture.fps === 60,
-                              ),
-                          }
-                        : undefined,
-                );
+                return compareFaunaRenderCadences(ambient, interactive);
             });
             await testInfo.attach('actual-fauna-cadence', {
                 body: JSON.stringify(cadence),

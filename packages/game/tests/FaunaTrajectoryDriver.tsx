@@ -6,6 +6,7 @@ import {
     useSceneRuntimeVisible,
 } from '../src/scene/SceneTime';
 import { useGameStateStore } from '../src/useGameState';
+import type { FaunaPoseOracle, FaunaPoseOracleFrame } from './faunaPoseOracle';
 import {
     type FaunaTrajectoryActor,
     type FaunaTrajectoryFrame,
@@ -27,9 +28,11 @@ function isPrimitive(object: Object3D) {
 export function FaunaTrajectoryDriver({
     assetsReady,
     scenario,
+    poseOracle,
 }: {
     assetsReady: boolean;
     scenario: FaunaTrajectoryScenario;
+    poseOracle: FaunaPoseOracle;
 }) {
     const root = useStore();
     const store = useGameStateStore();
@@ -39,9 +42,21 @@ export function FaunaTrajectoryDriver({
     flags.current = { assetsReady, visible };
     useLayoutEffect(() => {
         const originalAdvance = root.getState().advance;
+        const faunaWorld = store.getState().faunaWorld;
+        const originalPresence = faunaWorld.reportPresence;
+        Reflect.set(
+            faunaWorld,
+            'reportPresence',
+            (presence: Parameters<typeof originalPresence>[0]) => {
+                poseOracle.recordPresence(presence);
+                return originalPresence.call(faunaWorld, presence);
+            },
+        );
         let manual = false;
         let frameIndex = -1;
         let automaticHiddenAdvances = 0;
+        let hiddenObserved = false;
+        let lastPoseReceipt: FaunaPoseOracleFrame | undefined;
         // Keep asset/React readiness independent of wall-clock RAF timing.
         // Semantic population timers still run through the production scheduler.
         const controlledAdvance: typeof originalAdvance = (...args) => {
@@ -125,6 +140,7 @@ export function FaunaTrajectoryDriver({
                     const actorRoot =
                         (visualWrapper ? visualWrapper.parent : model.parent) ??
                         model;
+                    poseOracle.setModel(model, id, visualWrapper, actorRoot);
                     actors.push({
                         id,
                         species,
@@ -154,6 +170,7 @@ export function FaunaTrajectoryDriver({
                 ]),
                 visible: flags.current.visible,
                 submittedFrames: state.gl.info.render.frame,
+                poseOracle: lastPoseReceipt,
             };
         }
         const expectedModels = {
@@ -187,9 +204,19 @@ export function FaunaTrajectoryDriver({
                 );
             },
             snapshot,
-            step: (delta) => {
-                if (!flags.current.visible) return snapshot();
+            step: async (delta) => {
+                if (!flags.current.visible) {
+                    hiddenObserved = true;
+                    return snapshot();
+                }
                 const state = root.getState();
+                snapshot();
+                poseOracle.beginFrame(
+                    state.clock.elapsedTime + delta,
+                    delta,
+                    hiddenObserved,
+                );
+                hiddenObserved = false;
                 manual = true;
                 try {
                     state.advance(state.clock.elapsedTime + delta, false);
@@ -198,7 +225,12 @@ export function FaunaTrajectoryDriver({
                 } finally {
                     manual = false;
                 }
-                return snapshot();
+                const result = snapshot();
+                lastPoseReceipt = await poseOracle.receipt(
+                    result.actors.map(({ id, pose }) => ({ id, pose })),
+                );
+                result.poseOracle = lastPoseReceipt;
+                return result;
             },
             command: (command) =>
                 store.getState().triggerAnimalDebugBehavior(command),
@@ -209,7 +241,8 @@ export function FaunaTrajectoryDriver({
             if (window.faunaTrajectoryWitness === witness)
                 delete window.faunaTrajectoryWitness;
             root.setState({ advance: originalAdvance });
+            Reflect.set(faunaWorld, 'reportPresence', originalPresence);
         };
-    }, [flushPostRender, root, scenario, store]);
+    }, [flushPostRender, root, scenario, store, poseOracle]);
     return null;
 }

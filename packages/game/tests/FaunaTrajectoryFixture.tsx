@@ -19,6 +19,7 @@ import {
 import { resolveGameAssetModelUrl } from '../src/utils/useGameGLTF';
 import { FaunaTrajectoryActors } from './FaunaTrajectoryActors';
 import { FaunaTrajectoryDriver } from './FaunaTrajectoryDriver';
+import { activateFaunaPoseOracle } from './faunaPoseOracle';
 import type { FaunaTrajectoryScenario } from './faunaTrajectoryState';
 
 const flags = { enableDebugHudFlag: true };
@@ -26,10 +27,14 @@ const flags = { enableDebugHudFlag: true };
 export function FaunaTrajectoryFixture({
     appBaseUrl,
     scenario,
+    mode = 'candidate',
 }: {
     appBaseUrl: string;
     scenario: FaunaTrajectoryScenario;
+    mode?: 'baseline' | 'candidate';
 }) {
+    const poseOracle = useMemo(() => activateFaunaPoseOracle(mode), [mode]);
+    useEffect(() => poseOracle.dispose, [poseOracle]);
     const [assetsReady, setAssetsReady] = useState(false);
     const [wet, setWet] = useState(scenario === 'autumn-post-rain');
     const [loadError, setLoadError] = useState('');
@@ -191,6 +196,7 @@ export function FaunaTrajectoryFixture({
                                 <FaunaTrajectoryDriver
                                     assetsReady={assetsReady}
                                     scenario={scenario}
+                                    poseOracle={poseOracle.oracle}
                                 />
                                 {assetsReady ? (
                                     <Suspense fallback={null}>

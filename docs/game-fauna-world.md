@@ -177,31 +177,43 @@ one fixed preparation interval for Canvas measurement and waits for the
 post-rain slug population to mount before starting its replay.
 
 Both baseline and candidate capture the complete three-scenario × 30/60 Hz
-matrix using the identical fixture/driver SHA-256 and
-record each checkout's source commit. The comparison requires unchanged
-population and actor identity, exact root trajectory endpoints within numerical
-precision, midpoint interpolation at 60 Hz, unchanged root orientation and
-scale, and unchanged actual behavior, target and path transition sequences. Legacy root trajectories account for
-the designed one-step presentation latency; mounts and large semantic
-teleports snap immediately. The legacy 30 Hz trajectory is the authoritative
-movement reference; candidate 60 Hz endpoints and quaternion/scale midpoints
-must match its interpolated presentation. Each joint component is compared with
-the same-cadence baseline within that component's local one-step motion.
-Cross-cadence posing uses the exact signed legacy 30/60 component difference
-at the matching presentation time to attribute inherited render-delta damping,
-rather than allowing a difference on another axis or in the opposite direction.
-Locally static
-joint properties therefore remain exact even when a later phase moves quickly;
-angular comparison treats antipodal
-quaternions as the same orientation. These bounds come from the frozen
-baseline trace rather than a tuned angle or scale allowance. World transforms
-come from each authoritative actor group; Dog/Rabbit visual wrappers are
-recorded separately as `@visual`, and all model roots as `@model` alongside
-every bone/pivot's local position, quaternion and scale. This supplements the
-domain traces and the moving-clip phase witness.
+matrix using the identical fixture/driver SHA-256 and record each checkout's
+source commit. The old 30 Hz schedule is the behavior and population reference:
+candidate 30 Hz must preserve its actor identities, counts, behavior/target/path
+transitions, root transforms and complete joint poses. Root trajectories account
+for the designed one-step presentation delay; each joint component has only its
+own local one-step baseline motion allowance. Static channels stay exact even
+when another axis or later phase moves. Mounts and large semantic teleports snap
+immediately, and antipodal quaternions describe the same orientation.
+
+Candidate 60 Hz uses that same authoritative 30 Hz seeded schedule. Endpoints,
+presence and action commands match candidate 30 Hz; render midpoints interpolate
+roots and retain the same fixed-step behavior targets. A population timer may
+mount a new actor between steps, but its first authoritative movement/presence
+waits for the next simulation boundary. The legacy 60 Hz replay remains an
+explicit diagnostic of the previous cadence-sensitive decisions and births.
+Preserving those different legacy 60 Hz schedules is not the fixed-step migration
+claim. Interactive 60 Hz leases are supported by the production scene scheduler.
+
+The supplemental Vite plugin runs only with an explicit reference replay. It
+loads the original 13 manual pose functions and their dependency bytes from
+commit `54278326213053ce318c7ea071c8bb94cb6d5257`, checks their hashes, and executes
+them on persistent independent cloned rigs. It also replays native GLTF action
+commands and mixer phases on separate cloned rigs. Every observed model root,
+bone, pivot and immutable Dog/Rabbit visual wrapper has complete position,
+quaternion and scale checks, enumerated coverage and a digest binding the checked
+poses to the output frames. The manual recurrence precision is `1e-10`.
+Recorded pose inputs, fixed-step/presence receipts, action commands and clock
+policies make the 60 Hz target and phase boundary auditable. Cow/Farm poses use
+the coherent delayed time/state/gait sample; other manual poses and GLTF mixers
+use render time and render delta. The Butterfly nullable initial-flight adapter
+is the sole intentional manual body change; its independent calculation is the
+original nonnullable flight body. World transforms come from each authoritative
+actor group, with fixed wrappers recorded separately as `@visual` and all GLTF
+roots as `@model`.
 It does not alter canonical profiler thresholds or report production FPS.
 The receipt freezes the initial checkout commit, tracked Game/JS source bytes,
-all six witness files, browser configuration and asset-server environment,
+all eight witness files, browser configuration and asset-server environment,
 then checks them again after capture. The candidate must be clean; an isolated
 legacy reference permits only the named witness files and browser configuration
 addition. Source edits during capture invalidate the report.
@@ -218,14 +230,18 @@ node --test apps/garden/scripts/fauna-trajectory-contract.unit.mjs
 
 The full trajectory replay is explicitly enabled by baseline mode or a matching
 `FAUNA_TRAJECTORY_REFERENCE`. Ordinary CI skips those six supplemental captures,
-because an unreferenced candidate cannot attribute inherited pose damping.
+because an unreferenced candidate cannot establish the frozen behavior and pose
+source provenance.
 CI still runs the real mixer/pose/two-root lifecycle fixture and the negative
 trajectory-contract cases through Garden's `test:profile` command.
 
 The contract tests reject population loss, nonfinite transforms, missing GPU
 receipts, incomplete scenario/cadence grids, fixture drift, changed targets,
 stepped interactive movement, common wrong orientation/scale, nonfinite or
-altered joints, and hidden elapsed-time replay.
+altered joints, missing independent joint coverage, wrong pose clock phase/rate,
+changed midpoint targets, altered native action plans, and hidden elapsed-time
+replay. The hidden timer/store replay has the explicitly limited manual-driver
+scope; canonical production lifecycle captures prove real suspension scheduling.
 
 Per-species instanced skinning stays conditional on fauna-heavy profiles still
 showing draw pressure after CPU centralization and actor culling. It changes

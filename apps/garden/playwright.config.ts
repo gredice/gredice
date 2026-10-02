@@ -11,6 +11,7 @@ import {
     getPlaywrightBaseUrl,
     shouldReusePlaywrightServer,
 } from '../../scripts/app-registry.ts';
+import { faunaPoseOraclePlugin } from './playwright/faunaPoseOraclePlugin.mjs';
 import { gardenTestFlagsSecret } from './playwright/gardenFlagTestSupport';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -62,7 +63,7 @@ export const config: PlaywrightTestConfig = {
             // Playwright CT 1.62 bundles Vite 8, whose CJS interop turns default imports
             // of Next's CJS entry points (e.g. next/image) into module objects.
             legacy: { inconsistentCjsInterop: true },
-            plugins: [nextFontMockPlugin()],
+            plugins: [nextFontMockPlugin(), faunaPoseOraclePlugin()],
             optimizeDeps: {
                 exclude: ['next/font/google'],
             },

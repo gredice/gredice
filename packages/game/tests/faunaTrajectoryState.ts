@@ -1,4 +1,5 @@
 import type { AnimalDebugCommand, AnimalDebugEntry } from '../src/useGameState';
+import type { FaunaPoseOracleFrame } from './faunaPoseOracle';
 
 export const faunaTrajectorySpecies = [
     'Cow',
@@ -42,10 +43,11 @@ export type FaunaTrajectoryFrame = {
     debug: AnimalDebugEntry[];
     visible: boolean;
     submittedFrames: number;
+    poseOracle?: FaunaPoseOracleFrame;
 };
 export type FaunaTrajectoryWitness = {
     ready: () => boolean;
-    step: (delta: number) => FaunaTrajectoryFrame;
+    step: (delta: number) => Promise<FaunaTrajectoryFrame>;
     snapshot: () => FaunaTrajectoryFrame;
     command: (
         command: Omit<AnimalDebugCommand, 'createdAt' | 'sequence'>,
