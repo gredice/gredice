@@ -68,3 +68,22 @@ test('failed public invalidation queues deduplicated slugs and save success surv
         revalidatePublicNewsPages(['novosti/new']),
     );
 });
+
+test('preview runtime takes precedence over a copied public production flag', async (t) => {
+    const originalEnv = { ...process.env };
+    const originalFetch = globalThis.fetch;
+    t.after(() => {
+        process.env = originalEnv;
+        globalThis.fetch = originalFetch;
+    });
+    process.env.VERCEL_ENV = 'preview';
+    process.env.NEXT_PUBLIC_VERCEL_ENV = 'production';
+    delete process.env.GREDICE_NEWS_REVALIDATE_URL;
+    let calls = 0;
+    globalThis.fetch = async () => {
+        calls++;
+        throw new Error('Production must not be contacted');
+    };
+    await revalidatePublicNewsPages(['novosti/a']);
+    assert.equal(calls, 0);
+});
