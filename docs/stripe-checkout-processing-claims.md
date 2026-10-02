@@ -189,7 +189,7 @@ Use this prerequisite-gated cutover:
    `pnpm --filter @gredice/storage stripe-payment-processing:drain-preflight`
    through the approved production environment runner until its aggregate
    result is `{"drained":true}` and exit status is zero. Require the
-   authenticated outlet-lifecycle aggregate readback to agree. Run all three
+   authenticated stripe-checkout-orphan-recovery aggregate readback to agree. Run all three
    transaction-identity preflights above and require every result to be empty.
 5. Rebase claim PR `#4385` onto the fully routed prerequisite. Verify migration
    `0078` takes the matching exclusive drain fence before identity preflights,

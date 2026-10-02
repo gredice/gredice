@@ -19,7 +19,7 @@ verification. Keep this document as the cutover and rollback evidence record.
   `checkout.session.expired` to `POST /api/stripe/webhook`.
 - The authenticated reconciliation job invokes `GET /api/stripe/cron`.
 - The authenticated outlet job invokes
-  `GET /api/internal/cron/outlet-lifecycle`.
+  `GET /api/internal/cron/stripe-checkout-orphan-recovery`.
 - During the prerequisite release, legacy paid-session processing was owned by
   `withStripePaymentProcessingLock` in `packages/storage`.
 - An operator runs the read-only drain preflight through the approved
@@ -98,7 +98,7 @@ schema readback; preview deployments skip both. The completed cutover order is:
 4. Run the drain preflight through the approved production environment runner
    until it exits `0`. Because the deployed gate prevents new completed-payment
    work, the elapsed predecessor limit and successful exclusive probe together
-   establish the drain boundary. The scheduled outlet lifecycle response and
+   establish the drain boundary. The scheduled orphan recovery response and
    `stripe_payment.processing.maintenance_active` log provide an independent
    production readback of the same aggregate result. Neither condition is
    sufficient on its own.
@@ -128,7 +128,7 @@ schema readback; preview deployments skip both. The completed cutover order is:
 
 - Maintenance responses log
   `stripe_payment.processing.maintenance_active` with the entry-point source
-  and, for outlet lifecycle, only the aggregate drain result or failure
+  and, for orphan recovery, only the aggregate drain result or failure
   category.
 - A failed exclusive drain probe means at least one legacy processor transaction
    is still active. Do not run or merge the claim migration.

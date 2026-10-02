@@ -3,7 +3,8 @@ import {
     getDeliveryLifecycleNotificationHealth,
 } from '@gredice/storage';
 
-const healthWindowMinutes = 15;
+// Hourly checks overlap by 15 minutes to tolerate scheduling jitter.
+const healthWindowMinutes = 75;
 const staleAgeMinutes = 10;
 
 type DeliveryNotificationHealthDependencies = {
@@ -53,7 +54,11 @@ export async function runDeliveryNotificationHealth({
 } = {}): Promise<DeliveryNotificationHealthResult> {
     if (!enabled) return { enabled: false, severity: 'disabled' };
     const dependencies = { ...defaultDependencies, ...dependencyOverrides };
-    const health = await dependencies.getHealth({ now });
+    const health = await dependencies.getHealth({
+        from: new Date(now.getTime() - healthWindowMinutes * 60_000),
+        now,
+        to: now,
+    });
 
     if (health.severity === 'critical') {
         console.error(
