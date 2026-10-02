@@ -1,11 +1,10 @@
 import type { BlockData, GardenPackCatalogueOffer } from '@gredice/client';
-import { type EntityName, entityNameMap } from '../entities/entityNameMap';
 import { EntityItem } from './ItemsHud';
-import { getOwnedPackVariantLabel } from './ownedGardenPackInventory';
+import {
+    getOwnedPackLineBlock,
+    getOwnedPackVariantLabel,
+} from './ownedGardenPackInventory';
 
-function isEntityName(name: string): name is EntityName {
-    return Object.hasOwn(entityNameMap, name);
-}
 export function GardenPackOfferContents({
     offer,
     blockData,
@@ -18,16 +17,13 @@ export function GardenPackOfferContents({
     return (
         <ul className="space-y-2" aria-label="Točan sadržaj paketa">
             {offer.lines.map((line) => {
-                const variant = getOwnedPackVariantLabel({
+                const ownedLine = {
                     ...line,
                     remainingQuantity: line.quantity,
                     availableUnitOrdinals: [],
-                });
-                const block = blockData?.find(
-                    (entry) =>
-                        entry.id.toString() === line.entityId &&
-                        entry.information.name === line.modelName,
-                );
+                };
+                const variant = getOwnedPackVariantLabel(ownedLine);
+                const block = getOwnedPackLineBlock(ownedLine, blockData);
                 return (
                     <li
                         key={line.lineId}
@@ -43,15 +39,9 @@ export function GardenPackOfferContents({
                                 </p>
                             )}
                         </div>
-                        {individualItems &&
-                            block &&
-                            !line.variant &&
-                            isEntityName(line.modelName) && (
-                                <EntityItem
-                                    type="entity"
-                                    name={line.modelName}
-                                />
-                            )}
+                        {individualItems && block && !line.variant && (
+                            <EntityItem type="entity" name={line.modelName} />
+                        )}
                     </li>
                 );
             })}
