@@ -1,4 +1,5 @@
 import { autumnAsterPots } from '@gredice/js/autumnAsterPots';
+import { autumnShrub } from '@gredice/js/autumnShrub';
 import { gardenScarecrow } from '@gredice/js/gardenScarecrow';
 import { harvestCrates } from '@gredice/js/harvestCrates';
 import { harvestPumpkins } from '@gredice/js/harvestPumpkins';
@@ -26,6 +27,11 @@ const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 const newBlockCatalogItems = [
+    {
+        label: autumnShrub.information.label,
+        price: autumnShrub.sunflowers,
+        picker: 'Dekoracija',
+    },
     ...autumnAsterPots.map((item) => ({
         label: item.information.label,
         price: item.sunflowers,
@@ -1728,3 +1734,55 @@ for (const item of autumnAsterPots) {
         );
     });
 }
+
+test('autumn shrub stays hidden before catalogue publication', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ItemsHudAlignmentStory includeAutumnShrub={false} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', {
+            name: 'Listopadni ukrasni grm',
+            exact: true,
+        }),
+    ).toHaveCount(0);
+});
+
+test('autumn shrub appears once in the local sandbox', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<LocalSandboxItemsHudStory />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await expect(
+        page.getByRole('button', {
+            name: 'Listopadni ukrasni grm',
+            exact: true,
+        }),
+    ).toHaveCount(1);
+});
+
+test('autumn shrub drag keeps the catalogue identity', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await mount(<ItemsHudDragStateStory accountSunflowers={150} />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await dragLocatorByMouse(
+        page,
+        page.getByRole('button', {
+            name: 'Listopadni ukrasni grm',
+            exact: true,
+        }),
+    );
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'AutumnShrub:drag',
+    );
+    await page.mouse.up();
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'AutumnShrub:drop',
+    );
+});
