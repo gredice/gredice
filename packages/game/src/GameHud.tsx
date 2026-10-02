@@ -1,4 +1,6 @@
-'use client';
+import { useGardenPackUnitPlace } from './hooks/useGardenPackUnitPlace';
+
+('use client');
 
 import { IconButton } from '@gredice/ui/IconButton';
 import { Megaphone } from '@gredice/ui/icons';
@@ -85,6 +87,12 @@ export function GameHud({
     }>({ confirmed: false, gardenId: null });
     const isCloseup = useGameState((state) => state.view) === 'closeup';
     const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
+    const packPlacementMutation = useGardenPackUnitPlace();
+    const packPlacement = {
+        place: packPlacementMutation.mutateAsync,
+        isPending: packPlacementMutation.isPending,
+        error: packPlacementMutation.error,
+    };
     const { data: currentGarden } = useCurrentGarden();
     const { data: currentUser } = useCurrentUser();
     const markTutorialChecklistTaskReady = useMarkTutorialChecklistTaskReady();
@@ -128,7 +136,9 @@ export function GameHud({
                     <TemporaryAccountAuthHud />
                 ) : null}
                 <GardenAvatarHud />
-                {showAccountEconomy && <InventoryHud hideTrigger />}
+                {showAccountEconomy && (
+                    <InventoryHud hideTrigger packPlacement={packPlacement} />
+                )}
                 <WoodenSignModal />
                 {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
             </>
@@ -187,7 +197,7 @@ export function GameHud({
                         className={closeupHiddenHudClassName}
                         visible={showLoadedAccountEconomy}
                     >
-                        <InventoryHud />
+                        <InventoryHud packPlacement={packPlacement} />
                     </HudListItemPresence>
                 )}
                 {!isLocalSandbox && (

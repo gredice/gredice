@@ -1,4 +1,3 @@
-import * as completeSchema from '../src/schema';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { after, before, test } from 'node:test';
@@ -13,7 +12,6 @@ import {
     farms,
     GardenPackLifecyclePendingError,
     gardenBlocks,
-    gardenStacks,
     gardens,
     getGardenPackPlacementReplay,
     getGardenPackPlacementUnitForUpdate,
@@ -35,6 +33,7 @@ import { gardenPackProductSnapshotSchema } from '@gredice/storage/gardenPackCont
 import { generateDrizzleJson, generateMigration } from 'drizzle-kit/api';
 import { eq, sql } from 'drizzle-orm';
 import { createGardenPackPlacementService } from '../../../apps/api/lib/garden/gardenPackPlacementService';
+import * as completeSchema from '../src/schema';
 import { gardenPackIntegritySql } from '../src/schema/gardenPackIntegrity';
 
 const enabled =
@@ -46,7 +45,14 @@ before(async () => {
         generateDrizzleJson({}),
         generateDrizzleJson(completeSchema),
     );
-    for (const statement of statements)
+    // Drizzle emits some foreign keys before their supporting unique indexes.
+    const foreignKeys = statements.filter((statement) =>
+        statement.includes('FOREIGN KEY'),
+    );
+    for (const statement of [
+        ...statements.filter((statement) => !statement.includes('FOREIGN KEY')),
+        ...foreignKeys,
+    ])
         await storage().execute(sql.raw(statement));
     await storage().execute(sql.raw(gardenPackIntegritySql));
 });
@@ -254,14 +260,23 @@ test('foreign owner, foreign garden, sandbox, full space and wrong appearance pr
     const command = await fixture();
     const foreign = await fixture();
     const sandbox = await fixture({ sandbox: true });
+    const full = await fixture();
+    const occupying = await createGardenBlock(
+        full.gardenId,
+        'HarvestPumpkinSquatOrange',
+    );
+    await updateGardenStack(full.gardenId, {
+        x: 0,
+        y: 0,
+        blocks: [...full.expectedExistingBlocks, occupying],
+    });
     for (const changed of [
         { ...command, accountId: foreign.accountId },
         { ...command, gardenId: foreign.gardenId },
         { ...sandbox },
         {
-            ...command,
-            position: { x: 9999, y: 9999 },
-            expectedExistingBlocks: [],
+            ...full,
+            expectedExistingBlocks: [...full.expectedExistingBlocks, occupying],
         },
         {
             ...command,
