@@ -8,6 +8,7 @@ import {
     readGameProfileGardenSwitchProfile,
 } from './profileGardenSwitch';
 import {
+    createGameProfileWeatherWitness,
     gameProfileWeatherTransitionEventName,
     readGameProfileWeatherTransitionRequest,
     resolveGameProfileWeatherTransition,
@@ -16,10 +17,12 @@ import {
 type ProfileGameSceneProps = Omit<GameSceneProps, 'freezeTime'> & {
     freezeTime?: string;
     gardenSwitchEnabled?: boolean;
+    cacheClearanceWitnessMode?: string;
 };
 
 export function ProfileGameScene({
     gardenSwitchEnabled = false,
+    cacheClearanceWitnessMode,
     freezeTime,
     mockGardenProfile: initialMockGardenProfile,
     weather: initialWeather,
@@ -33,6 +36,10 @@ export function ProfileGameScene({
         initialMockGardenProfile,
     );
     const [weather, setWeather] = useState(initialWeather);
+    const [weatherReceipt, setWeatherReceipt] = useState({
+        request: 'initial',
+        revision: 0,
+    });
 
     useEffect(() => {
         if (!gardenSwitchEnabled) {
@@ -71,6 +78,12 @@ export function ProfileGameScene({
             }
 
             setWeather(resolveGameProfileWeatherTransition(request));
+            if (cacheClearanceWitnessMode) {
+                setWeatherReceipt((previous) => ({
+                    request,
+                    revision: previous.revision + 1,
+                }));
+            }
         };
 
         window.addEventListener(
@@ -82,14 +95,31 @@ export function ProfileGameScene({
                 gameProfileWeatherTransitionEventName,
                 handleWeatherTransition,
             );
-    }, []);
+    }, [cacheClearanceWitnessMode]);
 
-    return (
+    const scene = (
         <GameScene
             {...gameSceneProps}
             freezeTime={date}
             mockGardenProfile={mockGardenProfile}
             weather={weather}
         />
+    );
+    return cacheClearanceWitnessMode ? (
+        <>
+            <output
+                hidden
+                data-game-profile-cache-weather-witness={JSON.stringify({
+                    mode: cacheClearanceWitnessMode,
+                    cacheEnabled:
+                        gameSceneProps.staticOpaqueSceneCache === true,
+                    ...weatherReceipt,
+                    weather: createGameProfileWeatherWitness(weather),
+                })}
+            />
+            {scene}
+        </>
+    ) : (
+        scene
     );
 }

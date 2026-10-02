@@ -175,6 +175,24 @@ budget, and rejected probes must release their targets. Soak resource growth
 is bounded to one program, four textures and two geometries after warmup.
 Lifecycle retains the canonical suspension/context requirements and adds cache
 admission and resource witnesses before suspension and after restoration.
+Every supplemental witness binds the original URL's cache role, quality setting
+and scene mode to the committed scene and renderer diagnostics. Automatic
+resolving to Medium must still prove the Automatic setting. Explicit legacy visual rows
+must remain legacy; every cache row and weather phase must prove measured
+admission with replay ready or a diagnosed live no-op with released targets.
+A measured phase followed by a no-op still requires valid cache-owned GPU
+queries. These local decisions do not themselves establish paired GPU savings.
+
+Only supplemental URLs enable `staticCacheWitness=1`. Their hidden React
+receipt records the exact weather inputs passed to `GameScene`, the accepted
+transition request and its increasing revision. Each weather event must commit
+that receipt before sampling; a non-cancelled dispatch is insufficient. Weather
+visual rows additionally require actual cloud/rain/snow effect counters. Layer
+rows require integrated snow to enter and return to sparse fallback, frost to
+follow the resolved tier policy and clear, and active rain/snow/frost terrain
+to remain live. Low and constrained frost's deliberate zero still needs the
+fresh cold input receipt. Ignored events, stale receipts, wrong modes, legacy
+cache rows and missing rendered effects fail clearance.
 Automatic hardware witnesses are deterministic browser overrides for coverage;
 they do not replace physical-device memory, thermal or GPU clearance.
 

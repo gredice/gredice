@@ -42,6 +42,22 @@ export const gameProfileSnowIntegratedWeather = {
     snowAccumulation: 24,
 } satisfies NonNullable<GameSceneProps['weather']>;
 
+/** Exact inputs committed to GameScene, separate from effect-policy diagnostics. */
+export function createGameProfileWeatherWitness(
+    weather: GameSceneProps['weather'],
+) {
+    return {
+        cloudy: weather?.cloudy ?? 0,
+        foggy: weather?.foggy ?? 0,
+        rainy: weather?.rainy ?? 0,
+        snowy: weather?.snowy ?? 0,
+        snowAccumulation: weather?.snowAccumulation ?? 0,
+        temperature: weather?.temperature ?? null,
+        source: weather?.source ?? null,
+        isStale: weather?.isStale ?? null,
+    };
+}
+
 export function readGameProfileWeatherTransitionRequest(value: unknown) {
     if (typeof value !== 'object' || value === null) {
         return undefined;

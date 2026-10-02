@@ -8703,13 +8703,19 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
                 : {}),
             lifecycleProfile: true,
             lifecycleRequest: request.lifecycle ?? '0',
-            mode: profileMetadata?.mode ?? request.mode,
+            mode: scenario.staticCacheClearance
+                ? request.mode
+                : (profileMetadata?.mode ?? request.mode),
             motion: 'runtime-lifecycle',
             outline: profileMetadata?.outline ?? request.outline,
-            quality: profileMetadata?.quality ?? request.quality,
+            quality: scenario.staticCacheClearance
+                ? request.quality
+                : (profileMetadata?.quality ?? request.quality),
             sampleMs,
-            staticSceneCache:
-                profileMetadata?.staticSceneCache ?? request.staticSceneCache,
+            staticSceneCache: scenario.staticCacheClearance
+                ? request.staticSceneCache
+                : (profileMetadata?.staticSceneCache ??
+                  request.staticSceneCache),
             viewport: scenario.viewport,
         };
         const resolved = await page.evaluate(() => {
@@ -8892,13 +8898,37 @@ async function runStaticCacheLayerCycle(page, rendererStatsMode, evidence) {
         'frost-to-clear',
     ];
     evidence.layers = [];
-    for (const request of requests) {
+    for (const [index, request] of requests.entries()) {
         const dispatched = await page.evaluate(
             ({ eventName, request }) =>
                 globalThis.dispatchEvent(
                     new CustomEvent(eventName, { detail: { request } }),
                 ),
             { eventName: gameProfileWeatherTransitionEventName, request },
+        );
+        // dispatchEvent only proves that an event was not cancelled. Wait for
+        // the receiving component to commit this exact request and revision.
+        await page.waitForFunction(
+            ({ request, revision }) => {
+                const element = document.querySelector(
+                    '[data-game-profile-cache-weather-witness]',
+                );
+                try {
+                    const receipt = JSON.parse(
+                        element?.getAttribute(
+                            'data-game-profile-cache-weather-witness',
+                        ) ?? 'null',
+                    );
+                    return (
+                        receipt?.request === request &&
+                        receipt.revision === revision
+                    );
+                } catch {
+                    return false;
+                }
+            },
+            { request, revision: index + 1 },
+            { timeout: 15_000 },
         );
         await page.waitForTimeout(3_000);
         await waitForStaticCacheClearanceDecision(page, 'cache');
@@ -11924,7 +11954,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         hud: profileMetadata?.hud ?? request.hud,
         isMobile: scenario.isMobile,
         legacyOutlinePipeline: options.legacyOutlinePipeline,
-        mode: profileMetadata?.mode ?? request.mode,
+        mode: scenario.staticCacheClearance
+            ? request.mode
+            : (profileMetadata?.mode ?? request.mode),
         motion: scenario.motion ?? scenario.interaction ?? 'none',
         motionWarmupMs,
         operationVisuals:
@@ -11939,12 +11971,15 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         animalProfileCommand: animalProfileCommandRequest,
         profileControl: scenario.profileControl === true,
         profileControlRecovery: scenario.profileControlRecovery === true,
-        quality: profileMetadata?.quality ?? request.quality,
+        quality: scenario.staticCacheClearance
+            ? request.quality
+            : (profileMetadata?.quality ?? request.quality),
         runtimeGpuSource: scenario.runtimeGpuSource === true,
         runtimeOwnersProfile: scenario.runtimeOwnersProfile === true,
         sampleMs,
-        staticSceneCache:
-            profileMetadata?.staticSceneCache ?? request.staticSceneCache,
+        staticSceneCache: scenario.staticCacheClearance
+            ? request.staticSceneCache
+            : (profileMetadata?.staticSceneCache ?? request.staticSceneCache),
         staticIdle: profileMetadata?.staticIdle ?? request.staticIdle ?? '0',
         staticIdleProfile: scenario.staticIdleProfile === true,
         ...(scenario.staticCacheClearance === true

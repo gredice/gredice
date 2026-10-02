@@ -25,7 +25,7 @@ export function buildStaticCacheClearanceScenarioSets(profiles) {
             : {}),
     });
     const path = (profile, mode, cache, extra = '') =>
-        `/debug/profile/game?mode=${mode}&profile=high-target&quality=${profile.quality}&controls=0&details=1&hud=0&debugHud=0&staticSceneCache=${cache}&fixedTimeSeconds=43200${extra}`;
+        `/debug/profile/game?mode=${mode}&profile=high-target&quality=${profile.quality}&controls=0&details=1&hud=0&debugHud=0&staticSceneCache=${cache}&fixedTimeSeconds=43200&staticCacheWitness=1${extra}`;
     const visual = profiles.flatMap((profile) =>
         ['details', 'cloudy', 'rain', 'snow'].flatMap((mode) =>
             ['legacy', 'cache'].map((role) => ({
@@ -199,8 +199,26 @@ export function installStaticCacheGpuMetrics() {
 /** Snapshot outside measured windows so resource witnesses do not perturb timings. */
 export function readStaticCacheWitness() {
     const profile = globalThis.__grediceGameProfile ?? {};
+    const scene = document.querySelector('[data-game-profile-mode]');
+    const receipt = document.querySelector(
+        '[data-game-profile-cache-weather-witness]',
+    );
+    let weatherInputWitness = null;
+    try {
+        weatherInputWitness = JSON.parse(
+            receipt?.getAttribute('data-game-profile-cache-weather-witness') ??
+                'null',
+        );
+    } catch {
+        // A missing or malformed committed input receipt fails acceptance.
+    }
     return {
         atMs: performance.now(),
+        sceneMode: scene?.getAttribute('data-game-profile-mode') ?? null,
+        sceneQuality: scene?.getAttribute('data-game-profile-quality') ?? null,
+        sceneStaticSceneCache:
+            scene?.getAttribute('data-game-profile-static-scene-cache') ?? null,
+        weatherInputWitness,
         qualityTier: profile.qualityTier ?? null,
         dprCap: profile.dprCap ?? null,
         shadowMapSize: profile.shadowMapSize ?? null,
@@ -221,6 +239,8 @@ export function readStaticCacheWitness() {
                         'rainParticleCount',
                         'snowCoverage',
                         'snowIntensity',
+                        'snowParticleCount',
+                        'weatherDisabled',
                         'cloudProjectedShadowCount',
                         'cloudVisualCount',
                     ].includes(key),
@@ -231,9 +251,16 @@ export function readStaticCacheWitness() {
 
 export function classifyStaticCacheWitness(witness) {
     if (witness?.staticOpaqueSceneCacheEnabled === false) return 'legacy';
+    if (witness?.staticOpaqueSceneCacheEnabled !== true) return 'inconclusive';
     if (
-        witness?.staticOpaqueSceneCacheBenefitStatus === 'disabled' ||
-        witness?.staticOpaqueSceneCacheSupported === false
+        (witness.staticOpaqueSceneCacheBenefitStatus === 'disabled' &&
+            ['gpu-cost', 'gpu-unavailable', 'work-cost'].includes(
+                witness.staticOpaqueSceneCacheBenefitReason,
+            )) ||
+        (witness.staticOpaqueSceneCacheSupported === false &&
+            ['unsupported', 'target-budget', 'empty'].includes(
+                witness.staticOpaqueSceneCacheReason,
+            ))
     )
         return 'live-no-op';
     if (
@@ -248,6 +275,114 @@ export function classifyStaticCacheWitness(witness) {
     )
         return 'measured-caching';
     return 'inconclusive';
+}
+
+const clearWeather = {
+    cloudy: 0,
+    foggy: 0,
+    rainy: 0,
+    snowy: 0,
+    snowAccumulation: 0,
+    temperature: null,
+    source: null,
+    isStale: null,
+};
+const cloudyWeather = { ...clearWeather, cloudy: 0.85, foggy: 0.06 };
+const sparseSnowWeather = { ...clearWeather, snowAccumulation: 0.75 };
+const initialWeather = {
+    details: clearWeather,
+    cloudy: cloudyWeather,
+    rain: { ...clearWeather, cloudy: 0.85, foggy: 0.12, rainy: 1 },
+    snow: {
+        ...clearWeather,
+        cloudy: 0.75,
+        foggy: 0.2,
+        snowy: 0.7,
+        snowAccumulation: 24,
+    },
+    'snow-onset': sparseSnowWeather,
+};
+const layerWeather = {
+    'snow-sparse-to-integrated': { ...clearWeather, snowAccumulation: 24 },
+    'snow-integrated-to-sparse': sparseSnowWeather,
+    'clear-to-cloudy': cloudyWeather,
+    'cloudy-to-clear': clearWeather,
+    'clear-to-rain': {
+        ...clearWeather,
+        rainy: 1,
+        source: 'profile',
+        isStale: false,
+    },
+    'rain-to-clear': clearWeather,
+    'clear-to-frost': {
+        ...clearWeather,
+        temperature: -4,
+        source: 'profile',
+        isStale: false,
+    },
+    'frost-to-clear': {
+        ...clearWeather,
+        temperature: 12,
+        source: 'profile',
+        isStale: false,
+    },
+};
+
+export function isStaticCacheWeatherWitnessValid(
+    witness,
+    mode,
+    request = 'initial',
+    revision = 0,
+) {
+    const expected =
+        request === 'initial' ? initialWeather[mode] : layerWeather[request];
+    const receipt = witness?.weatherInputWitness;
+    return (
+        expected !== undefined &&
+        receipt?.mode === mode &&
+        receipt.request === request &&
+        receipt.revision === revision &&
+        Object.entries(expected).every(
+            ([key, value]) => receipt.weather?.[key] === value,
+        ) &&
+        witness.weatherDisabled === false &&
+        Number.isFinite(witness.cloudVisualCount) &&
+        (expected.cloudy > 0
+            ? witness.cloudVisualCount > 0
+            : witness.cloudVisualCount === 0) &&
+        Number.isFinite(witness.rainParticleCount) &&
+        (expected.rainy > 0
+            ? witness.rainParticleCount > 0
+            : witness.rainParticleCount === 0) &&
+        Number.isFinite(witness.snowParticleCount) &&
+        (expected.snowy > 0
+            ? witness.snowParticleCount > 0
+            : witness.snowParticleCount === 0)
+    );
+}
+
+function hasResolvedRequestedDecision(witness, requestedMode) {
+    const outcome = classifyStaticCacheWitness(witness);
+    if (requestedMode === 'legacy') {
+        return (
+            outcome === 'legacy' &&
+            witness.staticOpaqueSceneCacheAllocatedTargetBytes === 0
+        );
+    }
+    if (requestedMode !== 'cache') return false;
+    if (outcome === 'measured-caching') {
+        return witness.staticOpaqueSceneCacheReplayStatus === 'ready';
+    }
+    return (
+        outcome === 'live-no-op' &&
+        witness.staticOpaqueSceneCacheAllocatedTargetBytes === 0 &&
+        ['live', 'absent'].includes(
+            witness.staticOpaqueSceneCacheBaseTerrainLayer,
+        ) &&
+        ['live', 'absent'].includes(
+            witness.staticOpaqueSceneCacheStaticPropsLayer,
+        )
+    );
 }
 
 /** Supplemental acceptance; an unmeasured probe is never called clearance. */
@@ -269,6 +404,55 @@ export function evaluateStaticCacheClearance({
     const all = evidence?.witnesses ?? [];
     const final = all.at(-1);
     const outcome = classifyStaticCacheWitness(final);
+    const requestedCache = requested.staticSceneCache;
+    const cacheRequestValid =
+        ['legacy', 'cache'].includes(requestedCache) &&
+        (requested.comparisonRole === undefined ||
+            requested.comparisonRole === requestedCache);
+    add(
+        'cacheClearanceRequestedRole',
+        requestedCache,
+        cacheRequestValid,
+        'explicit legacy/cache role',
+    );
+    const modeBound = all.every(
+        (witness) =>
+            witness.sceneMode === requested.mode &&
+            witness.sceneStaticSceneCache === requestedCache &&
+            witness.weatherInputWitness?.mode === requested.mode &&
+            witness.weatherInputWitness?.cacheEnabled ===
+                (requestedCache === 'cache') &&
+            witness.staticOpaqueSceneCacheEnabled ===
+                (requestedCache === 'cache'),
+    );
+    add('cacheClearanceAppliedMode', modeBound, modeBound, true);
+    const qualityBound =
+        requested.quality === requested.expectedQualitySetting &&
+        all.every(
+            (witness) =>
+                witness.sceneQuality === requested.expectedQualitySetting,
+        );
+    add(
+        'cacheClearanceAppliedQualitySetting',
+        qualityBound,
+        qualityBound,
+        true,
+    );
+    const resolvedDecisions = all.every((witness) =>
+        hasResolvedRequestedDecision(witness, requestedCache),
+    );
+    add(
+        'cacheClearanceEveryDecision',
+        resolvedDecisions,
+        resolvedDecisions,
+        true,
+    );
+    const weatherBound = (
+        requested.staticCacheLayers ? all.slice(0, 1) : all
+    ).every((witness) =>
+        isStaticCacheWeatherWitnessValid(witness, requested.mode),
+    );
+    add('cacheClearanceAppliedWeather', weatherBound, weatherBound, true);
     add(
         'cacheClearanceScreenshot',
         screenshotValid,
@@ -351,8 +535,11 @@ export function evaluateStaticCacheClearance({
     add(
         'cacheClearanceResolvedDecision',
         outcome,
-        outcome !== 'inconclusive',
-        'measured-caching or bounded live-no-op',
+        cacheRequestValid &&
+            hasResolvedRequestedDecision(final, requestedCache),
+        requestedCache === 'legacy'
+            ? 'legacy'
+            : 'measured-caching or bounded live-no-op',
     );
     const withinBudget = all.every((witness) => {
         const budget = witness.staticOpaqueSceneCacheBudgetBytes;
@@ -368,19 +555,12 @@ export function evaluateStaticCacheClearance({
         );
     });
     add('cacheClearanceResourceBudget', withinBudget, withinBudget, true);
-    if (outcome === 'measured-caching') {
-        add(
-            'cacheClearanceMeasuredAdmission',
-            all.every(
-                (witness) =>
-                    classifyStaticCacheWitness(witness) === 'measured-caching',
-            ),
-            all.every(
-                (witness) =>
-                    classifyStaticCacheWitness(witness) === 'measured-caching',
-            ),
-            true,
-        );
+    if (
+        all.some(
+            (witness) =>
+                classifyStaticCacheWitness(witness) === 'measured-caching',
+        )
+    ) {
         add(
             'cacheClearanceGpuTiming',
             sample?.gpu?.valid,
@@ -388,6 +568,8 @@ export function evaluateStaticCacheClearance({
                 sample.gpu.measurementMode === 'cache-owned-render-pass-v1',
             true,
         );
+    }
+    if (outcome === 'measured-caching') {
         add(
             'cacheClearanceReplayReady',
             final?.staticOpaqueSceneCacheReplayStatus,
@@ -463,6 +645,103 @@ export function evaluateStaticCacheClearance({
                 ),
             expected,
         );
+        const phasesRecorded =
+            all.length >= expected.length + 2 &&
+            layers.every(
+                (layer, index) =>
+                    JSON.stringify(layer.witness) ===
+                    JSON.stringify(all[index + 1]),
+            );
+        add(
+            'cacheClearanceWeatherReceiptsRecorded',
+            phasesRecorded,
+            phasesRecorded,
+            true,
+        );
+        for (const [index, layer] of layers.entries()) {
+            const valid = isStaticCacheWeatherWitnessValid(
+                layer.witness,
+                requested.mode,
+                expected[index],
+                index + 1,
+            );
+            add(
+                `cacheClearanceWeatherApplied${layer.request}`,
+                valid,
+                valid,
+                true,
+            );
+            const receiptResolved = hasResolvedRequestedDecision(
+                layer.witness,
+                requestedCache,
+            );
+            add(
+                `cacheClearanceWeatherDecision${layer.request}`,
+                receiptResolved,
+                receiptResolved,
+                true,
+            );
+        }
+        const finalWeather = isStaticCacheWeatherWitnessValid(
+            final,
+            requested.mode,
+            'frost-to-clear',
+            expected.length,
+        );
+        add(
+            'cacheClearanceWeatherFinalReceipt',
+            finalWeather,
+            finalWeather,
+            true,
+        );
+        const integrated = layers[0]?.witness;
+        const sparse = layers[1]?.witness;
+        const finiteSnowState = (witness) =>
+            [
+                'weatherSurfaceSnowIntegrationTrackedCount',
+                'weatherSurfaceSnowIntegrationReadyCount',
+                'weatherSurfaceSnowIntegrationTransitionCount',
+                'weatherSurfaceIntegratedInstanceCount',
+                'weatherSurfaceIntegratedMaterialCount',
+                'weatherSurfacePluginVariantCount',
+                'weatherSurfaceAvoidedOverlaySubmissionCount',
+                'weatherSurfaceAvoidedOverlayTriangleCount',
+            ].every(
+                (key) => Number.isFinite(witness?.[key]) && witness[key] >= 0,
+            );
+        const integratedSnow =
+            finiteSnowState(integrated) &&
+            integrated?.weatherSurfaceMode === 'integrated' &&
+            integrated.weatherSurfaceSnowIntegrationTrackedCount > 0 &&
+            integrated.weatherSurfaceSnowIntegrationReadyCount > 0 &&
+            integrated.weatherSurfaceIntegratedInstanceCount > 0 &&
+            integrated.weatherSurfaceIntegratedMaterialCount > 0 &&
+            integrated.weatherSurfacePluginVariantCount === 1 &&
+            integrated.weatherSurfaceAvoidedOverlaySubmissionCount > 0 &&
+            integrated.weatherSurfaceAvoidedOverlayTriangleCount > 0;
+        add(
+            'cacheClearanceSnowIntegrated',
+            integratedSnow,
+            integratedSnow,
+            true,
+        );
+        const sparseSnow =
+            finiteSnowState(sparse) &&
+            sparse?.weatherSurfaceSnowIntegrationTrackedCount > 0 &&
+            sparse.weatherSurfaceSnowIntegrationReadyCount === 0 &&
+            sparse.weatherSurfaceIntegratedInstanceCount === 0 &&
+            sparse.weatherSurfaceIntegratedMaterialCount === 0 &&
+            sparse.weatherSurfacePluginVariantCount === 0 &&
+            sparse.weatherSurfaceAvoidedOverlaySubmissionCount === 0 &&
+            sparse.weatherSurfaceAvoidedOverlayTriangleCount === 0 &&
+            sparse.weatherSurfaceSnowIntegrationTransitionCount >
+                integrated?.weatherSurfaceSnowIntegrationTransitionCount &&
+            (requested.expectedQualityTier === 'high'
+                ? sparse.weatherSurfaceFallbackOverlaySubmissionCount > 0 &&
+                  sparse.weatherSurfaceFallbackOverlayTriangleCount > 0
+                : sparse.weatherSurfaceFallbackOverlaySubmissionCount === 0 &&
+                  sparse.weatherSurfaceFallbackOverlayTriangleCount === 0);
+        add('cacheClearanceSnowSparsePolicy', sparseSnow, sparseSnow, true);
         const frost = layers.find((layer) => layer.request === 'clear-to-frost')
             ?.witness?.frostIntensity;
         const frostEnabled =
@@ -476,6 +755,21 @@ export function evaluateStaticCacheClearance({
         );
         const clearedFrost = layers.at(-1)?.witness?.frostIntensity;
         add('cacheClearanceFrostCleared', clearedFrost, clearedFrost === 0, 0);
+        for (const layer of layers) {
+            const terrainLive =
+                layer.request === 'snow-sparse-to-integrated' ||
+                layer.request === 'clear-to-rain' ||
+                (layer.request === 'clear-to-frost' && frostEnabled);
+            const state = layer.witness?.staticOpaqueSceneCacheBaseTerrainLayer;
+            add(
+                `cacheClearanceTerrainLayer${layer.request}`,
+                state,
+                terrainLive
+                    ? state === 'live'
+                    : ['live', 'cached', 'mixed'].includes(state),
+                terrainLive ? 'live' : 'present terrain layer',
+            );
+        }
     }
     if (requested.staticCacheSoak) {
         add(

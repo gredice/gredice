@@ -1,11 +1,31 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    createGameProfileWeatherWitness,
     gameProfileSnowIntegratedWeather,
     gameProfileSnowSparseWeather,
     readGameProfileWeatherTransitionRequest,
     resolveGameProfileWeatherTransition,
 } from './profileWeather.ts';
+
+test('committed input receipts preserve zero values and fresh cold input', () => {
+    assert.deepEqual(createGameProfileWeatherWitness(undefined), {
+        cloudy: 0,
+        foggy: 0,
+        rainy: 0,
+        snowy: 0,
+        snowAccumulation: 0,
+        temperature: null,
+        source: null,
+        isStale: null,
+    });
+    const cold = createGameProfileWeatherWitness(
+        resolveGameProfileWeatherTransition('clear-to-frost'),
+    );
+    assert.equal(cold.temperature, -4);
+    assert.equal(cold.source, 'profile');
+    assert.equal(cold.isStale, false);
+});
 
 test('snow surface transition requests remain particle-free and deterministic', () => {
     assert.equal(
