@@ -11,6 +11,7 @@ import {
 
 export function GardenPalettePacketScene({
     palette,
+    fallback,
     mutated,
     mounted,
     night,
@@ -18,6 +19,7 @@ export function GardenPalettePacketScene({
     onReadback,
 }: {
     palette: boolean;
+    fallback: boolean;
     mutated: boolean;
     mounted: boolean;
     night: boolean;
@@ -27,7 +29,7 @@ export function GardenPalettePacketScene({
     const scene = useThree((state) => state.scene);
     const sources = useMemo(createGardenPaletteFixtureSources, []);
     const frames = useRef({ key: '', count: 0 });
-    const key = `${palette}:${mutated}:${mounted}:${night}:${weather}`;
+    const key = `${fallback ? 'fallback:' : ''}${palette}:${mutated}:${mounted}:${night}:${weather}`;
     useLayoutEffect(
         () => () => {
             for (const source of sources.sources) {
@@ -97,6 +99,7 @@ export function GardenPalettePacketScene({
                         key={source.name}
                         source={source}
                         palette={palette}
+                        fallback={fallback}
                         mutated={mutated}
                         weather={weather}
                     />

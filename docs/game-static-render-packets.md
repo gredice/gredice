@@ -98,12 +98,15 @@ path, the worker path, cancellation, and the instanced fallback for pending or
 failed compiles work as they did for single-geometry chunks.
 
 While compilation is pending, each contribution renders its authored stable
-geometry and material with the same instance transforms. This preserves the
-visible weather/cutout state and reuses authored instanced programs; the leased
-palette shader is only used for the final non-instanced packet. Using the
-palette shader for both paths would retain unused instancing program variants
-for the material's lifetime. Packet fallback does not own or dispose authored
-source resources.
+geometry with the same instance transforms. Eligible palette sources use
+commit-owned transient material clones with identical PBR values, maps, cutout,
+ground callbacks and live weather uniform owners. The scene applies cloud
+attenuation once to each clone. Pending meshes wait for their clone lease;
+borrowed original materials never reach a pending frame. The final fallback
+consumer disposes the clone and its unused instancing programs when compilation
+finishes or the component releases. The palette shader is only used for the
+final non-instanced packet. Unknown hooks retain their authored lifetime, and
+fallback never disposes source geometry, source materials or their textures.
 
 Each static-cache group gets one `StaticOpaqueSceneCacheBoundary`, and every
 packet in the group counts as one submission. Packets render in the provider's
@@ -174,7 +177,10 @@ unchanged triangles and raycast hits, six contributions sharing two spatial
 packets, a local membership patch retaining the other chunk's geometry, palette
 mutation, an unknown-hook fallback, and final release/remount. Shared packet
 compilation also publishes physical placement rebuild timing and transformed
-instance counts when placement membership changes.
+instance counts when placement membership changes. A deliberately large source
+forces real worker compilation and visible pending frames; those frames contain
+only transient authored shader clones, and every observed clone is disposed
+after readiness and final release.
 
 A separate diagnostic comparison of an uncompiled authored mesh against its
 compiled palette mesh found 378 of 196,608 pixels (0.1923%) differing by more

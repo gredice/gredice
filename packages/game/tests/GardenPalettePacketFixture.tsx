@@ -8,12 +8,14 @@ import type {
 
 export function GardenPalettePacketFixture({
     palette = false,
+    fallback = false,
     mutated = false,
     mounted = true,
     night = false,
     weather = 'clear',
 }: {
     palette?: boolean;
+    fallback?: boolean;
     mutated?: boolean;
     mounted?: boolean;
     night?: boolean;
@@ -24,7 +26,7 @@ export function GardenPalettePacketFixture({
         (value: GardenPaletteFixtureReadback) => setResult(value),
         [],
     );
-    const key = `${palette}:${mutated}:${mounted}:${night}:${weather}`;
+    const key = `${fallback ? 'fallback:' : ''}${palette}:${mutated}:${mounted}:${night}:${weather}`;
     return (
         <div
             data-testid="garden-palette-fixture"
@@ -47,6 +49,7 @@ export function GardenPalettePacketFixture({
                 >
                     <GardenPalettePacketScene
                         palette={palette}
+                        fallback={fallback}
                         mutated={mutated}
                         mounted={mounted}
                         night={night}

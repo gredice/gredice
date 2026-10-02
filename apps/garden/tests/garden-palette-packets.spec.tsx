@@ -29,6 +29,9 @@ test('production entity props batch JSX material nodes, retain untouched chunks 
     expect(strictInitial.packets.savedSubmissions).toBe(4);
     expect(strictInitial.fallbackFrames).toBeGreaterThan(0);
     expect(strictInitial.paletteFallbacks).toBe(0);
+    expect(strictInitial.borrowedFallbacks).toBe(0);
+    expect(strictInitial.liveFallbackMaterials).toBe(0);
+    expect(strictInitial.disposedFallbackMaterials).toBeGreaterThan(0);
     await fixture.update(<GardenPaletteAdmissionFixture />);
     await expect(fixture).toHaveAttribute(
         'data-ready',
@@ -92,6 +95,7 @@ test('production entity props batch JSX material nodes, retain untouched chunks 
     expect(released.materials.canonicalMaterials).toBe(0);
     expect(released.materials.sharedMaterialUsers).toBe(0);
     expect(released.compiler.liveGeometries).toBe(0);
+    expect(released.liveFallbackMaterials).toBe(0);
     await fixture.update(<GardenPaletteAdmissionFixture batch />);
     await expect(fixture).toHaveAttribute(
         'data-ready',
@@ -127,6 +131,64 @@ function compare(left: Buffer, right: Buffer) {
         differentPixelRatio: different / (left.length / 4),
         maxChannelError,
     };
+}
+
+for (const { weather, night } of [
+    { weather: 'combined', night: false },
+    { weather: 'rain', night: true },
+] as const) {
+    test(`transient authored fallback clones preserve ${weather} ${night ? 'night' : 'day'} pixels and release`, async ({
+        mount,
+        page,
+    }) => {
+        const errors: string[] = [];
+        page.on('pageerror', (error) => errors.push(error.message));
+        const fixture = await mount(
+            <GardenPalettePacketFixture weather={weather} night={night} />,
+        );
+        await expect(fixture).toHaveAttribute(
+            'data-ready',
+            `false:false:true:${night}:${weather}`,
+        );
+        const original = await pixels(
+            await fixture.locator('canvas').screenshot(),
+        );
+        await fixture.update(
+            <GardenPalettePacketFixture
+                weather={weather}
+                night={night}
+                fallback
+            />,
+        );
+        await expect(fixture).toHaveAttribute(
+            'data-ready',
+            `fallback:false:false:true:${night}:${weather}`,
+        );
+        expect(
+            compare(
+                original,
+                await pixels(await fixture.locator('canvas').screenshot()),
+            ).differentPixelRatio,
+        ).toBeLessThan(0.001);
+        await fixture.update(
+            <GardenPalettePacketFixture
+                weather={weather}
+                night={night}
+                fallback
+                mounted={false}
+            />,
+        );
+        await expect(fixture).toHaveAttribute(
+            'data-ready',
+            `fallback:false:false:false:${night}:${weather}`,
+        );
+        const released = JSON.parse(
+            (await fixture.getAttribute('data-result')) ?? '{}',
+        );
+        expect(released.paletteMaterials).toBe(0);
+        expect(released.sharedMaterialUsers).toBe(0);
+        expect(errors).toEqual([]);
+    });
 }
 
 for (const weather of ['clear', 'rain', 'snow', 'combined'] as const) {

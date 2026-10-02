@@ -16,6 +16,7 @@ import {
     recordPlacementAnimationChunkRebuild,
     shouldRecordPlacementAnimationChunkRebuild,
 } from '../../entities/placementAnimationProfileMetrics';
+import { useGardenPaletteFallbackMaterial } from '../gardenPaletteFallbackMaterials';
 import {
     StaticOpaqueSceneCacheBoundary,
     type StaticOpaqueSceneCacheGroup,
@@ -255,11 +256,16 @@ const StaticRenderPacketInstancedFallback = memo(
     }) {
         const meshRef = useRef<InstancedMesh | null>(null);
         const { instances, localTransform, scale } = contribution;
-        // Reuse the authored instanced shader while compilation is pending.
-        // The leased palette shader otherwise retains a transient instancing
-        // program in addition to its final non-instanced packet program.
+        // Eligible clones release fallback-only instancing programs when the
+        // packet becomes ready. Borrowed originals never reach a pending frame.
         const geometry = contribution.fallbackGeometry ?? contribution.geometry;
-        const material = contribution.fallbackMaterial ?? contribution.material;
+        const sourceMaterial =
+            contribution.fallbackMaterial ?? contribution.material;
+        const material = useGardenPaletteFallbackMaterial(
+            sourceMaterial,
+            sourceMaterial !== contribution.material &&
+                contribution.geometry.hasAttribute('aGardenPalette0'),
+        );
 
         useLayoutEffect(() => {
             recordStaticRenderPacketFallbackMesh(1);
@@ -267,7 +273,12 @@ const StaticRenderPacketInstancedFallback = memo(
         }, []);
         useLayoutEffect(() => {
             const mesh = meshRef.current;
-            if (!mesh || mesh.geometry !== geometry) return;
+            if (
+                !mesh ||
+                mesh.geometry !== geometry ||
+                mesh.material !== material
+            )
+                return;
             instances.forEach((instance, index) => {
                 mesh.setMatrixAt(
                     index,
@@ -278,7 +289,9 @@ const StaticRenderPacketInstancedFallback = memo(
             mesh.instanceMatrix.needsUpdate = true;
             mesh.computeBoundingBox();
             mesh.computeBoundingSphere();
-        }, [geometry, instances, localTransform, scale]);
+        }, [geometry, instances, localTransform, material, scale]);
+
+        if (!material) return null;
 
         return (
             <instancedMesh

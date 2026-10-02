@@ -100,6 +100,11 @@ export function GardenPaletteAdmissionScene({
         reported: false,
         fallbackFrames: 0,
         paletteFallbacks: 0,
+        borrowedFallbacks: 0,
+    });
+    const fallbackMaterials = useRef({
+        seen: new Set<MeshStandardMaterial>(),
+        disposed: new Set<MeshStandardMaterial>(),
     });
     useFrame(() => {
         if (frames.current.key !== key)
@@ -109,6 +114,7 @@ export function GardenPaletteAdmissionScene({
                 reported: false,
                 fallbackFrames: 0,
                 paletteFallbacks: 0,
+                borrowedFallbacks: 0,
             };
         frames.current.count++;
         const pendingFallbacks: Mesh[] = [];
@@ -129,6 +135,25 @@ export function GardenPaletteAdmissionScene({
                     : [mesh.material]
                 ).some((material) => material.name.endsWith(':GardenPalette')),
         ).length;
+        for (const mesh of pendingFallbacks) {
+            const materials = Array.isArray(mesh.material)
+                ? mesh.material
+                : [mesh.material];
+            for (const material of materials) {
+                if (
+                    !(material instanceof MeshStandardMaterial) ||
+                    !material.name.endsWith(':StaticPacketFallback')
+                ) {
+                    frames.current.borrowedFallbacks++;
+                    continue;
+                }
+                if (fallbackMaterials.current.seen.has(material)) continue;
+                fallbackMaterials.current.seen.add(material);
+                material.addEventListener('dispose', () =>
+                    fallbackMaterials.current.disposed.add(material),
+                );
+            }
+        }
         if (frames.current.reported || frames.current.count < 12) return;
         const compiler = readChunkCompilerMetrics();
         const packets = readStaticRenderPacketMetrics();
@@ -167,6 +192,11 @@ export function GardenPaletteAdmissionScene({
             compiler,
             fallbackFrames: frames.current.fallbackFrames,
             paletteFallbacks: frames.current.paletteFallbacks,
+            borrowedFallbacks: frames.current.borrowedFallbacks,
+            liveFallbackMaterials:
+                fallbackMaterials.current.seen.size -
+                fallbackMaterials.current.disposed.size,
+            disposedFallbackMaterials: fallbackMaterials.current.disposed.size,
             materials: readSharedGardenMaterialMetrics(),
             meshes: meshes.length,
             triangles: meshes.reduce(

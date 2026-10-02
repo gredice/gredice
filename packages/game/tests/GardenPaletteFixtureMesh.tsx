@@ -5,6 +5,7 @@ import {
     packMeshGeometry,
     unpackMeshGeometry,
 } from '../src/scene/compiler/meshBuffers';
+import { useGardenPaletteFallbackMaterial } from '../src/scene/gardenPaletteFallbackMaterials';
 import { useGardenPalettePacketSource } from '../src/scene/gardenPaletteMaterials';
 import { createWeatherSurfaceGeometry } from '../src/scene/weatherSurfaceGeometry';
 import { createIntegratedWeatherSurfaceMaterial } from '../src/scene/weatherSurfaceMaterial';
@@ -16,11 +17,13 @@ import type {
 export function GardenPaletteFixtureMesh({
     source,
     palette,
+    fallback,
     mutated,
     weather,
 }: {
     source: GardenPaletteFixtureSource;
     palette: boolean;
+    fallback: boolean;
     mutated: boolean;
     weather: GardenPaletteFixtureWeather;
 }) {
@@ -77,6 +80,10 @@ export function GardenPaletteFixtureMesh({
         integrated ?? source.material,
         palette,
     );
+    const fallbackMaterial = useGardenPaletteFallbackMaterial(
+        integrated ?? source.material,
+        fallback,
+    );
     const compiled = useMemo(() => {
         // Use identical compiler transforms on both sides to isolate shader
         // parity from Float32 model-matrix rounding in procedural world noise.
@@ -100,13 +107,14 @@ export function GardenPaletteFixtureMesh({
         },
         [source.geometry, weatherGeometry],
     );
+    if (fallback && !fallbackMaterial) return null;
     return (
         <mesh
             name={`GardenPaletteFixture:${source.name}:revision:${revision}`}
             castShadow
             receiveShadow
             geometry={compiled}
-            material={prepared.material}
+            material={fallback ? fallbackMaterial : prepared.material}
         />
     );
 }
