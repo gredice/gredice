@@ -35,6 +35,7 @@ import {
     type AdaptiveHighQualityLevelProfile,
     adaptiveHighQualityLevels,
 } from './adaptiveHighQuality';
+import { BreathSourcesProvider } from './cold/BreathSources';
 import { GardenLightProvider } from './GardenLightProvider';
 import {
     createRuntimeFrameLoopProfileTelemetry,
@@ -427,7 +428,9 @@ export function Scene({
                                             <AutumnPropWindProvider
                                                 tier={qualityProfile.tier}
                                             >
-                                                {children}
+                                                <BreathSourcesProvider>
+                                                    {children}
+                                                </BreathSourcesProvider>
                                             </AutumnPropWindProvider>
                                         </AutumnPartsProvider>
                                     </AutumnSourcesProvider>
