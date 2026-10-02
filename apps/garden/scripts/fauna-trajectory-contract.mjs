@@ -212,6 +212,7 @@ function validateOracle(
     for (const call of receipt.calls) {
         const source = manifests.sources.get(call.sourceId);
         assert.ok(source, `Unregistered frozen pose call ${call.sourceId}`);
+        manifests.calledSources.add(source.name);
         assert.equal(typeof call.actor, 'string');
         const delayed =
             mode === 'candidate' && delayedPoseFunctions.has(source.name);
@@ -447,6 +448,7 @@ export function validateFaunaTrajectoryReport(report) {
         clips: new Map(),
         anchors: new Map(),
         mixers: new Map(),
+        calledSources: new Set(),
     };
     for (const capture of report.captures) {
         assert.ok(
@@ -578,6 +580,11 @@ export function validateFaunaTrajectoryReport(report) {
         [...poseSourceNames].sort(),
         'Every frozen manual pose source must be exercised',
     );
+    assert.deepEqual(
+        [...manifests.calledSources].sort(),
+        [...poseSourceNames].sort(),
+        'Every frozen manual pose source must execute actual math',
+    );
     assert.ok(
         manifests.clips.size > 0,
         'Native animation clips must be exercised',
@@ -697,6 +704,58 @@ function compareActionPlans(ambient, interactive) {
             right.get(key),
             `${key}:native action targets`,
         );
+}
+
+function compareNormativePoseInputs(reference, candidate, index) {
+    const frame = reference.frames[index];
+    const prior = reference.frames[Math.max(0, index - 1)];
+    const key = ({ actor, sourceId }) => `${actor}:${sourceId}`;
+    const calls = (value) =>
+        new Map(value.poseOracle.calls.map((call) => [key(call), call]));
+    const presentCalls = calls(frame),
+        priorCalls = calls(prior);
+    const priorActors = new Map(prior.actors.map((actor) => [actor.id, actor]));
+    const currentActors = new Map(
+        frame.actors.map((actor) => [actor.id, actor]),
+    );
+    const coverage = { executed: 0, unobservedLegacyCullingInputs: 0 };
+    for (const call of candidate.frames[index].poseOracle.calls) {
+        const name = call.sourceId.slice(call.sourceId.lastIndexOf(':') + 1);
+        const oldActor = priorActors.get(call.actor),
+            currentActor = currentActors.get(call.actor);
+        const snaps =
+            !oldActor ||
+            !currentActor ||
+            distance(oldActor.position, currentActor.position) > 2;
+        const expected =
+            delayedPoseFunctions.has(name) && !snaps
+                ? priorCalls.get(key(call))
+                : presentCalls.get(key(call));
+        if (!expected) {
+            // A culled legacy helper never computed its argument object. Do
+            // not invent those values or move its execution before culling.
+            // Full normative TQS, frozen bodies and independent clocks/poses
+            // still bind this sample; name the executed-intent coverage limit.
+            coverage.unobservedLegacyCullingInputs += 1;
+            continue;
+        }
+        // Delta is independently tied to the render/presentation recurrence.
+        // Ladybug's extra progress receipt is candidate-only oracle metadata.
+        const inputs = (entry) =>
+            Object.fromEntries(
+                Object.entries(entry.inputs).filter(
+                    ([field]) =>
+                        field !== 'delta' && field !== '__poseProgress',
+                ),
+            );
+        coherentInputs(
+            inputs(expected),
+            inputs(call),
+            `${key(call)}:normative pose intent`,
+        );
+        coverage.executed += 1;
+    }
+    return coverage;
 }
 
 function compareMidpointInputs(previous, next, half) {
@@ -1075,11 +1134,18 @@ export function compareFaunaBaseline(baseline, candidate) {
         );
         assert.ok(current);
         assert.equal(current.frames.length, old.frames.length);
+        compareActionPlans(old, current);
         let maxPositionError = 0;
         let maxPoseError = 0;
         let poseSamples = 0;
         let samples = 0;
+        let executedPoseIntents = 0;
+        let unobservedLegacyCullingInputs = 0;
         for (let index = 0; index < current.frames.length; index++) {
+            const intents = compareNormativePoseInputs(old, current, index);
+            executedPoseIntents += intents.executed;
+            unobservedLegacyCullingInputs +=
+                intents.unobservedLegacyCullingInputs;
             const poseBudgets = poseMotionBudgets(old, index);
             const frame = current.frames[index];
             matchingActors(
@@ -1172,6 +1238,8 @@ export function compareFaunaBaseline(baseline, candidate) {
             maxPositionError,
             poseSamples,
             maxPoseError,
+            executedPoseIntents,
+            unobservedLegacyCullingInputs,
         });
     }
     return results;

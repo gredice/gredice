@@ -185,6 +185,13 @@ for the designed one-step presentation delay; each joint component has only its
 own local one-step baseline motion allowance. Static channels stay exact even
 when another axis or later phase moves. Mounts and large semantic teleports snap
 immediately, and antipodal quaternions describe the same orientation.
+Native action command plans are also bound directly to the normative 30 Hz
+reference. Executed manual pose inputs are compared at their corresponding
+presentation sample. When legacy culling never invoked a helper on that sample,
+there is no legacy argument object to compare; the report names that input
+coverage boundary. It does not infer arguments from a later call or run the old
+helper before culling. Complete joint poses, frozen source bodies and the
+independent clock/recurrence checks still apply to those frames.
 
 Candidate 60 Hz uses that same authoritative 30 Hz seeded schedule. Endpoints,
 presence and action commands match candidate 30 Hz; render midpoints interpolate

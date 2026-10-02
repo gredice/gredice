@@ -93,7 +93,7 @@ function oracle(frame, fps, mode, resume = false) {
                 seed: 1,
                 target: { id: 'home' },
             };
-            if (presentation) inputs.walkDistance = time;
+            if (delayed.has(source.name)) inputs.walkDistance = time;
             if (source.name === 'updateBirdLegPose') {
                 inputs.walking = true;
                 inputs.walkElapsed = frame.time;
@@ -633,4 +633,71 @@ test('records legacy60 population/target/root drift only as a measured diagnosti
     assert.equal(diagnostic.firstPopulationDifference.at, 220 / 60);
     assert.equal(diagnostic.firstTargetDifference.actor, 'Cow:0');
     assert.equal(compareFaunaBaseline(baseline, report('candidate')).length, 3);
+});
+
+test('rejects native action changes shared by candidate30 and60 against normative legacy30', () => {
+    const baseline = report('baseline');
+    for (const alter of [
+        (command) => {
+            command.method = 'stop';
+        },
+        (command) => {
+            command.args = [2201, 1];
+        },
+        (command) => {
+            command.at = -1 / 30;
+        },
+    ]) {
+        const candidate = report('candidate');
+        for (const trace of candidate.captures)
+            alter(trace.frames[0].poseOracle.commands[0]);
+        // Same-cadence agreement alone would authorize this common change.
+        assert.ok(cadences(candidate).endpoints > 0);
+        assert.throws(
+            () => compareFaunaBaseline(baseline, candidate),
+            /native action targets|receipt was delayed/,
+        );
+    }
+});
+
+test('rejects common candidate pose intents that cadence agreement and matching transforms cannot prove', () => {
+    const baseline = report('baseline');
+    for (const sourceIndex of [0, 9]) {
+        const candidate = report('candidate');
+        for (const trace of candidate.captures)
+            for (const frame of trace.frames)
+                frame.poseOracle.calls[sourceIndex].inputs.target.id =
+                    'common-changed-target';
+        assert.ok(cadences(candidate).endpoints > 0);
+        assert.throws(
+            () => compareFaunaBaseline(baseline, candidate),
+            /normative pose intent/,
+        );
+    }
+});
+
+test('names uncomputed culled legacy input coverage without inventing values or waiving observed mismatches', () => {
+    const baseline = report('baseline'),
+        candidate = report('candidate');
+    baseline.captures[0].frames[0].poseOracle.calls.shift();
+    const result = compareFaunaBaseline(baseline, candidate);
+    assert.equal(result[0].unobservedLegacyCullingInputs, 2);
+    assert.ok(result[0].executedPoseIntents > 0);
+    candidate.captures[0].frames[2].poseOracle.calls[0].inputs.behavior =
+        'trot';
+    assert.throws(
+        () => compareFaunaBaseline(baseline, candidate),
+        /normative pose intent/,
+    );
+});
+
+test('source registration without actual helper invocation cannot prove frozen math coverage', () => {
+    const candidate = report('candidate');
+    for (const trace of candidate.captures)
+        for (const frame of [...trace.frames, trace.suspension.resumed])
+            frame.poseOracle.calls.pop();
+    assert.throws(
+        () => validateFaunaTrajectoryReport(candidate),
+        /execute actual math/,
+    );
 });
