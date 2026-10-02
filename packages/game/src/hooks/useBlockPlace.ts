@@ -13,6 +13,7 @@ import {
 } from '../localSandboxGarden';
 import { useGameState } from '../useGameState';
 import { ensureBlockPlaceOperationId } from './blockPlaceOperation';
+import { withGardenOptimisticMutationLock } from './gardenOptimisticMutationLock';
 import {
     createOptimisticBlockPlacement,
     getPreferredBlockPlacementPosition,
@@ -51,8 +52,6 @@ type BlockPlacePosition = {
     x: number;
     y: number;
 };
-
-const placementQueues = new Map<string, Promise<void>>();
 
 async function getBlockPlacementError(response: Response) {
     const responseText = await response.text();
@@ -97,27 +96,6 @@ function updateCurrentAccountSunflowers(
             amount: nextAmount,
         },
     };
-}
-
-async function runQueuedPlacement<T>(
-    queueKey: string,
-    task: () => Promise<T>,
-): Promise<T> {
-    const previous = placementQueues.get(queueKey) ?? Promise.resolve();
-    const current = previous.catch(() => undefined).then(task);
-    const currentQueue = current.then(
-        () => undefined,
-        () => undefined,
-    );
-    placementQueues.set(queueKey, currentQueue);
-
-    try {
-        return await current;
-    } finally {
-        if (placementQueues.get(queueKey) === currentQueue) {
-            placementQueues.delete(queueKey);
-        }
-    }
 }
 
 export function useBlockPlace() {
@@ -209,7 +187,7 @@ export function useBlockPlace() {
                 return;
             }
 
-            return await runQueuedPlacement(
+            return await withGardenOptimisticMutationLock(
                 JSON.stringify(gardenQueryKey),
                 async () => {
                     await queryClient.cancelQueries({
