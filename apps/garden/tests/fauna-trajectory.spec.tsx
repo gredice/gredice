@@ -121,6 +121,10 @@ const captures: {
 }[] = [];
 
 test.describe('actual production fauna trajectories', () => {
+    test.skip(
+        mode !== 'baseline' && !process.env.FAUNA_TRAJECTORY_REFERENCE,
+        'Supplemental parity replay requires an isolated frozen legacy reference; ordinary CI runs the independent runtime phase fixture',
+    );
     // A fresh browser page for each replay also resets performance.now, asset
     // loading and hook mount order. Capture aggregation runs in one worker.
     test.describe.configure({ mode: 'serial' });
