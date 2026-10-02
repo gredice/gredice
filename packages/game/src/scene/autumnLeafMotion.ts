@@ -64,6 +64,7 @@ export function sampleAutumnLeaf(
     time: number,
     windSpeed: number,
     windDirection: number,
+    height = 1.75,
 ) {
     const wind = Number.isFinite(windSpeed)
         ? Math.min(3, Math.max(0, windSpeed))
@@ -80,7 +81,7 @@ export function sampleAutumnLeaf(
             descriptor.x +
             Math.sin(direction) * drift +
             Math.sin(age * 17 + descriptor.rotation) * 0.12,
-        y: 1.75 * (1 - age),
+        y: height * (1 - age),
         z:
             descriptor.z +
             -Math.cos(direction) * drift +
