@@ -3,6 +3,16 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "WoodlandMushrooms",
+            "source": "WoodlandMushrooms.blend",
+            "output": "WoodlandMushrooms.glb",
+            "version": "a8a6b03f7e38",
+            "preload": "lazy",
+            "objects": [
+                "WoodlandMushrooms_Cluster"
+            ]
+        },
+        {
             "name": "AutumnShrub",
             "source": "AutumnShrub.blend",
             "output": "AutumnShrub.glb",
