@@ -11,7 +11,7 @@ import {
     useSyncExternalStore,
 } from 'react';
 import type { InstancedMesh } from 'three';
-import { createMeshInstanceMatrix } from '../../entities/chunkedMeshGeometry';
+import { writeMeshInstanceMatrices } from '../../entities/chunkedMeshGeometry';
 import {
     StaticOpaqueSceneCacheBoundary,
     type StaticOpaqueSceneCacheGroup,
@@ -233,12 +233,14 @@ const StaticRenderPacketInstancedFallback = memo(
         useLayoutEffect(() => {
             const mesh = meshRef.current;
             if (!mesh || mesh.geometry !== geometry) return;
-            instances.forEach((instance, index) => {
-                mesh.setMatrixAt(
-                    index,
-                    createMeshInstanceMatrix(instance, localTransform, scale),
-                );
-            });
+            writeMeshInstanceMatrices(
+                instances,
+                localTransform,
+                scale,
+                (matrix, index) => {
+                    mesh.setMatrixAt(index, matrix);
+                },
+            );
             mesh.count = instances.length;
             mesh.instanceMatrix.needsUpdate = true;
             mesh.computeBoundingBox();
