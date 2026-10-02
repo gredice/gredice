@@ -2,13 +2,13 @@
 
 import type { BlockData } from '@gredice/client';
 import { orderBy } from '@gredice/js/arrays';
-import { BlockImage } from '@gredice/ui/BlockImage';
 import { Gallery } from '@gredice/ui/Gallery';
 import { GameBlocksIcon, GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { Row } from '@gredice/ui/Row';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { ItemCard } from '../../components/shared/ItemCard';
+import { PublicBlockImage as BlockImage } from '../../components/shared/PublicBlockImage';
 import { PublicEmptyState } from '../../components/shared/placeholders/PublicEmptyState';
 import { getBlockRouteAlias } from '../../lib/blocks/blockRoute';
 import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
@@ -44,8 +44,7 @@ function BlockGalleryItem(
             <BlockImage
                 blockName={entity.information.name}
                 fill
-                preload
-                sizes="(max-width: 768px) 50vw, (min-width: 768px) 33vw, (min-width: 1200px) 9vw"
+                sizes="(min-width: 1280px) 16vw, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
             />
         </ItemCard>
     );
