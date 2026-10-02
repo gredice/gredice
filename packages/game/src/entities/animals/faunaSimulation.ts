@@ -1,4 +1,4 @@
-import type { Object3D, Quaternion, Vector3 } from 'three';
+import type { Euler, Object3D, Quaternion, Vector3 } from 'three';
 
 /** Matches the existing ambient fauna cadence, independently of render FPS. */
 export const faunaSimulationStepSeconds = 1 / 30;
@@ -27,6 +27,7 @@ export function createFaunaWalkDistance(getAlpha: () => number) {
 type FaunaTransform = {
     position: Vector3;
     quaternion: Quaternion;
+    rotation: Euler;
     scale: Vector3;
 };
 
@@ -34,6 +35,7 @@ function createTransform(object: Object3D): FaunaTransform {
     return {
         position: object.position.clone(),
         quaternion: object.quaternion.clone(),
+        rotation: object.rotation.clone(),
         scale: object.scale.clone(),
     };
 }
@@ -41,18 +43,23 @@ function createTransform(object: Object3D): FaunaTransform {
 function readTransform(target: FaunaTransform, object: Object3D) {
     target.position.copy(object.position);
     target.quaternion.copy(object.quaternion);
+    target.rotation.copy(object.rotation);
     target.scale.copy(object.scale);
 }
 
 function copyTransform(target: FaunaTransform, source: FaunaTransform) {
     target.position.copy(source.position);
     target.quaternion.copy(source.quaternion);
+    target.rotation.copy(source.rotation);
     target.scale.copy(source.scale);
 }
 
 function writeTransform(object: Object3D, transform: FaunaTransform) {
     object.position.copy(transform.position);
-    object.quaternion.copy(transform.quaternion);
+    // Species edit Euler yaw directly. Quaternion restoration can canonicalize
+    // a yaw beyond π/2 into x/z turns, changing the next yaw-only update.
+    // Keep the exact authoritative representation; SLERP stays render-only.
+    object.rotation.copy(transform.rotation);
     object.scale.copy(transform.scale);
 }
 

@@ -149,6 +149,42 @@ describe('retained per-root fauna simulation', () => {
         assert.deepEqual(inputs, [0, 0, 1 / 30]);
     });
 
+    it('retains yaw-only Euler semantics through interpolated turns beyond π/2', () => {
+        for (const fps of [30, 60]) {
+            const runtime = createFaunaSimulation<null>();
+            const actor = new Group();
+            actor.rotation.y = Math.PI;
+            const inputs: number[][] = [];
+            runtime.register(
+                (_, { delta }) => {
+                    inputs.push([
+                        actor.rotation.x,
+                        actor.rotation.y,
+                        actor.rotation.z,
+                    ]);
+                    actor.rotation.y -= delta;
+                },
+                () => actor,
+            );
+            for (let frame = 0; frame <= fps; frame++)
+                runtime.advance(null, {
+                    delta: frame === 0 ? 0 : 1 / fps,
+                    now: frame / fps,
+                });
+            assert.equal(inputs.length, 31);
+            for (let step = 0; step < inputs.length; step++) {
+                assert.equal(inputs[step][0], 0);
+                assert.equal(inputs[step][2], 0);
+                assert.ok(
+                    Math.abs(
+                        inputs[step][1] -
+                            (Math.PI - Math.max(0, step - 1) / 30),
+                    ) < 1e-10,
+                );
+            }
+        }
+    });
+
     it('accepts semantic placement changes and snaps first mounts and teleports', () => {
         const runtime = createFaunaSimulation<null>();
         const actor = new Group();
