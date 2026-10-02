@@ -3,6 +3,21 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "GardenScarecrow",
+            "source": "GardenScarecrow.blend",
+            "output": "GardenScarecrow.glb",
+            "version": "0992b65228bd",
+            "preload": "lazy",
+            "objects": [
+                "GardenScarecrow_Timber",
+                "GardenScarecrow_Straw",
+                "GardenScarecrow_Linen",
+                "GardenScarecrow_Shirt",
+                "GardenScarecrow_Patch",
+                "GardenScarecrow_Face"
+            ]
+        },
+        {
             "name": "BlockGround",
             "source": "BlockGround.blend",
             "output": "BlockGround.glb",
