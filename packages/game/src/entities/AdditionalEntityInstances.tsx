@@ -24,6 +24,7 @@ import { useWaterBlockMaterial } from './BlockWater';
 import { getCactusVariantConfig } from './Cactus';
 import type { MeshInstanceChunk } from './chunkedMeshGeometry';
 import { dryGroundBaseColor } from './dryGroundPalette';
+import { EntityBlockPresenceGate } from './EntityBlockPresenceGate';
 import {
     type EntityBlockInstance,
     EntityInstancesBlock,
@@ -276,6 +277,7 @@ const cactusBlockNames = [
 ] as const;
 
 const deadTreeBlockNames = ['DeadTreeTall', 'DeadTreeStump'] as const;
+const catPillowBlockNames = ['CatPillow', 'Cat_Pillow'];
 
 const giftBoxConfigs = {
     GiftBox_RedWhite: {
@@ -323,6 +325,8 @@ const giftBoxConfigs = {
         boxRoughness: number;
     }
 >;
+
+const giftBoxBlockNames = Object.keys(giftBoxConfigs);
 
 export const additionalInstancedBlockNames = [
     'Block_Ground',
@@ -2431,13 +2435,17 @@ function DeadTreeInstances({
     return (
         <>
             {deadTreeBlockNames.map((name) => (
-                <Suspense key={name} fallback={null}>
+                <EntityBlockPresenceGate
+                    key={name}
+                    names={[name]}
+                    stacks={stacks}
+                >
                     <LoadedDeadTreeVariant
                         name={name}
                         stacks={stacks}
                         {...commonSnowProps}
                     />
-                </Suspense>
+                </EntityBlockPresenceGate>
             ))}
         </>
     );
@@ -2620,8 +2628,10 @@ function CatPillowInstances({
     const { nodes } = useGameGLTF('CatPillow');
     const cushion = transformNode(nodes.CatPillow_Cushion, 0.62);
     const seam = transformNode(nodes.CatPillow_Seam, 0.62);
-    const names = ['CatPillow', 'Cat_Pillow'];
-    const instances = useEntityBlockInstances({ names, stacks });
+    const instances = useEntityBlockInstances({
+        names: catPillowBlockNames,
+        stacks,
+    });
     const cushionMaterial = useMemo(
         () => (
             <meshStandardMaterial
@@ -3138,26 +3148,49 @@ export function AdditionalEntityInstances({
 }: { stacks: Stack[] | undefined } & CommonWeatherProps) {
     return (
         <>
-            <BlockGroundInstances stacks={stacks} {...commonSnowProps} />
+            <EntityBlockPresenceGate names={['Block_Ground']} stacks={stacks}>
+                <BlockGroundInstances stacks={stacks} {...commonSnowProps} />
+            </EntityBlockPresenceGate>
             <TerrainVariationInstances stacks={stacks} {...commonSnowProps} />
             <SimpleAdditionalInstances stacks={stacks} {...commonSnowProps} />
             <WaterBlockInstances stacks={stacks} />
-            <RaisedBedInstances stacks={stacks} {...commonSnowProps} />
-            <ShadeInstances stacks={stacks} {...commonSnowProps} />
-            <FenceInstances stacks={stacks} {...commonSnowProps} />
+            <EntityBlockPresenceGate names={['Raised_Bed']} stacks={stacks}>
+                <RaisedBedInstances stacks={stacks} {...commonSnowProps} />
+            </EntityBlockPresenceGate>
+            <EntityBlockPresenceGate names={['Shade']} stacks={stacks}>
+                <ShadeInstances stacks={stacks} {...commonSnowProps} />
+            </EntityBlockPresenceGate>
+            <EntityBlockPresenceGate names={['Fence']} stacks={stacks}>
+                <FenceInstances stacks={stacks} {...commonSnowProps} />
+            </EntityBlockPresenceGate>
             <WhiteFenceInstances stacks={stacks} {...commonSnowProps} />
             <StoneFenceInstances stacks={stacks} {...commonSnowProps} />
             <PolishedStoneFenceInstances stacks={stacks} {...commonSnowProps} />
-            <GardenBoxInstances stacks={stacks} {...commonSnowProps} />
+            <EntityBlockPresenceGate names={['GardenBox']} stacks={stacks}>
+                <GardenBoxInstances stacks={stacks} {...commonSnowProps} />
+            </EntityBlockPresenceGate>
             <BucketInstances stacks={stacks} {...commonSnowProps} />
-            <WateringCanInstances stacks={stacks} {...commonSnowProps} />
-            <WaterWellInstances stacks={stacks} {...commonSnowProps} />
-            <BirdHouseInstances stacks={stacks} {...commonSnowProps} />
-            <CatPillowInstances stacks={stacks} {...commonSnowProps} />
+            <EntityBlockPresenceGate names={['WateringCan']} stacks={stacks}>
+                <WateringCanInstances stacks={stacks} {...commonSnowProps} />
+            </EntityBlockPresenceGate>
+            <EntityBlockPresenceGate names={['WaterWell']} stacks={stacks}>
+                <WaterWellInstances stacks={stacks} {...commonSnowProps} />
+            </EntityBlockPresenceGate>
+            <EntityBlockPresenceGate names={['BirdHouse']} stacks={stacks}>
+                <BirdHouseInstances stacks={stacks} {...commonSnowProps} />
+            </EntityBlockPresenceGate>
+            <EntityBlockPresenceGate
+                names={catPillowBlockNames}
+                stacks={stacks}
+            >
+                <CatPillowInstances stacks={stacks} {...commonSnowProps} />
+            </EntityBlockPresenceGate>
             <PotInstances stacks={stacks} {...commonSnowProps} />
             <CactusInstances stacks={stacks} {...commonSnowProps} />
             <DeadTreeInstances stacks={stacks} {...commonSnowProps} />
-            <GiftBoxInstances stacks={stacks} {...commonSnowProps} />
+            <EntityBlockPresenceGate names={giftBoxBlockNames} stacks={stacks}>
+                <GiftBoxInstances stacks={stacks} {...commonSnowProps} />
+            </EntityBlockPresenceGate>
         </>
     );
 }

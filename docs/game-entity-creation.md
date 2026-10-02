@@ -96,6 +96,10 @@ Recommended component shape:
 Then register the component in:
 
 - `packages/game/src/entities/entityNameMap.ts`
+- `blockAssetRequirements` in
+  `packages/game/src/scene/resources/gardenSceneManifest.ts`, listing the GLBs
+  the component loads, so garden scene manifests fetch them (see
+  [game-scene-resources.md](./game-scene-resources.md))
 - `packages/game/src/hud/ItemsHud.tsx`
 - `apps/garden/tests/ItemsHudStory.tsx`
 
