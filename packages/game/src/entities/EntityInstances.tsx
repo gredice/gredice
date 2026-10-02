@@ -16,6 +16,7 @@ import {
     additionalInstancedBlockNames,
     resolveRaisedBedInstances,
 } from './AdditionalEntityInstances';
+import { BushCanopyInstances } from './BushCanopyInstances';
 import {
     EntityInstancesBlock,
     type EntityInstancesBlockBaseProps,
@@ -650,30 +651,9 @@ export function EntityInstances({
                     {...commonSnowProps}
                 />
             ))}
-            <EntityInstancesAssetBlock
-                assetName="Bush"
-                stacks={stacks}
-                name="Bush"
-                staticOpaqueCacheGroup="static-props"
-                geometry={(gltf) => gltf.nodes.Bush_1_1.geometry}
-                material={(gltf) => gltf.nodes.Bush_1_1.material}
-                scale={[0.5, 0.5, 0.5]}
-                snow={snowPresets.bushCore}
-                snowLift={0.002}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="Bush"
-                stacks={stacks}
-                name="Bush"
-                staticOpaqueCacheGroup="static-props"
-                geometry={(gltf) => gltf.nodes.Bush_1_2.geometry}
-                material={(gltf) => gltf.nodes.Bush_1_2.material}
-                scale={[0.5, 0.5, 0.5]}
-                snow={snowPresets.bushFoliage}
-                snowLift={0.002}
-                {...commonSnowProps}
-            />
+            <Suspense fallback={null}>
+                <BushCanopyInstances stacks={stacks} {...commonSnowProps} />
+            </Suspense>
             <EntityInstancesAssetBlock
                 assetName="BaleHey"
                 stacks={stacks}
