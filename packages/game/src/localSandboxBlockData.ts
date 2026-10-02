@@ -27,6 +27,10 @@ import {
 } from '@gredice/js/harvestPumpkins';
 import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
 import { leafRake } from '@gredice/js/leafRake';
+import {
+    getPumpkinLantern,
+    pumpkinLanternNames,
+} from '@gredice/js/pumpkinLanterns';
 import { seasonalMaple } from '@gredice/js/seasonalMaple';
 import { seedDryingRack } from '@gredice/js/seedDryingRack';
 import { stackedFirewood } from '@gredice/js/stackedFirewood';
@@ -118,6 +122,7 @@ export const localSandboxBlockNames = [
     ...autumnLeafPileNames,
     ...autumnGrassNames,
     ...woodlandArrangementNames,
+    ...pumpkinLanternNames,
     ...autumnEntranceNames,
     'BeachTowelStriped',
     'InflatablePoolSmall',
@@ -939,6 +944,7 @@ function createLocalSandboxBlockData(
     const isOutletDisplayTable = name === 'OutletDisplayTable';
     const decoration =
         getAutumnEntrance(name) ??
+        getPumpkinLantern(name) ??
         getWoodlandArrangement(name) ??
         getAutumnGrass(name) ??
         getAutumnLeafPile(name) ??
