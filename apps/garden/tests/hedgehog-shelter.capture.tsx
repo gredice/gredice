@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Locator, Page } from '@playwright/test';
-import { PumpkinLanternsFixture } from '../../../packages/game/tests/PumpkinLanternsFixture';
+import { HedgehogShelterFixture } from '../../../packages/game/tests/HedgehogShelterFixture';
 
-async function checkLanterns(
+async function checkShelter(
     fixture: Locator,
     page: Page,
     rotation: number,
@@ -30,32 +30,27 @@ async function checkLanterns(
             triangles: number;
             snow: number;
             rain: number;
-            emission: number;
-            lightShadow: boolean;
             x: number;
             y: number;
         }[];
     } = JSON.parse((await fixture.getAttribute('data-ready')) ?? '{}');
     expect(data.cropMeshes).toBeGreaterThan(0);
-    expect(data.clusters).toHaveLength(2);
-    expect(new Set(data.clusters.map((item) => item.materialId)).size).toBe(2);
+    expect(data.clusters).toHaveLength(1);
+    expect(new Set(data.clusters.map((item) => item.materialId)).size).toBe(1);
     for (const item of data.clusters) {
-        expect(item.triangles).toBe(item.id === 'smile' ? 1560 : 1578);
+        expect(item.vertexColors).toBe(true);
+        expect(item.colorCount).toBeGreaterThan(0);
+        expect(item.triangles).toBe(260);
         expect(item.rotation).toBeCloseTo((rotation * Math.PI) / 2, 5);
         expect(item.minY).toBeCloseTo(raised ? 1.07 : 0.4, 3);
-        expect(item.height).toBeGreaterThan(0.54);
-        expect(item.height).toBeLessThanOrEqual(0.55);
+        expect(item.height).toBeGreaterThan(0.47);
+        expect(item.height).toBeLessThanOrEqual(0.49);
         expect(item.width).toBeLessThanOrEqual(0.9);
         expect(item.depth).toBeLessThanOrEqual(0.9);
         expect(item.minX).toBeGreaterThanOrEqual(-2.45);
         expect(item.minZ).toBeGreaterThanOrEqual(-1.45);
         expect(item.maxX).toBeLessThanOrEqual(-1.55);
-        expect(item.maxZ).toBeLessThanOrEqual(
-            item.id === 'smile' ? -0.55 : 0.45,
-        );
-        expect(item.lightShadow).toBe(false);
-        if (weather === 'night') expect(item.emission).toBeGreaterThan(0.1);
-        if (weather === 'day') expect(item.emission).toBeCloseTo(0.025, 5);
+        expect(item.maxZ).toBeLessThanOrEqual(-0.55);
         if (weather === 'rain') expect(item.rain).toBeGreaterThan(0);
         if (weather === 'snow') expect(item.snow).toBeGreaterThan(0);
         await fixture
@@ -99,19 +94,18 @@ test.afterEach(async ({ page }) => {
 
 for (const light of ['day', 'night'] satisfies ('day' | 'night')[]) {
     for (const rotation of [0, 1, 2, 3]) {
-        test(`pumpkin lanterns ${light} ${rotation}`, async ({
+        test(`hedgehog shelter ${light} ${rotation}`, async ({
             mount,
             page,
         }) => {
             const errors: string[] = [];
             page.on('pageerror', (error) => errors.push(error.message));
             const fixture = await mount(
-                <PumpkinLanternsFixture rotation={rotation} light={light} />,
+                <HedgehogShelterFixture rotation={rotation} light={light} />,
             );
-            await checkLanterns(fixture, page, rotation, light);
+            await checkShelter(fixture, page, rotation);
             await expect(fixture).toHaveScreenshot(`${light}-${rotation}.png`, {
-                // Bound the platform-specific rasterization of the crop HUD label.
-                maxDiffPixels: 250,
+                maxDiffPixels: light === 'night' ? 20 : 0,
             });
             expect(errors).toEqual([]);
         });
@@ -123,82 +117,36 @@ for (const light of ['cloudy', 'dusk', 'rain', 'snow'] satisfies (
     | 'rain'
     | 'snow'
 )[]) {
-    test(`pumpkin lanterns ${light}`, async ({ mount, page }) => {
+    test(`hedgehog shelter ${light}`, async ({ mount, page }) => {
         const fixture = await mount(
-            <PumpkinLanternsFixture rotation={0} light={light} />,
+            <HedgehogShelterFixture rotation={0} light={light} />,
         );
-        await checkLanterns(fixture, page, 0, light);
+        await checkShelter(fixture, page, 0, light);
         if (light === 'rain' || light === 'snow') {
             await fixture.screenshot({
-                path: `../../docs/pumpkin-lanterns-2026/${light}.png`,
+                path: `../../docs/hedgehog-shelter-2026/${light}.png`,
             });
         } else {
-            await expect(fixture).toHaveScreenshot(`${light}.png`, {
-                maxDiffPixels: 250,
-            });
+            await expect(fixture).toHaveScreenshot(`${light}.png`);
         }
     });
 }
-test('pumpkin lanterns small low-quality canvas', async ({ mount, page }) => {
+test('hedgehog shelter small low-quality canvas', async ({ mount, page }) => {
     const fixture = await mount(
-        <PumpkinLanternsFixture rotation={0} light="cloudy" small />,
+        <HedgehogShelterFixture rotation={0} light="cloudy" small />,
     );
-    await checkLanterns(fixture, page, 0);
-    await expect(fixture).toHaveScreenshot('small.png', { maxDiffPixels: 250 });
+    await checkShelter(fixture, page, 0);
+    await expect(fixture).toHaveScreenshot('small.png');
 });
 
 for (const rotation of [0, 1, 2, 3]) {
-    test(`pumpkin lanterns raised supports ${rotation}`, async ({
+    test(`hedgehog shelter raised supports ${rotation}`, async ({
         mount,
         page,
     }) => {
         const fixture = await mount(
-            <PumpkinLanternsFixture rotation={rotation} raised />,
+            <HedgehogShelterFixture rotation={rotation} raised />,
         );
-        await checkLanterns(fixture, page, rotation, '', true);
+        await checkShelter(fixture, page, rotation, '', true);
     });
 }
-
-for (const small of [false, true])
-    test(`pumpkin lanterns shared light cap ${small ? 'low' : 'high'}`, async ({
-        mount,
-    }) => {
-        const fixture = await mount(
-            <PumpkinLanternsFixture
-                rotation={0}
-                light="night"
-                dense
-                small={small}
-            />,
-        );
-        await expect(fixture).toHaveAttribute('data-ready', /.+/);
-        const report = JSON.parse(
-            (await fixture.getAttribute('data-ready')) ?? '{}',
-        );
-        expect(report.lights).toBe(39);
-        expect(report.activeLights).toBeGreaterThan(0);
-        expect(report.activeLights).toBeLessThanOrEqual(small ? 4 : 20);
-        expect(report.shadowLights).toBe(0);
-        console.log(
-            'Pumpkin lantern scene',
-            small ? 'low' : 'high',
-            JSON.stringify({
-                lights: report.lights,
-                active: report.activeLights,
-            }),
-        );
-    });
-
-test('pumpkin lanterns remain usable after the event ends', async ({
-    mount,
-    page,
-}) => {
-    const fixture = await mount(
-        <PumpkinLanternsFixture
-            rotation={0}
-            light="night"
-            date="2027-01-20T22:30:00+01:00"
-        />,
-    );
-    await checkLanterns(fixture, page, 0, 'night');
-});
