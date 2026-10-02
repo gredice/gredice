@@ -1,7 +1,8 @@
-export * from './garden-pack-placement';
 export * from './directories-api';
 export * from './favorites';
 export * from './garden-likes';
+export * from './garden-pack-catalogue';
+export * from './garden-pack-placement';
 export * from './garden-packs';
 export * from './harvest-traces';
 export type {
