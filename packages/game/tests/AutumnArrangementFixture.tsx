@@ -66,7 +66,7 @@ export function AutumnArrangementFixture({
             defaultOptions: { queries: { retry: false, staleTime: Infinity } },
         });
         result.setQueryData(['blocks', 'local'], getLocalSandboxBlockData());
-        result.setQueryData(['gardens', 'current', 'summer', 'default'], {
+        result.setQueryData(['gardens', 'current', 'summer', 'high-target'], {
             ...createMockGarden('summer', 'default'),
             stacks,
             raisedBeds: [],
@@ -87,6 +87,7 @@ export function AutumnArrangementFixture({
             createGameState({
                 appBaseUrl: '',
                 isMock: true,
+                mockGardenProfile: 'high-target',
                 authenticatedGardenQueriesEnabled: false,
                 winterMode: 'summer',
                 freezeTime: date,
