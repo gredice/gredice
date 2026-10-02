@@ -122,13 +122,20 @@ BEGIN
     IF location.block_id IS NULL OR location.block_id IS DISTINCT FROM unit.block_id OR location.garden_id IS DISTINCT FROM unit.garden_id THEN RAISE EXCEPTION 'Placed pack unit requires exact physical location'; END IF;
     IF NOT EXISTS (SELECT 1 FROM gardens g JOIN garden_blocks b ON b.garden_id = g.id JOIN garden_pack_unit_events e ON e.purchase_id = unit.purchase_id AND e.line_id = unit.line_id AND e.unit_ordinal = unit.unit_ordinal AND e.kind = 'placed' WHERE g.id = location.garden_id AND b.id = location.block_id AND g.account_id = owner_id AND NOT g.is_deleted AND b.is_deleted = (location.garden_box_block_id IS NOT NULL) AND b.variant IS NOT DISTINCT FROM (e.placement_response->>'variant')::integer) THEN RAISE EXCEPTION 'Pack location or fixed appearance does not match physical block'; END IF;
     IF location.garden_box_block_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM garden_blocks b WHERE b.id = location.garden_box_block_id AND b.garden_id = location.garden_id AND b.name = 'GardenBox' AND NOT b.is_deleted) THEN RAISE EXCEPTION 'Pack box location is invalid'; END IF;
-    SELECT * INTO receipt FROM garden_pack_lifecycle_receipts r WHERE r.account_id = owner_id AND r.kind IN ('store','retrieve') AND r.response->>'blockId' = location.block_id ORDER BY r.created_at DESC, r.id DESC LIMIT 1;
+    SELECT * INTO receipt FROM garden_pack_lifecycle_receipts r WHERE r.account_id = owner_id AND r.operation_id = location.last_operation_id AND r.kind IN ('store','retrieve') AND r.response->>'blockId' = location.block_id;
     IF location.garden_box_block_id IS NOT NULL AND (receipt.kind IS DISTINCT FROM 'store' OR receipt.payload->>'gardenBoxBlockId' IS DISTINCT FROM location.garden_box_block_id) THEN RAISE EXCEPTION 'Stored location requires exact store receipt'; END IF;
-    IF location.garden_box_block_id IS NULL AND receipt.kind = 'store' THEN RAISE EXCEPTION 'Retrieved location requires exact retrieve receipt'; END IF;
+    IF location.last_operation_id IS NULL AND EXISTS (SELECT 1 FROM garden_pack_lifecycle_receipts r WHERE r.account_id = owner_id AND r.kind IN ('store','retrieve') AND r.response->>'blockId' = location.block_id) THEN RAISE EXCEPTION 'Pack location cannot discard lifecycle receipt history'; END IF;
+    IF location.garden_box_block_id IS NULL AND location.last_operation_id IS NOT NULL AND receipt.kind IS DISTINCT FROM 'retrieve' THEN RAISE EXCEPTION 'Retrieved location requires exact retrieve receipt'; END IF;
   ELSIF location.block_id IS NOT NULL THEN RAISE EXCEPTION 'Nonplaced pack unit must have no physical location'; END IF;
 END $$;
 CREATE FUNCTION garden_pack_validate_location() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+  IF TG_TABLE_NAME = 'garden_pack_unit_locations' AND TG_OP = 'UPDATE' THEN
+    IF OLD.purchase_id IS DISTINCT FROM NEW.purchase_id OR OLD.line_id IS DISTINCT FROM NEW.line_id OR OLD.unit_ordinal IS DISTINCT FROM NEW.unit_ordinal OR OLD.garden_id IS DISTINCT FROM NEW.garden_id OR OLD.block_id IS DISTINCT FROM NEW.block_id THEN RAISE EXCEPTION 'Pack location identity is immutable'; END IF;
+    IF OLD.garden_box_block_id IS DISTINCT FROM NEW.garden_box_block_id OR OLD.last_operation_id IS DISTINCT FROM NEW.last_operation_id THEN
+      IF NEW.last_operation_id IS NULL OR NEW.last_operation_id IS NOT DISTINCT FROM OLD.last_operation_id OR NOT EXISTS (SELECT 1 FROM garden_pack_lifecycle_receipts r JOIN garden_pack_purchases p ON p.account_id = r.account_id WHERE p.id = NEW.purchase_id AND r.operation_id = NEW.last_operation_id AND r.previous_operation_id IS NOT DISTINCT FROM OLD.last_operation_id AND r.response->>'blockId' = NEW.block_id AND r.kind = CASE WHEN NEW.garden_box_block_id IS NULL THEN 'retrieve' ELSE 'store' END) THEN RAISE EXCEPTION 'Pack location transition requires a new linked receipt'; END IF;
+    END IF;
+  END IF;
   IF TG_OP = 'DELETE' THEN PERFORM garden_pack_assert_location(OLD.purchase_id, OLD.line_id, OLD.unit_ordinal);
   ELSE PERFORM garden_pack_assert_location(NEW.purchase_id, NEW.line_id, NEW.unit_ordinal); END IF;
   RETURN NULL;

@@ -59,6 +59,31 @@ export const gardenPackLifecycleRoutes = new Hono<{
                 'Refund an exact list of unused units owned by the current account at their original paid allocation. Partially used packs are supported. A durable account-scoped operation receipt prevents repeated credits; no current catalogue or sale availability is required.',
             security: authSecurity,
             tags: ['Garden packs'],
+            responses: {
+                200: {
+                    description:
+                        'Authoritative lifecycle result, or the identical durable operation receipt.',
+                },
+                400: {
+                    description: 'Invalid request or box inventory capacity.',
+                },
+                401: { description: 'Authentication required.' },
+                403: {
+                    description: 'Current principal role is not permitted.',
+                },
+                404: {
+                    description:
+                        'Owned purchase, unit, or current location not found.',
+                },
+                409: {
+                    description:
+                        'Operation identity conflicts or unit state changed.',
+                },
+                503: {
+                    description:
+                        'Lifecycle schema or placement dependency is unavailable; retry the identical command.',
+                },
+            },
         }),
         authValidator(['user', 'admin']),
         zValidator('param', z.strictObject({ purchaseId: z.string().uuid() })),
@@ -109,6 +134,31 @@ export const gardenPackLifecycleRoutes = new Hono<{
                 'Retrieve exactly one owned stored pack unit into the same active garden as its physical box, preserving its original block identity and fixed appearance. Restores rotation to the default before validated placement. No sunflower debit and no restoration of pack quantity. Retry the identical operation ID to read its durable receipt.',
             security: authSecurity,
             tags: ['Garden packs'],
+            responses: {
+                200: {
+                    description:
+                        'Authoritative lifecycle result, or the identical durable operation receipt.',
+                },
+                400: {
+                    description: 'Invalid request or box inventory capacity.',
+                },
+                401: { description: 'Authentication required.' },
+                403: {
+                    description: 'Current principal role is not permitted.',
+                },
+                404: {
+                    description:
+                        'Owned purchase, unit, or current location not found.',
+                },
+                409: {
+                    description:
+                        'Operation identity conflicts or unit state changed.',
+                },
+                503: {
+                    description:
+                        'Lifecycle schema or placement dependency is unavailable; retry the identical command.',
+                },
+            },
         }),
         authValidator(['user', 'admin']),
         zValidator('param', gardenPackPlacementIdentitySchema),

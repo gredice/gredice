@@ -163,6 +163,7 @@ export const gardenPackUnitLocations = pgTable(
         gardenId: integer('garden_id').notNull(),
         blockId: text('block_id').notNull(),
         gardenBoxBlockId: text('garden_box_block_id'),
+        lastOperationId: text('last_operation_id'),
     },
     (table) => [
         primaryKey({
@@ -196,6 +197,7 @@ export const gardenPackLifecycleReceipts = pgTable(
             onDelete: 'set null',
         }),
         operationId: text('operation_id').notNull(),
+        previousOperationId: text('previous_operation_id'),
         kind: text('kind', {
             enum: ['store', 'retrieve', 'refund', 'recycle', 'garden-delete'],
         }).notNull(),

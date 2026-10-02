@@ -781,18 +781,17 @@ export async function storeGardenBlockInGardenBoxForAccount(
             gardenBoxBlockId: command.gardenBoxBlockId,
             item: {
                 entityTypeName: 'block',
-                entityId: z
-                    .string()
-                    .parse(
-                        z
-                            .object({
-                                item: z.object({ entityId: z.string() }),
-                            })
-                            .parse(response).item.entityId,
-                    ),
+                entityId: z.string().parse(
+                    z
+                        .object({
+                            item: z.object({ entityId: z.string() }),
+                        })
+                        .parse(response).item.entityId,
+                ),
                 amount: 1,
             },
-            replayed: z.object({ replayed: z.boolean() }).parse(response).replayed,
+            replayed: z.object({ replayed: z.boolean() }).parse(response)
+                .replayed,
         };
     } catch (error) {
         if (error instanceof GardenPackConflictError)

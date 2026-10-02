@@ -64,7 +64,7 @@ export async function isGardenPackLifecycleStorageReady(
     const result = await db.execute(sql`select
         (select count(*) = 2 from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid=c.relnamespace where n.nspname=current_schema() and c.relname in ('garden_pack_unit_locations','garden_pack_lifecycle_receipts') and c.relkind='r') AND
         (select count(*) = 8 from pg_catalog.pg_trigger t join pg_catalog.pg_class c on c.oid=t.tgrelid join pg_catalog.pg_namespace n on n.oid=c.relnamespace where n.nspname=current_schema() and t.tgname in ('garden_pack_lifecycle_immutable','garden_pack_location_validate','garden_pack_unit_location_validate','garden_pack_block_location_validate','garden_pack_garden_location_validate','garden_pack_purchase_detach_locations','garden_pack_event_operation_namespace','garden_pack_lifecycle_operation_namespace') and t.tgenabled in ('O','A') and not t.tgisinternal and (t.tgname not in ('garden_pack_location_validate','garden_pack_unit_location_validate','garden_pack_block_location_validate','garden_pack_garden_location_validate') or (t.tgdeferrable and t.tginitdeferred))) AND
-        (select count(*)=13 from information_schema.columns where table_schema=current_schema() and ((table_name='garden_pack_unit_locations' and column_name in ('purchase_id','line_id','unit_ordinal','garden_id','block_id','garden_box_block_id')) or (table_name='garden_pack_lifecycle_receipts' and column_name in ('id','account_id','operation_id','kind','payload','response','created_at')))) as ready`);
+        (select count(*)=15 from information_schema.columns where table_schema=current_schema() and ((table_name='garden_pack_unit_locations' and column_name in ('purchase_id','line_id','unit_ordinal','garden_id','block_id','garden_box_block_id','last_operation_id')) or (table_name='garden_pack_lifecycle_receipts' and column_name in ('id','account_id','operation_id','previous_operation_id','kind','payload','response','created_at')))) as ready`);
     return (
         z
             .object({ rows: z.array(z.object({ ready: z.boolean() })) })
@@ -217,6 +217,7 @@ async function recordReceipt(
     payload: Record<string, unknown>,
     response: Record<string, unknown>,
     tx: GardenPackTransaction,
+    previousOperationId: string | null = null,
 ) {
     await tx.insert(gardenPackLifecycleReceipts).values({
         id: randomUUID(),
@@ -225,6 +226,7 @@ async function recordReceipt(
         kind,
         payload,
         response,
+        previousOperationId,
     });
 }
 async function lockOwnedUnit(
@@ -511,15 +513,24 @@ export async function lockGardenPackUnitsForGardenDeletion(
 ) {
     if (!(await isGardenPackLifecycleStorageReady(tx))) return;
     const locations = await tx
-        .select()
+        .select({ location: gardenPackUnitLocations })
         .from(gardenPackUnitLocations)
-        .where(eq(gardenPackUnitLocations.gardenId, gardenId))
+        .innerJoin(
+            gardenPackPurchases,
+            eq(gardenPackPurchases.id, gardenPackUnitLocations.purchaseId),
+        )
+        .where(
+            and(
+                eq(gardenPackUnitLocations.gardenId, gardenId),
+                eq(gardenPackPurchases.accountId, accountId),
+            ),
+        )
         .orderBy(
             gardenPackUnitLocations.purchaseId,
             gardenPackUnitLocations.lineId,
             gardenPackUnitLocations.unitOrdinal,
         );
-    for (const location of locations)
+    for (const { location } of locations)
         await lockOwnedUnit(accountId, location, tx);
 }
 export async function recycleGardenPackUnitsForGardenDeletion(
@@ -638,7 +649,10 @@ export async function storeGardenPackBlock(
                     );
                     await gardenTx
                         .update(gardenPackUnitLocations)
-                        .set({ gardenBoxBlockId: input.gardenBoxBlockId })
+                        .set({
+                            gardenBoxBlockId: input.gardenBoxBlockId,
+                            lastOperationId: operationId,
+                        })
                         .where(locationWhere(location));
                     await updateGardenStack(
                         input.gardenId,
@@ -677,6 +691,7 @@ export async function storeGardenPackBlock(
                         input,
                         response,
                         gardenTx,
+                        location.lastOperationId,
                     );
                     return { ...response, replayed: false };
                 },
@@ -755,7 +770,10 @@ export async function withStoredGardenPackUnit<T>(
                 .where(eq(gardenBlocks.id, location.blockId));
             await tx
                 .update(gardenPackUnitLocations)
-                .set({ gardenBoxBlockId: null })
+                .set({
+                    gardenBoxBlockId: null,
+                    lastOperationId: input.operationId,
+                })
                 .where(locationWhere(location));
             await createEvent(
                 knownEvents.gardens.blockPlacedV2(input.gardenId.toString(), {
@@ -776,6 +794,7 @@ export async function withStoredGardenPackUnit<T>(
                 payload,
                 response,
                 tx,
+                location.lastOperationId,
             );
             return parseResponse(response);
         },

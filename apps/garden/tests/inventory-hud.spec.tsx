@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import {
+    GardenBoxStoreHookStory,
     InventoryHudBackpackOpenStory,
     InventoryHudClosedStory,
     InventoryHudGardenBoxesOpenStory,
@@ -239,3 +240,63 @@ test('exact stored units stay separate from ordinary blocks and retain retry ide
     expect(operations).toHaveLength(2);
     expect(operations[1]).toBe(operations[0]);
 });
+
+test('store hook retains an exact command after a lost response and clears it after a definitive rejection', async ({
+    mount,
+    page,
+}) => {
+    const operations: string[] = [];
+    await page.route('**/store-in-garden-box', async (route) => {
+        const request = route.request().postDataJSON();
+        operations.push(request.operationId);
+        expect(request.sourcePosition).toEqual({ x: 0, z: 0 });
+        expect(request.blockIndex).toBe(1);
+        if (operations.length === 1) await route.abort('failed');
+        else
+            await route.fulfill({
+                status: 409,
+                contentType: 'application/json',
+                body: JSON.stringify({ error: 'Changed source' }),
+            });
+    });
+    await page.route('**/api/inventory', (route) => route.abort());
+    await mount(<GardenBoxStoreHookStory />);
+    await page
+        .getByRole('button', { name: 'Store exact fixture block' })
+        .click();
+    await expect(page.getByTestId('store-error')).toContainText(
+        /Failed to fetch|NetworkError|Load failed/,
+    );
+    await page
+        .getByRole('button', { name: 'Store exact fixture block' })
+        .click();
+    await expect(page.getByTestId('store-error')).toContainText(
+        'Changed source',
+    );
+    expect(operations[1]).toBe(operations[0]);
+    await page
+        .getByRole('button', { name: 'Store exact fixture block' })
+        .click();
+    await expect.poll(() => operations.length).toBe(3);
+    expect(operations[2]).not.toBe(operations[1]);
+});
+for (const scope of ['account', 'garden']) {
+    test(`store hook rejects ${scope} changes during optimistic mutation before sending`, async ({
+        mount,
+        page,
+    }) => {
+        let requests = 0;
+        await page.route('**/store-in-garden-box', async (route) => {
+            requests++;
+            await route.abort();
+        });
+        await mount(<GardenBoxStoreHookStory />);
+        await page
+            .getByRole('button', { name: `Store and switch ${scope}` })
+            .click();
+        await expect(page.getByTestId('store-error')).toContainText(
+            'promijenio se',
+        );
+        expect(requests).toBe(0);
+    });
+}

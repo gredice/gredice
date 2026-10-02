@@ -68,6 +68,7 @@ type GardenDeletionDependencies<Transaction> = Readonly<{
         gardenId: number,
         callback: (transaction: Transaction) => Promise<Result>,
         transaction: Transaction,
+        accountId: string,
     ) => Promise<Result>;
 }>;
 
@@ -196,6 +197,7 @@ export function createGardenDeletionService<Transaction>(
                                 return { ok: true, deleted: true } as const;
                             },
                             accountTransaction,
+                            command.accountId,
                         ),
                 );
 
@@ -258,14 +260,13 @@ export const deleteRealGardenForAccount = createGardenDeletionService({
         withSunflowerAccountTransaction(accountId, (tx) =>
             withAccountDeletionFenceTransaction(accountId, callback, tx),
         ),
-    withGardenPlacementTransaction: async (gardenId, callback, tx) => {
-        const target = await getGardenDeletionTargetForUpdate(gardenId, tx);
-        if (target && !target.isDeleted)
-            await lockGardenPackUnitsForGardenDeletion(
-                target.accountId,
-                gardenId,
-                tx,
-            );
+    withGardenPlacementTransaction: async (
+        gardenId,
+        callback,
+        tx,
+        accountId,
+    ) => {
+        await lockGardenPackUnitsForGardenDeletion(accountId, gardenId, tx);
         return withGardenPlacementTransaction(gardenId, callback, tx);
     },
 } satisfies GardenDeletionDependencies<GardenPlacementTransaction>);

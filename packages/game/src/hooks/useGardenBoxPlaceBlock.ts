@@ -3,13 +3,18 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 import { useGameState } from '../useGameState';
 import { ensureBlockPlaceOperationId } from './blockPlaceOperation';
+import { resolveExplicitGarden } from './gardenSelection';
 import {
     createOptimisticBlockPlacement,
     replaceOptimisticBlockId,
 } from './optimisticBlockPlacement';
 import { useBlockData } from './useBlockData';
-import { useCurrentAccount } from './useCurrentAccount';
+import { currentAccountKeys, useCurrentAccount } from './useCurrentAccount';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
+import {
+    type GardenAccountGroups,
+    gardenAccountGroupsKeys,
+} from './useGardenAccountGroups';
 import { inventoryQueryKey } from './useInventory';
 import { tutorialChecklistKeys } from './useTutorialChecklist';
 
@@ -144,7 +149,19 @@ export function useGardenBoxPlaceBlock() {
         mutationFn: async (variables: GardenBoxPlaceBlockArgs) => {
             const operationId = ensureBlockPlaceOperationId(variables);
             const { entityId, gardenBoxBlockId, gardenId } = variables;
+            const cachedAccount = queryClient.getQueryData<{ id: string }>(
+                currentAccountKeys,
+            );
+            const cachedGroups = queryClient.getQueryData<GardenAccountGroups>(
+                gardenAccountGroupsKeys,
+            );
+            const cachedGarden = resolveExplicitGarden(cachedGroups, gardenId);
             if (
+                cachedAccount?.id !== variables.accountId ||
+                (variables.packUnit &&
+                    cachedGroups &&
+                    (!cachedGarden?.isCurrent ||
+                        cachedGarden.accountId !== variables.accountId)) ||
                 variables.accountId !== authority.current.accountId ||
                 (variables.packUnit &&
                     variables.gardenId !== authority.current.gardenId)
