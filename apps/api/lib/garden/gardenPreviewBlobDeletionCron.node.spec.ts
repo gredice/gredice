@@ -161,3 +161,36 @@ test('lost claim completion is an error instead of falsely reporting deleted row
     assert.equal(response.status, 500);
     assert.equal((await response.json()).success, false);
 });
+
+test('a slow provider aborts the whole batch and persists every remaining retry', async (t) => {
+    setup(t);
+    t.mock.method(console, 'warn', () => undefined);
+    let persistedFailures = 0;
+    const response = await handleGardenPreviewBlobDeletionCron(request(), {
+        ...dependencies(),
+        claim: async () => [row(1), row(2)],
+        batchSignal: () => AbortSignal.timeout(5),
+        deleteBlob: async (_pathname, signal) => {
+            await new Promise<void>((_resolve, reject) => {
+                const timer = setTimeout(
+                    () => reject(new Error('timeout did not abort')),
+                    100,
+                );
+                signal.addEventListener(
+                    'abort',
+                    () => {
+                        clearTimeout(timer);
+                        reject(signal.reason);
+                    },
+                    { once: true },
+                );
+            });
+        },
+        fail: async ({ failures }) => {
+            persistedFailures = failures.length;
+            return failures.length;
+        },
+    });
+    assert.equal(response.status, 503);
+    assert.equal(persistedFailures, 2);
+});

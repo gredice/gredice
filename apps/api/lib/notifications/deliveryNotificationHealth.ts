@@ -3,8 +3,8 @@ import {
     getDeliveryLifecycleNotificationHealth,
 } from '@gredice/storage';
 
-// Hourly checks overlap by 15 minutes to tolerate scheduling jitter.
-const healthWindowMinutes = 75;
+// Cover one missed hourly invocation plus 15 minutes of scheduling jitter.
+const healthWindowMinutes = 135;
 const staleAgeMinutes = 10;
 
 type DeliveryNotificationHealthDependencies = {

@@ -21,7 +21,7 @@ function health(
         },
         ambiguousEmailSendingCount: 0,
         channels: [],
-        from: new Date(now.getTime() - 75 * 60 * 1_000),
+        from: new Date(now.getTime() - 135 * 60 * 1_000),
         retryExhaustedCount: 0,
         severity: 'healthy',
         staleEligibleQueueCount: 0,
@@ -156,7 +156,7 @@ test('health cron keeps failures private', async (t) => {
     assert.equal(JSON.stringify(logged).includes(privateSentinel), false);
 });
 
-test('hourly health covers the full previous interval and fifteen minutes of jitter', async () => {
+test('hourly health covers the full previous two intervals and fifteen minutes of jitter', async () => {
     await runDeliveryNotificationHealth({
         enabled: true,
         now,
@@ -164,7 +164,7 @@ test('hourly health covers the full previous interval and fifteen minutes of jit
             getHealth: async (filters) => {
                 assert.equal(
                     filters?.from?.toISOString(),
-                    '2026-07-16T10:45:00.000Z',
+                    '2026-07-16T09:45:00.000Z',
                 );
                 assert.equal(filters?.to, now);
                 assert.equal(filters?.now, now);

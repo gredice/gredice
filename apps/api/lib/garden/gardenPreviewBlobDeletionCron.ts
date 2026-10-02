@@ -21,14 +21,16 @@ type Dependencies = {
     claim: typeof claimGardenPreviewBlobDeletions;
     complete: typeof completeGardenPreviewBlobDeletions;
     fail: typeof recordGardenPreviewBlobDeletionFailures;
-    deleteBlob: (pathname: string) => Promise<void>;
+    deleteBlob: (pathname: string, abortSignal: AbortSignal) => Promise<void>;
+    batchSignal: () => AbortSignal;
     now: () => Date;
 };
 const defaultDependencies: Dependencies = {
     claim: claimGardenPreviewBlobDeletions,
     complete: completeGardenPreviewBlobDeletions,
     fail: recordGardenPreviewBlobDeletionFailures,
-    deleteBlob: async (pathname) => del(pathname),
+    deleteBlob: async (pathname, abortSignal) => del(pathname, { abortSignal }),
+    batchSignal: () => AbortSignal.timeout(10_000),
     now: () => new Date(),
 };
 
@@ -77,9 +79,11 @@ export async function handleGardenPreviewBlobDeletionCron(
             if (deletions.length === 0) break;
             batches += 1;
             claimed += deletions.length;
+            const abortSignal = dependencies.batchSignal();
             const result = await processGardenPreviewBlobDeletions({
                 concurrency: DELETE_CONCURRENCY,
-                deleteBlob: dependencies.deleteBlob,
+                deleteBlob: (pathname) =>
+                    dependencies.deleteBlob(pathname, abortSignal),
                 deletions,
             });
 
