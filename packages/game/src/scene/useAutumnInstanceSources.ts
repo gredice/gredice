@@ -6,6 +6,7 @@ import { useRegisterAutumnSources } from './AutumnSources';
 /** Reuses the instance path's stack heights, rotations and drag-preview offsets. */
 export function useAutumnInstanceSources(
     instances: EntityBlockInstance[] | undefined,
+    kind: 'tree' | 'bush' = 'tree',
 ) {
     const register = useRegisterAutumnSources();
     useLayoutEffect(() => {
@@ -14,10 +15,10 @@ export function useAutumnInstanceSources(
             object.position.fromArray(instance.position);
             object.rotation.y = (instance.rotation * Math.PI) / 2;
             object.updateMatrixWorld();
-            return register({ id: instance.block.id, object });
+            return register({ id: instance.block.id, object, kind });
         });
         return () => {
             for (const dispose of unregister ?? []) dispose();
         };
-    }, [instances, register]);
+    }, [instances, register, kind]);
 }

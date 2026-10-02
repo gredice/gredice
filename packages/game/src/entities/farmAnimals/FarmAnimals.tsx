@@ -13,6 +13,7 @@ import { RotatableGroup } from '../../controls/RotatableGroup';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
+import { useBreathSource } from '../../scene/cold/BreathSources';
 import {
     sceneFrameRates,
     useSceneTimeInvalidation,
@@ -1870,6 +1871,11 @@ function FarmAnimal({
             scene,
         };
     }, [gltf.scene, habitat.species]);
+    useBreathSource(
+        `${habitat.species}:${habitat.id}`,
+        model.rig.head.object,
+        habitat.species === 'Goat' || habitat.species === 'Sheep',
+    );
     const updateActorGroundingShadow = useActorGroundingShadow({
         id: `${config.shadowSpecies}:${habitat.id}`,
         primaryCasterCount: model.primaryCasterCount,

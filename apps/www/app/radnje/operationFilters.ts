@@ -14,7 +14,7 @@ function isPlantStageName(name: string | undefined): name is PlantStageName {
 }
 
 export function operationMatchesSearch(
-    operation: Pick<OperationData, 'information'>,
+    operation: { information: Pick<OperationData['information'], 'label'> },
     search: string,
 ) {
     const normalizedSearch = normalizeSearchText(search);
@@ -43,7 +43,9 @@ export function compareOperationsByStageAndLabel(
 }
 
 export function getAvailableOperationStages(
-    operations: Pick<OperationData, 'attributes'>[],
+    operations: {
+        attributes: { stage?: { information?: { name?: string } } };
+    }[],
 ) {
     const stageNamesInOperations = new Set(
         operations
