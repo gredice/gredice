@@ -17,6 +17,7 @@ import {
     resolveRaisedBedInstances,
 } from './AdditionalEntityInstances';
 import { BushCanopyInstances } from './BushCanopyInstances';
+import { EntityBlockPresenceGate } from './EntityBlockPresenceGate';
 import {
     EntityInstancesBlock,
     type EntityInstancesBlockBaseProps,
@@ -590,9 +591,9 @@ export function EntityInstances({
                 material={(gltf) => gltf.nodes.Tree_1_1.material}
                 {...commonSnowProps}
             />
-            <Suspense fallback={null}>
+            <EntityBlockPresenceGate names={['Tree']} stacks={stacks}>
                 <TreeCanopyInstances stacks={stacks} {...commonSnowProps} />
-            </Suspense>
+            </EntityBlockPresenceGate>
             <EntityInstancesAssetBlock
                 assetName="Pine"
                 stacks={stacks}
@@ -651,9 +652,9 @@ export function EntityInstances({
                     {...commonSnowProps}
                 />
             ))}
-            <Suspense fallback={null}>
+            <EntityBlockPresenceGate names={['Bush']} stacks={stacks}>
                 <BushCanopyInstances stacks={stacks} {...commonSnowProps} />
-            </Suspense>
+            </EntityBlockPresenceGate>
             <EntityInstancesAssetBlock
                 assetName="BaleHey"
                 stacks={stacks}

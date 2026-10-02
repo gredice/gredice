@@ -25,6 +25,7 @@ import { Birds } from './entities/birds/Birds';
 import { Butterflies } from './entities/butterflies/Butterflies';
 import { Cats } from './entities/cats/Cats';
 import { Dogs } from './entities/dogs/Dogs';
+import { EntityBlockPresenceGate } from './entities/EntityBlockPresenceGate';
 import { EntityInstances } from './entities/EntityInstances';
 import {
     Chickens,
@@ -99,6 +100,8 @@ import {
     getGameQualityAutoProfileMetrics,
     resolveGameQualityProfile,
 } from './scene/gameQuality';
+import { GardenSceneResourceController } from './scene/resources/GardenSceneResourceController';
+import { useGardenSceneManifests } from './scene/resources/useGardenSceneManifests';
 import { Scene } from './scene/Scene';
 import { StaticOpaqueSceneCacheOcclusionFixture } from './scene/StaticOpaqueSceneCacheOcclusionFixture';
 import type { Block } from './types/Block';
@@ -391,6 +394,19 @@ export function GameScene({
         useBlockVariant();
     const garden = useSceneCurrentGarden(transitionedGardenData);
     const retainedScene = useRetainedGardenScene(garden?.stacks, blockData);
+    const appBaseUrl = useGameState((state) => state.appBaseUrl);
+    const sceneDetailsRendered = renderDetails && zoom !== 'far';
+    const sceneManifests = useGardenSceneManifests({
+        details: sceneDetailsRendered,
+        displayedGardenId:
+            garden === undefined ? undefined : (garden?.id ?? null),
+        incomingGarden: gardenData,
+        retainedScene,
+    });
+    const sceneFamilies = useMemo(
+        () => new Set(sceneManifests.current?.families),
+        [sceneManifests.current],
+    );
     const fenceGateBlockIds = useMemo(
         () =>
             new Set(
@@ -585,6 +601,12 @@ export function GameScene({
                     {enableGameProfileController ? (
                         <GameProfileController />
                     ) : null}
+                    <GardenSceneResourceController
+                        appBaseUrl={appBaseUrl}
+                        current={sceneManifests.current}
+                        interactive={sceneVisible}
+                        next={sceneManifests.next}
+                    />
                     <ParticleSystemProvider>
                         <BlockInteractionRegistryProvider>
                             <PlacementGrid />
@@ -617,11 +639,14 @@ export function GameScene({
                                     weatherDisabled={weatherDisabled}
                                 />
                                 {shouldRenderRaisedBedMulchOverlays && (
-                                    <Suspense fallback={null}>
+                                    <EntityBlockPresenceGate
+                                        names={['Raised_Bed']}
+                                        stacks={retainedScene.stacks}
+                                    >
                                         <RaisedBedMulchOverlays
                                             quality={qualityProfile}
                                         />
-                                    </Suspense>
+                                    </EntityBlockPresenceGate>
                                 )}
                                 <EntityInstances
                                     farmId={garden?.farmId}
@@ -668,7 +693,7 @@ export function GameScene({
                                         />
                                     </Suspense>
                                 )}
-                                {renderDetails && zoom !== 'far' && (
+                                {sceneFamilies.has('fauna:frogs') && (
                                     <Suspense fallback={null}>
                                         <Frogs
                                             gardenId={garden?.id}
@@ -687,7 +712,7 @@ export function GameScene({
                                         />
                                     </Suspense>
                                 )}
-                                {renderDetails && zoom !== 'far' && (
+                                {sceneFamilies.has('fauna:cats') && (
                                     <Suspense fallback={null}>
                                         <Cats
                                             farmId={garden?.farmId}
@@ -697,7 +722,7 @@ export function GameScene({
                                         />
                                     </Suspense>
                                 )}
-                                {renderDetails && zoom !== 'far' && (
+                                {sceneFamilies.has('fauna:dogs') && (
                                     <Suspense fallback={null}>
                                         <Dogs
                                             farmId={garden?.farmId}
@@ -709,18 +734,28 @@ export function GameScene({
                                 )}
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
-                                        <Chickens
-                                            farmId={garden?.farmId}
-                                            stacks={retainedScene.stacks}
-                                            weather={weather}
-                                            weatherDisabled={weatherDisabled}
-                                        />
-                                        <Piglets
-                                            farmId={garden?.farmId}
-                                            stacks={retainedScene.stacks}
-                                            weather={weather}
-                                            weatherDisabled={weatherDisabled}
-                                        />
+                                        {sceneFamilies.has(
+                                            'fauna:chickens',
+                                        ) && (
+                                            <Chickens
+                                                farmId={garden?.farmId}
+                                                stacks={retainedScene.stacks}
+                                                weather={weather}
+                                                weatherDisabled={
+                                                    weatherDisabled
+                                                }
+                                            />
+                                        )}
+                                        {sceneFamilies.has('fauna:piglets') && (
+                                            <Piglets
+                                                farmId={garden?.farmId}
+                                                stacks={retainedScene.stacks}
+                                                weather={weather}
+                                                weatherDisabled={
+                                                    weatherDisabled
+                                                }
+                                            />
+                                        )}
                                         <Goats
                                             farmId={garden?.farmId}
                                             stacks={retainedScene.stacks}
