@@ -20,6 +20,12 @@ export function AutumnArrangementProbe({
         camera.updateProjectionMatrix();
     }, [camera]);
     useFrame(() => {
+        // Stars use Math.random even with fixed scene time. Omit only that
+        // background point field in this isolated composition capture.
+        scene.traverse((object) => {
+            if (object.name.startsWith('Environment:Stars:'))
+                object.visible = false;
+        });
         if (reported.current || ++frames.current < 8) return;
         scene.updateMatrixWorld(true);
         const objects = arrangement.placements.map((placement) => {

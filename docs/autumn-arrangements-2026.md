@@ -47,7 +47,9 @@ a customer garden.
 Each composition is captured at early/mid/late autumn from `getSeasonDebugDates(2026)`
 and day/overcast/dusk/night, at both 780 × 600 high quality and 390 × 440 low quality
 with reduced motion. DPR is 1, animation time is fixed at 12 seconds, springs are
-static, wind/rain/snow inputs are zero. Overcast uses cloudy=1; dusk uses the existing
+static, wind/rain/snow inputs are zero. The isolated probe hides the unseeded
+background star point field so repeated night captures compare exactly; it does not
+hide any catalogue object or change production stars, moon, lighting or sky. Overcast uses cloudy=1; dusk uses the existing
 solar-time resolver at 0.8, and night is 22:30 local time in Europe/Zagreb.
 
 ```sh
