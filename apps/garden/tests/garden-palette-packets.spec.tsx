@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import sharp from 'sharp';
 import { GardenPaletteAdmissionFixture } from '../../../packages/game/tests/GardenPaletteAdmissionFixture';
+import { GardenPaletteCullingFixture } from '../../../packages/game/tests/GardenPaletteCullingFixture';
 import { GardenPaletteInteractionFixture } from '../../../packages/game/tests/GardenPaletteInteractionFixture';
 import { GardenPalettePacketFixture } from '../../../packages/game/tests/GardenPalettePacketFixture';
 
@@ -149,6 +150,103 @@ function compare(left: Buffer, right: Buffer) {
         maxChannelError,
     };
 }
+
+test('production palette packets preserve original main and shadow culling with shared native ranges', async ({
+    mount,
+    page,
+}, testInfo) => {
+    test.setTimeout(90_000);
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    const fixture = await mount(<GardenPaletteCullingFixture />);
+    const snapshots: Record<string, unknown> = {};
+    for (const view of ['mixed', 'all', 'none', 'opposite'] as const) {
+        await fixture.update(<GardenPaletteCullingFixture view={view} />);
+        await expect(fixture).toHaveAttribute('data-ready', `false:${view}`);
+        const source = JSON.parse(
+            (await fixture.getAttribute('data-result')) ?? '{}',
+        );
+        const sourcePng = await fixture.locator('canvas').screenshot();
+        await fixture.update(<GardenPaletteCullingFixture batch view={view} />);
+        await expect(fixture).toHaveAttribute('data-ready', `true:${view}`);
+        const candidate = JSON.parse(
+            (await fixture.getAttribute('data-result')) ?? '{}',
+        );
+        const packetPng = await fixture.locator('canvas').screenshot();
+        const result = compare(
+            await pixels(sourcePng),
+            await pixels(packetPng),
+        );
+        for (const pass of ['main', 'shadow']) {
+            const sourceRows = source.receipts.filter(
+                (r: { pass: string }) => r.pass === pass,
+            );
+            const packetRows = candidate.receipts.filter(
+                (r: { pass: string }) => r.pass === pass,
+            );
+            const expectedTriangles =
+                view === 'all' ? 36 : view === 'none' ? 0 : 12;
+            expect(
+                sourceRows.reduce(
+                    (total: number, r: { triangles: number }) =>
+                        total + r.triangles,
+                    0,
+                ),
+            ).toBe(expectedTriangles);
+            expect(
+                packetRows.reduce(
+                    (total: number, r: { triangles: number }) =>
+                        total + r.triangles,
+                    0,
+                ),
+            ).toBe(expectedTriangles);
+            expect(
+                packetRows.every(
+                    (r: { calls: number; count: number }) =>
+                        r.calls === 1 && r.count > 0,
+                ),
+            ).toBe(true);
+            expect(packetRows.length).toBe(view === 'none' ? 0 : 1);
+        }
+        expect(candidate.packets.contributions).toBe(3);
+        expect(candidate.packets.packets).toBe(1);
+        expect(candidate.geometryIds).toHaveLength(1);
+        expect(candidate.materialIds).toHaveLength(1);
+        expect(candidate.rangesRestored).toBe(true);
+        expect(candidate.sourceDisposals).toBe(0);
+        expect(result.differentPixelRatio).toBeLessThan(0.001);
+        expect(result.maxChannelError).toBeLessThanOrEqual(8);
+        await testInfo.attach(`${view}-source`, {
+            body: sourcePng,
+            contentType: 'image/png',
+        });
+        await testInfo.attach(`${view}-packet`, {
+            body: packetPng,
+            contentType: 'image/png',
+        });
+        snapshots[view] = { source, candidate, result };
+    }
+    // Camera-only changes retain the committed packet and its existing buffers.
+    await fixture.update(<GardenPaletteCullingFixture batch view="mixed" />);
+    await expect(fixture).toHaveAttribute('data-ready', 'true:mixed');
+    const before = JSON.parse(
+        (await fixture.getAttribute('data-result')) ?? '{}',
+    );
+    await fixture.update(<GardenPaletteCullingFixture batch view="opposite" />);
+    await expect(fixture).toHaveAttribute('data-ready', 'true:opposite');
+    const after = JSON.parse(
+        (await fixture.getAttribute('data-result')) ?? '{}',
+    );
+    expect(after.geometryIds).toEqual(before.geometryIds);
+    expect(after.materialIds).toEqual(before.materialIds);
+    expect(after.compiler.syncCompiles).toBe(before.compiler.syncCompiles);
+    expect(after.compiler.workerCompiles).toBe(before.compiler.workerCompiles);
+    await testInfo.attach('actual-main-shadow-submissions', {
+        body: JSON.stringify({ snapshots, cameraOnly: { before, after } }),
+        contentType: 'application/json',
+    });
+    expect(errors).toEqual([]);
+});
 
 for (const { weather, night } of [
     { weather: 'combined', night: false },

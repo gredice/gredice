@@ -186,6 +186,7 @@ export function GardenPaletteAdmissionScene({
         scene.traverse((object) => {
             if (
                 object instanceof Mesh &&
+                !object.name.includes(':visible-range:') &&
                 (object.name.startsWith('BlockInstances:admission:') ||
                     object.name.startsWith('StaticRenderPacket:'))
             )

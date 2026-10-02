@@ -25,6 +25,9 @@ export type StaticRenderPacketContribution = {
     layoutSignature: string;
     localTransform: MeshInstanceLocalTransform;
     material: Material;
+    /** Culling in the pre-palette presentation: instanced source or old compiled group. */
+    originalVisibilityMode?: 'compiled' | 'instanced';
+    originalVisibilityGroup?: string;
     /** Placement membership for physical rebuild telemetry; empty outside a drop. */
     placementSignature?: string;
     receiveShadow: boolean;

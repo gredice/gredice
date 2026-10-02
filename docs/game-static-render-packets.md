@@ -19,9 +19,9 @@ Simple intrinsic `<meshStandardMaterial>` nodes can qualify with supported
 scalar/Color constructor props. Their concrete source materials are created in
 layout-effect leases, disposed on cleanup, and freshly allocated after
 StrictMode replay. Refs, constructor `args`, children, maps, custom hooks and
-unknown JSX components stay on the authored path. Placement/drag meshes and
-pickup outlines retain source geometry and JSX; only stable instances join
-packets.
+unknown JSX components stay on the authored path. Active placement-drop meshes
+and pickup outlines retain source geometry and JSX; stable drag projections use
+their existing instance positions and packet rebuilds.
 
 ## Material families
 
@@ -71,8 +71,9 @@ of their mutable rain, frost and snow uniforms. Equal values with independent
 uniform owners cannot share. Palette tint runs before ground patches and
 weather blending; authored snow-local attributes survive compilation. Weather
 surfaces can therefore join compatible packets, while their moving shaders
-remain live at the cache boundary. Static palette shaders retain opaque cache
-eligibility.
+remain live at the cache boundary. Static palette materials retain opaque cache
+eligibility, but the per-pass visibility meshes described below deliberately
+retain the cache's unknown-callback rejection and render live.
 
 ## Packet planning
 
@@ -111,8 +112,9 @@ Geometry clones share by immutable source object across pending chunks and
 materials, then release after their last fallback user. Replacing a source
 object creates a new clone; fallback copies never alias authored vertex arrays.
 
-Each static-cache group gets one `StaticOpaqueSceneCacheBoundary`, and every
-packet in the group counts as one submission. Packets render in the provider's
+Each static-cache group gets one `StaticOpaqueSceneCacheBoundary`. A packet is
+one potential submission when all original groups are visible; actual submitted
+work still comes from renderer receipts. Packets render in the provider's
 coordinate space. Explicit merged-terrain participants and compatible opted-in
 rigid props all render garden-space instances. Empty placement members stay in
 packet telemetry so dropping a contributor's last stable instance and rejoining
@@ -120,6 +122,33 @@ it can still identify a completed physical rebuild; empty members never enter
 compiler sources, rendered contribution counts or saved-submission estimates.
 If an entire packet disappears there is no rebuild to time; its later recreation
 is a new compile, visible in general compiler counters.
+
+## Original visibility and shared ranges
+
+Joining source geometry can make a packet's bounding sphere intersect a camera
+even when one original source mesh would have been culled. Palette packets
+preserve each source's original culling group for both the scene camera and the
+actual shadow camera. Instanced groups use the same Float32 instance matrices
+and ordered sphere unions as `InstancedMesh`. Sources already compiled together
+retain their former combined positional bounds rather than gaining finer
+culling. Morph-bearing geometry and partial authored draw ranges keep their
+pre-palette presentation.
+
+When every original group intersects the current frustum, one mesh submits the
+whole packet. With mixed visibility, only visible groups submit their existing
+contiguous compiled ranges. These range meshes share the same compiled geometry
+and material; camera movement neither recompiles nor allocates more buffers.
+No visible groups means no native draw. Main and shadow visibility are evaluated
+independently, with cached plane and world-matrix inputs.
+
+Paired main/shadow callbacks temporarily select a range and restore the prior
+range after drawing. A renderer-keyed, refcounted commit lease restores ranges
+in `finally` when rendering or a callback throws, including nested renders and
+out-of-order sibling cleanup. It never disposes compiled or borrowed resources.
+The static cache continues to reject these custom callbacks: capture/replay
+must not bypass range selection, duplicate the restored full range, or count it
+as cached work. A future range-aware cache integration needs its own visual and
+native-submission witnesses.
 
 ## Fallbacks
 
@@ -143,7 +172,7 @@ raycasts against terrain meshes, so it does not change.
 `window.__grediceGameProfile.renderPackets` reports:
 
 - packet and contribution counts;
-- saved submissions (`contributions - packets`);
+- potential saved submissions (`contributions - packets`) for all-visible packets;
 - opaque and cutout packet counts;
 - distinct packet materials;
 - packet compiles and their maximum duration;
@@ -186,6 +215,15 @@ delivery by 100 ms so even a fast host must render a pending frame. Those frames
 contain only transient authored shader clones, and every observed clone is
 disposed after readiness and final release. This test delay is not used by
 production or performance captures.
+
+`GardenPaletteCullingFixture` uses the production `EntityInstancesGeometry`
+path with mixed, all-visible, invisible and opposite main/shadow views. It
+records actual native draw ranges, calls and triangle deltas, verifies identical
+source/palette pixels, and checks shared buffer/material identity and restored
+ranges. Camera-only changes retain the existing compiled geometry and compile
+counters. Pure units cover legacy combined bounds, Float32 instanced bounds,
+morph/partial-range fallback, main/shadow independence, nested draw failures,
+cache rejection and sibling/duplicate lease cleanup.
 
 A separate diagnostic comparison of an uncompiled authored mesh against its
 compiled palette mesh found 378 of 196,608 pixels (0.1923%) differing by more

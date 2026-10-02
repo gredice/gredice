@@ -151,7 +151,10 @@ function readInteractionSnapshot({
     const authoredMeshes: Mesh[] = [];
     scene.traverse((object) => {
         if (!(object instanceof Mesh)) return;
-        if (object.name.startsWith('StaticRenderPacket:'))
+        if (
+            object.name.startsWith('StaticRenderPacket:') &&
+            !object.name.includes(':visible-range:')
+        )
             packetMeshes.push(object);
         if (isInside(object, 'Animation:PlacementDrop:Tree:'))
             animatedMeshes.push(object);

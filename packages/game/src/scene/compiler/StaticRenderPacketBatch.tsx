@@ -1,3 +1,4 @@
+import { useThree } from '@react-three/fiber';
 import {
     createContext,
     memo,
@@ -30,6 +31,11 @@ import {
     type StaticRenderPacketFallbackReason,
     StaticRenderPacketRegistry,
 } from './staticRenderPackets';
+import {
+    createStaticRenderPacketVisibilityMeshes,
+    guardStaticRenderPacketDrawRanges,
+    StaticRenderPacketDrawRanges,
+} from './staticRenderPacketVisibility';
 import { useCompiledChunkSources } from './useCompiledChunk';
 
 const StaticRenderPacketContext =
@@ -140,12 +146,19 @@ function StaticRenderPackets({
         registry.getSnapshot,
     );
     const groups = useRetainedGroups(packets);
+    const gl = useThree((state) => state.gl);
+    const [drawRanges] = useState(() => new StaticRenderPacketDrawRanges());
+    useLayoutEffect(
+        () => guardStaticRenderPacketDrawRanges(gl, drawRanges),
+        [drawRanges, gl],
+    );
 
     return [...groups].map(([group, groupPackets]) => (
         <StaticRenderPacketGroup
             key={group ?? 'live'}
             group={group}
             packets={groupPackets}
+            drawRanges={drawRanges}
         />
     ));
 }
@@ -153,9 +166,11 @@ function StaticRenderPackets({
 const StaticRenderPacketGroup = memo(function StaticRenderPacketGroup({
     group,
     packets,
+    drawRanges,
 }: {
     group: StaticOpaqueSceneCacheGroup | undefined;
     packets: StaticRenderPacket[];
+    drawRanges: StaticRenderPacketDrawRanges;
 }) {
     const counts = useMemo(
         () =>
@@ -178,7 +193,11 @@ const StaticRenderPacketGroup = memo(function StaticRenderPacketGroup({
             triangleCount={counts.triangleCount}
         >
             {packets.map((packet) => (
-                <StaticRenderPacketMesh key={packet.key} packet={packet} />
+                <StaticRenderPacketMesh
+                    key={packet.key}
+                    packet={packet}
+                    drawRanges={drawRanges}
+                />
             ))}
         </StaticOpaqueSceneCacheBoundary>
     );
@@ -186,8 +205,10 @@ const StaticRenderPacketGroup = memo(function StaticRenderPacketGroup({
 
 const StaticRenderPacketMesh = memo(function StaticRenderPacketMesh({
     packet,
+    drawRanges,
 }: {
     packet: StaticRenderPacket;
+    drawRanges: StaticRenderPacketDrawRanges;
 }) {
     const build = useCompiledChunkSources(packet.sources);
     const previousBuild = useRef<StaticRenderPacket | undefined>(undefined);
@@ -221,6 +242,21 @@ const StaticRenderPacketMesh = memo(function StaticRenderPacketMesh({
         previousBuild.current = packet;
     }, [build, packet]);
     const debugName = `StaticRenderPacket:${packet.chunkKey}:${packet.material.name || packet.material.type}:sources:${packet.contributions.length}:count:${packet.instanceCount}`;
+    const palette = packet.contributions.some(({ geometry }) =>
+        geometry.hasAttribute('aGardenPalette0'),
+    );
+    const meshes = useMemo(
+        () =>
+            palette && build?.geometry.getAttribute('position')
+                ? createStaticRenderPacketVisibilityMeshes(
+                      packet,
+                      build.geometry,
+                      drawRanges,
+                      debugName,
+                  )
+                : [],
+        [build, debugName, drawRanges, packet, palette],
+    );
 
     if (!build) {
         // Pending or failed compiles keep the exact instanced presentation.
@@ -233,17 +269,19 @@ const StaticRenderPacketMesh = memo(function StaticRenderPacketMesh({
         ));
     }
     if (!build.geometry.getAttribute('position')) return null;
+    if (!palette)
+        return (
+            <mesh
+                name={debugName}
+                castShadow={packet.castShadow}
+                receiveShadow={packet.receiveShadow}
+                renderOrder={packet.renderOrder}
+                geometry={build.geometry}
+                material={packet.material}
+            />
+        );
 
-    return (
-        <mesh
-            name={debugName}
-            castShadow={packet.castShadow}
-            receiveShadow={packet.receiveShadow}
-            renderOrder={packet.renderOrder}
-            geometry={build.geometry}
-            material={packet.material}
-        />
-    );
+    return meshes.map((mesh) => <primitive key={mesh.uuid} object={mesh} />);
 });
 
 const StaticRenderPacketInstancedFallback = memo(
