@@ -10,6 +10,7 @@ import { preloadGameAssetModels } from './utils/useGameGLTF';
 export function GameSceneWrapper({
     appBaseUrl,
     authenticatedGardenQueriesEnabled,
+    gardenPacksEnabled,
     spriteBaseUrl,
     flags,
     freezeTime,
@@ -45,6 +46,7 @@ export function GameSceneWrapper({
             authenticatedGardenQueriesEnabled={
                 authenticatedGardenQueriesEnabled
             }
+            gardenPacksEnabled={gardenPacksEnabled}
             dayNightCycleDisabled={dayNightCycleDisabled}
             flags={flags}
             freezeTime={freezeTime}

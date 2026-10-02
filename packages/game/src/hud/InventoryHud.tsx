@@ -20,6 +20,7 @@ import {
 } from '../gardenBoxInventoryLimits';
 import { useBlockData } from '../hooks/useBlockData';
 import { useGardenBoxPlaceBlock } from '../hooks/useGardenBoxPlaceBlock';
+import { useGardenPackInventory } from '../hooks/useGardenPackInventory';
 import { useInventory } from '../hooks/useInventory';
 import { useOperations } from '../hooks/useOperations';
 import { useSorts } from '../hooks/usePlantSorts';
@@ -31,6 +32,8 @@ import {
     useBackpackTabParam,
 } from '../useUrlState';
 import { HudCard } from './components/HudCard';
+import { GardenPackInventory } from './GardenPackInventory';
+import type { GardenPackInventoryPlacement } from './ownedGardenPackInventory';
 
 const BACKPACK_GRID_SIZE = 24;
 const inventoryBackpackIconSrc = '/assets/hud/inventory-backpack.webp';
@@ -507,18 +510,25 @@ function GardenBoxInventoryGroup({
 
 export function InventoryHud({
     hideTrigger = false,
+    packPlacement,
 }: {
     // The avatar walk-through opens garden boxes straight from the world, so
     // the modal is mounted without its HUD shell and backpack button.
     hideTrigger?: boolean;
+    packPlacement?: GardenPackInventoryPlacement;
 } = {}) {
     const { data: inventory } = useInventory();
     const { data: operations } = useOperations();
     const { data: blockData } = useBlockData();
     const { track } = useGameAnalytics();
     const [isOpen, setIsOpen] = useBackpackOpenParam();
+    const packs = useGardenPackInventory(isOpen);
     const [backpackTabParam, setBackpackTabParam] = useBackpackTabParam();
-    const backpackTab = normalizeBackpackTab(backpackTabParam);
+    const requestedTab = normalizeBackpackTab(backpackTabParam);
+    const backpackTab =
+        requestedTab === 'gardenPacks' && !packs.visible
+            ? 'backpack'
+            : requestedTab;
     const openGardenBoxBlockId = useGameState(
         (state) => state.openGardenBoxBlockId,
     );
@@ -702,7 +712,7 @@ export function InventoryHud({
                     onValueChange={handleTabChange}
                     className="flex flex-col"
                 >
-                    <TabsList className="self-start bg-muted-foreground/10">
+                    <TabsList className="w-full bg-muted-foreground/10">
                         <TabsTrigger value="backpack">
                             <Row spacing={2} alignItems="center">
                                 <BackpackIcon className="size-4 shrink-0" />
@@ -727,7 +737,28 @@ export function InventoryHud({
                                 </span>
                             </Row>
                         </TabsTrigger>
+                        {packs.visible && (
+                            <TabsTrigger value="gardenPacks">
+                                <Row spacing={1} alignItems="center">
+                                    <BackpackIcon className="size-4 shrink-0" />
+                                    <Typography>Paketi</Typography>
+                                    <span className={tabCountClassName}>
+                                        {packs.purchases.length}
+                                    </span>
+                                </Row>
+                            </TabsTrigger>
+                        )}
                     </TabsList>
+                    {packs.visible && (
+                        <TabsContent value="gardenPacks" className="mt-4">
+                            <GardenPackInventory
+                                inventory={packs}
+                                blockData={blockData}
+                                placement={packPlacement}
+                                onPlaced={() => handleOpenChange(false)}
+                            />
+                        </TabsContent>
+                    )}
                     <TabsContent value="backpack" className="mt-4">
                         <Stack spacing={4}>
                             <Stack>
