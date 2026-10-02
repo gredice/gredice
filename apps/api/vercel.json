@@ -27,28 +27,12 @@
             "schedule": "0 * * * *"
         },
         {
-            "path": "/api/internal/cron/delivery-lifecycle-emails",
-            "schedule": "* * * * *"
-        },
-        {
-            "path": "/api/internal/cron/order-confirmation-emails",
-            "schedule": "* * * * *"
-        },
-        {
-            "path": "/api/internal/cron/checkout-notifications",
-            "schedule": "* * * * *"
-        },
-        {
             "path": "/api/internal/cron/delivery-notification-health",
             "schedule": "0 * * * *"
         },
         {
-            "path": "/api/internal/cron/delivery-lifecycle-reconciliation",
-            "schedule": "* * * * *"
-        },
-        {
             "path": "/api/internal/cron/delivery-tracking-retention",
-            "schedule": "* * * * *"
+            "schedule": "0 * * * *"
         },
         {
             "path": "/api/internal/cron/update-farm-weather",
@@ -59,7 +43,7 @@
             "schedule": "0 * * * *"
         },
         {
-            "path": "/api/internal/cron/automations",
+            "path": "/api/internal/cron/work-dispatch",
             "schedule": "* * * * *"
         },
         {

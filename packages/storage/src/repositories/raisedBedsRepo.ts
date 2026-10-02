@@ -21,6 +21,7 @@ import {
     scheduleCacheKeys,
     scheduleCacheTtls,
 } from '../cache/scheduleCache';
+import { signalAutomationEventWrite } from '../dueWork';
 import { generateRaisedBedName } from '../helpers/generateRaisedBedName';
 import { RAISED_BED_PHOTO_OPERATION_ID } from '../helpers/raisedBedPhotoOperations';
 import {
@@ -855,10 +856,12 @@ export async function abandonRaisedBed({
             .set({ status: 'abandoned' })
             .where(eq(raisedBeds.id, raisedBedId));
 
-        await tx.insert(events).values(
-            knownEvents.raisedBeds.abandonV1(raisedBedId.toString(), {
-                reason,
-            }),
+        await signalAutomationEventWrite(
+            tx.insert(events).values(
+                knownEvents.raisedBeds.abandonV1(raisedBedId.toString(), {
+                    reason,
+                }),
+            ),
         );
 
         return createdOperation;

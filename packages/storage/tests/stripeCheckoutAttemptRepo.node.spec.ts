@@ -29,7 +29,7 @@ import {
     upsertOrRemoveCartItem,
     verifyStripeCheckoutAttemptLiveCart,
 } from '@gredice/storage';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { events } from '../src/schema';
 import {
     createTestAccount,
@@ -609,6 +609,14 @@ test('released paging correlation keeps a later active attempt on the same cart'
 
 test('Stripe checkout reconciliation cursor persists append-only advances and reset', async () => {
     createTestDb();
+    await storage()
+        .delete(events)
+        .where(
+            eq(
+                events.aggregateId,
+                'checkout:stripeAttemptReconciliationCursor',
+            ),
+        );
     await setStripeCheckoutAttemptReconciliationCursor(null);
     assert.equal(
         await getStripeCheckoutAttemptReconciliationCursor(),
@@ -639,10 +647,6 @@ test('Stripe checkout reconciliation cursor persists append-only advances and re
         .orderBy(events.id);
     assert.deepEqual(cursorEvents, [
         {
-            data: { afterCreatedEventId: null },
-            type: 'checkout.stripeAttempt.reconciliationCursor.reset',
-        },
-        {
             data: { afterCreatedEventId: 41 },
             type: 'checkout.stripeAttempt.reconciliationCursor.advanced',
         },
@@ -663,6 +667,38 @@ test('Stripe checkout reconciliation cursor persists append-only advances and re
             return true;
         },
     );
+});
+
+test('idle and concurrent checkout cursor resets append no redundant evidence', async () => {
+    createTestDb();
+    const aggregateId = 'checkout:stripeAttemptReconciliationCursor';
+    await storage().delete(events).where(eq(events.aggregateId, aggregateId));
+    await Promise.all(
+        Array.from({ length: 5 }, () =>
+            setStripeCheckoutAttemptReconciliationCursor(null),
+        ),
+    );
+    const count = async () => {
+        const result = await storage().execute<{ count: number }>(
+            sql`select count(*)::int as count from events where aggregate_id = ${aggregateId}`,
+        );
+        return result.rows[0]?.count;
+    };
+    assert.equal(await count(), 0);
+    await setStripeCheckoutAttemptReconciliationCursor(88);
+    await Promise.all(
+        Array.from({ length: 5 }, () =>
+            setStripeCheckoutAttemptReconciliationCursor(null),
+        ),
+    );
+    assert.equal(await count(), 2);
+    assert.equal(
+        await getStripeCheckoutAttemptReconciliationCursor(),
+        undefined,
+    );
+    await setStripeCheckoutAttemptReconciliationCursor(99);
+    assert.equal(await getStripeCheckoutAttemptReconciliationCursor(), 99);
+    assert.equal(await count(), 3);
 });
 
 test('Stripe checkout reconciliation cursor rejects malformed latest evidence', async () => {

@@ -32,6 +32,7 @@ import {
     deliveryLifecycleNotificationType,
     isCustomerDeliveryLifecycleNotification,
 } from '../deliveryNotificationPolicy';
+import { signalDueWork } from '../dueWork';
 import { isTargetHourInTimeZone } from '../helpers/timezoneUtils';
 import {
     accounts,
@@ -1532,6 +1533,9 @@ async function createNotificationWithDatabase(
         }
     }
 
+    if (notification.category === deliveryLifecycleNotificationCategory) {
+        await signalDueWork('delivery-lifecycle-emails');
+    }
     return {
         notificationId,
         outcome: 'created' as const,
@@ -3840,6 +3844,9 @@ async function finalizeDeliveryLifecycleEmailAttempt({
                 now,
                 userId,
             });
+        }
+        if (status === 'failed' && !retryExhausted) {
+            await signalDueWork('delivery-lifecycle-emails', now);
         }
         return true;
     });

@@ -17,6 +17,7 @@ import type { PgQueryResultHKT } from 'drizzle-orm/pg-core/session';
 import type { PgliteDatabase } from 'drizzle-orm/pglite';
 // @ts-expect-error Type definitions for 'pg' ESM entry may not be resolved under NodeNext; runtime is fine for tests
 import { Pool as PgPool } from 'pg';
+import { withDueWorkCommitSignals } from './dueWork';
 import { neonPoolErrorDetails } from './neonPoolError';
 import * as schema from './schema';
 
@@ -194,6 +195,28 @@ function neonStorage() {
 }
 
 export function storage(): StorageDatabase {
+    const client = storageClient();
+    installDueWorkTransactionSignals(client);
+    return client;
+}
+
+function installDueWorkTransactionSignals(client: StorageDatabase) {
+    if (!dueWorkTransactionClients.has(client)) {
+        const transaction = client.transaction.bind(client);
+        client.transaction = (callback, config) =>
+            withDueWorkCommitSignals(() =>
+                transaction((tx) => {
+                    installDueWorkTransactionSignals(tx);
+                    return callback(tx);
+                }, config),
+            );
+        dueWorkTransactionClients.add(client);
+    }
+}
+
+const dueWorkTransactionClients = new WeakSet<StorageDatabase>();
+
+function storageClient(): StorageDatabase {
     if (isTest) {
         if (isPgliteTest()) {
             return pgliteStorage();

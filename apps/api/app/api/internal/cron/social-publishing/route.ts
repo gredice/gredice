@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { drainHourlyQueue } from '../../../../../lib/cron/drainHourlyQueue';
+import { handleDueWorkCron } from '../../../../../lib/cron/dueWork';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -14,6 +15,15 @@ function getAdminAppUrl() {
 }
 
 export async function GET(request: NextRequest) {
+    return handleDueWorkCron(
+        request,
+        'social-publishing',
+        () => processDueQueue(request),
+        { recoveryPreflight: true },
+    );
+}
+
+async function processDueQueue(request: NextRequest) {
     const authHeader = request.headers.get('authorization');
     const secret = process.env.CRON_SECRET?.trim();
     if (!secret || authHeader !== `Bearer ${secret}`) {

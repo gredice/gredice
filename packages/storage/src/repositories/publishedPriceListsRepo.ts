@@ -2,6 +2,7 @@ import 'server-only';
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { storage } from '..';
+import { signalAutomationEventWrite } from '../dueWork';
 import { priceListCsv } from '../helpers/priceListCsv';
 import { events } from '../schema';
 import { getPublicPriceCatalog } from './publicPriceCatalogRepo';
@@ -60,16 +61,18 @@ export async function publishPublicPriceList() {
             if (previous.csv === csv && previous.day === day)
                 return toPriceList(latest);
         }
-        const [saved] = await tx
-            .insert(events)
-            .values({
-                type,
-                aggregateId,
-                version: 1,
-                createdAt: now,
-                data: { csv, day, observedAt: observedAt.toISOString() },
-            })
-            .returning();
+        const [saved] = await signalAutomationEventWrite(
+            tx
+                .insert(events)
+                .values({
+                    type,
+                    aggregateId,
+                    version: 1,
+                    createdAt: now,
+                    data: { csv, day, observedAt: observedAt.toISOString() },
+                })
+                .returning(),
+        );
         if (!saved) throw new Error('Price list was not saved');
         return toPriceList(saved);
     });

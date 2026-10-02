@@ -3,6 +3,7 @@ import 'server-only';
 import { createHash } from 'node:crypto';
 import { and, asc, desc, eq, gt, inArray, lte, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { signalDueWork } from '../dueWork';
 import {
     type AutomationDefinitionStatus,
     type AutomationGraph,
@@ -198,6 +199,7 @@ export async function createAutomationDefinition(
         throw new Error('Failed to create automation definition.');
     }
 
+    await signalDueWork('automations');
     return created;
 }
 
@@ -233,6 +235,7 @@ export async function upsertAutomationDefinitionByKey(
         throw new Error('Failed to upsert automation definition.');
     }
 
+    await signalDueWork('automations');
     return definition;
 }
 
@@ -367,6 +370,7 @@ export async function updateAutomationDefinition(
         .where(eq(automationDefinitions.id, id))
         .returning();
 
+    if (updated) await signalDueWork('automations');
     return updated ?? null;
 }
 
@@ -503,6 +507,7 @@ export async function createAutomationRun(
             })
             .returning();
 
+        if (created) await signalDueWork('automations', created.nextRunAt);
         return created ?? null;
     }
 
@@ -518,6 +523,7 @@ export async function createAutomationRun(
         })
         .returning();
 
+    if (created) await signalDueWork('automations', created.nextRunAt);
     return created ?? null;
 }
 
@@ -920,6 +926,8 @@ export async function completeAutomationRun(
         .where(eq(automationRuns.id, input.id))
         .returning();
 
+    if (updated?.status === 'retrying')
+        await signalDueWork('automations', updated.nextRunAt);
     return updated ?? null;
 }
 
@@ -949,6 +957,7 @@ export async function retryFailedAutomationRun(
         )
         .returning();
 
+    if (updated) await signalDueWork('automations', updated.nextRunAt);
     return updated ?? null;
 }
 

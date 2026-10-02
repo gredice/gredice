@@ -20,6 +20,7 @@ import {
     bustDeliveryRequestsCache,
     bustScheduleCache,
 } from '../../cache/scheduleCache';
+import { signalAutomationEventWrite, signalDueWork } from '../../dueWork';
 import { getTimeZoneDateKey } from '../../helpers/timezoneUtils';
 import { automationRunSteps, automationRuns, events } from '../../schema';
 import { storage } from '../../storage';
@@ -507,21 +508,31 @@ export async function createEvent(
     { type, version, aggregateId, data, createdAt }: Event,
     db: DatabaseClient = storage(),
 ) {
-    const [event] = await db
-        .insert(events)
-        .values({
-            type,
-            version,
-            aggregateId,
-            data,
-            ...(createdAt && { createdAt }),
-        })
-        .returning();
+    const [event] = await signalAutomationEventWrite(
+        db
+            .insert(events)
+            .values({
+                type,
+                version,
+                aggregateId,
+                data,
+                ...(createdAt && { createdAt }),
+            })
+            .returning(),
+    );
     if (!event) {
         throw new Error('Failed to create event.');
     }
 
     await enqueueAutomationRunsForEvent(event, { db });
+    if (
+        type.startsWith('delivery.') &&
+        type !==
+            knownEventTypes.delivery.requestLifecycleNotificationProcessed &&
+        type !== knownEventTypes.delivery.requestLifecycleNotificationDecision
+    ) {
+        await signalDueWork('delivery-lifecycle-reconciliation');
+    }
     await bustReadModelCachesForEvent({ type, version, aggregateId, data });
 
     return event;
