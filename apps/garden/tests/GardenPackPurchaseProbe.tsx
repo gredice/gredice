@@ -41,13 +41,18 @@ export function GardenPackPurchaseProbe() {
             <button
                 type="button"
                 onClick={() => {
-                    switchOwner('account-two');
+                    switchOwner('00000000-0000-4000-8000-000000000020');
                     void purchase.confirm();
                 }}
             >
                 Switch owner and retry fixture
             </button>
-            <button type="button" onClick={() => switchOwner('pack-account')}>
+            <button
+                type="button"
+                onClick={() =>
+                    switchOwner('00000000-0000-4000-8000-000000000010')
+                }
+            >
                 Restore fixture owner
             </button>
             <output data-testid="pending-command">

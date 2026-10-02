@@ -38,7 +38,7 @@ export function GardenPackStorefrontStory({
             anonymous ? null : { id: 'pack-user' },
         );
         queryClient.setQueryData(currentAccountKeys, {
-            id: 'pack-account',
+            id: '00000000-0000-4000-8000-000000000010',
             sunflowers: { amount: balance },
         });
         const garden = {
@@ -54,7 +54,7 @@ export function GardenPackStorefrontStory({
         queryClient.setQueryData(useGardensKeys, [garden]);
         queryClient.setQueryData(gardenAccountGroupsKeys, [
             {
-                accountId: 'pack-account',
+                accountId: '00000000-0000-4000-8000-000000000010',
                 name: 'Moj račun',
                 isCurrent: true,
                 gardens: [garden],
@@ -89,12 +89,12 @@ export function GardenPackStorefrontStory({
     useEffect(() => {
         const switchAccount = () => {
             client.setQueryData(currentAccountKeys, {
-                id: 'account-two',
+                id: '00000000-0000-4000-8000-000000000020',
                 sunflowers: { amount: 123 },
             });
             client.setQueryData(gardenAccountGroupsKeys, [
                 {
-                    accountId: 'account-two',
+                    accountId: '00000000-0000-4000-8000-000000000020',
                     name: 'Drugi račun',
                     isCurrent: true,
                     gardens: [{ id: 1, isSandbox: false }],

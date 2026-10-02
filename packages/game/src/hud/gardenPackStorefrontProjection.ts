@@ -67,6 +67,11 @@ export function readStoredGardenPackCommand(
     if (
         !value ||
         typeof value !== 'object' ||
+        !('expectedAccountId' in value) ||
+        typeof value.expectedAccountId !== 'string' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(
+            value.expectedAccountId,
+        ) ||
         !('operationId' in value) ||
         typeof value.operationId !== 'string' ||
         !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(
@@ -96,6 +101,7 @@ export function readStoredGardenPackCommand(
         return null;
     return {
         operationId: value.operationId,
+        expectedAccountId: value.expectedAccountId,
         productId: value.productId,
         quote: {
             productVersionId: quote.productVersionId,
