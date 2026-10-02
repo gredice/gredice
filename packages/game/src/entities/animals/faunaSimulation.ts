@@ -67,6 +67,7 @@ function sameTransform(object: Object3D, transform: FaunaTransform) {
     return (
         object.position.equals(transform.position) &&
         object.quaternion.equals(transform.quaternion) &&
+        object.rotation.equals(transform.rotation) &&
         object.scale.equals(transform.scale)
     );
 }

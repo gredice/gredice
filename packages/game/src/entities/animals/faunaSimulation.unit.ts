@@ -207,6 +207,23 @@ describe('retained per-root fauna simulation', () => {
         assert.equal(actor.position.x, 8 + 1 / 30);
     });
 
+    it('accepts equivalent-quaternion external Euler representation and order edits', () => {
+        const runtime = createFaunaSimulation<null>();
+        const actor = new Group();
+        actor.rotation.y = Math.PI;
+        const inputs: (number | string)[][] = [];
+        runtime.register(
+            () => inputs.push(actor.rotation.toArray()),
+            () => actor,
+        );
+        runtime.advance(null, { delta: 0, now: 0 });
+        const renderedQuaternion = actor.quaternion.clone();
+        actor.rotation.set(0, Math.PI, 0, 'YXZ');
+        assert.ok(actor.quaternion.equals(renderedQuaternion));
+        runtime.advance(null, { delta: 1 / 30, now: 1 / 30 });
+        assert.deepEqual(inputs[1], [0, Math.PI, 0, 'YXZ']);
+    });
+
     it('bounds dropped-frame movement while retaining absolute decision deadlines', () => {
         const runtime = createFaunaSimulation<null>();
         let distance = 0;
