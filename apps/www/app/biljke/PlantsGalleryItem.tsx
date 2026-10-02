@@ -68,8 +68,7 @@ export function PlantsGalleryItem(props: PlantsGalleryItemProps) {
             <PlantOrSortImage
                 plant={props}
                 fill
-                preload
-                sizes="(max-width: 768px) 50vw, (min-width: 768px) 33vw, (min-width: 1200px) 9vw"
+                sizes="(min-width: 1280px) 16vw, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
             />
             {isRecommended && (
                 <div className="absolute top-1 right-1">

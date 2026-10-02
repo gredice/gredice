@@ -2,7 +2,6 @@ import {
     firstRaisedBedTutorialPath,
     firstRaisedBedTutorialTasks,
 } from '@gredice/js/raisedBedTutorial';
-import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
 import { Container } from '@gredice/ui/Container';
@@ -12,6 +11,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
+import { PublicBlockImage as BlockImage } from '../../components/shared/PublicBlockImage';
 import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 

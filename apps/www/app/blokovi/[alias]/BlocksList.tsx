@@ -3,9 +3,9 @@
 import type { BlockData } from '@gredice/client';
 import { orderBy } from '@gredice/js/arrays';
 import { decodeRouteParam } from '@gredice/js/uri';
-import { BlockImage } from '@gredice/ui/BlockImage';
 import { useParams } from 'next/navigation';
 import { ListCollapsable } from '../../../components/shared/ListCollapsable';
+import { PublicBlockImage as BlockImage } from '../../../components/shared/PublicBlockImage';
 import { getBlockRouteAlias } from '../../../lib/blocks/blockRoute';
 import { KnownPages } from '../../../src/KnownPages';
 

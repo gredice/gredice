@@ -1,5 +1,4 @@
 import { decodeRouteParam } from '@gredice/js/uri';
-import { BlockImage } from '@gredice/ui/BlockImage';
 import { ListHeader } from '@gredice/ui/List';
 import { Markdown } from '@gredice/ui/Markdown';
 import { PageHeader } from '@gredice/ui/PageHeader';
@@ -11,6 +10,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
+import { PublicBlockImage as BlockImage } from '../../../components/shared/PublicBlockImage';
 import {
     blockPageDescription,
     blockPageTitle,
