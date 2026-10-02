@@ -102,10 +102,11 @@ movement work while absolute cooldowns and deadlines remain current. Resume
 discards accumulated movement work; SceneTime already excludes hidden wall
 clock gaps and bounds the first resumed frame.
 
-Actor root position, quaternion, and scale have retained previous/current
+Actor root position, quaternion, scale, and exact Euler representation/order have retained previous/current
 simulation snapshots. Rendered frames interpolate them with at most one
 simulation step of latency. Simulation restores its authoritative transform
-before making the next decision, so interpolation never feeds back into
+before making the next decision. Preserving Euler state keeps yaw-only species
+updates correct through turns past 90 degrees. Interpolation never feeds back into
 pathfinding, herd spacing, random choices, or collision physics. Placement and
 external effect changes reset the snapshots; first mounts and large teleports
 snap to their destination. The ball retains its motion and rolling-child
@@ -119,7 +120,13 @@ grounding shadows, and visual/debug consumers on the actual rendered cadence,
 including 60 Hz interaction. Simulation runs at R3F priority -100, the central
 mixer/manual-pose phase at -25, and the grounding-shadow batch at -10. These
 negative priorities preserve automatic rendering. Cow and farm gait distances
-use the same interpolation fraction as their root transforms. Presence is
+use the same interpolation fraction as their root transforms. Their manual
+poses retain time, damping delta, behavior, locomotion and gait together; the
+visual sample advances monotonically with the presented root, while decisions
+and deadlines keep absolute scene time. Mounts, placement teleports and resume
+snap root, gait and pose together with bounded deltas. A moving-path restart
+keeps the old gait at the old presentation sample and blends the shortest cycle
+phase toward the new path. Presence is
 published from authoritative fixed-step transforms; debug and shadow views use
 rendered transforms. Renderer culling and the existing pure-pose sleep checks stay
 in place. Population deadlines, spawn functions, species counts, sounds,
@@ -127,7 +134,9 @@ weather policies, homes, and behavior helpers are unchanged.
 
 The profiler exposes `faunaSimulation`: registered simulation/visual callback
 counts, fixed-step count, and rendered-frame count. Reporting is coalesced to
-one update per scene second.
+one update per scene second. Each active Canvas owns a snapshot; profile
+counts sum the active roots, expose `rootCount`, remove a root's counters on
+unmount and clear the snapshot when the last root leaves.
 
 ## Validation contract
 
@@ -150,8 +159,62 @@ detail-toggle remounts, smooth gait/root samples, and suspension/resume of one
 of two independent roots. The focused witness passed against the production
 Scene providers. Local validation for this migration also passed the complete
 2,038-test game suite, game and garden typechecks, and changed-file Biome checks.
-The integrated production capture remains the evidence for performance and
-real species trajectories; this fixture does not claim those measurements.
+The integrated production capture remains the evidence for performance; the
+phase fixture does not claim those measurements.
+
+`fauna-trajectory.spec.tsx` separately mounts the real production actor
+components, habitats and model assets in day, night and autumn post-rain
+scenarios. Its manual frame driver records each submitted WebGL frame over
+24 seconds at 30 and 60 Hz, including actual model transforms, joint samples,
+visible species counts, stable actor identities and mounted species debug
+transitions. Model readiness requires the actual expected initial model
+population. Every Bone/Pivot records local position, quaternion and scale;
+there is no joint truncation. A ten-second hidden interval checks manual replay
+gating, timer/store stability and no elapsed-time backlog on resume. This
+manual driver suppresses automatic frames, so canonical production lifecycle
+captures remain the authority for scheduler suspension and resume. The fixture releases
+one fixed preparation interval for Canvas measurement and waits for the
+post-rain slug population to mount before starting its replay.
+
+Both baseline and candidate capture the complete three-scenario × 30/60 Hz
+matrix using the identical fixture/driver SHA-256 and
+record each checkout's source commit. The comparison requires unchanged
+population and actor identity, exact root trajectory endpoints within numerical
+precision, midpoint interpolation at 60 Hz, unchanged root orientation and
+scale, and unchanged actual behavior, target and path transition sequences. Legacy root trajectories account for
+the designed one-step presentation latency; mounts and large semantic
+teleports snap immediately. The legacy 30 Hz trajectory is the authoritative
+movement reference; candidate 60 Hz endpoints and quaternion/scale midpoints
+must match its interpolated presentation. Each joint component is compared with
+the same-cadence baseline within that component's local one-step motion.
+Cross-cadence posing uses the exact signed legacy 30/60 component difference
+at the matching presentation time to attribute inherited render-delta damping,
+rather than allowing a difference on another axis or in the opposite direction.
+Locally static
+joint properties therefore remain exact even when a later phase moves quickly;
+angular comparison treats antipodal
+quaternions as the same orientation. These bounds come from the frozen
+baseline trace rather than a tuned angle or scale allowance. World transforms
+come from each authoritative actor group; Dog/Rabbit visual wrappers are
+recorded separately as `@visual`, and all model roots as `@model` alongside
+every bone/pivot's local position, quaternion and scale. This supplements the
+domain traces and the moving-clip phase witness.
+It does not alter canonical profiler thresholds or report production FPS.
+
+Run the same fixture files in isolated baseline and candidate checkouts with
+an existing production asset server; keep the canonical profiling checkout
+untouched:
+
+```bash
+GREDICE_GARDEN_BASE_URL=http://localhost:3917 GREDICE_PLAYWRIGHT_REUSE_SERVER=true FAUNA_TRAJECTORY_MODE=baseline FAUNA_TRAJECTORY_OUTPUT=/tmp/fauna-baseline.json pnpm --filter garden exec playwright test tests/fauna-trajectory.spec.tsx --project=chromium-webgl --workers=1
+GREDICE_GARDEN_BASE_URL=http://localhost:3917 GREDICE_PLAYWRIGHT_REUSE_SERVER=true FAUNA_TRAJECTORY_REFERENCE=/tmp/fauna-baseline.json FAUNA_TRAJECTORY_OUTPUT=/tmp/fauna-candidate.json pnpm --filter garden exec playwright test tests/fauna-trajectory.spec.tsx --project=chromium-webgl --workers=1
+node --test apps/garden/scripts/fauna-trajectory-contract.unit.mjs
+```
+
+The contract tests reject population loss, nonfinite transforms, missing GPU
+receipts, incomplete scenario/cadence grids, fixture drift, changed targets,
+stepped interactive movement, common wrong orientation/scale, nonfinite or
+altered joints, and hidden elapsed-time replay.
 
 Per-species instanced skinning stays conditional on fauna-heavy profiles still
 showing draw pressure after CPU centralization and actor culling. It changes
