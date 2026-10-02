@@ -16,6 +16,7 @@ import type { Object3D } from 'three';
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
 import { useSceneResume } from '../../scene/SceneTime';
 import {
+    createFaunaPresentationSample,
     createFaunaSimulation,
     createFaunaWalkDistance,
 } from './faunaSimulation';
@@ -164,8 +165,44 @@ export function useFaunaAnimationFrame(callback: RenderCallback) {
 /** Gait samples use the same interpolation fraction as the actor transform. */
 export function useFaunaWalkDistance() {
     const runtime = useFaunaRuntime();
-    return useMemo(
+    const distance = useMemo(
         () => createFaunaWalkDistance(runtime.getInterpolationAlpha),
         [runtime],
     );
+    useSceneResume(distance.resume);
+    return distance;
+}
+
+/** Keep gait, time and discrete behavior inputs in one visual sample. */
+export function useFaunaPresentationSample<T>(
+    actorRef: RefObject<Object3D | null>,
+) {
+    const runtime = useFaunaRuntime();
+    const sample = useMemo(() => {
+        const presentation = createFaunaPresentationSample<T>(
+            runtime.getInterpolationAlpha,
+        );
+        let lastObject: Object3D | null = null;
+        let lastPosition: Object3D['position'] | null = null;
+        return {
+            ...presentation,
+            set: (value: T, time: number) => {
+                const object = actorRef.current;
+                const snap =
+                    object !== lastObject ||
+                    (object !== null &&
+                        lastPosition !== null &&
+                        object.position.distanceToSquared(lastPosition) > 4);
+                const snapped = presentation.set(value, time, snap);
+                lastObject = object;
+                if (object) {
+                    if (!lastPosition) lastPosition = object.position.clone();
+                    else lastPosition.copy(object.position);
+                }
+                return snapped;
+            },
+        };
+    }, [actorRef, runtime]);
+    useSceneResume(sample.resume);
+    return sample;
 }

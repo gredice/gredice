@@ -4,15 +4,147 @@ import {
     AnimationClip,
     AnimationMixer,
     Group,
+    MathUtils,
     NumberKeyframeTrack,
 } from 'three';
 import {
+    createFaunaPresentationSample,
     createFaunaSimulation,
     createFaunaWalkDistance,
     faunaSimulationStepSeconds,
 } from './faunaSimulation';
 
 describe('retained per-root fauna simulation', () => {
+    it('aligns resumed and restarted paths across root, gait and pose samples', () => {
+        const runtime = createFaunaSimulation<null>();
+        const actor = new Group();
+        const gait = createFaunaWalkDistance(runtime.getInterpolationAlpha);
+        const sample = createFaunaPresentationSample(
+            runtime.getInterpolationAlpha,
+        );
+        let pathDistance = 0;
+        runtime.register(
+            (_, frame) => {
+                actor.position.x = frame.now;
+                const snapped = sample.set({ moving: true }, frame.now);
+                gait.set(pathDistance, snapped);
+            },
+            () => actor,
+        );
+        for (let index = 0; index <= 2; index++) {
+            pathDistance = index / 30;
+            runtime.advance(null, {
+                now: index / 30,
+                delta: index ? 1 / 30 : 0,
+            });
+            assert.equal(sample.get(1 / 30)?.time, actor.position.x);
+            assert.equal(gait.get(1), actor.position.x);
+        }
+        runtime.resume();
+        sample.resume();
+        gait.resume();
+        pathDistance = 3 / 30;
+        runtime.advance(null, { now: 3 / 30, delta: 1 / 30 });
+        assert.equal(actor.position.x, 3 / 30);
+        assert.equal(gait.get(1), actor.position.x);
+        assert.equal(sample.get(1 / 30)?.time, actor.position.x);
+        pathDistance = 0;
+        runtime.advance(null, { now: 4 / 30, delta: 1 / 30 });
+        assert.equal(actor.position.x, 3 / 30);
+        assert.equal(gait.get(1), 3 / 30);
+        assert.equal(sample.get(1 / 30)?.time, actor.position.x);
+    });
+    it('keeps pose time and transition inputs coherent on mount, reset and resume', () => {
+        let alpha = 0;
+        const sample = createFaunaPresentationSample<string>(() => alpha);
+        assert.equal(sample.get(1 / 60), null);
+        sample.set('idle', 0);
+        assert.deepEqual(sample.get(0), { value: 'idle', time: 0, delta: 0 });
+        sample.set('moving', 1 / 30);
+        assert.deepEqual(sample.get(1 / 30), {
+            value: 'idle',
+            time: 0,
+            delta: 0,
+        });
+        alpha = 0.5;
+        assert.deepEqual(sample.get(1 / 60), {
+            value: 'idle',
+            time: 1 / 60,
+            delta: 1 / 60,
+        });
+        alpha = 0;
+        sample.set('settled', 2 / 30);
+        assert.deepEqual(sample.get(1 / 60), {
+            value: 'moving',
+            time: 1 / 30,
+            delta: 1 / 60,
+        });
+        sample.resume();
+        sample.set('resumed', 100);
+        assert.deepEqual(sample.get(1 / 60), {
+            value: 'resumed',
+            time: 100,
+            delta: 1 / 60,
+        });
+        sample.set('placed', 100 + 1 / 30, true);
+        assert.equal(sample.get(1 / 30)?.value, 'placed');
+        sample.set('clock-reset', 0);
+        assert.deepEqual(sample.get(0), {
+            value: 'clock-reset',
+            time: 0,
+            delta: 0,
+        });
+    });
+
+    it('presents the exact prior legacy damped breathing and gait at 30 and 60 Hz', () => {
+        for (const fps of [30, 60]) {
+            const runtime = createFaunaSimulation<null>();
+            const actor = new Group();
+            const gait = createFaunaWalkDistance(runtime.getInterpolationAlpha);
+            const sample = createFaunaPresentationSample(
+                runtime.getInterpolationAlpha,
+            );
+            runtime.register(
+                (_, frame) => {
+                    actor.position.x = frame.now;
+                    gait.set(frame.now);
+                    sample.set(null, frame.now);
+                },
+                () => actor,
+            );
+            let posed = 0;
+            runtime.registerRender((_, frame) => {
+                const presentation = sample.get(frame.delta);
+                if (!presentation) return;
+                posed = MathUtils.damp(
+                    posed,
+                    Math.sin(presentation.time * 1.15) * 0.012 +
+                        Math.sin(gait.get() * Math.PI * 2) * 0.022,
+                    11,
+                    presentation.delta,
+                );
+            });
+            let legacy = 0;
+            const old: number[] = [];
+            for (let index = 0; index <= fps; index++) {
+                const now = index / fps;
+                const delta = index === 0 ? 0 : 1 / fps;
+                legacy = MathUtils.damp(
+                    legacy,
+                    Math.sin(now * 1.15) * 0.012 +
+                        Math.sin(now * Math.PI * 2) * 0.022,
+                    11,
+                    delta,
+                );
+                old.push(legacy);
+                runtime.advance(null, { now, delta });
+                assert.ok(
+                    Math.abs(posed - old[Math.max(0, index - fps / 30)]) <
+                        1e-10,
+                );
+            }
+        }
+    });
     it('orders real initial and late mixers before every manual pose and cleans remounts', () => {
         const runtime = createFaunaSimulation<null>();
         const bone = new Group();
@@ -73,6 +205,8 @@ describe('retained per-root fauna simulation', () => {
             assert.ok(Math.abs(gait.get() - actor.position.x) < 1e-10);
         }
         gait.set(0);
+        assert.ok(gait.get() >= 0);
+        gait.set(0, true);
         assert.equal(gait.get(), 0);
     });
     it('runs the same fixed steps at 30 and 60 render FPS and keeps visual cadence', () => {
@@ -213,7 +347,13 @@ describe('retained per-root fauna simulation', () => {
         actor.rotation.y = Math.PI;
         const inputs: (number | string)[][] = [];
         runtime.register(
-            () => inputs.push(actor.rotation.toArray()),
+            () =>
+                inputs.push([
+                    actor.rotation.x,
+                    actor.rotation.y,
+                    actor.rotation.z,
+                    actor.rotation.order,
+                ]),
             () => actor,
         );
         runtime.advance(null, { delta: 0, now: 0 });

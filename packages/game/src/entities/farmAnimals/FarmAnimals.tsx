@@ -71,6 +71,7 @@ import {
 import { initializeAnimalAtHome } from '../animals/animalRuntimeLifecycle';
 import {
     useFaunaFrame,
+    useFaunaPresentationSample,
     useFaunaRenderFrame,
     useFaunaWalkDistance,
 } from '../animals/FaunaRuntimeProvider';
@@ -1772,6 +1773,12 @@ function FarmAnimal({
     const gameStateStore = useGameStateStore();
     const groupRef = useRef<Group>(null);
     const poseWalkDistance = useFaunaWalkDistance();
+    const poseSample = useFaunaPresentationSample<{
+        behavior: FarmAnimalBehavior;
+        moving: boolean;
+        swimming: boolean;
+        trotting: boolean;
+    }>(groupRef);
     const targetDebugRef = useRef<Group>(null);
     const runtimeRef = useRef<FarmAnimalRuntimeState | null>(null);
     const homePlacementSignatureRef = useRef(
@@ -2290,7 +2297,24 @@ function FarmAnimal({
             }
         }
 
-        poseWalkDistance.set(walkDistance);
+        const activeRuntime = runtimeRef.current ?? runtime;
+        const poseSnapped = poseSample.set(
+            {
+                behavior: activeRuntime.target.behavior,
+                moving: activeRuntime.phase === 'moving',
+                swimming:
+                    getFarmAnimalLocomotion({
+                        groundSurfaces: habitat.groundSurfaces,
+                        moving: activeRuntime.phase === 'moving',
+                        position: group.position,
+                    }) === 'swimming',
+                trotting:
+                    activeRuntime.phase === 'moving' &&
+                    activeRuntime.sheepLocomotion === 'trot',
+            },
+            now,
+        );
+        poseWalkDistance.set(walkDistance, poseSnapped);
     }, groupRef);
 
     useFaunaFrame(({ clock: frameClock }) => {
@@ -2320,55 +2344,56 @@ function FarmAnimal({
             return;
         }
         const now = frameClock.elapsedTime;
-        const activeRuntime = runtime;
-        const locomotion = getFarmAnimalLocomotion({
-            groundSurfaces: habitat.groundSurfaces,
-            moving: activeRuntime.phase === 'moving',
-            position: group.position,
-        });
-        if (shouldPoseFarmAnimal()) {
+        const presentation = poseSample.get(delta);
+        if (presentation && shouldPoseFarmAnimal()) {
             if (habitat.species === 'Chicken') {
                 updateChickenPose({
-                    behavior: activeRuntime.target.behavior,
-                    delta,
-                    moving: activeRuntime.phase === 'moving',
-                    now,
+                    behavior: presentation.value.behavior,
+                    delta: presentation.delta,
+                    moving: presentation.value.moving,
+                    now: presentation.time,
                     rig: model.rig,
-                    swimming: locomotion === 'swimming',
-                    walkDistance: poseWalkDistance.get(),
+                    swimming: presentation.value.swimming,
+                    walkDistance: poseWalkDistance.get(
+                        config.walkCycleDistance,
+                    ),
                 });
             } else if (habitat.species === 'Goat') {
                 updateGoatPose({
-                    behavior: activeRuntime.target.behavior,
-                    delta,
-                    moving: activeRuntime.phase === 'moving',
-                    now,
+                    behavior: presentation.value.behavior,
+                    delta: presentation.delta,
+                    moving: presentation.value.moving,
+                    now: presentation.time,
                     rig: model.rig,
-                    swimming: locomotion === 'swimming',
-                    walkDistance: poseWalkDistance.get(),
+                    swimming: presentation.value.swimming,
+                    walkDistance: poseWalkDistance.get(
+                        config.walkCycleDistance,
+                    ),
                 });
             } else if (habitat.species === 'Piglet') {
                 updatePigletPose({
-                    behavior: activeRuntime.target.behavior,
-                    delta,
-                    moving: activeRuntime.phase === 'moving',
-                    now,
+                    behavior: presentation.value.behavior,
+                    delta: presentation.delta,
+                    moving: presentation.value.moving,
+                    now: presentation.time,
                     rig: model.rig,
-                    swimming: locomotion === 'swimming',
-                    walkDistance: poseWalkDistance.get(),
+                    swimming: presentation.value.swimming,
+                    walkDistance: poseWalkDistance.get(
+                        config.walkCycleDistance,
+                    ),
                 });
             } else {
                 updateSheepPose({
-                    behavior: activeRuntime.target.behavior,
-                    delta,
-                    moving: activeRuntime.phase === 'moving',
-                    now,
+                    behavior: presentation.value.behavior,
+                    delta: presentation.delta,
+                    moving: presentation.value.moving,
+                    now: presentation.time,
                     rig: model.rig,
                     seed: habitat.seed,
-                    trotting:
-                        activeRuntime.phase === 'moving' &&
-                        activeRuntime.sheepLocomotion === 'trot',
-                    walkDistance: poseWalkDistance.get(),
+                    trotting: presentation.value.trotting,
+                    walkDistance: poseWalkDistance.get(
+                        config.walkCycleDistance,
+                    ),
                 });
             }
         }

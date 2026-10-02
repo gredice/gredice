@@ -15,12 +15,79 @@ export function createFaunaWalkDistance(getAlpha: () => number) {
     let current = 0;
     let initialized = false;
     return {
-        set: (distance: number) => {
-            previous = !initialized || distance < current ? distance : current;
+        set: (distance: number, snap = false) => {
+            previous = !initialized || snap ? distance : current;
             current = distance;
             initialized = true;
         },
-        get: () => previous + (current - previous) * getAlpha(),
+        get: (cycleDistance?: number) => {
+            let difference = current - previous;
+            if (difference < 0 && cycleDistance) {
+                // A new path restarts its distance, but the prior pose still
+                // belongs to the old path. Blend the shortest gait phase.
+                difference =
+                    ((((difference + cycleDistance / 2) % cycleDistance) +
+                        cycleDistance) %
+                        cycleDistance) -
+                    cycleDistance / 2;
+            }
+            return previous + difference * getAlpha();
+        },
+        resume: () => {
+            initialized = false;
+        },
+    };
+}
+
+/** Manual pose phase follows the same retained presentation sample as roots. */
+export function createFaunaPresentationSample<T>(getAlpha: () => number) {
+    let previous: { time: number; value: T } | null = null;
+    let current: { time: number; value: T } | null = null;
+    let reset = false;
+    let lastPresentedTime: number | null = null;
+    return {
+        set: (value: T, time: number, snap = false) => {
+            const sample = { value, time: Math.max(0, time) };
+            if (!current || reset || snap || time < current.time) {
+                previous = sample;
+                lastPresentedTime = null;
+            } else {
+                previous =
+                    time - current.time > maximumFrameDeltaSeconds
+                        ? {
+                              value: current.value,
+                              time: sample.time - faunaSimulationStepSeconds,
+                          }
+                        : current;
+            }
+            current = sample;
+            reset = false;
+            return previous === sample;
+        },
+        get: (renderDelta: number) => {
+            if (!previous || !current) return null;
+            const alpha = Math.min(1, Math.max(0, getAlpha()));
+            const time = previous.time + (current.time - previous.time) * alpha;
+            const presentedTime =
+                lastPresentedTime === null
+                    ? time
+                    : Math.max(lastPresentedTime, time);
+            const delta =
+                lastPresentedTime === null
+                    ? Math.max(
+                          0,
+                          Math.min(faunaSimulationStepSeconds, renderDelta),
+                      )
+                    : Math.min(
+                          maximumFrameDeltaSeconds,
+                          presentedTime - lastPresentedTime,
+                      );
+            lastPresentedTime = presentedTime;
+            return { value: previous.value, time: presentedTime, delta };
+        },
+        resume: () => {
+            reset = true;
+        },
     };
 }
 
@@ -256,6 +323,8 @@ export function createFaunaSimulation<TState>({
             ) {
                 accumulator = 0;
                 simulationTime = frame.now;
+                for (const { transform } of callbacks.values())
+                    if (transform) transform.initialized = false;
                 simulate(
                     state,
                     Math.min(

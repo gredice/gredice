@@ -33,6 +33,7 @@ import {
 import { recordAnimalProfileCommandAcknowledgement } from './animals/animalProfileCommandMetrics';
 import {
     useFaunaFrame,
+    useFaunaPresentationSample,
     useFaunaRenderFrame,
     useFaunaWalkDistance,
 } from './animals/FaunaRuntimeProvider';
@@ -333,6 +334,10 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
     const gameStateStore = useGameStateStore();
     const groupRef = useRef<Group>(null);
     const poseWalkDistance = useFaunaWalkDistance();
+    const poseSample = useFaunaPresentationSample<{
+        behavior: CowBehavior;
+        moving: boolean;
+    }>(groupRef);
     const runtimeRef = useRef<CowRuntimeState | null>(null);
     const previousHomeKeyRef = useRef('');
     const randomRef = useRef(createCowRandom(0));
@@ -643,8 +648,15 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
             }
         }
 
-        poseWalkDistance.set(walkDistance);
         const activeRuntime = runtimeRef.current ?? runtime;
+        const poseSnapped = poseSample.set(
+            {
+                behavior: activeRuntime.target.behavior,
+                moving: activeRuntime.phase === 'moving',
+            },
+            now,
+        );
+        poseWalkDistance.set(walkDistance, poseSnapped);
 
         if (
             now - lastPresenceUpdateRef.current >=
@@ -694,19 +706,24 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
         }
     }, groupRef);
 
-    useFaunaRenderFrame(({ clock }, delta) => {
+    useFaunaRenderFrame((_, delta) => {
         const group = groupRef.current;
         const activeRuntime = runtimeRef.current;
         if (!group || !activeRuntime) return;
-        const now = clock.elapsedTime;
-        if (shouldPoseCow()) {
+        const presentation = poseSample.get(delta);
+        if (presentation && shouldPoseCow()) {
             updateCowPose({
-                behavior: activeRuntime.target.behavior,
-                delta,
-                moving: activeRuntime.phase === 'moving',
-                now,
+                behavior: presentation.value.behavior,
+                delta: presentation.delta,
+                moving: presentation.value.moving,
+                now: presentation.time,
                 rig: model.rig,
-                walkDistance: poseWalkDistance.get(),
+                walkDistance: poseWalkDistance.get(
+                    presentation.value.behavior === 'trot' &&
+                        presentation.value.moving
+                        ? 0.78
+                        : 0.92,
+                ),
             });
         }
         updateActorGroundingShadow?.({
