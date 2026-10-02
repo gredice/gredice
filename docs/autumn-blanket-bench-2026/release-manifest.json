@@ -1,0 +1,104 @@
+{
+  "state": "unpublished",
+  "publicationIssue": 5000,
+  "snapshotDate": "2026-10-22T12:00:00+02:00",
+  "source": {
+    "path": "assets/game-assets/AutumnBlanketBench.blend",
+    "bytes": 120458,
+    "sha256": "178aa87386cad7040e1c98931bce63e3560003131bfe563164de5738e5c13479"
+  },
+  "models": [
+    {
+      "name": "AutumnBlanketBench",
+      "path": "apps/garden/public/assets/models/AutumnBlanketBench.glb",
+      "bytes": 162344,
+      "sha256": "6bc5acbeff925d7f5a5bf255f4b2b0b48d3cec11e6b85dd15ca019fe6ec50851",
+      "url": "https://vrt.gredice.com/assets/models/AutumnBlanketBench.glb?v=6bc5acbeff92",
+      "triangles": 1768,
+      "trianglesByMesh": {
+        "AutumnBlanketBench_Textile": 212,
+        "AutumnBlanketBench_Timber": 1556
+      },
+      "meshCount": 2,
+      "materialCount": 2
+    }
+  ],
+  "items": [
+    {
+      "name": "AutumnBlanketBench",
+      "information": {
+        "label": "Drvena klupa s jesenskom dekom",
+        "shortDescription": "Drvena klupa s presavijenom krem dekom i prugama u boji hrđe.",
+        "fullDescription": "Jesenska klupa s mekom dekom stvara mali kutak za odmor. Zauzima dva susjedna polja kako bi drvo i prebačena deka ostali unutar prostora za postavljanje. Zaseban je ukras i ne mijenja postojeću drvenu klupu. Na nju se ne mogu slagati drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.45,
+        "hitboxHeight": 0.45,
+        "hitboxWidth": 1.2,
+        "hitboxDepth": 0.5,
+        "spanWidth": 2,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 80,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/AutumnBlanketBench.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/AutumnBlanketBench.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/AutumnBlanketBench.webp",
+          "bytes": 11688,
+          "sha256": "dd7b57085c535802fe5b08a24c8d4104faae03843c46f192758c0a5878935ed6"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnBlanketBench_1.webp",
+          "bytes": 11688,
+          "sha256": "dd7b57085c535802fe5b08a24c8d4104faae03843c46f192758c0a5878935ed6"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnBlanketBench_2.webp",
+          "bytes": 11144,
+          "sha256": "acc606dcea1ea69c1e698f24ba9140b43dd750a25c551048c8f5bb8eea31e2dd"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnBlanketBench_3.webp",
+          "bytes": 11152,
+          "sha256": "2b72935f2a1adf39ec18ed2f93d1a9905c84c745bf7d8cb09160239cf758e5a8"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnBlanketBench_4.webp",
+          "bytes": 12188,
+          "sha256": "d4e4d452f85c2a02d757e0bf1d5a2959a3c18b47d26c7ca21239169053033395"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnBlanketBench.webp",
+          "bytes": 1438,
+          "sha256": "136bd8259e94ad6596f35b11bfb244a78fc00be54016e84cc86f221f06f6be8d"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnBlanketBench_1.webp",
+          "bytes": 1438,
+          "sha256": "136bd8259e94ad6596f35b11bfb244a78fc00be54016e84cc86f221f06f6be8d"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnBlanketBench_2.webp",
+          "bytes": 1398,
+          "sha256": "7faf91bb56a91f8f9af9c7815989e5b1dd6a207c7d494da5fbd545851d6a1e12"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnBlanketBench_3.webp",
+          "bytes": 1346,
+          "sha256": "e0006357552a83ae1f5fef5d1cb69c5ec6766188fae9e756504e5d0ac2d11c95"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnBlanketBench_4.webp",
+          "bytes": 1570,
+          "sha256": "dd30886098d333b34b962c6eee32402482b5d9861b993d1946d5e4b75a8d80f2"
+        }
+      ]
+    }
+  ]
+}
