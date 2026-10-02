@@ -1,7 +1,7 @@
 import type { BufferGeometry } from 'three';
 import { recordChunkCompilerMetrics } from './chunkCompilerMetrics';
 import {
-    compileMeshBuffers,
+    compileMeshBufferSources,
     meshBufferByteLength,
     meshBufferTransferables,
     meshGeometryComponentCount,
@@ -23,10 +23,14 @@ export type MeshCompilerWorker = {
     terminate: () => void;
 };
 
-type Job = {
-    id: number;
+export type MeshCompilerSource = {
     geometry: BufferGeometry;
     matrices: Float64Array;
+};
+
+type Job = {
+    id: number;
+    sources: MeshCompilerSource[];
     deliver: (packet: PackedMeshGeometry | null, durationMs: number) => void;
 };
 
@@ -34,7 +38,10 @@ type Job = {
 export const synchronousChunkComponentLimit = 8192;
 export const synchronousChunkBudgetMs = 2;
 
-/** One worker and one transferred job in flight. Cancelled queued jobs never pack buffers. */
+/**
+ * One worker and one transferred job in flight. Cancelled queued jobs never
+ * pack buffers. A job may join several source geometries into one packet.
+ */
 export class MeshCompiler {
     private worker: MeshCompilerWorker | null = null;
     private unavailable = false;
@@ -54,22 +61,24 @@ export class MeshCompiler {
             }),
     ) {}
 
-    request(
-        geometry: BufferGeometry,
-        matrices: Float64Array,
-        deliver: Job['deliver'],
-    ) {
+    request(sources: MeshCompilerSource[], deliver: Job['deliver']) {
         if (this.disposed) return () => {};
-        const components =
-            (meshGeometryComponentCount(geometry) * matrices.length) / 16;
+        const components = sources.reduce(
+            (total, { geometry, matrices }) =>
+                total +
+                (meshGeometryComponentCount(geometry) * matrices.length) / 16,
+            0,
+        );
         if (
             components <= synchronousChunkComponentLimit &&
             this.syncSpentMs < synchronousChunkBudgetMs
         ) {
             const started = performance.now();
-            const packet = compileMeshBuffers(
-                packMeshGeometry(geometry),
-                matrices,
+            const packet = compileMeshBufferSources(
+                sources.map(({ geometry, matrices }) => ({
+                    source: packMeshGeometry(geometry),
+                    matrices,
+                })),
             );
             const duration = performance.now() - started;
             this.syncSpentMs += duration;
@@ -88,7 +97,7 @@ export class MeshCompiler {
             deliver(packet, duration);
             return () => {};
         }
-        const job = { id: ++this.nextId, geometry, matrices, deliver };
+        const job = { id: ++this.nextId, sources, deliver };
         this.queue.push(job);
         this.publishPending();
         this.dispatch();
@@ -171,13 +180,23 @@ export class MeshCompiler {
             if (!job) return;
             this.active = { id: job.id, deliver: job.deliver };
             const started = performance.now();
-            const source = packMeshGeometry(job.geometry);
-            const bytes =
-                meshBufferByteLength(source) + job.matrices.byteLength;
-            this.worker.postMessage(
-                { id: job.id, source, matrices: job.matrices },
-                [...meshBufferTransferables(source), job.matrices.buffer],
+            const sources = job.sources.map(({ geometry, matrices }) => ({
+                source: packMeshGeometry(geometry),
+                matrices,
+            }));
+            const bytes = sources.reduce(
+                (total, { source, matrices }) =>
+                    total + meshBufferByteLength(source) + matrices.byteLength,
+                0,
             );
+            this.worker.postMessage({ id: job.id, sources }, [
+                ...new Set(
+                    sources.flatMap(({ source, matrices }) => [
+                        ...meshBufferTransferables(source),
+                        matrices.buffer,
+                    ]),
+                ),
+            ]);
             recordChunkCompilerMetrics((metrics) => {
                 metrics.transferredBytes += bytes;
                 metrics.transferMaxMs = Math.max(

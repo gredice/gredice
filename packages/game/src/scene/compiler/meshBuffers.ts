@@ -208,6 +208,10 @@ export function compileMeshBuffers(
         morphTargetsRelative: source.morphTargetsRelative,
         index,
     };
+    return withMeshBounds(result);
+}
+
+function withMeshBounds(result: PackedMeshGeometry) {
     const geometry = unpackMeshGeometry(result);
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
@@ -219,6 +223,145 @@ export function compileMeshBuffers(
             radius: geometry.boundingSphere.radius,
         };
     return result;
+}
+
+function attributeLayoutSignature(
+    attribute: BufferAttribute | InterleavedBufferAttribute,
+) {
+    const gpuType = 'gpuType' in attribute ? attribute.gpuType : 'default';
+    return `${attribute.array.constructor.name}:${attribute.itemSize}:${attribute.normalized ? 1 : 0}:${attribute instanceof Float16BufferAttribute ? 16 : 0}:${gpuType}`;
+}
+
+/**
+ * Geometries with equal signatures produce packed buffers that can be
+ * concatenated without converting, dropping, or synthesizing attributes.
+ */
+export function meshGeometryLayoutSignature(geometry: BufferGeometry) {
+    const attributes = Object.entries(geometry.attributes)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(
+            ([name, attribute]) =>
+                `${name}=${attributeLayoutSignature(attribute)}`,
+        );
+    const morphAttributes = Object.entries(geometry.morphAttributes)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(
+            ([name, targets]) =>
+                `${name}[${targets.map(attributeLayoutSignature).join('|')}]`,
+        );
+    return `${geometry.index ? 'indexed' : 'direct'};${attributes.join(';')};morph:${geometry.morphTargetsRelative ? 'relative' : 'absolute'}:${morphAttributes.join(';')}`;
+}
+
+function concatAttributes(attributes: PackedMeshAttribute[]) {
+    const first = attributes[0];
+    if (!first) throw new Error('Cannot concatenate an empty attribute set.');
+    const length = attributes.reduce(
+        (total, attribute) => total + attribute.array.length,
+        0,
+    );
+    const array = allocateLike(first.array, length);
+    let offset = 0;
+    for (const attribute of attributes) {
+        array.set(attribute.array, offset);
+        offset += attribute.array.length;
+    }
+    return { ...first, array };
+}
+
+/**
+ * Concatenates already-transformed packets that share one layout into a
+ * single draw. Index values are rebased per source; vertex data is copied
+ * once with no per-source BufferGeometry.
+ */
+export function concatMeshBuffers(
+    packets: PackedMeshGeometry[],
+): PackedMeshGeometry {
+    const [first] = packets;
+    if (!first) throw new Error('Cannot concatenate zero mesh packets.');
+    if (packets.length === 1) return first;
+    const names = Object.keys(first.attributes).sort();
+    const morphNames = Object.keys(first.morphAttributes).sort();
+    const vertexCounts = packets.map((packet) => {
+        const position = packet.attributes.position;
+        return position ? position.array.length / position.itemSize : 0;
+    });
+    const totalVertices = vertexCounts.reduce(
+        (total, count) => total + count,
+        0,
+    );
+    for (const packet of packets) {
+        const packetNames = Object.keys(packet.attributes).sort();
+        if (
+            packetNames.join('|') !== names.join('|') ||
+            Object.keys(packet.morphAttributes).sort().join('|') !==
+                morphNames.join('|') ||
+            Boolean(packet.index) !== Boolean(first.index) ||
+            packet.morphTargetsRelative !== first.morphTargetsRelative
+        )
+            throw new Error(
+                'Cannot concatenate mesh packets with different layouts.',
+            );
+    }
+    let index: Uint16Array | Uint32Array | null = null;
+    if (first.index) {
+        const length = packets.reduce(
+            (total, packet) => total + (packet.index?.length ?? 0),
+            0,
+        );
+        index =
+            totalVertices > 65535
+                ? new Uint32Array(length)
+                : new Uint16Array(length);
+        let offset = 0;
+        let base = 0;
+        packets.forEach((packet, packetIndex) => {
+            const source = packet.index;
+            if (source && index) {
+                for (let i = 0; i < source.length; i++)
+                    index[offset + i] = source[i] + base;
+                offset += source.length;
+            }
+            base += vertexCounts[packetIndex] ?? 0;
+        });
+    }
+    return withMeshBounds({
+        attributes: Object.fromEntries(
+            names.map((name) => [
+                name,
+                concatAttributes(
+                    packets.map((packet) => packet.attributes[name]),
+                ),
+            ]),
+        ),
+        morphAttributes: Object.fromEntries(
+            morphNames.map((name) => [
+                name,
+                (first.morphAttributes[name] ?? []).map((_, target) =>
+                    concatAttributes(
+                        packets.map(
+                            (packet) => packet.morphAttributes[name][target],
+                        ),
+                    ),
+                ),
+            ]),
+        ),
+        morphTargetsRelative: first.morphTargetsRelative,
+        index,
+    });
+}
+
+export type MeshBufferSource = {
+    source: PackedMeshGeometry;
+    matrices: Float64Array;
+};
+
+/** Transforms each source by its instance matrices and joins them into one draw. */
+export function compileMeshBufferSources(sources: MeshBufferSource[]) {
+    return concatMeshBuffers(
+        sources.map(({ source, matrices }) =>
+            compileMeshBuffers(source, matrices),
+        ),
+    );
 }
 
 export function meshBufferTransferables(

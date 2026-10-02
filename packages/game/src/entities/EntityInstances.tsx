@@ -2,6 +2,7 @@ import { Suspense, useEffect, useMemo } from 'react';
 import { DoubleSide, type Material, MeshStandardMaterial } from 'three';
 import type { GameAssetName } from '../data/models';
 import type { GLTFResult } from '../models/GameAssets';
+import { StaticRenderPacketBatchProvider } from '../scene/compiler/StaticRenderPacketBatch';
 import { updateGameProfileMetadata } from '../scene/gameProfileMetadata';
 import {
     type GameQualityProfile,
@@ -340,463 +341,483 @@ export function EntityInstances({
         <EntityBlockInstanceIndexContext.Provider
             value={entityBlockInstanceIndex}
         >
-            <EntityInstancesAssetBlock
-                assetName="BlockGrass"
-                stacks={stacks}
-                name="Block_Grass"
-                staticOpaqueCacheGroup="base-terrain"
-                groundPatch="grass"
-                renderRainWetOverlay
-                weatherSurface="base-ground"
-                yOffset={0.2}
-                geometry={(gltf) => gltf.nodes.Block_Grass_1_2.geometry}
-                material={(gltf) => gltf.nodes.Block_Grass_1_2.material}
-                snow={snowPresets.grassFlat}
-                snowLift={0.01}
-                {...mergedTerrainChunkProps}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="BlockGrassAngle"
-                stacks={stacks}
-                name="Block_Grass_Angle"
-                staticOpaqueCacheGroup="base-terrain"
-                groundPatch="grass"
-                renderRainWetOverlay
-                yOffset={0.2}
-                geometry={(gltf) => gltf.nodes.Block_Grass_Angle_1_2.geometry}
-                material={(gltf) => gltf.nodes.Block_Grass_Angle_1_2.material}
-                snow={snowPresets.grassAngle}
-                snowLift={0.003}
-                {...mergedTerrainChunkProps}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="BlockTerrainCorner"
-                stacks={stacks}
-                name="Block_Grass_Corner"
-                staticOpaqueCacheGroup="base-terrain"
-                groundPatch="grass"
-                yOffset={0.2}
-                geometry={(gltf) => gltf.nodes.Block_Grass_Corner_1_1.geometry}
-                material={(gltf) => gltf.nodes.Block_Grass_Corner_1_2.material}
-                {...mergedTerrainChunkProps}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="BlockTerrainCorner"
-                stacks={stacks}
-                name="Block_Grass_Corner"
-                staticOpaqueCacheGroup="base-terrain"
-                groundPatch="grass"
-                renderRainWetOverlay
-                yOffset={0.2}
-                geometry={(gltf) => gltf.nodes.Block_Grass_Corner_1_2.geometry}
-                material={(gltf) => gltf.nodes.Block_Grass_Corner_1_2.material}
-                snow={snowPresets.grassCorner}
-                snowLift={0.003}
-                {...mergedTerrainChunkProps}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="BlockTerrainReverseCorner"
-                stacks={stacks}
-                name="Block_Grass_Reverse_Corner"
-                staticOpaqueCacheGroup="base-terrain"
-                groundPatch="grass"
-                yOffset={0.2}
-                geometry={(gltf) =>
-                    gltf.nodes.Block_Grass_Reverse_Corner_1_1.geometry
-                }
-                material={(gltf) =>
-                    gltf.nodes.Block_Grass_Reverse_Corner_1_2.material
-                }
-                {...mergedTerrainChunkProps}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="BlockTerrainReverseCorner"
-                stacks={stacks}
-                name="Block_Grass_Reverse_Corner"
-                staticOpaqueCacheGroup="base-terrain"
-                groundPatch="grass"
-                renderRainWetOverlay
-                yOffset={0.2}
-                geometry={(gltf) =>
-                    gltf.nodes.Block_Grass_Reverse_Corner_1_2.geometry
-                }
-                material={(gltf) =>
-                    gltf.nodes.Block_Grass_Reverse_Corner_1_2.material
-                }
-                snow={snowPresets.grassReverseCorner}
-                snowLift={0.003}
-                {...mergedTerrainChunkProps}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="BlockSand"
-                stacks={stacks}
-                name="Block_Sand"
-                staticOpaqueCacheGroup="base-terrain"
-                groundPatch="sand"
-                renderRainWetOverlay
-                weatherSurface="base-ground"
-                yOffset={0.2}
-                geometry={(gltf) => gltf.nodes.Block_Sand_1.geometry}
-                material={(gltf) => gltf.nodes.Block_Sand_1.material}
-                snow={snowPresets.sand}
-                snowLift={0.003}
-                {...mergedTerrainChunkProps}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="BlockSandAngle"
-                stacks={stacks}
-                name="Block_Sand_Angle"
-                staticOpaqueCacheGroup="base-terrain"
-                groundPatch="sand"
-                renderRainWetOverlay
-                yOffset={0.2}
-                geometry={(gltf) => gltf.nodes.Block_Sand_Angle_1.geometry}
-                material={(gltf) => gltf.nodes.Block_Sand_Angle_1.material}
-                snow={snowPresets.sandAngle}
-                snowLift={0.003}
-                {...mergedTerrainChunkProps}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="BlockTerrainCorner"
-                stacks={stacks}
-                name="Block_Sand_Corner"
-                staticOpaqueCacheGroup="base-terrain"
-                groundPatch="sand"
-                renderRainWetOverlay
-                yOffset={0.2}
-                geometry={(gltf) => gltf.nodes.Block_Sand_Corner_1.geometry}
-                material={(gltf) => gltf.nodes.Block_Sand_Corner_1.material}
-                snow={snowPresets.sandCorner}
-                snowLift={0.003}
-                {...mergedTerrainChunkProps}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="BlockTerrainReverseCorner"
-                stacks={stacks}
-                name="Block_Sand_Reverse_Corner"
-                staticOpaqueCacheGroup="base-terrain"
-                groundPatch="sand"
-                renderRainWetOverlay
-                yOffset={0.2}
-                geometry={(gltf) =>
-                    gltf.nodes.Block_Sand_Reverse_Corner_1.geometry
-                }
-                material={(gltf) =>
-                    gltf.nodes.Block_Sand_Reverse_Corner_1.material
-                }
-                snow={snowPresets.sandReverseCorner}
-                snowLift={0.003}
-                {...mergedTerrainChunkProps}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="BlockSand"
-                stacks={stacks}
-                name="Block_Snow"
-                staticOpaqueCacheGroup="base-terrain"
-                groundPatch="snow"
-                weatherSurface="base-ground"
-                yOffset={0.2}
-                geometry={(gltf) => gltf.nodes.Block_Sand_1.geometry}
-                material={() => snowMaterial}
-                snow={snowPresets.snow}
-                snowLift={0.003}
-                {...mergedTerrainChunkProps}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="BlockSandAngle"
-                stacks={stacks}
-                name="Block_Snow_Angle"
-                staticOpaqueCacheGroup="base-terrain"
-                groundPatch="snow"
-                yOffset={0.2}
-                geometry={(gltf) => gltf.nodes.Block_Sand_Angle_1.geometry}
-                material={() => snowMaterial}
-                snow={snowPresets.snowAngle}
-                snowLift={0.003}
-                {...mergedTerrainChunkProps}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="BlockTerrainCorner"
-                stacks={stacks}
-                name="Block_Snow_Corner"
-                staticOpaqueCacheGroup="base-terrain"
-                groundPatch="snow"
-                yOffset={0.2}
-                geometry={(gltf) => gltf.nodes.Block_Sand_Corner_1.geometry}
-                material={() => snowMaterial}
-                snow={snowPresets.snowCorner}
-                snowLift={0.003}
-                {...mergedTerrainChunkProps}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="BlockTerrainReverseCorner"
-                stacks={stacks}
-                name="Block_Snow_Reverse_Corner"
-                staticOpaqueCacheGroup="base-terrain"
-                groundPatch="snow"
-                yOffset={0.2}
-                geometry={(gltf) =>
-                    gltf.nodes.Block_Sand_Reverse_Corner_1.geometry
-                }
-                material={() => snowMaterial}
-                snow={snowPresets.snowReverseCorner}
-                snowLift={0.003}
-                {...mergedTerrainChunkProps}
-                {...commonSnowProps}
-            />
-            {renderDetails && (
-                <AutumnEntityLeaves
-                    stacks={stacks}
-                    tier={qualityProfile.tier}
-                />
-            )}
-            {renderDetails && (
-                <AutumnGroundLeaves
-                    farmId={farmId}
-                    stacks={stacks}
-                    tier={qualityProfile.tier}
-                    weather={weather}
-                />
-            )}
-            {shouldRenderGroundDecorations && (
-                <GroundBlockDecorations
-                    density={qualityProfile.groundDecorationDensity}
-                    farmId={farmId}
-                    stacks={stacks}
-                    weather={weather}
-                />
-            )}
-            <EntityInstancesAssetBlock
-                assetName="Tree"
-                stacks={stacks}
-                name="Tree"
-                staticOpaqueCacheGroup="static-props"
-                yOffset={0.5}
-                scale={[0.125, 0.5, 0.125]}
-                geometry={(gltf) => gltf.nodes.Tree_1_1.geometry}
-                material={(gltf) => gltf.nodes.Tree_1_1.material}
-                {...commonSnowProps}
-            />
-            <Suspense fallback={null}>
-                <TreeCanopyInstances stacks={stacks} {...commonSnowProps} />
-            </Suspense>
-            <EntityInstancesAssetBlock
-                assetName="Pine"
-                stacks={stacks}
-                name="Pine"
-                yOffset={1}
-                scale={[0.09, 1, 0.09]}
-                geometry={(gltf) => gltf.nodes.Tree_2.geometry}
-                material={(gltf) => gltf.nodes.Tree_2.material}
-                snow={snowPresets.pine}
-                snowLift={0.002}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="ShovelSmall"
-                stacks={stacks}
-                name="ShovelSmall"
-                yOffset={-0.1}
-                geometry={(gltf) => gltf.nodes.Shovel_Small.geometry}
-                material={(gltf) => gltf.nodes.Shovel_Small.material}
-                snow={snowPresets.tool}
-                snowLift={0.002}
-                {...commonSnowProps}
-            />
-            <MulchPatchInstances stacks={stacks} {...commonSnowProps} />
-            {tulipBouquetStems.map((stem) => (
+            <StaticRenderPacketBatchProvider>
                 <EntityInstancesAssetBlock
-                    key={`Tulip-${stem.key}`}
-                    assetName="Tulip"
+                    assetName="BlockGrass"
                     stacks={stacks}
-                    name="Tulip"
+                    name="Block_Grass"
+                    staticOpaqueCacheGroup="base-terrain"
+                    groundPatch="grass"
+                    renderRainWetOverlay
+                    weatherSurface="base-ground"
+                    yOffset={0.2}
+                    geometry={(gltf) => gltf.nodes.Block_Grass_1_2.geometry}
+                    material={(gltf) => gltf.nodes.Block_Grass_1_2.material}
+                    snow={snowPresets.grassFlat}
+                    snowLift={0.01}
+                    {...mergedTerrainChunkProps}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="BlockGrassAngle"
+                    stacks={stacks}
+                    name="Block_Grass_Angle"
+                    staticOpaqueCacheGroup="base-terrain"
+                    groundPatch="grass"
+                    renderRainWetOverlay
+                    yOffset={0.2}
+                    geometry={(gltf) =>
+                        gltf.nodes.Block_Grass_Angle_1_2.geometry
+                    }
+                    material={(gltf) =>
+                        gltf.nodes.Block_Grass_Angle_1_2.material
+                    }
+                    snow={snowPresets.grassAngle}
+                    snowLift={0.003}
+                    {...mergedTerrainChunkProps}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="BlockTerrainCorner"
+                    stacks={stacks}
+                    name="Block_Grass_Corner"
+                    staticOpaqueCacheGroup="base-terrain"
+                    groundPatch="grass"
+                    yOffset={0.2}
+                    geometry={(gltf) =>
+                        gltf.nodes.Block_Grass_Corner_1_1.geometry
+                    }
+                    material={(gltf) =>
+                        gltf.nodes.Block_Grass_Corner_1_2.material
+                    }
+                    {...mergedTerrainChunkProps}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="BlockTerrainCorner"
+                    stacks={stacks}
+                    name="Block_Grass_Corner"
+                    staticOpaqueCacheGroup="base-terrain"
+                    groundPatch="grass"
+                    renderRainWetOverlay
+                    yOffset={0.2}
+                    geometry={(gltf) =>
+                        gltf.nodes.Block_Grass_Corner_1_2.geometry
+                    }
+                    material={(gltf) =>
+                        gltf.nodes.Block_Grass_Corner_1_2.material
+                    }
+                    snow={snowPresets.grassCorner}
+                    snowLift={0.003}
+                    {...mergedTerrainChunkProps}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="BlockTerrainReverseCorner"
+                    stacks={stacks}
+                    name="Block_Grass_Reverse_Corner"
+                    staticOpaqueCacheGroup="base-terrain"
+                    groundPatch="grass"
+                    yOffset={0.2}
+                    geometry={(gltf) =>
+                        gltf.nodes.Block_Grass_Reverse_Corner_1_1.geometry
+                    }
+                    material={(gltf) =>
+                        gltf.nodes.Block_Grass_Reverse_Corner_1_2.material
+                    }
+                    {...mergedTerrainChunkProps}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="BlockTerrainReverseCorner"
+                    stacks={stacks}
+                    name="Block_Grass_Reverse_Corner"
+                    staticOpaqueCacheGroup="base-terrain"
+                    groundPatch="grass"
+                    renderRainWetOverlay
+                    yOffset={0.2}
+                    geometry={(gltf) =>
+                        gltf.nodes.Block_Grass_Reverse_Corner_1_2.geometry
+                    }
+                    material={(gltf) =>
+                        gltf.nodes.Block_Grass_Reverse_Corner_1_2.material
+                    }
+                    snow={snowPresets.grassReverseCorner}
+                    snowLift={0.003}
+                    {...mergedTerrainChunkProps}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="BlockSand"
+                    stacks={stacks}
+                    name="Block_Sand"
+                    staticOpaqueCacheGroup="base-terrain"
+                    groundPatch="sand"
+                    renderRainWetOverlay
+                    weatherSurface="base-ground"
+                    yOffset={0.2}
+                    geometry={(gltf) => gltf.nodes.Block_Sand_1.geometry}
+                    material={(gltf) => gltf.nodes.Block_Sand_1.material}
+                    snow={snowPresets.sand}
+                    snowLift={0.003}
+                    {...mergedTerrainChunkProps}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="BlockSandAngle"
+                    stacks={stacks}
+                    name="Block_Sand_Angle"
+                    staticOpaqueCacheGroup="base-terrain"
+                    groundPatch="sand"
+                    renderRainWetOverlay
+                    yOffset={0.2}
+                    geometry={(gltf) => gltf.nodes.Block_Sand_Angle_1.geometry}
+                    material={(gltf) => gltf.nodes.Block_Sand_Angle_1.material}
+                    snow={snowPresets.sandAngle}
+                    snowLift={0.003}
+                    {...mergedTerrainChunkProps}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="BlockTerrainCorner"
+                    stacks={stacks}
+                    name="Block_Sand_Corner"
+                    staticOpaqueCacheGroup="base-terrain"
+                    groundPatch="sand"
+                    renderRainWetOverlay
+                    yOffset={0.2}
+                    geometry={(gltf) => gltf.nodes.Block_Sand_Corner_1.geometry}
+                    material={(gltf) => gltf.nodes.Block_Sand_Corner_1.material}
+                    snow={snowPresets.sandCorner}
+                    snowLift={0.003}
+                    {...mergedTerrainChunkProps}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="BlockTerrainReverseCorner"
+                    stacks={stacks}
+                    name="Block_Sand_Reverse_Corner"
+                    staticOpaqueCacheGroup="base-terrain"
+                    groundPatch="sand"
+                    renderRainWetOverlay
+                    yOffset={0.2}
+                    geometry={(gltf) =>
+                        gltf.nodes.Block_Sand_Reverse_Corner_1.geometry
+                    }
+                    material={(gltf) =>
+                        gltf.nodes.Block_Sand_Reverse_Corner_1.material
+                    }
+                    snow={snowPresets.sandReverseCorner}
+                    snowLift={0.003}
+                    {...mergedTerrainChunkProps}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="BlockSand"
+                    stacks={stacks}
+                    name="Block_Snow"
+                    staticOpaqueCacheGroup="base-terrain"
+                    groundPatch="snow"
+                    weatherSurface="base-ground"
+                    yOffset={0.2}
+                    geometry={(gltf) => gltf.nodes.Block_Sand_1.geometry}
+                    material={() => snowMaterial}
+                    snow={snowPresets.snow}
+                    snowLift={0.003}
+                    {...mergedTerrainChunkProps}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="BlockSandAngle"
+                    stacks={stacks}
+                    name="Block_Snow_Angle"
+                    staticOpaqueCacheGroup="base-terrain"
+                    groundPatch="snow"
+                    yOffset={0.2}
+                    geometry={(gltf) => gltf.nodes.Block_Sand_Angle_1.geometry}
+                    material={() => snowMaterial}
+                    snow={snowPresets.snowAngle}
+                    snowLift={0.003}
+                    {...mergedTerrainChunkProps}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="BlockTerrainCorner"
+                    stacks={stacks}
+                    name="Block_Snow_Corner"
+                    staticOpaqueCacheGroup="base-terrain"
+                    groundPatch="snow"
+                    yOffset={0.2}
+                    geometry={(gltf) => gltf.nodes.Block_Sand_Corner_1.geometry}
+                    material={() => snowMaterial}
+                    snow={snowPresets.snowCorner}
+                    snowLift={0.003}
+                    {...mergedTerrainChunkProps}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="BlockTerrainReverseCorner"
+                    stacks={stacks}
+                    name="Block_Snow_Reverse_Corner"
+                    staticOpaqueCacheGroup="base-terrain"
+                    groundPatch="snow"
+                    yOffset={0.2}
+                    geometry={(gltf) =>
+                        gltf.nodes.Block_Sand_Reverse_Corner_1.geometry
+                    }
+                    material={() => snowMaterial}
+                    snow={snowPresets.snowReverseCorner}
+                    snowLift={0.003}
+                    {...mergedTerrainChunkProps}
+                    {...commonSnowProps}
+                />
+                {renderDetails && (
+                    <AutumnEntityLeaves
+                        stacks={stacks}
+                        tier={qualityProfile.tier}
+                    />
+                )}
+                {renderDetails && (
+                    <AutumnGroundLeaves
+                        farmId={farmId}
+                        stacks={stacks}
+                        tier={qualityProfile.tier}
+                        weather={weather}
+                    />
+                )}
+                {shouldRenderGroundDecorations && (
+                    <GroundBlockDecorations
+                        density={qualityProfile.groundDecorationDensity}
+                        farmId={farmId}
+                        stacks={stacks}
+                        weather={weather}
+                    />
+                )}
+                <EntityInstancesAssetBlock
+                    assetName="Tree"
+                    stacks={stacks}
+                    name="Tree"
                     staticOpaqueCacheGroup="static-props"
-                    localPosition={stem.position}
-                    localRotation={stem.rotation}
-                    scale={stem.scale}
-                    geometry={(gltf) => gltf.nodes.Tulip.geometry}
-                    material={(gltf) => gltf.nodes.Tulip.material}
-                    snow={snowPresets.tulip}
+                    yOffset={0.5}
+                    scale={[0.125, 0.5, 0.125]}
+                    geometry={(gltf) => gltf.nodes.Tree_1_1.geometry}
+                    material={(gltf) => gltf.nodes.Tree_1_1.material}
+                    {...commonSnowProps}
+                />
+                <Suspense fallback={null}>
+                    <TreeCanopyInstances stacks={stacks} {...commonSnowProps} />
+                </Suspense>
+                <EntityInstancesAssetBlock
+                    assetName="Pine"
+                    stacks={stacks}
+                    name="Pine"
+                    yOffset={1}
+                    scale={[0.09, 1, 0.09]}
+                    geometry={(gltf) => gltf.nodes.Tree_2.geometry}
+                    material={(gltf) => gltf.nodes.Tree_2.material}
+                    snow={snowPresets.pine}
                     snowLift={0.002}
                     {...commonSnowProps}
                 />
-            ))}
-            {tulipBouquetStems.map((stem) => (
                 <EntityInstancesAssetBlock
-                    key={`TulipLeaves-${stem.key}`}
-                    assetName="Tulip"
+                    assetName="ShovelSmall"
                     stacks={stacks}
-                    name="Tulip"
-                    staticOpaqueCacheGroup="static-props"
-                    localPosition={stem.position}
-                    localRotation={stem.rotation}
-                    scale={stem.scale}
-                    geometry={(gltf) => gltf.nodes.Tulip_Leaves.geometry}
-                    material={(gltf) => gltf.nodes.Tulip_Leaves.material}
-                    snow={snowPresets.tulip}
+                    name="ShovelSmall"
+                    yOffset={-0.1}
+                    geometry={(gltf) => gltf.nodes.Shovel_Small.geometry}
+                    material={(gltf) => gltf.nodes.Shovel_Small.material}
+                    snow={snowPresets.tool}
                     snowLift={0.002}
                     {...commonSnowProps}
                 />
-            ))}
-            <Suspense fallback={null}>
-                <BushCanopyInstances stacks={stacks} {...commonSnowProps} />
-            </Suspense>
-            <EntityInstancesAssetBlock
-                assetName="BaleHey"
-                stacks={stacks}
-                name="BaleHey"
-                geometry={(gltf) => gltf.nodes.BaleHey.geometry}
-                material={(gltf) => gltf.nodes.BaleHey.material}
-                snow={snowPresets.hay}
-                snowLift={0.002}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="StoneSmall"
-                stacks={stacks}
-                name="StoneSmall"
-                geometry={(gltf) => gltf.nodes.Stone_Small.geometry}
-                material={(gltf) => gltf.nodes.Stone_Small.material}
-                scale={[0.165, 0.165, 0.165]}
-                snow={snowPresets.stone}
-                snowLift={0.002}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="StoneMedium"
-                stacks={stacks}
-                name="StoneMedium"
-                staticOpaqueCacheGroup="static-props"
-                geometry={(gltf) => gltf.nodes.Stone_Medium.geometry}
-                material={(gltf) => gltf.nodes.Stone_Medium.material}
-                scale={[0.236, 0.269, 0.205]}
-                snow={snowPresets.stone}
-                snowLift={0.002}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="StoneLarge"
-                stacks={stacks}
-                name="StoneLarge"
-                geometry={(gltf) => gltf.nodes.Stone_Large.geometry}
-                material={(gltf) => gltf.nodes.Stone_Large.material}
-                scale={[0.263, 0.426, 0.291]}
-                snow={snowPresets.stone}
-                snowLift={0.002}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="DesertStoneSmall"
-                stacks={stacks}
-                name="DesertStoneSmall"
-                geometry={(gltf) => gltf.nodes.DesertStoneSmall_Body.geometry}
-                material={() => desertStoneBodyMaterial}
-                scale={[0.165, 0.165, 0.165]}
-                renderRainWetOverlay
-                snow={snowPresets.stone}
-                snowLift={0.002}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="DesertStoneSmall"
-                stacks={stacks}
-                name="DesertStoneSmall"
-                geometry={(gltf) =>
-                    gltf.nodes.DesertStoneSmall_Crevices.geometry
-                }
-                material={() => desertStoneGrooveMaterial}
-                scale={[0.165, 0.165, 0.165]}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="DesertStoneMedium"
-                stacks={stacks}
-                name="DesertStoneMedium"
-                geometry={(gltf) => gltf.nodes.DesertStoneMedium_Body.geometry}
-                material={() => desertStoneBodyMaterial}
-                scale={[0.236, 0.269, 0.205]}
-                renderRainWetOverlay
-                snow={snowPresets.stone}
-                snowLift={0.002}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="DesertStoneMedium"
-                stacks={stacks}
-                name="DesertStoneMedium"
-                geometry={(gltf) =>
-                    gltf.nodes.DesertStoneMedium_Crevices.geometry
-                }
-                material={() => desertStoneGrooveMaterial}
-                scale={[0.236, 0.269, 0.205]}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="DesertStoneLarge"
-                stacks={stacks}
-                name="DesertStoneLarge"
-                geometry={(gltf) => gltf.nodes.DesertStoneLarge_Body.geometry}
-                material={() => desertStoneBodyMaterial}
-                scale={[0.263, 0.426, 0.291]}
-                renderRainWetOverlay
-                snow={snowPresets.stone}
-                snowLift={0.002}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="DesertStoneLarge"
-                stacks={stacks}
-                name="DesertStoneLarge"
-                geometry={(gltf) =>
-                    gltf.nodes.DesertStoneLarge_Crevices.geometry
-                }
-                material={() => desertStoneGrooveMaterial}
-                scale={[0.263, 0.426, 0.291]}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="Stick"
-                stacks={stacks}
-                name="Stick"
-                geometry={(gltf) => gltf.nodes.Stick.geometry}
-                material={(gltf) => gltf.nodes.Stick.material}
-                scale={RAISED_BED_SUPPORT_SCALE}
-                snow={snowPresets.tool}
-                snowLift={0.002}
-                {...commonSnowProps}
-            />
-            <EntityInstancesAssetBlock
-                assetName="Seed"
-                stacks={stacks}
-                name="Seed"
-                geometry={(gltf) => gltf.nodes.Seed.geometry}
-                material={(gltf) => gltf.nodes.Seed.material}
-            />
-            <Suspense fallback={null}>
-                <RaisedBedGeneratedPlantInstances
-                    quality={qualityProfile}
+                <MulchPatchInstances stacks={stacks} {...commonSnowProps} />
+                {tulipBouquetStems.map((stem) => (
+                    <EntityInstancesAssetBlock
+                        key={`Tulip-${stem.key}`}
+                        assetName="Tulip"
+                        stacks={stacks}
+                        name="Tulip"
+                        staticOpaqueCacheGroup="static-props"
+                        localPosition={stem.position}
+                        localRotation={stem.rotation}
+                        scale={stem.scale}
+                        geometry={(gltf) => gltf.nodes.Tulip.geometry}
+                        material={(gltf) => gltf.nodes.Tulip.material}
+                        snow={snowPresets.tulip}
+                        snowLift={0.002}
+                        {...commonSnowProps}
+                    />
+                ))}
+                {tulipBouquetStems.map((stem) => (
+                    <EntityInstancesAssetBlock
+                        key={`TulipLeaves-${stem.key}`}
+                        assetName="Tulip"
+                        stacks={stacks}
+                        name="Tulip"
+                        staticOpaqueCacheGroup="static-props"
+                        localPosition={stem.position}
+                        localRotation={stem.rotation}
+                        scale={stem.scale}
+                        geometry={(gltf) => gltf.nodes.Tulip_Leaves.geometry}
+                        material={(gltf) => gltf.nodes.Tulip_Leaves.material}
+                        snow={snowPresets.tulip}
+                        snowLift={0.002}
+                        {...commonSnowProps}
+                    />
+                ))}
+                <Suspense fallback={null}>
+                    <BushCanopyInstances stacks={stacks} {...commonSnowProps} />
+                </Suspense>
+                <EntityInstancesAssetBlock
+                    assetName="BaleHey"
                     stacks={stacks}
-                />
-            </Suspense>
-            <Suspense fallback={null}>
-                <AdditionalEntityInstances
-                    stacks={stacks}
+                    name="BaleHey"
+                    geometry={(gltf) => gltf.nodes.BaleHey.geometry}
+                    material={(gltf) => gltf.nodes.BaleHey.material}
+                    snow={snowPresets.hay}
+                    snowLift={0.002}
                     {...commonSnowProps}
                 />
-            </Suspense>
+                <EntityInstancesAssetBlock
+                    assetName="StoneSmall"
+                    stacks={stacks}
+                    name="StoneSmall"
+                    geometry={(gltf) => gltf.nodes.Stone_Small.geometry}
+                    material={(gltf) => gltf.nodes.Stone_Small.material}
+                    scale={[0.165, 0.165, 0.165]}
+                    snow={snowPresets.stone}
+                    snowLift={0.002}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="StoneMedium"
+                    stacks={stacks}
+                    name="StoneMedium"
+                    staticOpaqueCacheGroup="static-props"
+                    geometry={(gltf) => gltf.nodes.Stone_Medium.geometry}
+                    material={(gltf) => gltf.nodes.Stone_Medium.material}
+                    scale={[0.236, 0.269, 0.205]}
+                    snow={snowPresets.stone}
+                    snowLift={0.002}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="StoneLarge"
+                    stacks={stacks}
+                    name="StoneLarge"
+                    geometry={(gltf) => gltf.nodes.Stone_Large.geometry}
+                    material={(gltf) => gltf.nodes.Stone_Large.material}
+                    scale={[0.263, 0.426, 0.291]}
+                    snow={snowPresets.stone}
+                    snowLift={0.002}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="DesertStoneSmall"
+                    stacks={stacks}
+                    name="DesertStoneSmall"
+                    geometry={(gltf) =>
+                        gltf.nodes.DesertStoneSmall_Body.geometry
+                    }
+                    material={() => desertStoneBodyMaterial}
+                    scale={[0.165, 0.165, 0.165]}
+                    renderRainWetOverlay
+                    snow={snowPresets.stone}
+                    snowLift={0.002}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="DesertStoneSmall"
+                    stacks={stacks}
+                    name="DesertStoneSmall"
+                    geometry={(gltf) =>
+                        gltf.nodes.DesertStoneSmall_Crevices.geometry
+                    }
+                    material={() => desertStoneGrooveMaterial}
+                    scale={[0.165, 0.165, 0.165]}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="DesertStoneMedium"
+                    stacks={stacks}
+                    name="DesertStoneMedium"
+                    geometry={(gltf) =>
+                        gltf.nodes.DesertStoneMedium_Body.geometry
+                    }
+                    material={() => desertStoneBodyMaterial}
+                    scale={[0.236, 0.269, 0.205]}
+                    renderRainWetOverlay
+                    snow={snowPresets.stone}
+                    snowLift={0.002}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="DesertStoneMedium"
+                    stacks={stacks}
+                    name="DesertStoneMedium"
+                    geometry={(gltf) =>
+                        gltf.nodes.DesertStoneMedium_Crevices.geometry
+                    }
+                    material={() => desertStoneGrooveMaterial}
+                    scale={[0.236, 0.269, 0.205]}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="DesertStoneLarge"
+                    stacks={stacks}
+                    name="DesertStoneLarge"
+                    geometry={(gltf) =>
+                        gltf.nodes.DesertStoneLarge_Body.geometry
+                    }
+                    material={() => desertStoneBodyMaterial}
+                    scale={[0.263, 0.426, 0.291]}
+                    renderRainWetOverlay
+                    snow={snowPresets.stone}
+                    snowLift={0.002}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="DesertStoneLarge"
+                    stacks={stacks}
+                    name="DesertStoneLarge"
+                    geometry={(gltf) =>
+                        gltf.nodes.DesertStoneLarge_Crevices.geometry
+                    }
+                    material={() => desertStoneGrooveMaterial}
+                    scale={[0.263, 0.426, 0.291]}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="Stick"
+                    stacks={stacks}
+                    name="Stick"
+                    geometry={(gltf) => gltf.nodes.Stick.geometry}
+                    material={(gltf) => gltf.nodes.Stick.material}
+                    scale={RAISED_BED_SUPPORT_SCALE}
+                    snow={snowPresets.tool}
+                    snowLift={0.002}
+                    {...commonSnowProps}
+                />
+                <EntityInstancesAssetBlock
+                    assetName="Seed"
+                    stacks={stacks}
+                    name="Seed"
+                    geometry={(gltf) => gltf.nodes.Seed.geometry}
+                    material={(gltf) => gltf.nodes.Seed.material}
+                />
+                <Suspense fallback={null}>
+                    <RaisedBedGeneratedPlantInstances
+                        quality={qualityProfile}
+                        stacks={stacks}
+                    />
+                </Suspense>
+                <Suspense fallback={null}>
+                    <AdditionalEntityInstances
+                        stacks={stacks}
+                        {...commonSnowProps}
+                    />
+                </Suspense>
+            </StaticRenderPacketBatchProvider>
         </EntityBlockInstanceIndexContext.Provider>
     );
 }

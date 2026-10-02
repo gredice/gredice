@@ -37,6 +37,10 @@ failure or unavailability keeps the existing instanced geometry visible; it does
 not force a large synchronous merge. Current transforms and hitboxes are visible
 while a replacement packet is compiling.
 
+Stable terrain chunks that share a material and vertex layout are joined
+across components into chunk render packets; see
+[static render packets](game-static-render-packets.md).
+
 Each committed geometry has one effect owner. Replacement/unmount cancels its
 job, disposes its GPU geometry, and releases references. The last compiler lease
 terminates the worker and clears its queue. There is no worker template cache or
