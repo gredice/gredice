@@ -27,6 +27,7 @@ export function useBackpackOpenParam() {
 
 export const backpackInventoryTab = 'backpack';
 export const gardenBoxesInventoryTab = 'gardenBoxes';
+export const gardenPacksInventoryTab = 'gardenPacks';
 const backpackInventoryParamParsers = {
     ruksak: parseAsBoolean.withDefault(false),
     'ruksak-kartica': parseAsString.withDefault(backpackInventoryTab),
@@ -41,6 +42,7 @@ export function useBackpackTabParam() {
 }
 
 export function normalizeBackpackTab(value: string | null | undefined) {
+    if (value === gardenPacksInventoryTab) return gardenPacksInventoryTab;
     return value === gardenBoxesInventoryTab
         ? gardenBoxesInventoryTab
         : backpackInventoryTab;
