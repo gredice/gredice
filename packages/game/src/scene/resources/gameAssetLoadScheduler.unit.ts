@@ -155,7 +155,7 @@ describe('game asset load scheduler', () => {
         assert.deepEqual(harness.started, ['a']);
     });
 
-    it('treats failures as settled and does not retry them', async () => {
+    it('reports failures without retrying or marking them ready', async () => {
         const harness = createHarness(1);
         harness.scheduler.setPlan(plan([['broken', 'current']]));
         await harness.fail('broken');
@@ -164,7 +164,9 @@ describe('game asset load scheduler', () => {
         assert.deepEqual(harness.started, ['broken']);
         const snapshot = harness.scheduler.getSnapshot();
         assert.equal(snapshot.failed, 1);
-        assert.equal(snapshot.currentReady, true);
+        assert.equal(snapshot.failedRequests.current, 1);
+        assert.equal(snapshot.currentReady, false);
+        assert.equal(snapshot.transitionReady, false);
 
         harness.scheduler.resetFailures();
         harness.scheduler.setPlan(plan([['broken', 'current']]));

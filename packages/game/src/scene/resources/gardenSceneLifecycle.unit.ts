@@ -81,6 +81,31 @@ describe('garden scene lifecycle', () => {
         assert.equal(snapshot.contextRestorations, 1);
     });
 
+    it('revokes readiness on context loss until a restored frame', () => {
+        const { lifecycle, advance } = createLifecycle();
+        lifecycle.setGarden(1);
+        lifecycle.setCurrentReady(true);
+        lifecycle.setInteractive(true);
+        advance(20);
+        lifecycle.frame();
+        assert.equal(lifecycle.getSnapshot().state, 'interaction-ready');
+
+        lifecycle.contextLost();
+        assert.equal(lifecycle.getSnapshot().state, 'loading');
+        lifecycle.setInteractive(true);
+        assert.equal(lifecycle.getSnapshot().state, 'loading');
+
+        lifecycle.contextRestored();
+        assert.equal(lifecycle.getSnapshot().state, 'loading');
+        advance(500);
+        lifecycle.frame();
+        const snapshot = lifecycle.getSnapshot();
+        assert.equal(snapshot.state, 'interaction-ready');
+        // Timings still describe the garden's first load.
+        assert.equal(snapshot.firstNonblankFrameMs, 20);
+        assert.equal(snapshot.interactionReadyMs, 20);
+    });
+
     it('summarizes the manifest for profiles', () => {
         const current = createGardenSceneManifest({
             blockNames: ['Block_Ground', 'DogHouse'],

@@ -111,7 +111,7 @@ export class GardenSceneLifecycle {
             this.contextAvailable
         ) {
             this.state = 'first-nonblank-frame';
-            this.firstNonblankFrameMs = this.now() - this.startedAtMs;
+            this.firstNonblankFrameMs ??= this.now() - this.startedAtMs;
         }
         this.promote();
     }
@@ -120,6 +120,9 @@ export class GardenSceneLifecycle {
         if (!this.contextAvailable) return;
         this.contextAvailable = false;
         this.contextLosses++;
+        // Readiness must be re-earned by a frame submitted after restore.
+        // Recorded timings keep describing this garden's first load.
+        this.state = 'loading';
     }
 
     contextRestored() {
@@ -148,7 +151,7 @@ export class GardenSceneLifecycle {
             this.contextAvailable
         ) {
             this.state = 'interaction-ready';
-            this.interactionReadyMs = this.now() - this.startedAtMs;
+            this.interactionReadyMs ??= this.now() - this.startedAtMs;
         }
     }
 }

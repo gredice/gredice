@@ -91,7 +91,9 @@ and programs lazily on the next frame, without remounting the Canvas DOM node.
 
 `GardenSceneLifecycle` reports one state per displayed garden:
 
-- `loading`: current-priority assets are not resident yet.
+- `loading`: current-priority assets are not resident yet (a failed load
+  keeps the garden here and is counted in `sceneAssetLoads.failedRequests`),
+  or the context was lost and no frame has been submitted since restore.
 - `first-nonblank-frame`: the first frame submitted after they became
   resident (never while the context is lost).
 - `interaction-ready`: after that frame, once the switch transition has

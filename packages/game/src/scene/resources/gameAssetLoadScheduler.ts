@@ -37,10 +37,12 @@ export type GameAssetLoadSchedulerSnapshot = {
     cancelled: number;
     staleCompletions: number;
     paused: GameAssetLoadPauseReason[];
-    /** Every current-priority request of this plan is resident (or failed). */
+    /** Every current-priority request of this plan is resident. */
     currentReady: boolean;
-    /** Current and transition-next requests are resident (or failed). */
+    /** Current and transition-next requests are resident. */
     transitionReady: boolean;
+    /** Planned requests that failed and will not be retried. */
+    failedRequests: Record<GardenSceneAssetPriority, number>;
 };
 
 function emptyCounts(): PriorityCounts {
@@ -131,12 +133,19 @@ export class GameAssetLoadScheduler<Key extends string> {
     getSnapshot(): GameAssetLoadSchedulerSnapshot {
         const queued = emptyCounts();
         for (const request of this.queue) queued[request.priority]++;
-        const settled = (priorities: GardenSceneAssetPriority[]) =>
+        const failedRequests = emptyCounts();
+        for (const request of this.plan) {
+            if (this.failedKeys.has(request.name))
+                failedRequests[request.priority]++;
+        }
+        // A failed asset is settled but not resident, so it never counts as
+        // ready; the lifecycle stays in `loading` instead of false success.
+        const resident = (priorities: GardenSceneAssetPriority[]) =>
             this.plan.every(
                 (request) =>
                     !priorities.includes(request.priority) ||
-                    this.failedKeys.has(request.name) ||
                     (!this.inFlight.has(request.name) &&
+                        !this.failedKeys.has(request.name) &&
                         this.options.isLoaded(request.name)),
             );
         return {
@@ -150,8 +159,9 @@ export class GameAssetLoadScheduler<Key extends string> {
             cancelled: this.cancelled,
             staleCompletions: this.staleCompletions,
             paused: [...this.paused].sort(),
-            currentReady: settled(['current']),
-            transitionReady: settled(['current', 'transition-next']),
+            currentReady: resident(['current']),
+            transitionReady: resident(['current', 'transition-next']),
+            failedRequests,
         };
     }
 
