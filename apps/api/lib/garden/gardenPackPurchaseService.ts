@@ -31,16 +31,22 @@ import {
 } from './gardenPackPurchaseSchemas';
 import {
     getGardenPackStorageReadiness,
+    isGardenPackSalesEnabled,
     isGardenPackStorageEnabled,
 } from './gardenPackRollout';
 
 export type GardenPackPurchaseDependencies<Transaction> = {
     isStorageEnabled: () => boolean;
+    isSalesEnabled: () => boolean;
     isStorageReady: () => Promise<boolean>;
     withAccountTransaction: <T>(
         accountId: string,
         callback: (transaction: Transaction) => Promise<T>,
     ) => Promise<T>;
+    readCompletedPurchase: (
+        accountId: string,
+        operationId: string,
+    ) => Promise<Awaited<ReturnType<typeof getGardenPackPurchaseByOperation>>>;
     readPurchase: (
         accountId: string,
         operationId: string,
@@ -141,6 +147,22 @@ export function createGardenPackPurchaseService<Transaction>(
                     503,
                     'Paketi trenutačno nisu dostupni.',
                 );
+            // Shared catalogue readers may acquire their own pool connection. Prepare
+            // before economic locks; recheck receipt under the lock even on timeout.
+            const preexisting = await dependencies.readCompletedPurchase(
+                accountId,
+                command.operationId,
+            );
+            const prepared =
+                !preexisting && dependencies.isSalesEnabled()
+                    ? await settleGardenEconomicMutationDependency(async () => {
+                          const [offers, blocks] = await Promise.all([
+                              dependencies.getCatalogue(),
+                              dependencies.getBlocks(),
+                          ]);
+                          return { offers, blocks };
+                      }, dependencies.dependencyPreparationTimeoutMs)
+                    : undefined;
             return await dependencies.withAccountTransaction(
                 accountId,
                 async (transaction) => {
@@ -155,19 +177,13 @@ export function createGardenPackPurchaseService<Transaction>(
                             receipt: receiptFrom(existing, command),
                             replayed: true,
                         };
-                    // Receipt lookup precedes catalogue/model reads, including outages.
-                    const prepared =
-                        await settleGardenEconomicMutationDependency(
-                            async () => {
-                                const [offers, blocks] = await Promise.all([
-                                    dependencies.getCatalogue(),
-                                    dependencies.getBlocks(),
-                                ]);
-                                return { offers, blocks };
-                            },
-                            dependencies.dependencyPreparationTimeoutMs,
+                    if (!dependencies.isSalesEnabled())
+                        fail(
+                            'PACK_SALES_DISABLED',
+                            503,
+                            'Prodaja paketa trenutačno nije dostupna.',
                         );
-                    if (prepared.status === 'rejected')
+                    if (!prepared || prepared.status === 'rejected')
                         fail(
                             'PACK_CATALOGUE_UNAVAILABLE',
                             503,
@@ -304,11 +320,13 @@ export function createGardenPackPurchaseService<Transaction>(
 const defaultDependencies: GardenPackPurchaseDependencies<GardenPackTransaction> =
     {
         isStorageEnabled: isGardenPackStorageEnabled,
+        isSalesEnabled: isGardenPackSalesEnabled,
         isStorageReady: getGardenPackStorageReadiness,
         withAccountTransaction: (accountId, callback) =>
             withSunflowerAccountTransaction(accountId, (tx) =>
                 withAccountDeletionFenceTransaction(accountId, callback, tx),
             ),
+        readCompletedPurchase: getGardenPackPurchaseByOperation,
         readPurchase: getGardenPackPurchaseByOperation,
         grant: recordPurchasedGardenPack,
         debit: (accountId, amount, reason, tx) =>
