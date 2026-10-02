@@ -745,6 +745,7 @@ const blockNames = [
 ];
 
 type ItemsHudStoryOptions = {
+    appBaseUrl?: string;
     includeHarvestPumpkins?: boolean;
     includeGardenScarecrow?: boolean;
     includeHarvestCrates?: boolean;
@@ -911,6 +912,7 @@ function createItemsHudQueryClient({
 }
 
 function ItemsHudTestProviders({
+    appBaseUrl = 'http://localhost',
     includeHarvestPumpkins = true,
     includeGardenScarecrow = true,
     includeHarvestCrates = true,
@@ -1005,7 +1007,7 @@ function ItemsHudTestProviders({
     );
     const gameStore = useMemo(() => {
         const store = createGameState({
-            appBaseUrl: 'http://localhost',
+            appBaseUrl,
             freezeTime: new Date('2026-05-13T12:00:00.000Z'),
             isMock: false,
             localSandboxStorageKey,
@@ -1031,6 +1033,7 @@ function ItemsHudTestProviders({
         }
         return store;
     }, [
+        appBaseUrl,
         cameraTarget,
         closeup,
         localSandboxStorageKey,
@@ -1365,10 +1368,15 @@ export function SandboxItemsHudDropTargetStory() {
     );
 }
 
-export function LocalSandboxItemsHudStory() {
+export function LocalSandboxItemsHudStory({
+    appBaseUrl = '',
+}: {
+    appBaseUrl?: string;
+}) {
     return (
         <ItemsHudTestProviders
             isSandbox
+            appBaseUrl={appBaseUrl}
             localSandboxStorageKey={`${defaultLocalSandboxStorageKey}.items-hud-test`}
         >
             <div className="relative h-screen w-screen overflow-hidden">

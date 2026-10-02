@@ -5,6 +5,7 @@ import {
     autumnArrangements,
     getAutumnArrangementItems,
     getAutumnArrangementLayout,
+    getAutumnArrangementPreviewUrl,
     getAvailableAutumnArrangements,
 } from './autumnArrangements';
 
@@ -150,4 +151,20 @@ test('withdrawn prices and changed multi-cell spans hide stale previews', () => 
             (entry) => entry.id === 'woodland-path',
         ),
     );
+});
+
+test('preview URLs use the consumer game asset host', () => {
+    for (const arrangement of autumnArrangements) {
+        assert.equal(
+            getAutumnArrangementPreviewUrl(arrangement, ''),
+            arrangement.preview,
+        );
+        assert.equal(
+            getAutumnArrangementPreviewUrl(
+                arrangement,
+                'https://vrt.gredice.com/',
+            ),
+            `https://vrt.gredice.com${arrangement.preview}`,
+        );
+    }
 });

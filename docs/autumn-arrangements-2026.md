@@ -59,9 +59,49 @@ pnpm --filter garden exec playwright test --config playwright.autumn-arrangement
 Commit source inputs before capturing. The harness rejects dirty inputs outside its
 two output folders, records the input commit/tree and each scene's actual ISO time,
 season state, object identities, geometry counts and projected bounds, and verifies
-that no source changed during capture. High-quality early-day images are copied
-byte-for-byte to `apps/garden/public/assets/arrangements` for collection previews.
+that no source changed during capture. High-quality early-day images for harvest/woodland and the early-night evening image
+are copied byte-for-byte to `apps/garden/public/assets/arrangements` for collection previews.
 Every pictured object must have geometry and fit inside the canvas; decoration
 bounds must remain larger than 14 × 10 pixels on the small canvas. These bounds
 checks complement visual inspection; they are not an occlusion or device-performance
 benchmark. The committed JSON records are the reproduction evidence.
+
+
+## Reviewed examples
+
+| Harvest corner | Woodland path | Cozy evening seat |
+| --- | --- | --- |
+| ![Harvest corner in early autumn](autumn-arrangements-2026/harvest-corner-earlyAutumn-day.png) | ![Woodland path in early autumn](autumn-arrangements-2026/woodland-path-earlyAutumn-day.png) | ![Evening seating under its lamp](autumn-arrangements-2026/evening-seat-earlyAutumn-night.png) |
+
+At 390 px, low quality and reduced motion:
+
+| Harvest / early day | Woodland / late overcast | Evening / late night |
+| --- | --- | --- |
+| ![Small harvest reference](autumn-arrangements-2026/harvest-corner-earlyAutumn-day-low-static.png) | ![Small woodland reference](autumn-arrangements-2026/woodland-path-lateAutumn-overcast-low-static.png) | ![Small evening reference](autumn-arrangements-2026/evening-seat-lateAutumn-night-low-static.png) |
+
+The pumpkin cluster and orchard crate remain distinct at small size; the cream
+pumpkin and blue shirt separate the harvest corner from green early foliage. The
+woodland log's pale ends, large caps and stone survive the overcast cloud wash.
+The evening lamp visibly pools warm light on the cups, aster and blanket; the
+bench remains recognizable when particles/steam are absent. Night views without
+a lamp are intentionally darker, but each included silhouette stays discernible.
+The rear trees remain scenery and use the existing seasonal foliage progression.
+These are Chromium software-WebGL screenshots, not physical-device performance
+or touch/thermal acceptance results.
+
+The collection picker exposes an expandable “Primjer rasporeda” only after the
+same manifest's availability gate passes, with four exact decoration entries,
+occupied-cell count, and a separate scenery list. It makes no pack-price or
+automatic-placement promise. The component resolves the preview using the game
+store's `appBaseUrl`, just like GLB model URLs: local in Garden, and the configured
+Garden asset host when embedded in WWW. Current `LandingGameScene` passes
+`https://vrt.gredice.com`; its Next image configuration already permits that host.
+Other future consumers can call `getAutumnArrangementPreviewUrl` with their
+configured game asset host. Preview deployment remains a prerequisite for those
+consumers; typechecks alone do not prove live asset availability.
+
+Validation includes footprint/support/collision/approach checks, publication and
+price gating, all 72 scene captures, the three mobile expandable lists and image
+loads, keyboard navigation/back/ordinary purchase and drag behavior, and an
+embedded-host URL/image-readback test. The capture JSON records preserve the
+committed source revisions used to render them.

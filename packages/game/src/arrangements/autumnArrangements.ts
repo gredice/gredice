@@ -224,3 +224,11 @@ export function getAutumnArrangementLayout(
     }
     return { placements, garden: bounds(), decoration: bounds('included') };
 }
+
+/** Use the same host as game models when embedded in WWW or other consumers. */
+export function getAutumnArrangementPreviewUrl(
+    arrangement: AutumnArrangement,
+    appBaseUrl: string,
+) {
+    return `${appBaseUrl.replace(/\/+$/u, '')}${arrangement.preview}`;
+}

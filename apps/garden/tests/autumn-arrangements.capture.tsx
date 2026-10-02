@@ -159,7 +159,14 @@ for (const arrangement of autumnArrangements) {
                         ),
                         objects,
                     });
-                    if (!small && stage === 'earlyAutumn' && light === 'day')
+                    if (
+                        !small &&
+                        stage === 'earlyAutumn' &&
+                        light ===
+                            (arrangement.id === 'evening-seat'
+                                ? 'night'
+                                : 'day')
+                    )
                         await copyFile(
                             path.join(output, file),
                             path.join(publicOutput, `${arrangement.id}.png`),
