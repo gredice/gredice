@@ -167,6 +167,15 @@ mismatch ≤0.01 and P99 byte error ≤8. Depth keeps match ≥0.96, leak ≤0.0
 three verified hits. A failed savings comparison remains a negative result even
 when the safe live no-op passes its ownership checks.
 
+The observer also times cold, shadow-refresh and layer-change live renders,
+but those diagnostic samples carry window `-1` and cannot enter admission or
+advance its probe cadence. A legacy row polls the same timer and renders once
+without registry, lighting, geometry or material signature scans. Its disabled
+decision/replay metadata is reset while actual query/live counts and the resource
+peak remain visible. Switching cache preference off releases both targets;
+restarting keeps a monotonic benefit generation so pending pre-disable queries
+cannot become evidence for a later probe.
+
 `staticCacheEvidence` stores decision, budget, current/peak bytes, independent
 terrain/prop layer states, weather values and resource receipts outside timed
 windows. The target byte estimate already includes the 36-byte replay triangle;

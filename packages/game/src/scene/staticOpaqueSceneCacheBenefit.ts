@@ -104,6 +104,16 @@ export function createStaticOpaqueSceneCacheBenefitState(): StaticOpaqueSceneCac
     };
 }
 
+/** Preference changes start a fresh probe without reusing a pending query's ID. */
+export function restartStaticOpaqueSceneCacheBenefit(
+    state: StaticOpaqueSceneCacheBenefitState,
+): StaticOpaqueSceneCacheBenefitState {
+    return {
+        ...createStaticOpaqueSceneCacheBenefitState(),
+        windowId: state.windowId + 1,
+    };
+}
+
 function finiteNonNegative(value: number | undefined) {
     return typeof value === 'number' && Number.isFinite(value)
         ? Math.max(0, value)
