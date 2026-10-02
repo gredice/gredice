@@ -107,6 +107,16 @@ export function faunaPoseOraclePlugin() {
             }
             const names = entries.get(relative);
             if (!names) return null;
+            if (relative === 'butterflies/Butterflies.tsx') {
+                assert.equal(
+                    code.split('\n        updateButterflyRig({').length,
+                    2,
+                );
+                code = code.replace(
+                    '\n        updateButterflyRig({',
+                    '\n        __recordFaunaActorRoot(butterflyModel.scene, group);\n        updateButterflyRig({',
+                );
+            }
             if (
                 relative === 'ladybugs/Ladybugs.tsx' &&
                 code.includes('const poseSample = poseProgressRef.current;')
@@ -237,7 +247,7 @@ export function faunaPoseOraclePlugin() {
                     replacement.text +
                     result.slice(replacement.end);
             return {
-                code: `import { invokeFaunaPoseOracle as __invokeFaunaPoseOracle } from ${JSON.stringify(oracle)};\n${result}\n${additions.join('\n')}`,
+                code: `import { invokeFaunaPoseOracle as __invokeFaunaPoseOracle, recordFaunaActorRoot as __recordFaunaActorRoot } from ${JSON.stringify(oracle)};\n${result}\n${additions.join('\n')}`,
                 map: null,
             };
         },

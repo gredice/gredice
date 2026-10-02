@@ -102,6 +102,7 @@ function validateOracle(
         'semanticInputs',
         'presences',
         'simulationSteps',
+        'actorRoots',
     ]) {
         assert.ok(Array.isArray(receipt[key]), `Missing oracle ${key}`);
         finiteReceipt(receipt[key], key);
@@ -759,6 +760,7 @@ function compareNormativePoseInputs(reference, candidate, index) {
 }
 
 function compareMidpointInputs(previous, next, half) {
+    let hiddenButterflyBirths = 0;
     const calls = (frame) =>
         new Map(
             frame.poseOracle.calls.map((call) => [
@@ -792,6 +794,64 @@ function compareMidpointInputs(previous, next, half) {
         assert.ok(start, `${key}: unwitnessed midpoint pose target`);
         const expected = structuredClone(start.inputs);
         const name = call.sourceId.slice(call.sourceId.lastIndexOf(':') + 1);
+        if (name === 'updateButterflyRig' && !precedingActors.has(call.actor)) {
+            // A React birth can commit after the previous authoritative step.
+            // Its authored scale-zero group stays hidden until the next step;
+            // only the frozen initial-flight pose runs on this render.
+            assert.ok(right, `${key}: missing initial flight endpoint`);
+            assert.equal(
+                call.inputs.runtime,
+                null,
+                `${key}: initial flight advanced before the first fixed step`,
+            );
+            assert.equal(half.poseOracle.simulationSteps.length, 0);
+            assert.equal(half.poseOracle.presences.length, 0);
+            assert.ok(
+                ['meandering', 'approaching'].includes(
+                    right.inputs.runtime?.phase,
+                ),
+                `${key}: invalid initial flight endpoint`,
+            );
+            const roots = half.poseOracle.actorRoots.filter(
+                ({ actor }) => actor === call.actor,
+            );
+            assert.equal(roots.length, 1, `${key}: missing unique birth root`);
+            const root = roots[0];
+            assert.equal(
+                root.matchesObservedParent,
+                true,
+                `${key}: birth root differs from actual actor ref`,
+            );
+            finiteReceipt(root, `${key}:birth root`);
+            assert.deepEqual(root.local.position, [0, 0, 0]);
+            assert.deepEqual(root.local.quaternion, [0, 0, 0, 1]);
+            assert.deepEqual(root.local.scale, [0, 0, 0]);
+            assert.equal(root.matrixWorld.length, 16);
+            for (const index of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
+                assert.equal(
+                    root.matrixWorld[index],
+                    0,
+                    `${key}: birth world basis is not collapsed`,
+                );
+            assert.equal(root.matrixWorld[15], 1);
+            const actor = half.actors.find(({ id }) => id === call.actor);
+            assert.ok(actor, `${key}: missing observed birth actor`);
+            assert.deepEqual(actor.scale, [0, 0, 0]);
+            coherentInputs(
+                root.matrixWorld.slice(12, 15),
+                actor.position,
+                `${key}: birth world position`,
+            );
+            assert.ok(
+                call.inputs.descriptor &&
+                    typeof call.inputs.descriptor === 'object',
+                `${key}: missing birth descriptor`,
+            );
+            // Descriptor and every other input still bind the next endpoint;
+            // only the genuinely uninitialized runtime remains null here.
+            expected.runtime = null;
+            hiddenButterflyBirths += 1;
+        }
         delete expected.delta;
         if ('now' in expected) expected.now = call.clock.time;
         if ('time' in expected) expected.time = call.clock.time;
@@ -847,6 +907,7 @@ function compareMidpointInputs(previous, next, half) {
         );
         coherentInputs(expected, actual, `${key}:midpoint discrete targets`);
     }
+    return hiddenButterflyBirths;
 }
 
 /** Candidate60 retains the30Hz event schedule; independent clones prove all render poses. */
@@ -865,6 +926,7 @@ export function compareFaunaRenderCadences(ambient, interactive) {
         movingSpecies: new Set(),
         maxEndpointError: 0,
         maxHalfStepError: 0,
+        hiddenButterflyBirths: 0,
     };
     for (let index = 0; index < ambient.frames.length; index++) {
         const frame = ambient.frames[index];
@@ -964,7 +1026,11 @@ export function compareFaunaRenderCadences(ambient, interactive) {
             0,
             'Fixed simulation ran between steps',
         );
-        compareMidpointInputs(frame, next, half);
+        metrics.hiddenButterflyBirths += compareMidpointInputs(
+            frame,
+            next,
+            half,
+        );
         const halfActors = new Map(
             half.actors.map((actor) => [actor.id, actor]),
         );

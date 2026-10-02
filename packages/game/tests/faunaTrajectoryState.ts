@@ -1,5 +1,21 @@
+import type { Object3D, Vector3 } from 'three';
 import type { AnimalDebugCommand, AnimalDebugEntry } from '../src/useGameState';
 import type { FaunaPoseOracleFrame } from './faunaPoseOracle';
+
+/** Three's singular-matrix decomposition returns unit scale for hidden births. */
+export function readFaunaTrajectoryWorldScale(
+    object: Object3D,
+    target: Vector3,
+) {
+    object.updateWorldMatrix(true, false);
+    const elements = object.matrixWorld.elements;
+    const x = Math.hypot(elements[0], elements[1], elements[2]);
+    return target.set(
+        object.matrixWorld.determinant() < 0 ? -x : x,
+        Math.hypot(elements[4], elements[5], elements[6]),
+        Math.hypot(elements[8], elements[9], elements[10]),
+    );
+}
 
 export const faunaTrajectorySpecies = [
     'Cow',

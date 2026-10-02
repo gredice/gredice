@@ -133,6 +133,7 @@ function oracle(frame, fps, mode, resume = false) {
                 : [],
         semanticWrites: [],
         semanticInputs: [],
+        actorRoots: [],
         presences:
             mode === 'baseline' || fps === 30 || frame.index % 2 === 0 || resume
                 ? [
@@ -246,6 +247,124 @@ function rebind(report) {
 }
 const cadences = (candidate) =>
     compareFaunaRenderCadences(candidate.captures[0], candidate.captures[1]);
+
+function hiddenButterflyBirth() {
+    const candidate = report('candidate');
+    const actorId = 'Butterfly:0';
+    const butterflySource = manualSources.find(
+        ({ name }) => name === 'updateButterflyRig',
+    );
+    const key = sourceId(butterflySource);
+    for (const trace of candidate.captures.slice(0, 2)) {
+        for (const frame of trace.frames) {
+            const call = frame.poseOracle.calls.find(
+                ({ sourceId }) => sourceId === key,
+            );
+            call.inputs = {
+                now: call.clock.time,
+                delta: call.clock.delta,
+                descriptor: { id: 'butterfly-spawn-1', seed: 1, bornAt: 0 },
+                runtime: { phase: 'meandering', startedAt: 1 / 30 },
+            };
+        }
+        const first = trace.frames[0];
+        first.actors = first.actors.filter(({ id }) => id !== actorId);
+        first.debug = first.debug.filter(({ id }) => id !== actorId);
+        first.counts.Butterfly = 0;
+        first.poseOracle.calls = first.poseOracle.calls.filter(
+            ({ actor }) => actor !== actorId,
+        );
+    }
+    const half = candidate.captures[1].frames[1];
+    half.poseOracle.calls.find(
+        ({ actor }) => actor === actorId,
+    ).inputs.runtime = null;
+    half.actors.find(({ id }) => id === actorId).scale = [0, 0, 0];
+    half.poseOracle.actorRoots = [
+        {
+            actor: actorId,
+            matchesObservedParent: true,
+            local: {
+                position: [0, 0, 0],
+                quaternion: [0, 0, 0, 1],
+                scale: [0, 0, 0],
+            },
+            matrixWorld: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        },
+    ];
+    return rebind(candidate);
+}
+
+test('accepts only the observed hidden initial Butterfly flight before its first fixed step', () => {
+    assert.equal(cadences(hiddenButterflyBirth()).hiddenButterflyBirths, 1);
+});
+
+test('rejects visible, mismatched, missing and retained-null Butterfly birth witnesses', () => {
+    for (const alter of [
+        (_candidate, half) => {
+            half.poseOracle.actorRoots[0].local.scale[0] = 1;
+        },
+        (_candidate, half) => {
+            half.poseOracle.actorRoots[0].matrixWorld[0] = 0.001;
+        },
+        (_candidate, half) => {
+            half.actors.find(({ species }) => species === 'Butterfly').scale = [
+                1, 1, 1,
+            ];
+        },
+        (_candidate, half) => {
+            half.poseOracle.actorRoots[0].matchesObservedParent = false;
+        },
+        (_candidate, half) => {
+            half.poseOracle.actorRoots = [];
+        },
+        (_candidate, half) => {
+            half.poseOracle.actorRoots.push(half.poseOracle.actorRoots[0]);
+        },
+        (_candidate, half) => {
+            half.poseOracle.actorRoots[0].matrixWorld[12] = Number.NaN;
+        },
+        (_candidate, half) => {
+            half.poseOracle.calls.find(
+                ({ actor }) => actor === 'Butterfly:0',
+            ).inputs.descriptor.seed = 2;
+        },
+        (_candidate, half) => {
+            half.poseOracle.calls.find(
+                ({ actor }) => actor === 'Butterfly:0',
+            ).inputs.runtime = { phase: 'resting' };
+        },
+        (candidate, half) => {
+            half.poseOracle.calls.find(
+                ({ actor }) => actor === 'Butterfly:0',
+            ).inputs.runtime = structuredClone(
+                candidate.captures[1].frames[2].poseOracle.calls.find(
+                    ({ actor }) => actor === 'Butterfly:0',
+                ).inputs.runtime,
+            );
+        },
+        (candidate) => {
+            // Even a common wrong next endpoint cannot authorize a null birth.
+            for (const [trace, frame] of [
+                [0, 1],
+                [1, 2],
+            ])
+                candidate.captures[trace].frames[frame].poseOracle.calls.find(
+                    ({ actor }) => actor === 'Butterfly:0',
+                ).inputs.runtime.phase = 'resting';
+        },
+        (candidate) => {
+            candidate.captures[1].frames[3].poseOracle.calls.find(
+                ({ actor }) => actor === 'Butterfly:0',
+            ).inputs.runtime = null;
+        },
+    ]) {
+        const candidate = hiddenButterflyBirth();
+        alter(candidate, candidate.captures[1].frames[1]);
+        rebind(candidate);
+        assert.throws(() => cadences(candidate));
+    }
+});
 
 test('accepts all three normative legacy30 traces and independently clocked candidate60', () => {
     const baseline = report('baseline'),

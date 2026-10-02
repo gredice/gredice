@@ -35,6 +35,32 @@ function pose({ rig, now, delta }: ReturnType<typeof createRig>['input']) {
     rig.object.position.y = rig.amount;
 }
 
+test('observes the actual hidden birth root without changing its transform', async () => {
+    const model = createRig(),
+        actor = new Group(),
+        oracle = createFaunaPoseOracle();
+    actor.add(model.root);
+    actor.scale.setScalar(0);
+    actor.updateWorldMatrix(true, true);
+    oracle.setModel(model.root, 'Butterfly:0', null, actor);
+    oracle.beginFrame(1 / 60, 1 / 60);
+    oracle.recordActorRoot(model.root, actor);
+    const receipt = await oracle.receipt([]);
+    assert.equal(receipt.actorRoots[0].matchesObservedParent, true);
+    assert.deepEqual(receipt.actorRoots[0].local.scale, [0, 0, 0]);
+    assert.deepEqual(
+        receipt.actorRoots[0].matrixWorld,
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    );
+    assert.deepEqual(actor.scale.toArray(), [0, 0, 0]);
+    oracle.setModel(model.root, 'Butterfly:0', null, new Group());
+    oracle.beginFrame(1 / 30, 1 / 60);
+    assert.equal(
+        (await oracle.receipt([])).actorRoots[0].matchesObservedParent,
+        false,
+    );
+});
+
 test('reconstructs persistent damped rig state and rejects a changed recurrence', async () => {
     const model = createRig(),
         oracle = createFaunaPoseOracle();

@@ -46,6 +46,12 @@ export type FaunaPoseOracleFrame = {
     }[];
     presences: unknown[];
     simulationSteps: { now: number; delta: number }[];
+    actorRoots: {
+        actor: string;
+        matchesObservedParent: boolean;
+        local: Transform;
+        matrixWorld: number[];
+    }[];
 };
 type Model = {
     root: Object3D;
@@ -55,6 +61,7 @@ type Model = {
     id: string;
     visual?: { node: Object3D; transform: Transform };
     actorRoot?: Object3D;
+    observedActorRoot?: Object3D;
 };
 const transform = (node: Object3D): Transform => ({
     position: node.position.toArray(),
@@ -108,6 +115,7 @@ export function createFaunaPoseOracle(
             semanticInputs: [],
             presences: [],
             simulationSteps: [],
+            actorRoots: [],
         } satisfies Omit<FaunaPoseOracleFrame, 'poseHash'>;
     }
     function ensureModel(root: Object3D): Model {
@@ -381,6 +389,9 @@ export function createFaunaPoseOracle(
         recordPresence: (presence: unknown) => {
             frame.presences.push(structuredClone(presence));
         },
+        recordActorRoot: (modelRoot: Object3D, actorRoot: Object3D) => {
+            ensureModel(modelRoot).observedActorRoot = actorRoot;
+        },
         recordSimulation: (
             step: { now: number; delta: number },
             actorRoot?: Object3D | null,
@@ -571,6 +582,16 @@ export function createFaunaPoseOracle(
         },
         async receipt(poses: unknown): Promise<FaunaPoseOracleFrame> {
             for (const model of models.values()) verify(model);
+            for (const model of models.values()) {
+                const actorRoot = model.observedActorRoot;
+                if (!actorRoot) continue;
+                frame.actorRoots.push({
+                    actor: model.id,
+                    matchesObservedParent: model.actorRoot === actorRoot,
+                    local: transform(actorRoot),
+                    matrixWorld: actorRoot.matrixWorld.toArray(),
+                });
+            }
             frame.checkedPoses = [...checkedPoses.values()];
             for (const command of frame.commands)
                 command.actor = commandModels.get(command)?.id ?? command.actor;
@@ -702,4 +723,7 @@ export function recordFaunaSimulationStep(
     actorRoot?: Object3D | null,
 ) {
     active?.recordSimulation(frame, actorRoot);
+}
+export function recordFaunaActorRoot(modelRoot: Object3D, actorRoot: Object3D) {
+    active?.recordActorRoot(modelRoot, actorRoot);
 }

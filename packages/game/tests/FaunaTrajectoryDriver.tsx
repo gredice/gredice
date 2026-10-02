@@ -13,6 +13,7 @@ import {
     type FaunaTrajectoryScenario,
     type FaunaTrajectoryWitness,
     faunaTrajectorySpecies,
+    readFaunaTrajectoryWorldScale,
 } from './faunaTrajectoryState';
 
 function isPrimitive(object: Object3D) {
@@ -151,7 +152,10 @@ export function FaunaTrajectoryDriver({
                         quaternion: actorRoot
                             .getWorldQuaternion(worldQuaternion)
                             .toArray(),
-                        scale: actorRoot.getWorldScale(worldScale).toArray(),
+                        scale: readFaunaTrajectoryWorldScale(
+                            actorRoot,
+                            worldScale,
+                        ).toArray(),
                         pose,
                     });
                 });

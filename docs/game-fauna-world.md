@@ -197,7 +197,14 @@ Candidate 60 Hz uses that same authoritative 30 Hz seeded schedule. Endpoints,
 presence and action commands match candidate 30 Hz; render midpoints interpolate
 roots and retain the same fixed-step behavior targets. A population timer may
 mount a new actor between steps, but its first authoritative movement/presence
-waits for the next simulation boundary. The legacy 60 Hz replay remains an
+waits for the next simulation boundary. A newborn butterfly retains its authored
+zero root scale while its runtime is still null; its rig can already apply the
+initial flight pose at the current render clock. The witness records the actual
+actor ref, local transform and world matrix, and reads world scale from matrix
+basis lengths. Three r186's singular-matrix decomposition otherwise reports unit
+scale for this collapsed, hidden root. The newborn boundary requires zero scale
+and no simulation/presence receipt; it never substitutes a later flight runtime
+for the actual null input. The legacy 60 Hz replay remains an
 explicit diagnostic of the previous cadence-sensitive decisions and births.
 Preserving those different legacy 60 Hz schedules is not the fixed-step migration
 claim. Interactive 60 Hz leases are supported by the production scene scheduler.
