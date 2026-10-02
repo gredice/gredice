@@ -94,6 +94,7 @@ import {
     shouldReadRuntimeOwnerLeaseRafSnapshot,
     writeReports,
 } from './profile-game-scene.mjs';
+import { allowMissingStaticCacheShadowPopulation } from './static-cache-clearance.mjs';
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -2432,6 +2433,78 @@ test('cross-tier resource snapshot state rejects malformed raw population teleme
         } else {
             delete globalThis.__gameProfileMetrics;
         }
+    }
+});
+
+test('cache resource witnesses reuse absent shadow-registry policy only for requested and observed disabled shadows', async () => {
+    const previousProfile = globalThis.__grediceGameProfile;
+    const previousMetrics = globalThis.__gameProfileMetrics;
+    const page = { evaluate: async (callback, argument) => callback(argument) };
+    try {
+        globalThis.__grediceGameProfile = {
+            shadowsEnabled: false,
+            rendererGeometries: 197,
+            rendererShaders: 21,
+            rendererTextures: 4,
+        };
+        globalThis.__gameProfileMetrics = {
+            actorGroundingShadowSpeciesCountMax: {},
+        };
+        for (const [expected, observed, allowed] of [
+            [false, false, true],
+            [true, true, false],
+            [true, false, false],
+            [false, true, false],
+            [false, undefined, false],
+            [undefined, false, false],
+        ]) {
+            globalThis.__grediceGameProfile.shadowsEnabled = observed;
+            const allowMissingPopulation =
+                allowMissingStaticCacheShadowPopulation(
+                    expected,
+                    globalThis.__grediceGameProfile.shadowsEnabled,
+                );
+            assert.equal(allowMissingPopulation, allowed);
+            const snapshot = await readCrossTierResourceSnapshotState(page, {
+                allowMissingPopulation,
+            });
+            assert.equal(
+                populationExposureCovers(
+                    snapshot.populationExposure,
+                    snapshot.population,
+                ),
+                allowed,
+            );
+            assert.deepEqual(snapshot.population, allowed ? {} : null);
+        }
+        globalThis.__grediceGameProfile.actorGroundingShadowSpeciesCounts = {
+            Cow: 0.5,
+        };
+        const malformed = await readCrossTierResourceSnapshotState(page, {
+            allowMissingPopulation: allowMissingStaticCacheShadowPopulation(
+                false,
+                false,
+            ),
+        });
+        assert.equal(
+            malformed.population,
+            null,
+            'Disabled shadows cannot authorize malformed observed registrations',
+        );
+        assert.equal(
+            populationExposureCovers(
+                malformed.populationExposure,
+                malformed.population,
+            ),
+            false,
+        );
+    } finally {
+        if (previousProfile === undefined)
+            delete globalThis.__grediceGameProfile;
+        else globalThis.__grediceGameProfile = previousProfile;
+        if (previousMetrics === undefined)
+            delete globalThis.__gameProfileMetrics;
+        else globalThis.__gameProfileMetrics = previousMetrics;
     }
 });
 

@@ -196,6 +196,14 @@ cache rows and missing rendered effects fail clearance.
 Automatic hardware witnesses are deterministic browser overrides for coverage;
 they do not replace physical-device memory, thermal or GPU clearance.
 
+Low disables grounding shadows, so its shadow registry has no registrations.
+Supplemental resource snapshots reuse the canonical absent-registry policy only
+when both the requested tier and the freshly observed runtime disable shadows.
+The recorded `shadowPopulationPolicy` names that boundary; an empty shadow
+exposure does not claim zero fauna. Enabled, unknown or mismatched shadow modes
+still require valid population telemetry, and malformed counts always fail.
+Actual fixture blocks/plants and fauna trajectories have separate witnesses.
+
 Retained compiler source reuse has a separate 4 MiB/256-source bound documented
 in [game-retained-chunks.md](./game-retained-chunks.md). Shared palette geometry
 is an owned clone with immutable PBR attributes; its identity/version and

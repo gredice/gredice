@@ -2,6 +2,14 @@
 export const staticCacheClearanceMeasurementMode = 'cache-owned-render-pass-v1';
 export const staticCacheClearanceMinimumSoakMs = 60_000;
 
+/** The canonical resource barrier observes shadow registrations, not all fauna. */
+export function allowMissingStaticCacheShadowPopulation(
+    expectedShadows,
+    observedShadows,
+) {
+    return expectedShadows === false && observedShadows === false;
+}
+
 export function buildStaticCacheClearanceScenarioSets(profiles) {
     const common = (profile) => ({
         viewport: { width: 1280, height: 720 },

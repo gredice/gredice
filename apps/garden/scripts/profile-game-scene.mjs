@@ -6,6 +6,7 @@ import { chromium } from '@playwright/test';
 import sharp from 'sharp';
 import { assertSafeGameProfileOutputDirectory } from './game-profile-output.mjs';
 import {
+    allowMissingStaticCacheShadowPopulation,
     buildStaticCacheClearanceScenarioSets,
     classifyStaticCacheWitness,
     evaluateStaticCacheClearance,
@@ -8222,6 +8223,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
                     await captureStaticCacheWitness(
                         page,
                         lifecycleRendererStatsMode,
+                        scenario.expectedShadows,
                     ),
                 ],
                 soakMs: 0,
@@ -8636,6 +8638,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
                 await captureStaticCacheWitness(
                     page,
                     lifecycleRendererStatsMode,
+                    scenario.expectedShadows,
                 ),
             );
         }
@@ -8868,12 +8871,28 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
     }
 }
 
-async function captureStaticCacheWitness(page, rendererStatsMode) {
+async function captureStaticCacheWitness(
+    page,
+    rendererStatsMode,
+    expectedShadows,
+) {
+    const observedShadows = await page.evaluate(
+        () => globalThis.__grediceGameProfile?.shadowsEnabled,
+    );
+    const allowMissingPopulation = allowMissingStaticCacheShadowPopulation(
+        expectedShadows,
+        observedShadows,
+    );
     const resources = await captureCrossTierResourceSnapshot(
         page,
         rendererStatsMode,
+        { allowMissingPopulation },
     );
     const witness = await page.evaluate(readStaticCacheWitness);
+    if (allowMissingPopulation && witness.shadowsEnabled !== false)
+        throw new Error(
+            'Disabled-shadow population policy changed during the resource witness',
+        );
     return {
         ...witness,
         ...resources.resources,
@@ -8883,10 +8902,18 @@ async function captureStaticCacheWitness(page, rendererStatsMode) {
             rendererStatsMode,
         ),
         populationExposureSignature: resources.populationExposureSignature,
+        shadowPopulationPolicy: allowMissingPopulation
+            ? 'observed-disabled-shadow-registry'
+            : 'registered-shadow-population',
     };
 }
 
-async function runStaticCacheLayerCycle(page, rendererStatsMode, evidence) {
+async function runStaticCacheLayerCycle(
+    page,
+    rendererStatsMode,
+    evidence,
+    expectedShadows,
+) {
     const requests = [
         'snow-sparse-to-integrated',
         'snow-integrated-to-sparse',
@@ -8935,6 +8962,7 @@ async function runStaticCacheLayerCycle(page, rendererStatsMode, evidence) {
         const witness = await captureStaticCacheWitness(
             page,
             rendererStatsMode,
+            expectedShadows,
         );
         evidence.layers.push({ request, dispatched, witness });
         evidence.witnesses.push(witness);
@@ -9234,6 +9262,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 await captureStaticCacheWitness(
                     page,
                     crossTierRendererStatsMode,
+                    scenario.expectedShadows,
                 ),
             ],
             soakMs: 0,
@@ -9289,6 +9318,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 await captureStaticCacheWitness(
                     page,
                     crossTierRendererStatsMode,
+                    scenario.expectedShadows,
                 ),
             );
         }
@@ -9301,6 +9331,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             page,
             crossTierRendererStatsMode,
             staticCacheEvidence,
+            scenario.expectedShadows,
         );
     }
     const motionRunsBeforeSample = scenario.motion === 'foliage-detail-zoom';
@@ -11897,7 +11928,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
 
     if (staticCacheEvidence) {
         staticCacheEvidence.witnesses.push(
-            await captureStaticCacheWitness(page, crossTierRendererStatsMode),
+            await captureStaticCacheWitness(
+                page,
+                crossTierRendererStatsMode,
+                scenario.expectedShadows,
+            ),
         );
         runtime = { ...runtime, ...staticCacheEvidence.witnesses.at(-1) };
     }
