@@ -30,29 +30,19 @@ import {
     withSunflowerAccountTransaction,
 } from '@gredice/storage';
 import { gardenPackProductSnapshotSchema } from '@gredice/storage/gardenPackContract';
-import { generateDrizzleJson, generateMigration } from 'drizzle-kit/api';
+import {
+    gardenPackIntegritySql,
+    getGardenPackTestDdl,
+} from '@gredice/storage/testing/gardenPackTestSchema';
 import { eq, sql } from 'drizzle-orm';
-import { createGardenPackPlacementService } from '../../../apps/api/lib/garden/gardenPackPlacementService';
-import * as completeSchema from '../src/schema';
-import { gardenPackIntegritySql } from '../src/schema/gardenPackIntegrity';
+import { createGardenPackPlacementService } from './gardenPackPlacementService';
 
 const enabled =
     process.env.TEST_ENV === '1' &&
     process.env.GREDICE_PACK_PLACEMENT_TEST === '1';
 before(async () => {
     if (!enabled) return;
-    const statements = await generateMigration(
-        generateDrizzleJson({}),
-        generateDrizzleJson(completeSchema),
-    );
-    // Drizzle emits some foreign keys before their supporting unique indexes.
-    const foreignKeys = statements.filter((statement) =>
-        statement.includes('FOREIGN KEY'),
-    );
-    for (const statement of [
-        ...statements.filter((statement) => !statement.includes('FOREIGN KEY')),
-        ...foreignKeys,
-    ])
+    for (const statement of await getGardenPackTestDdl())
         await storage().execute(sql.raw(statement));
     await storage().execute(sql.raw(gardenPackIntegritySql));
 });
