@@ -18,9 +18,11 @@ export function Hedgehogs({
     gardenId,
     quality,
     weather,
+    enabled = true,
 }: {
     stacks: Stack[] | undefined;
     gardenId?: string | number;
+    enabled?: boolean;
     quality: GameQualityProfile;
     weather?: { rainy?: number | null; snowy?: number | null };
 }) {
@@ -74,6 +76,7 @@ export function Hedgehogs({
             key={`${habitat.id}:${habitat.revision}:${visit.sequence}`}
             habitat={habitat}
             sequence={visit.sequence}
+            enabled={enabled}
             lowQuality={
                 quality.tier === 'low' || quality.tier === 'auto-constrained'
             }
