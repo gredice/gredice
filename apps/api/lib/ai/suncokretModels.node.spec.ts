@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createGateway } from 'ai';
 import {
     estimateSuncokretRequestCostMicroEur,
     getSuncokretGatewayBilledCostMicroEur,
@@ -286,4 +287,205 @@ test('Suncokret fallback usage pricing picks the long-context tier from the larg
             0.22,
         );
     });
+});
+
+function generationInfo(id: string, totalCost = 0.001) {
+    return {
+        id,
+        totalCost,
+        upstreamInferenceCost: 0,
+        usage: totalCost,
+        createdAt: '2026-10-02T00:00:00.000Z',
+        model: 'openai/gpt-6-luna',
+        isByok: false,
+        providerName: 'openai',
+        streamed: true,
+        finishReason: 'stop',
+        latency: 1,
+        generationTime: 1,
+        promptTokens: 1,
+        completionTokens: 1,
+        reasoningTokens: 0,
+        cachedTokens: 0,
+        cacheCreationTokens: 0,
+        billableWebSearchCalls: 0,
+    };
+}
+
+function usageNotFound() {
+    // Exact production SDK wrapper: isRetryable is false even though the
+    // ingestion delay makes this particular response safe to poll.
+    return Object.assign(new Error('Invalid error response format'), {
+        name: 'GatewayResponseError',
+        statusCode: 404,
+        isRetryable: false,
+        response: { error: 'Usage event not found', id: 'gen_delayed' },
+    });
+}
+
+const delayedSteps = [
+    { providerMetadata: { gateway: { generationId: 'gen_ready' } } },
+    { providerMetadata: { gateway: { generationId: 'gen_delayed' } } },
+    { providerMetadata: { gateway: { generationId: 'gen_delayed' } } },
+];
+
+test('Gateway retries delayed usage and fetches ready and duplicate generations only once', async () => {
+    await withModelEnvAsync({}, async () => {
+        const calls: string[] = [];
+        const delays: number[] = [];
+        const billed = await getSuncokretGatewayBilledCostMicroEur(
+            delayedSteps,
+            async (id) => {
+                calls.push(id);
+                if (
+                    id === 'gen_delayed' &&
+                    calls.filter((x) => x === id).length < 3
+                ) {
+                    throw usageNotFound();
+                }
+                return generationInfo(id);
+            },
+            async (ms) => {
+                delays.push(ms);
+            },
+        );
+        assert.equal(billed, 1760);
+        assert.deepEqual(delays, [1000, 2000]);
+        assert.equal(calls.filter((x) => x === 'gen_ready').length, 1);
+        assert.equal(calls.filter((x) => x === 'gen_delayed').length, 3);
+    });
+});
+
+test('Gateway stops polling persistently missing usage after four attempts without partial billing', async () => {
+    let attempts = 0;
+    const delays: number[] = [];
+    const error = usageNotFound();
+    await assert.rejects(
+        getSuncokretGatewayBilledCostMicroEur(
+            delayedSteps,
+            async (id) => {
+                if (id === 'gen_ready') return generationInfo(id);
+                attempts++;
+                throw error;
+            },
+            async (ms) => {
+                delays.push(ms);
+            },
+        ),
+        (caught) => caught === error,
+    );
+    assert.equal(attempts, 4);
+    assert.deepEqual(delays, [1000, 2000, 4000]);
+});
+
+test('Gateway does not poll authentication, unrelated not-found, network or validation errors', async () => {
+    for (const error of [
+        Object.assign(new Error('Unauthorized'), { statusCode: 401 }),
+        Object.assign(new Error('Missing model'), {
+            statusCode: 404,
+            response: { error: 'Model not found' },
+        }),
+        new Error('Network error'),
+        Object.assign(new Error('Invalid response'), { statusCode: 502 }),
+    ]) {
+        let attempts = 0;
+        await assert.rejects(
+            getSuncokretGatewayBilledCostMicroEur(
+                delayedSteps.slice(0, 1),
+                async () => {
+                    attempts++;
+                    throw error;
+                },
+                async () => {
+                    assert.fail('Unexpected retry');
+                },
+            ),
+            (caught) => caught === error,
+        );
+        assert.equal(attempts, 1);
+    }
+});
+
+test('Gateway applies a shared deadline even when a lookup ignores cancellation', async () => {
+    let lookupSignal: AbortSignal | undefined;
+    await assert.rejects(
+        getSuncokretGatewayBilledCostMicroEur(
+            delayedSteps.slice(0, 1),
+            async (_, signal) => {
+                lookupSignal = signal;
+                return new Promise<never>(() => {});
+            },
+            async () => {},
+            10,
+        ),
+        /cost lookup timed out/,
+    );
+    assert.equal(lookupSignal?.aborted, true);
+});
+
+test('Gateway returns no billed total for missing IDs or invalid individual costs', async () => {
+    assert.equal(
+        await getSuncokretGatewayBilledCostMicroEur([{}], async () => {
+            assert.fail('No generation to look up');
+        }),
+        null,
+    );
+    for (const totalCost of [-0.001, Number.NaN, Number.POSITIVE_INFINITY]) {
+        assert.equal(
+            await getSuncokretGatewayBilledCostMicroEur(
+                delayedSteps,
+                async (id) =>
+                    generationInfo(id, id === 'gen_ready' ? 1 : totalCost),
+            ),
+            null,
+        );
+    }
+    assert.equal(
+        await getSuncokretGatewayBilledCostMicroEur(
+            delayedSteps.slice(0, 1),
+            async () => generationInfo('wrong_id'),
+        ),
+        null,
+    );
+});
+
+test('Gateway preserves a valid zero billed cost', async () => {
+    assert.equal(
+        await getSuncokretGatewayBilledCostMicroEur(delayedSteps, async (id) =>
+            generationInfo(id, 0),
+        ),
+        0,
+    );
+});
+
+test('Gateway polls both string and structured not-yet responses wrapped by the real SDK', async () => {
+    for (const errorBody of [
+        { error: 'Usage event not found' },
+        { error: { type: 'not_found', message: 'Usage event not found' } },
+    ]) {
+        let polls = 0;
+        const provider = createGateway({
+            apiKey: 'test-only-key',
+            fetch: async () => {
+                polls++;
+                return Response.json(errorBody, { status: 404 });
+            },
+        });
+        let attempts = 0;
+        assert.equal(
+            await getSuncokretGatewayBilledCostMicroEur(
+                delayedSteps.slice(0, 1),
+                async (id) => {
+                    attempts++;
+                    if (attempts === 1)
+                        return provider.getGenerationInfo({ id });
+                    return generationInfo(id, 0);
+                },
+                async () => {},
+            ),
+            0,
+        );
+        assert.equal(polls, 1);
+        assert.equal(attempts, 2);
+    }
 });
