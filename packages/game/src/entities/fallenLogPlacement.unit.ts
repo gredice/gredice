@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { fallenLog } from '@gredice/js/fallenLog';
 import { getGardenBlockFootprintOffsets } from '@gredice/js/gardenBlocks';
-import { harvestWheelbarrow } from '@gredice/js/harvestWheelbarrow';
 import { Vector3 } from 'three';
 import { resolvePickupPlacementPreviewForRelative } from '../controls/PickupPlacementResolver';
 import { getLocalSandboxBlockData } from '../localSandboxBlockData';
@@ -9,16 +9,13 @@ import type { Stack } from '../types/Stack';
 import { canRotateSpanningDecorations } from './spanningDecorationPlacement';
 
 const blockData = getLocalSandboxBlockData();
-const candidate = { name: harvestWheelbarrow.name, id: 'barrow', rotation: 0 };
+const candidate = { name: fallenLog.name, id: 'log', rotation: 0 };
 const grass = (id: string) => ({ name: 'Block_Grass', id, rotation: 0 });
 
-describe('HarvestWheelbarrow placement', () => {
+describe('FallenLog placement', () => {
     for (const rotation of [0, 1, 2, 3]) {
         it(`requires two compatible, level cells for placement and rotation ${rotation}`, () => {
-            const offsets = getGardenBlockFootprintOffsets(
-                harvestWheelbarrow,
-                rotation,
-            );
+            const offsets = getGardenBlockFootprintOffsets(fallenLog, rotation);
             assert.equal(offsets.length, 2);
             const source: Stack = {
                 position: new Vector3(-5, 0, -5),
@@ -82,7 +79,7 @@ describe('HarvestWheelbarrow placement', () => {
             const canRotate = (stacks: Stack[]) =>
                 canRotateSpanningDecorations({
                     blockData,
-                    blockIds: new Set(['barrow']),
+                    blockIds: new Set(['log']),
                     rotation,
                     stacks,
                 });
@@ -112,12 +109,12 @@ describe('HarvestWheelbarrow placement', () => {
             assert.equal(canRotate(uneven), false);
         });
     }
-    it('fails closed for missing wheelbarrow metadata and preserves unrelated rotations', () => {
+    it('fails closed for missing fallen log metadata and preserves unrelated rotations', () => {
         const stack = { position: new Vector3(), blocks: [candidate] };
         assert.equal(
             canRotateSpanningDecorations({
                 blockData: undefined,
-                blockIds: new Set(['barrow']),
+                blockIds: new Set(['log']),
                 rotation: 1,
                 stacks: [stack],
             }),

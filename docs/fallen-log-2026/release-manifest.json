@@ -1,0 +1,103 @@
+{
+  "state": "unpublished",
+  "publicationIssue": 5000,
+  "snapshotDate": "2026-10-22T12:00:00+02:00",
+  "source": {
+    "path": "assets/game-assets/FallenLog.blend",
+    "bytes": 95341,
+    "sha256": "4a37fa9a8dbf052591a108f28f225b75fd50af3f118e1768d96ff56e5b3d0d0a"
+  },
+  "models": [
+    {
+      "name": "FallenLog",
+      "path": "apps/garden/public/assets/models/FallenLog.glb",
+      "bytes": 22988,
+      "sha256": "dd66f61eb3e5755e5ae696a72ca6cd3041fa531ec2203aa77cd5aeef899c15a3",
+      "url": "https://vrt.gredice.com/assets/models/FallenLog.glb?v=dd66f61eb3e5",
+      "triangles": 389,
+      "trianglesByMesh": {
+        "FallenLog_Timber": 389
+      },
+      "meshCount": 1,
+      "materialCount": 1
+    }
+  ],
+  "items": [
+    {
+      "name": "FallenLog",
+      "information": {
+        "label": "Palo deblo s mahovinom",
+        "shortDescription": "Nisko drveno deblo sa svijetlim presjecima i malom plohom mahovine.",
+        "fullDescription": "Položeno deblo oblikuje šumski kutak uz drvo, kamen ili ukrasne gljive. Zauzima dva susjedna polja, a okretanjem se mijenja njegov smjer. Služi kao ukras, ne proizvodi drvo i ne utječe na rast biljaka. Na njega se ne mogu slagati drugi predmeti."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.45,
+        "hitboxHeight": 0.45,
+        "hitboxWidth": 1.9,
+        "hitboxDepth": 0.9,
+        "spanWidth": 2,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 55,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/FallenLog.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/FallenLog.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/FallenLog.webp",
+          "bytes": 21464,
+          "sha256": "50fd3ffaf57cfa054b0a766ffdb1160fa2cd7c08c70141096324ca5d16e74a4c"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/FallenLog_1.webp",
+          "bytes": 21464,
+          "sha256": "50fd3ffaf57cfa054b0a766ffdb1160fa2cd7c08c70141096324ca5d16e74a4c"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/FallenLog_2.webp",
+          "bytes": 23510,
+          "sha256": "0e9f090614c9763273b559edfac51bd70da82a67eb1a46fd6c6fecfc8dc5fffa"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/FallenLog_3.webp",
+          "bytes": 21950,
+          "sha256": "36eec84cb8967f44de4b70ce4de50f3477cfcb9749666052ed5c9f26e3730af1"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/FallenLog_4.webp",
+          "bytes": 23782,
+          "sha256": "4e3bd2d337df5673a90c17d6b8412d2f426ac120efb1bd4d53dbc5771296514d"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/FallenLog.webp",
+          "bytes": 2178,
+          "sha256": "1abe7dc8f1f1332aa4940f713ad83c1209d2cac8a1683f52903d07e4faac815a"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/FallenLog_1.webp",
+          "bytes": 2178,
+          "sha256": "1abe7dc8f1f1332aa4940f713ad83c1209d2cac8a1683f52903d07e4faac815a"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/FallenLog_2.webp",
+          "bytes": 2512,
+          "sha256": "a217a8bd9ed8b044017644d132634d44b8a85b8d0208d8f186dec07ee69a4701"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/FallenLog_3.webp",
+          "bytes": 1958,
+          "sha256": "cf0aad1f751594489c70a16dfc67c74ee693cf97577f2ae1630bebb7915ce24d"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/FallenLog_4.webp",
+          "bytes": 2534,
+          "sha256": "e7d9dc9005eca8326b2b3ed810097a180e19d66d2b3ecc22bc93921fad6dc7b7"
+        }
+      ]
+    }
+  ]
+}
