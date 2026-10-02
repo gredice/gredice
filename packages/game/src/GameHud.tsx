@@ -19,6 +19,7 @@ import { HudListItemPresence } from './hud/components/HudListItemPresence';
 import { DebugHudDynamic } from './hud/DebugHudDynamic';
 import { GardenActionHud } from './hud/GardenActionHud';
 import { GardenAvatarHud } from './hud/GardenAvatarHud';
+import { GardenPackStorefrontHud } from './hud/GardenPackStorefrontHud';
 import { GardenTargetHighlightHud } from './hud/GardenTargetHighlightHud';
 import { InventoryHud } from './hud/InventoryHud';
 import { ItemsHud } from './hud/ItemsHud';
@@ -198,6 +199,14 @@ export function GameHud({
                         visible={showLoadedAccountEconomy}
                     >
                         <InventoryHud packPlacement={packPlacement} />
+                    </HudListItemPresence>
+                )}
+                {!isLocalSandbox && (
+                    <HudListItemPresence
+                        className={closeupHiddenHudClassName}
+                        visible={showLoadedAccountEconomy}
+                    >
+                        <GardenPackStorefrontHud />
                     </HudListItemPresence>
                 )}
                 {!isLocalSandbox && (

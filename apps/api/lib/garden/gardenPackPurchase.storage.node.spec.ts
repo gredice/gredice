@@ -193,6 +193,7 @@ async function fixture(balance = 100) {
         };
     const command = {
         operationId: randomUUID(),
+        expectedAccountId: accountId,
         productId: snapshot.productId,
         quote: {
             productVersionId: snapshot.productVersionId,
