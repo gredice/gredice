@@ -34,6 +34,7 @@ import { squirrelSpeechMessages } from '../animals/actorSpeechMessages';
 import { isFreshGardenAvatarPresence } from '../animals/animalAvatarFollowing';
 import { getAnimalMovementYAt } from '../animals/animalMovementTerrain';
 import { animalPresenceUpdateIntervalSeconds } from '../animals/animalPresence';
+import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
 import {
     getSquirrelDwellSeconds,
     getSquirrelMovementRange,
@@ -602,6 +603,7 @@ export function Squirrel({
             nut: createSquirrelNut(clone),
         };
     }, [gltf.scene]);
+    useFaunaActorCulling(squirrelModel.scene);
     const mixer = useMemo(
         () => new AnimationMixer(squirrelModel.scene),
         [squirrelModel.scene],

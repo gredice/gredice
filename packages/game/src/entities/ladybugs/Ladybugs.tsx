@@ -35,6 +35,7 @@ import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
 import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
 import { createAnimalBlockedCells } from '../animals/animalMovementTerrain';
+import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
 import { getCactusVariantConfig } from '../Cactus';
 import { tulipBouquetStems } from '../tulipBouquet';
 import {
@@ -873,6 +874,7 @@ function LadybugActor({
             scene,
         };
     }, [gltf.scene]);
+    useFaunaActorCulling(model.scene);
     const updateGroundingShadow = useActorGroundingShadow({
         id: actorId,
         primaryCasterCount: model.primaryCasterCount,

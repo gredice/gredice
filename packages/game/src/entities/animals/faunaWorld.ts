@@ -33,6 +33,9 @@ export type FaunaPresenceQuery = {
 
 export type FaunaWorldStats = {
     actorCount: number;
+    /** Frames where an actor skipped pose work because it was not rendered. */
+    actorPoseSkipCount: number;
+    actorPoseUpdateCount: number;
     debugEntryCount: number;
     debugPublishCount: number;
     debugReportCount: number;
@@ -196,6 +199,8 @@ export function createFaunaWorld({
 
     const stats: FaunaWorldStats = {
         actorCount: 0,
+        actorPoseSkipCount: 0,
+        actorPoseUpdateCount: 0,
         debugEntryCount: 0,
         debugPublishCount: 0,
         debugReportCount: 0,
@@ -604,6 +609,14 @@ export function createFaunaWorld({
         }
     }
 
+    function recordActorPose(posed: boolean) {
+        if (posed) {
+            stats.actorPoseUpdateCount += 1;
+        } else {
+            stats.actorPoseSkipCount += 1;
+        }
+    }
+
     function dispose() {
         cancelTrailingDebugPublish();
         cancelStatsPublish?.();
@@ -619,6 +632,7 @@ export function createFaunaWorld({
         getStats: (): FaunaWorldStats => ({ ...stats }),
         hasActor: (id: string) => slotById.has(id) || debugEntries.has(id),
         queryPresences,
+        recordActorPose,
         removeActor,
         removeDebug: (id: string) => {
             deleteDebug(id);

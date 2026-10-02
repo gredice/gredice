@@ -58,6 +58,7 @@ import {
     groundBirdEntries,
 } from '../animals/animalPresence';
 import { initializeAnimalAtHome } from '../animals/animalRuntimeLifecycle';
+import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
 import {
     type DogBehavior,
     type DogWeather,
@@ -1491,6 +1492,7 @@ function Dog({
             scene: clone,
         };
     }, [gltf.scene]);
+    const shouldPoseDog = useFaunaActorCulling(dogModel.scene);
     const { actions } = useAnimations(gltf.animations, dogModel.scene);
     const updateActorGroundingShadow = useActorGroundingShadow({
         id: `dog:${habitat.id}`,
@@ -1637,6 +1639,7 @@ function Dog({
             return;
         }
 
+        const posing = shouldPoseDog();
         const now = clock.elapsedTime;
         const random = randomRef.current;
         let runtime = runtimeRef.current;
@@ -1807,12 +1810,14 @@ function Dog({
             const nextPosition = movingPositionAt(runtime, progress);
 
             group.position.copy(nextPosition);
-            updateDogWalkPose({
-                delta,
-                moving: true,
-                rig: dogModel.rig,
-                walkDistance,
-            });
+            if (posing) {
+                updateDogWalkPose({
+                    delta,
+                    moving: true,
+                    rig: dogModel.rig,
+                    walkDistance,
+                });
+            }
             facePosition(
                 group,
                 movingPositionAt(
@@ -1843,12 +1848,14 @@ function Dog({
 
         setAnimation(getDogAnimationName(runtime));
         syncWalkAnimationSpeed(runtime);
-        updateDogWalkPose({
-            delta,
-            moving: false,
-            rig: dogModel.rig,
-            walkDistance: 0,
-        });
+        if (posing) {
+            updateDogWalkPose({
+                delta,
+                moving: false,
+                rig: dogModel.rig,
+                walkDistance: 0,
+            });
+        }
         copyDogSettledPosition(group.position, runtime.target, timeOfDay);
         if (
             runtime.target.behavior === 'doghouse' ||

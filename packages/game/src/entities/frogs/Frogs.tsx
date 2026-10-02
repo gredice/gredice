@@ -40,6 +40,7 @@ import {
     getAnimalMovementYAt,
 } from '../animals/animalMovementTerrain';
 import { animalPresenceUpdateIntervalSeconds } from '../animals/animalPresence';
+import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
 import type { CatPathPoint } from '../cats/catPathfinding';
 import {
     chooseFrogEscapePlan,
@@ -323,6 +324,7 @@ function Frog({ candidate }: { candidate: FrogSpawnCandidate }) {
         );
         return { primaryCasterCount, scene };
     }, [gltf.scene]);
+    useFaunaActorCulling(frogModel.scene);
     const { actions } = useAnimations(gltf.animations, frogModel.scene);
     const updateActorGroundingShadow = useActorGroundingShadow({
         id: `frog:${candidate.id}`,

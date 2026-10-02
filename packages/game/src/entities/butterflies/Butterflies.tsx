@@ -40,6 +40,7 @@ import {
     createAnimalMovementSurfaces,
     getAnimalMovementSurfaceAt,
 } from '../animals/animalMovementTerrain';
+import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
 import { getBeeHabitatGroups } from '../bees/beeBehavior';
 import {
     computePollinatorHabitatCenter,
@@ -770,6 +771,7 @@ function Butterfly({
             scene: clone,
         };
     }, [gltf.scene, variant]);
+    useFaunaActorCulling(butterflyModel.scene);
     const updateGroundingShadow = useActorGroundingShadow({
         id: `butterfly:${descriptor.id}`,
         primaryCasterCount: butterflyModel.primaryCasterCount,

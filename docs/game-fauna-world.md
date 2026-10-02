@@ -51,11 +51,44 @@ membership changes and debug publications: actor count, presence capacity,
 presence reports and queries, snapshot rebuilds, debug reports, and published
 versus skipped debug batches.
 
+## Offscreen actors
+
+Species previously disabled frustum culling on actor meshes (or relied on
+bounds computed lazily from whatever pose the first test saw). Every actor was
+therefore drawn and re-skinned even when far outside the camera.
+
+`configureFaunaActorCulling` (through `useFaunaActorCulling`) re-enables
+renderer culling for every non-instanced actor mesh. Each mesh gets an
+object-level bounding sphere: its bind-pose geometry bounds scaled by
+`faunaCullingBoundsScale` (1.75), so walking, hopping, and flapping poses stay
+inside the sphere. Shared geometry bounds stay exact for raycasting. Three
+applies the test to every camera and render pass, including outline masks and
+static-cache captures, so there is no second visibility model to keep in sync.
+Actor meshes do not cast shadow-map shadows; projected grounding shadows are
+registered separately and are unaffected.
+
+The helper also chains `onBeforeRender` to record whether the actor was
+submitted. Cows, farm animals, rabbits, dogs, and birds call the returned check
+once per frame and skip their rig pose functions while the actor was not
+rendered. Behavior, pathing, movement, presence, and debug reports keep
+running on absolute scene time, so an actor that returns to view is where its
+simulation says it is. It shows its last pose for at most one frame inside the
+culling margin, then resumes posing. The pose functions skipped are pure rig
+writes, with no sounds, random draws, or runtime mutations. Species whose pose
+work is interleaved with behavior or animation-mixer events keep posing and get
+the render culling only.
+
+`actorPoseUpdateCount` and `actorPoseSkipCount` in the `faunaWorld` profile
+stats show how much pose work slept.
+
+Hidden documents and offscreen canvases are still suspended by the runtime
+scheduler, which consumes the clock gap on resume. Fauna therefore never
+fast-forwards after a hidden period.
+
 ## Remaining work
 
-This first step of #4720 centralizes presence, spatial lookup, and HUD/debug
-publication. Behavior, path, and movement loops still run in each species
-component under its existing scheduler lease. Moving those loops onto a world
-fixed-step, sleeping settled or offscreen actors, and per-species instanced
-skinning are follow-up migrations. Each needs behavior-parity fixtures for
-its species.
+Behavior, path, and movement loops still run in each species component under
+its existing ambient render lease. Moving those loops onto a world fixed-step
+with interpolation needs per-species behavior-parity fixtures, and per-species
+instanced skinning should wait for fauna-heavy profiles to show draw pressure
+after the culling above.

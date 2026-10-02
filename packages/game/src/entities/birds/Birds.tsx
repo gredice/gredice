@@ -27,6 +27,7 @@ import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
 import { birdSpeechMessages } from '../animals/actorSpeechMessages';
 import { isAnimalGroundBlockName } from '../animals/animalMovementTerrain';
+import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
 import { isWaterBlockName } from '../waterBlockNames';
 import {
     type BirdBehavior,
@@ -1568,6 +1569,7 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
             scene: clone,
         };
     }, [gltf.scene]);
+    const shouldPoseBird = useFaunaActorCulling(birdModel.scene);
     const { actions } = useAnimations(gltf.animations, birdModel.scene);
     const updateGroundingShadow = useActorGroundingShadow({
         id: `bird:${habitat.id}`,
@@ -2026,18 +2028,20 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
         const now = clock.elapsedTime;
         const walking =
             runtime?.phase === 'moving' && runtime.motion === 'walk';
-        updateBirdLegPose({
-            delta,
-            flying:
-                runtime?.phase === 'circling' ||
-                (runtime?.phase === 'moving' && runtime.motion === 'fly'),
-            now,
-            rig: birdModel.rig,
-            seed: habitat.seed,
-            walking,
-            walkElapsed: walking ? Math.max(0, now - runtime.startedAt) : 0,
-        });
-        updateGroundPeckPose({ delta, rig: birdModel.rig });
+        if (shouldPoseBird()) {
+            updateBirdLegPose({
+                delta,
+                flying:
+                    runtime?.phase === 'circling' ||
+                    (runtime?.phase === 'moving' && runtime.motion === 'fly'),
+                now,
+                rig: birdModel.rig,
+                seed: habitat.seed,
+                walking,
+                walkElapsed: walking ? Math.max(0, now - runtime.startedAt) : 0,
+            });
+            updateGroundPeckPose({ delta, rig: birdModel.rig });
+        }
 
         if (runtime && group && updateGroundingShadow) {
             updateGroundingShadow({
