@@ -28,18 +28,35 @@ function acquireCompiler() {
     };
 }
 
+export type CompiledChunkSource = {
+    geometry: BufferGeometry;
+    instances: ChunkedMeshInstance[];
+    localTransform: MeshInstanceLocalTransform;
+    scale: MeshInstanceScale;
+};
+
 export function useCompiledChunk(
     geometry: BufferGeometry,
     instances: ChunkedMeshInstance[],
     localTransform: MeshInstanceLocalTransform,
     scale: MeshInstanceScale,
 ) {
-    const request = useMemo(
-        () => ({ geometry, instances, localTransform, scale }),
+    const sources = useMemo(
+        () => [{ geometry, instances, localTransform, scale }],
         [geometry, instances, localTransform, scale],
     );
+    return useCompiledChunkSources(sources);
+}
+
+/**
+ * Compiles every source into one owned geometry. The `sources` array identity
+ * is the request key, so callers retain it while the packet is unchanged.
+ */
+export function useCompiledChunkSources(
+    sources: readonly CompiledChunkSource[],
+) {
     const [result, setResult] = useState<{
-        request: typeof request;
+        sources: readonly CompiledChunkSource[];
         geometry: BufferGeometry;
         durationMs: number;
     }>();
@@ -50,8 +67,10 @@ export function useCompiledChunk(
         let cancelled = false;
         setResult(undefined);
         const cancel = lease.compiler.request(
-            geometry,
-            createChunkMatrices(instances, localTransform, scale),
+            sources.map(({ geometry, instances, localTransform, scale }) => ({
+                geometry,
+                matrices: createChunkMatrices(instances, localTransform, scale),
+            })),
             (packet, durationMs) => {
                 if (!packet || cancelled) return;
                 owned = unpackMeshGeometry(packet);
@@ -64,7 +83,7 @@ export function useCompiledChunk(
                         metrics.liveGeometryBytes,
                     );
                 });
-                setResult({ request, geometry: owned, durationMs });
+                setResult({ sources, geometry: owned, durationMs });
             },
         );
         return () => {
@@ -80,6 +99,6 @@ export function useCompiledChunk(
             }
             lease.release();
         };
-    }, [request, geometry, instances, localTransform, scale]);
-    return result?.request === request ? result : undefined;
+    }, [sources]);
+    return result?.sources === sources ? result : undefined;
 }

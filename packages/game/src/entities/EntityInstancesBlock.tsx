@@ -24,7 +24,21 @@ import {
     useRainWetOverlayVisible,
 } from '../rain/RainWetOverlay';
 import { registerCloudShadowAttenuationMaterialCandidate } from '../scene/cloudShadowAttenuation';
+import { meshGeometryLayoutSignature } from '../scene/compiler/meshBuffers';
+import {
+    useStaticRenderPacketContributions,
+    useStaticRenderPacketOwnerId,
+    useStaticRenderPacketRegistry,
+} from '../scene/compiler/StaticRenderPacketBatch';
+import type {
+    StaticRenderPacketContribution,
+    StaticRenderPacketFallbackReason,
+} from '../scene/compiler/staticRenderPackets';
 import { useCompiledChunk } from '../scene/compiler/useCompiledChunk';
+import {
+    classifyGardenMaterial,
+    useSharedGardenMaterial,
+} from '../scene/gardenMaterials';
 import {
     StaticOpaqueSceneCacheBoundary,
     type StaticOpaqueSceneCacheGroup,
@@ -675,6 +689,7 @@ function IntegratedWeatherEntityInstancesGeometry({
         <EntityInstancesGeometryRenderer
             {...props}
             integratedStableWeather={integratedStableWeather}
+            weatherIntegrated
         />
     );
 }
@@ -682,6 +697,8 @@ function IntegratedWeatherEntityInstancesGeometry({
 function EntityInstancesGeometryRenderer(
     props: EntityInstancesGeometryProps & {
         integratedStableWeather?: IntegratedStableWeather;
+        /** Weather-integrated surfaces swap materials with the weather. */
+        weatherIntegrated?: boolean;
         weatherSurfaceMode: WeatherSurfaceMode;
     },
 ) {
@@ -700,6 +717,7 @@ function EntityInstancesGeometryRenderer(
         renderStableChunksAsMergedGeometry = false,
         staticOpaqueCacheGroup,
         integratedStableWeather,
+        weatherIntegrated = false,
         weatherSurfaceMode,
         castShadow = true,
         receiveShadow = true,
@@ -851,6 +869,110 @@ function EntityInstancesGeometryRenderer(
             stableMaterialNode,
             stableScale,
         ],
+    );
+    const packetRegistry = useStaticRenderPacketRegistry();
+    const packetOwnerId = useStaticRenderPacketOwnerId();
+    const stableMaterialClass = classifyGardenMaterial(stableMaterial);
+    const stableLayoutSignature = useMemo(
+        () => meshGeometryLayoutSignature(stableGeometry),
+        [stableGeometry],
+    );
+    let packetFallbackReason: StaticRenderPacketFallbackReason | undefined;
+    if (packetRegistry && renderStableChunksAsMergedGeometry) {
+        if (weatherIntegrated) packetFallbackReason = 'weather-integrated';
+        else if (
+            stableMaterialNode !== undefined &&
+            stableMaterialNode !== null
+        )
+            packetFallbackReason = 'material-node';
+        else if (!stableMaterialClass.batchable)
+            packetFallbackReason = stableMaterialClass.reason;
+    }
+    const packetEnabled =
+        Boolean(packetRegistry) &&
+        renderStableChunksAsMergedGeometry &&
+        !packetFallbackReason;
+    const packetFamily = stableMaterialClass.batchable
+        ? stableMaterialClass.family
+        : undefined;
+    const sharedPacketMaterial = useSharedGardenMaterial(
+        stableMaterial,
+        packetEnabled,
+    );
+    const packetMaterial =
+        packetEnabled &&
+        sharedPacketMaterial &&
+        !Array.isArray(sharedPacketMaterial)
+            ? sharedPacketMaterial
+            : undefined;
+    const stableSourceTriangleCount = useMemo(
+        () => countGeometryTriangles(stableGeometry),
+        [stableGeometry],
+    );
+    const packetContributionCache = useRef(
+        new Map<string, StaticRenderPacketContribution>(),
+    );
+    const packetContributions = useMemo(() => {
+        if (!packetMaterial || !packetFamily) return undefined;
+        const previous = packetContributionCache.current;
+        const next = new Map<string, StaticRenderPacketContribution>();
+        const contributions = stableChunks.map((chunk) => {
+            const old = previous.get(chunk.key);
+            const contribution: StaticRenderPacketContribution =
+                old &&
+                old.instances === chunk.instances &&
+                old.geometry === stableGeometry &&
+                old.material === packetMaterial &&
+                old.localTransform === localTransform &&
+                old.scale === stableScale &&
+                old.castShadow === castShadow &&
+                old.receiveShadow === receiveShadow &&
+                old.renderOrder === renderOrder &&
+                old.cacheGroup === staticOpaqueCacheGroup &&
+                old.layoutSignature === stableLayoutSignature &&
+                old.family === packetFamily
+                    ? old
+                    : {
+                          cacheGroup: staticOpaqueCacheGroup,
+                          castShadow,
+                          chunkKey: chunk.key,
+                          family: packetFamily,
+                          geometry: stableGeometry,
+                          id: `${packetOwnerId}:${instanceKey}:${chunk.key}`,
+                          instances: chunk.instances,
+                          layoutSignature: stableLayoutSignature,
+                          localTransform,
+                          material: packetMaterial,
+                          receiveShadow,
+                          renderOrder,
+                          scale: stableScale,
+                          triangleCount: stableSourceTriangleCount,
+                      };
+            next.set(chunk.key, contribution);
+            return contribution;
+        });
+        packetContributionCache.current = next;
+        return contributions;
+    }, [
+        castShadow,
+        instanceKey,
+        localTransform,
+        packetFamily,
+        packetMaterial,
+        packetOwnerId,
+        receiveShadow,
+        renderOrder,
+        stableChunks,
+        stableGeometry,
+        stableLayoutSignature,
+        stableScale,
+        stableSourceTriangleCount,
+        staticOpaqueCacheGroup,
+    ]);
+    useStaticRenderPacketContributions(
+        packetOwnerId,
+        packetContributions,
+        packetFallbackReason,
     );
     const weatherRegistryId = useId();
     const rainOverlayVisible = useRainWetOverlayVisible();
@@ -1094,50 +1216,53 @@ function EntityInstancesGeometryRenderer(
 
     return (
         <>
-            <StaticOpaqueSceneCacheBoundary
-                contentKey={staticOpaqueCacheContentKey}
-                group={staticOpaqueCacheGroup}
-                instanceCount={stableInstanceCount}
-                submissionCount={stableChunks.length}
-                triangleCount={stableTriangleCount}
-            >
-                {stableChunks.map((chunk) => {
-                    const placementSignature =
-                        placementSignatureByChunkKey.get(chunk.key) ?? '';
+            {/* Batched chunks render through the shared packet provider. */}
+            {!packetContributions && (
+                <StaticOpaqueSceneCacheBoundary
+                    contentKey={staticOpaqueCacheContentKey}
+                    group={staticOpaqueCacheGroup}
+                    instanceCount={stableInstanceCount}
+                    submissionCount={stableChunks.length}
+                    triangleCount={stableTriangleCount}
+                >
+                    {stableChunks.map((chunk) => {
+                        const placementSignature =
+                            placementSignatureByChunkKey.get(chunk.key) ?? '';
 
-                    return renderStableChunksAsMergedGeometry ? (
-                        <ChunkedMergedMesh
-                            key={`${instanceKey}:${chunk.key}`}
-                            castShadow={castShadow}
-                            chunk={chunk}
-                            debugName={`MergedBlockChunk:${instanceKey}:chunk:${chunk.key}:count:${chunk.instances.length}`}
-                            geometry={stableGeometry}
-                            localTransform={localTransform}
-                            material={stableMaterial}
-                            materialNode={stableMaterialNode}
-                            placementSignature={placementSignature}
-                            receiveShadow={receiveShadow}
-                            renderOrder={renderOrder}
-                            scale={stableScale}
-                        />
-                    ) : (
-                        <ChunkedInstancedMesh
-                            key={`${instanceKey}:${chunk.key}`}
-                            castShadow={castShadow}
-                            chunk={chunk}
-                            debugName={`BlockInstances:${instanceKey}:chunk:${chunk.key}:count:${chunk.instances.length}`}
-                            geometry={stableGeometry}
-                            localTransform={localTransform}
-                            material={stableMaterial}
-                            materialNode={stableMaterialNode}
-                            placementSignature={placementSignature}
-                            receiveShadow={receiveShadow}
-                            renderOrder={renderOrder}
-                            scale={stableScale}
-                        />
-                    );
-                })}
-            </StaticOpaqueSceneCacheBoundary>
+                        return renderStableChunksAsMergedGeometry ? (
+                            <ChunkedMergedMesh
+                                key={`${instanceKey}:${chunk.key}`}
+                                castShadow={castShadow}
+                                chunk={chunk}
+                                debugName={`MergedBlockChunk:${instanceKey}:chunk:${chunk.key}:count:${chunk.instances.length}`}
+                                geometry={stableGeometry}
+                                localTransform={localTransform}
+                                material={stableMaterial}
+                                materialNode={stableMaterialNode}
+                                placementSignature={placementSignature}
+                                receiveShadow={receiveShadow}
+                                renderOrder={renderOrder}
+                                scale={stableScale}
+                            />
+                        ) : (
+                            <ChunkedInstancedMesh
+                                key={`${instanceKey}:${chunk.key}`}
+                                castShadow={castShadow}
+                                chunk={chunk}
+                                debugName={`BlockInstances:${instanceKey}:chunk:${chunk.key}:count:${chunk.instances.length}`}
+                                geometry={stableGeometry}
+                                localTransform={localTransform}
+                                material={stableMaterial}
+                                materialNode={stableMaterialNode}
+                                placementSignature={placementSignature}
+                                receiveShadow={receiveShadow}
+                                renderOrder={renderOrder}
+                                scale={stableScale}
+                            />
+                        );
+                    })}
+                </StaticOpaqueSceneCacheBoundary>
+            )}
             {renderAnimatedInstances('base')}
             {(instances ?? []).map((data) =>
                 data.pickupOutlineVisible ? (

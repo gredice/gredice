@@ -1,13 +1,13 @@
 import {
-    compileMeshBuffers,
+    compileMeshBufferSources,
+    type MeshBufferSource,
     meshBufferTransferables,
     type PackedMeshGeometry,
 } from './meshBuffers';
 
 export type MeshCompilerRequest = {
     id: number;
-    source: PackedMeshGeometry;
-    matrices: Float64Array;
+    sources: MeshBufferSource[];
 };
 export type MeshCompilerResponse = {
     id: number;
@@ -26,7 +26,7 @@ declare const self: {
 self.onmessage = ({ data }: MessageEvent<MeshCompilerRequest>) => {
     const started = performance.now();
     try {
-        const packet = compileMeshBuffers(data.source, data.matrices);
+        const packet = compileMeshBufferSources(data.sources);
         self.postMessage(
             { id: data.id, packet, durationMs: performance.now() - started },
             meshBufferTransferables(packet),

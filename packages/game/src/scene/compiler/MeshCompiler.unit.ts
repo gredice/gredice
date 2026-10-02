@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import { BoxGeometry, Uint32BufferAttribute } from 'three';
 import { createChunkMatrices } from '../../entities/chunkedMeshGeometry';
 import { MeshCompiler, type MeshCompilerWorker } from './MeshCompiler';
-import { compileMeshBuffers } from './meshBuffers';
+import { compileMeshBufferSources } from './meshBuffers';
 import type {
     MeshCompilerRequest,
     MeshCompilerResponse,
@@ -40,7 +40,7 @@ class TestWorker implements MeshCompilerWorker {
             new MessageEvent<MeshCompilerResponse>('message', {
                 data: {
                     id: job.id,
-                    packet: compileMeshBuffers(job.source, job.matrices),
+                    packet: compileMeshBufferSources(job.sources),
                     durationMs: 1,
                 },
             }),
@@ -64,9 +64,12 @@ describe('mesh compiler ownership', () => {
             const worker = new TestWorker();
             const compiler = new MeshCompiler(() => worker);
             let delivered = false;
-            compiler.request(source, matrices(1), () => {
-                delivered = true;
-            });
+            compiler.request(
+                [{ geometry: source, matrices: matrices(1) }],
+                () => {
+                    delivered = true;
+                },
+            );
             assert.equal(delivered, false, kind);
             assert.equal(worker.jobs.length, 1, kind);
             compiler.dispose();
@@ -80,9 +83,12 @@ describe('mesh compiler ownership', () => {
             throw Error('unexpected worker');
         });
         let delivered = false;
-        compiler.request(source, matrices(1), (packet) => {
-            delivered = Boolean(packet);
-        });
+        compiler.request(
+            [{ geometry: source, matrices: matrices(1) }],
+            (packet) => {
+                delivered = Boolean(packet);
+            },
+        );
         assert.equal(delivered, true);
         compiler.dispose();
         source.dispose();
@@ -93,13 +99,17 @@ describe('mesh compiler ownership', () => {
         const worker = new TestWorker();
         const compiler = new MeshCompiler(() => worker);
         const delivered: string[] = [];
-        const cancelFirst = compiler.request(source, matrices(100), () =>
-            delivered.push('old'),
+        const cancelFirst = compiler.request(
+            [{ geometry: source, matrices: matrices(100) }],
+            () => delivered.push('old'),
         );
-        const cancelQueued = compiler.request(source, matrices(100), () =>
-            delivered.push('cancelled'),
+        const cancelQueued = compiler.request(
+            [{ geometry: source, matrices: matrices(100) }],
+            () => delivered.push('cancelled'),
         );
-        compiler.request(source, matrices(100), () => delivered.push('new'));
+        compiler.request([{ geometry: source, matrices: matrices(100) }], () =>
+            delivered.push('new'),
+        );
         assert.equal(worker.jobs.length, 1);
         assert.ok(source.getAttribute('position').array.byteLength > 0);
         cancelFirst();
@@ -120,19 +130,51 @@ describe('mesh compiler ownership', () => {
             throw Error('blocked worker');
         });
         let fallback = false;
-        compiler.request(source, matrices(100), (packet) => {
-            fallback = packet === null;
-        });
+        compiler.request(
+            [{ geometry: source, matrices: matrices(100) }],
+            (packet) => {
+                fallback = packet === null;
+            },
+        );
         assert.equal(fallback, true);
         compiler.dispose();
         const worker = new TestWorker();
         const second = new MeshCompiler(() => worker);
-        second.request(source, matrices(100), () =>
+        second.request([{ geometry: source, matrices: matrices(100) }], () =>
             assert.fail('late delivery'),
         );
         second.dispose();
         worker.finish(0);
         assert.equal(worker.terminated, true);
         source.dispose();
+    });
+
+    it('joins several source geometries into one packet in source order', () => {
+        const box = new BoxGeometry();
+        const other = new BoxGeometry(2, 2, 2);
+        const compiler = new MeshCompiler(() => {
+            throw Error('unexpected worker');
+        });
+        let vertexCount = 0;
+        compiler.request(
+            [
+                { geometry: box, matrices: matrices(2) },
+                { geometry: other, matrices: matrices(1) },
+            ],
+            (packet) => {
+                const position = packet?.attributes.position;
+                vertexCount = position
+                    ? position.array.length / position.itemSize
+                    : 0;
+            },
+        );
+        assert.equal(
+            vertexCount,
+            box.getAttribute('position').count * 2 +
+                other.getAttribute('position').count,
+        );
+        compiler.dispose();
+        box.dispose();
+        other.dispose();
     });
 });
