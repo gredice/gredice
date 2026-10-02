@@ -153,6 +153,8 @@ export type PublicGardenCapture = {
     output?: PublicGardenCaptureOutput;
     phase?: PublicGardenCapturePhase;
     transparent?: boolean;
+    dayNightCycleDisabled?: boolean;
+    winterMode?: 'summer' | 'winter' | 'holiday';
 };
 
 export type PublicGardenSelectedBlockFocus = GameCameraCloseupFocus;
@@ -1038,7 +1040,9 @@ export function PublicGardenViewer({
             appBaseUrl: resolvedAppBaseUrl,
             authenticatedGardenQueriesEnabled: false,
             spriteBaseUrl: resolvedSpriteBaseUrl,
-            dayNightCycleDisabled: capture?.phase ? false : undefined,
+            dayNightCycleDisabled:
+                capture?.dayNightCycleDisabled ??
+                (capture?.phase ? false : undefined),
             freezeTime:
                 fixedTime ??
                 (capture
@@ -1051,7 +1055,7 @@ export function PublicGardenViewer({
                     : null),
             isMock: false,
             timeLocation: initialTimeLocation,
-            winterMode: 'summer',
+            winterMode: capture?.winterMode ?? 'summer',
         });
     }
     useDisposeGameStateStore(storeRef.current);

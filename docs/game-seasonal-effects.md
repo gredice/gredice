@@ -688,3 +688,43 @@ no geometry. Captures and matrix/opacity readbacks cover frozen late autumn and
 winter, warm/missing/stale inputs, quality, reduced motion, precipitation,
 repeatability, offscreen suspension and unmount. This is a rendering-work budget,
 not a hardware frame-rate claim.
+
+## Optional autumn photo prompts
+
+The 3D HUD offers three Croatian prompts: **Moja jesenska gredica**, **Pod
+svjetlom fenjera** and **Prvi list**. They are optional inspiration, available
+without a purchase or a daily login requirement. The user chooses a prompt,
+explicitly captures the current garden, camera and scene date, reviews the PNG,
+and separately downloads it to their device. The flow does not upload an image,
+publish a garden, create a gallery or change sharing settings.
+
+The capture uses the existing manual public-view renderer with a private,
+render-only projection of the already selected cached scene. It does not fetch a
+public garden or share ID. It preserves layout, variants, camera framing, plant
+visual growth state, the selected date and season mode. The preview explains
+that this static renderer omits weather effects and moving visitors. It also
+omits HUD controls, bed names, sign messages, customer notes, photo attachments
+and account, location, block, field and operation identifiers. Canvas PNG output
+contains no identifying textual/EXIF metadata; filenames come only from the
+three public prompt IDs.
+
+The renderer loads only after capture is requested and unmounts after completion,
+failure or cancellation. Closing the modal or changing the account, garden,
+camera, selected date or season discards the request and revokes any preview URL.
+Each result is correlated with its concrete request key, so a late cancelled
+capture cannot replace a new preview or cancel a retry. Downloading requires the
+original account and scene to remain current. Browser download confirmation
+means the file was handed to the browser; the application does not inspect the
+user's filesystem.
+
+Validation includes render-projection privacy tests, the React-only 2D and Outlet
+bundle boundaries, and the real WebGL capture flow:
+
+- `pnpm --filter @gredice/game test`
+- `pnpm --filter @gredice/js test`
+- `pnpm --filter garden exec playwright test --config playwright.autumn-photo.config.ts`
+
+The browser cases select a camera rotation and layout before capture, inspect
+nonblank PNG pixels and metadata chunks, verify a local download without garden
+reads or network writes, and exercise mobile keyboard controls, cancellation,
+account changes, encoder failure and an obsolete completion during a new capture.
