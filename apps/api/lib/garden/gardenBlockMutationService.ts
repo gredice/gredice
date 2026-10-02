@@ -13,10 +13,14 @@ import {
     AccountNotFoundError,
     bustScheduleCache,
     earnSunflowersOnce,
+    GardenPackConflictError,
     GardenPackLifecyclePendingError,
+    GardenPackNotFoundError,
     type GardenPlacementTransaction,
     getGardenPlacementSnapshotForUpdate,
+    isPurchasedGardenPackBlock,
     listGardenRaisedBedMetadataForUpdate,
+    recycleGardenPackUnitForAccount,
     SunflowerEarnAmountConflictError,
     softDeleteGardenBlockOnce,
     softDeleteNewRaisedBedOnce,
@@ -27,6 +31,7 @@ import {
     withGardenPlacementTransaction,
     withSunflowerAccountTransaction,
 } from '@gredice/storage';
+import { z } from 'zod';
 import { getBlockData } from '../blocks/blockDataService';
 import { validateRotatedBlockPlacement } from './rotatedBlockPlacementValidation';
 
@@ -809,5 +814,45 @@ const defaultDependencies: GardenBlockMutationDependencies<GardenPlacementTransa
         withSunflowerAccountTransaction,
     };
 
-export const { recycleGardenBlockForAccount, updateGardenBlockForAccount } =
-    createGardenBlockMutationService(defaultDependencies);
+const ordinaryMutations = createGardenBlockMutationService(defaultDependencies);
+export const updateGardenBlockForAccount =
+    ordinaryMutations.updateGardenBlockForAccount;
+export async function recycleGardenBlockForAccount(
+    command: RecycleGardenBlockCommand,
+): Promise<RecycleGardenBlockResult> {
+    // A historical pack block remains recognizable after recycling for exact replay.
+    const location = await isPurchasedGardenPackBlock(command.blockId);
+    if (!location)
+        return ordinaryMutations.recycleGardenBlockForAccount(command);
+    try {
+        const response = await recycleGardenPackUnitForAccount(
+            command.accountId,
+            command,
+        );
+        return {
+            ok: true,
+            blockId: command.blockId,
+            refundedSunflowers: z
+                .number()
+                .int()
+                .nonnegative()
+                .parse(response.refundedSunflowers),
+        };
+    } catch (error) {
+        if (error instanceof GardenPackConflictError)
+            return {
+                ok: false,
+                code: 'GARDEN_STATE_CHANGED',
+                error: error.message,
+                status: 409,
+            };
+        if (error instanceof GardenPackNotFoundError)
+            return {
+                ok: false,
+                code: 'BLOCK_NOT_FOUND',
+                error: error.message,
+                status: 404,
+            };
+        throw error;
+    }
+}

@@ -19,6 +19,7 @@ import {
     getGardenBoxInventoryCapacity,
 } from '../gardenBoxInventoryLimits';
 import { useBlockData } from '../hooks/useBlockData';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useGardenBoxPlaceBlock } from '../hooks/useGardenBoxPlaceBlock';
 import { useGardenPackInventory } from '../hooks/useGardenPackInventory';
 import { useInventory } from '../hooks/useInventory';
@@ -42,6 +43,7 @@ type InventoryItemData = {
     entityTypeName: string;
     entityId: string;
     amount: number;
+    packUnit?: { purchaseId: string; lineId: string; unitOrdinal: number };
     name?: string;
     image?: string;
 };
@@ -160,6 +162,16 @@ function InventoryItemCell({
         <button
             type="button"
             onClick={onClick}
+            aria-label={
+                item.packUnit
+                    ? `${displayName}, predmet iz paketa ${item.packUnit.unitOrdinal}`
+                    : undefined
+            }
+            data-stored-pack-unit={
+                item.packUnit
+                    ? `${item.packUnit.purchaseId}:${item.packUnit.lineId}:${item.packUnit.unitOrdinal}`
+                    : undefined
+            }
             className="relative aspect-square overflow-visible rounded-lg border bg-card p-0.5 transition-all hover:bg-primary/10"
         >
             {sortData ? (
@@ -242,7 +254,7 @@ function InventoryItemsGrid({
         <div className="grid grid-cols-6 gap-1">
             {gridItems.map((item, index) => {
                 const key = item
-                    ? `${keyPrefix}-${inventoryItemKey(item)}`
+                    ? `${keyPrefix}-${inventoryItemKey(item)}-${item.packUnit ? `${item.packUnit.purchaseId}:${item.packUnit.lineId}:${item.packUnit.unitOrdinal}` : 'ordinary'}`
                     : `${keyPrefix}-empty-${index}`;
                 const itemSortData =
                     item?.entityTypeName === 'plantSort'
@@ -292,6 +304,10 @@ function InventoryItemModal({
     onClose: () => void;
 }) {
     const placeGardenBoxBlock = useGardenBoxPlaceBlock();
+    const { data: currentGarden } = useCurrentGarden();
+    const wrongPackGarden = Boolean(
+        item.packUnit && gardenBox?.gardenId !== currentGarden?.id,
+    );
     const blockImageName = resolveBlockImageName(item);
     const isGardenBoxBlock =
         source === 'gardenBox' && item.entityTypeName === 'block';
@@ -314,16 +330,21 @@ function InventoryItemModal({
             : null;
 
     async function handlePlaceGardenBoxBlock() {
-        if (!gardenBox) {
+        if (!gardenBox || wrongPackGarden) {
             return;
         }
 
-        await placeGardenBoxBlock.mutateAsync({
-            gardenId: gardenBox.gardenId,
-            gardenBoxBlockId: gardenBox.blockId,
-            entityId: item.entityId,
-        });
-        onClose();
+        try {
+            await placeGardenBoxBlock.mutateAsync({
+                gardenId: gardenBox.gardenId,
+                gardenBoxBlockId: gardenBox.blockId,
+                entityId: item.entityId,
+                packUnit: item.packUnit,
+            });
+            onClose();
+        } catch {
+            return;
+        }
     }
 
     return (
@@ -430,12 +451,20 @@ function InventoryItemModal({
                             startDecorator={<Add className="size-4" />}
                             loading={placeGardenBoxBlock.isPending}
                             disabled={
-                                !gardenBox || placeGardenBoxBlock.isPending
+                                !gardenBox ||
+                                wrongPackGarden ||
+                                placeGardenBoxBlock.isPending
                             }
                             onClick={handlePlaceGardenBoxBlock}
                         >
                             Dodaj u vrt
                         </Button>
+                        {wrongPackGarden && (
+                            <Typography level="body3">
+                                Prije postavljanja odaberi vrt u kojem je ova
+                                kutija.
+                            </Typography>
+                        )}
                         {placeGardenBoxBlockError && (
                             <Typography level="body3" className="text-red-600">
                                 {placeGardenBoxBlockError}

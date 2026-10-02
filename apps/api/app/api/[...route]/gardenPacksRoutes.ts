@@ -18,6 +18,7 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { gardenPackLifecycleRoutes } from './gardenPackLifecycleRoutes';
 import { gardenPackPlacementRoutes } from './gardenPackPlacementRoutes';
 
 export type GardenPacksRouteDependencies = {
@@ -187,4 +188,6 @@ export function createGardenPacksRoutes(
             },
         );
 }
-export default createGardenPacksRoutes().route('/', gardenPackPlacementRoutes);
+export default createGardenPacksRoutes()
+    .route('/', gardenPackPlacementRoutes)
+    .route('/', gardenPackLifecycleRoutes);

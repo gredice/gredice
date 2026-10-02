@@ -152,3 +152,67 @@ export const gardenPackUnitEvents = pgTable(
         ),
     ],
 );
+
+/** Mutable physical location; the original unit provenance remains immutable. */
+export const gardenPackUnitLocations = pgTable(
+    'garden_pack_unit_locations',
+    {
+        purchaseId: text('purchase_id').notNull(),
+        lineId: text('line_id').notNull(),
+        unitOrdinal: integer('unit_ordinal').notNull(),
+        gardenId: integer('garden_id').notNull(),
+        blockId: text('block_id').notNull(),
+        gardenBoxBlockId: text('garden_box_block_id'),
+        lastOperationId: text('last_operation_id'),
+    },
+    (table) => [
+        primaryKey({
+            columns: [table.purchaseId, table.lineId, table.unitOrdinal],
+        }),
+        foreignKey({
+            columns: [table.purchaseId, table.lineId, table.unitOrdinal],
+            foreignColumns: [
+                gardenPackUnits.purchaseId,
+                gardenPackUnits.lineId,
+                gardenPackUnits.unitOrdinal,
+            ],
+        }),
+        uniqueIndex('garden_pack_location_block_unique').on(table.blockId),
+        index('garden_pack_location_box_idx').on(
+            table.gardenId,
+            table.gardenBoxBlockId,
+        ),
+        check(
+            'garden_pack_location_valid',
+            sql`${table.gardenId} > 0 AND length(${table.blockId}) BETWEEN 1 AND 128 AND (${table.gardenBoxBlockId} IS NULL OR (length(${table.gardenBoxBlockId}) BETWEEN 1 AND 128 AND ${table.gardenBoxBlockId} <> ${table.blockId}))`,
+        ),
+    ],
+);
+
+export const gardenPackLifecycleReceipts = pgTable(
+    'garden_pack_lifecycle_receipts',
+    {
+        id: text('id').primaryKey(),
+        accountId: text('account_id').references(() => accounts.id, {
+            onDelete: 'set null',
+        }),
+        operationId: text('operation_id').notNull(),
+        previousOperationId: text('previous_operation_id'),
+        kind: text('kind', {
+            enum: ['store', 'retrieve', 'refund', 'recycle', 'garden-delete'],
+        }).notNull(),
+        payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
+        response: jsonb('response').$type<Record<string, unknown>>().notNull(),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+    },
+    (table) => [
+        uniqueIndex('garden_pack_lifecycle_operation_unique').on(
+            table.accountId,
+            table.operationId,
+        ),
+        check(
+            'garden_pack_lifecycle_receipt_valid',
+            sql`length(${table.operationId}) BETWEEN 1 AND 128 AND ${table.kind} IN ('store','retrieve','refund','recycle','garden-delete') AND jsonb_typeof(${table.payload}) = 'object' AND jsonb_typeof(${table.response}) = 'object'`,
+        ),
+    ],
+);
