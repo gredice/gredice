@@ -163,6 +163,10 @@ export const dynamicRouteSitemapPolicy: Record<
         source: 'excluded',
         reason: 'Per-recipient tracking links.',
     },
+    '/trag/grupa/[token]': {
+        source: 'excluded',
+        reason: 'Per-recipient grouped harvest tracking links.',
+    },
     '/cjenik/preuzimanje/[id]': {
         source: 'excluded',
         reason: 'Signed CSV downloads.',

@@ -586,18 +586,7 @@ export function Squirrel({
     const gardenAvatarPresence = useGameState(
         (state) => state.gardenAvatarPresence,
     );
-    const setAnimalDebugEntry = useGameState(
-        (state) => state.setAnimalDebugEntry,
-    );
-    const removeAnimalDebugEntry = useGameState(
-        (state) => state.removeAnimalDebugEntry,
-    );
-    const setAnimalPresenceEntry = useGameState(
-        (state) => state.setAnimalPresenceEntry,
-    );
-    const removeAnimalPresenceEntry = useGameState(
-        (state) => state.removeAnimalPresenceEntry,
-    );
+    const faunaWorld = useGameState((state) => state.faunaWorld);
 
     const squirrelModel = useMemo(() => {
         const clone = gltf.scene.clone(true);
@@ -674,14 +663,14 @@ export function Squirrel({
 
     useEffect(() => {
         if (!enableDebugHudFlag) {
-            removeAnimalDebugEntry(habitat.id);
+            faunaWorld.removeDebug(habitat.id);
         }
-        return () => removeAnimalDebugEntry(habitat.id);
-    }, [enableDebugHudFlag, habitat.id, removeAnimalDebugEntry]);
+        return () => faunaWorld.removeDebug(habitat.id);
+    }, [enableDebugHudFlag, habitat.id, faunaWorld]);
 
     useEffect(
-        () => () => removeAnimalPresenceEntry(habitat.id),
-        [habitat.id, removeAnimalPresenceEntry],
+        () => () => faunaWorld.removePresence(habitat.id),
+        [habitat.id, faunaWorld],
     );
 
     useEffect(() => {
@@ -1084,7 +1073,7 @@ export function Squirrel({
             animalPresenceUpdateIntervalSeconds
         ) {
             lastPresenceUpdateRef.current = now;
-            setAnimalPresenceEntry({
+            faunaWorld.reportPresence({
                 behavior: runtime.behavior,
                 id: habitat.id,
                 position: {
@@ -1099,7 +1088,7 @@ export function Squirrel({
 
         if (enableDebugHudFlag && now - lastDebugUpdateRef.current >= 0.5) {
             lastDebugUpdateRef.current = now;
-            setAnimalDebugEntry({
+            faunaWorld.reportDebug({
                 ...createDebugEntry({
                     group,
                     habitat,

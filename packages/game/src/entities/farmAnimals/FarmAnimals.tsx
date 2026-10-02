@@ -1794,25 +1794,14 @@ function FarmAnimal({
     const animalTargetsDebugVisible = useGameState(
         (state) => state.animalTargetsDebugVisible,
     );
-    const setAnimalDebugEntry = useGameState(
-        (state) => state.setAnimalDebugEntry,
-    );
-    const removeAnimalDebugEntry = useGameState(
-        (state) => state.removeAnimalDebugEntry,
-    );
-    const setAnimalPresenceEntry = useGameState(
-        (state) => state.setAnimalPresenceEntry,
-    );
-    const removeAnimalPresenceEntry = useGameState(
-        (state) => state.removeAnimalPresenceEntry,
-    );
+    const faunaWorld = useGameState((state) => state.faunaWorld);
 
     function getFreshSheepNeighbors(now: number) {
         if (habitat.species !== 'Sheep') {
             return [];
         }
         return freshAnimalPresences({
-            entries: gameStateStore.getState().animalPresenceEntries,
+            entries: faunaWorld.getSpeciesPresences('Sheep'),
             now,
             species: 'Sheep',
         }).map((entry) => ({
@@ -1899,14 +1888,14 @@ function FarmAnimal({
 
     useEffect(() => {
         if (!enableDebugHudFlag) {
-            removeAnimalDebugEntry(habitat.id);
+            faunaWorld.removeDebug(habitat.id);
         }
-        return () => removeAnimalDebugEntry(habitat.id);
-    }, [enableDebugHudFlag, habitat.id, removeAnimalDebugEntry]);
+        return () => faunaWorld.removeDebug(habitat.id);
+    }, [enableDebugHudFlag, habitat.id, faunaWorld]);
 
     useEffect(
-        () => () => removeAnimalPresenceEntry(habitat.id),
-        [habitat.id, removeAnimalPresenceEntry],
+        () => () => faunaWorld.removePresence(habitat.id),
+        [habitat.id, faunaWorld],
     );
 
     useEffect(() => {
@@ -2368,7 +2357,7 @@ function FarmAnimal({
             animalPresenceUpdateIntervalSeconds
         ) {
             lastPresenceUpdateRef.current = now;
-            setAnimalPresenceEntry({
+            faunaWorld.reportPresence({
                 behavior: runtime.target.behavior,
                 id: habitat.id,
                 position: roundPoint(group.position),
@@ -2419,7 +2408,7 @@ function FarmAnimal({
                 targetId: runtime.target.id,
                 updatedAt: now,
             } satisfies AnimalDebugEntry;
-            setAnimalDebugEntry(entry);
+            faunaWorld.reportDebug(entry);
         }
     });
 

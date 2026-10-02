@@ -750,12 +750,7 @@ function Butterfly({
         (state) => state.animalDebugCommand,
     );
     const animalDisturbance = useGameState((state) => state.animalDisturbance);
-    const setAnimalDebugEntry = useGameState(
-        (state) => state.setAnimalDebugEntry,
-    );
-    const removeAnimalDebugEntry = useGameState(
-        (state) => state.removeAnimalDebugEntry,
-    );
+    const faunaWorld = useGameState((state) => state.faunaWorld);
     const variant = getButterflyWingVariant(descriptor.variantId);
 
     const butterflyModel = useMemo(() => {
@@ -782,14 +777,14 @@ function Butterfly({
     });
 
     useEffect(() => {
-        return () => removeAnimalDebugEntry(descriptor.id);
-    }, [descriptor.id, removeAnimalDebugEntry]);
+        return () => faunaWorld.removeDebug(descriptor.id);
+    }, [descriptor.id, faunaWorld]);
 
     useEffect(() => {
         if (!enableDebugHudFlag) {
-            removeAnimalDebugEntry(descriptor.id);
+            faunaWorld.removeDebug(descriptor.id);
         }
-    }, [descriptor.id, enableDebugHudFlag, removeAnimalDebugEntry]);
+    }, [descriptor.id, enableDebugHudFlag, faunaWorld]);
 
     useEffect(() => {
         if (!animalTargetsDebugVisible && targetDebugRef.current) {
@@ -1184,7 +1179,7 @@ function Butterfly({
 
         if (enableDebugHudFlag && now - lastDebugUpdateRef.current >= 0.2) {
             lastDebugUpdateRef.current = now;
-            setAnimalDebugEntry(
+            faunaWorld.reportDebug(
                 createButterflyDebugEntry({
                     descriptor,
                     group,

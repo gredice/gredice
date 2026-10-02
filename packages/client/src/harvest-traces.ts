@@ -12,3 +12,13 @@ export function buildHarvestTracePublicUrl(
 ) {
     return new URL(buildHarvestTracePublicPath(token), origin).toString();
 }
+
+export function buildHarvestTraceGroupPublicUrl(
+    token: string,
+    origin = getBrowserGrediceAppOrigin('www'),
+) {
+    return new URL(
+        `${HARVEST_TRACE_PUBLIC_PATH_PREFIX}/grupa/${encodeURIComponent(token)}`,
+        origin,
+    ).toString();
+}

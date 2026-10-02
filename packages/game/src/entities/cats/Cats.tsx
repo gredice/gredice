@@ -55,6 +55,7 @@ import {
     animalPresencePosition,
     animalPresenceUpdateIntervalSeconds,
     freshAnimalPresences,
+    groundBirdEntries,
 } from '../animals/animalPresence';
 import { initializeAnimalAtHome } from '../animals/animalRuntimeLifecycle';
 import {
@@ -684,7 +685,7 @@ function getDogInteractionTargets({
     now,
     range,
 }: {
-    dogPresenceEntries: AnimalPresenceEntry[];
+    dogPresenceEntries: readonly AnimalPresenceEntry[];
     habitat: CatHabitat;
     now: number;
     range: number;
@@ -754,7 +755,7 @@ function chooseNextTarget({
     weather,
 }: {
     birdGroundEntries: AnimalDebugEntry[];
-    dogPresenceEntries: AnimalPresenceEntry[];
+    dogPresenceEntries: readonly AnimalPresenceEntry[];
     habitat: CatHabitat;
     now: number;
     random: () => number;
@@ -841,7 +842,7 @@ function chooseManualNextTarget({
 }: {
     birdGroundEntries: AnimalDebugEntry[];
     currentTarget: CatTarget;
-    dogPresenceEntries: AnimalPresenceEntry[];
+    dogPresenceEntries: readonly AnimalPresenceEntry[];
     habitat: CatHabitat;
     now: number;
     random: () => number;
@@ -946,7 +947,7 @@ function chooseDebugTarget({
 }: {
     behavior: string;
     birdGroundEntries: AnimalDebugEntry[];
-    dogPresenceEntries: AnimalPresenceEntry[];
+    dogPresenceEntries: readonly AnimalPresenceEntry[];
     habitat: CatHabitat;
     now: number;
     random: () => number;
@@ -1265,13 +1266,9 @@ function prepareCatMesh(object: Mesh) {
 }
 
 function Cat({
-    birdGroundEntries,
-    dogPresenceEntries,
     habitat,
     weather,
 }: {
-    birdGroundEntries: AnimalDebugEntry[];
-    dogPresenceEntries: AnimalPresenceEntry[];
     habitat: CatHabitat;
     weather: CatWeather | null | undefined;
 }) {
@@ -1308,18 +1305,7 @@ function Cat({
     const animalDebugCommand = useGameState(
         (state) => state.animalDebugCommand,
     );
-    const setAnimalDebugEntry = useGameState(
-        (state) => state.setAnimalDebugEntry,
-    );
-    const removeAnimalDebugEntry = useGameState(
-        (state) => state.removeAnimalDebugEntry,
-    );
-    const setAnimalPresenceEntry = useGameState(
-        (state) => state.setAnimalPresenceEntry,
-    );
-    const removeAnimalPresenceEntry = useGameState(
-        (state) => state.removeAnimalPresenceEntry,
-    );
+    const faunaWorld = useGameState((state) => state.faunaWorld);
 
     const catModel = useMemo(() => {
         const clone = gltf.scene.clone(true);
@@ -1365,15 +1351,15 @@ function Cat({
 
     useEffect(() => {
         if (!enableDebugHudFlag) {
-            removeAnimalDebugEntry(habitat.id);
+            faunaWorld.removeDebug(habitat.id);
         }
 
-        return () => removeAnimalDebugEntry(habitat.id);
-    }, [enableDebugHudFlag, habitat.id, removeAnimalDebugEntry]);
+        return () => faunaWorld.removeDebug(habitat.id);
+    }, [enableDebugHudFlag, habitat.id, faunaWorld]);
 
     useEffect(
-        () => () => removeAnimalPresenceEntry(habitat.id),
-        [habitat.id, removeAnimalPresenceEntry],
+        () => () => faunaWorld.removePresence(habitat.id),
+        [habitat.id, faunaWorld],
     );
 
     useEffect(() => {
@@ -1434,9 +1420,9 @@ function Cat({
         const random = randomRef.current;
         const now = clock.getElapsedTime();
         const target = chooseManualNextTarget({
-            birdGroundEntries,
+            birdGroundEntries: groundBirdEntries(faunaWorld),
             currentTarget: runtime.target,
-            dogPresenceEntries,
+            dogPresenceEntries: faunaWorld.getSpeciesPresences('Dog'),
             habitat,
             now,
             random,
@@ -1585,8 +1571,8 @@ function Cat({
             ) {
                 const target = chooseDebugTarget({
                     behavior: animalDebugCommand.behavior,
-                    birdGroundEntries,
-                    dogPresenceEntries,
+                    birdGroundEntries: groundBirdEntries(faunaWorld),
+                    dogPresenceEntries: faunaWorld.getSpeciesPresences('Dog'),
                     habitat,
                     now,
                     random,
@@ -1701,8 +1687,8 @@ function Cat({
         }
 
         const target = chooseNextTarget({
-            birdGroundEntries,
-            dogPresenceEntries,
+            birdGroundEntries: groundBirdEntries(faunaWorld),
+            dogPresenceEntries: faunaWorld.getSpeciesPresences('Dog'),
             habitat,
             now,
             random,
@@ -1764,7 +1750,7 @@ function Cat({
                 animalPresenceUpdateIntervalSeconds
         ) {
             lastAnimalPresenceUpdateRef.current = now;
-            setAnimalPresenceEntry({
+            faunaWorld.reportPresence({
                 id: habitat.id,
                 species: 'Cat',
                 behavior: runtime.target.behavior,
@@ -1780,7 +1766,7 @@ function Cat({
             now - lastAnimalDebugUpdateRef.current >= 0.5
         ) {
             lastAnimalDebugUpdateRef.current = now;
-            setAnimalDebugEntry(
+            faunaWorld.reportDebug(
                 createCatDebugEntry({ group, habitat, now, runtime }),
             );
         }
@@ -1859,24 +1845,6 @@ export function Cats({
 }) {
     const { data: blockData } = useBlockData();
     const gameWeather = useGameState((state) => state.weather);
-    const animalDebugEntries = useGameState(
-        (state) => state.animalDebugEntries,
-    );
-    const animalPresenceEntries = useGameState(
-        (state) => state.animalPresenceEntries,
-    );
-    const birdGroundEntries = useMemo(
-        () =>
-            animalDebugEntries.filter(
-                (entry) =>
-                    entry.species === 'Bird' && entry.behavior === 'ground',
-            ),
-        [animalDebugEntries],
-    );
-    const dogPresenceEntries = useMemo(
-        () => animalPresenceEntries.filter((entry) => entry.species === 'Dog'),
-        [animalPresenceEntries],
-    );
     const { data: weatherNow } = useWeatherNow(
         !weatherDisabled && !weather,
         farmId,
@@ -1904,13 +1872,7 @@ export function Cats({
     return (
         <>
             {habitats.map((habitat) => (
-                <Cat
-                    key={habitat.id}
-                    birdGroundEntries={birdGroundEntries}
-                    dogPresenceEntries={dogPresenceEntries}
-                    habitat={habitat}
-                    weather={catWeather}
-                />
+                <Cat key={habitat.id} habitat={habitat} weather={catWeather} />
             ))}
         </>
     );

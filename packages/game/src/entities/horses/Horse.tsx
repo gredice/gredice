@@ -319,12 +319,7 @@ export function Horse({
     const activeAnimationRef = useRef<HorseAnimationName>('Horse_Idle');
     const [activeAnimation, setActiveAnimation] =
         useState<HorseAnimationName>('Horse_Idle');
-    const setAnimalPresenceEntry = useGameState(
-        (state) => state.setAnimalPresenceEntry,
-    );
-    const removeAnimalPresenceEntry = useGameState(
-        (state) => state.removeAnimalPresenceEntry,
-    );
+    const faunaWorld = useGameState((state) => state.faunaWorld);
     const appearanceVariant = resolveHorseAppearanceVariant(variant, block.id);
     const appearance = getHorseAppearanceVariantDefinition(appearanceVariant);
     const homePlacement =
@@ -451,8 +446,8 @@ export function Horse({
     }, [actions, activeAnimation]);
 
     useEffect(
-        () => () => removeAnimalPresenceEntry(`horse:${block.id}`),
-        [block.id, removeAnimalPresenceEntry],
+        () => () => faunaWorld.removePresence(`horse:${block.id}`),
+        [block.id, faunaWorld],
     );
 
     useFrame(({ clock }, delta) => {
@@ -642,7 +637,7 @@ export function Horse({
             animalPresenceUpdateIntervalSeconds
         ) {
             lastPresenceUpdateRef.current = now;
-            setAnimalPresenceEntry({
+            faunaWorld.reportPresence({
                 behavior:
                     runtime.phase === 'moving'
                         ? runtime.movement.gait

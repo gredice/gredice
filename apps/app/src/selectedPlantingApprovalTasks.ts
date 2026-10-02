@@ -1,4 +1,5 @@
 import type { getAllRaisedBeds } from '@gredice/storage';
+import { isPendingSelectedPlanting } from './approvalTaskEligibility';
 import type { AdminApprovalTask } from './approvalTasks';
 
 type Bed = Awaited<ReturnType<typeof getAllRaisedBeds>>[number];
@@ -13,19 +14,12 @@ export function buildSelectedPlantingApprovalTasks(raisedBeds: readonly Bed[]) {
                 { kind: 'selectedPlantingVerification' }
             >[] => {
                 const task = planting.selectedTask;
-                if (
-                    bed.status === 'abandoned' ||
-                    planting.configurationSource !== 'selected' ||
-                    !planting.isActive ||
-                    planting.isDeleted ||
-                    task?.status !== 'pendingVerification'
-                )
-                    return [];
+                if (!isPendingSelectedPlanting(bed, planting)) return [];
                 const positions = planting.memberships
                     .filter((m) => !m.isDeleted && !m.raisedBedField.isDeleted)
                     .map((m) => m.raisedBedField.positionIndex + 1)
                     .sort((a, b) => a - b);
-                if (!positions.length || !task.completion) return [];
+                if (!task?.completion) return [];
                 return [
                     {
                         id: `selected-planting:${planting.id}`,

@@ -71,6 +71,7 @@ import {
     findGardenAvatarSeatExit,
     type GardenAvatarInteractionResult,
     type GardenAvatarSeatPose,
+    gardenAvatarAnimalPetRange,
     gardenAvatarBeachBallKickDistance,
     getGardenAvatarBlockInteractionTargets,
     getGardenAvatarCactusBounceDirection,
@@ -913,7 +914,10 @@ export function GardenAvatar({
 
         const animalResolution = resolveAimedGardenAvatarAnimal({
             actorPosition: actor.position,
-            entries: gameStateStore.getState().animalPresenceEntries,
+            entries: gameStateStore.getState().faunaWorld.queryPresences({
+                center: actor.position,
+                radius: gardenAvatarAnimalPetRange,
+            }),
             now: clock.elapsedTime,
             ray: raycaster.ray,
         });
@@ -1947,11 +1951,11 @@ export function GardenAvatar({
             const forward = getGardenAvatarForwardDirection(actor.rotation.y);
             const beachBall = gameStateStore
                 .getState()
-                .animalPresenceEntries.filter(
-                    (entry) =>
-                        entry.species === 'BeachBall' &&
-                        now - entry.updatedAt <= 0.6,
-                )
+                .faunaWorld.queryPresences({
+                    maxAgeSeconds: 0.6,
+                    now,
+                    species: 'BeachBall',
+                })
                 .map((entry) => {
                     const dx = entry.position.x - actor.position.x;
                     const dz = entry.position.z - actor.position.z;

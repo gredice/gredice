@@ -168,12 +168,7 @@ export function BeachBall({
     const avatarKickRequest = useGameState(
         (state) => state.gardenAvatarBeachBallKickRequest,
     );
-    const setAnimalPresenceEntry = useGameState(
-        (state) => state.setAnimalPresenceEntry,
-    );
-    const removeAnimalPresenceEntry = useGameState(
-        (state) => state.removeAnimalPresenceEntry,
-    );
+    const faunaWorld = useGameState((state) => state.faunaWorld);
     const requestRender = useSceneRenderRequest();
     useSceneTimeInvalidation('beach-ball-motion', motionActive);
     const activateMotion = useCallback(() => {
@@ -232,8 +227,8 @@ export function BeachBall({
     }, [activateMotion, avatarKickRequest, block.id]);
 
     useEffect(
-        () => () => removeAnimalPresenceEntry(`beach-ball:${block.id}`),
-        [block.id, removeAnimalPresenceEntry],
+        () => () => faunaWorld.removePresence(`beach-ball:${block.id}`),
+        [block.id, faunaWorld],
     );
 
     useFrame(({ clock }, deltaSeconds) => {
@@ -248,7 +243,7 @@ export function BeachBall({
 
         if (clock.elapsedTime - lastPresenceUpdateRef.current >= 0.2) {
             lastPresenceUpdateRef.current = clock.elapsedTime;
-            setAnimalPresenceEntry({
+            faunaWorld.reportPresence({
                 behavior: currentState.active ? 'rolling' : 'idle',
                 id: `beach-ball:${block.id}`,
                 position: {

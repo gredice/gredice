@@ -16,8 +16,11 @@ import {
     createMeshInstanceMatrix,
 } from '../../entities/chunkedMeshGeometry';
 import {
+    compileMeshBufferSources,
     compileMeshBuffers,
+    concatMeshBuffers,
     meshBufferTransferables,
+    meshGeometryLayoutSignature,
     packMeshGeometry,
     unpackMeshGeometry,
 } from './meshBuffers';
@@ -197,5 +200,107 @@ describe('direct mesh buffers', () => {
         assert.equal(packet.attributes.snowSkirt.array.at(-1), 0.25);
         assert.ok((packet.index.at(-1) ?? 0) > 65535);
         source.dispose();
+    });
+});
+
+describe('mesh buffer concatenation', () => {
+    it('joins transformed heterogeneous sources like a three.js merge', () => {
+        const box = new BoxGeometry(1, 0.4, 1);
+        const wide = new BoxGeometry(2, 0.2, 0.5, 2, 1, 1);
+        const boxMatrices = createChunkMatrices(instances, transform, 0.5);
+        const wideMatrices = createChunkMatrices(
+            instances.slice(0, 1),
+            transform,
+            [1, 2, 1],
+        );
+        const joined = unpackMeshGeometry(
+            compileMeshBufferSources([
+                { source: packMeshGeometry(box), matrices: boxMatrices },
+                { source: packMeshGeometry(wide), matrices: wideMatrices },
+            ]),
+        );
+        const expected = mergeGeometries([
+            unpackMeshGeometry(
+                compileMeshBuffers(packMeshGeometry(box), boxMatrices),
+            ),
+            unpackMeshGeometry(
+                compileMeshBuffers(packMeshGeometry(wide), wideMatrices),
+            ),
+        ]);
+        assert.ok(expected);
+        for (const name of ['position', 'normal', 'uv']) {
+            assert.deepEqual(
+                Array.from(joined.getAttribute(name).array),
+                Array.from(expected.getAttribute(name).array),
+                name,
+            );
+        }
+        assert.deepEqual(
+            Array.from(joined.index?.array ?? []),
+            Array.from(expected.index?.array ?? []),
+        );
+        expected.computeBoundingBox();
+        assert.ok(
+            expected.boundingBox &&
+                joined.boundingBox?.equals(expected.boundingBox),
+        );
+    });
+
+    it('widens rebased indices once the joined packet exceeds 16-bit range', () => {
+        const box = new BoxGeometry();
+        const vertices = box.getAttribute('position').count;
+        const count = Math.ceil(65536 / vertices / 2);
+        const many = createChunkMatrices(
+            Array.from({ length: count }, (_, i) => ({
+                position: [i, 0, 0],
+                rotation: 0,
+            })),
+            { position: [0, 0, 0], rotation: [0, 0, 0] },
+            1,
+        );
+        const source = packMeshGeometry(box);
+        const single = compileMeshBufferSources([{ source, matrices: many }]);
+        const joined = compileMeshBufferSources([
+            { source, matrices: many },
+            { source, matrices: many.slice() },
+        ]);
+        assert.ok(single.index instanceof Uint16Array);
+        assert.ok(joined.index instanceof Uint32Array);
+        assert.equal(
+            joined.index?.[single.index?.length ?? 0],
+            vertices * count,
+        );
+    });
+
+    it('describes compatible layouts and rejects mismatched ones', () => {
+        const box = new BoxGeometry();
+        const other = new BoxGeometry(3, 2, 1, 4, 4, 4);
+        assert.equal(
+            meshGeometryLayoutSignature(box),
+            meshGeometryLayoutSignature(other),
+        );
+        const colored = new BoxGeometry();
+        colored.setAttribute(
+            'color',
+            new Float32BufferAttribute(
+                new Float32Array(colored.getAttribute('position').count * 3),
+                3,
+            ),
+        );
+        assert.notEqual(
+            meshGeometryLayoutSignature(box),
+            meshGeometryLayoutSignature(colored),
+        );
+        const direct = box.toNonIndexed();
+        assert.notEqual(
+            meshGeometryLayoutSignature(box),
+            meshGeometryLayoutSignature(direct),
+        );
+        assert.throws(() =>
+            concatMeshBuffers([
+                packMeshGeometry(box),
+                packMeshGeometry(colored),
+            ]),
+        );
     });
 });

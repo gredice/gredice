@@ -67,7 +67,8 @@ attempts, scheduled runs, and periodic queue execution.
 `runAutomations()` in `packages/storage/src/automations/runner.ts` performs
 bounded phases:
 
-1. Ensure default automation definitions exist.
+1. Check the managed revision of default automation definitions once for the
+   invocation and synchronize only missing or changed defaults.
 2. Enqueue due scheduled automation runs one local calendar day before the
    configured occurrence, using deterministic occurrence keys so repeated cron
    ticks do not duplicate the same period.
@@ -85,6 +86,31 @@ When defaults are first installed, the runner initializes the event cursor to
 the current latest domain event id if no cursor exists. This prevents the MVP
 from backfilling historical sowing events and creating past-dated seasonal
 watering operations on first cron execution.
+
+Default synchronization reads only each definition's ID, key, and the
+`metadata.managedRevision` SHA-256 of its source-managed content. An unchanged
+revision performs no definition writes and transfers no definition graph.
+Changed defaults are installed transactionally with a conflict-row revision
+guard, so concurrent workers apply each revision once and failed initialization
+can retry. Existing databases adopt the revision in metadata on their first
+successful synchronization; deleted defaults are restored on the next check.
+The default initializer returns ID/key references instead of full rows.
+
+Administrator graph edits remain in place until their source-managed revision
+changes. On a changed revision, source content is reapplied using the existing
+default policy: definitions with `preserveExistingStatus` keep their configured
+status, and administrator concurrency settings remain unless the source
+explicitly configures a new cap. Cursor initialization reads the existing
+cursor first and never advances it while synchronizing definitions.
+
+For production measurement, compare matching windows before and after the API
+deployment, excluding the one-time adoption updates. Record the deployment
+SHA, window boundaries, cron invocations, and the delta of
+`pg_stat_user_tables.n_tup_upd` for `automation_definitions`; admin edits are
+separate legitimate updates. Also compare the database/provider transfer
+counter for the same window. The compact revision projection and zero idle
+writes are covered locally, but production transfer savings require this
+deployment-window readback and cannot be inferred from JSON sizes alone.
 
 The API cron route is protected with `CRON_SECRET` and is registered in
 `apps/api/vercel.json` on a one-minute schedule:

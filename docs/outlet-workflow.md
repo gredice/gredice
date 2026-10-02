@@ -14,7 +14,11 @@ Outlet sells discounted leftover greenhouse seedlings as limited-time, limited-s
 
 ## Configuration
 
-- `CRON_SECRET` protects `GET /api/internal/cron/outlet-lifecycle`.
+- `CRON_SECRET` protects hourly `GET /api/internal/cron/outlet-lifecycle` and
+  five-minute `GET /api/internal/cron/stripe-checkout-orphan-recovery`.
+  Cleanup never invokes payment reconciliation; recovery never repeats cleanup.
+  Recovery owns the maintenance/drain aggregate readback. Read-time offer expiry
+  and expired-hold availability remain authoritative between cleanup runs.
 - `FLAGS` connects the Garden app to Vercel Flags. `FLAGS_SECRET` protects the
   flag discovery and browser-override flow.
 - Existing Stripe, auth, database, and PostHog configuration apply through checkout and webhook code.

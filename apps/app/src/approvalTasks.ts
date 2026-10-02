@@ -1,3 +1,5 @@
+import 'server-only';
+
 import {
     type ApprovalRequest,
     type EntityStandardized,
@@ -10,7 +12,8 @@ import {
 
 import { serializeOperationDefinitionForList } from '../app/admin/operations/operationListDefinitionVisual';
 import type { EntityStandardized as OperationEntityStandardized } from '../lib/@types/EntityStandardized';
-
+import { createAdminApprovalData } from './adminApprovalData';
+import { getPendingLegacyPlantCycle } from './approvalTaskEligibility';
 import { buildSelectedPlantingApprovalTasks } from './selectedPlantingApprovalTasks';
 
 type ApprovalTaskBase = {
@@ -139,17 +142,22 @@ function buildPlantStatusRequestTask(
     };
 }
 
+const { getPendingApprovalData, getPendingAdminApprovalTaskCount } =
+    createAdminApprovalData({
+        requests: () => getApprovalRequests({ status: 'pending' }),
+        operations: () => getAllOperations({ status: 'pendingVerification' }),
+        raisedBeds: getAllRaisedBeds,
+    });
+
+export { getPendingAdminApprovalTaskCount };
+
 export async function getPendingAdminApprovalTasks() {
     const [
-        pendingApprovalRequests,
-        pendingOperations,
-        raisedBeds,
+        { pendingApprovalRequests, pendingOperations, raisedBeds },
         operationsData,
         plantSorts,
     ] = await Promise.all([
-        getApprovalRequests({ status: 'pending' }),
-        getAllOperations({ status: 'pendingVerification' }),
-        getAllRaisedBeds(),
+        getPendingApprovalData(),
         getEntitiesFormatted<OperationEntityStandardized>('operation'),
         getEntitiesFormatted<EntityStandardized>('plantSort'),
     ]);
@@ -214,43 +222,36 @@ export async function getPendingAdminApprovalTasks() {
     );
 
     const plantingTasks: AdminApprovalTask[] = raisedBeds.flatMap((raisedBed) =>
-        raisedBed.fields
-            .filter(
-                (field) =>
-                    field.active && field.plantStatus === 'pendingVerification',
-            )
-            .flatMap((field) => {
-                const activePlantCycle = field.plantCycles.find(
-                    (plantCycle) => plantCycle.active,
-                );
-                if (!activePlantCycle || !field.plantSortId) {
-                    return [];
-                }
-                const fieldLabel = raisedBedFieldLabel(field.positionIndex);
+        raisedBed.fields.flatMap((field) => {
+            const activePlantCycle = getPendingLegacyPlantCycle(field);
+            if (!activePlantCycle || !field.plantSortId) {
+                return [];
+            }
+            const fieldLabel = raisedBedFieldLabel(field.positionIndex);
 
-                return [
-                    {
-                        id: `planting:${field.id}`,
-                        kind: 'schedulePlantingVerification' as const,
-                        expectedPlantCycleEventId:
-                            activePlantCycle.plantPlaceEventId,
-                        expectedPlantCycleVersionEventId:
-                            activePlantCycle.endedEventId,
-                        expectedPlantSortId: field.plantSortId,
-                        raisedBedId: raisedBed.id,
-                        positionIndex: field.positionIndex,
-                        title: 'Verifikacija sijanja',
-                        description: `${fieldLabel ? `${fieldLabel}: ` : ''}${plantSortName(plantSortsById, field.plantSortId)}`,
-                        receivedAt: field.plantSowDate ?? field.updatedAt,
-                        plantImageUrl: plantSortImageUrl(
-                            plantSortsById.get(field.plantSortId),
-                        ),
-                        accountId: raisedBed.accountId,
-                        gardenId: raisedBed.gardenId,
-                        raisedBedPhysicalId: raisedBed.physicalId,
-                    },
-                ];
-            }),
+            return [
+                {
+                    id: `planting:${field.id}`,
+                    kind: 'schedulePlantingVerification' as const,
+                    expectedPlantCycleEventId:
+                        activePlantCycle.plantPlaceEventId,
+                    expectedPlantCycleVersionEventId:
+                        activePlantCycle.endedEventId,
+                    expectedPlantSortId: field.plantSortId,
+                    raisedBedId: raisedBed.id,
+                    positionIndex: field.positionIndex,
+                    title: 'Verifikacija sijanja',
+                    description: `${fieldLabel ? `${fieldLabel}: ` : ''}${plantSortName(plantSortsById, field.plantSortId)}`,
+                    receivedAt: field.plantSowDate ?? field.updatedAt,
+                    plantImageUrl: plantSortImageUrl(
+                        plantSortsById.get(field.plantSortId),
+                    ),
+                    accountId: raisedBed.accountId,
+                    gardenId: raisedBed.gardenId,
+                    raisedBedPhysicalId: raisedBed.physicalId,
+                },
+            ];
+        }),
     );
 
     const selectedPlantingTasks = buildSelectedPlantingApprovalTasks(
@@ -270,9 +271,4 @@ export async function getPendingAdminApprovalTasks() {
     ].sort(
         (left, right) => right.receivedAt.getTime() - left.receivedAt.getTime(),
     );
-}
-
-export async function getPendingAdminApprovalTaskCount() {
-    const tasks = await getPendingAdminApprovalTasks();
-    return tasks.length;
 }

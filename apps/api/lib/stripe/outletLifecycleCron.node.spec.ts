@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
-import { handleOutletLifecycleCron } from './outletLifecycleCron';
+import {
+    handleOutletLifecycleCron,
+    handleStripeCheckoutOrphanRecoveryCron,
+} from './outletLifecycleCron';
 
 const observedAt = new Date('2026-08-03T09:15:00.000Z');
 const healthyReconciliation = {
@@ -14,7 +17,6 @@ const healthyReconciliation = {
     scannedCount: 0,
     truncated: false,
 };
-
 function configureCronSecret(t: TestContext) {
     const previousSecret = process.env.CRON_SECRET;
     t.after(() => {
@@ -23,175 +25,149 @@ function configureCronSecret(t: TestContext) {
     });
     process.env.CRON_SECRET = 'cron-secret';
 }
-
-function cronRequest(authorization?: string) {
-    return new Request(
-        'https://api.gredice.com/api/internal/cron/outlet-lifecycle',
-        { headers: authorization ? { authorization } : undefined },
-    );
+function request(authorization = 'Bearer cron-secret') {
+    return new Request('https://api.gredice.com/api/internal/cron/test', {
+        headers: { authorization },
+    });
+}
+function dependencies() {
+    return {
+        cleanup: async () => ({
+            closedOfferIds: [7],
+            releasedReservationIds: [11, 12],
+        }),
+        drainPreflight: async () => true,
+        maintenanceEnabled: () => false,
+        now: () => observedAt,
+        reconcile: async () => healthyReconciliation,
+    };
 }
 
-test('outlet lifecycle cron fails closed before cleanup and reconciliation', async (t) => {
+test('both cron paths fail closed before invoking any business dependency', async (t) => {
     configureCronSecret(t);
-    let calls = 0;
-    const dependencies = {
-        cleanup: async () => {
-            calls += 1;
-            return { closedOfferIds: [], releasedReservationIds: [] };
-        },
-        drainPreflight: async () => {
-            calls += 1;
-            return true;
-        },
-        maintenanceEnabled: () => {
-            calls += 1;
-            return false;
-        },
-        reconcile: async () => {
-            calls += 1;
-            return healthyReconciliation;
-        },
+    const idle = () => {
+        throw new Error('Unauthorized work must remain idle');
     };
-
-    const invalid = await handleOutletLifecycleCron(
-        cronRequest('Bearer wrong'),
-        dependencies,
-    );
-    assert.strictEqual(invalid.status, 401);
-    assert.strictEqual(
-        invalid.headers.get('cache-control'),
-        'private, no-store',
-    );
-    assert.strictEqual(calls, 0);
-
-    delete process.env.CRON_SECRET;
-    const missing = await handleOutletLifecycleCron(
-        cronRequest('Bearer undefined'),
-        dependencies,
-    );
-    assert.strictEqual(missing.status, 401);
-    assert.strictEqual(calls, 0);
+    for (const handler of [
+        handleOutletLifecycleCron,
+        handleStripeCheckoutOrphanRecoveryCron,
+    ]) {
+        const invalid = await handler(request('Bearer wrong'), {
+            cleanup: idle,
+            drainPreflight: idle,
+            maintenanceEnabled: idle,
+            reconcile: idle,
+        });
+        assert.equal(invalid.status, 401);
+        assert.equal(invalid.headers.get('cache-control'), 'private, no-store');
+        delete process.env.CRON_SECRET;
+        assert.equal(
+            (await handler(request(), { cleanup: idle, reconcile: idle }))
+                .status,
+            401,
+        );
+        process.env.CRON_SECRET = 'cron-secret';
+    }
 });
 
-test('maintenance keeps outlet cleanup active and skips orphan reconciliation', async (t) => {
+test('hourly outlet cleanup runs independently of Stripe recovery and maintenance', async (t) => {
+    configureCronSecret(t);
+    const idle = () => {
+        throw new Error('Stripe dependency must remain idle');
+    };
+    const response = await handleOutletLifecycleCron(request(), {
+        ...dependencies(),
+        maintenanceEnabled: idle,
+        reconcile: idle,
+        drainPreflight: idle,
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.closedOffersCount, 1);
+    assert.equal(body.releasedReservationsCount, 2);
+    assert.equal(body.reconciliation, null);
+});
+
+test('five-minute recovery never repeats outlet cleanup', async (t) => {
+    configureCronSecret(t);
+    const response = await handleStripeCheckoutOrphanRecoveryCron(request(), {
+        ...dependencies(),
+        cleanup: async () => {
+            throw new Error('Cleanup must stay idle');
+        },
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('cache-control'), 'private, no-store');
+    assert.deepEqual(
+        (await response.json()).reconciliation,
+        healthyReconciliation,
+    );
+});
+
+test('recovery maintenance skips reconciliation and reports the drain preflight', async (t) => {
     configureCronSecret(t);
     t.mock.method(console, 'warn', () => undefined);
-    let cleanupCalls = 0;
-    let drainPreflightCalls = 0;
-    let reconciliationCalls = 0;
-    const response = await handleOutletLifecycleCron(
-        cronRequest('Bearer cron-secret'),
-        {
-            cleanup: async () => {
-                cleanupCalls += 1;
-                return {
-                    closedOfferIds: [7, 8],
-                    releasedReservationIds: [11],
-                };
-            },
-            drainPreflight: async () => {
-                drainPreflightCalls += 1;
-                return true;
-            },
-            maintenanceEnabled: () => true,
-            now: () => observedAt,
-            reconcile: async () => {
-                reconciliationCalls += 1;
-                return healthyReconciliation;
-            },
+    const response = await handleStripeCheckoutOrphanRecoveryCron(request(), {
+        ...dependencies(),
+        maintenanceEnabled: () => true,
+        reconcile: async () => {
+            throw new Error('Reconciliation must remain idle');
         },
-    );
-
-    assert.strictEqual(response.status, 503);
-    assert.strictEqual(response.headers.get('retry-after'), '60');
-    assert.strictEqual(
-        response.headers.get('cache-control'),
-        'private, no-store',
-    );
-    assert.strictEqual(cleanupCalls, 1);
-    assert.strictEqual(drainPreflightCalls, 1);
-    assert.strictEqual(reconciliationCalls, 0);
-    assert.deepStrictEqual(await response.json(), {
-        cleanupFailureCategory: null,
-        closedOffersCount: 2,
-        maintenance: true,
-        stripePaymentProcessingDrainFailureCategory: null,
-        stripePaymentProcessingDrained: true,
-        reconciliation: null,
-        reconciliationFailureCategory: null,
-        releasedReservationsCount: 1,
-        success: false,
-        timestamp: observedAt.toISOString(),
     });
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get('retry-after'), '60');
+    const body = await response.json();
+    assert.equal(body.stripePaymentProcessingDrained, true);
+    assert.equal(body.reconciliation, null);
 });
 
-test('maintenance reports a drain preflight failure without checkout data', async (t) => {
+test('maintenance reports a private drain preflight failure', async (t) => {
     configureCronSecret(t);
     t.mock.method(console, 'error', () => undefined);
     t.mock.method(console, 'warn', () => undefined);
-    class DrainPreflightError extends Error {
-        override readonly name = 'DrainPreflightError';
-    }
-    let reconciliationCalls = 0;
-    const response = await handleOutletLifecycleCron(
-        cronRequest('Bearer cron-secret'),
-        {
-            cleanup: async () => ({
-                closedOfferIds: [],
-                releasedReservationIds: [],
-            }),
-            drainPreflight: async () => {
-                throw new DrainPreflightError('database unavailable');
-            },
-            maintenanceEnabled: () => true,
-            now: () => observedAt,
-            reconcile: async () => {
-                reconciliationCalls += 1;
-                return healthyReconciliation;
-            },
+    const response = await handleStripeCheckoutOrphanRecoveryCron(request(), {
+        ...dependencies(),
+        maintenanceEnabled: () => true,
+        drainPreflight: async () => {
+            throw new Error('private checkout data');
         },
-    );
-
-    assert.strictEqual(response.status, 503);
-    assert.strictEqual(reconciliationCalls, 0);
+    });
     const body = await response.json();
-    assert.strictEqual(body.stripePaymentProcessingDrained, null);
-    assert.strictEqual(
-        body.stripePaymentProcessingDrainFailureCategory,
-        'DrainPreflightError',
-    );
+    assert.equal(response.status, 503);
+    assert.equal(body.stripePaymentProcessingDrained, null);
+    assert.equal(body.stripePaymentProcessingDrainFailureCategory, 'Error');
+    assert.equal(JSON.stringify(body).includes('private checkout data'), false);
 });
 
-test('outlet lifecycle cron preserves normal cleanup and orphan reconciliation', async (t) => {
+test('incomplete and failed recovery remain unhealthy', async (t) => {
     configureCronSecret(t);
-    const response = await handleOutletLifecycleCron(
-        cronRequest('Bearer cron-secret'),
-        {
-            cleanup: async () => ({
-                closedOfferIds: [7],
-                releasedReservationIds: [11, 12],
-            }),
-            drainPreflight: async () => {
-                throw new Error('drain preflight must stay idle');
+    for (const reconciliation of [
+        { ...healthyReconciliation, failedCount: 1 },
+        { ...healthyReconciliation, truncated: true },
+    ]) {
+        const response = await handleStripeCheckoutOrphanRecoveryCron(
+            request(),
+            {
+                ...dependencies(),
+                reconcile: async () => reconciliation,
             },
-            maintenanceEnabled: () => false,
-            now: () => observedAt,
-            reconcile: async () => healthyReconciliation,
-        },
-    );
+        );
+        assert.equal(response.status, 503);
+    }
+});
 
-    assert.strictEqual(response.status, 200);
-    assert.strictEqual(response.headers.get('retry-after'), null);
-    assert.strictEqual(
-        response.headers.get('cache-control'),
-        'private, no-store',
-    );
-    const body = await response.json();
-    assert.strictEqual(body.success, true);
-    assert.strictEqual(body.maintenance, false);
-    assert.strictEqual(body.stripePaymentProcessingDrained, null);
-    assert.strictEqual(body.stripePaymentProcessingDrainFailureCategory, null);
-    assert.strictEqual(body.closedOffersCount, 1);
-    assert.strictEqual(body.releasedReservationsCount, 2);
-    assert.deepStrictEqual(body.reconciliation, healthyReconciliation);
+test('cleanup failures remain retryable without invoking recovery', async (t) => {
+    configureCronSecret(t);
+    t.mock.method(console, 'error', () => undefined);
+    const response = await handleOutletLifecycleCron(request(), {
+        ...dependencies(),
+        cleanup: async () => {
+            throw new Error('unavailable');
+        },
+        reconcile: async () => {
+            throw new Error('Recovery must stay idle');
+        },
+    });
+    assert.equal(response.status, 503);
+    assert.equal((await response.json()).cleanupFailureCategory, 'Error');
 });
