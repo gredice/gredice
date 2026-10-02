@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { createHash } from 'node:crypto';
 import { and, asc, desc, eq, gt, inArray, lte, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import {
@@ -233,6 +234,127 @@ export async function upsertAutomationDefinitionByKey(
     }
 
     return definition;
+}
+
+// The revision describes source-managed content, not the current admin edits.
+// Keeping it in metadata lets existing databases adopt synchronization without
+// a migration and lets every worker check durable state instead of a local cache.
+export async function syncManagedAutomationDefinitions(
+    inputs: AutomationDefinitionInput[],
+) {
+    if (inputs.length === 0) {
+        return { definitions: [], changedDefinitions: 0 };
+    }
+
+    const managed = inputs.map((input) => {
+        const values = automationDefinitionValues(input);
+        const managedRevision = createHash('sha256')
+            .update(
+                JSON.stringify({
+                    values,
+                    preserveExistingStatus:
+                        input.preserveExistingStatus ?? false,
+                }),
+            )
+            .digest('hex');
+        return {
+            input,
+            values: {
+                ...values,
+                metadata: { ...values.metadata, managedRevision },
+            },
+            managedRevision,
+        };
+    });
+    const keys = managed.map(({ values }) => values.key);
+    const readReferences = () =>
+        storage()
+            .select({
+                id: automationDefinitions.id,
+                key: automationDefinitions.key,
+                managedRevision: sql<
+                    string | null
+                >`${automationDefinitions.metadata}->>'managedRevision'`,
+            })
+            .from(automationDefinitions)
+            .where(inArray(automationDefinitions.key, keys));
+    const existing = await readReferences();
+    const references = new Map(
+        existing.map((definition) => [definition.key, definition]),
+    );
+    const changed = managed.filter(
+        ({ values, managedRevision }) =>
+            references.get(values.key)?.managedRevision !== managedRevision,
+    );
+    let changedDefinitions = 0;
+
+    if (changed.length > 0) {
+        await storage().transaction(async (tx) => {
+            // Keep lock acquisition in the same order across concurrent workers.
+            for (const { input, values, managedRevision } of changed.sort(
+                (a, b) => a.values.key.localeCompare(b.values.key),
+            )) {
+                const [definition] = await tx
+                    .insert(automationDefinitions)
+                    .values(values)
+                    .onConflictDoUpdate({
+                        target: automationDefinitions.key,
+                        set: {
+                            name: values.name,
+                            description: values.description,
+                            ...(input.preserveExistingStatus
+                                ? {}
+                                : { status: values.status }),
+                            ...(input.maxConcurrentRuns !== undefined
+                                ? {
+                                      maxConcurrentRuns:
+                                          values.maxConcurrentRuns,
+                                  }
+                                : {}),
+                            triggerModuleKey: values.triggerModuleKey,
+                            triggerEventType: values.triggerEventType,
+                            graph: values.graph,
+                            metadata: values.metadata,
+                            updatedByUserId: values.updatedByUserId,
+                            updatedAt: new Date(),
+                        },
+                        // The conflict row is locked before this predicate is
+                        // evaluated, so a competing worker cannot rewrite it.
+                        setWhere: sql`${automationDefinitions.metadata}->>'managedRevision' is distinct from ${managedRevision}`,
+                    })
+                    .returning({
+                        id: automationDefinitions.id,
+                        key: automationDefinitions.key,
+                    });
+                if (definition) {
+                    references.set(definition.key, {
+                        ...definition,
+                        managedRevision,
+                    });
+                    changedDefinitions += 1;
+                }
+            }
+        });
+        if (references.size < keys.length) {
+            // Another worker may have installed a missing row after our read.
+            for (const definition of await readReferences()) {
+                references.set(definition.key, definition);
+            }
+        }
+    }
+
+    return {
+        definitions: inputs.map(({ key }) => {
+            const definition = references.get(key);
+            if (!definition) {
+                throw new Error(
+                    'Managed automation definition was not initialized.',
+                );
+            }
+            return { id: definition.id, key: definition.key };
+        }),
+        changedDefinitions,
+    };
 }
 
 export async function updateAutomationDefinition(
@@ -900,6 +1022,15 @@ export async function initializeAutomationEventCursorToLatest({
     key?: string;
     db?: DatabaseClient;
 } = {}): Promise<number> {
+    const [existingCursor] = await db
+        .select({ lastEventId: automationEventCursors.lastEventId })
+        .from(automationEventCursors)
+        .where(eq(automationEventCursors.key, key))
+        .limit(1);
+    if (existingCursor) {
+        return existingCursor.lastEventId;
+    }
+
     const [latestEvent] = await db
         .select({
             lastEventId: sql<number>`coalesce(max(${events.id}), 0)`,
