@@ -1,9 +1,11 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { canRotateHarvestWheelbarrows } from '../entities/harvestWheelbarrowPlacement';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { persistLocalSandboxGarden } from '../localSandboxGarden';
 import { useGameState } from '../useGameState';
 import { rotateBlocksInStacks } from './optimisticStackUpdates';
+import { useBlockData } from './useBlockData';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
 const mutationKey = ['gardens', 'current', 'blockRotate'];
@@ -11,6 +13,7 @@ const mutationKey = ['gardens', 'current', 'blockRotate'];
 export function useBlockRotate() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
+    const { data: blockData } = useBlockData();
     const localSandboxStorageKey = useGameState(
         (state) => state.localSandboxStorageKey,
     );
@@ -23,6 +26,7 @@ export function useBlockRotate() {
     );
 
     return useMutation({
+        mutationKey,
         mutationFn: async ({
             blockId,
             rotation,
@@ -44,9 +48,9 @@ export function useBlockRotate() {
             );
             await Promise.all(
                 targetBlockIds.map(async (targetBlockId) => {
-                    await clientAuthenticated().api.gardens[':gardenId'].blocks[
-                        ':blockId'
-                    ].$put({
+                    const response = await clientAuthenticated().api.gardens[
+                        ':gardenId'
+                    ].blocks[':blockId'].$put({
                         param: {
                             gardenId: gardenId.toString(),
                             blockId: targetBlockId,
@@ -55,6 +59,11 @@ export function useBlockRotate() {
                             rotation: rotation,
                         },
                     });
+                    if (!response.ok) {
+                        throw new Error(
+                            'Okretanje predmeta trenutačno se ne može spremiti.',
+                        );
+                    }
                 }),
             );
         },
@@ -68,6 +77,18 @@ export function useBlockRotate() {
             const targetBlockIds = new Set(
                 blockIds?.length ? blockIds : [blockId],
             );
+            if (
+                !canRotateHarvestWheelbarrows({
+                    blockData,
+                    blockIds: targetBlockIds,
+                    rotation,
+                    stacks: currentGarden.stacks,
+                })
+            ) {
+                throw new Error(
+                    'Za okretanje kolica potrebna su dva slobodna polja na istoj visini.',
+                );
+            }
             const updatedStacks = rotateBlocksInStacks({
                 blockIds: targetBlockIds,
                 rotation,
