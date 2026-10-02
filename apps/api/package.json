@@ -64,6 +64,7 @@
     },
     "devDependencies": {
         "@biomejs/biome": "2.5.14",
+        "@electric-sql/pglite": "0.5.8",
         "@gredice/auth": "workspace:*",
         "@gredice/directory-types": "workspace:*",
         "@gredice/email": "workspace:*",

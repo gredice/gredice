@@ -3,39 +3,34 @@ import { randomUUID } from 'node:crypto';
 import { after, before, test } from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
 import type { BlockData } from '@gredice/directory-types';
-import { generateDrizzleJson, generateMigration } from 'drizzle-kit/api';
-import { eq, sql } from 'drizzle-orm';
-import { drizzle as nodeDrizzle } from 'drizzle-orm/node-postgres';
-import { drizzle as pgliteDrizzle } from 'drizzle-orm/pglite';
-// @ts-expect-error pg ESM lacks resolved declarations under this package's setup.
-import { Pool } from 'pg';
-import { assertGardenPackPurchaseContents } from '../../../apps/api/lib/garden/gardenPackEligibility';
 import {
-    createGardenPackPurchaseService,
-    type GardenPackPurchaseDependencies,
-} from '../../../apps/api/lib/garden/gardenPackPurchaseService';
-import { gardenPackProductSnapshotSchema } from '../src/gardenPackContract';
-import {
-    markAccountDeletionStarted,
-    withAccountDeletionFenceTransaction,
-} from '../src/repositories/accountDeletionFenceRepo';
-import {
-    getSunflowers,
-    spendSunflowersBatch,
-    withSunflowerAccountTransaction,
-} from '../src/repositories/accountsRepo';
-import {
+    type GardenPackTransaction,
     getGardenPackInventoryPage,
     getGardenPackInventoryPurchase,
     getGardenPackPurchaseByOperation,
+    getSunflowers,
     isGardenPackStorageReady,
-} from '../src/repositories/gardenPackReadRepo';
-import {
-    type GardenPackTransaction,
+    markAccountDeletionStarted,
     recordPurchasedGardenPack,
-} from '../src/repositories/gardenPacksRepo';
-import * as schema from '../src/schema';
-import { gardenPackIntegritySql } from '../src/schema/gardenPackIntegrity';
+    spendSunflowersBatch,
+    withAccountDeletionFenceTransaction,
+    withSunflowerAccountTransaction,
+} from '@gredice/storage';
+import { gardenPackProductSnapshotSchema } from '@gredice/storage/gardenPackContract';
+import {
+    gardenPackIntegritySql,
+    getGardenPackTestDdl,
+    schema,
+} from '@gredice/storage/testing/gardenPackTestSchema';
+import { eq, sql } from 'drizzle-orm';
+import { drizzle as nodeDrizzle } from 'drizzle-orm/node-postgres';
+import { drizzle as pgliteDrizzle } from 'drizzle-orm/pglite';
+import { Pool } from 'pg';
+import { assertGardenPackPurchaseContents } from './gardenPackEligibility';
+import {
+    createGardenPackPurchaseService,
+    type GardenPackPurchaseDependencies,
+} from './gardenPackPurchaseService';
 
 const adminUrl = process.env.GREDICE_PACK_TEST_ADMIN_URL;
 const databaseName = `gredice_pack_purchase_${randomUUID().replaceAll('-', '')}`;
@@ -49,20 +44,7 @@ let db: typeof memoryDb | ReturnType<typeof nodeDrizzle<typeof schema>> =
     memoryDb;
 
 before(async () => {
-    const statements = await generateMigration(
-        generateDrizzleJson({}),
-        generateDrizzleJson(schema),
-    );
-    // Cross-table references can target unique indexes; install indexes before FKs.
-    const priority = (statement: string) =>
-        statement.startsWith('CREATE TYPE')
-            ? 0
-            : statement.startsWith('CREATE TABLE')
-              ? 1
-              : /CREATE (UNIQUE )?INDEX/.test(statement)
-                ? 2
-                : 3;
-    statements.sort((left, right) => priority(left) - priority(right));
+    const statements = await getGardenPackTestDdl();
     if (adminUrl) {
         const url = new URL(adminUrl);
         assert.ok(

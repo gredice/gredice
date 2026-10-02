@@ -326,6 +326,9 @@ importers:
       '@biomejs/biome':
         specifier: 2.5.14
         version: 2.5.14
+      '@electric-sql/pglite':
+        specifier: 0.5.8
+        version: 0.5.8
       '@gredice/auth':
         specifier: workspace:*
         version: link:../../packages/auth
