@@ -654,3 +654,232 @@ for (const tier of ['low', 'high'] as const) {
         await expect(fixture).toHaveAttribute('data-entity-leaves', '0');
     });
 }
+
+for (const instanced of [false, true]) {
+    for (const stage of [
+        'summer',
+        'earlyAutumn',
+        'midAutumn',
+        'lateAutumn',
+        'winter',
+    ] as const) {
+        test(`deciduous bushes at ${stage} when instanced=${instanced}`, async ({
+            mount,
+            page,
+        }) => {
+            const fixture = await mount(
+                <AutumnVisualFixture
+                    vegetation="Bush"
+                    stage={stage}
+                    instanced={instanced}
+                    zoom={150}
+                    focus={[0, 0.25, 0]}
+                />,
+            );
+            await expect(fixture).toHaveAttribute('data-canopies', /.+/);
+            if (stage === 'summer') {
+                await expect(fixture).toHaveAttribute('data-sprigs', /.+/);
+                expect(
+                    (await fixture.getAttribute('data-canopies'))
+                        ?.split(',')
+                        .every((entry) => entry.endsWith(':144')),
+                ).toBe(true);
+            }
+            if (stage === 'winter') {
+                await expect(fixture).toHaveAttribute('data-sprigs', '');
+                expect(
+                    (await fixture.getAttribute('data-canopies'))
+                        ?.split(',')
+                        .every((entry) => entry.endsWith(':120')),
+                ).toBe(true);
+            }
+            await expect(page.locator('canvas')).toHaveScreenshot(
+                `autumn-bush-${stage}-${instanced ? 'instanced' : 'individual'}.png`,
+                { maxDiffPixelRatio: 0.005 },
+            );
+        });
+    }
+
+    test(`bushes yellow downwards and restore summer when instanced=${instanced}`, async ({
+        mount,
+        page,
+    }) => {
+        const fixture = await mount(
+            <AutumnVisualFixture
+                vegetation="Bush"
+                calendarDate={[2024, 8, 21]}
+                instanced={instanced}
+            />,
+        );
+        await expect(fixture).toHaveAttribute('data-canopies', /.+/);
+        await expect(fixture).toHaveAttribute('data-sprigs', /.+/);
+        const summer = await fixture.getAttribute('data-canopies');
+        const summerSprigs = await fixture.getAttribute('data-sprigs');
+        await fixture.update(
+            <AutumnVisualFixture
+                vegetation="Bush"
+                calendarDate={[2024, 8, 29]}
+                instanced={instanced}
+            />,
+        );
+        await expect(fixture).not.toHaveAttribute(
+            'data-canopies',
+            summer ?? '',
+        );
+        await expect(fixture).not.toHaveAttribute(
+            'data-sprigs',
+            summerSprigs ?? '',
+        );
+        for (const attribute of ['data-canopies', 'data-sprigs']) {
+            for (const entry of (
+                (await fixture.getAttribute(attribute)) ?? ''
+            ).split(',')) {
+                const [bottom, top] = entry.split(':')[0].split('-');
+                expect(top).not.toBe(bottom);
+            }
+        }
+        await fixture.update(
+            <AutumnVisualFixture
+                vegetation="Bush"
+                calendarDate={[2024, 9, 10]}
+                instanced={instanced}
+                zoom={150}
+                focus={[0, 0.25, 0]}
+            />,
+        );
+        await expect(page.locator('canvas')).toHaveScreenshot(
+            `autumn-bush-gradient-${instanced ? 'instanced' : 'individual'}.png`,
+            { maxDiffPixelRatio: 0.005 },
+        );
+        await fixture.update(
+            <AutumnVisualFixture
+                vegetation="Bush"
+                stage="winter"
+                instanced={instanced}
+                disabled
+            />,
+        );
+        await expect(fixture).toHaveAttribute('data-canopies', summer ?? '');
+        await expect(fixture).toHaveAttribute(
+            'data-sprigs',
+            summerSprigs ?? '',
+        );
+        await fixture.update(
+            <AutumnVisualFixture
+                vegetation="Bush"
+                calendarDate={[2025, 6, 21]}
+                instanced={instanced}
+            />,
+        );
+        await expect(fixture).toHaveAttribute('data-canopies', summer ?? '');
+        await expect(fixture).toHaveAttribute(
+            'data-sprigs',
+            summerSprigs ?? '',
+        );
+    });
+
+    test(`bushes shed leaves from bush height when instanced=${instanced}`, async ({
+        mount,
+    }) => {
+        const fixture = await mount(
+            <AutumnVisualFixture
+                vegetation="Bush"
+                instanced={instanced}
+                leaves
+            />,
+        );
+        await expect(fixture).toHaveAttribute('data-leaves', /^[1-9]/);
+        await expect(fixture).toHaveAttribute('data-leaf-heights', /.+/);
+        const heights = (
+            (await fixture.getAttribute('data-leaf-heights')) ?? ''
+        )
+            .split(',')
+            .map(Number);
+        expect(heights.every((y) => y >= 0 && y <= 0.5)).toBe(true);
+        expect(heights.length).toBeLessThanOrEqual(24);
+        await fixture.update(
+            <AutumnVisualFixture
+                vegetation="Bush"
+                instanced={instanced}
+                leaves
+                stage="summer"
+            />,
+        );
+        await expect(fixture).toHaveAttribute('data-leaves', '0');
+        await fixture.update(
+            <AutumnVisualFixture
+                vegetation="Bush"
+                instanced={instanced}
+                leaves
+                disabled
+            />,
+        );
+        await expect(fixture).toHaveAttribute('data-leaves', '0');
+        await fixture.unmount();
+    });
+
+    test(`bush snow follows sparse foliage when instanced=${instanced}`, async ({
+        mount,
+        page,
+    }) => {
+        const fixture = await mount(
+            <AutumnVisualFixture
+                vegetation="Bush"
+                instanced={instanced}
+                stage="winter"
+                snow={0.7}
+                zoom={150}
+                focus={[0, 0.25, 0]}
+            />,
+        );
+        await expect(fixture).toHaveAttribute('data-canopies', /.+/);
+        await expect(page.locator('canvas')).toHaveScreenshot(
+            `autumn-bush-snow-${instanced ? 'instanced' : 'individual'}.png`,
+            { maxDiffPixelRatio: 0.005 },
+        );
+    });
+}
+
+test('bush previews can disable seasonal weather independently', async ({
+    mount,
+}) => {
+    const fixture = await mount(
+        <AutumnVisualFixture vegetation="Bush" stage="summer" />,
+    );
+    await expect(fixture).toHaveAttribute('data-canopies', /.+/);
+    const summer = await fixture.getAttribute('data-canopies');
+    await fixture.update(
+        <AutumnVisualFixture
+            vegetation="Bush"
+            stage="midAutumn"
+            weatherDisabled
+            leaves
+        />,
+    );
+    await expect(fixture).toHaveAttribute('data-canopies', summer ?? '');
+    await expect(fixture).toHaveAttribute('data-leaves', '0');
+});
+
+test('bushes accumulate nearby ground leaves and snow covers them', async ({
+    mount,
+}) => {
+    const fixture = await mount(
+        <AutumnVisualFixture
+            vegetation="Bush"
+            instanced
+            ground
+            stage="lateAutumn"
+        />,
+    );
+    await expect(fixture).toHaveAttribute('data-ground-leaves', /^[1-9]/);
+    await fixture.update(
+        <AutumnVisualFixture
+            vegetation="Bush"
+            instanced
+            ground
+            stage="lateAutumn"
+            snow={1}
+        />,
+    );
+    await expect(fixture).toHaveAttribute('data-ground-leaves', '0');
+});

@@ -661,6 +661,9 @@ export function GameScene({
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
                                         <Squirrels
+                                            seasonalEffectsEnabled={
+                                                !weatherDisabled
+                                            }
                                             farmId={garden?.farmId}
                                             stacks={retainedScene.stacks}
                                         />
