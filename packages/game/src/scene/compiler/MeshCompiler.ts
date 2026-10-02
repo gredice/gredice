@@ -1,17 +1,21 @@
 import type { BufferGeometry } from 'three';
 import { recordChunkCompilerMetrics } from './chunkCompilerMetrics';
 import {
+    MeshCompilerSourceCache,
+    type MeshCompilerSourcePolicy,
+} from './MeshCompilerSourceCache';
+import {
     compileMeshBufferSources,
     meshBufferByteLength,
     meshBufferTransferables,
     meshGeometryComponentCount,
     type PackedMeshGeometry,
-    packMeshGeometry,
 } from './meshBuffers';
 import type {
     MeshCompilerRequest,
     MeshCompilerResponse,
 } from './meshCompiler.worker';
+import { meshCompilerSourceCacheByteLimit } from './meshCompilerProtocol';
 
 export type MeshCompilerWorker = {
     onmessage: ((event: MessageEvent<MeshCompilerResponse>) => void) | null;
@@ -31,6 +35,7 @@ export type MeshCompilerSource = {
 type Job = {
     id: number;
     sources: MeshCompilerSource[];
+    sourcePolicy: MeshCompilerSourcePolicy;
     deliver: (packet: PackedMeshGeometry | null, durationMs: number) => void;
 };
 
@@ -44,24 +49,52 @@ export const synchronousChunkBudgetMs = 2;
  */
 export class MeshCompiler {
     private worker: MeshCompilerWorker | null = null;
-    private unavailable = false;
     private disposed = false;
     private nextId = 0;
     private queue: Job[] = [];
-    private active: { id: number; deliver: Job['deliver'] | null } | null =
-        null;
+    private active: {
+        id: number;
+        deliver: Job['deliver'] | null;
+        sourceIds: Set<number>;
+    } | null = null;
     private timeout: ReturnType<typeof setTimeout> | undefined;
     private budgetReset: ReturnType<typeof setTimeout> | undefined;
     private syncSpentMs = 0;
+    private sourceCache: MeshCompilerSourceCache;
 
     constructor(
         private createWorker: () => MeshCompilerWorker = () =>
             new Worker(new URL('./meshCompiler.worker.ts', import.meta.url), {
                 type: 'module',
             }),
-    ) {}
+        sourceCacheByteLimit = meshCompilerSourceCacheByteLimit,
+    ) {
+        this.sourceCache = new MeshCompilerSourceCache(
+            (id) => this.active?.sourceIds.has(id) ?? false,
+            (id) => {
+                const worker = this.worker;
+                try {
+                    worker?.postMessage(
+                        { type: 'release', sourceIds: [id] },
+                        [],
+                    );
+                } catch {
+                    // Do not reenter cache mutation while an eviction is running.
+                    queueMicrotask(() => {
+                        if (!this.disposed && this.worker === worker)
+                            this.fail();
+                    });
+                }
+            },
+            sourceCacheByteLimit,
+        );
+    }
 
-    request(sources: MeshCompilerSource[], deliver: Job['deliver']) {
+    request(
+        sources: MeshCompilerSource[],
+        deliver: Job['deliver'],
+        sourcePolicy: MeshCompilerSourcePolicy = 'uncached',
+    ) {
         if (this.disposed) return () => {};
         const components = sources.reduce(
             (total, { geometry, matrices }) =>
@@ -76,7 +109,10 @@ export class MeshCompiler {
             const started = performance.now();
             const packet = compileMeshBufferSources(
                 sources.map(({ geometry, matrices }) => ({
-                    source: packMeshGeometry(geometry),
+                    source: this.sourceCache.synchronous(
+                        geometry,
+                        sourcePolicy,
+                    ),
                     matrices,
                 })),
             );
@@ -97,7 +133,7 @@ export class MeshCompiler {
             deliver(packet, duration);
             return () => {};
         }
-        const job = { id: ++this.nextId, sources, deliver };
+        const job = { id: ++this.nextId, sources, deliver, sourcePolicy };
         this.queue.push(job);
         this.publishPending();
         this.dispatch();
@@ -125,11 +161,12 @@ export class MeshCompiler {
         clearTimeout(this.timeout);
         this.worker?.terminate();
         this.worker = null;
-        this.unavailable = true;
         const active = this.active;
         this.active = null;
+        this.sourceCache.resetWorker();
+        const queued = this.queue.splice(0);
         active?.deliver?.(null, 0);
-        for (const job of this.queue.splice(0)) job.deliver(null, 0);
+        for (const job of queued) job.deliver(null, 0);
         recordChunkCompilerMetrics((metrics) => {
             metrics.workerFailures++;
         });
@@ -138,26 +175,29 @@ export class MeshCompiler {
 
     private dispatch() {
         if (this.active || this.disposed || this.queue.length === 0) return;
-        if (this.unavailable) {
-            for (const job of this.queue.splice(0)) job.deliver(null, 0);
-            this.publishPending();
-            return;
-        }
         try {
             if (!this.worker) {
-                this.worker = this.createWorker();
-                this.worker.onerror = () => this.fail();
-                this.worker.onmessage = ({ data }) => {
-                    if (this.disposed) return;
+                const worker = this.createWorker();
+                this.worker = worker;
+                worker.onerror = () => {
+                    if (this.worker === worker) this.fail();
+                };
+                worker.onmessage = ({ data }) => {
+                    if (this.disposed || this.worker !== worker) return;
                     if (data.id !== this.active?.id) {
                         recordChunkCompilerMetrics((metrics) => {
                             metrics.staleResults++;
                         });
                         return;
                     }
+                    if (data.error) {
+                        this.fail();
+                        return;
+                    }
                     clearTimeout(this.timeout);
                     const deliver = this.active.deliver;
                     this.active = null;
+                    this.sourceCache.releaseUnpinned();
                     recordChunkCompilerMetrics((metrics) => {
                         metrics.workerCompiles++;
                         metrics.workerCompileMaxMs = Math.max(
@@ -169,7 +209,6 @@ export class MeshCompiler {
                                 data.packet,
                             );
                         if (!deliver) metrics.staleResults++;
-                        if (data.error) metrics.workerFailures++;
                     });
                     deliver?.(data.packet ?? null, data.durationMs);
                     this.publishPending();
@@ -178,27 +217,42 @@ export class MeshCompiler {
             }
             const job = this.queue.shift();
             if (!job) return;
-            this.active = { id: job.id, deliver: job.deliver };
+            const sourceIds = new Set<number>();
+            this.active = { id: job.id, deliver: job.deliver, sourceIds };
             const started = performance.now();
-            const sources = job.sources.map(({ geometry, matrices }) => ({
-                source: packMeshGeometry(geometry),
-                matrices,
-            }));
-            const bytes = sources.reduce(
-                (total, { source, matrices }) =>
-                    total + meshBufferByteLength(source) + matrices.byteLength,
+            const sources = job.sources.map(({ geometry, matrices }) => {
+                const source = this.sourceCache.worker(
+                    geometry,
+                    job.sourcePolicy,
+                );
+                if (source.sourceId !== undefined)
+                    sourceIds.add(source.sourceId);
+                return { ...source, matrices };
+            });
+            const sourceBytes = sources.reduce(
+                (total, { source }) =>
+                    total + (source ? meshBufferByteLength(source) : 0),
                 0,
             );
-            this.worker.postMessage({ id: job.id, sources }, [
+            const matrixBytes = sources.reduce(
+                (total, { matrices }) => total + matrices.byteLength,
+                0,
+            );
+            this.worker.postMessage({ type: 'compile', id: job.id, sources }, [
                 ...new Set(
                     sources.flatMap(({ source, matrices }) => [
-                        ...meshBufferTransferables(source),
+                        ...(source ? meshBufferTransferables(source) : []),
                         matrices.buffer,
                     ]),
                 ),
             ]);
             recordChunkCompilerMetrics((metrics) => {
-                metrics.transferredBytes += bytes;
+                metrics.transferredBytes += sourceBytes + matrixBytes;
+                metrics.sourceTransferredBytes += sourceBytes;
+                metrics.matrixTransferredBytes += matrixBytes;
+                metrics.sourceRegistrations += sources.filter(
+                    ({ sourceId, source }) => sourceId !== undefined && source,
+                ).length;
                 metrics.transferMaxMs = Math.max(
                     metrics.transferMaxMs,
                     performance.now() - started,
@@ -217,6 +271,7 @@ export class MeshCompiler {
         this.worker?.terminate();
         this.worker = null;
         this.active = null;
+        this.sourceCache.dispose();
         this.queue.length = 0;
         this.publishPending();
     }

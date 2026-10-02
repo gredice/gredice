@@ -1,20 +1,14 @@
-import {
-    compileMeshBufferSources,
-    type MeshBufferSource,
-    meshBufferTransferables,
-    type PackedMeshGeometry,
-} from './meshBuffers';
+import { meshBufferTransferables } from './meshBuffers';
+import type {
+    MeshCompilerRequest,
+    MeshCompilerResponse,
+} from './meshCompilerProtocol';
+import { createMeshCompilerWorkerRuntime } from './meshCompilerWorkerRuntime';
 
-export type MeshCompilerRequest = {
-    id: number;
-    sources: MeshBufferSource[];
-};
-export type MeshCompilerResponse = {
-    id: number;
-    packet?: PackedMeshGeometry;
-    durationMs: number;
-    error?: string;
-};
+export type {
+    MeshCompilerRequest,
+    MeshCompilerResponse,
+} from './meshCompilerProtocol';
 
 declare const self: {
     onmessage: ((event: MessageEvent<MeshCompilerRequest>) => void) | null;
@@ -23,22 +17,12 @@ declare const self: {
         transfer: Transferable[],
     ) => void;
 };
+const runtime = createMeshCompilerWorkerRuntime();
 self.onmessage = ({ data }: MessageEvent<MeshCompilerRequest>) => {
-    const started = performance.now();
-    try {
-        const packet = compileMeshBufferSources(data.sources);
+    const response = runtime.handle(data);
+    if (response)
         self.postMessage(
-            { id: data.id, packet, durationMs: performance.now() - started },
-            meshBufferTransferables(packet),
+            response,
+            response.packet ? meshBufferTransferables(response.packet) : [],
         );
-    } catch (error) {
-        self.postMessage(
-            {
-                id: data.id,
-                durationMs: performance.now() - started,
-                error: String(error),
-            },
-            [],
-        );
-    }
 };

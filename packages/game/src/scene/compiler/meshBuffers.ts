@@ -99,6 +99,32 @@ export function packMeshGeometry(geometry: BufferGeometry): PackedMeshGeometry {
     };
 }
 
+/** An independently owned transfer packet; the cached synchronous copy stays live. */
+export function clonePackedMeshGeometry(
+    source: PackedMeshGeometry,
+): PackedMeshGeometry {
+    const copy = (attribute: PackedMeshAttribute) => ({
+        ...attribute,
+        array: attribute.array.slice(),
+    });
+    return {
+        attributes: Object.fromEntries(
+            Object.entries(source.attributes).map(([name, attribute]) => [
+                name,
+                copy(attribute),
+            ]),
+        ),
+        morphAttributes: Object.fromEntries(
+            Object.entries(source.morphAttributes).map(([name, attributes]) => [
+                name,
+                attributes.map(copy),
+            ]),
+        ),
+        morphTargetsRelative: source.morphTargetsRelative,
+        index: source.index?.slice() ?? null,
+    };
+}
+
 function unpackAttribute(packed: PackedMeshAttribute) {
     const attribute = packed.float16
         ? new Float16BufferAttribute(

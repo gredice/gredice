@@ -43,8 +43,43 @@ across components into chunk render packets; see
 
 Each committed geometry has one effect owner. Replacement/unmount cancels its
 job, disposes its GPU geometry, and releases references. The last compiler lease
-terminates the worker and clears its queue. There is no worker template cache or
-cross-garden buffer history. Shared GLTF geometry/material ownership is unchanged.
+terminates the worker and clears its queue and compiler-owned source cache.
+Shared GLTF geometry/material ownership is unchanged.
+
+Source reuse is an explicit `MeshCompiler.request(sources, deliver, 'versioned')`
+contract. Every in-place attribute, index, weather or morph edit must set
+`needsUpdate`; interleaved edits set `attribute.data.needsUpdate`. Callers that
+cannot guarantee that contract use the default uncached policy. Replacing an
+attribute, array, index or morph source, changing layout/normalization/GPU type,
+or changing relative morph semantics invalidates the entry independently of
+Three's version counter. Geometry disposal releases its entry.
+
+An unchanged worker source is packed and registered once, then subsequent jobs
+send its compiler-owned ID and transforms. The synchronous path keeps a separate
+read-only packet, and its first worker registration copies that packet into
+independently owned transfer storage. Neither GLTF nor synchronous cache buffers
+are transferred. Output arrays always have their own ownership.
+
+The LRU bounds combined synchronous and worker source residency to **4 MiB and
+256 source identities per compiler**. Active worker source IDs remain pinned; a disposed or invalidated
+active source is retired until its response arrives. Oversized sources and cache
+misses that cannot fit beside pinned work compile without residency. Eviction
+sends a worker release, and the worker independently enforces the same byte cap.
+Worker failure clears its registrations and releases their accounted bytes;
+the next request may create a new worker and register fresh copies. The existing
+visible fallback handles failed jobs while queued cancellation remains lazy.
+
+The production caller audit has two entry points: `ChunkedMergedMesh` in
+`EntityInstancesBlock.tsx`, and `StaticRenderPacketMesh` in
+`StaticRenderPacketBatch.tsx`. Their sources are shared decoded GLTF geometry
+or weather-prepared clones. `createWeatherSurfaceGeometry` builds fresh arrays
+before caching the result; subsequent weather animation changes uniforms, not
+those arrays. `planStaticRenderPackets` retains geometry identity without
+editing its attributes. Instance placement writes only `instanceMatrix`, whose
+version already advances with `needsUpdate`. Articulated fauna and live plant,
+decoration, water and meteor buffer writers remain on their existing render
+paths and do not supply retained compiler source packets. These static callers
+opt into the versioned contract; the raw compiler's default remains uncached.
 
 Hidden faces are removed only by the existing tested water-side algorithm. Its
 dependencies are the same column and four cardinal neighbors, including across
@@ -61,6 +96,14 @@ synchronous/worker compile counts and maxima, main-thread transfer preparation
 time, transferred bytes, pending/cancelled/stale work, worker failures, and live,
 peak, and disposed compiled geometry buffers. Byte counters cover owned geometry
 arrays, not total browser heap or GPU VRAM.
+
+Source diagnostics separately expose `sourcePacks`, `sourcePackBytes`,
+`sourcePackMs`, `sourcePackMaxMs`, `sourceRegistrations`, `sourceCacheHits`,
+`sourceCacheMisses`, `sourceCacheEvictions`, `retainedSourceBytes`,
+`peakSourceBytes`, `sourceTransferredBytes`, and `matrixTransferredBytes`.
+Retained source bytes include both compiler ownership domains. Transfer bytes
+describe inputs; the existing total transfer counter also includes outputs.
+These counters establish avoided copying, not an FPS or startup claim.
 
 ```bash
 pnpm --filter @gredice/game benchmark:chunks

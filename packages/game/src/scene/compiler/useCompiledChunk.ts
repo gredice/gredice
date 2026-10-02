@@ -51,6 +51,8 @@ export function useCompiledChunk(
 /**
  * Compiles every source into one owned geometry. The `sources` array identity
  * is the request key, so callers retain it while the packet is unchanged.
+ * Retained entity and static-packet inputs are immutable after preparation;
+ * any future in-place source edits must advance Three's needsUpdate version.
  */
 export function useCompiledChunkSources(
     sources: readonly CompiledChunkSource[],
@@ -85,6 +87,7 @@ export function useCompiledChunkSources(
                 });
                 setResult({ sources, geometry: owned, durationMs });
             },
+            'versioned',
         );
         return () => {
             cancelled = true;
