@@ -158,10 +158,12 @@ When the emergency maintenance flag is enabled, maintenance is deliberately
 narrow. Authenticated Stripe reconciliation and valid
 `checkout.session.completed` deliveries return HTTP 503 with `Retry-After: 60`
 and `Cache-Control: private, no-store`. `checkout.session.expired` remains active
-so cart reservations can be released. The five-minute outlet lifecycle cron
-still performs outlet cleanup, reports its counts, skips only orphan
-Stripe-attempt reconciliation, and returns the same retryable 503. Missing or
-invalid cron authentication invokes neither job. With the flag unset or
+so cart reservations can be released. On deployments containing the #5090 split, hourly outlet cleanup remains
+active and independent of maintenance. The five-minute orphan-recovery cron
+skips reconciliation and returns the same retryable 503 with its aggregate
+drain preflight. On earlier deployments, the combined five-minute outlet
+lifecycle route owns both cleanup and this maintenance readback. Missing or
+invalid cron authentication invokes no business work. With the flag unset or
 `false`, durable claim processing is active.
 
 Follow the detailed prerequisite behavior and drain evidence in
@@ -189,7 +191,9 @@ Use this prerequisite-gated cutover:
    `pnpm --filter @gredice/storage stripe-payment-processing:drain-preflight`
    through the approved production environment runner until its aggregate
    result is `{"drained":true}` and exit status is zero. Require the
-   authenticated outlet-lifecycle aggregate readback to agree. Run all three
+   authenticated outlet-lifecycle aggregate readback available in that historical
+   prerequisite deployment to agree. After #5090, use orphan recovery for current
+   maintenance/drain readback. Run all three
    transaction-identity preflights above and require every result to be empty.
 5. Rebase claim PR `#4385` onto the fully routed prerequisite. Verify migration
    `0078` takes the matching exclusive drain fence before identity preflights,
@@ -227,6 +231,13 @@ Use this prerequisite-gated cutover:
     durable completion outputs. Record end-to-end checkout and processing
     latency, then watch retries, duplicate suppression, database pool wait, and
     transaction count through another healthy reconciliation cycle.
+
+After #5090, rolling back to a deployment without the new orphan-recovery
+route requires restoring the earlier combined outlet-lifecycle path at its
+five-minute cron cadence; Vercel rollback retains the current cron
+configuration. Prefer a maintenance-on deployment supporting the split paths,
+or redeploy the prior source/configuration together and verify the deployed
+cron configuration and authenticated recovery readback.
 
 For rollback, route to the exact maintenance-on `#4385` claim deployment, or
 enable the emergency maintenance flag and deploy that configuration. Verify

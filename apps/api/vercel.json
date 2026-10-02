@@ -12,7 +12,7 @@
         },
         {
             "path": "/api/internal/cron/web-push",
-            "schedule": "*/5 * * * *"
+            "schedule": "0 * * * *"
         },
         {
             "path": "/api/internal/cron/auto-close-slots",
@@ -24,7 +24,7 @@
         },
         {
             "path": "/api/internal/cron/delivery-ready-emails",
-            "schedule": "*/5 * * * *"
+            "schedule": "0 * * * *"
         },
         {
             "path": "/api/internal/cron/delivery-lifecycle-emails",
@@ -40,7 +40,7 @@
         },
         {
             "path": "/api/internal/cron/delivery-notification-health",
-            "schedule": "*/5 * * * *"
+            "schedule": "0 * * * *"
         },
         {
             "path": "/api/internal/cron/delivery-lifecycle-reconciliation",
@@ -68,7 +68,7 @@
         },
         {
             "path": "/api/internal/cron/garden-preview-blob-deletions",
-            "schedule": "*/5 * * * *"
+            "schedule": "0 3 * * *"
         },
         {
             "path": "/api/internal/cron/wallpaper-blobs",
@@ -76,11 +76,15 @@
         },
         {
             "path": "/api/internal/cron/outlet-lifecycle",
+            "schedule": "0 * * * *"
+        },
+        {
+            "path": "/api/internal/cron/stripe-checkout-orphan-recovery",
             "schedule": "*/5 * * * *"
         },
         {
             "path": "/api/internal/cron/social-publishing",
-            "schedule": "*/5 * * * *"
+            "schedule": "0 * * * *"
         },
         {
             "path": "/api/internal/cron/temp-accounts",
