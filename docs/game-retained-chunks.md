@@ -61,8 +61,8 @@ independently owned transfer storage. Neither GLTF nor synchronous cache buffers
 are transferred. Output arrays always have their own ownership.
 
 The LRU bounds combined synchronous and worker source residency to **4 MiB and
-256 source identities per compiler**. Active worker source IDs remain pinned; a disposed or invalidated
-active source is retired until its response arrives. Oversized sources and cache
+256 source identities per compiler**. Active worker source IDs remain pinned;
+a disposed or invalidated active source is retired until its response arrives. Oversized sources and cache
 misses that cannot fit beside pinned work compile without residency. Eviction
 sends a worker release, and the worker independently enforces the same byte cap.
 Worker failure clears its registrations and releases their accounted bytes;
@@ -80,6 +80,24 @@ version already advances with `needsUpdate`. Articulated fauna and live plant,
 decoration, water and meteor buffer writers remain on their existing render
 paths and do not supply retained compiler source packets. These static callers
 opt into the versioned contract; the raw compiler's default remains uncached.
+
+The shared garden palette integration follows the same contract. It clones
+prepared geometry and fills constant per-vertex color, roughness, metalness
+and emissive attributes before handing the clone to retained compilation. These
+arrays remain immutable for that clone's lifetime; changing the source material
+or weather preparation creates a new owned clone. The compiler preserves those
+custom attributes and keys residency by that clone's geometry/attribute
+identities and versions. Generated clone disposal retires an in-flight worker
+source without disposing or detaching the live GLTF arrays. Any future writer
+that edits an existing palette array must advance `needsUpdate` or use the
+uncached policy.
+
+`chunkCompilerMetrics` reports source packs, packed bytes and pack duration;
+registrations, cache hits/misses/evictions; current and peak retained source
+bytes; and source/matrix transfer bytes. A repeat compile can therefore prove
+that only matrices were transferred. These counters describe ownership and
+avoided packing; a GPU or frame-time benefit requires the separate production
+profile comparison.
 
 Hidden faces are removed only by the existing tested water-side algorithm. Its
 dependencies are the same column and four cardinal neighbors, including across
