@@ -145,6 +145,8 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     // Development purposes
     adaptiveHighQuality?: boolean;
     authenticatedGardenQueriesEnabled?: boolean;
+    /** Owned pack inventory rollout, disabled until the server is configured. */
+    gardenPacksEnabled?: boolean;
     continuousRenderLeasesEnabled?: boolean;
     enableGameProfileController?: boolean;
     enableStaticOpaqueSceneCacheOcclusionFixture?: boolean;

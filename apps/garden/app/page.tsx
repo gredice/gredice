@@ -40,6 +40,10 @@ async function GardenHome() {
             <SignedIn>
                 <GameSceneWithAnalytics
                     flags={flags}
+                    gardenPacksEnabled={
+                        process.env.NEXT_PUBLIC_GREDICE_GARDEN_PACKS_ENABLED ===
+                        'true'
+                    }
                     deferDetails
                     suppressOpeningHud={suppressOpeningHud}
                 />
