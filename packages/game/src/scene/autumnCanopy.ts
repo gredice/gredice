@@ -13,6 +13,7 @@ export function getAutumnCanopyShadowKey(
                         (block) =>
                             block.name === 'Tree' ||
                             block.name === 'SeasonalMaple' ||
+                            block.name === 'Bush' ||
                             block.name === 'AutumnShrub',
                     )
                     .map(
