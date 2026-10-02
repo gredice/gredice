@@ -13,6 +13,10 @@ import {
 import type { InstancedMesh } from 'three';
 import { createMeshInstanceMatrix } from '../../entities/chunkedMeshGeometry';
 import {
+    recordPlacementAnimationChunkRebuild,
+    shouldRecordPlacementAnimationChunkRebuild,
+} from '../../entities/placementAnimationProfileMetrics';
+import {
     StaticOpaqueSceneCacheBoundary,
     type StaticOpaqueSceneCacheGroup,
 } from '../StaticOpaqueSceneCache';
@@ -185,9 +189,36 @@ const StaticRenderPacketMesh = memo(function StaticRenderPacketMesh({
     packet: StaticRenderPacket;
 }) {
     const build = useCompiledChunkSources(packet.sources);
+    const previousBuild = useRef<StaticRenderPacket | undefined>(undefined);
     useEffect(() => {
-        if (build) recordStaticRenderPacketCompile(build.durationMs);
-    }, [build]);
+        if (!build) return;
+        recordStaticRenderPacketCompile(build.durationMs);
+        const previous = previousBuild.current;
+        if (
+            previous &&
+            (packet.placementContributions ?? packet.contributions).some(
+                (contribution) => {
+                    const old = (
+                        previous.placementContributions ??
+                        previous.contributions
+                    ).find(({ id }) => id === contribution.id);
+                    return shouldRecordPlacementAnimationChunkRebuild({
+                        currentInstances: contribution.instances,
+                        currentPlacementSignature:
+                            contribution.placementSignature ?? '',
+                        previousInstances: old?.instances,
+                        previousPlacementSignature:
+                            old?.placementSignature ?? '',
+                    });
+                },
+            )
+        )
+            recordPlacementAnimationChunkRebuild({
+                durationMs: build.durationMs,
+                transformedInstanceCount: packet.instanceCount,
+            });
+        previousBuild.current = packet;
+    }, [build, packet]);
     const debugName = `StaticRenderPacket:${packet.chunkKey}:${packet.material.name || packet.material.type}:sources:${packet.contributions.length}:count:${packet.instanceCount}`;
 
     if (!build) {

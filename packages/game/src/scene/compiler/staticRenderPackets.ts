@@ -22,6 +22,8 @@ export type StaticRenderPacketContribution = {
     layoutSignature: string;
     localTransform: MeshInstanceLocalTransform;
     material: Material;
+    /** Placement membership for physical rebuild telemetry; empty outside a drop. */
+    placementSignature?: string;
     receiveShadow: boolean;
     renderOrder: number | undefined;
     scale: MeshInstanceScale;
@@ -39,6 +41,8 @@ export type StaticRenderPacket = {
     key: string;
     material: Material;
     receiveShadow: boolean;
+    /** Includes zero-instance placement members as telemetry; sources remain nonempty. */
+    placementContributions?: readonly StaticRenderPacketContribution[];
     renderOrder: number | undefined;
     sources: readonly CompiledChunkSource[];
     triangleCount: number;
@@ -91,7 +95,11 @@ export function planStaticRenderPackets(
 ): readonly StaticRenderPacket[] {
     const grouped = new Map<string, StaticRenderPacketContribution[]>();
     for (const contribution of contributions) {
-        if (contribution.instances.length === 0) continue;
+        if (
+            contribution.instances.length === 0 &&
+            !contribution.placementSignature
+        )
+            continue;
         const key = staticRenderPacketKey(contribution);
         const group = grouped.get(key);
         if (group) group.push(contribution);
@@ -102,43 +110,57 @@ export function planStaticRenderPackets(
     );
     const packets = [...grouped.entries()]
         .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
-        .map(([key, group]): StaticRenderPacket => {
-            group.sort(compareIds);
+        .flatMap(([key, placementContributions]): StaticRenderPacket[] => {
+            placementContributions.sort(compareIds);
+            const group = placementContributions.filter(
+                ({ instances }) => instances.length > 0,
+            );
+            if (group.length === 0) return [];
             const old = previousByKey.get(key);
-            if (old && sameContributions(old.contributions, group)) return old;
+            if (
+                old &&
+                sameContributions(
+                    old.placementContributions ?? old.contributions,
+                    placementContributions,
+                )
+            )
+                return [old];
             const [first] = group;
             if (!first) throw new Error('Empty static render packet group.');
-            return {
-                cacheGroup: first.cacheGroup,
-                castShadow: first.castShadow,
-                chunkKey: first.chunkKey,
-                contributions: group,
-                family: first.family,
-                instanceCount: group.reduce(
-                    (total, contribution) =>
-                        total + contribution.instances.length,
-                    0,
-                ),
-                key,
-                material: first.material,
-                receiveShadow: first.receiveShadow,
-                renderOrder: first.renderOrder,
-                sources: group.map(
-                    ({ geometry, instances, localTransform, scale }) => ({
-                        geometry,
-                        instances,
-                        localTransform,
-                        scale,
-                    }),
-                ),
-                triangleCount: group.reduce(
-                    (total, contribution) =>
-                        total +
-                        contribution.triangleCount *
-                            contribution.instances.length,
-                    0,
-                ),
-            };
+            return [
+                {
+                    cacheGroup: first.cacheGroup,
+                    castShadow: first.castShadow,
+                    chunkKey: first.chunkKey,
+                    contributions: group,
+                    family: first.family,
+                    instanceCount: group.reduce(
+                        (total, contribution) =>
+                            total + contribution.instances.length,
+                        0,
+                    ),
+                    key,
+                    material: first.material,
+                    placementContributions,
+                    receiveShadow: first.receiveShadow,
+                    renderOrder: first.renderOrder,
+                    sources: group.map(
+                        ({ geometry, instances, localTransform, scale }) => ({
+                            geometry,
+                            instances,
+                            localTransform,
+                            scale,
+                        }),
+                    ),
+                    triangleCount: group.reduce(
+                        (total, contribution) =>
+                            total +
+                            contribution.triangleCount *
+                                contribution.instances.length,
+                        0,
+                    ),
+                },
+            ];
         });
     return packets.length === previous.length &&
         packets.every((packet, index) => packet === previous[index])

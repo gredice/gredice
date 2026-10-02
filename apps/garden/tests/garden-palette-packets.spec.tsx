@@ -1,10 +1,111 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import sharp from 'sharp';
+import { GardenPaletteAdmissionFixture } from '../../../packages/game/tests/GardenPaletteAdmissionFixture';
 import { GardenPalettePacketFixture } from '../../../packages/game/tests/GardenPalettePacketFixture';
 
 async function pixels(png: Buffer) {
     return sharp(png).ensureAlpha().raw().toBuffer();
 }
+
+test('production entity props batch JSX material nodes, retain untouched chunks and preserve source frames', async ({
+    mount,
+    page,
+}, testInfo) => {
+    test.setTimeout(90_000);
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    page.on('console', (message) => {
+        if (message.type() === 'error') errors.push(message.text());
+    });
+    const fixture = await mount(<GardenPaletteAdmissionFixture batch />);
+    await expect(fixture).toHaveAttribute(
+        'data-ready',
+        'true:false:false:true',
+    );
+    const strictInitial = JSON.parse(
+        (await fixture.getAttribute('data-result')) ?? '{}',
+    );
+    expect(strictInitial.materials.sharedMaterialUsers).toBe(3);
+    expect(strictInitial.packets.savedSubmissions).toBe(4);
+    await fixture.update(<GardenPaletteAdmissionFixture />);
+    await expect(fixture).toHaveAttribute(
+        'data-ready',
+        'false:false:false:true',
+    );
+    const read = async () =>
+        JSON.parse((await fixture.getAttribute('data-result')) ?? '{}');
+    const baseline = await read();
+    const originalPng = await fixture.locator('canvas').screenshot();
+    await fixture.update(<GardenPaletteAdmissionFixture batch />);
+    await expect(fixture).toHaveAttribute(
+        'data-ready',
+        'true:false:false:true',
+    );
+    const initial = await read();
+    const batchedPng = await fixture.locator('canvas').screenshot();
+    expect(initial.packets.contributions).toBe(6);
+    expect(initial.packets.packets).toBe(2);
+    expect(initial.packets.savedSubmissions).toBe(4);
+    expect(initial.meshes).toBe(4);
+    expect(baseline.meshes).toBe(8);
+    expect(initial.triangles).toBe(baseline.triangles);
+    expect(initial.hit).toEqual(baseline.hit);
+    expect(initial.unknownMeshes).toBe(2);
+    expect(
+        compare(await pixels(originalPng), await pixels(batchedPng))
+            .differentPixelRatio,
+    ).toBeLessThan(0.001);
+    await fixture.update(<GardenPaletteAdmissionFixture batch patched />);
+    await expect(fixture).toHaveAttribute('data-ready', 'true:false:true:true');
+    const patched = await read();
+    expect(patched.geometryIds['0:0']).toBe(initial.geometryIds['0:0']);
+    expect(patched.geometryIds['-1:0']).not.toBe(initial.geometryIds['-1:0']);
+    expect(patched.triangles).toBe(initial.triangles - 12);
+    await fixture.update(<GardenPaletteAdmissionFixture batch mutated />);
+    await expect(fixture).toHaveAttribute('data-ready', 'true:true:false:true');
+    const changedPng = await fixture.locator('canvas').screenshot();
+    expect(
+        compare(await pixels(changedPng), await pixels(batchedPng))
+            .differentPixelRatio,
+    ).toBeGreaterThan(0.001);
+    await fixture.update(<GardenPaletteAdmissionFixture mutated />);
+    await expect(fixture).toHaveAttribute(
+        'data-ready',
+        'false:true:false:true',
+    );
+    expect(
+        compare(
+            await pixels(changedPng),
+            await pixels(await fixture.locator('canvas').screenshot()),
+        ).differentPixelRatio,
+    ).toBeLessThan(0.001);
+    await fixture.update(
+        <GardenPaletteAdmissionFixture batch mounted={false} />,
+    );
+    await expect(fixture).toHaveAttribute(
+        'data-ready',
+        'true:false:false:false',
+    );
+    const released = await read();
+    expect(released.materials.canonicalMaterials).toBe(0);
+    expect(released.materials.sharedMaterialUsers).toBe(0);
+    expect(released.compiler.liveGeometries).toBe(0);
+    await fixture.update(<GardenPaletteAdmissionFixture batch />);
+    await expect(fixture).toHaveAttribute(
+        'data-ready',
+        'true:false:false:true',
+    );
+    expect((await read()).triangles).toBe(initial.triangles);
+    await testInfo.attach('production-source', {
+        body: originalPng,
+        contentType: 'image/png',
+    });
+    await testInfo.attach('production-packets', {
+        body: batchedPng,
+        contentType: 'image/png',
+    });
+    expect(errors).toEqual([]);
+});
 
 function compare(left: Buffer, right: Buffer) {
     expect(right.length).toBe(left.length);

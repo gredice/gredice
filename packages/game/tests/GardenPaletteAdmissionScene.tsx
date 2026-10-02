@@ -1,0 +1,225 @@
+import { useFrame, useThree } from '@react-three/fiber';
+import { useLayoutEffect, useMemo, useRef } from 'react';
+import {
+    BoxGeometry,
+    DoubleSide,
+    InstancedMesh,
+    Mesh,
+    MeshStandardMaterial,
+    Raycaster,
+    Vector3,
+} from 'three';
+import {
+    type EntityBlockInstance,
+    EntityInstancesGeometry,
+} from '../src/entities/EntityInstancesBlock';
+import { readChunkCompilerMetrics } from '../src/scene/compiler/chunkCompilerMetrics';
+import { StaticRenderPacketBatchProvider } from '../src/scene/compiler/StaticRenderPacketBatch';
+import { readStaticRenderPacketMetrics } from '../src/scene/compiler/staticRenderPackets';
+import { readSharedGardenMaterialMetrics } from '../src/scene/gardenMaterials';
+import { countGeometryTriangles } from '../src/scene/weatherSurfaceGeometry';
+
+function fixtureInstances(name: string, offset: number): EntityBlockInstance[] {
+    return [-6, 2].map((x) => {
+        const block = { id: `${name}:${x}`, name, rotation: 0 };
+        return {
+            block,
+            blockIndex: 0,
+            id: block.id,
+            pickupOutlineVisible: false,
+            position: [x + offset, 0.5, 0],
+            rotation: 0,
+            stack: { position: new Vector3(x + offset, 0, 0), blocks: [block] },
+            stackHeight: 0,
+        };
+    });
+}
+
+export function GardenPaletteAdmissionScene({
+    batch,
+    mutated,
+    patched,
+    mounted,
+    onReadback,
+}: {
+    batch: boolean;
+    mutated: boolean;
+    patched: boolean;
+    mounted: boolean;
+    onReadback: (value: { key: string; [key: string]: unknown }) => void;
+}) {
+    const scene = useThree((state) => state.scene);
+    const resources = useMemo(() => {
+        const geometry = new BoxGeometry(1, 1, 1);
+        const material = new MeshStandardMaterial({
+            color: '#3273bc',
+            roughness: 0.25,
+            metalness: 0.4,
+            side: DoubleSide,
+        });
+        const unknown = new MeshStandardMaterial({
+            color: '#a74459',
+            roughness: 0.6,
+        });
+        unknown.onBeforeCompile = (shader) => {
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <color_fragment>',
+                '#include <color_fragment>\ndiffuseColor.rgb *= vec3(0.4, 1.0, 0.8);',
+            );
+        };
+        return {
+            geometry,
+            material,
+            unknown,
+            wood: fixtureInstances('admission:wood', 0),
+            roof: fixtureInstances('admission:roof', 2),
+            metal: fixtureInstances('admission:metal', 4),
+            unknownInstances: fixtureInstances('admission:unknown', 6),
+        };
+    }, []);
+    useLayoutEffect(
+        () => () => {
+            resources.geometry.dispose();
+            resources.material.dispose();
+            resources.unknown.dispose();
+        },
+        [resources],
+    );
+    const roof = useMemo(
+        () => (patched ? resources.roof.slice(1) : resources.roof),
+        [patched, resources.roof],
+    );
+    const key = `${batch}:${mutated}:${patched}:${mounted}`;
+    const frames = useRef({ key: '', count: 0, reported: false });
+    useFrame(() => {
+        if (frames.current.key !== key)
+            frames.current = { key, count: 0, reported: false };
+        frames.current.count++;
+        if (frames.current.reported || frames.current.count < 12) return;
+        const compiler = readChunkCompilerMetrics();
+        const packets = readStaticRenderPacketMetrics();
+        if (
+            compiler.pendingJobs > 0 ||
+            packets.packetFallbackMeshes > 0 ||
+            (batch && mounted && packets.contributions !== (patched ? 5 : 6))
+        )
+            return;
+        const meshes: Mesh[] = [];
+        scene.traverse((object) => {
+            if (
+                object instanceof Mesh &&
+                (object.name.startsWith('BlockInstances:admission:') ||
+                    object.name.startsWith('StaticRenderPacket:'))
+            )
+                meshes.push(object);
+        });
+        const geometryIds = Object.fromEntries(
+            meshes
+                .filter((mesh) => mesh.name.startsWith('StaticRenderPacket:'))
+                .map((mesh) => [
+                    mesh.name.split(':').slice(1, 3).join(':'),
+                    mesh.geometry.uuid,
+                ]),
+        );
+        const raycaster = new Raycaster(
+            new Vector3(2, 5, 0),
+            new Vector3(0, -1, 0),
+        );
+        const hit = raycaster.intersectObjects(meshes, false)[0];
+        frames.current.reported = true;
+        onReadback({
+            key,
+            packets,
+            compiler,
+            materials: readSharedGardenMaterialMetrics(),
+            meshes: meshes.length,
+            triangles: meshes.reduce(
+                (total, mesh) =>
+                    total +
+                    countGeometryTriangles(mesh.geometry) *
+                        (mesh instanceof InstancedMesh ? mesh.count : 1),
+                0,
+            ),
+            geometryIds,
+            hit: hit
+                ? { x: hit.point.x, y: hit.point.y, z: hit.point.z }
+                : null,
+            unknownMeshes: meshes.filter((mesh) =>
+                mesh.name.startsWith('BlockInstances:admission:unknown'),
+            ).length,
+        });
+    });
+    return (
+        <>
+            <color attach="background" args={['#18222d']} />
+            <ambientLight intensity={0.4} />
+            <directionalLight
+                position={[3, 8, 4]}
+                intensity={3}
+                castShadow
+                shadow-mapSize={[1024, 1024]}
+                shadow-camera-left={-12}
+                shadow-camera-right={12}
+                shadow-camera-top={12}
+                shadow-camera-bottom={-12}
+                shadow-normalBias={0.015}
+            />
+            <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+                <planeGeometry args={[24, 12]} />
+                <meshStandardMaterial color="#807767" roughness={1} />
+            </mesh>
+            <StaticRenderPacketBatchProvider>
+                {mounted && (
+                    <>
+                        <EntityInstancesGeometry
+                            instanceKey="admission:wood"
+                            instances={resources.wood}
+                            geometry={resources.geometry}
+                            batchStaticMaterial={batch}
+                            renderSnow={false}
+                            materialNode={
+                                <meshStandardMaterial
+                                    color="#744020"
+                                    roughness={0.9}
+                                    metalness={0}
+                                    side={DoubleSide}
+                                />
+                            }
+                        />
+                        <EntityInstancesGeometry
+                            instanceKey="admission:roof"
+                            instances={roof}
+                            geometry={resources.geometry}
+                            batchStaticMaterial={batch}
+                            renderSnow={false}
+                            materialNode={
+                                <meshStandardMaterial
+                                    color={mutated ? '#4b9965' : '#2f3437'}
+                                    roughness={mutated ? 0.3 : 0.62}
+                                    metalness={0.3}
+                                    side={DoubleSide}
+                                />
+                            }
+                        />
+                        <EntityInstancesGeometry
+                            instanceKey="admission:metal"
+                            instances={resources.metal}
+                            geometry={resources.geometry}
+                            batchStaticMaterial={batch}
+                            renderSnow={false}
+                            material={resources.material}
+                        />
+                        <EntityInstancesGeometry
+                            instanceKey="admission:unknown"
+                            instances={resources.unknownInstances}
+                            geometry={resources.geometry}
+                            batchStaticMaterial={batch}
+                            renderSnow={false}
+                            material={resources.unknown}
+                        />
+                    </>
+                )}
+            </StaticRenderPacketBatchProvider>
+        </>
+    );
+}

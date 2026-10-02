@@ -6,6 +6,23 @@ a draw even when only palette/PBR values differed. `StaticRenderPacketBatchProvi
 `EntityInstances` collects the stable merged chunks of every participating
 component and compiles the compatible ones into one chunk render packet.
 
+The production GLTF and additional rigid-prop callers opt in with
+`batchStaticMaterial`; declared static cache groups also qualify. This admits
+compatible stable opaque/cutout props even when their old per-component
+`renderStableChunksAsMergedGeometry` flag is absent. Generic callers keep their
+existing path: an unrelated autumn leaf material that changes PBR values in an
+effect, for example, is not opted in. Eligible geometry is immutable or replaced
+by a new source object; any writer must publish attribute `needsUpdate` versions
+before using the compiler's versioned-source cache.
+
+Simple intrinsic `<meshStandardMaterial>` nodes can qualify with supported
+scalar/Color constructor props. Their concrete source materials are created in
+layout-effect leases, disposed on cleanup, and freshly allocated after
+StrictMode replay. Refs, constructor `args`, children, maps, custom hooks and
+unknown JSX components stay on the authored path. Placement/drag meshes and
+pickup outlines retain source geometry and JSX; only stable instances join
+packets.
+
 ## Material families
 
 `classifyGardenMaterial` sorts a stable chunk's material into one of three
@@ -82,14 +99,19 @@ failed compiles work as they did for single-geometry chunks.
 
 Each static-cache group gets one `StaticOpaqueSceneCacheBoundary`, and every
 packet in the group counts as one submission. Packets render in the provider's
-coordinate space. Only `renderStableChunksAsMergedGeometry` participants opt in,
-and all of them render garden-space instances.
+coordinate space. Explicit merged-terrain participants and compatible opted-in
+rigid props all render garden-space instances. Empty placement members stay in
+packet telemetry so dropping a contributor's last stable instance and rejoining
+it can still identify a completed physical rebuild; empty members never enter
+compiler sources, rendered contribution counts or saved-submission estimates.
+If an entire packet disappears there is no rebuild to time; its later recreation
+is a new compile, visible in general compiler counters.
 
 ## Fallbacks
 
 These components keep their per-component merged chunks unchanged:
 
-- **`material-node`**: JSX material children.
+- **`material-node`**: unsupported JSX material children.
 - **`material-array`**, **`missing-material`**, and **`transparent`**.
 
 Transparent effects, including additive effects, retain per-object sorting
@@ -136,6 +158,15 @@ foreground depth occlusion, in-place palette mutation, StrictMode mounting and
 last-user disposal/remount. PNGs and numeric difference diagnostics are attached
 to each browser test result; this fixture proves visual parity, not device GPU
 savings.
+
+`GardenPaletteAdmissionFixture` exercises the actual `EntityInstancesGeometry`
+production path with GLTF-style materials and authored material nodes. It starts
+with batching enabled under StrictMode, then compares source and packet pixels,
+unchanged triangles and raycast hits, six contributions sharing two spatial
+packets, a local membership patch retaining the other chunk's geometry, palette
+mutation, an unknown-hook fallback, and final release/remount. Shared packet
+compilation also publishes physical placement rebuild timing and transformed
+instance counts when placement membership changes.
 
 A separate diagnostic comparison of an uncompiled authored mesh against its
 compiled palette mesh found 378 of 196,608 pixels (0.1923%) differing by more

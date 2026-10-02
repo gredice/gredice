@@ -110,7 +110,7 @@ import { defaultGameWoodColor } from './woodPalette';
 
 type CommonWeatherProps = Pick<
     EntityInstancesBlockBaseProps,
-    'renderSnow' | 'snowOverlayMinCoverage'
+    'renderSnow' | 'snowOverlayMinCoverage' | 'batchStaticMaterial'
 >;
 
 type ScaleTuple = [number, number, number];

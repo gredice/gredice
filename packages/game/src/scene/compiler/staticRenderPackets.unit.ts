@@ -81,6 +81,36 @@ describe('static render packet planning', () => {
         );
     });
 
+    it('retains an empty placement member as telemetry without adding rendered sources or savings', () => {
+        const a = contribution('a', { placementSignature: '' });
+        const b = contribution('b', { placementSignature: '' });
+        const before = planStaticRenderPackets([a, b]);
+        const dropping = contribution('a', {
+            instances: [],
+            placementSignature: '["a"]',
+        });
+        const during = planStaticRenderPackets([dropping, b], before);
+        assert.equal(during.length, 1);
+        assert.deepEqual(during[0]?.contributions, [b]);
+        assert.equal(during[0]?.sources.length, 1);
+        assert.equal(during[0]?.triangleCount, 12);
+        assert.equal(during[0]?.instanceCount, 1);
+        assert.deepEqual(during[0]?.placementContributions, [dropping, b]);
+        assert.equal(planStaticRenderPackets([dropping, b], during), during);
+        const after = planStaticRenderPackets([a, b], during);
+        assert.equal(after[0]?.sources.length, 2);
+        assert.deepEqual(after[0]?.placementContributions, [a, b]);
+        assert.equal(planStaticRenderPackets([dropping]).length, 0);
+        const registry = new StaticRenderPacketRegistry();
+        registry.set('members', [dropping, b]);
+        registry.getSnapshot();
+        const metrics = readStaticRenderPacketMetrics();
+        assert.equal(metrics.contributions, 1);
+        assert.equal(metrics.savedSubmissions, 0);
+        registry.delete('members');
+        registry.getSnapshot();
+    });
+
     it('retains untouched packets and source lists across a patch', () => {
         const a = contribution('a');
         const b = contribution('b', { chunkKey: '1:0' });
