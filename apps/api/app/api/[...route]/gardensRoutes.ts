@@ -59,6 +59,7 @@ import {
     getAllEvents,
     getAppliedRaisedBedOperationsForGarden,
     getEntityFormatted,
+    getFeaturedPublicGardenSummaries,
     getFeaturedPublicGardens,
     getGarden,
     getGardenBlocks,
@@ -119,6 +120,7 @@ import {
     buildDetailedRaisedBedInspectionReports,
     detailedInspectionOperationId,
 } from '../../../lib/garden/detailedRaisedBedInspectionReports';
+import { featuredPublicGardenSummariesRoute } from '../../../lib/garden/featuredPublicGardenSummariesRoute';
 import { featuredPublicGardensRoute } from '../../../lib/garden/featuredPublicGardensRoute';
 import {
     recycleGardenBlockForAccount,
@@ -1061,6 +1063,10 @@ async function getGardenQueuedTasks(garden: GardenDetail) {
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .route('/', featuredPublicGardensRoute(getFeaturedPublicGardens))
+    .route(
+        '/',
+        featuredPublicGardenSummariesRoute(getFeaturedPublicGardenSummaries),
+    )
     .get(
         '/',
         describeRoute({

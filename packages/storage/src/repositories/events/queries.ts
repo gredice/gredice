@@ -12,6 +12,11 @@ import {
     sql,
 } from 'drizzle-orm';
 import {
+    bustFeaturedPublicGardenCache,
+    bustGrediceCached,
+    grediceCacheKeys,
+} from '../../cache/grediceCached';
+import {
     bustDeliveryRequestsCache,
     bustScheduleCache,
 } from '../../cache/scheduleCache';
@@ -146,6 +151,22 @@ const deliveryInvalidatingEventTypes = new Set<string>([
     knownEventTypes.delivery.runAbandoned,
 ]);
 
+const featuredGardenInvalidatingEventTypes = new Set<string>([
+    knownEventTypes.gardens.create,
+    knownEventTypes.gardens.rename,
+    knownEventTypes.gardens.delete,
+    knownEventTypes.raisedBeds.create,
+    knownEventTypes.raisedBeds.place,
+    knownEventTypes.raisedBeds.delete,
+    knownEventTypes.raisedBeds.abandon,
+    knownEventTypes.raisedBedFields.create,
+    knownEventTypes.raisedBedFields.delete,
+    knownEventTypes.raisedBedFields.plantPlace,
+    knownEventTypes.raisedBedFields.plantUpdate,
+    knownEventTypes.raisedBedFields.plantReplaceSort,
+    knownEventTypes.raisedBedFields.plantBlock,
+]);
+
 function eventTypeFilter(type: string | string[]) {
     return Array.isArray(type)
         ? inArray(events.type, type)
@@ -256,6 +277,12 @@ function aiOperationTypeForDomainEvent(type: string): AiAnalyticsOperationType {
 
 async function bustReadModelCachesForEvent(event: Event) {
     await Promise.all([
+        featuredGardenInvalidatingEventTypes.has(event.type)
+            ? bustFeaturedPublicGardenCache()
+            : undefined,
+        event.type === knownEventTypes.raisedBedFields.plantPlace
+            ? bustGrediceCached(grediceCacheKeys.publicPlantStatistics)
+            : undefined,
         scheduleInvalidatingEventTypes.has(event.type)
             ? bustScheduleCache()
             : undefined,

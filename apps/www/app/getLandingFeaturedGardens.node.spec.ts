@@ -3,30 +3,9 @@ import test, { type TestContext } from 'node:test';
 import { setImmediate } from 'node:timers/promises';
 import { getLandingFeaturedGardens } from './getLandingFeaturedGardens';
 
-function garden(id: number) {
+function summary(id: number) {
     return {
-        backgroundPalette: 'current',
-        farmId: 1,
-        homeCamera: null,
-        id,
-        isPublic: true,
-        isSandbox: false,
-        latitude: 45.815,
-        longitude: 15.982,
-        name: `Vrt ${id}`,
-        previewImage: { url: `https://cdn.gredice.com/garden-${id}.webp` },
-        members: id === 12 ? [] : [summary(id).owner],
-        raisedBeds: [],
-        stacks: {},
-        updatedAt: '2026-09-14T12:00:00.000Z',
-    };
-}
-
-function summary(id: number, likeCount = 0, activePlantCount = 0) {
-    return {
-        id,
-        likeCount,
-        activePlantCount,
+        garden: { id, name: `Vrt ${id}` },
         owner:
             id === 12
                 ? null
@@ -36,6 +15,8 @@ function summary(id: number, likeCount = 0, activePlantCount = 0) {
                       publicId: `u_${id}`,
                       achievementCount: id,
                   },
+        dayPreviewImageUrl: `https://cdn.gredice.com/garden-${id}.webp`,
+        nightPreviewImageUrl: null,
     };
 }
 
@@ -97,7 +78,7 @@ function mockRequests(
         const path = new URL(input instanceof Request ? input.url : input)
             .pathname;
         const gardenId =
-            path === '/api/gardens/public/featured' ||
+            path === '/api/gardens/public/featured/summaries' ||
             path === '/api/gardens/public'
                 ? null
                 : Number(path.split('/').at(-2));
@@ -131,162 +112,37 @@ async function advanceTime(t: TestContext, milliseconds = 0) {
     await setImmediate();
 }
 
-test('caps the server-ranked IDs at ten and uses fresh detail owners', async (t) => {
+test('uses one compact summary request, preserves server order and caps the carousel at ten', async (t) => {
     const items = Array.from({ length: 12 }, (_, index) => summary(12 - index));
-    const { requests, timeout } = mockRequests(t, (id, signal) =>
-        id === null
-            ? Response.json({ items: items.map(({ id }) => ({ id })) })
-            : delayedResponse(signal, id * 10, garden(id)),
+    const { requests, timeout } = mockRequests(t, () =>
+        Response.json({ items }),
     );
-    const result = getLandingFeaturedGardens();
-    await advanceTime(t);
+    assert.deepEqual(await getLandingFeaturedGardens(), items.slice(0, 10));
     assert.deepEqual(
-        requests.map(({ gardenId }) => gardenId),
-        [null, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3],
+        requests.map(({ path }) => path),
+        ['/api/gardens/public/featured/summaries'],
     );
-    assert.match(
-        requests[0]?.traceId ?? '',
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u,
-    );
-    assert.ok(requests.slice(1).every(({ traceId }) => traceId === null));
-    await advanceTime(t, 120);
-    assert.deepEqual(
-        await result,
-        items.slice(0, 10).map((item) => ({
-            garden: { id: item.id, name: `Vrt ${item.id}` },
-            owner: item.owner,
-            dayPreviewImageUrl: `https://cdn.gredice.com/garden-${item.id}.webp`,
-            nightPreviewImageUrl: undefined,
-        })),
-    );
-    assert.equal(timeout.mock.callCount(), 2);
+    assert.match(requests[0]?.traceId ?? '', /^[0-9a-f-]{36}$/u);
     assert.deepEqual(
         timeout.mock.calls.map(({ arguments: args }) => args),
-        [[3_000], [5_000]],
-    );
-    assert.notEqual(requests[0]?.signal, requests[1]?.signal);
-    assert.ok(
-        requests.slice(1).every(({ signal }) => signal === requests[1]?.signal),
-    );
-});
-
-test('a rejected detail does not discard completed gardens or later successes', async (t) => {
-    mockRequests(t, (id, signal) => {
-        if (id === null)
-            return Response.json({
-                items: [summary(1), summary(2), summary(3)],
-            });
-        if (id === 2)
-            return new Promise<Response>((_resolve, reject) => {
-                setTimeout(() => reject(new TypeError('Connection reset')), 50);
-            });
-        return delayedResponse(signal, id === 1 ? 10 : 100, garden(id));
-    });
-    let settled = false;
-    const result = getLandingFeaturedGardens().then((gardens) => {
-        settled = true;
-        return gardens;
-    });
-    await advanceTime(t);
-    await advanceTime(t, 10);
-    assert.equal(settled, false);
-    await advanceTime(t, 40);
-    assert.equal(settled, false);
-    await advanceTime(t, 50);
-    assert.deepEqual(
-        (await result).map(({ garden }) => garden.id),
-        [1, 3],
-    );
-});
-
-test('gives details a fresh bounded budget after a slow list and preserves completed gardens', async (t) => {
-    const { requests, timeout, warnings, errors } = mockRequests(
-        t,
-        (id, signal) => {
-            if (id === null)
-                return delayedResponse(signal, 2_109, {
-                    items: [summary(1), summary(2), summary(3)],
-                });
-            if (id === 3) return pendingBody(signal);
-            return delayedResponse(
-                signal,
-                id === 1 ? 1_000 : 4_500,
-                garden(id),
-            );
-        },
-    );
-    let settled = false;
-    const result = getLandingFeaturedGardens().then((gardens) => {
-        settled = true;
-        return gardens;
-    });
-    await advanceTime(t, 2_109);
-    assert.equal(requests.length, 4);
-    await advanceTime(t, 2_891);
-    assert.equal(settled, false);
-    await advanceTime(t, 1_609);
-    assert.equal(settled, false);
-    await advanceTime(t, 499);
-    assert.equal(settled, false);
-    await advanceTime(t, 1);
-    assert.deepEqual(
-        (await result).map(({ garden }) => garden.id),
-        [1, 2],
-    );
-    assert.equal(Date.now(), 7_109);
-    assert.equal(timeout.mock.callCount(), 2);
-    assert.deepEqual(
-        timeout.mock.calls.map(({ arguments: args }) => args),
-        [[3_000], [5_000]],
-    );
-    assert.equal(requests[0]?.signal.aborted, true);
-    assert.ok(
-        requests
-            .slice(1)
-            .every(
-                ({ signal }) =>
-                    signal === requests[1]?.signal && signal.aborted,
-            ),
-    );
-    assert.equal(errors.mock.callCount(), 0);
-    assert.equal(warnings.mock.callCount(), 1);
-    assert.partialDeepStrictEqual(warnings.mock.calls[0]?.arguments[1], {
-        listDurationMs: 2_109,
-        detailDurationMs: 5_000,
-        elapsedMs: 7_109,
-        timedOut: true,
-    });
-});
-
-test('skips HTTP errors and invalid detail JSON while retaining a valid garden', async (t) => {
-    mockRequests(t, (id) => {
-        if (id === null)
-            return Response.json({
-                items: [1, 2, 3, 4, 5].map((id) => summary(id)),
-            });
-        if (id === 1) return Response.json(garden(id));
-        if (id === 5) return new Response('invalid json');
-        return new Response(null, {
-            status: id === 2 ? 404 : id === 3 ? 403 : 503,
-        });
-    });
-    assert.deepEqual(
-        (await getLandingFeaturedGardens()).map(({ garden }) => garden.id),
-        [1],
+        [[3_000]],
     );
 });
 
 for (const failure of [
     'http',
+    'older-api',
     'network',
     'json',
     'timeout',
     'body-timeout',
     'empty',
 ]) {
-    test(`returns the empty fallback without detail requests when the list is ${failure}`, async (t) => {
+    test(`retains the empty landing fallback after a ${failure} response without full-scene requests`, async (t) => {
         const { requests } = mockRequests(t, (_id, signal) => {
             if (failure === 'http') return new Response(null, { status: 503 });
+            if (failure === 'older-api')
+                return new Response(null, { status: 404 });
             if (failure === 'network') throw new TypeError('Connection reset');
             if (failure === 'json') return new Response('invalid json');
             if (failure === 'timeout')
@@ -298,43 +154,20 @@ for (const failure of [
         await advanceTime(t);
         await advanceTime(t, 5_000);
         assert.deepEqual(await result, []);
-        assert.deepEqual(
-            requests.map(({ gardenId }) => gardenId),
-            [null],
-        );
+        assert.equal(requests.length, 1);
     });
 }
 
-test('retains the empty fallback when all details time out', async (t) => {
-    mockRequests(t, (id, signal) =>
-        id === null
-            ? Response.json({ items: [summary(1), summary(2)] })
-            : delayedResponse(signal, 6_000, garden(id)),
-    );
-    const result = getLandingFeaturedGardens();
-    await advanceTime(t);
-    await advanceTime(t, 5_000);
-    assert.deepEqual(await result, []);
-});
-
-test('the Playwright fixture bypasses network requests and the deadline', async (t) => {
-    const { requests, timeout } = mockRequests(t, () => {
-        throw new Error('Unexpected request');
-    });
-    process.env.GREDICE_PLAYWRIGHT_FEATURED_GARDENS_FIXTURE = 'true';
-    const result = await getLandingFeaturedGardens();
-    assert.equal(result[0]?.garden.id, 99_999);
-    assert.deepEqual(requests, []);
-    assert.equal(timeout.mock.callCount(), 0);
-});
-
 for (const phase of ['headers', 'body']) {
-    test(`list ${phase} timeout is bounded to three seconds and identifies the failing phase`, async (t) => {
+    test(`summary ${phase} timeout is bounded to three seconds with useful diagnostics`, async (t) => {
         const { errors, requests } = mockRequests(t, (_id, signal) => {
             if (phase === 'headers')
                 return delayedResponse(signal, 4_000, { items: [] });
             const response = pendingBody(signal);
-            response.headers.set('server-timing', 'featured-list;dur=42.0');
+            response.headers.set(
+                'server-timing',
+                'featured-summaries;dur=42.0',
+            );
             response.headers.set('x-vercel-id', 'test-region::test-request');
             return response;
         });
@@ -358,7 +191,7 @@ for (const phase of ['headers', 'body']) {
                 ? {
                       listHeadersMs: 0,
                       listBodyMs: 3_000,
-                      apiTiming: 'featured-list;dur=42.0',
+                      apiTiming: 'featured-summaries;dur=42.0',
                       apiRequestId: 'test-region::test-request',
                   }
                 : {}),
@@ -366,16 +199,9 @@ for (const phase of ['headers', 'body']) {
     });
 }
 
-test('near-deadline list success records header, body and API timings', async (t) => {
-    const { requests, warnings } = mockRequests(t, (id, signal) =>
-        id === null
-            ? delayedResponse(signal, 2_600, {
-                  items: [{ id: 1 }],
-              }).then((response) => {
-                  response.headers.set('x-vercel-cache', 'MISS');
-                  return response;
-              })
-            : Response.json(garden(id)),
+test('reports slow summary headers and API timing', async (t) => {
+    const { requests, warnings } = mockRequests(t, (_id, signal) =>
+        delayedResponse(signal, 2_600, { items: [summary(1)] }),
     );
     const result = getLandingFeaturedGardens();
     await advanceTime(t, 2_600);
@@ -384,89 +210,40 @@ test('near-deadline list success records header, body and API timings', async (t
         listDurationMs: 2_600,
         listHeadersMs: 2_600,
         listBodyMs: 0,
-        apiCacheStatus: 'MISS',
         traceId: requests[0]?.traceId,
     });
 });
 
-test('an older API uses the ranked legacy list within the original deadline', async (t) => {
-    const { requests, timeout } = mockRequests(t, (id, _signal, path) => {
-        if (path === '/api/gardens/public/featured')
-            return new Response(null, { status: 404 });
-        if (path === '/api/gardens/public')
-            return Response.json({
-                items: [summary(1, 0, 20), summary(2, 1, 1), summary(3, 1, 9)],
-            });
-        assert.ok(id);
-        return Response.json(garden(id));
+test('the Playwright fixture bypasses requests and deadlines', async (t) => {
+    const { requests, timeout } = mockRequests(t, () => {
+        throw new Error('Unexpected request');
     });
-    assert.deepEqual(
-        (await getLandingFeaturedGardens()).map(({ garden }) => garden.id),
-        [3, 2, 1],
-    );
-    assert.equal(requests[0]?.signal, requests[1]?.signal);
-    assert.equal(timeout.mock.callCount(), 2);
+    process.env.GREDICE_PLAYWRIGHT_FEATURED_GARDENS_FIXTURE = 'true';
+    assert.equal((await getLandingFeaturedGardens())[0]?.garden.id, 99_999);
+    assert.deepEqual(requests, []);
+    assert.equal(timeout.mock.callCount(), 0);
 });
 
-for (const phase of ['headers', 'body']) {
-    test(`legacy fallback ${phase} shares the remaining list budget`, async (t) => {
-        const { requests, timeout } = mockRequests(t, (_id, signal, path) => {
-            if (path === '/api/gardens/public/featured')
-                return new Promise<Response>((resolve) => {
-                    setTimeout(
-                        () => resolve(new Response(null, { status: 404 })),
-                        2_000,
-                    );
-                });
-            return phase === 'body'
-                ? pendingBody(signal)
-                : delayedResponse(signal, 2_000, { items: [summary(1)] });
-        });
-        const result = getLandingFeaturedGardens();
-        await advanceTime(t, 2_000);
-        await advanceTime(t, 1_000);
-        assert.deepEqual(await result, []);
-        assert.equal(Date.now(), 3_000);
-        assert.equal(requests.length, 2);
-        assert.equal(requests[0]?.signal, requests[1]?.signal);
-        assert.equal(timeout.mock.callCount(), 1);
-    });
-}
-
-test('legacy fallback HTTP errors retain the empty fallback', async (t) => {
-    const { requests } = mockRequests(
-        t,
-        (_id, _signal, path) =>
-            new Response(null, {
-                status: path === '/api/gardens/public/featured' ? 404 : 503,
-            }),
+test('keeps carousel fields and excludes unexpected scene/private payload fields', async (t) => {
+    const item = summary(1);
+    mockRequests(t, () =>
+        Response.json({
+            items: [
+                {
+                    ...item,
+                    garden: {
+                        ...item.garden,
+                        stacks: { large: 'unused'.repeat(100_000) },
+                    },
+                    owner: {
+                        ...item.owner,
+                        email: 'private@example.com',
+                        accountId: 'private',
+                    },
+                    extra: 'unused',
+                },
+            ],
+        }),
     );
-    assert.deepEqual(await getLandingFeaturedGardens(), []);
-    assert.equal(requests.length, 2);
-});
-
-test('keeps all carousel content but excludes scene graphs and unused owner fields', async (t) => {
-    const details = {
-        ...garden(1),
-        stacks: { large: 'unused'.repeat(100_000) },
-        members: [{ ...summary(1).owner, extra: 'unused' }],
-        previewImages: {
-            day: { url: 'https://cdn.gredice.com/day.webp' },
-            night: { url: 'https://cdn.gredice.com/night.webp' },
-        },
-    };
-    mockRequests(t, (id) =>
-        Response.json(id === null ? { items: [{ id: 1 }] } : details),
-    );
-    const result = await getLandingFeaturedGardens();
-    assert.deepEqual(result, [
-        {
-            garden: { id: 1, name: 'Vrt 1' },
-            owner: summary(1).owner,
-            dayPreviewImageUrl: details.previewImages.day.url,
-            nightPreviewImageUrl: details.previewImages.night.url,
-        },
-    ]);
-    assert.ok(JSON.stringify(result).length < 500);
-    assert.doesNotMatch(JSON.stringify(result), /stacks|members|unused/);
+    assert.deepEqual(await getLandingFeaturedGardens(), [item]);
 });
