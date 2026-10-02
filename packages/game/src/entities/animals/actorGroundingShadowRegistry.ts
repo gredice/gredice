@@ -172,8 +172,8 @@ export const actorGroundingShadowProfiles = {
         maxFootprintScale: 1.65,
     },
     frog: {
-        baseHalfLength: 0.2,
-        baseHalfWidth: 0.17,
+        baseHalfLength: 0.1,
+        baseHalfWidth: 0.085,
         baseOpacity: 0.28,
         cutoffHeight: 0.75,
         maxFootprintScale: 1.55,

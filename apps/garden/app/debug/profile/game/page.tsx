@@ -45,7 +45,8 @@ type GameProfileMode =
     | 'night'
     | 'storm'
     | 'autumn'
-    | 'windy';
+    | 'windy'
+    | 'mist';
 
 type GameProfileMockGardenProfile = NonNullable<
     GameSceneProps['mockGardenProfile']
@@ -88,7 +89,8 @@ function resolveMode(value: string | undefined): GameProfileMode {
         value === 'night' ||
         value === 'storm' ||
         value === 'autumn' ||
-        value === 'windy'
+        value === 'windy' ||
+        value === 'mist'
     ) {
         return value;
     }
@@ -131,6 +133,15 @@ function resolveMockGardenProfile(
 function resolveWeather(
     mode: GameProfileMode,
 ): NonNullable<GameSceneProps['weather']> {
+    if (mode === 'mist') {
+        return {
+            ...gameProfileClearWeather,
+            cloudy: 0.6,
+            foggy: 1,
+            windSpeed: 0.4,
+        };
+    }
+
     if (mode === 'cloudy') {
         return gameProfileCloudyWeather;
     }
@@ -216,6 +227,7 @@ function resolveWeather(
 function resolveFreezeTime(mode: GameProfileMode) {
     const dates = getSeasonDebugDates();
     const date = mode === 'autumn' ? dates.earlyAutumn : dates.summer;
+    if (mode === 'mist') date.setHours(8, 0);
     if (mode === 'night') date.setHours(22, 30);
     if (mode === 'storm') date.setHours(18, 30);
     if (mode === 'autumn') date.setHours(16, 30);
