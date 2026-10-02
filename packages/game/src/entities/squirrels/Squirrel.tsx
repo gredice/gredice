@@ -1,8 +1,14 @@
 import { type ThreeEvent, useFrame } from '@react-three/fiber';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import {
     type AnimationAction,
-    AnimationMixer,
     type Group,
     LoopRepeat,
     MathUtils,
@@ -29,6 +35,10 @@ import {
     AnimalPathDebugIndicator,
     AnimalTargetDebugMarker,
 } from '../animals/AnimalDebugIndicators';
+import {
+    type ActorAnimationRig,
+    createActorAnimationRig,
+} from '../animals/actorAnimationRig';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
 import { squirrelSpeechMessages } from '../animals/actorSpeechMessages';
 import { isFreshGardenAvatarPresence } from '../animals/animalAvatarFollowing';
@@ -604,31 +614,29 @@ export function Squirrel({
         };
     }, [gltf.scene]);
     useFaunaActorCulling(squirrelModel.scene);
-    const mixer = useMemo(
-        () => new AnimationMixer(squirrelModel.scene),
-        [squirrelModel.scene],
-    );
-    const actions = useMemo(
-        () =>
-            new Map(
-                gltf.animations.map((clip) => [
-                    clip.name,
-                    mixer.clipAction(clip),
-                ]),
-            ),
-        [gltf.animations, mixer],
-    );
+    // Mixer and actions are created and disposed together so StrictMode's
+    // effect replay never leaves actions bound to an uncached root.
+    const animationRigRef = useRef<ActorAnimationRig | null>(null);
+    useLayoutEffect(() => {
+        const animationRig = createActorAnimationRig(
+            squirrelModel.scene,
+            gltf.animations,
+        );
+        animationRigRef.current = animationRig;
+        return () => {
+            animationRigRef.current = null;
+            animationRig.dispose();
+        };
+    }, [gltf.animations, squirrelModel.scene]);
     useEffect(() => {
         if (squirrelModel.nut)
             squirrelModel.scene
                 .getObjectByName('Squirrel_HeadPivot')
                 ?.add(squirrelModel.nut.mesh);
         return () => {
-            mixer.stopAllAction();
-            mixer.uncacheRoot(squirrelModel.scene);
             squirrelModel.nut?.dispose();
         };
-    }, [mixer, squirrelModel]);
+    }, [squirrelModel]);
     const updateGroundingShadow = useActorGroundingShadow({
         id: `squirrel:${habitat.id}`,
         primaryCasterCount: squirrelModel.primaryCasterCount,
@@ -636,6 +644,9 @@ export function Squirrel({
     });
 
     const setAnimation = (animation: SquirrelAnimationName) => {
+        const animationRig = animationRigRef.current;
+        if (!animationRig) return;
+        const { actions, mixer } = animationRig;
         const action = actions.get(animation);
         if (activeAnimationRef.current !== animation || !action?.isRunning()) {
             if (fixedTime !== undefined || reducedMotion) mixer.stopAllAction();
@@ -1051,9 +1062,10 @@ export function Squirrel({
             }
         }
 
+        const mixer = animationRigRef.current?.mixer;
         if (fixedTime !== undefined || reducedMotion)
-            mixer.setTime(reducedMotion ? 0 : (fixedTime ?? 0));
-        else mixer.update(Math.min(delta, 0.1));
+            mixer?.setTime(reducedMotion ? 0 : (fixedTime ?? 0));
+        else mixer?.update(Math.min(delta, 0.1));
         syncDebugIndicators(runtime);
 
         if (updateGroundingShadow) {
