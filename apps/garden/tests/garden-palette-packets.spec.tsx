@@ -17,6 +17,18 @@ test('production entity props batch JSX material nodes, retain untouched chunks 
     page.on('console', (message) => {
         if (message.type() === 'error') errors.push(message.text());
     });
+    // Keep real worker computation, but ensure its result cannot beat the
+    // pending-frame ownership witness on fast hosts. This affects only CT.
+    await page.route('**/meshCompiler.worker-*.js', async (route) => {
+        const response = await route.fetch();
+        await route.fulfill({
+            response,
+            body:
+                'const originalWorkerPostMessage = self.postMessage.bind(self);\n' +
+                'self.postMessage = (...args) => setTimeout(() => originalWorkerPostMessage(...args), 100);\n' +
+                (await response.text()),
+        });
+    });
     const fixture = await mount(<GardenPaletteAdmissionFixture batch />);
     await expect(fixture).toHaveAttribute(
         'data-ready',
