@@ -12,6 +12,10 @@ import {
     UniformsUtils,
     Vector3,
 } from 'three';
+import {
+    useAutumnPropWindOverlay,
+    useAutumnPropWindOverlayGeometry,
+} from '../scene/AutumnPropWindMaterial';
 import { useSnowSurfaceAmountUniform } from '../scene/WeatherSurfaceUniformProvider';
 import { useGameState } from '../useGameState';
 import { createSnowOverlayGeometry } from './createSnowOverlayGeometry';
@@ -168,6 +172,7 @@ export function useSnowMaterial({
 
     useEffect(() => () => material.dispose(), [material]);
 
+    useAutumnPropWindOverlay(material);
     return material;
 }
 
@@ -216,6 +221,7 @@ function SnowOverlayMesh({
         () => createSnowOverlayGeometry(geometry),
         [geometry],
     );
+    useAutumnPropWindOverlayGeometry(overlayGeometry);
     const bounds = useMemo(() => {
         if (!overlayGeometry.boundingBox) {
             overlayGeometry.computeBoundingBox();
