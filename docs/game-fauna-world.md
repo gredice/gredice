@@ -158,9 +158,20 @@ after the root submits a frame. It checks initial and late mounts, garden and
 detail-toggle remounts, smooth gait/root samples, and suspension/resume of one
 of two independent roots. The focused witness passed against the production
 Scene providers. Local validation for this migration also passed the complete
-2,038-test game suite, game and garden typechecks, and changed-file Biome checks.
+2,051-test game suite, game and garden typechecks, and changed-file Biome checks.
 The integrated production capture remains the evidence for performance; the
 phase fixture does not claim those measurements.
+
+BeachBall is a separate interactive prop, outside the 17-species trajectory
+matrix. The same normal CI spec mounts its real GLTF component and checks both
+the avatar kick command and an actual pointer raycast. After submitted frames it
+reads the moving root, rolling rotation and grounding-shadow instance matrix;
+the ball must visibly move, roll and reverse at the garden boundary while its
+shadow follows in the same frame. Offscreen suspension retains the full sample,
+resume keeps each observed displacement below 0.25 m, natural rest releases the
+motion lease, and removal clears presence before final root cleanup. This is
+actual Scene lifecycle and interaction coverage, separate from the bounce unit
+tests for normalized kicks, collision/tunneling, bounds and terrain heights.
 
 `fauna-trajectory.spec.tsx` separately mounts the real production actor
 components, habitats and model assets in day, night and autumn post-rain
