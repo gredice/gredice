@@ -13,6 +13,7 @@ import {
     AccountNotFoundError,
     bustScheduleCache,
     earnSunflowersOnce,
+    GardenPackLifecyclePendingError,
     type GardenPlacementTransaction,
     getGardenPlacementSnapshotForUpdate,
     listGardenRaisedBedMetadataForUpdate,
@@ -38,6 +39,7 @@ const maximumStorageInteger = 2_147_483_647;
 type GardenBlockMutationStatus = 400 | 404 | 409 | 503;
 
 export type GardenBlockMutationFailureCode =
+    | 'PACK_LIFECYCLE_PENDING'
     | 'ACCOUNT_UNAVAILABLE'
     | 'ACTIVE_RAISED_BED'
     | 'BLOCK_DIRECTORY_DATA_NOT_FOUND'
@@ -362,6 +364,13 @@ function raisedBedOrientationForRotation(rotation: number | null) {
 }
 
 function failureFrom(error: unknown): GardenBlockMutationFailure | null {
+    if (error instanceof GardenPackLifecyclePendingError)
+        return {
+            ok: false,
+            code: 'PACK_LIFECYCLE_PENDING',
+            error: 'Recikliranje i promjena izgleda predmeta iz paketa još nisu dostupni.',
+            status: 409,
+        };
     if (error instanceof GardenBlockMutationError) {
         return {
             ok: false,

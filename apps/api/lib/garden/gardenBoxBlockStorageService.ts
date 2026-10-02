@@ -11,6 +11,7 @@ import {
     GardenMutationOperationConflictError,
     type GardenMutationOperationExecution,
     type GardenMutationOperationStoredResponse,
+    GardenPackLifecyclePendingError,
     type GardenPlacementTransaction,
     getGardenBlockForUpdate,
     getGardenMutationAuthorityForUpdate,
@@ -151,6 +152,7 @@ export type GardenBoxBlockStorageCommand = Readonly<{
 }>;
 
 type GardenBoxBlockStorageFailureCode =
+    | 'PACK_LIFECYCLE_PENDING'
     | 'ACCOUNT_DELETION_IN_PROGRESS'
     | 'BLOCK_DIRECTORY_DATA_NOT_FOUND'
     | 'BLOCK_DIRECTORY_UNAVAILABLE'
@@ -659,6 +661,13 @@ export function createGardenBoxBlockStorageService<Transaction>(
                     ),
             );
         } catch (error) {
+            if (error instanceof GardenPackLifecyclePendingError)
+                return {
+                    ok: false,
+                    code: 'PACK_LIFECYCLE_PENDING',
+                    error: 'Pohrana, recikliranje i promjena izgleda predmeta iz paketa još nisu dostupni. Vrt s tim predmetima trenutačno nije moguće obrisati.',
+                    status: 409,
+                };
             if (error instanceof GardenBoxBlockStorageError) {
                 return {
                     ok: false,

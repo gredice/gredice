@@ -14,6 +14,7 @@ import {
     useDisposeGameStateStore,
 } from '../../../packages/game/src/useGameState';
 import { createOwnedGardenPackFixture } from '../../../packages/game/tests/ownedGardenPackFixture';
+import { GardenPackPlacementFixture } from './GardenPackPlacementFixture';
 
 export function GardenPackInventoryStory({
     rollout = true,
@@ -21,12 +22,14 @@ export function GardenPackInventoryStory({
     anonymous = false,
     seed = true,
     placementFailure = false,
+    actualPlacement = false,
 }: {
     rollout?: boolean;
     sandbox?: boolean;
     anonymous?: boolean;
     seed?: boolean;
     placementFailure?: boolean;
+    actualPlacement?: boolean;
 }) {
     const queryClient = useMemo(() => {
         const client = new QueryClient({
@@ -36,7 +39,10 @@ export function GardenPackInventoryStory({
             ['currentUser'],
             anonymous ? null : { id: 'pack-user' },
         );
-        client.setQueryData(currentAccountKeys, { id: 'pack-account' });
+        client.setQueryData(currentAccountKeys, {
+            id: 'pack-account',
+            sunflowers: { amount: 123 },
+        });
         const garden = {
             id: 1,
             name: 'Moj vrt',
@@ -157,27 +163,31 @@ export function GardenPackInventoryStory({
             <QueryClientProvider client={queryClient}>
                 <GameStateContext.Provider value={store}>
                     <div className="h-screen w-screen">
-                        <InventoryHud
-                            packPlacement={
-                                placementFailure
-                                    ? {
-                                          isPending: false,
-                                          error: null,
-                                          place: async (unit) => {
-                                              window.dispatchEvent(
-                                                  new CustomEvent(
-                                                      'test-pack-placement',
-                                                      { detail: unit },
-                                                  ),
-                                              );
-                                              throw new Error(
-                                                  'Fixture placement rejected',
-                                              );
-                                          },
-                                      }
-                                    : undefined
-                            }
-                        />
+                        {actualPlacement ? (
+                            <GardenPackPlacementFixture />
+                        ) : (
+                            <InventoryHud
+                                packPlacement={
+                                    placementFailure
+                                        ? {
+                                              isPending: false,
+                                              error: null,
+                                              place: async (unit) => {
+                                                  window.dispatchEvent(
+                                                      new CustomEvent(
+                                                          'test-pack-placement',
+                                                          { detail: unit },
+                                                      ),
+                                                  );
+                                                  throw new Error(
+                                                      'Fixture placement rejected',
+                                                  );
+                                              },
+                                          }
+                                        : undefined
+                                }
+                            />
+                        )}
                     </div>
                 </GameStateContext.Provider>
             </QueryClientProvider>
