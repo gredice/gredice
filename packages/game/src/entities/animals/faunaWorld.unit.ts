@@ -349,3 +349,40 @@ test('stats publish once per membership burst', () => {
 
     assert.deepEqual(snapshots, [12]);
 });
+
+test('removed actors are counted when their last record is removed', () => {
+    const { timers, world } = createTestWorld();
+    world.reportPresence(presence('cow:a', 'Cow', 0, 0, 0));
+    world.reportDebug(debugEntry('cow:a', { updatedAt: 0 }));
+    world.reportDebug(debugEntry('bird:a', { species: 'Bird', updatedAt: 0 }));
+
+    world.removeDebug('cow:a');
+    assert.equal(world.getStats().removedActorCount, 0, 'presence remains');
+    world.removePresence('cow:a');
+    assert.equal(world.getStats().removedActorCount, 1);
+    world.removePresence('cow:a');
+    assert.equal(world.getStats().removedActorCount, 1, 'repeat is a no-op');
+
+    world.removeDebug('bird:a');
+    assert.equal(world.getStats().removedActorCount, 2);
+    timers.runAll();
+});
+
+test('stats refresh while only report counters change', () => {
+    const timers = createManualTimers();
+    const reportCounts: number[] = [];
+    const world = createFaunaWorld({
+        onStats: (stats) => reportCounts.push(stats.presenceReportCount),
+        publishDebugEntries: () => {},
+        schedule: timers.schedule,
+    });
+    world.reportPresence(presence('horse:a', 'Horse', 0, 0, 0));
+    timers.runAll();
+
+    for (let index = 1; index <= 25; index += 1) {
+        world.reportPresence(presence('horse:a', 'Horse', 0, 0, index * 0.1));
+        timers.runAll();
+    }
+
+    assert.deepEqual(reportCounts, [1, 11, 21]);
+});

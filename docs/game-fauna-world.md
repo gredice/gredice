@@ -47,9 +47,10 @@ not wait for the HUD batch.
 ## Instrumentation
 
 `window.__grediceGameProfile.faunaWorld` receives coalesced counters after
-membership changes and debug publications: actor count, presence capacity,
-presence reports and queries, snapshot rebuilds, debug reports, and published
-versus skipped debug batches.
+membership changes, debug publications, and at most once per scene second of
+reports: actor count, presence capacity, presence reports and queries,
+snapshot rebuilds, debug reports, published versus skipped debug batches, and
+actors whose last record was removed.
 
 ## Offscreen actors
 
