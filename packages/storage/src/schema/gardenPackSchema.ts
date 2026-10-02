@@ -115,6 +115,10 @@ export const gardenPackUnitEvents = pgTable(
         lineId: text('line_id').notNull(),
         unitOrdinal: integer('unit_ordinal').notNull(),
         operationId: text('operation_id').notNull(),
+        placementPayload:
+            jsonb('placement_payload').$type<Record<string, unknown>>(),
+        placementResponse:
+            jsonb('placement_response').$type<Record<string, unknown>>(),
         kind: text('kind', {
             enum: ['placed', 'refunded', 'recycled'],
         }).notNull(),

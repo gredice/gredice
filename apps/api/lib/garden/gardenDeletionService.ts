@@ -2,6 +2,7 @@ import {
     AccountDeletionInProgressError,
     AccountNotFoundError,
     bustScheduleCache,
+    GardenPackLifecyclePendingError,
     type GardenPlacementTransaction,
     getGardenDeletionTargetForUpdate,
     getGardenPlacementSnapshotForUpdate,
@@ -77,6 +78,7 @@ export type DeleteRealGardenResult =
     | Readonly<{
           ok: false;
           code:
+              | 'PACK_LIFECYCLE_PENDING'
               | 'ACCOUNT_DELETION_IN_PROGRESS'
               | 'ACTIVE_RAISED_BEDS'
               | 'GARDEN_NOT_FOUND'
@@ -206,6 +208,13 @@ export function createGardenDeletionService<Transaction>(
             }
             return result;
         } catch (error) {
+            if (error instanceof GardenPackLifecyclePendingError)
+                return {
+                    ok: false,
+                    code: 'PACK_LIFECYCLE_PENDING',
+                    error: 'Pohrana, recikliranje i promjena izgleda predmeta iz paketa još nisu dostupni. Vrt s tim predmetima trenutačno nije moguće obrisati.',
+                    status: 409,
+                };
             if (error instanceof AccountDeletionInProgressError) {
                 return {
                     ok: false,
