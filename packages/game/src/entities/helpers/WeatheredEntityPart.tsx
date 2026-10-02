@@ -32,6 +32,8 @@ export function WeatheredEntityPart({
 }) {
     return (
         <mesh
+            customDepthMaterial={node.customDepthMaterial}
+            customDistanceMaterial={node.customDistanceMaterial}
             castShadow={castShadow}
             geometry={node.geometry}
             material={material}

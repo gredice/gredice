@@ -20,7 +20,9 @@ const reporter: PlaywrightTestConfig['reporter'] = [
     ['html', { open: 'never' }],
 ];
 const webglComponentTestPattern =
-    /(warm-props|autumn-season|actor-speech-bubble|cursor-anchored-zoom|detailed-inspection-farmer|garden-preview-capture|hover-outline|instanced-mesh-material-swap|localized-steam|precipitation-camera-follow|public-garden-switch|r3f-root-isolation|raised-bed-notification-bubble|scene-root-isolation|solar-eclipse|spatial-interaction)\.spec\.tsx/;
+    /(warm-props|localized-steam|hedgehog-lifecycle|autumn-prop-wind|cold-weather|rain-ripples|autumn-season|actor-speech-bubble|cursor-anchored-zoom|detailed-inspection-farmer|garden-preview-capture|hover-outline|instanced-mesh-material-swap|precipitation-camera-follow|public-garden-switch|r3f-root-isolation|raised-bed-notification-bubble|scene-root-isolation|solar-eclipse|spatial-interaction|stars-depth)\.spec\.tsx/;
+const morningMistComponentTestPattern = /morning-mist\.spec\.tsx/;
+const leafStepsComponentTestPattern = /leaf-steps\.spec\.tsx/;
 const outletGardenRouteTestPattern = /outlet-garden-route\.spec\.ts/;
 
 // Plugin to intercept next/font/google before Vite's resolver
@@ -40,6 +42,8 @@ function nextFontMockPlugin() {
         },
     };
 }
+
+const squirrelCachingComponentTestPattern = /squirrel-caching\.spec\.tsx/;
 
 export const config: PlaywrightTestConfig = {
     testDir: './',
@@ -71,14 +75,22 @@ export const config: PlaywrightTestConfig = {
         {
             name: 'chromium',
             testIgnore: [
+                squirrelCachingComponentTestPattern,
                 webglComponentTestPattern,
+                leafStepsComponentTestPattern,
+                morningMistComponentTestPattern,
                 outletGardenRouteTestPattern,
             ],
             use: { ...devices['Desktop Chrome'] },
         },
         {
             name: 'chromium-webgl',
-            testMatch: webglComponentTestPattern,
+            testMatch: [
+                squirrelCachingComponentTestPattern,
+                webglComponentTestPattern,
+                leafStepsComponentTestPattern,
+                morningMistComponentTestPattern,
+            ],
             snapshotPathTemplate:
                 '{snapshotDir}/{testFilePath}-snapshots/{arg}{ext}',
             use: {

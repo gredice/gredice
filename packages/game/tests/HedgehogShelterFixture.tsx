@@ -36,7 +36,9 @@ export function HedgehogShelterFixture({
     runtime = false,
     closeUp = false,
     blockedEntrance = false,
+    details = true,
 }: {
+    details?: boolean;
     rotation: number;
     light?: 'day' | 'night' | 'dusk' | 'cloudy' | 'rain' | 'snow';
     small?: boolean;
@@ -273,6 +275,7 @@ export function HedgehogShelterFixture({
                                 </Html>
                                 {visitors && (
                                     <Hedgehogs
+                                        enabled={details}
                                         stacks={stacks}
                                         quality={quality}
                                         gardenId="hedgehog-review"

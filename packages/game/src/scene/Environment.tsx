@@ -13,6 +13,8 @@ import {
 import * as SunCalc from 'suncalc';
 import { Color, type DirectionalLight } from 'three';
 import { AutumnRustle } from '../audio/AutumnRustle';
+import { WeatherAmbience } from '../audio/WeatherAmbience';
+import { WindAmbience } from '../audio/WindAmbience';
 import { PlantShaderPrewarm } from '../generators/plant/PlantShaderPrewarm';
 import { useAutumnState } from '../hooks/useAutumnState';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
@@ -20,12 +22,15 @@ import { useSceneCurrentGarden } from '../hooks/useSceneCurrentGarden';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useSyncGameTime } from '../hooks/useSyncGameTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
+import { RainRipples } from '../rain/RainRipples';
 import { type GameState, useGameState } from '../useGameState';
 import { WarmProps } from '../warmProps/WarmProps';
 import { AutumnLeaves } from './AutumnLeaves';
+import { AutumnPropWindEnvironment } from './AutumnPropWindEnvironment';
 import { getAutumnCanopyShadowKey } from './autumnCanopy';
 import { defaultGameBackgroundPaletteIndex } from './backgroundPalettes';
 import { CloudLayer } from './CloudLayer';
+import { ColdWeatherEffects } from './cold/ColdWeatherEffects';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
 import {
     type GameQualityProfile,
@@ -33,6 +38,7 @@ import {
 } from './gameQuality';
 import { enableGeneratedPlantShadowLayer } from './generatedPlantShadowLayer';
 import { LocalizedSteam } from './LocalizedSteam';
+import { MorningMist } from './MorningMist';
 import { getMoonlitNightScales } from './moonlight';
 import { Perseids } from './PerseidMeteorShower';
 import { getPerseidsMeteorRatePerHour, shouldRenderPerseids } from './perseids';
@@ -667,7 +673,6 @@ export function Environment({
     const activePlacementCount = useGameState(
         (state) => Object.keys(state.blockPlacementDropAnimations).length,
     );
-    const ambientAudioMixer = useGameState((state) => state.audio.ambient);
     const setRainSurfaceIntensity = useGameState(
         (state) => state.setRainSurfaceIntensity,
     );
@@ -737,6 +742,11 @@ export function Environment({
 
         return {
             ...baseWeather,
+            // Overrides must explicitly provide temperature; never inherit a
+            // cached live temperature into a frozen/debug weather fixture.
+            temperature: overrideWeather.temperature ?? null,
+            isStale: false,
+            source: undefined,
             rainy: overrideWeather.rainy ?? baseWeather.rainy,
             foggy: overrideWeather.foggy ?? baseWeather.foggy,
             cloudy: overrideWeather.cloudy ?? baseWeather.cloudy,
@@ -759,87 +769,6 @@ export function Environment({
             (actualWeather?.rainy ?? 0) > 0 ||
             (actualWeather?.snowy ?? 0) > 0);
     useSceneTimeInvalidation('weather-animation', activeWeatherAnimation);
-
-    // Sound management
-    const morningAmbient = ambientAudioMixer.useMusic(
-        'https://cdn.gredice.com/sounds/ambient/Morning 01.mp3',
-    );
-    const dayAmbient = ambientAudioMixer.useMusic(
-        'https://cdn.gredice.com/sounds/ambient/Day Birds 01.mp3',
-    );
-    const nightAmbient = ambientAudioMixer.useMusic(
-        'https://cdn.gredice.com/sounds/ambient/Night 01.mp3',
-    );
-    const dayRainAmbient = ambientAudioMixer.useMusic(
-        'https://cdn.gredice.com/sounds/ambient/Day Rain 01.mp3',
-    );
-    const rainHeavyAmbient = ambientAudioMixer.useMusic(
-        'https://cdn.gredice.com/sounds/ambient/Rain Heavy 01.mp3',
-    );
-    const rainLightModAmbient = ambientAudioMixer.useMusic(
-        'https://cdn.gredice.com/sounds/ambient/Mod Rain Light 01.mp3',
-    );
-    const rainMediumModAmbient = ambientAudioMixer.useMusic(
-        'https://cdn.gredice.com/sounds/ambient/Mod Rain Medium 01.mp3',
-    );
-    useEffect(() => {
-        if (noSound || !sceneRuntimeVisible) {
-            return;
-        }
-
-        if (actualWeather && (actualWeather.rainy ?? 0) > 0.9) {
-            rainHeavyAmbient.play();
-        } else {
-            if (timeOfDay > 0.15 && timeOfDay < 0.3) {
-                morningAmbient.play();
-            } else if (timeOfDay > 0.3 && timeOfDay < 0.8) {
-                if (actualWeather && (actualWeather.rainy ?? 0) > 0) {
-                    dayRainAmbient.play();
-                } else {
-                    dayAmbient.play();
-                }
-            } else {
-                nightAmbient.play();
-            }
-
-            if (actualWeather) {
-                if ((actualWeather.rainy ?? 0) > 0.9) {
-                    rainMediumModAmbient.play();
-                } else if ((actualWeather.rainy ?? 0) > 0.4) {
-                    rainLightModAmbient.play();
-                }
-            }
-        }
-
-        return () => {
-            morningAmbient.stop();
-            dayAmbient.stop();
-            nightAmbient.stop();
-            dayRainAmbient.stop();
-            rainHeavyAmbient.stop();
-            rainLightModAmbient.stop();
-            rainMediumModAmbient.stop();
-        };
-    }, [
-        timeOfDay,
-        actualWeather,
-        noSound,
-        sceneRuntimeVisible,
-        dayAmbient.play,
-        dayAmbient.stop,
-        dayRainAmbient.play,
-        dayRainAmbient.stop,
-        morningAmbient.play,
-        morningAmbient.stop,
-        nightAmbient.play,
-        nightAmbient.stop,
-        rainHeavyAmbient.play,
-        rainHeavyAmbient.stop,
-        rainLightModAmbient.play,
-        rainLightModAmbient.stop,
-        rainMediumModAmbient.play,
-        rainMediumModAmbient.stop,
-    ]);
 
     const blendConfig = hasWeatherOverride
         ? DEBUG_WEATHER_BLEND_CONFIG
@@ -1171,6 +1100,24 @@ export function Environment({
                     windDirection={windDirection}
                 />
             )}
+            <AutumnPropWindEnvironment
+                speed={windSpeed}
+                direction={windDirection}
+                snow={Math.max(snowCoverage, blendedWeather?.snowy ?? 0)}
+                enabled={!weatherDisabled}
+            />
+            <WeatherAmbience
+                weather={actualWeather}
+                timeOfDay={timeOfDay}
+                enabled={!noSound && sceneRuntimeVisible}
+                debug={hasWeatherOverride}
+            />
+            <WindAmbience
+                windSpeed={actualWeather?.windSpeed ?? 0}
+                rainIntensity={actualWeather?.rainy ?? 0}
+                enabled={!noSound && !weatherDisabled && sceneRuntimeVisible}
+                debug={hasWeatherOverride}
+            />
             <AutumnRustle
                 windSpeed={blendedWeather?.windSpeed ?? 0}
                 enabled={!noSound && !weatherDisabled && sceneRuntimeVisible}
@@ -1191,6 +1138,26 @@ export function Environment({
                 windSpeed={blendedWeather?.windSpeed ?? 0}
                 windDirection={windDirection}
                 rain={blendedWeather?.rainy ?? 0}
+                snow={blendedWeather?.snowy ?? 0}
+            />
+            <MorningMist
+                stacks={sceneGarden?.stacks}
+                gardenId={garden?.id}
+                tier={qualityProfile.tier}
+                enabled={!weatherDisabled}
+                timeOfDay={timeOfDay}
+                weather={blendedWeather}
+            />
+            <ColdWeatherEffects
+                weather={actualWeather}
+                tier={qualityProfile.tier}
+                enabled={!weatherDisabled}
+            />
+            <RainRipples
+                stacks={sceneGarden?.stacks}
+                gardenId={garden?.id}
+                tier={qualityProfile.tier}
+                enabled={!weatherDisabled}
                 snow={blendedWeather?.snowy ?? 0}
             />
             {!weatherDisabled && blendedWeather && (

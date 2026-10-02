@@ -30,11 +30,13 @@ import { useOptionalGameState } from '../useGameState';
 import { WarmPropSourcesProvider } from '../warmProps/WarmPropSources';
 import { AdaptiveHighQualityController } from './AdaptiveHighQualityController';
 import { AutumnPartsProvider } from './AutumnParts';
+import { AutumnPropWindProvider } from './AutumnPropWindProvider';
 import { AutumnSourcesProvider } from './AutumnSources';
 import {
     type AdaptiveHighQualityLevelProfile,
     adaptiveHighQualityLevels,
 } from './adaptiveHighQuality';
+import { BreathSourcesProvider } from './cold/BreathSources';
 import { GardenLightProvider } from './GardenLightProvider';
 import {
     createRuntimeFrameLoopProfileTelemetry,
@@ -425,11 +427,17 @@ export function Scene({
                                     />
                                     <AutumnSourcesProvider>
                                         <AutumnPartsProvider>
-                                            <SteamSourcesProvider>
-                                                <WarmPropSourcesProvider>
-                                                    {children}
-                                                </WarmPropSourcesProvider>
-                                            </SteamSourcesProvider>
+                                            <AutumnPropWindProvider
+                                                tier={qualityProfile.tier}
+                                            >
+                                                <BreathSourcesProvider>
+                                                    <SteamSourcesProvider>
+                                                        <WarmPropSourcesProvider>
+                                                            {children}
+                                                        </WarmPropSourcesProvider>
+                                                    </SteamSourcesProvider>
+                                                </BreathSourcesProvider>
+                                            </AutumnPropWindProvider>
                                         </AutumnPartsProvider>
                                     </AutumnSourcesProvider>
                                     <HoverOutlineEffect />
