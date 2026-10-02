@@ -10,6 +10,7 @@ export * from './eventsSchema';
 export * from './farmsSchema';
 export * from './feedbackSchema';
 export * from './fiscalizationSchema';
+export * from './gardenPackSchema';
 export * from './gardenSchema';
 export * from './harvestTraceSchema';
 export * from './inventoryManagementSchema';
