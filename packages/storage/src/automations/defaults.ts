@@ -3,8 +3,9 @@ import {
     RAISED_BED_PHOTO_OPERATION_NAME,
 } from '../helpers/raisedBedPhotoOperations';
 import {
+    type AutomationDefinitionInput,
     initializeAutomationEventCursorToLatest,
-    upsertAutomationDefinitionByKey,
+    syncManagedAutomationDefinitions,
 } from '../repositories/automationsRepo';
 import { knownEventTypes } from '../repositories/events/knownEventTypes';
 import { RAISED_BED_WATERING_50L_OPERATION_ID } from '../repositories/seasonalOffersRepo';
@@ -547,10 +548,8 @@ export function raisedBedDetailedInspectionAutomationGraph(): AutomationGraph {
     };
 }
 
-export async function ensureDefaultAutomationDefinitions() {
-    await initializeAutomationEventCursorToLatest();
-
-    const seasonalSowedWatering = await upsertAutomationDefinitionByKey({
+const managedDefaultAutomationDefinitions = {
+    seasonalSowedWatering: {
         key: seasonalSowedWateringAutomationKey,
         name: 'Dodaj sezonska zalijevanja nakon sjetve',
         description:
@@ -561,69 +560,51 @@ export async function ensureDefaultAutomationDefinitions() {
             managedBy: 'gredice',
             defaultAutomation: true,
         },
-    });
+    },
 
-    for (const eventType of [
-        knownEventTypes.raisedBedPlantings.taskCompleted,
-        knownEventTypes.raisedBedPlantings.taskVerified,
-    ]) {
-        await upsertAutomationDefinitionByKey({
-            key: `${seasonalSowedWateringAutomationKey}.${eventType}`,
-            name: 'Dodaj sezonska zalijevanja nakon napredne sjetve',
-            description:
-                'Nakon potvrđenog sijanja jedne sadnje dodaj sezonska zalijevanja za gredicu.',
-            status: 'enabled',
-            graph: seasonalSowedWateringAutomationGraph(eventType),
-            metadata: { managedBy: 'gredice', defaultAutomation: true },
-        });
-    }
+    operationImagePlantStatusReview: {
+        key: operationImagePlantStatusReviewAutomationKey,
+        name: 'Provjeri fotografije radnje za promjene statusa biljke',
+        description:
+            'Kada je radnja na gredici završena s fotografijama, analiziraj fotografije i kreiraj zahtjeve za potvrdu pouzdanih promjena statusa biljke.',
+        status: 'enabled',
+        graph: operationImagePlantStatusReviewAutomationGraph(),
+        metadata: {
+            managedBy: 'gredice',
+            defaultAutomation: true,
+        },
+    },
 
-    const operationImagePlantStatusReview =
-        await upsertAutomationDefinitionByKey({
-            key: operationImagePlantStatusReviewAutomationKey,
-            name: 'Provjeri fotografije radnje za promjene statusa biljke',
-            description:
-                'Kada je radnja na gredici završena s fotografijama, analiziraj fotografije i kreiraj zahtjeve za potvrdu pouzdanih promjena statusa biljke.',
-            status: 'enabled',
-            graph: operationImagePlantStatusReviewAutomationGraph(),
-            metadata: {
-                managedBy: 'gredice',
-                defaultAutomation: true,
-            },
-        });
+    harvestOperationPlantStatusReview: {
+        key: harvestOperationPlantStatusReviewAutomationKey,
+        name: 'Predloži status ubrano nakon radnje berbe',
+        description:
+            'Kada je radnja berbe završena, za svaku ciljanu biljku kreiraj zahtjev za potvrdu promjene statusa na ubrano bez automatske promjene biljke.',
+        status: 'enabled',
+        graph: harvestOperationPlantStatusReviewAutomationGraph(),
+        metadata: {
+            managedBy: 'gredice',
+            defaultAutomation: true,
+            operationStage: 'harvest',
+            targetStatus: 'harvested',
+        },
+    },
 
-    const harvestOperationPlantStatusReview =
-        await upsertAutomationDefinitionByKey({
-            key: harvestOperationPlantStatusReviewAutomationKey,
-            name: 'Predloži status ubrano nakon radnje berbe',
-            description:
-                'Kada je radnja berbe završena, za svaku ciljanu biljku kreiraj zahtjev za potvrdu promjene statusa na ubrano bez automatske promjene biljke.',
-            status: 'enabled',
-            graph: harvestOperationPlantStatusReviewAutomationGraph(),
-            metadata: {
-                managedBy: 'gredice',
-                defaultAutomation: true,
-                operationStage: 'harvest',
-                targetStatus: 'harvested',
-            },
-        });
+    seedlingTransplantDirectSowingLocation: {
+        key: seedlingTransplantDirectSowingLocationAutomationKey,
+        name: 'Postavi sadnice nakon potvrde presađivanja na direktnu sjetvu',
+        description:
+            'Kada je radnja presađivanja sadnica potvrđena, prebaci lokaciju sijanja ciljane biljke iz staklenika na direktnu sjetvu.',
+        status: 'enabled',
+        graph: seedlingTransplantDirectSowingLocationAutomationGraph(),
+        metadata: {
+            managedBy: 'gredice',
+            defaultAutomation: true,
+            operationEntityId: seedlingTransplantingOperationId,
+        },
+    },
 
-    const seedlingTransplantDirectSowingLocation =
-        await upsertAutomationDefinitionByKey({
-            key: seedlingTransplantDirectSowingLocationAutomationKey,
-            name: 'Postavi sadnice nakon potvrde presađivanja na direktnu sjetvu',
-            description:
-                'Kada je radnja presađivanja sadnica potvrđena, prebaci lokaciju sijanja ciljane biljke iz staklenika na direktnu sjetvu.',
-            status: 'enabled',
-            graph: seedlingTransplantDirectSowingLocationAutomationGraph(),
-            metadata: {
-                managedBy: 'gredice',
-                defaultAutomation: true,
-                operationEntityId: seedlingTransplantingOperationId,
-            },
-        });
-
-    const seedlingTransplantWatering = await upsertAutomationDefinitionByKey({
+    seedlingTransplantWatering: {
         key: seedlingTransplantWateringAutomationKey,
         name: 'Dodaj zalijevanja nakon potvrde presađivanja sadnice',
         description:
@@ -636,9 +617,9 @@ export async function ensureDefaultAutomationDefinitions() {
             operationEntityId: seedlingTransplantingOperationId,
             wateringOperationEntityId: RAISED_BED_WATERING_50L_OPERATION_ID,
         },
-    });
+    },
 
-    const plantRemovalOperationStatus = await upsertAutomationDefinitionByKey({
+    plantRemovalOperationStatus: {
         key: plantRemovalOperationStatusAutomationKey,
         name: 'Označi biljku uklonjenom nakon potvrde uklanjanja',
         description:
@@ -651,9 +632,9 @@ export async function ensureDefaultAutomationDefinitions() {
             operationEntityId: plantRemovalOperationId,
             targetStatus: 'removed',
         },
-    });
+    },
 
-    const farmRaisedBedWeeding = await upsertAutomationDefinitionByKey({
+    farmRaisedBedWeeding: {
         key: farmRaisedBedWeedingAutomationKey,
         name: 'Dodaj čišćenje korova oko gredica za svaku farmu',
         description:
@@ -669,9 +650,9 @@ export async function ensureDefaultAutomationDefinitions() {
             biweeklyAnchorDate: farmRaisedBedWeedingBiweeklyAnchorDate,
             resolvedFromIssue: 3700,
         },
-    });
+    },
 
-    const greenhouseSeedlingWatering = await upsertAutomationDefinitionByKey({
+    greenhouseSeedlingWatering: {
         key: greenhouseSeedlingWateringAutomationKey,
         name: 'Dodaj dnevno zalijevanje presadnica u stakleniku',
         description:
@@ -686,28 +667,27 @@ export async function ensureDefaultAutomationDefinitions() {
             operationName: 'Zalijevanje presadnica u stakleniku',
             resolvedFromIssue: 3700,
         },
-    });
+    },
 
-    const monthlyFarmInventoryOperations =
-        await upsertAutomationDefinitionByKey({
-            key: monthlyFarmInventoryOperationsAutomationKey,
-            name: 'Mjesečna inventura farme',
-            description:
-                'Dan prije prvog dana u mjesecu kreiraj inventurne radnje za svaku aktivnu farmu. Inventura biljaka u plasteniku kreira se samo kada farma ima biljke u plasteniku ili postoji aktivna outlet ponuda.',
-            status: 'enabled',
-            graph: monthlyFarmInventoryOperationsAutomationGraph(),
-            metadata: {
-                managedBy: 'gredice',
-                defaultAutomation: true,
-                dayOfMonth: 1,
-                timeZone: 'Europe/Zagreb',
-                operationEntityIds: monthlyFarmInventoryOperationConfigs.map(
-                    (operation) => operation.entityId,
-                ),
-            },
-        });
+    monthlyFarmInventoryOperations: {
+        key: monthlyFarmInventoryOperationsAutomationKey,
+        name: 'Mjesečna inventura farme',
+        description:
+            'Dan prije prvog dana u mjesecu kreiraj inventurne radnje za svaku aktivnu farmu. Inventura biljaka u plasteniku kreira se samo kada farma ima biljke u plasteniku ili postoji aktivna outlet ponuda.',
+        status: 'enabled',
+        graph: monthlyFarmInventoryOperationsAutomationGraph(),
+        metadata: {
+            managedBy: 'gredice',
+            defaultAutomation: true,
+            dayOfMonth: 1,
+            timeZone: 'Europe/Zagreb',
+            operationEntityIds: monthlyFarmInventoryOperationConfigs.map(
+                (operation) => operation.entityId,
+            ),
+        },
+    },
 
-    const raisedBedPhotoOperations = await upsertAutomationDefinitionByKey({
+    raisedBedPhotoOperations: {
         key: raisedBedPhotoOperationsAutomationKey,
         name: 'Dodaj fotografiranje aktivnih gredica',
         description:
@@ -722,9 +702,9 @@ export async function ensureDefaultAutomationDefinitions() {
             operationEntityLabel: 'Fotografiranje gredice',
             operationEntitySource: 'live-admin-data',
         },
-    });
+    },
 
-    const raisedBedDetailedInspection = await upsertAutomationDefinitionByKey({
+    raisedBedDetailedInspection: {
         key: raisedBedDetailedInspectionAutomationKey,
         name: 'Dodaj detaljan pregled aktivnih gredica',
         description:
@@ -743,19 +723,79 @@ export async function ensureDefaultAutomationDefinitions() {
             resolvedFromIssue: 3700,
             implementsIssue: 3702,
         },
-    });
+    },
+} satisfies Record<string, AutomationDefinitionInput>;
 
+export async function ensureDefaultAutomationDefinitions() {
+    await initializeAutomationEventCursorToLatest();
+    const definitions = {
+        ...managedDefaultAutomationDefinitions,
+        advancedSowingTaskCompleted: {
+            ...managedDefaultAutomationDefinitions.seasonalSowedWatering,
+            key: `${seasonalSowedWateringAutomationKey}.${knownEventTypes.raisedBedPlantings.taskCompleted}`,
+            name: 'Dodaj sezonska zalijevanja nakon napredne sjetve',
+            description:
+                'Nakon potvrđenog sijanja jedne sadnje dodaj sezonska zalijevanja za gredicu.',
+            graph: seasonalSowedWateringAutomationGraph(
+                knownEventTypes.raisedBedPlantings.taskCompleted,
+            ),
+        },
+        advancedSowingTaskVerified: {
+            ...managedDefaultAutomationDefinitions.seasonalSowedWatering,
+            key: `${seasonalSowedWateringAutomationKey}.${knownEventTypes.raisedBedPlantings.taskVerified}`,
+            name: 'Dodaj sezonska zalijevanja nakon napredne sjetve',
+            description:
+                'Nakon potvrđenog sijanja jedne sadnje dodaj sezonska zalijevanja za gredicu.',
+            graph: seasonalSowedWateringAutomationGraph(
+                knownEventTypes.raisedBedPlantings.taskVerified,
+            ),
+        },
+    };
+    const result = await syncManagedAutomationDefinitions(
+        Object.values(definitions),
+    );
+    const references = new Map(
+        result.definitions.map((definition) => [definition.key, definition]),
+    );
+    const reference = (key: string) => {
+        const definition = references.get(key);
+        if (!definition) {
+            throw new Error(
+                'Default automation definition was not initialized.',
+            );
+        }
+        return definition;
+    };
     return {
-        seasonalSowedWatering,
-        operationImagePlantStatusReview,
-        harvestOperationPlantStatusReview,
-        seedlingTransplantDirectSowingLocation,
-        seedlingTransplantWatering,
-        plantRemovalOperationStatus,
-        farmRaisedBedWeeding,
-        greenhouseSeedlingWatering,
-        monthlyFarmInventoryOperations,
-        raisedBedPhotoOperations,
-        raisedBedDetailedInspection,
+        seasonalSowedWatering: reference(definitions.seasonalSowedWatering.key),
+        operationImagePlantStatusReview: reference(
+            definitions.operationImagePlantStatusReview.key,
+        ),
+        harvestOperationPlantStatusReview: reference(
+            definitions.harvestOperationPlantStatusReview.key,
+        ),
+        seedlingTransplantDirectSowingLocation: reference(
+            definitions.seedlingTransplantDirectSowingLocation.key,
+        ),
+        seedlingTransplantWatering: reference(
+            definitions.seedlingTransplantWatering.key,
+        ),
+        plantRemovalOperationStatus: reference(
+            definitions.plantRemovalOperationStatus.key,
+        ),
+        farmRaisedBedWeeding: reference(definitions.farmRaisedBedWeeding.key),
+        greenhouseSeedlingWatering: reference(
+            definitions.greenhouseSeedlingWatering.key,
+        ),
+        monthlyFarmInventoryOperations: reference(
+            definitions.monthlyFarmInventoryOperations.key,
+        ),
+        raisedBedPhotoOperations: reference(
+            definitions.raisedBedPhotoOperations.key,
+        ),
+        raisedBedDetailedInspection: reference(
+            definitions.raisedBedDetailedInspection.key,
+        ),
+        changedDefinitions: result.changedDefinitions,
     };
 }
