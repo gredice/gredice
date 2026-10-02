@@ -200,6 +200,11 @@ recorded separately as `@visual`, and all model roots as `@model` alongside
 every bone/pivot's local position, quaternion and scale. This supplements the
 domain traces and the moving-clip phase witness.
 It does not alter canonical profiler thresholds or report production FPS.
+The receipt freezes the initial checkout commit, tracked Game/JS source bytes,
+all six witness files, browser configuration and asset-server environment,
+then checks them again after capture. The candidate must be clean; an isolated
+legacy reference permits only the named witness files and browser configuration
+addition. Source edits during capture invalidate the report.
 
 Run the same fixture files in isolated baseline and candidate checkouts with
 an existing production asset server; keep the canonical profiling checkout
@@ -210,6 +215,12 @@ GREDICE_GARDEN_BASE_URL=http://localhost:3917 GREDICE_PLAYWRIGHT_REUSE_SERVER=tr
 GREDICE_GARDEN_BASE_URL=http://localhost:3917 GREDICE_PLAYWRIGHT_REUSE_SERVER=true FAUNA_TRAJECTORY_REFERENCE=/tmp/fauna-baseline.json FAUNA_TRAJECTORY_OUTPUT=/tmp/fauna-candidate.json pnpm --filter garden exec playwright test tests/fauna-trajectory.spec.tsx --project=chromium-webgl --workers=1
 node --test apps/garden/scripts/fauna-trajectory-contract.unit.mjs
 ```
+
+The full trajectory replay is explicitly enabled by baseline mode or a matching
+`FAUNA_TRAJECTORY_REFERENCE`. Ordinary CI skips those six supplemental captures,
+because an unreferenced candidate cannot attribute inherited pose damping.
+CI still runs the real mixer/pose/two-root lifecycle fixture and the negative
+trajectory-contract cases through Garden's `test:profile` command.
 
 The contract tests reject population loss, nonfinite transforms, missing GPU
 receipts, incomplete scenario/cadence grids, fixture drift, changed targets,
