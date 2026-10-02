@@ -3,6 +3,7 @@
 import { GameScene, type GameSceneProps } from '@gredice/game';
 import { useEffect, useMemo, useState } from 'react';
 import { restoreGameProfileDate } from './profileDate';
+import { resolveGameProfileControllerEnabled } from './profileFlags';
 import {
     gameProfileGardenSwitchEventName,
     readGameProfileGardenSwitchProfile,
@@ -100,6 +101,10 @@ export function ProfileGameScene({
     const scene = (
         <GameScene
             {...gameSceneProps}
+            enableGameProfileController={resolveGameProfileControllerEnabled(
+                gameSceneProps.enableGameProfileController,
+                cacheClearanceWitnessMode,
+            )}
             freezeTime={date}
             mockGardenProfile={mockGardenProfile}
             weather={weather}
