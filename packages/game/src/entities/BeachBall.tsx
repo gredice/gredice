@@ -1,4 +1,4 @@
-import { type ThreeEvent, useFrame } from '@react-three/fiber';
+import type { ThreeEvent } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Group } from 'three';
 import { areBlockInteractionsSuppressed } from '../controls/blockInteractionSuppression';
@@ -16,6 +16,10 @@ import { useGameState } from '../useGameState';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useActorGroundingShadow } from './animals/ActorGroundingShadows';
+import {
+    useFaunaFrame,
+    useFaunaRenderFrame,
+} from './animals/FaunaRuntimeProvider';
 import {
     advanceBeachBallBounce,
     beachBallCollisionRadius,
@@ -231,7 +235,7 @@ export function BeachBall({
         [block.id, faunaWorld],
     );
 
-    useFrame(({ clock }, deltaSeconds) => {
+    useFaunaFrame(({ clock }, deltaSeconds) => {
         const motionGroup = motionGroupRef.current;
         const rollingGroup = rollingGroupRef.current;
         if (!motionGroup || !rollingGroup) {
@@ -268,14 +272,6 @@ export function BeachBall({
                 surfaceHeight - currentStackHeight + bounceY,
                 state.offsetZ,
             );
-            updateGroundingShadow?.({
-                actorY: surfaceHeight + bounceY,
-                receiverY: surfaceHeight,
-                visible: motionGroup.visible,
-                x: stack.position.x + state.offsetX,
-                yaw: 0,
-                z: stack.position.z + state.offsetZ,
-            });
         };
 
         if (!currentState.active) {
@@ -329,6 +325,26 @@ export function BeachBall({
             motionActiveRef.current = false;
             setMotionActive(false);
         }
+    }, motionGroupRef);
+    useFaunaFrame(() => {}, rollingGroupRef);
+    useFaunaRenderFrame(() => {
+        const motionGroup = motionGroupRef.current;
+        if (!motionGroup) return;
+        const worldX = stack.position.x + motionGroup.position.x;
+        const worldZ = stack.position.z + motionGroup.position.z;
+        const surfaceHeight = getBeachBallSurfaceHeight(bounceEnvironment, {
+            fallbackHeight: currentStackHeight,
+            worldX,
+            worldZ,
+        });
+        updateGroundingShadow?.({
+            actorY: currentStackHeight + motionGroup.position.y,
+            receiverY: surfaceHeight,
+            visible: motionGroup.visible,
+            x: worldX,
+            yaw: 0,
+            z: worldZ,
+        });
     });
 
     function handlePointerUp(event: ThreeEvent<PointerEvent>) {

@@ -86,10 +86,73 @@ Hidden documents and offscreen canvases are still suspended by the runtime
 scheduler, which consumes the clock gap on resume. Fauna therefore never
 fast-forwards after a hidden period.
 
-## Remaining work
+## Shared simulation and rendered poses
 
-Behavior, path, and movement loops still run in each species component under
-its existing ambient render lease. Moving those loops onto a world fixed-step
-with interpolation needs per-species behavior-parity fixtures, and per-species
-instanced skinning should wait for fauna-heavy profiles to show draw pressure
-after the culling above.
+`FaunaRuntimeProvider` owns one retained dispatcher per Canvas. All current
+species and the beach ball register their existing behavior/path/movement
+callbacks with `useFaunaFrame`. Registration order stays stable across React
+updates, and unmount removes the callback and its retained transform buffers.
+No callback adds a render lease, timer, or worker: the existing semantic fauna
+owners and SceneTime visibility policy admit frames.
+
+Simulation uses the existing 30 Hz ambient cadence in every quality profile.
+It has one stopped clock facade per root, exposing each fixed step's absolute
+scene time without changing R3F's render clock. A dropped frame has bounded
+movement work while absolute cooldowns and deadlines remain current. Resume
+discards accumulated movement work; SceneTime already excludes hidden wall
+clock gaps and bounds the first resumed frame.
+
+Actor root position, quaternion, and scale have retained previous/current
+simulation snapshots. Rendered frames interpolate them with at most one
+simulation step of latency. Simulation restores its authoritative transform
+before making the next decision, so interpolation never feeds back into
+pathfinding, herd spacing, random choices, or collision physics. Placement and
+external effect changes reset the snapshots; first mounts and large teleports
+snap to their destination. The ball retains its motion and rolling-child
+transforms separately.
+
+`useFaunaAnimations` keeps lazy clip bindings and disposable mixers in a
+central animation phase. The squirrel retained mixer joins this same phase.
+Every registered mixer runs before every manual pose, including actors mounted
+after the scene starts. `useFaunaRenderFrame` keeps rig posing, projected
+grounding shadows, and visual/debug consumers on the actual rendered cadence,
+including 60 Hz interaction. Simulation runs at R3F priority -100, the central
+mixer/manual-pose phase at -25, and the grounding-shadow batch at -10. These
+negative priorities preserve automatic rendering. Cow and farm gait distances
+use the same interpolation fraction as their root transforms. Presence is
+published from authoritative fixed-step transforms; debug and shadow views use
+rendered transforms. Renderer culling and the existing pure-pose sleep checks stay
+in place. Population deadlines, spawn functions, species counts, sounds,
+weather policies, homes, and behavior helpers are unchanged.
+
+The profiler exposes `faunaSimulation`: registered simulation/visual callback
+counts, fixed-step count, and rendered-frame count. Reporting is coalesced to
+one update per scene second.
+
+## Validation contract
+
+`faunaSimulation.unit.ts` verifies 30/60 cadence independence, smooth transform
+interpolation, authoritative simulation inputs, semantic placement updates,
+root isolation, registration cleanup, bounded dropped frames, and resume.
+`faunaBehaviorParity.unit.ts` compares six-minute seeded decision/deadline
+traces from the existing species behavior functions against direct legacy
+30 Hz callbacks at both render cadences. The witnesses cover all animal
+families, each farm species, day/night and bad-weather behavior, and avatar
+attention/following. These domain traces do not substitute for real WebGL
+movement/interaction/visual captures and the unchanged cross-tier performance
+comparison. Existing species spawn, navigation, pose and lifecycle tests remain
+required.
+
+The Chromium WebGL `fauna-runtime.spec.tsx` witness uses a real moving clip,
+then applies a manual bone pose and reads the grounding-shadow instance matrix
+after the root submits a frame. It checks initial and late mounts, garden and
+detail-toggle remounts, smooth gait/root samples, and suspension/resume of one
+of two independent roots. The focused witness passed against the production
+Scene providers. Local validation for this migration also passed the complete
+2,038-test game suite, game and garden typechecks, and changed-file Biome checks.
+The integrated production capture remains the evidence for performance and
+real species trajectories; this fixture does not claim those measurements.
+
+Per-species instanced skinning stays conditional on fauna-heavy profiles still
+showing draw pressure after CPU centralization and actor culling. It changes
+rendering architecture and needs its own measured justification.

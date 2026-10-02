@@ -346,7 +346,7 @@ function ActorGroundingShadowBatch({
                 visibleCount: visibleCountRef.current,
             });
         }
-    });
+    }, -10);
 
     return (
         <instancedMesh

@@ -1,6 +1,5 @@
 import type { BlockData } from '@gredice/client';
-import { useAnimations } from '@react-three/drei';
-import { type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
+import { type ThreeEvent, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AnimationAction, Group, Material, Object3D } from 'three';
 import { MathUtils, type Mesh, MeshStandardMaterial, Vector3 } from 'three';
@@ -58,7 +57,12 @@ import {
     groundBirdEntries,
 } from '../animals/animalPresence';
 import { initializeAnimalAtHome } from '../animals/animalRuntimeLifecycle';
+import {
+    useFaunaFrame,
+    useFaunaRenderFrame,
+} from '../animals/FaunaRuntimeProvider';
 import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
+import { useFaunaAnimations } from '../animals/useFaunaAnimations';
 import {
     type DogBehavior,
     type DogWeather,
@@ -1493,7 +1497,7 @@ function Dog({
         };
     }, [gltf.scene]);
     const shouldPoseDog = useFaunaActorCulling(dogModel.scene);
-    const { actions } = useAnimations(gltf.animations, dogModel.scene);
+    const { actions } = useFaunaAnimations(gltf.animations, dogModel.scene);
     const updateActorGroundingShadow = useActorGroundingShadow({
         id: `dog:${habitat.id}`,
         primaryCasterCount: dogModel.primaryCasterCount,
@@ -1633,13 +1637,12 @@ function Dog({
         }
     }
 
-    useFrame(({ clock }, delta) => {
+    useFaunaFrame(({ clock }, delta) => {
         const group = groupRef.current;
         if (!group) {
             return;
         }
 
-        const posing = shouldPoseDog();
         const now = clock.elapsedTime;
         const random = randomRef.current;
         let runtime = runtimeRef.current;
@@ -1806,18 +1809,10 @@ function Dog({
                 0,
                 1,
             );
-            const walkDistance = runtime.pathDistance * progress;
             const nextPosition = movingPositionAt(runtime, progress);
 
             group.position.copy(nextPosition);
-            if (posing) {
-                updateDogWalkPose({
-                    delta,
-                    moving: true,
-                    rig: dogModel.rig,
-                    walkDistance,
-                });
-            }
+
             facePosition(
                 group,
                 movingPositionAt(
@@ -1848,14 +1843,7 @@ function Dog({
 
         setAnimation(getDogAnimationName(runtime));
         syncWalkAnimationSpeed(runtime);
-        if (posing) {
-            updateDogWalkPose({
-                delta,
-                moving: false,
-                rig: dogModel.rig,
-                walkDistance: 0,
-            });
-        }
+
         copyDogSettledPosition(group.position, runtime.target, timeOfDay);
         if (
             runtime.target.behavior === 'doghouse' ||
@@ -1923,27 +1911,13 @@ function Dog({
                 timeOfDay,
                 weather,
             });
-    });
+    }, groupRef);
 
-    useFrame(({ clock }) => {
-        const runtime = runtimeRef.current;
+    useFaunaFrame(({ clock }) => {
         const group = groupRef.current;
+        const runtime = runtimeRef.current;
+        if (!group || !runtime) return;
         const now = clock.elapsedTime;
-
-        if (group && updateActorGroundingShadow) {
-            updateActorGroundingShadow({
-                actorY: group.position.y,
-                receiverY: getDogWalkYAt(
-                    group.position,
-                    habitat.groundSurfaces,
-                ),
-                visible: group.visible && dogModel.scene.visible,
-                x: group.position.x,
-                yaw: group.rotation.y,
-                z: group.position.z,
-            });
-        }
-
         if (
             runtime &&
             group &&
@@ -1957,6 +1931,42 @@ function Dog({
                 behavior: runtime.target.behavior,
                 position: roundDogDebugPoint(group.position),
                 updatedAt: now,
+            });
+        }
+    });
+
+    useFaunaRenderFrame(({ clock }, delta) => {
+        const runtime = runtimeRef.current;
+        const group = groupRef.current;
+        const now = clock.elapsedTime;
+        if (runtime && shouldPoseDog()) {
+            updateDogWalkPose({
+                delta,
+                moving: runtime.phase === 'moving',
+                rig: dogModel.rig,
+                walkDistance:
+                    runtime.phase === 'moving'
+                        ? runtime.pathDistance *
+                          MathUtils.clamp(
+                              (now - runtime.startedAt) / runtime.duration,
+                              0,
+                              1,
+                          )
+                        : 0,
+            });
+        }
+
+        if (group && updateActorGroundingShadow) {
+            updateActorGroundingShadow({
+                actorY: group.position.y,
+                receiverY: getDogWalkYAt(
+                    group.position,
+                    habitat.groundSurfaces,
+                ),
+                visible: group.visible && dogModel.scene.visible,
+                x: group.position.x,
+                yaw: group.rotation.y,
+                z: group.position.z,
             });
         }
 

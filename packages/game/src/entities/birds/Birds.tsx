@@ -1,6 +1,5 @@
 import type { BlockData } from '@gredice/client';
-import { useAnimations } from '@react-three/drei';
-import { type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
+import { type ThreeEvent, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group, Material, Object3D } from 'three';
 import { MathUtils, type Mesh, MeshStandardMaterial, Vector3 } from 'three';
@@ -27,7 +26,12 @@ import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
 import { birdSpeechMessages } from '../animals/actorSpeechMessages';
 import { isAnimalGroundBlockName } from '../animals/animalMovementTerrain';
+import {
+    useFaunaFrame,
+    useFaunaRenderFrame,
+} from '../animals/FaunaRuntimeProvider';
 import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
+import { useFaunaAnimations } from '../animals/useFaunaAnimations';
 import { isWaterBlockName } from '../waterBlockNames';
 import {
     type BirdBehavior,
@@ -1570,7 +1574,7 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
         };
     }, [gltf.scene]);
     const shouldPoseBird = useFaunaActorCulling(birdModel.scene);
-    const { actions } = useAnimations(gltf.animations, birdModel.scene);
+    const { actions } = useFaunaAnimations(gltf.animations, birdModel.scene);
     const updateGroundingShadow = useActorGroundingShadow({
         id: `bird:${habitat.id}`,
         primaryCasterCount: birdModel.primaryCasterCount,
@@ -1664,7 +1668,7 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
         });
     }
 
-    useFrame(({ clock }, delta) => {
+    useFaunaFrame(({ clock }, delta) => {
         const group = groupRef.current;
         if (!group) {
             return;
@@ -2020,9 +2024,9 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
             target,
             timeOfDay,
         });
-    });
+    }, groupRef);
 
-    useFrame(({ clock }, delta) => {
+    useFaunaRenderFrame(({ clock }, delta) => {
         const runtime = runtimeRef.current;
         const group = groupRef.current;
         const now = clock.elapsedTime;

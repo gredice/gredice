@@ -1,5 +1,4 @@
 import { resolveCowAppearanceVariant } from '@gredice/js/entityAppearanceVariants';
-import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import {
     type Group,
@@ -32,6 +31,11 @@ import {
     freshAnimalPresences,
 } from './animals/animalPresence';
 import { recordAnimalProfileCommandAcknowledgement } from './animals/animalProfileCommandMetrics';
+import {
+    useFaunaFrame,
+    useFaunaRenderFrame,
+    useFaunaWalkDistance,
+} from './animals/FaunaRuntimeProvider';
 import { useFaunaActorCulling } from './animals/useFaunaActorCulling';
 import {
     type CowBehavior,
@@ -328,6 +332,7 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
     const gltf = useGameGLTF('Cow');
     const gameStateStore = useGameStateStore();
     const groupRef = useRef<Group>(null);
+    const poseWalkDistance = useFaunaWalkDistance();
     const runtimeRef = useRef<CowRuntimeState | null>(null);
     const previousHomeKeyRef = useRef('');
     const randomRef = useRef(createCowRandom(0));
@@ -406,12 +411,11 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
         [habitat.id, faunaWorld],
     );
 
-    useFrame(({ clock }, delta) => {
+    useFaunaFrame(({ clock }, delta) => {
         const group = groupRef.current;
         if (!group) {
             return;
         }
-        const posing = shouldPoseCow();
         const now = clock.elapsedTime;
         const random = randomRef.current;
         let runtime = runtimeRef.current;
@@ -639,28 +643,8 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
             }
         }
 
+        poseWalkDistance.set(walkDistance);
         const activeRuntime = runtimeRef.current ?? runtime;
-        if (posing) {
-            updateCowPose({
-                behavior: activeRuntime.target.behavior,
-                delta,
-                moving: activeRuntime.phase === 'moving',
-                now,
-                rig: model.rig,
-                walkDistance,
-            });
-        }
-        updateActorGroundingShadow?.({
-            actorY: group.position.y,
-            receiverY: getAnimalMovementYAt(
-                group.position,
-                habitat.groundSurfaces,
-            ),
-            visible: group.visible && model.scene.visible,
-            x: group.position.x,
-            yaw: group.rotation.y,
-            z: group.position.z,
-        });
 
         if (
             now - lastPresenceUpdateRef.current >=
@@ -708,6 +692,34 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
                 updatedAt: now,
             });
         }
+    }, groupRef);
+
+    useFaunaRenderFrame(({ clock }, delta) => {
+        const group = groupRef.current;
+        const activeRuntime = runtimeRef.current;
+        if (!group || !activeRuntime) return;
+        const now = clock.elapsedTime;
+        if (shouldPoseCow()) {
+            updateCowPose({
+                behavior: activeRuntime.target.behavior,
+                delta,
+                moving: activeRuntime.phase === 'moving',
+                now,
+                rig: model.rig,
+                walkDistance: poseWalkDistance.get(),
+            });
+        }
+        updateActorGroundingShadow?.({
+            actorY: group.position.y,
+            receiverY: getAnimalMovementYAt(
+                group.position,
+                habitat.groundSurfaces,
+            ),
+            visible: group.visible && model.scene.visible,
+            x: group.position.x,
+            yaw: group.rotation.y,
+            z: group.position.z,
+        });
     });
 
     return (

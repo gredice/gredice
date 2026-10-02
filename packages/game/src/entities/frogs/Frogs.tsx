@@ -1,5 +1,3 @@
-import { useAnimations } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     type Group,
@@ -40,7 +38,12 @@ import {
     getAnimalMovementYAt,
 } from '../animals/animalMovementTerrain';
 import { animalPresenceUpdateIntervalSeconds } from '../animals/animalPresence';
+import {
+    useFaunaFrame,
+    useFaunaRenderFrame,
+} from '../animals/FaunaRuntimeProvider';
 import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
+import { useFaunaAnimations } from '../animals/useFaunaAnimations';
 import type { CatPathPoint } from '../cats/catPathfinding';
 import {
     chooseFrogEscapePlan,
@@ -325,7 +328,7 @@ function Frog({ candidate }: { candidate: FrogSpawnCandidate }) {
         return { primaryCasterCount, scene };
     }, [gltf.scene]);
     useFaunaActorCulling(frogModel.scene);
-    const { actions } = useAnimations(gltf.animations, frogModel.scene);
+    const { actions } = useFaunaAnimations(gltf.animations, frogModel.scene);
     const updateActorGroundingShadow = useActorGroundingShadow({
         id: `frog:${candidate.id}`,
         primaryCasterCount: frogModel.primaryCasterCount,
@@ -374,7 +377,7 @@ function Frog({ candidate }: { candidate: FrogSpawnCandidate }) {
         }
     }, [animalTargetsDebugVisible]);
 
-    useFrame(({ clock }, delta) => {
+    useFaunaFrame(({ clock }, delta) => {
         const group = groupRef.current;
         if (!group) {
             return;
@@ -626,30 +629,13 @@ function Frog({ candidate }: { candidate: FrogSpawnCandidate }) {
                 target: runtime.target,
             });
         }
-    });
+    }, groupRef);
 
-    useFrame(({ clock }) => {
+    useFaunaFrame(({ clock }) => {
         const group = groupRef.current;
         const runtime = runtimeRef.current;
-        if (!group || !runtime) {
-            return;
-        }
+        if (!group || !runtime) return;
         const now = clock.elapsedTime;
-
-        if (updateActorGroundingShadow) {
-            updateActorGroundingShadow({
-                actorY: group.position.y,
-                receiverY: getAnimalMovementYAt(
-                    group.position,
-                    candidate.habitat.surfaces,
-                ),
-                visible: group.visible && frogModel.scene.visible,
-                x: group.position.x,
-                yaw: group.rotation.y,
-                z: group.position.z,
-            });
-        }
-
         if (
             now - lastPresenceUpdateRef.current >=
             animalPresenceUpdateIntervalSeconds
@@ -668,6 +654,29 @@ function Frog({ candidate }: { candidate: FrogSpawnCandidate }) {
                 position: roundPoint(group.position),
                 species: 'Frog',
                 updatedAt: now,
+            });
+        }
+    });
+
+    useFaunaRenderFrame(({ clock }) => {
+        const group = groupRef.current;
+        const runtime = runtimeRef.current;
+        if (!group || !runtime) {
+            return;
+        }
+        const now = clock.elapsedTime;
+
+        if (updateActorGroundingShadow) {
+            updateActorGroundingShadow({
+                actorY: group.position.y,
+                receiverY: getAnimalMovementYAt(
+                    group.position,
+                    candidate.habitat.surfaces,
+                ),
+                visible: group.visible && frogModel.scene.visible,
+                x: group.position.x,
+                yaw: group.rotation.y,
+                z: group.position.z,
             });
         }
 

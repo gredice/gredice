@@ -1,4 +1,4 @@
-import { type ThreeEvent, useFrame } from '@react-three/fiber';
+import type { ThreeEvent } from '@react-three/fiber';
 import {
     useCallback,
     useEffect,
@@ -21,7 +21,6 @@ import {
     useSceneFixedTimeSeconds,
     useSceneResume,
     useSceneRuntimeVisible,
-    useSceneTimeUniform,
 } from '../../scene/SceneTime';
 import { type AnimalDebugEntry, useGameState } from '../../useGameState';
 import { useGameGLTF } from '../../utils/useGameGLTF';
@@ -44,6 +43,11 @@ import { squirrelSpeechMessages } from '../animals/actorSpeechMessages';
 import { isFreshGardenAvatarPresence } from '../animals/animalAvatarFollowing';
 import { getAnimalMovementYAt } from '../animals/animalMovementTerrain';
 import { animalPresenceUpdateIntervalSeconds } from '../animals/animalPresence';
+import {
+    useFaunaAnimationFrame,
+    useFaunaFrame,
+    useFaunaRenderFrame,
+} from '../animals/FaunaRuntimeProvider';
 import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
 import {
     getSquirrelDwellSeconds,
@@ -526,7 +530,6 @@ export function Squirrel({
 }) {
     const gltf = useGameGLTF('Squirrel');
     const { enableDebugHudFlag = false } = useGameFlags();
-    const time = useSceneTimeUniform();
     const fixedTime = useSceneFixedTimeSeconds();
     const visible = useSceneRuntimeVisible();
     const elapsedRef = useRef(0);
@@ -766,16 +769,17 @@ export function Squirrel({
         }
     }
 
-    useFrame((_, delta) => {
+    useFaunaFrame(({ clock }, delta) => {
         const group = groupRef.current;
         if (!group || despawnedRef.current || !visible) {
             return;
         }
+        const sharedTime = fixedTime ?? clock.elapsedTime;
         const lastTime = lastSharedTimeRef.current;
-        lastSharedTimeRef.current = time.value;
+        lastSharedTimeRef.current = sharedTime;
         if (!reducedMotion)
             elapsedRef.current +=
-                lastTime === null ? 0 : Math.max(0, time.value - lastTime);
+                lastTime === null ? 0 : Math.max(0, sharedTime - lastTime);
         const now = fixedTime ?? elapsedRef.current;
         const random = randomRef.current;
         let runtime = runtimeRef.current;
@@ -870,7 +874,7 @@ export function Squirrel({
             runtime.behavior !== 'flee' &&
             now - lastFleeAtRef.current >=
                 squirrelFleeReactionCooldownSeconds &&
-            isFreshGardenAvatarPresence(gardenAvatarPresence, time.value)
+            isFreshGardenAvatarPresence(gardenAvatarPresence, sharedTime)
         ) {
             const avatarPosition = new Vector3(
                 gardenAvatarPresence.position.x,
@@ -1062,26 +1066,6 @@ export function Squirrel({
             }
         }
 
-        const mixer = animationRigRef.current?.mixer;
-        if (fixedTime !== undefined || reducedMotion)
-            mixer?.setTime(reducedMotion ? 0 : (fixedTime ?? 0));
-        else mixer?.update(Math.min(delta, 0.1));
-        syncDebugIndicators(runtime);
-
-        if (updateGroundingShadow) {
-            updateGroundingShadow({
-                actorY: group.position.y,
-                receiverY: getAnimalMovementYAt(
-                    group.position,
-                    habitat.groundSurfaces,
-                ),
-                visible: group.visible && runtime.phase !== 'exiting',
-                x: group.position.x,
-                yaw: group.rotation.y,
-                z: group.position.z,
-            });
-        }
-
         if (
             now - lastPresenceUpdateRef.current >=
             animalPresenceUpdateIntervalSeconds
@@ -1096,7 +1080,7 @@ export function Squirrel({
                     z: Number(group.position.z.toFixed(3)),
                 },
                 species: 'Squirrel',
-                updatedAt: time.value,
+                updatedAt: sharedTime,
             });
         }
 
@@ -1106,7 +1090,7 @@ export function Squirrel({
                 ...createDebugEntry({
                     group,
                     habitat,
-                    now: time.value,
+                    now: sharedTime,
                     runtime,
                 }),
                 ...(cacheSample
@@ -1115,6 +1099,35 @@ export function Squirrel({
                           behavior: cacheSample.behavior,
                       }
                     : {}),
+            });
+        }
+    }, groupRef);
+
+    useFaunaAnimationFrame((_, delta) => {
+        if (despawnedRef.current || !visible || !runtimeRef.current) return;
+        const mixer = animationRigRef.current?.mixer;
+        if (fixedTime !== undefined || reducedMotion)
+            mixer?.setTime(reducedMotion ? 0 : (fixedTime ?? 0));
+        else mixer?.update(Math.min(delta, 0.1));
+    });
+
+    useFaunaRenderFrame(() => {
+        const group = groupRef.current;
+        const runtime = runtimeRef.current;
+        if (!group || !runtime || despawnedRef.current || !visible) return;
+        syncDebugIndicators(runtime);
+
+        if (updateGroundingShadow) {
+            updateGroundingShadow({
+                actorY: group.position.y,
+                receiverY: getAnimalMovementYAt(
+                    group.position,
+                    habitat.groundSurfaces,
+                ),
+                visible: group.visible && runtime.phase !== 'exiting',
+                x: group.position.x,
+                yaw: group.rotation.y,
+                z: group.position.z,
             });
         }
     });
