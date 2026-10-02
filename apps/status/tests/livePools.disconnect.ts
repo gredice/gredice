@@ -6,6 +6,7 @@ import { connect, createServer, type Socket } from 'node:net';
 import test, { type TestContext } from 'node:test';
 import { setTimeout } from 'node:timers/promises';
 import pg from 'pg';
+import { activityDelivery } from '../lib/live/activityDelivery';
 import type { SystemActivityInput } from '../lib/live/ingestParsers';
 import { privateDeliveryId } from '../lib/live/ingestParsers';
 
@@ -133,9 +134,8 @@ test('Status pools recover using the installed pg driver and disposable Postgres
     process.env.GREDICE_LIVE_GITHUB_WEBHOOK_SECRET = 'test-secret';
     const logs = t.mock.method(console, 'error', () => undefined);
     t.mock.method(console, 'warn', () => undefined);
-    const { storeSystemActivity } = await import(
-        '../lib/live/storeSystemActivity'
-    );
+    const { storeSystemActivity, storeActivityBatch, pruneSystemActivity } =
+        await import('../lib/live/storeSystemActivity');
     const { getLiveActivitySnapshot } = await import(
         '../lib/live/getLiveActivitySnapshot'
     );
@@ -443,6 +443,84 @@ test('Status pools recover using the installed pg driver and disposable Postgres
             assert.equal((await send()).status, 202);
             assert.equal((await send()).status, 202);
             assert.equal(await eventCount(), 13);
+        },
+    );
+
+    await t.test(
+        'bulk persistence coalesces only new deliveries and caps integer counts',
+        async () => {
+            await admin.query(
+                'truncate status_live_events, status_live_ingest_deliveries',
+            );
+            const batch = Array.from({ length: 50 }, (_, index) =>
+                activityDelivery('vercel', `batch-${index}`, [event]),
+            );
+            assert.deepEqual(await storeActivityBatch(batch), {
+                deliveries: 50,
+                buckets: 1,
+            });
+            assert.equal(await eventCount(), 150);
+            assert.deepEqual(await storeActivityBatch(batch), {
+                deliveries: 0,
+                buckets: 0,
+            });
+            assert.equal(await eventCount(), 150);
+            const next = activityDelivery('vercel', 'batch-new', [event]);
+            assert.deepEqual(await storeActivityBatch([...batch, next, next]), {
+                deliveries: 1,
+                buckets: 1,
+            });
+            assert.equal(await eventCount(), 153);
+            const saturated = activityDelivery('vercel', 'batch-saturated', [
+                { ...event, eventCount: 2147483647 },
+            ]);
+            await storeActivityBatch([saturated]);
+            assert.equal(await eventCount(), 2147483647);
+            await storeActivityBatch([
+                activityDelivery('vercel', 'batch-overflow', [event]),
+            ]);
+            assert.equal(await eventCount(), 2147483647);
+            const github = {
+                ...event,
+                source: 'github',
+                type: 'github.push',
+                eventCount: 1,
+            } satisfies SystemActivityInput;
+            assert.deepEqual(
+                await storeActivityBatch([
+                    activityDelivery('github', 'gh-1', [github]),
+                    activityDelivery('github', 'gh-2', [github]),
+                ]),
+                { deliveries: 2, buckets: 1 },
+            );
+            const ghCount = await admin.query(
+                "select event_count from status_live_events where source = 'github'",
+            );
+            assert.equal(ghCount.rows[0]?.event_count, 2);
+        },
+    );
+
+    await t.test(
+        'retention is bounded and preserves recent delivery replay markers',
+        async () => {
+            await admin.query(`insert into status_live_ingest_deliveries(id, source, received_at)
+            select 'expired-' || n, 'vercel', now() - interval '8 days' from generate_series(1, 10005) as n`);
+            await admin.query(`insert into status_live_events(id, source, type, occurred_at)
+            select 'expired-' || n, 'vercel', 'vercel.function', now() - interval '25 hours'
+            from generate_series(1, 10005) as n`);
+            assert.deepEqual(await pruneSystemActivity(), {
+                deliveries: 10000,
+                events: 10000,
+            });
+            assert.deepEqual(await pruneSystemActivity(), {
+                deliveries: 5,
+                events: 5,
+            });
+            assert.equal(await hasDelivery('batch-new'), true);
+            assert.deepEqual(await pruneSystemActivity(), {
+                deliveries: 0,
+                events: 0,
+            });
         },
     );
 });
