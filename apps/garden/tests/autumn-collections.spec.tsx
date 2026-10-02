@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/experimental-ct-react';
 import {
     ItemsHudAlignmentStory,
@@ -233,4 +234,44 @@ test('arrangement missing a published prop does not load a preview', async ({
         .click();
     await expect(page.locator('[data-autumn-arrangement]')).toHaveCount(0);
     expect(previews).toEqual([]);
+});
+
+test('embedded garden example loads its image from the configured game asset host', async ({
+    mount,
+    page,
+}) => {
+    const url =
+        'https://vrt.gredice.com/assets/arrangements/harvest-corner.png';
+    await page.route(url, (route) =>
+        route.fulfill({
+            path: fileURLToPath(
+                new URL(
+                    '../public/assets/arrangements/harvest-corner.png',
+                    import.meta.url,
+                ),
+            ),
+            contentType: 'image/png',
+        }),
+    );
+    await mount(
+        <LocalSandboxItemsHudStory appBaseUrl="https://vrt.gredice.com/" />,
+    );
+    await page.getByRole('button', { name: 'Jesen', exact: true }).click();
+    await page
+        .getByRole('button', { name: 'Jesenska berba', exact: true })
+        .click();
+    const preview = page.locator('[data-autumn-arrangement="harvest-corner"]');
+    await preview.locator('summary').click();
+    const image = preview.getByRole('img');
+    await expect(image).toHaveAttribute('src', url);
+    await expect
+        .poll(() =>
+            image.evaluate(
+                (node) =>
+                    node instanceof HTMLImageElement &&
+                    node.complete &&
+                    node.naturalWidth === 780,
+            ),
+        )
+        .toBe(true);
 });

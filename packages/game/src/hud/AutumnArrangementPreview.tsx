@@ -2,10 +2,12 @@ import Image from 'next/image';
 import {
     getAutumnArrangementItems,
     getAutumnArrangementLayout,
+    getAutumnArrangementPreviewUrl,
     getAvailableAutumnArrangements,
 } from '../arrangements/autumnArrangements';
 import { useBlockData } from '../hooks/useBlockData';
 import { useIsSandboxGarden } from '../hooks/useCurrentGarden';
+import { useGameState } from '../useGameState';
 
 export function AutumnArrangementPreview({
     collectionId,
@@ -14,6 +16,7 @@ export function AutumnArrangementPreview({
 }) {
     const { data: blockData } = useBlockData();
     const isSandbox = useIsSandboxGarden();
+    const appBaseUrl = useGameState((state) => state.appBaseUrl);
     const arrangement = getAvailableAutumnArrangements({
         blockData,
         isSandbox,
@@ -39,7 +42,11 @@ export function AutumnArrangementPreview({
             </summary>
             <div className="space-y-2 px-2 pt-2">
                 <Image
-                    src={arrangement.preview}
+                    src={getAutumnArrangementPreviewUrl(
+                        arrangement,
+                        appBaseUrl,
+                    )}
+                    unoptimized
                     alt={arrangement.description}
                     width={780}
                     height={600}
