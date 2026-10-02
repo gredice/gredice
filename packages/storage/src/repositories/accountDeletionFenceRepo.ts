@@ -1,4 +1,5 @@
 import { and, eq } from 'drizzle-orm';
+import { signalAutomationEventWrite } from '../dueWork';
 import { accounts, events } from '../schema';
 import { storage } from '../storage';
 
@@ -149,11 +150,13 @@ export async function markAccountDeletionStarted(
     if (await hasAccountDeletionStarted(accountId, db)) {
         return false;
     }
-    await db.insert(events).values({
-        aggregateId: accountId,
-        data: {},
-        type: accountDeletionStartedEventType,
-        version: 1,
-    });
+    await signalAutomationEventWrite(
+        db.insert(events).values({
+            aggregateId: accountId,
+            data: {},
+            type: accountDeletionStartedEventType,
+            version: 1,
+        }),
+    );
     return true;
 }

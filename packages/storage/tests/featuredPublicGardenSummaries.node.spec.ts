@@ -27,6 +27,7 @@ import { createTestDb } from './testDb';
 test('shared featured counts preserve ranking while current public metadata prevents stale disclosures', async (t) => {
     const values = new Map<string, unknown>();
     const ttls: number[] = [];
+    let dueWorkSignals = 0;
     let discardInvalidations = false;
     let serverError: unknown;
     const server = createServer(async (request, response) => {
@@ -40,6 +41,32 @@ test('shared featured counts preserve ranking while current public metadata prev
                 const [name, key, value, _expiration, ttl] = command;
                 assert.equal(typeof name, 'string');
                 assert.equal(typeof key, 'string');
+                if (name.toLowerCase() === 'eval') {
+                    // Fixture event writes also publish automation hints to the
+                    // shared Redis service. Accept only that producer contract;
+                    // unrelated Lua or cache commands still fail this test.
+                    assert.equal(command.length, 5);
+                    assert.equal(Number(value), 1);
+                    assert.equal(typeof _expiration, 'string');
+                    assert.match(
+                        _expiration,
+                        /^due-work:v1:[^:]+:[^:]*:automations$/,
+                    );
+                    assert.ok(Number.isSafeInteger(Number(ttl)));
+                    assert.ok(Number(ttl) > 0);
+                    assert.ok(
+                        key.includes(
+                            "redis.call('HINCRBY', KEYS[1], 'generation', 1)",
+                        ) &&
+                            key.includes(
+                                "redis.call('HGET', KEYS[1], 'dueAt')",
+                            ) &&
+                            key.includes(
+                                "redis.call('HSET', KEYS[1], 'dueAt', ARGV[1])",
+                            ),
+                    );
+                    return { result: ++dueWorkSignals };
+                }
                 if (name.toLowerCase() === 'get')
                     return { result: values.get(key) ?? null };
                 if (name.toLowerCase() === 'set') {
@@ -268,4 +295,5 @@ test('shared featured counts preserve ranking while current public metadata prev
         ),
     );
     assert.equal(serverError, undefined);
+    assert.ok(dueWorkSignals >= 3);
 });
