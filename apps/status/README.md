@@ -130,7 +130,8 @@ the 24-hour threshold is an admission bound. Repeated deliveries already pending
 are accepted without changing their immutable contents.
 
 Vercel cron calls authenticated `/api/live/flush` every ten minutes, reads at most
-50 oldest deliveries at a time, and stops after ten batches or 40 seconds. Empty
+50 oldest deliveries at a time, and starts no more batches after forty batches
+(2,000 records) or 40 elapsed seconds. Empty
 or already-leased work does not open Postgres. A 60-second Redis lease reduces
 concurrent work; PostgreSQL deduplication remains authoritative even when a lease
 expires. Each batch uses three SQL round trips (`BEGIN` with a 20-second local
@@ -151,6 +152,19 @@ appear. Monitor `oldestAgeMs`, `batches`, `deliveries`, `duplicates`, and `bucke
 from the authenticated flush response; a bounded response or recurring 503
 requires checking queue depth and cron/database health.
 
+The initial production rollout on 2026-10-02 had 1,393 pending records and an
+oldest age of 1,192 seconds (about twenty minutes) during a production build-log
+burst. The original ten-batch limit could persist only 500 records per cadence.
+The forty-batch limit can cover that measured burst in one scheduled run when
+database/Redis latency permits, while preserving the ten-minute cadence,
+40-second elapsed-time check, 50-record SQL batches, 60-second lease, and
+2,048-record queue capacity. A full queue can leave 48 records for the next run;
+slow persistence can leave more. Pending work and replay/ACK safety are unchanged.
+Before this capacity fix deployed, the queue reached 1,828 records at 05:29 UTC.
+One authorized rollout intervention at 05:29:41 UTC persisted 500 records using
+the existing bounded worker; this manual invocation is separate from scheduled
+cron evidence and must be counted in the initial usage window.
+
 ### Cost and acceptance
 
 The audit baseline was 17,432 Vercel batches plus 368 GitHub deliveries per
@@ -159,6 +173,10 @@ per 72 hours (97.6% fewer than 17,800), provided batches stay within 50 deliveri
 Hourly retention reduces the two per-delivery deletes to 144 bounded table
 cleanup operations (99.6% fewer than the Vercel-only 34,864 baseline).
 These are cadence/round-trip bounds, **not measured production savings**.
+Nonempty ten-minute flushes still wake Postgres. A hypothetical five-minute
+suspend delay could keep it active roughly half the time; actual suspend settings
+and provider rates remain unverified. Build bursts and the higher batch ceiling
+must be included in the comparable 72-hour capacity/cost/visualization check.
 
 [Upstash pay-as-you-go pricing](https://upstash.com/pricing/redis) lists $0.20
 per 100,000 commands and the first 1 GB of storage free. Conservatively counting
@@ -169,9 +187,10 @@ plans, and existing shared usage change the total. The account's actual plan and
 combined Neon/Vercel bill must be read before claiming a net cost reduction;
 do not buy a separate fixed-price database for this low volume.
 
-Rollout: land validated code, configure Redis URL/token and `CRON_SECRET`, verify
-an authenticated empty flush, then set `GREDICE_LIVE_INGEST_MODE=buffered` and
-redeploy that exact merge SHA. Check signed ingestion, successful persistence,
+Rollout: land validated code, configure Redis URL/token and `CRON_SECRET`, and
+check Redis connectivity/queue contents. In direct mode, an authenticated flush
+returns `disabled`. Set `GREDICE_LIVE_INGEST_MODE=buffered`, redeploy the merge SHA,
+and verify an authenticated empty flush. Check signed ingestion, successful persistence,
 duplicate replay, queue age/depth, and the live page. Compare a matched 72-hour
 window of provider command costs, Postgres writes/retention/compute wakeups, and
 visualization latency before accepting the cost target in #5084/#5089.
@@ -190,4 +209,4 @@ remove their local Docker containers afterward.
 
 Large signed source batches are split into deterministic records within both the 16 KiB and 128-event limits. Buffer capacity counts these records. A partial admission returns 503; retrying the same provider delivery resumes its remaining records, while admitted or already persisted chunk IDs deduplicate. No raw identifiers are stored.
 
-Oversized batches additionally retain a hashed parent admission cursor for seven days. The cursor advances atomically with durable admission; it survives successful PG commit/Redis ACK. A retry therefore skips a flushed prefix and can admit its suffix with only partial queue headroom. Cursor expiry matches the PG replay horizon. At the configured cadence of 500 records per 10 minutes, seven days can drain 504,000 records; checkpoint count is bounded by admitted parent deliveries within that seven-day horizon, including initially pending work. Manual flush invocations can increase throughput and must be included in capacity planning. Normal measured traffic is far smaller. Cursor keys add one GET and one SET per new oversized chunk; the common one-record delivery has no cursor overhead.
+Oversized batches additionally retain a hashed parent admission cursor for seven days. The cursor advances atomically with durable admission; it survives successful PG commit/Redis ACK. A retry therefore skips a flushed prefix and can admit its suffix with only partial queue headroom. Cursor expiry matches the PG replay horizon. At the configured ceiling of 2,000 records per 10 minutes, seven days can drain 2,016,000 records if the elapsed-time budget permits; checkpoint count is bounded by admitted parent deliveries within that seven-day horizon, including initially pending work. Manual flush invocations can increase throughput and must be included in capacity planning. Normal audited traffic is far smaller. Cursor keys add one GET and one SET per new oversized chunk; the common one-record delivery has no cursor overhead.

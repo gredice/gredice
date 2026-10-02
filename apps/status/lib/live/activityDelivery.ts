@@ -7,7 +7,7 @@ export const MAX_DELIVERY_EVENTS = 128;
 export const MAX_PENDING_DELIVERIES = 2048;
 export const MAX_PENDING_AGE_MS = 24 * 60 * 60 * 1000;
 export const FLUSH_BATCH_SIZE = 50;
-export const MAX_FLUSH_BATCHES = 10;
+export const MAX_FLUSH_BATCHES = 40;
 
 const activityTypes = new Set([
     'vercel.error',

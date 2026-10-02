@@ -221,8 +221,106 @@ test('flush bounds work and releases its lease even after interruption', async (
         buckets: 1,
     }));
     assert.equal(result.status, 'bounded');
-    assert.equal(calls, 10);
+    assert.equal(calls, 40);
     assert.equal(released, true);
+});
+
+function backlogBuffer(count: number, receivedAt: Date) {
+    let pending = Array.from({ length: count }, (_, index) =>
+        activityDelivery('vercel', `burst-${index}`, [event], receivedAt),
+    );
+    let releases = 0;
+    const buffer: ActivityBuffer = {
+        async enqueue() {
+            return 'buffered';
+        },
+        async read() {
+            return {
+                status: pending.length ? 'ready' : 'empty',
+                deliveries: pending.slice(0, 50),
+            };
+        },
+        async acknowledge(_token, ids) {
+            const acknowledged = new Set(ids);
+            pending = pending.filter(({ id }) => !acknowledged.has(id));
+        },
+        async release() {
+            releases += 1;
+        },
+    };
+    return {
+        buffer,
+        pending: () => pending.length,
+        releases: () => releases,
+    };
+}
+
+test('one bounded flush drains the measured 1393-record production burst', async () => {
+    const now = Date.parse('2026-10-02T05:16:00.000Z');
+    const backlog = backlogBuffer(1393, new Date(now - 20 * 60_000));
+    const sizes: number[] = [];
+    const result = await flushSystemActivity(
+        backlog.buffer,
+        async (deliveries) => {
+            sizes.push(deliveries.length);
+            return { deliveries: deliveries.length, buckets: 1 };
+        },
+        () => now,
+    );
+    assert.equal(result.status, 'empty');
+    assert.equal(result.deliveries, 1393);
+    assert.equal(result.batches, 28);
+    assert.equal(result.oldestAgeMs, 20 * 60_000);
+    assert.deepEqual(sizes, [...Array(27).fill(50), 43]);
+    assert.equal(backlog.pending(), 0);
+    assert.equal(backlog.releases(), 1);
+});
+
+test('a full 2048-record queue retains its bounded remainder for the next flush', async () => {
+    const now = Date.parse('2026-10-02T05:16:00.000Z');
+    const backlog = backlogBuffer(2048, new Date(now));
+    const committed = new Set<string>();
+    const persist = async (deliveries: ActivityDelivery[]) => {
+        assert.ok(deliveries.length <= 50);
+        for (const { id } of deliveries) {
+            assert.equal(committed.has(id), false);
+            committed.add(id);
+        }
+        return { deliveries: deliveries.length, buckets: 1 };
+    };
+    const first = await flushSystemActivity(backlog.buffer, persist, () => now);
+    assert.equal(first.status, 'bounded');
+    assert.equal(first.batches, 40);
+    assert.equal(first.deliveries, 2000);
+    assert.equal(backlog.pending(), 48);
+    const second = await flushSystemActivity(
+        backlog.buffer,
+        persist,
+        () => now,
+    );
+    assert.equal(second.status, 'empty');
+    assert.equal(second.deliveries, 48);
+    assert.equal(committed.size, 2048);
+    assert.equal(backlog.pending(), 0);
+    assert.equal(backlog.releases(), 2);
+});
+
+test('slow batches still stop at the unchanged 40-second deadline', async () => {
+    let now = Date.parse('2026-10-02T05:16:00.000Z');
+    const backlog = backlogBuffer(1393, new Date(now));
+    const result = await flushSystemActivity(
+        backlog.buffer,
+        async (deliveries) => {
+            now += 20_000;
+            return { deliveries: deliveries.length, buckets: 1 };
+        },
+        () => now,
+    );
+    assert.equal(result.status, 'bounded');
+    assert.equal(result.batches, 2);
+    assert.equal(result.deliveries, 100);
+    assert.equal(backlog.pending(), 1293);
+    assert.equal(backlog.releases(), 1);
 });
 
 test('oversized signed deliveries partition every bucket within both durable limits', () => {
