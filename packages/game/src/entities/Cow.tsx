@@ -32,6 +32,7 @@ import {
     freshAnimalPresences,
 } from './animals/animalPresence';
 import { recordAnimalProfileCommandAcknowledgement } from './animals/animalProfileCommandMetrics';
+import { useFaunaActorCulling } from './animals/useFaunaActorCulling';
 import {
     type CowBehavior,
     cowHerdSpacingIsSafe,
@@ -371,6 +372,7 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
             scene,
         };
     }, [appearanceVariant, gltf.scene]);
+    const shouldPoseCow = useFaunaActorCulling(model.scene);
     const updateActorGroundingShadow = useActorGroundingShadow({
         id: habitat.id,
         primaryCasterCount: model.primaryCasterCount,
@@ -409,6 +411,7 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
         if (!group) {
             return;
         }
+        const posing = shouldPoseCow();
         const now = clock.elapsedTime;
         const random = randomRef.current;
         let runtime = runtimeRef.current;
@@ -637,14 +640,16 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
         }
 
         const activeRuntime = runtimeRef.current ?? runtime;
-        updateCowPose({
-            behavior: activeRuntime.target.behavior,
-            delta,
-            moving: activeRuntime.phase === 'moving',
-            now,
-            rig: model.rig,
-            walkDistance,
-        });
+        if (posing) {
+            updateCowPose({
+                behavior: activeRuntime.target.behavior,
+                delta,
+                moving: activeRuntime.phase === 'moving',
+                now,
+                rig: model.rig,
+                walkDistance,
+            });
+        }
         updateActorGroundingShadow?.({
             actorY: group.position.y,
             receiverY: getAnimalMovementYAt(

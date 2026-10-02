@@ -25,6 +25,7 @@ import {
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
+import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
 import {
     type BatLifecyclePhase,
     type BatWeather,
@@ -280,6 +281,7 @@ function Bat({
         });
         return scene;
     }, [gltf.scene]);
+    useFaunaActorCulling(batModel);
     const { actions } = useAnimations(gltf.animations, batModel);
     const clock = useThree((state) => state.clock);
 

@@ -13,6 +13,12 @@ import type {
 } from './GameRuntimeScheduler';
 import type { GameQualityProfileTier } from './gameQuality';
 import type { SharedGardenMaterialMetrics } from './gardenMaterials';
+import type { GameAssetLoadSchedulerSnapshot } from './resources/gameAssetLoadScheduler';
+import type { GameResourceCacheSnapshot } from './resources/gameResourceCache';
+import type {
+    GardenSceneLifecycleSnapshot,
+    GardenSceneManifestProfile,
+} from './resources/gardenSceneLifecycle';
 
 export type GeneratedPlantProfilePartCounts = {
     billboardInstances: number;
@@ -359,6 +365,10 @@ export function bindRuntimeFrameLoopProfileTelemetry(
 
 export type GameProfileMetadata = {
     chunkCompiler?: ChunkCompilerMetrics;
+    gardenSceneLifecycle?: GardenSceneLifecycleSnapshot;
+    gardenSceneManifest?: GardenSceneManifestProfile;
+    sceneAssetLoads?: GameAssetLoadSchedulerSnapshot;
+    sceneResourceCache?: GameResourceCacheSnapshot;
     gardenMaterials?: SharedGardenMaterialMetrics;
     renderPackets?: StaticRenderPacketMetrics;
     autumnGroundLeafClusters?: number;

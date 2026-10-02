@@ -30,6 +30,7 @@ import {
     createAnimalMovementSurfaces,
     getAnimalMovementSurfaceAt,
 } from '../animals/animalMovementTerrain';
+import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
 import {
     createPersistentPetHomeBlockedCells,
     getPersistentPetHomePlacement,
@@ -459,6 +460,7 @@ export function Rabbit({
             scene,
         };
     }, [gltf.scene, palette]);
+    const shouldPoseRabbit = useFaunaActorCulling(rabbitModel.scene);
     const habitat = useMemo(() => {
         const surfaces = createAnimalMovementSurfaces({
             blockData,
@@ -566,6 +568,7 @@ export function Rabbit({
         if (!group) {
             return;
         }
+        const posing = shouldPoseRabbit();
         const now = clock.elapsedTime;
         const random = randomRef.current;
         let runtime = runtimeRef.current;
@@ -689,7 +692,7 @@ export function Rabbit({
             runtimeRef.current = runtime;
         }
 
-        if (rabbitModel.rig) {
+        if (posing && rabbitModel.rig) {
             animateRabbitRig({
                 delta,
                 rig: rabbitModel.rig,

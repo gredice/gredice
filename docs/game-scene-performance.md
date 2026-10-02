@@ -64,10 +64,11 @@ not accidentally based on `next dev`.
   maps, low-tier shadow disabling, weather particle caps, profiling metadata,
   app-level `deferDetails` on the main garden page, snow-overlay coverage gates,
   ground-decoration density gates, and static sprite billboard rendering.
-- Game assets are split by model unit. The runtime preloads all ground block
-  models first, then preloads raised bed and common assets, while less common
-  block assets load behind local Suspense boundaries only when present in the
-  scene.
+- Game assets are split by model unit. The main scene loads only the GLBs in
+  its garden's scene manifest: current-scene assets first, then the garden
+  being switched to, then idle fauna and optional states. Decoded GLTFs are
+  refcounted and evicted under a byte budget. See
+  [game-scene-resources.md](./game-scene-resources.md).
 - The latest instancing pass moved base rendering for additional repeated block
   types into instanced meshes, including water blocks, raised beds, shade,
   garden boxes, pots, cactus variants, dead trees, buckets, watering cans, water

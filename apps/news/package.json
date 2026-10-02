@@ -14,7 +14,8 @@
         "test": "pnpm run test:static-data && pnpm run typecheck && pnpm run test:unit && pnpm run test:production-metadata",
         "test:static-data": "node --experimental-strip-types --test ./tests/staticGenerationData.node.spec.ts",
         "test:unit": "node --test lib/*.node.spec.ts",
-        "test:production-metadata": "pnpm run build && node --test tests/newsArchives.production.node.spec.mjs"
+        "test:production-metadata": "pnpm run build && node --test tests/newsArchives.production.node.spec.mjs",
+        "test:revalidation": "node --test tests/newsRevalidation.redis.ts"
     },
     "dependencies": {
         "@gredice/js": "workspace:*",

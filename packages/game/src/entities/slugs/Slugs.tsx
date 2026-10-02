@@ -22,6 +22,7 @@ import {
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
+import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
 import {
     chooseSlugBehavior,
     getSlugAnimationTargets,
@@ -474,6 +475,7 @@ function SlugActor({
             scene,
         };
     }, [gltf.scene]);
+    useFaunaActorCulling(model.scene);
     const updateGroundingShadow = useActorGroundingShadow({
         id: entry.spawn.id,
         primaryCasterCount: model.primaryCasterCount,
