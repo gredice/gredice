@@ -2141,6 +2141,7 @@ test('default raised-bed detailed inspection automation stays draft until enable
         raisedBedDetailedInspectionAutomationGraph(),
     );
     assert.deepStrictEqual(definition.metadata, {
+        managedRevision: definition.metadata.managedRevision,
         managedBy: 'gredice',
         defaultAutomation: true,
         operationEntityId: RAISED_BED_DETAILED_INSPECTION_OPERATION_ID,
@@ -2774,6 +2775,7 @@ test('default greenhouse seedling watering automation is enabled daily', async (
         greenhouseSeedlingWateringAutomationGraph(),
     );
     assert.deepStrictEqual(definition.metadata, {
+        managedRevision: definition.metadata.managedRevision,
         managedBy: 'gredice',
         defaultAutomation: true,
         operationEntityId: 655,
@@ -3670,6 +3672,7 @@ test('default harvest automation creates one review proposal without changing th
         harvestOperationPlantStatusReviewAutomationGraph(),
     );
     assert.deepStrictEqual(definition.metadata, {
+        managedRevision: definition.metadata.managedRevision,
         managedBy: 'gredice',
         defaultAutomation: true,
         operationStage: 'harvest',
@@ -4031,6 +4034,7 @@ test('default plant-removal automation marks the operation target removed after 
         plantRemovalOperationStatusAutomationGraph(),
     );
     assert.deepStrictEqual(definition.metadata, {
+        managedRevision: definition.metadata.managedRevision,
         managedBy: 'gredice',
         defaultAutomation: true,
         operationEntityId: 346,

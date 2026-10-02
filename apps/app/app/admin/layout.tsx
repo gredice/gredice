@@ -1,10 +1,6 @@
 import {
-    getCmsPagesReadyForReviewCount,
     getEntityTypesOrganizedByCategories,
-    getPendingAchievementsCount,
     getPendingCommunityEditRequestsCount,
-    getSetting,
-    SettingsKeys,
 } from '@gredice/storage';
 import { type PropsWithChildren, Suspense } from 'react';
 import {
@@ -16,6 +12,11 @@ import {
 import { AdminClientProvider } from '../../components/admin/providers';
 import { AuthAppProvider } from '../../components/providers/AuthAppProvider';
 import { auth } from '../../lib/auth/auth';
+import {
+    getAdminCmsReviewCount,
+    getAdminDashboardQuickActionsSetting,
+    getAdminPendingAchievementsCount,
+} from '../../src/adminNavigationData';
 import { getPendingAdminApprovalTaskCount } from '../../src/approvalTasks';
 import {
     buildDashboardQuickActionOptions,
@@ -38,11 +39,11 @@ export default async function AdminLayout({ children }: PropsWithChildren) {
         dashboardQuickActionsSetting,
     ] = await Promise.all([
         getEntityTypesOrganizedByCategories(),
-        getCmsPagesReadyForReviewCount(),
-        getPendingAchievementsCount(),
+        getAdminCmsReviewCount(),
+        getAdminPendingAchievementsCount(),
         getPendingAdminApprovalTaskCount(),
         getPendingCommunityEditRequestsCount(),
-        getSetting(SettingsKeys.DashboardQuickActions),
+        getAdminDashboardQuickActionsSetting(),
     ]);
 
     const quickActionEntityTypes = [

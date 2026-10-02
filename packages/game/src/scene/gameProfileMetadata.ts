@@ -6,11 +6,13 @@ import type { PlantInstanceBufferMetricsSnapshot } from '../generators/plant/lib
 import type { CameraFrame } from '../spatial/cameraFrame';
 import type { GardenSpatialIndex } from '../spatial/GardenSpatialIndex';
 import type { ChunkCompilerMetrics } from './compiler/chunkCompilerMetrics';
+import type { StaticRenderPacketMetrics } from './compiler/staticRenderPackets';
 import type {
     GameRuntimeSchedulerFrequentProfileSnapshot,
     GameRuntimeSchedulerSnapshot,
 } from './GameRuntimeScheduler';
 import type { GameQualityProfileTier } from './gameQuality';
+import type { SharedGardenMaterialMetrics } from './gardenMaterials';
 
 export type GeneratedPlantProfilePartCounts = {
     billboardInstances: number;
@@ -350,6 +352,8 @@ export function bindRuntimeFrameLoopProfileTelemetry(
 
 export type GameProfileMetadata = {
     chunkCompiler?: ChunkCompilerMetrics;
+    gardenMaterials?: SharedGardenMaterialMetrics;
+    renderPackets?: StaticRenderPacketMetrics;
     autumnGroundLeafClusters?: number;
     faunaWorld?: FaunaWorldStats;
     autumnEntityLeafClusters?: number;

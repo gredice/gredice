@@ -62,14 +62,20 @@ export type AutomationRunnerResult = {
     processingStopReason: AutomationProcessingStopReason;
 };
 
-export async function enqueueAutomationRunsFromSchedules({
+export async function enqueueAutomationRunsFromSchedules(
+    options: { now?: Date; limit?: number } = {},
+) {
+    await ensureDefaultAutomationDefinitions();
+    return enqueueAutomationRunsFromInitializedSchedules(options);
+}
+
+async function enqueueAutomationRunsFromInitializedSchedules({
     now = new Date(),
     limit = 500,
 }: {
     now?: Date;
     limit?: number;
 } = {}) {
-    await ensureDefaultAutomationDefinitions();
     const scheduleDefinitions = await Promise.all(
         [
             automationModuleKeys.triggerSchedule,
@@ -121,12 +127,18 @@ export async function enqueueAutomationRunsFromSchedules({
     };
 }
 
-export async function enqueueAutomationRunsFromDomainEvents({
+export async function enqueueAutomationRunsFromDomainEvents(
+    options: { limit?: number } = {},
+) {
+    await ensureDefaultAutomationDefinitions();
+    return enqueueAutomationRunsFromInitializedDomainEvents(options);
+}
+
+async function enqueueAutomationRunsFromInitializedDomainEvents({
     limit = defaultEventBatchLimit,
 }: {
     limit?: number;
 } = {}) {
-    await ensureDefaultAutomationDefinitions();
     const [cursor, eventTypes] = await Promise.all([
         getAutomationEventCursor(),
         getRunnableAutomationEventTypes(),
@@ -282,12 +294,14 @@ export async function runAutomations({
     runMinRemainingMs?: number;
     lockedBy?: string;
 } = {}): Promise<AutomationRunnerResult> {
-    const scheduleResult = await enqueueAutomationRunsFromSchedules({
+    await ensureDefaultAutomationDefinitions();
+    const scheduleResult = await enqueueAutomationRunsFromInitializedSchedules({
         limit: scheduleBatchLimit,
     });
-    const enqueueResult = await enqueueAutomationRunsFromDomainEvents({
-        limit: eventBatchLimit,
-    });
+    const enqueueResult =
+        await enqueueAutomationRunsFromInitializedDomainEvents({
+            limit: eventBatchLimit,
+        });
     const processResult = await processDueAutomationRuns({
         limit: runBatchLimit,
         maxBatches: runMaxBatches,

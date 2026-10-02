@@ -27,6 +27,7 @@ export const config: PlaywrightTestConfig = {
         'user-leaderboard.spec.tsx',
         'achievement-catalog.spec.tsx',
         'experience-guide.spec.tsx',
+        'harvest-trace-group.spec.tsx',
     ],
     snapshotDir: './__snapshots__',
     timeout: 10 * 1000,
