@@ -116,3 +116,43 @@ latency and Neon active CU-hours over a matching 72-hour window. Include Checkly
 status ingestion, maintenance and real traffic in the remaining wake sources.
 That production measurement remains pending; local tests and empty backlog
 snapshots establish neither the monthly infrastructure budget nor database sleep.
+
+## Optional dispatcher attribution
+
+Set server-only `DUE_WORK_ATTRIBUTION=1` on API for a short production measurement
+window, then unset it. It is disabled by default and adds no Redis or PostgreSQL
+operations. Each authorized `runDueWork` pass emits one `due-work-dispatch`
+record with a fixed job name and these fields:
+
+- `reason`: `idle-signal` for a Redis-only skip, `recovery-preflight` for a
+  durable-queue projection that skipped its worker, or a worker run caused by
+  `due-signal`, `hourly-recovery`, `forced`, `disabled`, or `redis-unavailable`.
+- `signalAvailable`, `recoveryDue`, and `workerStarted`: distinguish missing or
+  failed Redis from healthy hints, recovery scans and actual worker invocations.
+  A recovery preflight accesses PostgreSQL even if its worker was skipped. A
+  disabled worker keeps its existing rollout response without a due projection.
+- `durationMs`: elapsed time for the signal check, optional preflight, worker and
+  acknowledgement. It is wall time, not billed CPU or database time.
+- `signalLatenessMs`: the nonnegative interval from the observed Redis due hint
+  to worker start, or `null` when no due hint exists, no worker starts, or the
+  worker is disabled. It includes time spent checking Redis. This is a
+  due-signal-to-start proxy; it does not measure each business enqueue, provider
+  acceptance, recipient delivery or the latency of every item in a batch.
+- `status` and `success`: worker HTTP status and the existing response success
+  policy, including HTTP 200 with `success: false`. Skips report 200/true. A
+  thrown worker or malformed successful response retains its original exception;
+  `thrownPhase` distinguishes `worker` from `response`, and `success` is `null`.
+- `acknowledgement`: `acknowledged`, `raced`, `error`, `missing-signal`, or
+  `not-attempted`. Worker failure never clears its hint. A successful worker
+  with a raced or failed acknowledgement retains its successful response.
+
+Records contain no request/account/queue IDs, raw timestamps, URLs, headers,
+payloads, error text or response bodies. Logging failures never affect business
+results. The Vercel log's deployment/time metadata supplies the measurement
+window; group by job and reason and inspect acknowledgement failures separately.
+Only `idle-signal` establishes a Redis-only skip. Missing-signal fail-open runs,
+recovery preflight skips and disabled worker responses do not establish database
+savings. Combine these records with durable queue/backlog and provider evidence,
+exact deployment readback, traffic and costs; attribution alone does not prove
+end-to-end notification latency or the infrastructure budget. Exclude attribution
+overhead when comparing normal operating costs.
