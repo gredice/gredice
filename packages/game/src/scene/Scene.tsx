@@ -55,6 +55,7 @@ import {
     useSceneTimeInvalidation,
 } from './SceneTime';
 import { StaticOpaqueSceneCacheProvider } from './StaticOpaqueSceneCache';
+import { SteamSourcesProvider } from './SteamSources';
 import { WeatherSurfaceUniformProvider } from './WeatherSurfaceUniformProvider';
 
 export type SceneProps = HTMLAttributes<HTMLDivElement> &
@@ -429,7 +430,9 @@ export function Scene({
                                                 tier={qualityProfile.tier}
                                             >
                                                 <BreathSourcesProvider>
-                                                    {children}
+                                                    <SteamSourcesProvider>
+                                                        {children}
+                                                    </SteamSourcesProvider>
                                                 </BreathSourcesProvider>
                                             </AutumnPropWindProvider>
                                         </AutumnPartsProvider>
