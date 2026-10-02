@@ -178,9 +178,11 @@ packets, a local membership patch retaining the other chunk's geometry, palette
 mutation, an unknown-hook fallback, and final release/remount. Shared packet
 compilation also publishes physical placement rebuild timing and transformed
 instance counts when placement membership changes. A deliberately large source
-forces real worker compilation and visible pending frames; those frames contain
-only transient authored shader clones, and every observed clone is disposed
-after readiness and final release.
+forces real worker compilation; the browser test delays only worker response
+delivery by 100 ms so even a fast host must render a pending frame. Those frames
+contain only transient authored shader clones, and every observed clone is
+disposed after readiness and final release. This test delay is not used by
+production or performance captures.
 
 A separate diagnostic comparison of an uncompiled authored mesh against its
 compiled palette mesh found 378 of 196,608 pixels (0.1923%) differing by more
