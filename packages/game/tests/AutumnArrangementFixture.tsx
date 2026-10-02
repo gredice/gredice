@@ -126,7 +126,7 @@ export function AutumnArrangementFixture({
                     >
                         <Scene
                             position={[-100, 100, -100]}
-                            zoom={small ? 53 : 92}
+                            zoom={small ? 53 : 80}
                             quality={quality}
                             pixelRatio={1}
                             fixedTimeSeconds={12}

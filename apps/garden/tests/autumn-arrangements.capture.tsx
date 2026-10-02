@@ -182,7 +182,7 @@ for (const arrangement of autumnArrangements) {
                         camera: {
                             position: [-100, 100, -100],
                             target: [-0.5, 0.8, -0.5],
-                            zoom: small ? 53 : 92,
+                            zoom: small ? 53 : 80,
                         },
                         viewport: {
                             width: small ? 390 : 780,

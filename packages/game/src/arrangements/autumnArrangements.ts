@@ -15,14 +15,17 @@ type Placement = {
 };
 
 const scenery: Placement[] = [
-    ...Array.from({ length: 16 }, (_, index) => ({
-        id: `ground:${index}`,
-        entityName: 'Block_Grass',
-        x: index % 4,
-        z: Math.floor(index / 4),
-        rotation: 0,
-        role: 'scenery' as const,
-    })),
+    ...Array.from(
+        { length: 16 },
+        (_, index): Placement => ({
+            id: `ground:${index}`,
+            entityName: 'Block_Grass',
+            x: index % 4,
+            z: Math.floor(index / 4),
+            rotation: 0,
+            role: 'scenery',
+        }),
+    ),
     {
         id: 'tree',
         entityName: 'Tree',
@@ -39,14 +42,16 @@ const scenery: Placement[] = [
         rotation: 0,
         role: 'scenery',
     },
-    ...[0, 1, 2].map((z) => ({
-        id: `path:${z}`,
-        entityName: 'StoneWalkway',
-        x: 2,
-        z,
-        rotation: 0,
-        role: 'scenery' as const,
-    })),
+    ...[0, 1, 2].map(
+        (z): Placement => ({
+            id: `path:${z}`,
+            entityName: 'StoneWalkway',
+            x: 2,
+            z,
+            rotation: 0,
+            role: 'scenery',
+        }),
+    ),
 ];
 
 function included(
