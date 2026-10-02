@@ -87,7 +87,13 @@ const directory = [
     block(1, 'Block_Grass', 'terrain', true),
     block(2, 'HarvestPumpkinSquatOrange', 'decoration', false),
 ];
-function service(options: { directoryDown?: boolean; failure?: boolean } = {}) {
+function service(
+    options: {
+        directoryDown?: boolean;
+        failure?: boolean;
+        prepare?: () => Promise<void>;
+    } = {},
+) {
     return createGardenPackPlacementService({
         withAccountTransaction: (accountId, callback) =>
             withSunflowerAccountTransaction(accountId, (tx) =>
