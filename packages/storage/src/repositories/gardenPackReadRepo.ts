@@ -54,10 +54,12 @@ export async function isGardenPackStorageReady(database: Database = storage()) {
         'garden_pack_unit_state_audit',
         'garden_pack_event_state_audit',
     ];
+    const tableNames = `{${requiredTables.join(',')}}`;
+    const triggerNames = `{${requiredTriggers.join(',')}}`;
     const result = await database.execute(sql`
         SELECT
-          (SELECT count(*) = 4 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = current_schema() AND c.relname = ANY(${requiredTables}::text[]) AND c.relkind = 'r') AND
-          (SELECT count(*) = 9 FROM pg_catalog.pg_trigger t JOIN pg_catalog.pg_class c ON c.oid = t.tgrelid JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = current_schema() AND t.tgname = ANY(${requiredTriggers}::text[]) AND t.tgenabled IN ('O','A') AND NOT t.tgisinternal AND c.relname = ANY(${requiredTables}::text[]) AND (t.tgname NOT IN ('garden_pack_purchase_contents','garden_pack_unit_contents','garden_pack_unit_state_audit','garden_pack_event_state_audit') OR (t.tgdeferrable AND t.tginitdeferred))) AS ready
+          (SELECT count(*) = 4 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = current_schema() AND c.relname = ANY(${tableNames}::text[]) AND c.relkind = 'r') AND
+          (SELECT count(*) = 9 FROM pg_catalog.pg_trigger t JOIN pg_catalog.pg_class c ON c.oid = t.tgrelid JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = current_schema() AND t.tgname = ANY(${triggerNames}::text[]) AND t.tgenabled IN ('O','A') AND NOT t.tgisinternal AND c.relname = ANY(${tableNames}::text[]) AND (t.tgname NOT IN ('garden_pack_purchase_contents','garden_pack_unit_contents','garden_pack_unit_state_audit','garden_pack_event_state_audit') OR (t.tgdeferrable AND t.tginitdeferred))) AS ready
     `);
     const row = z
         .object({ rows: z.array(z.object({ ready: z.boolean() })) })

@@ -49,6 +49,14 @@ export function createGardenPacksRoutes(
                     'Get purchased packs for the authenticated current account. Sales withdrawal and season expiry do not hide owned items. Storage rollout disabled returns an empty disabled result.',
                 security: authSecurity,
                 tags: ['Garden packs'],
+                responses: {
+                    200: {
+                        description:
+                            'Owned pack data or storage-disabled result.',
+                    },
+                    400: { description: 'Invalid request or cursor.' },
+                    401: { description: 'Authentication required.' },
+                },
             }),
             dependencies.authValidator(['user', 'admin']),
             zValidator('query', gardenPackInventoryQuerySchema),
@@ -96,6 +104,15 @@ export function createGardenPacksRoutes(
                     'Get one purchased pack owned by the authenticated current account. Unknown and foreign purchases return 404; disabled storage returns a disabled result.',
                 security: authSecurity,
                 tags: ['Garden packs'],
+                responses: {
+                    200: {
+                        description:
+                            'Owned pack data or storage-disabled result.',
+                    },
+                    400: { description: 'Invalid purchase identifier.' },
+                    401: { description: 'Authentication required.' },
+                    404: { description: 'Owned pack or product not found.' },
+                },
             }),
             dependencies.authValidator(['user', 'admin']),
             zValidator('param', z.object({ purchaseId: z.string().uuid() })),
@@ -128,6 +145,26 @@ export function createGardenPacksRoutes(
                     'Buy an exact server-owned published pack quote using sunflowers. Wallet debit and finite quantities commit atomically without requiring a garden or box. The UUID request ID replays the immutable receipt; changed input/quote returns 409. Insufficient balance or invalid request returns 400; missing product/account returns 404; unavailable rollout/catalogue returns 503.',
                 security: authSecurity,
                 tags: ['Garden packs'],
+                responses: {
+                    200: {
+                        description:
+                            'Immutable purchase receipt or exact completed replay.',
+                    },
+                    400: {
+                        description:
+                            'Invalid request or insufficient sunflowers.',
+                    },
+                    401: { description: 'Authentication required.' },
+                    404: { description: 'Product or account not found.' },
+                    409: {
+                        description:
+                            'Operation, quote, availability or account deletion conflict.',
+                    },
+                    503: {
+                        description:
+                            'Storage or sales disabled, storage not ready, or dependency unavailable.',
+                    },
+                },
             }),
             dependencies.authValidator(['user', 'admin']),
             zValidator('json', gardenPackPurchaseBodySchema),
