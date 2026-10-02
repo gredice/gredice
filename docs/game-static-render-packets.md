@@ -99,14 +99,17 @@ failed compiles work as they did for single-geometry chunks.
 
 While compilation is pending, each contribution renders its authored stable
 geometry with the same instance transforms. Eligible palette sources use
-commit-owned transient material clones with identical PBR values, maps, cutout,
+commit-owned transient geometry and material clones with identical PBR values, maps, cutout,
 ground callbacks and live weather uniform owners. The scene applies cloud
 attenuation once to each clone. Pending meshes wait for their clone lease;
 borrowed original materials never reach a pending frame. The final fallback
-consumer disposes the clone and its unused instancing programs when compilation
+consumer disposes the clones and their GPU buffers/programs when compilation
 finishes or the component releases. The palette shader is only used for the
 final non-instanced packet. Unknown hooks retain their authored lifetime, and
 fallback never disposes source geometry, source materials or their textures.
+Geometry clones share by immutable source object across pending chunks and
+materials, then release after their last fallback user. Replacing a source
+object creates a new clone; fallback copies never alias authored vertex arrays.
 
 Each static-cache group gets one `StaticOpaqueSceneCacheBoundary`, and every
 packet in the group counts as one submission. Packets render in the provider's

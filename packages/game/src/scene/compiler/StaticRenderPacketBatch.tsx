@@ -16,7 +16,7 @@ import {
     recordPlacementAnimationChunkRebuild,
     shouldRecordPlacementAnimationChunkRebuild,
 } from '../../entities/placementAnimationProfileMetrics';
-import { useGardenPaletteFallbackMaterial } from '../gardenPaletteFallbackMaterials';
+import { useGardenPaletteFallbackResources } from '../gardenPaletteFallbackResources';
 import {
     StaticOpaqueSceneCacheBoundary,
     type StaticOpaqueSceneCacheGroup,
@@ -256,16 +256,20 @@ const StaticRenderPacketInstancedFallback = memo(
     }) {
         const meshRef = useRef<InstancedMesh | null>(null);
         const { instances, localTransform, scale } = contribution;
-        // Eligible clones release fallback-only instancing programs when the
-        // packet becomes ready. Borrowed originals never reach a pending frame.
-        const geometry = contribution.fallbackGeometry ?? contribution.geometry;
+        // Eligible clones release fallback-only GPU buffers and programs when
+        // ready. Borrowed originals never reach a pending frame.
+        const sourceGeometry =
+            contribution.fallbackGeometry ?? contribution.geometry;
         const sourceMaterial =
             contribution.fallbackMaterial ?? contribution.material;
-        const material = useGardenPaletteFallbackMaterial(
+        const resources = useGardenPaletteFallbackResources(
+            sourceGeometry,
             sourceMaterial,
             sourceMaterial !== contribution.material &&
                 contribution.geometry.hasAttribute('aGardenPalette0'),
         );
+        const geometry = resources?.geometry;
+        const material = resources?.material;
 
         useLayoutEffect(() => {
             recordStaticRenderPacketFallbackMesh(1);
@@ -291,7 +295,7 @@ const StaticRenderPacketInstancedFallback = memo(
             mesh.computeBoundingSphere();
         }, [geometry, instances, localTransform, material, scale]);
 
-        if (!material) return null;
+        if (!geometry || !material) return null;
 
         return (
             <instancedMesh

@@ -1,4 +1,3 @@
-import { useLayoutEffect, useState } from 'react';
 import type { Material } from 'three';
 import {
     getMaterialShaderHooksWithoutCloudShadowAttenuation,
@@ -10,7 +9,7 @@ import {
 } from './gardenMaterials';
 import { getGardenPaletteMaterialSignature } from './gardenPaletteMaterials';
 
-function fallbackKey(source: Material) {
+export function getGardenPaletteFallbackMaterialKey(source: Material) {
     if (source.transparent || !getGardenPaletteMaterialSignature(source))
         return undefined;
     const signature = getGardenMaterialSignature(source);
@@ -26,7 +25,7 @@ function fallbackKey(source: Material) {
  * cloud attenuation belongs to the scene and is applied once to the clone.
  */
 export function acquireGardenPaletteFallbackMaterial(source: Material) {
-    const key = fallbackKey(source);
+    const key = getGardenPaletteFallbackMaterialKey(source);
     if (!key) return undefined;
     const lease = acquireOwnedSharedGardenMaterial(key, () => {
         const material = source.clone();
@@ -50,25 +49,4 @@ export function acquireGardenPaletteFallbackMaterial(source: Material) {
             lease.release();
         },
     };
-}
-
-/** No borrowed source reaches a frame while an eligible clone lease commits. */
-export function useGardenPaletteFallbackMaterial(
-    source: Material,
-    enabled: boolean,
-) {
-    const key = enabled ? fallbackKey(source) : undefined;
-    const [leased, setLeased] = useState<{
-        key: string;
-        material: Material;
-    }>();
-    useLayoutEffect(() => {
-        if (!key) return;
-        const lease = acquireGardenPaletteFallbackMaterial(source);
-        if (!lease) return;
-        setLeased({ key, material: lease.material });
-        return lease.release;
-    }, [key, source]);
-    if (!key) return source;
-    return leased?.key === key ? leased.material : undefined;
 }

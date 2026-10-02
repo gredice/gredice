@@ -44,6 +44,9 @@ test('production entity props batch JSX material nodes, retain untouched chunks 
     expect(strictInitial.borrowedFallbacks).toBe(0);
     expect(strictInitial.liveFallbackMaterials).toBe(0);
     expect(strictInitial.disposedFallbackMaterials).toBeGreaterThan(0);
+    expect(strictInitial.borrowedFallbackGeometries).toBe(0);
+    expect(strictInitial.liveFallbackGeometries).toBe(0);
+    expect(strictInitial.disposedFallbackGeometries).toBeGreaterThan(0);
     await fixture.update(<GardenPaletteAdmissionFixture />);
     await expect(fixture).toHaveAttribute(
         'data-ready',
@@ -108,6 +111,7 @@ test('production entity props batch JSX material nodes, retain untouched chunks 
     expect(released.materials.sharedMaterialUsers).toBe(0);
     expect(released.compiler.liveGeometries).toBe(0);
     expect(released.liveFallbackMaterials).toBe(0);
+    expect(released.liveFallbackGeometries).toBe(0);
     await fixture.update(<GardenPaletteAdmissionFixture batch />);
     await expect(fixture).toHaveAttribute(
         'data-ready',

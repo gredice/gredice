@@ -5,7 +5,7 @@ import {
     packMeshGeometry,
     unpackMeshGeometry,
 } from '../src/scene/compiler/meshBuffers';
-import { useGardenPaletteFallbackMaterial } from '../src/scene/gardenPaletteFallbackMaterials';
+import { useGardenPaletteFallbackResources } from '../src/scene/gardenPaletteFallbackResources';
 import { useGardenPalettePacketSource } from '../src/scene/gardenPaletteMaterials';
 import { createWeatherSurfaceGeometry } from '../src/scene/weatherSurfaceGeometry';
 import { createIntegratedWeatherSurfaceMaterial } from '../src/scene/weatherSurfaceMaterial';
@@ -80,10 +80,6 @@ export function GardenPaletteFixtureMesh({
         integrated ?? source.material,
         palette,
     );
-    const fallbackMaterial = useGardenPaletteFallbackMaterial(
-        integrated ?? source.material,
-        fallback,
-    );
     const compiled = useMemo(() => {
         // Use identical compiler transforms on both sides to isolate shader
         // parity from Float32 model-matrix rounding in procedural world noise.
@@ -99,6 +95,11 @@ export function GardenPaletteFixtureMesh({
             ),
         );
     }, [prepared.geometry, source]);
+    const fallbackResources = useGardenPaletteFallbackResources(
+        compiled,
+        integrated ?? source.material,
+        fallback,
+    );
     useLayoutEffect(() => () => integrated?.dispose(), [integrated]);
     useLayoutEffect(() => () => compiled?.dispose(), [compiled]);
     useLayoutEffect(
@@ -107,14 +108,16 @@ export function GardenPaletteFixtureMesh({
         },
         [source.geometry, weatherGeometry],
     );
-    if (fallback && !fallbackMaterial) return null;
+    if (fallback && !fallbackResources) return null;
     return (
         <mesh
             name={`GardenPaletteFixture:${source.name}:revision:${revision}`}
             castShadow
             receiveShadow
-            geometry={compiled}
-            material={fallback ? fallbackMaterial : prepared.material}
+            geometry={fallback ? fallbackResources?.geometry : compiled}
+            material={
+                fallback ? fallbackResources?.material : prepared.material
+            }
         />
     );
 }

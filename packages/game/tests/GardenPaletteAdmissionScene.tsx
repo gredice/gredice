@@ -2,6 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import {
     BoxGeometry,
+    type BufferGeometry,
     DoubleSide,
     InstancedMesh,
     Mesh,
@@ -101,10 +102,15 @@ export function GardenPaletteAdmissionScene({
         fallbackFrames: 0,
         paletteFallbacks: 0,
         borrowedFallbacks: 0,
+        borrowedFallbackGeometries: 0,
     });
     const fallbackMaterials = useRef({
         seen: new Set<MeshStandardMaterial>(),
         disposed: new Set<MeshStandardMaterial>(),
+    });
+    const fallbackGeometries = useRef({
+        seen: new Set<BufferGeometry>(),
+        disposed: new Set<BufferGeometry>(),
     });
     useFrame(() => {
         if (frames.current.key !== key)
@@ -115,6 +121,7 @@ export function GardenPaletteAdmissionScene({
                 fallbackFrames: 0,
                 paletteFallbacks: 0,
                 borrowedFallbacks: 0,
+                borrowedFallbackGeometries: 0,
             };
         frames.current.count++;
         const pendingFallbacks: Mesh[] = [];
@@ -136,6 +143,18 @@ export function GardenPaletteAdmissionScene({
                 ).some((material) => material.name.endsWith(':GardenPalette')),
         ).length;
         for (const mesh of pendingFallbacks) {
+            const fallbackGeometry = mesh.geometry;
+            if (
+                fallbackGeometry === resources.geometry ||
+                fallbackGeometry === resources.workerGeometry
+            )
+                frames.current.borrowedFallbackGeometries++;
+            if (!fallbackGeometries.current.seen.has(fallbackGeometry)) {
+                fallbackGeometries.current.seen.add(fallbackGeometry);
+                fallbackGeometry.addEventListener('dispose', () =>
+                    fallbackGeometries.current.disposed.add(fallbackGeometry),
+                );
+            }
             const materials = Array.isArray(mesh.material)
                 ? mesh.material
                 : [mesh.material];
@@ -197,6 +216,13 @@ export function GardenPaletteAdmissionScene({
                 fallbackMaterials.current.seen.size -
                 fallbackMaterials.current.disposed.size,
             disposedFallbackMaterials: fallbackMaterials.current.disposed.size,
+            borrowedFallbackGeometries:
+                frames.current.borrowedFallbackGeometries,
+            liveFallbackGeometries:
+                fallbackGeometries.current.seen.size -
+                fallbackGeometries.current.disposed.size,
+            disposedFallbackGeometries:
+                fallbackGeometries.current.disposed.size,
             materials: readSharedGardenMaterialMetrics(),
             meshes: meshes.length,
             triangles: meshes.reduce(
