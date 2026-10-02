@@ -51,6 +51,7 @@ import {
 import { useSceneRenderRequest, useSceneResume } from './SceneTime';
 import {
     createStaticOpaqueSceneCacheBenefitState,
+    invalidateStaticOpaqueSceneCacheBenefitGpuSamples,
     isStaticOpaqueSceneCacheBenefitAllowed,
     recordStaticOpaqueSceneCacheBenefitFrame,
     recordStaticOpaqueSceneCacheBenefitGpuSample,
@@ -1244,6 +1245,7 @@ function StaticOpaqueSceneCacheRenderer({
     );
     const gpuTimer = useMemo(() => new StaticOpaqueSceneCacheGpuTimer(), []);
     const gpuSampleCountRef = useRef(0);
+    const gpuEvidenceEpochRef = useRef(0);
     const closeupView = useOptionalGameState(
         (state) => state.view === 'closeup',
         false,
@@ -1302,12 +1304,24 @@ function StaticOpaqueSceneCacheRenderer({
 
     useFrame(() => {
         const nowMs = performance.now();
-        for (const sample of gpuTimer.poll(nowMs)) {
+        const gpuSamples = gpuTimer.poll(nowMs);
+        if (gpuEvidenceEpochRef.current !== gpuTimer.evidenceEpoch) {
+            gpuEvidenceEpochRef.current = gpuTimer.evidenceEpoch;
+            benefitRef.current =
+                invalidateStaticOpaqueSceneCacheBenefitGpuSamples(
+                    benefitRef.current,
+                );
+        }
+        for (const sample of gpuSamples) {
             gpuSampleCountRef.current += 1;
+            if (!enabled) {
+                continue;
+            }
             benefitRef.current = recordStaticOpaqueSceneCacheBenefitGpuSample(
                 benefitRef.current,
                 sample.kind,
                 sample.elapsedMs,
+                sample.windowId,
             );
         }
         benefitRef.current = resumeStaticOpaqueSceneCacheBenefit(
@@ -1319,6 +1333,18 @@ function StaticOpaqueSceneCacheRenderer({
             nowMs,
         );
 
+        const registrySnapshot = registry.getSnapshot();
+        const context = gl.getContext();
+        const webGlSupported =
+            gl.capabilities.isWebGL2 &&
+            cacheSampleCount > 0 &&
+            gl.toneMapping === ACESFilmicToneMapping &&
+            gl.outputColorSpace === SRGBColorSpace &&
+            target.texture.colorSpace === SRGBColorSpace &&
+            cloudFullResponseTarget.texture.colorSpace === SRGBColorSpace &&
+            Reflect.get(target, 'isXRRenderTarget') === true &&
+            !context.isContextLost() &&
+            cachePathSupportedRef.current;
         gl.getDrawingBufferSize(drawingBufferSize);
         const targetConfig = resolveStaticOpaqueSceneCacheTarget({
             additionalBytes: cacheReplay.estimatedBytes,
@@ -1329,7 +1355,12 @@ function StaticOpaqueSceneCacheRenderer({
         });
         // A cache the benefit gate rejected keeps 1x1 targets, so its memory
         // is released for the cooldown.
-        const allocateTarget = targetConfig.supported && benefitAllowed;
+        const allocateTarget =
+            enabled &&
+            targetConfig.supported &&
+            benefitAllowed &&
+            webGlSupported &&
+            registrySnapshot.boundaries.length > 0;
         const targetWidth = allocateTarget ? targetConfig.width : 1;
         const targetHeight = allocateTarget ? targetConfig.height : 1;
         const allocatedTargetBytes = allocateTarget
@@ -1351,7 +1382,6 @@ function StaticOpaqueSceneCacheRenderer({
 
         // Read the registry directly: a layer change invalidates it from this
         // callback, and the next frame must not see the stale snapshot.
-        const registrySnapshot = registry.getSnapshot();
         const boundaries = registrySnapshot.boundaries;
         const liveBoundaries = registrySnapshot.liveBoundaries;
         // Layers are independently dirty: a boundary whose materials stop
@@ -1373,17 +1403,6 @@ function StaticOpaqueSceneCacheRenderer({
             submissions: registrySnapshot.submissionCount,
             triangles: registrySnapshot.triangleCount,
         };
-        const context = gl.getContext();
-        const webGlSupported =
-            gl.capabilities.isWebGL2 &&
-            cacheSampleCount > 0 &&
-            gl.toneMapping === ACESFilmicToneMapping &&
-            gl.outputColorSpace === SRGBColorSpace &&
-            target.texture.colorSpace === SRGBColorSpace &&
-            cloudFullResponseTarget.texture.colorSpace === SRGBColorSpace &&
-            Reflect.get(target, 'isXRRenderTarget') === true &&
-            !context.isContextLost() &&
-            cachePathSupportedRef.current;
         const supported =
             targetConfig.supported && webGlSupported && boundaries.length > 0;
         let bypassReason: StaticOpaqueSceneCacheReason | undefined;
@@ -1459,6 +1478,10 @@ function StaticOpaqueSceneCacheRenderer({
         if (transition.invalidated) {
             counters.invalidations += 1;
             counters.lastInvalidationReason = transition.reason;
+            benefitRef.current =
+                invalidateStaticOpaqueSceneCacheBenefitGpuSamples(
+                    benefitRef.current,
+                );
         }
         const renderLive = () => {
             counters.liveFrames += 1;
@@ -1491,13 +1514,20 @@ function StaticOpaqueSceneCacheRenderer({
                 benefitRef.current,
                 gpuTimer.isAvailable(nowMs),
             ) &&
-            gpuTimer.begin('live', nowMs);
+            gpuTimer.begin('live', nowMs, benefitRef.current.windowId);
         const gpuTimed =
             probeLive ||
             (timingAllowed &&
                 (transition.action === 'capture' ||
                     transition.action === 'hit') &&
-                gpuTimer.begin(transition.action, nowMs));
+                gpuTimer.begin(
+                    transition.action,
+                    nowMs,
+                    benefitRef.current.windowId,
+                )) ||
+            (transition.action === 'live' &&
+                gpuTimer.isProfileObserved() &&
+                gpuTimer.begin('live', nowMs, benefitRef.current.windowId));
         let cachedFrame = false;
 
         const previousInfoAutoReset = gl.info.autoReset;
@@ -1761,12 +1791,16 @@ export function StaticOpaqueSceneCacheProvider({
         });
     }, [enabled]);
 
+    const profileObserved =
+        typeof window !== 'undefined' &&
+        typeof Reflect.get(window, '__gameProfileCacheGpuObserver') ===
+            'function';
     return (
         <StaticOpaqueSceneCacheContext.Provider value={registry}>
             {children}
-            {enabled && (
+            {(enabled || profileObserved) && (
                 <StaticOpaqueSceneCacheRenderer
-                    enabled
+                    enabled={enabled}
                     interactionActive={interactionActive}
                     qualityKey={qualityKey}
                     registry={registry}

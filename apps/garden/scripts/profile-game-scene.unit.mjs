@@ -12649,3 +12649,50 @@ test('closeup medians include scheduler, template cache, and packed worker count
     assert.equal(summary.warm.pipeline.schedulerCancelledSubscriberCount, 5);
     assert.equal(summary.warm.pipeline.packedBuildDurationTotalMs, 10);
 });
+
+test('cache clearance supplements preserve canonical all/scenario contract and reuse ABBA', () => {
+    const canonical = resolveScenarios('all');
+    assert.ok(
+        canonical.every((scenario) => scenario.staticCacheClearance !== true),
+    );
+    const supplemental = resolveScenarios('static-cache-clearance');
+    assert.equal(supplemental.length, 60);
+    assert.equal(
+        new Set(supplemental.map((scenario) => scenario.name)).size,
+        60,
+    );
+    const profiles = resolveScenarios('cross-tier').filter(
+        (scenario) => !scenario.motion,
+    );
+    for (const profile of profiles) {
+        assert.ok(
+            supplemental.some(
+                (scenario) =>
+                    scenario.expectedQualityTier ===
+                        profile.expectedQualityTier &&
+                    scenario.expectedDprCap === profile.expectedDprCap &&
+                    scenario.autoQualityDeviceClass ===
+                        profile.autoQualityDeviceClass,
+            ),
+        );
+    }
+    const pair = resolveScenarios('static-cache-visuals').slice(0, 2);
+    assert.deepEqual(
+        buildScenarioRunQueue(pair).map(
+            ({ baseScenario, runIndex }) =>
+                `${baseScenario.comparisonRole}:${runIndex}`,
+        ),
+        [
+            'legacy:1',
+            'cache:1',
+            'cache:2',
+            'legacy:2',
+            'legacy:3',
+            'cache:3',
+            'cache:4',
+            'legacy:4',
+            'legacy:5',
+            'cache:5',
+        ],
+    );
+});

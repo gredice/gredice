@@ -89,11 +89,20 @@ for the garden avatar. Each frame checks these gates in order:
      are timed. Every 30th consecutive hit renders live as a probe, and the
      first probe comes after 4 hits. The window keeps the cache only when
      `hits × (live − hit) − captures × (capture − live)` is positive.
-   - **Work model.** Used when there are not enough timer samples. It
-     estimates static work from submissions, triangles, and a full-screen
-     shading term. A hit saves that work minus the composite. A capture costs
-     it once per extra capture pass (two passes with cloud shadows) plus the
-     composite.
+   - **Submitted work diagnostic.** It estimates static work from submissions,
+     triangles, and a full-screen shading term. Negative work can reject capture
+     churn, but positive work does not establish a GPU saving. At the end of
+     the bounded probe, missing live/hit/capture samples disable caching with
+     `gpu-unavailable`. This includes absent timer extensions, external timer
+     ownership, query timeouts and disjoint results.
+
+   Query samples carry the benefit window that started them. Results arriving
+   after a window, scene signature or context change cannot enter a later
+   decision. Scene changes and disjoint results clear GPU evidence and its
+   matching frame counts without extending the probe. The net GPU rate is per
+   cached frame in that unchanged scene; paired timing also includes live probes.
+   Sample arrays are bounded to the 60-frame window. Unsupported render paths
+   and the diagnostic legacy path retain 1×1 targets.
 
    A losing window disables the cache with `low-benefit`, shrinks its targets
    to 1×1 so their memory is released, and waits 30 seconds. Each consecutive
@@ -119,3 +128,58 @@ for the garden avatar. Each frame checks these gates in order:
 the cache is requested. Paired comparisons treat it as a runtime-policy field,
 so the before and after reports must both come from builds with the same
 cache policy.
+
+
+## Supplemental cache clearance
+
+Issue #4723 can conclude with a measured live no-op. Cache preference, draw-call
+reduction and a positive work estimate do not establish measured GPU savings.
+The existing canonical `cross-tier`, `all`, lifecycle and strict comparison v6
+scenarios remain unchanged. The following opt-in sets reuse the same profiler,
+resource receipt barrier, image comparator, depth fixture and lifecycle driver:
+
+| Set | Coverage |
+| --- | --- |
+| `static-cache-visuals` | Low, Medium, High, Automatic standard→Medium and Automatic constrained; clear, cloudy, rain and snow; five fixed-time legacy/cache pairs per mode |
+| `static-cache-depth` | Existing foreground/occluder/background pixel fixture in every resolved tier |
+| `static-cache-lifecycle` | Existing cold, offscreen, hidden, resumed and WebGL context loss/restoration sequence in every tier |
+| `static-cache-layers` | Sparse/integrated snow, cloud response, rain/clear and fresh frost/clear transitions, with a fresh resource witness after every change |
+| `static-cache-soak` | At least 60 seconds per tier; resource witnesses every five seconds plus the final measured window |
+| `static-cache-clearance` | All supplemental sets above |
+
+Run against a separately built production server after the optimized live scene
+has established an opportunity. For example:
+
+```bash
+node apps/garden/scripts/profile-game-scene.mjs --base-url http://localhost:3101 \
+  --scenario-set static-cache-depth --out-dir .game-profile-results/cache-depth
+```
+
+The supplemental profiler observes the cache's own render-pass queries without
+claiming the WebGL query slot. Its explicit `cache-owned-render-pass-v1` mode
+uses the same timer/render boundary for legacy and cached frames and records
+capture, hit and live-probe samples together. Only paired runs using that mode
+can provide supplemental GPU comparisons. Absent, disjoint, invalid or undrained
+queries stay inconclusive. The unchanged paired limits require five GPU pairs,
+median GPU ratio ≤0.95 and maximum individual ratio ≤1.05, CPU median ≤1.05,
+draw/triangle ratios ≤0.9, at most one additional program/four textures, visual
+mismatch ≤0.01 and P99 byte error ≤8. Depth keeps match ≥0.96, leak ≤0.04 and
+three verified hits. A failed savings comparison remains a negative result even
+when the safe live no-op passes its ownership checks.
+
+`staticCacheEvidence` stores decision, budget, current/peak bytes, independent
+terrain/prop layer states, weather values and resource receipts outside timed
+windows. The target byte estimate already includes the 36-byte replay triangle;
+do not add that replay again. All snapshots must fit the reported per-device
+budget, and rejected probes must release their targets. Soak resource growth
+is bounded to one program, four textures and two geometries after warmup.
+Lifecycle retains the canonical suspension/context requirements and adds cache
+admission and resource witnesses before suspension and after restoration.
+Automatic hardware witnesses are deterministic browser overrides for coverage;
+they do not replace physical-device memory, thermal or GPU clearance.
+
+Retained compiler source reuse has a separate 4 MiB/256-source bound documented
+in [game-retained-chunks.md](./game-retained-chunks.md). Shared palette geometry
+is an owned clone with immutable PBR attributes; its identity/version and
+last-owner disposal preserve that compiler contract. Neither cache diagnostic
+owns, detaches or disposes the live GLTF geometry.

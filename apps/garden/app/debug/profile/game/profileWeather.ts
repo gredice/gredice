@@ -2,6 +2,9 @@ import type { GameSceneProps } from '@gredice/game';
 
 export type GameProfileWeatherTransitionRequest =
     | 'clear-to-cloudy'
+    | 'clear-to-rain'
+    | 'clear-to-frost'
+    | 'frost-to-clear'
     | 'cloudy-to-clear'
     | 'rain-to-clear'
     | 'snow-integrated-to-sparse'
@@ -47,6 +50,9 @@ export function readGameProfileWeatherTransitionRequest(value: unknown) {
     const request = Reflect.get(value, 'request');
     return request === 'clear-to-cloudy' ||
         request === 'cloudy-to-clear' ||
+        request === 'clear-to-rain' ||
+        request === 'clear-to-frost' ||
+        request === 'frost-to-clear' ||
         request === 'rain-to-clear' ||
         request === 'snow-integrated-to-sparse' ||
         request === 'snow-sparse-to-integrated'
@@ -59,6 +65,30 @@ export function resolveGameProfileWeatherTransition(
 ) {
     if (request === 'clear-to-cloudy') {
         return gameProfileCloudyWeather;
+    }
+    if (request === 'clear-to-rain') {
+        return {
+            ...gameProfileClearWeather,
+            rainy: 1,
+            source: 'profile',
+            isStale: false,
+        };
+    }
+    if (request === 'clear-to-frost') {
+        return {
+            ...gameProfileClearWeather,
+            temperature: -4,
+            source: 'profile',
+            isStale: false,
+        };
+    }
+    if (request === 'frost-to-clear') {
+        return {
+            ...gameProfileClearWeather,
+            temperature: 12,
+            source: 'profile',
+            isStale: false,
+        };
     }
     if (request === 'snow-sparse-to-integrated') {
         return gameProfileSnowIntegratedWeather;
