@@ -1,6 +1,6 @@
 import 'server-only';
 import { configuredActivityBuffer } from './activityBuffer';
-import { activityDelivery } from './activityDelivery';
+import { activityDeliveryChunks } from './activityDelivery';
 import type { SystemActivityInput } from './ingestParsers';
 import { storeSystemActivity } from './storeSystemActivity';
 
@@ -17,8 +17,11 @@ export async function acceptSystemActivity(
         return 'unavailable';
     const buffer = configuredActivityBuffer();
     if (!buffer) return 'unavailable';
-    const result = await buffer.enqueue(
-        activityDelivery(source, deliveryId, events),
-    );
-    return result === 'full' || result === 'stale' ? 'unavailable' : result;
+    let accepted = false;
+    for (const delivery of activityDeliveryChunks(source, deliveryId, events)) {
+        const result = await buffer.enqueue(delivery);
+        if (result === 'full' || result === 'stale') return 'unavailable';
+        if (result === 'buffered') accepted = true;
+    }
+    return accepted ? 'buffered' : 'duplicate';
 }

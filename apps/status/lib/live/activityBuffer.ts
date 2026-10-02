@@ -11,7 +11,20 @@ import {
 // No TTL on pending work: a worker outage never silently discards accepted data.
 // Capacity and age stop new admissions instead. Lua preserves concurrent dedup.
 export const enqueueActivityScript = `
-if redis.call('HEXISTS', KEYS[1], ARGV[1]) == 1 then return 'duplicate' end
+local function remember()
+    if #KEYS == 3 then redis.call('SET', KEYS[3], ARGV[6], 'EX', 604800) end
+end
+if #KEYS == 3 then
+    local admitted = redis.call('GET', KEYS[3])
+    if admitted and tonumber(admitted) >= tonumber(ARGV[6]) then return 'duplicate' end
+    if tonumber(ARGV[6]) ~= tonumber(admitted or '-1') + 1 then
+        return redis.error_reply('Activity admission cursor is out of order')
+    end
+end
+if redis.call('HEXISTS', KEYS[1], ARGV[1]) == 1 then
+    remember()
+    return 'duplicate'
+end
 if redis.call('HLEN', KEYS[1]) >= tonumber(ARGV[4]) then return 'full' end
 local oldest = redis.call('ZRANGE', KEYS[2], 0, 0, 'WITHSCORES')
 if #oldest > 0 and tonumber(ARGV[3]) - tonumber(oldest[2]) >= tonumber(ARGV[5]) then
@@ -23,6 +36,7 @@ if type(indexed) == 'table' and indexed.err then
     redis.call('HDEL', KEYS[1], ARGV[1])
     return redis.error_reply('Activity buffer index write failed')
 end
+remember()
 return 'buffered'
 `;
 
@@ -126,13 +140,19 @@ export function createActivityBuffer(
             }
             const result = await evaluate(
                 enqueueActivityScript,
-                keys.slice(0, 2),
+                delivery.admission
+                    ? [
+                          ...keys.slice(0, 2),
+                          `${credentials.prefix}:admission:${delivery.admission.parentId}`,
+                      ]
+                    : keys.slice(0, 2),
                 [
                     delivery.id,
                     raw,
                     Date.parse(delivery.receivedAt),
                     MAX_PENDING_DELIVERIES,
                     MAX_PENDING_AGE_MS,
+                    delivery.admission?.index ?? -1,
                 ],
             );
             if (result === 'buffered' || result === 'duplicate') return result;

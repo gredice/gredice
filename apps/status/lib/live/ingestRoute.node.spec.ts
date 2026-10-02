@@ -110,3 +110,57 @@ test('flush and retention cron routes require auth and no-op before buffer activ
         );
     }
 });
+
+test('large signed raw records and many buckets are sanitized into accepted bounded records', async (t) => {
+    const previous = { ...process.env };
+    t.after(() => {
+        process.env = previous;
+    });
+    Object.assign(process.env, {
+        GREDICE_LIVE_INGEST_MODE: 'buffered',
+        GREDICE_LIVE_BUFFER_REST_API_URL: 'https://buffer.invalid',
+        GREDICE_LIVE_BUFFER_REST_API_TOKEN: 'test',
+        GREDICE_LIVE_VERCEL_DRAIN_SECRET: 'test-secret',
+        CRON_SECRET: 'test',
+    });
+    const admitted: unknown[] = [];
+    t.mock.method(
+        globalThis,
+        'fetch',
+        async (
+            _input: Parameters<typeof fetch>[0],
+            init?: Parameters<typeof fetch>[1],
+        ) => {
+            const command = JSON.parse(String(init?.body));
+            const raw = command[4 + Number(command[2])];
+            assert.ok(Buffer.byteLength(raw) <= 16 * 1024);
+            assert.doesNotMatch(raw, /private-record/u);
+            admitted.push(JSON.parse(raw));
+            return Response.json({ result: 'buffered' });
+        },
+    );
+    const body = JSON.stringify(
+        Array.from({ length: 500 }, (_, i) => ({
+            source: 'lambda',
+            timestamp: Date.now() - i * 60_000,
+            message:
+                i === 0
+                    ? `private-record${'x'.repeat(20_000)}`
+                    : 'private-record',
+        })),
+    );
+    const response = await ingest(
+        new Request('http://localhost/api/live/ingest/vercel', {
+            method: 'POST',
+            body,
+            headers: {
+                'x-vercel-signature': createHmac('sha1', 'test-secret')
+                    .update(body)
+                    .digest('hex'),
+            },
+        }),
+        { params: Promise.resolve({ source: 'vercel' }) },
+    );
+    assert.equal(response.status, 202);
+    assert.ok(admitted.length > 1);
+});

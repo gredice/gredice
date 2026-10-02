@@ -9,8 +9,10 @@ import {
 import {
     type ActivityDelivery,
     activityDelivery,
+    activityDeliveryChunks,
     decodeActivityDelivery,
     MAX_DELIVERY_BYTES,
+    MAX_DELIVERY_EVENTS,
 } from './activityDelivery';
 import { flushSystemActivity } from './flushSystemActivity';
 import { storeActivityBatch } from './storeSystemActivity';
@@ -221,4 +223,84 @@ test('flush bounds work and releases its lease even after interruption', async (
     assert.equal(result.status, 'bounded');
     assert.equal(calls, 10);
     assert.equal(released, true);
+});
+
+test('oversized signed deliveries partition every bucket within both durable limits', () => {
+    const events = Array.from({ length: 10_000 }, (_, i) => ({
+        ...event,
+        occurredAt: new Date(event.occurredAt.getTime() + i * 60_000),
+    }));
+    const chunks = activityDeliveryChunks('vercel', 'large', events);
+    assert.ok(chunks.length > 1);
+    assert.equal(new Set(chunks.map((chunk) => chunk.id)).size, chunks.length);
+    assert.equal(chunks.flatMap((chunk) => chunk.events).length, events.length);
+    assert.equal(
+        chunks
+            .flatMap((chunk) => chunk.events)
+            .reduce((total, item) => total + item.eventCount, 0),
+        30_000,
+    );
+    for (const chunk of chunks) {
+        assert.ok(chunk.events.length <= MAX_DELIVERY_EVENTS);
+        assert.ok(
+            Buffer.byteLength(JSON.stringify(chunk)) <= MAX_DELIVERY_BYTES,
+        );
+        assert.deepEqual(decodeActivityDelivery(JSON.stringify(chunk)), chunk);
+    }
+    assert.deepEqual(
+        activityDeliveryChunks('vercel', 'large', [...events].reverse()).map(
+            (chunk) => chunk.id,
+        ),
+        chunks.map((chunk) => chunk.id),
+    );
+    assert.deepEqual(
+        activityDeliveryChunks('vercel', 'small', [event])[0]?.id,
+        activityDelivery('vercel', 'small', [event]).id,
+    );
+});
+
+test('a partially admitted oversized delivery can retry without losing or double-counting chunks', async (t) => {
+    const previous = { ...process.env };
+    const previousFetch = globalThis.fetch;
+    t.after(() => {
+        process.env = previous;
+        globalThis.fetch = previousFetch;
+    });
+    process.env.GREDICE_LIVE_INGEST_MODE = 'buffered';
+    process.env.CRON_SECRET = 'test';
+    process.env.GREDICE_LIVE_BUFFER_REST_API_URL = 'https://buffer.invalid';
+    process.env.GREDICE_LIVE_BUFFER_REST_API_TOKEN = 'test';
+    const stored = new Map<string, ActivityDelivery>();
+    let block = true;
+    globalThis.fetch = async (_input, init) => {
+        const command = JSON.parse(String(init?.body));
+        const chunk = decodeActivityDelivery(command[4 + Number(command[2])]);
+        if (stored.has(chunk.id)) return Response.json({ result: 'duplicate' });
+        if (block && stored.size === 1)
+            return Response.json({ result: 'full' });
+        stored.set(chunk.id, chunk);
+        return Response.json({ result: 'buffered' });
+    };
+    const events = Array.from({ length: 300 }, (_, i) => ({
+        ...event,
+        occurredAt: new Date(event.occurredAt.getTime() + i * 60_000),
+    }));
+    assert.equal(
+        await acceptSystemActivity('vercel', 'partial', events),
+        'unavailable',
+    );
+    assert.equal(stored.size, 1);
+    block = false;
+    assert.equal(
+        await acceptSystemActivity('vercel', 'partial', events),
+        'buffered',
+    );
+    assert.equal(
+        await acceptSystemActivity('vercel', 'partial', events),
+        'duplicate',
+    );
+    assert.equal(
+        Array.from(stored.values()).flatMap((chunk) => chunk.events).length,
+        300,
+    );
 });

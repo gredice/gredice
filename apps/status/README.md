@@ -187,3 +187,7 @@ Validation: `pnpm --filter status test:node`, `pnpm typecheck --filter status`,
 checks 50-delivery bulk coalescing, mixed replay, integer saturation, and bounded
 retention. Both integration suites ignore production connection variables and
 remove their local Docker containers afterward.
+
+Large signed source batches are split into deterministic records within both the 16 KiB and 128-event limits. Buffer capacity counts these records. A partial admission returns 503; retrying the same provider delivery resumes its remaining records, while admitted or already persisted chunk IDs deduplicate. No raw identifiers are stored.
+
+Oversized batches additionally retain a hashed parent admission cursor for seven days. The cursor advances atomically with durable admission; it survives successful PG commit/Redis ACK. A retry therefore skips a flushed prefix and can admit its suffix with only partial queue headroom. Cursor expiry matches the PG replay horizon. At the configured cadence of 500 records per 10 minutes, seven days can drain 504,000 records; checkpoint count is bounded by admitted parent deliveries within that seven-day horizon, including initially pending work. Manual flush invocations can increase throughput and must be included in capacity planning. Normal measured traffic is far smaller. Cursor keys add one GET and one SET per new oversized chunk; the common one-record delivery has no cursor overhead.

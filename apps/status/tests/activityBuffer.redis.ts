@@ -6,7 +6,10 @@ import {
     createActivityBuffer,
     enqueueActivityScript,
 } from '../lib/live/activityBuffer';
-import { activityDelivery } from '../lib/live/activityDelivery';
+import {
+    activityDelivery,
+    activityDeliveryChunks,
+} from '../lib/live/activityDelivery';
 
 test('durable buffer scripts preserve concurrent replay, capacity, age, and worker ownership', async (t) => {
     const container = execFileSync(
@@ -119,4 +122,98 @@ test('durable buffer scripts preserve concurrent replay, capacity, age, and work
     await buffer.read('crashed');
     redis(['DEL', 'test:flush']);
     assert.deepEqual((await buffer.read('replacement')).deliveries, [queued]);
+});
+
+test('admission cursors let large retries progress after a flushed prefix under bounded capacity', async (t) => {
+    const container = execFileSync(
+        'docker',
+        ['run', '--rm', '--detach', 'redis:7-alpine'],
+        { encoding: 'utf8' },
+    ).trim();
+    t.after(() =>
+        execFileSync('docker', ['rm', '--force', container], {
+            stdio: 'ignore',
+        }),
+    );
+    const redis = (command: (string | number)[]): unknown =>
+        JSON.parse(
+            execFileSync(
+                'docker',
+                [
+                    'exec',
+                    container,
+                    'redis-cli',
+                    '--json',
+                    ...command.map(String),
+                ],
+                { encoding: 'utf8' },
+            ),
+        );
+    for (let attempt = 0; ; attempt++) {
+        try {
+            assert.equal(redis(['PING']), 'PONG');
+            break;
+        } catch {
+            assert.ok(attempt < 10);
+            await setTimeout(100);
+        }
+    }
+    const buffer = createActivityBuffer(
+        { url: 'https://buffer.invalid', token: 'test', prefix: 'cursor' },
+        async (_input, init) => {
+            const command = JSON.parse(String(init?.body));
+            return Response.json({ result: redis(command) });
+        },
+    );
+    const events: Parameters<typeof activityDelivery>[2] = Array.from(
+        { length: 500 },
+        (_, i) => ({
+            source: 'vercel',
+            type: 'vercel.function',
+            occurredAt: new Date(Date.UTC(2026, 9, 2, 0, i)),
+            eventCount: 1,
+        }),
+    );
+    const chunks = activityDeliveryChunks('vercel', 'large-race', events);
+    assert.equal(chunks.length, 5);
+    // Other admitted work occupies all but two slots; it has no order entry in this fixture.
+    redis([
+        'EVAL',
+        "for i=1,2046 do redis.call('HSET',KEYS[1], 'fixture-'..i, '{}') end return 1",
+        1,
+        'cursor:pending',
+    ]);
+    const persisted = new Map<string, (typeof chunks)[number]>();
+    let attempts = 0;
+    for (; attempts < 3; attempts++) {
+        let blocked = false;
+        for (const chunk of chunks) {
+            if ((await buffer.enqueue(chunk)) === 'full') {
+                blocked = true;
+                break;
+            }
+        }
+        const batch = await buffer.read('worker');
+        for (const delivery of batch.deliveries)
+            persisted.set(delivery.id, delivery);
+        await buffer.acknowledge(
+            'worker',
+            batch.deliveries.map((delivery) => delivery.id),
+        );
+        await buffer.release('worker');
+        if (!blocked) break;
+    }
+    assert.equal(attempts, 2);
+    assert.equal(persisted.size, 5);
+    assert.equal(
+        Array.from(persisted.values()).flatMap((delivery) => delivery.events)
+            .length,
+        500,
+    );
+    const parentId = chunks[0]?.admission?.parentId;
+    assert.ok(parentId);
+    assert.equal(redis(['GET', `cursor:admission:${parentId}`]), '4');
+    assert.ok(Number(redis(['TTL', `cursor:admission:${parentId}`])) > 0);
+    assert.equal(await buffer.enqueue(chunks[0]), 'duplicate');
+    assert.equal(redis(['HLEN', 'cursor:pending']), 2046);
 });
