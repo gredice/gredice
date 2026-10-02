@@ -5,6 +5,9 @@ export const grediceCacheKeys = {
     weatherAlertsCroatia: 'weatherAlertsCroatia',
     airSensorOpgIb: 'airSensorOpgIb',
     publicGardenSitemapSources: 'publicGardenSitemapSources:v1',
+    featuredPublicGardenIds: 'publicGardens:featuredIds:v1',
+    publicGardenActivePlantCounts: 'publicGardens:activePlantCounts:v1',
+    publicPlantStatistics: 'publicPlantStatistics:v1',
 };
 
 export async function grediceCached<T>(
@@ -21,4 +24,11 @@ export async function grediceCachedInfo() {
 
 export async function bustGrediceCached(key: string) {
     await bustRedisCached(key, 'gredice');
+}
+
+export async function bustFeaturedPublicGardenCache() {
+    await Promise.all([
+        bustGrediceCached(grediceCacheKeys.featuredPublicGardenIds),
+        bustGrediceCached(grediceCacheKeys.publicGardenActivePlantCounts),
+    ]);
 }
