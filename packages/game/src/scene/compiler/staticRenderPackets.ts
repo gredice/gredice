@@ -16,6 +16,9 @@ export type StaticRenderPacketContribution = {
     chunkKey: string;
     family: Exclude<GardenMaterialFamily, 'transparent'>;
     geometry: BufferGeometry;
+    /** Authored stable inputs for pending compiles; never owned or disposed by the packet. */
+    fallbackGeometry?: BufferGeometry;
+    fallbackMaterial?: Material;
     /** Stable, unique per registered owner and chunk; orders packet sources. */
     id: string;
     instances: ChunkedMeshInstance[];

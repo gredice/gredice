@@ -254,8 +254,12 @@ const StaticRenderPacketInstancedFallback = memo(
         debugName: string;
     }) {
         const meshRef = useRef<InstancedMesh | null>(null);
-        const { geometry, instances, localTransform, material, scale } =
-            contribution;
+        const { instances, localTransform, scale } = contribution;
+        // Reuse the authored instanced shader while compilation is pending.
+        // The leased palette shader otherwise retains a transient instancing
+        // program in addition to its final non-instanced packet program.
+        const geometry = contribution.fallbackGeometry ?? contribution.geometry;
+        const material = contribution.fallbackMaterial ?? contribution.material;
 
         useLayoutEffect(() => {
             recordStaticRenderPacketFallbackMesh(1);

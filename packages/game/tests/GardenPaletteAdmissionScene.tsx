@@ -51,6 +51,8 @@ export function GardenPaletteAdmissionScene({
     const scene = useThree((state) => state.scene);
     const resources = useMemo(() => {
         const geometry = new BoxGeometry(1, 1, 1);
+        // Force the real worker path so initial pending fallback reaches a frame.
+        const workerGeometry = new BoxGeometry(1, 1, 1, 16, 16, 16);
         const material = new MeshStandardMaterial({
             color: '#3273bc',
             roughness: 0.25,
@@ -69,6 +71,7 @@ export function GardenPaletteAdmissionScene({
         };
         return {
             geometry,
+            workerGeometry,
             material,
             unknown,
             wood: fixtureInstances('admission:wood', 0),
@@ -80,6 +83,7 @@ export function GardenPaletteAdmissionScene({
     useLayoutEffect(
         () => () => {
             resources.geometry.dispose();
+            resources.workerGeometry.dispose();
             resources.material.dispose();
             resources.unknown.dispose();
         },
@@ -90,11 +94,41 @@ export function GardenPaletteAdmissionScene({
         [patched, resources.roof],
     );
     const key = `${batch}:${mutated}:${patched}:${mounted}`;
-    const frames = useRef({ key: '', count: 0, reported: false });
+    const frames = useRef({
+        key: '',
+        count: 0,
+        reported: false,
+        fallbackFrames: 0,
+        paletteFallbacks: 0,
+    });
     useFrame(() => {
         if (frames.current.key !== key)
-            frames.current = { key, count: 0, reported: false };
+            frames.current = {
+                key,
+                count: 0,
+                reported: false,
+                fallbackFrames: 0,
+                paletteFallbacks: 0,
+            };
         frames.current.count++;
+        const pendingFallbacks: Mesh[] = [];
+        scene.traverse((object) => {
+            if (
+                object instanceof Mesh &&
+                object.name.startsWith('StaticRenderPacket:') &&
+                object.name.includes(':fallback:')
+            )
+                pendingFallbacks.push(object);
+        });
+        if (pendingFallbacks.length > 0) frames.current.fallbackFrames++;
+        frames.current.paletteFallbacks += pendingFallbacks.filter(
+            (mesh) =>
+                mesh.geometry.hasAttribute('aGardenPalette0') ||
+                (Array.isArray(mesh.material)
+                    ? mesh.material
+                    : [mesh.material]
+                ).some((material) => material.name.endsWith(':GardenPalette')),
+        ).length;
         if (frames.current.reported || frames.current.count < 12) return;
         const compiler = readChunkCompilerMetrics();
         const packets = readStaticRenderPacketMetrics();
@@ -131,6 +165,8 @@ export function GardenPaletteAdmissionScene({
             key,
             packets,
             compiler,
+            fallbackFrames: frames.current.fallbackFrames,
+            paletteFallbacks: frames.current.paletteFallbacks,
             materials: readSharedGardenMaterialMetrics(),
             meshes: meshes.length,
             triangles: meshes.reduce(
@@ -204,7 +240,7 @@ export function GardenPaletteAdmissionScene({
                         <EntityInstancesGeometry
                             instanceKey="admission:metal"
                             instances={resources.metal}
-                            geometry={resources.geometry}
+                            geometry={resources.workerGeometry}
                             batchStaticMaterial={batch}
                             renderSnow={false}
                             material={resources.material}

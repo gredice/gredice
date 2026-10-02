@@ -27,6 +27,8 @@ test('production entity props batch JSX material nodes, retain untouched chunks 
     );
     expect(strictInitial.materials.sharedMaterialUsers).toBe(3);
     expect(strictInitial.packets.savedSubmissions).toBe(4);
+    expect(strictInitial.fallbackFrames).toBeGreaterThan(0);
+    expect(strictInitial.paletteFallbacks).toBe(0);
     await fixture.update(<GardenPaletteAdmissionFixture />);
     await expect(fixture).toHaveAttribute(
         'data-ready',

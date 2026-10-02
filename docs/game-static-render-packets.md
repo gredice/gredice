@@ -97,6 +97,14 @@ to 32-bit indices only when the joined packet needs them. The small synchronous
 path, the worker path, cancellation, and the instanced fallback for pending or
 failed compiles work as they did for single-geometry chunks.
 
+While compilation is pending, each contribution renders its authored stable
+geometry and material with the same instance transforms. This preserves the
+visible weather/cutout state and reuses authored instanced programs; the leased
+palette shader is only used for the final non-instanced packet. Using the
+palette shader for both paths would retain unused instancing program variants
+for the material's lifetime. Packet fallback does not own or dispose authored
+source resources.
+
 Each static-cache group gets one `StaticOpaqueSceneCacheBoundary`, and every
 packet in the group counts as one submission. Packets render in the provider's
 coordinate space. Explicit merged-terrain participants and compatible opted-in

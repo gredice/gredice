@@ -955,6 +955,8 @@ function EntityInstancesGeometryRenderer(
                 old.instances === chunk.instances &&
                 old.geometry === packetGeometry &&
                 old.material === packetMaterial &&
+                old.fallbackGeometry === stableGeometry &&
+                old.fallbackMaterial === stableMaterial &&
                 old.localTransform === localTransform &&
                 old.scale === stableScale &&
                 old.castShadow === castShadow &&
@@ -970,6 +972,11 @@ function EntityInstancesGeometryRenderer(
                           castShadow,
                           chunkKey: chunk.key,
                           family: packetFamily,
+                          fallbackGeometry: stableGeometry,
+                          fallbackMaterial:
+                              stableMaterial && !Array.isArray(stableMaterial)
+                                  ? stableMaterial
+                                  : undefined,
                           geometry: packetGeometry,
                           id: `${packetOwnerId}:${instanceKey}:${chunk.key}`,
                           instances: chunk.instances,
@@ -999,7 +1006,9 @@ function EntityInstancesGeometryRenderer(
         receiveShadow,
         renderOrder,
         stableChunks,
+        stableGeometry,
         stableLayoutSignature,
+        stableMaterial,
         stableScale,
         stableSourceTriangleCount,
         staticOpaqueCacheGroup,

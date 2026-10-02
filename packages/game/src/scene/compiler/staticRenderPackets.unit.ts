@@ -73,6 +73,34 @@ describe('static render packet planning', () => {
         assert.equal(packets.length, 8);
     });
 
+    it('keeps authored pending inputs separate from the compiled palette sources', () => {
+        const source = contribution('source', {
+            geometry: wide,
+            fallbackGeometry: box,
+            fallbackMaterial: otherMaterial,
+        });
+        const [packet] = planStaticRenderPackets([
+            source,
+            contribution('other'),
+        ]);
+        assert.equal(
+            packet?.sources.find(({ geometry }) => geometry === wide)?.geometry,
+            wide,
+        );
+        assert.equal(
+            packet?.contributions.find(({ id }) => id === 'source')
+                ?.fallbackGeometry,
+            box,
+        );
+        assert.equal(
+            packet?.contributions.find(({ id }) => id === 'source')
+                ?.fallbackMaterial,
+            otherMaterial,
+        );
+        assert.equal(packet?.material, sharedMaterial);
+        assert.equal(packet?.contributions.length, 2);
+    });
+
     it('drops empty contributions', () => {
         assert.equal(
             planStaticRenderPackets([contribution('a', { instances: [] })])
