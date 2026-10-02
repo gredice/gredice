@@ -77,6 +77,7 @@ export type ButtonLinkProps = ButtonOwnProps &
         keyof ButtonOwnProps | 'href'
     > & {
         href: string;
+        prefetch?: ComponentProps<typeof NextLink>['prefetch'];
     };
 
 export type ButtonProps = ButtonButtonProps | ButtonLinkProps;
