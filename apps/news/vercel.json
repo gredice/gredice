@@ -1,4 +1,10 @@
 {
     "$schema": "https://openapi.vercel.sh/vercel.json",
+    "crons": [
+        {
+            "path": "/novosti/api/revalidate",
+            "schedule": "13 * * * *"
+        }
+    ],
     "installCommand": "pnpm install --frozen-lockfile"
 }

@@ -764,3 +764,58 @@ test('published CMS news pages list only published blog and changelog entries', 
         [changelogId],
     );
 });
+
+test('durable News cache sources have no list cap and immediately exclude unpublished/deleted content', async () => {
+    createTestDb();
+    const { getPublishedCmsNewsSourcePages, getPublishedCmsNewsPageBySlug } =
+        await import('@gredice/storage');
+    const slug = `novosti/cache-source-${randomUUID()}`;
+    const pageId = await createCmsPage({
+        slug,
+        title: 'News cache source',
+        contentKind: 'blog',
+        category: 'Vodiči',
+        state: 'published',
+        content: JSON.stringify([
+            { component: 'Heading1', header: 'Published' },
+        ]),
+        metaTitle: 'News cache source',
+        metaDescription: 'Public description',
+    });
+    assert.equal((await getPublishedCmsNewsPageBySlug(slug))?.id, pageId);
+    assert.ok(
+        (await getPublishedCmsNewsSourcePages()).some(
+            (page) => page.id === pageId,
+        ),
+    );
+    await updateCmsPageState(pageId, 'draft');
+    assert.equal(await getPublishedCmsNewsPageBySlug(slug), undefined);
+    assert.ok(
+        !(await getPublishedCmsNewsSourcePages()).some(
+            (page) => page.id === pageId,
+        ),
+    );
+    await softDeleteCmsPage(pageId);
+    assert.equal(await getPublishedCmsNewsPageBySlug(slug), undefined);
+    const rows = Array.from(
+        { length: 101 },
+        (_, i) =>
+            ({
+                slug: `novosti/bulk-source-${randomUUID()}-${i}`,
+                title: `Bulk ${i}`,
+                contentKind: 'blog',
+                state: 'published',
+                publishedAt: new Date(),
+            }) satisfies typeof cmsPages.$inferInsert,
+    );
+    const inserted = await storage()
+        .insert(cmsPages)
+        .values(rows)
+        .returning({ id: cmsPages.id });
+    const sources = await getPublishedCmsNewsSourcePages();
+    assert.equal(
+        sources.filter((page) => inserted.some(({ id }) => id === page.id))
+            .length,
+        101,
+    );
+});

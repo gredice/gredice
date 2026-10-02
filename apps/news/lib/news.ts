@@ -1,18 +1,18 @@
 import 'server-only';
 import {
     type CmsNewsContentKind,
-    type CmsPageContentDocument,
-    cmsPagePublicPath,
-    getCmsPages,
-    parseCmsPageContent,
-    type SelectCmsPage,
+    getPublishedCmsNewsPageBySlug,
+    getPublishedCmsNewsSourcePages,
 } from '@gredice/storage';
 import { unstable_cache } from 'next/cache';
-
-type SelectCmsNewsPage = Omit<SelectCmsPage, 'contentKind' | 'publishedAt'> & {
-    contentKind: CmsNewsContentKind;
-    publishedAt: Date;
-};
+import { cache } from 'react';
+import { NEWS_PUBLISHED_TAG, newsArticleTag } from './newsCache';
+import {
+    buildPublishedNewsSummaries,
+    isPublishedNewsPage,
+    newsPageDetail,
+    newsPageSourceEntry,
+} from './newsSource';
 
 type NewsListQuery = {
     category?: string;
@@ -29,175 +29,35 @@ type NewsTagSource = {
     tags: string[];
 };
 
-const blogSlugPrefix = 'novosti/';
-const changelogSlugPrefix = 'novosti/sto-je-novo/';
-
-function newsEntrySlug(page: Pick<SelectCmsPage, 'contentKind' | 'slug'>) {
-    if (page.contentKind === 'changelog') {
-        return page.slug.startsWith(changelogSlugPrefix)
-            ? page.slug.slice(changelogSlugPrefix.length)
-            : page.slug;
-    }
-
-    return page.slug.startsWith(blogSlugPrefix)
-        ? page.slug.slice(blogSlugPrefix.length)
-        : page.slug;
-}
-
-function textExcerpt(value: string | undefined) {
-    const normalized = value?.replace(/\s+/g, ' ').trim();
-    if (!normalized) {
-        return null;
-    }
-
-    return normalized.length > 180
-        ? `${normalized.slice(0, 177).trimEnd()}...`
-        : normalized;
-}
-
-function sectionExcerpt(section: Record<string, unknown>) {
-    const description =
-        typeof section.description === 'string' ? section.description : null;
-    if (description) {
-        return description;
-    }
-
-    const markdown =
-        typeof section.markdown === 'string' ? section.markdown : null;
-    if (markdown) {
-        return markdown
-            .replace(/^#{1,6}\s+/gm, '')
-            .replace(/!\[[^\]]*]\([^)]+\)/g, '')
-            .replace(/\[[^\]]+]\([^)]+\)/g, (match) =>
-                match.replace(/^\[|\]\([^)]+\)$/g, ''),
-            );
-    }
-
-    return null;
-}
-
-function pageExcerpt(page: SelectCmsPage) {
-    if (page.metaDescription) {
-        return textExcerpt(page.metaDescription);
-    }
-
-    try {
-        const content = parseCmsPageContent(page.content);
-        for (const section of content.sections) {
-            const excerpt = textExcerpt(sectionExcerpt(section) ?? undefined);
-            if (excerpt) {
-                return excerpt;
-            }
-        }
-    } catch {
-        return null;
-    }
-
-    return null;
-}
-
-function pageContent(page: SelectCmsPage): CmsPageContentDocument {
-    try {
-        return parseCmsPageContent(page.content);
-    } catch {
-        return {
-            renderMode: 'container',
-            renderMaxWidth: 'lg',
-            sections: [],
-        };
-    }
-}
-
-function newsPageSummary(page: SelectCmsNewsPage) {
-    return {
-        id: page.id,
-        contentKind: page.contentKind,
-        slug: newsEntrySlug(page),
-        cmsSlug: page.slug,
-        path: cmsPagePublicPath(page),
-        title: page.title,
-        excerpt: pageExcerpt(page),
-        category: page.category,
-        tags: page.tags,
-        publishedAt: page.publishedAt.toISOString(),
-        updatedAt: page.updatedAt.toISOString(),
-        metaTitle: page.metaTitle,
-        metaDescription: page.metaDescription,
-        metaImageUrl: page.metaImageUrl,
-        metaImagePoiX: page.metaImagePoiX,
-        metaImagePoiY: page.metaImagePoiY,
-        seoImageUrl: page.seoImageUrl,
-        canonicalPath: page.canonicalPath,
-        noIndex: page.noIndex,
-    };
-}
-
-function newsPageSourceEntry(page: SelectCmsNewsPage) {
-    const content = pageContent(page);
-    return {
-        summary: newsPageSummary(page),
-        content: content.sections,
-        renderMode: content.renderMode,
-        renderMaxWidth: content.renderMaxWidth,
-    };
-}
-
-type NewsPageSourceEntry = ReturnType<typeof newsPageSourceEntry>;
-
-function newsPageDetail(entry: NewsPageSourceEntry) {
-    return {
-        ...entry.summary,
-        content: entry.content,
-        renderMode: entry.renderMode,
-        renderMaxWidth: entry.renderMaxWidth,
-    };
-}
-
 function normalizedTaxonomyValue(value: string | null | undefined) {
     return value?.trim().toLocaleLowerCase('hr-HR') || null;
 }
 
-function publishedTime(page: SelectCmsPage) {
-    return page.publishedAt?.getTime() ?? 0;
-}
-
-function isPublishedNewsPage(
-    page: SelectCmsPage,
-    contentKind: CmsNewsContentKind,
-): page is SelectCmsNewsPage {
-    return page.contentKind === contentKind && page.publishedAt !== null;
-}
-
 async function readPublishedNewsSourceEntries() {
-    const pages = await getCmsPages({ state: 'published' });
-    return pages
-        .filter(
-            (page) =>
-                isPublishedNewsPage(page, 'blog') ||
-                isPublishedNewsPage(page, 'changelog'),
-        )
-        .sort(
-            (left, right) =>
-                publishedTime(right) - publishedTime(left) ||
-                right.id - left.id,
-        )
-        .map(newsPageSourceEntry);
+    const pages = await getPublishedCmsNewsSourcePages();
+    return buildPublishedNewsSummaries(pages);
 }
 
-const getPublishedNewsSourceEntries = unstable_cache(
-    readPublishedNewsSourceEntries,
-    ['news-published-source-pages-v2'],
-    { revalidate: 3600 },
+const getPublishedNewsSourceEntries = cache(
+    unstable_cache(
+        readPublishedNewsSourceEntries,
+        ['news-published-summaries-v3'],
+        { revalidate: 3600, tags: [NEWS_PUBLISHED_TAG] },
+    ),
 );
 
-const getDailyPublishedNewsSourceEntries = unstable_cache(
-    readPublishedNewsSourceEntries,
-    ['news-published-source-pages-daily-v1'],
-    { revalidate: 86_400 },
+const getDailyPublishedNewsSourceEntries = cache(
+    unstable_cache(
+        readPublishedNewsSourceEntries,
+        ['news-published-summaries-daily-v2'],
+        { revalidate: 86_400, tags: [NEWS_PUBLISHED_TAG] },
+    ),
 );
 
-function sourceEntryPublishedTime(entry: NewsPageSourceEntry) {
-    return Date.parse(entry.summary.publishedAt);
+function sourceEntryPublishedTime(
+    entry: Awaited<ReturnType<typeof readPublishedNewsSourceEntries>>[number],
+) {
+    return Date.parse(entry.publishedAt);
 }
 
 async function getNewsEntries(
@@ -212,20 +72,17 @@ async function getNewsEntries(
         since && !Number.isNaN(since.getTime()) ? since.getTime() : null;
     const entries = await getSourceEntries();
     const items = entries.filter((entry) => {
-        if (entry.summary.contentKind !== contentKind) {
+        if (entry.contentKind !== contentKind) {
             return false;
         }
 
-        if (
-            category &&
-            normalizedTaxonomyValue(entry.summary.category) !== category
-        ) {
+        if (category && normalizedTaxonomyValue(entry.category) !== category) {
             return false;
         }
 
         if (
             tag &&
-            !entry.summary.tags.some(
+            !entry.tags.some(
                 (pageTag) => normalizedTaxonomyValue(pageTag) === tag,
             )
         ) {
@@ -241,18 +98,29 @@ async function getNewsEntries(
         ? Math.max(1, Math.min(query.limit, 50))
         : items.length;
 
-    return items.slice(0, limit).map((entry) => entry.summary);
+    return items.slice(0, limit);
 }
 
-async function getNewsEntry(contentKind: CmsNewsContentKind, slug: string) {
-    const entries = await getPublishedNewsSourceEntries();
-    const entry = entries.find(
-        (candidate) =>
-            candidate.summary.contentKind === contentKind &&
-            candidate.summary.slug === slug,
-    );
-    return entry ? newsPageDetail(entry) : null;
-}
+const getNewsEntry = cache((contentKind: CmsNewsContentKind, slug: string) => {
+    const prefix =
+        contentKind === 'changelog' ? 'novosti/sto-je-novo/' : 'novosti/';
+    const cmsSlug = `${prefix}${slug}`;
+    // Cache one public article, so driver fetches stay within Next's cache boundary.
+    // Publication invalidation expires only this slug rather than every article.
+    return unstable_cache(
+        async () => {
+            const page = await getPublishedCmsNewsPageBySlug(cmsSlug);
+            return page && isPublishedNewsPage(page, contentKind)
+                ? newsPageDetail(newsPageSourceEntry(page))
+                : null;
+        },
+        ['news-published-article-v1', contentKind, slug],
+        {
+            revalidate: 3600,
+            tags: [newsArticleTag(cmsSlug)],
+        },
+    )();
+});
 
 export function getBlogPosts(query: NewsListQuery = {}) {
     return getNewsEntries('blog', query);

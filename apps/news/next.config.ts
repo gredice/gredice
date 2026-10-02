@@ -50,6 +50,8 @@ const nextConfig: NextConfig = {
     },
     async redirects() {
         return [
+            // This route is only a rewrite target. Direct requests stay canonical.
+            { source: '/archive-filter', destination: '/', permanent: true },
             {
                 source: '/',
                 destination: newsRootRedirectDestination(),
@@ -65,16 +67,31 @@ const nextConfig: NextConfig = {
                 ? 'http://localhost:3005'
                 : 'https://api.gredice.com');
 
-        return [
-            {
-                source: '/api/gredice/:path*',
-                destination: `${apiHost}/:path*`,
-            },
-        ];
+        return {
+            beforeFiles: ['category', 'tag', 'type'].map((key) => ({
+                source: '/',
+                destination: '/archive-filter',
+                has: [
+                    { type: 'query', key } satisfies {
+                        type: 'query';
+                        key: string;
+                    },
+                ],
+            })),
+            afterFiles: [
+                {
+                    source: '/api/gredice/:path*',
+                    destination: `${apiHost}/:path*`,
+                },
+            ],
+        };
     },
     experimental: {
         turbopackRustReactCompiler: true,
         typedEnv: true,
+        // Direct durable reads should not create a build-time database connection storm.
+        staticGenerationMinPagesPerWorker: 1000,
+        staticGenerationMaxConcurrency: 2,
         useTypeScriptCli: true,
     },
     expireTime: 10800,

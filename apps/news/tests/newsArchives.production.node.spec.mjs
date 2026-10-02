@@ -86,6 +86,7 @@ function startNextServer(port) {
             GREDICE_API_HOST: 'http://127.0.0.1:9',
             NEXT_TELEMETRY_DISABLED: '1',
             VERCEL_ENV: 'development',
+            GREDICE_NEWS_REVALIDATE_SECRET: 'news-production-test',
         },
         stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -255,5 +256,118 @@ describe('production news archive metadata', () => {
             renderedMetadata[1].get('og:image'),
         );
         assert.notEqual(imageHashes[0], imageHashes[1]);
+
+        const cached = await fetch(`${origin}/novosti`);
+        assert.equal(cached.headers.get('x-nextjs-cache'), 'HIT');
+        const html = await cached.text();
+        console.info(
+            JSON.stringify({
+                rootHtmlBytes: Buffer.byteLength(html),
+                rootCache: cached.headers.get('x-nextjs-cache'),
+            }),
+        );
+        const categoryHref = /href="(\/novosti\?category=[^"]+)"/u.exec(
+            html,
+        )?.[1];
+        if (categoryHref) {
+            const filtered = await fetch(`${origin}${categoryHref}`);
+            assert.equal(filtered.status, 200);
+            const filteredHtml = await filtered.text();
+            assert.match(filteredHtml, /aria-current="page"/u);
+            assert.doesNotMatch(
+                filteredHtml,
+                /href="\/novosti\/sto-je-novo\/tjedan/u,
+            );
+            assert.equal(
+                headMetadata(filteredHtml).get('canonical'),
+                archives[0].publicUrl,
+            );
+        }
+        for (const [query, destination] of [
+            ['?category=does-not-exist', '/novosti/'],
+            ['?tag=%20vrt%20', '/novosti/sto-je-novo?tag=vrt'],
+            ['?type=changelog', '/novosti/sto-je-novo'],
+            ['?type=blog', '/novosti/'],
+        ]) {
+            const response = await fetch(`${origin}/novosti${query}`, {
+                redirect: 'manual',
+            });
+            assert.equal(response.status, 308, query);
+            assert.equal(response.headers.get('location'), destination, query);
+        }
+        const directFilter = await fetch(`${origin}/novosti/archive-filter`, {
+            redirect: 'manual',
+        });
+        assert.equal(directFilter.status, 308);
+        assert.equal(directFilter.headers.get('location'), '/novosti');
+        const unrelatedQuery = await fetch(
+            `${origin}/novosti?utm_source=cache-test`,
+        );
+        assert.equal(unrelatedQuery.headers.get('x-nextjs-cache'), 'HIT');
+
+        const revalidationUrl = `${origin}/novosti/api/revalidate`;
+        assert.equal(
+            (await fetch(revalidationUrl, { method: 'POST' })).status,
+            401,
+        );
+        const post = (slugs) =>
+            fetch(revalidationUrl, {
+                method: 'POST',
+                headers: {
+                    authorization: 'Bearer news-production-test',
+                    'content-type': 'application/json',
+                },
+                body: JSON.stringify({ slugs }),
+            });
+        assert.equal((await post(['admin'])).status, 400);
+        assert.equal(
+            (await post(Array.from({ length: 9 }, () => 'novosti/a'))).status,
+            400,
+        );
+        assert.equal(
+            (
+                await fetch(revalidationUrl, {
+                    method: 'POST',
+                    headers: { authorization: 'Bearer news-production-test' },
+                    body: 'x'.repeat(4097),
+                })
+            ).status,
+            413,
+        );
+
+        const articlePath =
+            /href="(\/novosti\/(?!sto-je-novo|api|archive-filter)[^"?]+)"/u.exec(
+                html,
+            )?.[1];
+        assert.ok(
+            articlePath,
+            'Published article fixture required for cache freshness check',
+        );
+        const articleBefore = await fetch(`${origin}${articlePath}`);
+        assert.equal(articleBefore.status, 200);
+        assert.equal(articleBefore.headers.get('x-nextjs-cache'), 'HIT');
+        assert.equal(
+            (await fetch(`${origin}/novosti/sto-je-novo`)).headers.get(
+                'x-nextjs-cache',
+            ),
+            'HIT',
+        );
+        assert.equal((await post([articlePath.slice(1)])).status, 200);
+        const refreshed = await fetch(`${origin}/novosti`);
+        assert.equal(refreshed.status, 200);
+        assert.equal(refreshed.headers.get('x-nextjs-cache'), 'MISS');
+        const articleAfter = await fetch(`${origin}${articlePath}`);
+        assert.equal(articleAfter.status, 200);
+        assert.equal(articleAfter.headers.get('x-nextjs-cache'), 'MISS');
+        assert.equal(
+            (await fetch(`${origin}/novosti/sto-je-novo`)).headers.get(
+                'x-nextjs-cache',
+            ),
+            'MISS',
+        );
+        assert.equal(
+            (await fetch(`${origin}/novosti`)).headers.get('x-nextjs-cache'),
+            'HIT',
+        );
     });
 });

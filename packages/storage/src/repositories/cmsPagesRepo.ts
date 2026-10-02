@@ -1,6 +1,6 @@
 import 'server-only';
 import { slugify } from '@gredice/js/slug';
-import { and, count, desc, eq, gt, ne, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gt, isNotNull, ne, sql } from 'drizzle-orm';
 import {
     cmsPageRevisions,
     cmsPages,
@@ -502,6 +502,25 @@ export async function getPublishedCmsNewsPages(
         .limit(limit);
 
     return rows;
+}
+
+/** Direct durable source for Next's tagged public News cache. */
+export async function getPublishedCmsNewsSourcePages() {
+    return storage()
+        .select()
+        .from(cmsPages)
+        .where(and(newsPagePublicWhere(), isNotNull(cmsPages.publishedAt)))
+        .orderBy(desc(cmsPages.publishedAt), desc(cmsPages.id));
+}
+
+export async function getPublishedCmsNewsPageBySlug(slug: string) {
+    return storage().query.cmsPages.findFirst({
+        where: and(
+            newsPagePublicWhere(),
+            isNotNull(cmsPages.publishedAt),
+            eq(cmsPages.slug, normalizeCmsPageSlug(slug)),
+        ),
+    });
 }
 
 export function getCmsPage(id: number) {
