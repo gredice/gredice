@@ -63,6 +63,7 @@ import {
 } from '../itemsHudDropTarget';
 import { KnownPages } from '../knownPages';
 import { useGameState } from '../useGameState';
+import { getAutumnItemCollections } from './autumnItemCollections';
 import { HudCard } from './components/HudCard';
 import {
     type HudImagePreload,
@@ -965,6 +966,46 @@ function getHudItems({
     blockData: BlockData[] | null | undefined;
     isSandbox: boolean;
 }) {
+    const autumnCollections = getAutumnItemCollections({
+        blockData,
+        isSandbox,
+    });
+    const autumnPickers: HudItemPicker[] = autumnCollections.map(
+        (collection) => ({
+            type: 'picker',
+            label: collection.label,
+            imageSrc: getBlockImageUrl(collection.entityNames[0]),
+            items: collection.entityNames.map((name) => {
+                const block = blockData?.find(
+                    (block) => block.information.name === name,
+                );
+                const width = block?.attributes.spanWidth ?? 1;
+                const depth = block?.attributes.spanDepth ?? 1;
+                return {
+                    type: 'entity',
+                    name,
+                    ...(width > 1 || depth > 1
+                        ? { footprintLabel: `${width} × ${depth}` }
+                        : {}),
+                };
+            }),
+        }),
+    );
+    const seasonalItems = items.flatMap<HudItem>((item) =>
+        item.type === 'picker' &&
+        item.label === 'Dekoracija' &&
+        autumnPickers.length > 0
+            ? [
+                  item,
+                  {
+                      type: 'picker',
+                      label: 'Jesen',
+                      imageSrc: autumnPickers[0].imageSrc,
+                      items: autumnPickers,
+                  },
+              ]
+            : [item],
+    );
     // Only expose this release's picker when its catalogue rows are available.
     // Local sandbox data can preview the deployed models without a live sale.
     const pumpkinItems = harvestPumpkinNames.filter((name) =>
@@ -974,7 +1015,7 @@ function getHudItems({
                 !isInternalSceneBlockData(block),
         ),
     );
-    const releasedItems = items.map<HudItem>((item) =>
+    const releasedItems = seasonalItems.map<HudItem>((item) =>
         item.type === 'picker' &&
         item.label === 'Dekoracija' &&
         pumpkinItems.length > 0
