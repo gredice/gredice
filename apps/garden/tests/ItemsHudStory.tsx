@@ -14,6 +14,7 @@ import {
     getAutumnLeafPile,
 } from '@gredice/js/autumnLeafPiles';
 import { autumnShrub } from '@gredice/js/autumnShrub';
+import { birdFeeder } from '@gredice/js/birdFeeder';
 import { chestnutRoastingCart } from '@gredice/js/chestnutRoastingCart';
 import { fallenLog } from '@gredice/js/fallenLog';
 import { gardenBrazier } from '@gredice/js/gardenBrazier';
@@ -483,33 +484,35 @@ function createBlockData(name: string, index: number) {
         getAutumnLeafPile(name) ??
         (name === gardenBrazier.name
             ? gardenBrazier
-            : name === seedDryingRack.name
-              ? seedDryingRack
-              : name === stackedFirewood.name
-                ? stackedFirewood
-                : name === chestnutRoastingCart.name
-                  ? chestnutRoastingCart
-                  : name === gardenTeaTable.name
-                    ? gardenTeaTable
-                    : name === autumnBlanketBench.name
-                      ? autumnBlanketBench
-                      : name === leafRake.name
-                        ? leafRake
-                        : name === fallenLog.name
-                          ? fallenLog
-                          : name === woodlandMushrooms.name
-                            ? woodlandMushrooms
-                            : name === seasonalMaple.name
-                              ? seasonalMaple
-                              : name === autumnShrub.name
-                                ? autumnShrub
-                                : name === gardenScarecrow.name
-                                  ? gardenScarecrow
-                                  : name === harvestWheelbarrow.name
-                                    ? harvestWheelbarrow
-                                    : (getAutumnAsterPot(name) ??
-                                      getHarvestCrate(name) ??
-                                      getHarvestPumpkin(name)));
+            : name === birdFeeder.name
+              ? birdFeeder
+              : name === seedDryingRack.name
+                ? seedDryingRack
+                : name === stackedFirewood.name
+                  ? stackedFirewood
+                  : name === chestnutRoastingCart.name
+                    ? chestnutRoastingCart
+                    : name === gardenTeaTable.name
+                      ? gardenTeaTable
+                      : name === autumnBlanketBench.name
+                        ? autumnBlanketBench
+                        : name === leafRake.name
+                          ? leafRake
+                          : name === fallenLog.name
+                            ? fallenLog
+                            : name === woodlandMushrooms.name
+                              ? woodlandMushrooms
+                              : name === seasonalMaple.name
+                                ? seasonalMaple
+                                : name === autumnShrub.name
+                                  ? autumnShrub
+                                  : name === gardenScarecrow.name
+                                    ? gardenScarecrow
+                                    : name === harvestWheelbarrow.name
+                                      ? harvestWheelbarrow
+                                      : (getAutumnAsterPot(name) ??
+                                        getHarvestCrate(name) ??
+                                        getHarvestPumpkin(name)));
     const fixture = decoration
         ? {
               ...decoration.information,
@@ -585,6 +588,7 @@ const blockNames = [
     leafRake.name,
     stackedFirewood.name,
     seedDryingRack.name,
+    birdFeeder.name,
     gardenBrazier.name,
     gardenTeaTable.name,
     fallenLog.name,
@@ -736,6 +740,7 @@ type ItemsHudStoryOptions = {
     includeLeafRake?: boolean;
     includeStackedFirewood?: boolean;
     includeSeedDryingRack?: boolean;
+    includeBirdFeeder?: boolean;
     includeGardenBrazier?: boolean;
     includeGardenTeaTable?: boolean;
     includeChestnutRoastingCart?: boolean;
@@ -767,6 +772,7 @@ function createItemsHudQueryClient({
     includeLeafRake = true,
     includeStackedFirewood = true,
     includeSeedDryingRack = true,
+    includeBirdFeeder = true,
     includeGardenBrazier = true,
     includeGardenTeaTable = true,
     includeChestnutRoastingCart = true,
@@ -785,6 +791,7 @@ function createItemsHudQueryClient({
     queryClient.setQueryData(
         ['blocks'],
         blockNames
+            .filter((name) => includeBirdFeeder || name !== birdFeeder.name)
             .filter(
                 (name) => includeSeasonalMaple || name !== seasonalMaple.name,
             )
@@ -884,6 +891,7 @@ function ItemsHudTestProviders({
     includeLeafRake = true,
     includeStackedFirewood = true,
     includeSeedDryingRack = true,
+    includeBirdFeeder = true,
     includeGardenBrazier = true,
     includeGardenTeaTable = true,
     includeChestnutRoastingCart = true,
@@ -918,6 +926,7 @@ function ItemsHudTestProviders({
                 includeLeafRake,
                 includeStackedFirewood,
                 includeSeedDryingRack,
+                includeBirdFeeder,
                 includeGardenBrazier,
                 includeGardenTeaTable,
                 includeChestnutRoastingCart,
@@ -942,6 +951,7 @@ function ItemsHudTestProviders({
             includeLeafRake,
             includeStackedFirewood,
             includeSeedDryingRack,
+            includeBirdFeeder,
             includeGardenBrazier,
             includeGardenTeaTable,
             includeChestnutRoastingCart,
@@ -1055,6 +1065,7 @@ export function ItemsHudAlignmentStory({
     includeLeafRake = true,
     includeStackedFirewood = true,
     includeSeedDryingRack = true,
+    includeBirdFeeder = true,
     includeGardenBrazier = true,
     includeGardenTeaTable = true,
     includeChestnutRoastingCart = true,
@@ -1076,6 +1087,7 @@ export function ItemsHudAlignmentStory({
     includeLeafRake?: boolean;
     includeStackedFirewood?: boolean;
     includeSeedDryingRack?: boolean;
+    includeBirdFeeder?: boolean;
     includeGardenBrazier?: boolean;
     includeGardenTeaTable?: boolean;
     includeChestnutRoastingCart?: boolean;
@@ -1099,6 +1111,7 @@ export function ItemsHudAlignmentStory({
             includeLeafRake={includeLeafRake}
             includeStackedFirewood={includeStackedFirewood}
             includeSeedDryingRack={includeSeedDryingRack}
+            includeBirdFeeder={includeBirdFeeder}
             includeGardenBrazier={includeGardenBrazier}
             includeGardenTeaTable={includeGardenTeaTable}
             includeChestnutRoastingCart={includeChestnutRoastingCart}
