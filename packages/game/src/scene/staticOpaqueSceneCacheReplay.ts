@@ -14,6 +14,7 @@ import {
 } from 'three';
 import { hasStaticGroundPatchMaterialShaderHooks } from '../entities/helpers/groundPatchMaterial';
 import { getMaterialShaderHooksWithoutCloudShadowAttenuation } from './cloudShadowAttenuation';
+import { hasStaticGardenPaletteMaterialShaderHooks } from './gardenPaletteMaterials';
 
 export type StaticOpaqueSceneCacheReplay = {
     dispose: () => void;
@@ -54,7 +55,8 @@ function hasCacheStableShaderHooks(material: Material) {
         (hooks.onBeforeCompile === Material.prototype.onBeforeCompile &&
             hooks.customProgramCacheKey ===
                 Material.prototype.customProgramCacheKey) ||
-        hasStaticGroundPatchMaterialShaderHooks(hooks)
+        hasStaticGroundPatchMaterialShaderHooks(hooks) ||
+        hasStaticGardenPaletteMaterialShaderHooks(hooks)
     );
 }
 

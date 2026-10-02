@@ -1,8 +1,8 @@
 # Static render packets and shared garden materials
 
 Static terrain chunks used to submit one draw per component and chunk. Each
-component also cloned its own material, so equal terrain materials could not
-share a draw or a program instance. `StaticRenderPacketBatchProvider` in
+component also cloned its own material, so terrain materials could not share
+a draw even when only palette/PBR values differed. `StaticRenderPacketBatchProvider` in
 `EntityInstances` collects the stable merged chunks of every participating
 component and compiles the compatible ones into one chunk render packet.
 
@@ -30,8 +30,32 @@ so two `dirt` patches of equal source materials share one instance, while
 
 `useSharedGardenMaterial` resolves a participating material to the first live
 material with the same signature. The registry never creates or disposes
-materials. Ownership stays with the component that made the material, and the
+source materials. Ownership stays with the component that made the material, and the
 canonical entry is dropped when its last user releases it.
+
+`useGardenPalettePacketSource` migrates compatible `MeshStandardMaterial`
+sources to one generated shared shader. Color, roughness, metalness, and
+emissive multiplied by emissive intensity are stored in two constant `vec4`
+attributes per source vertex. They survive retained-chunk transforms and
+concatenation, so different palettes share one packet without changing their
+linear PBR inputs. Existing vertex color and texture maps still multiply the
+same inputs. Alpha maps, cutout thresholds, side, depth and shadow settings
+remain on the original built-in shader path.
+
+All remaining properties and registered hook settings stay in the compatibility
+signature. Unknown shaders, physical-material extensions, clipping planes and
+unregistered user data retain their existing material path. Generated shaders
+are owned by the registry and disposed only after their last user releases.
+Prepared source geometry is copied and disposed independently of GLTF geometry,
+placement animations and outlines.
+
+Integrated weather materials register their exact settings and the identities
+of their mutable rain, frost and snow uniforms. Equal values with independent
+uniform owners cannot share. Palette tint runs before ground patches and
+weather blending; authored snow-local attributes survive compilation. Weather
+surfaces can therefore join compatible packets, while their moving shaders
+remain live at the cache boundary. Static palette shaders retain opaque cache
+eligibility.
 
 ## Packet planning
 
@@ -65,11 +89,14 @@ and all of them render garden-space instances.
 
 These components keep their per-component merged chunks unchanged:
 
-- **`weather-integrated`**: base-ground surfaces that swap to an integrated
-  rain/snow material. Batching them would split packets and recompile every
-  time the weather changes.
 - **`material-node`**: JSX material children.
 - **`material-array`**, **`missing-material`**, and **`transparent`**.
+
+Transparent effects, including additive effects, retain per-object sorting
+against other alpha effects and weather. Additive contributions commute with
+each other, but moving their draw order relative to ordinary transparency can
+change the combined result, so they are not merged without an isolated-layer
+visual parity witness.
 
 Placement-drop animations, pickup outlines, and rain/snow overlays still use
 each component's own paths. Interaction comes from the spatial index, not from
@@ -96,13 +123,16 @@ raycasts against terrain meshes, so it does not change.
 
 ## Not yet covered
 
-The following parts of #4721 are not done:
-
-- Merging materials that differ only in palette values. This would need
-  per-vertex color, roughness, metalness, or emissive data in a shared shader.
-- Batching weather-integrated surfaces, which would need shared integrated
-  weather materials.
-- Batching transparent effects.
-
 Production cross-tier profiles, GPU timing, and deterministic visual captures
-have not been run for this change.
+are required before accepting a performance improvement. Transparent effects
+remain on the safe fallback path until their own overlap comparisons establish
+an ordering-preserving batching strategy.
+
+The deterministic `GardenPalettePacketFixture` and
+`apps/garden/tests/garden-palette-packets.spec.tsx` compare authored meshes with
+compiled palette geometry under day/night lighting and clear/rain/snow/combined
+weather. They include mapped PBR inputs, vertex colors, cutout shadows,
+foreground depth occlusion, in-place palette mutation, StrictMode mounting and
+last-user disposal/remount. PNGs and numeric difference diagnostics are attached
+to each browser test result; this fixture proves visual parity, not device GPU
+savings.

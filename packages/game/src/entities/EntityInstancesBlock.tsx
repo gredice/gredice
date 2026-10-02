@@ -39,6 +39,7 @@ import {
     classifyGardenMaterial,
     useSharedGardenMaterial,
 } from '../scene/gardenMaterials';
+import { useGardenPalettePacketSource } from '../scene/gardenPaletteMaterials';
 import {
     StaticOpaqueSceneCacheBoundary,
     type StaticOpaqueSceneCacheGroup,
@@ -689,7 +690,6 @@ function IntegratedWeatherEntityInstancesGeometry({
         <EntityInstancesGeometryRenderer
             {...props}
             integratedStableWeather={integratedStableWeather}
-            weatherIntegrated
         />
     );
 }
@@ -697,8 +697,6 @@ function IntegratedWeatherEntityInstancesGeometry({
 function EntityInstancesGeometryRenderer(
     props: EntityInstancesGeometryProps & {
         integratedStableWeather?: IntegratedStableWeather;
-        /** Weather-integrated surfaces swap materials with the weather. */
-        weatherIntegrated?: boolean;
         weatherSurfaceMode: WeatherSurfaceMode;
     },
 ) {
@@ -717,7 +715,6 @@ function EntityInstancesGeometryRenderer(
         renderStableChunksAsMergedGeometry = false,
         staticOpaqueCacheGroup,
         integratedStableWeather,
-        weatherIntegrated = false,
         weatherSurfaceMode,
         castShadow = true,
         receiveShadow = true,
@@ -873,17 +870,9 @@ function EntityInstancesGeometryRenderer(
     const packetRegistry = useStaticRenderPacketRegistry();
     const packetOwnerId = useStaticRenderPacketOwnerId();
     const stableMaterialClass = classifyGardenMaterial(stableMaterial);
-    const stableLayoutSignature = useMemo(
-        () => meshGeometryLayoutSignature(stableGeometry),
-        [stableGeometry],
-    );
     let packetFallbackReason: StaticRenderPacketFallbackReason | undefined;
     if (packetRegistry && renderStableChunksAsMergedGeometry) {
-        if (weatherIntegrated) packetFallbackReason = 'weather-integrated';
-        else if (
-            stableMaterialNode !== undefined &&
-            stableMaterialNode !== null
-        )
+        if (stableMaterialNode !== undefined && stableMaterialNode !== null)
             packetFallbackReason = 'material-node';
         else if (!stableMaterialClass.batchable)
             packetFallbackReason = stableMaterialClass.reason;
@@ -895,15 +884,28 @@ function EntityInstancesGeometryRenderer(
     const packetFamily = stableMaterialClass.batchable
         ? stableMaterialClass.family
         : undefined;
-    const sharedPacketMaterial = useSharedGardenMaterial(
+    const palettePacketSource = useGardenPalettePacketSource(
+        stableGeometry,
         stableMaterial,
         packetEnabled,
     );
+    const packetGeometry = palettePacketSource.geometry;
+    const stableLayoutSignature = useMemo(
+        () => meshGeometryLayoutSignature(packetGeometry),
+        [packetGeometry],
+    );
+    const sharedPacketMaterial = useSharedGardenMaterial(
+        stableMaterial,
+        packetEnabled && !palettePacketSource.palette,
+    );
+    const preparedPacketMaterial = palettePacketSource.palette
+        ? palettePacketSource.material
+        : sharedPacketMaterial;
     const packetMaterial =
         packetEnabled &&
-        sharedPacketMaterial &&
-        !Array.isArray(sharedPacketMaterial)
-            ? sharedPacketMaterial
+        preparedPacketMaterial &&
+        !Array.isArray(preparedPacketMaterial)
+            ? preparedPacketMaterial
             : undefined;
     const stableSourceTriangleCount = useMemo(
         () => countGeometryTriangles(stableGeometry),
@@ -921,7 +923,7 @@ function EntityInstancesGeometryRenderer(
             const contribution: StaticRenderPacketContribution =
                 old &&
                 old.instances === chunk.instances &&
-                old.geometry === stableGeometry &&
+                old.geometry === packetGeometry &&
                 old.material === packetMaterial &&
                 old.localTransform === localTransform &&
                 old.scale === stableScale &&
@@ -937,7 +939,7 @@ function EntityInstancesGeometryRenderer(
                           castShadow,
                           chunkKey: chunk.key,
                           family: packetFamily,
-                          geometry: stableGeometry,
+                          geometry: packetGeometry,
                           id: `${packetOwnerId}:${instanceKey}:${chunk.key}`,
                           instances: chunk.instances,
                           layoutSignature: stableLayoutSignature,
@@ -958,12 +960,12 @@ function EntityInstancesGeometryRenderer(
         instanceKey,
         localTransform,
         packetFamily,
+        packetGeometry,
         packetMaterial,
         packetOwnerId,
         receiveShadow,
         renderOrder,
         stableChunks,
-        stableGeometry,
         stableLayoutSignature,
         stableScale,
         stableSourceTriangleCount,
