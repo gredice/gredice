@@ -32,6 +32,7 @@ import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
 import { beeSpeechMessages } from '../animals/actorSpeechMessages';
 import { initializeAnimalAtHome } from '../animals/animalRuntimeLifecycle';
+import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
 import {
     computePollinatorHabitatCenter,
     createPollinatorInteractionFlowerTargets,
@@ -884,6 +885,7 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
             scene: clone,
         };
     }, [gltf.scene]);
+    useFaunaActorCulling(beeModel.scene);
     const updateGroundingShadow = useActorGroundingShadow({
         id: `bee:${habitat.id}`,
         primaryCasterCount: beeModel.primaryCasterCount,

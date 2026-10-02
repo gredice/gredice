@@ -58,6 +58,7 @@ import {
     groundBirdEntries,
 } from '../animals/animalPresence';
 import { initializeAnimalAtHome } from '../animals/animalRuntimeLifecycle';
+import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
 import {
     type CatBehavior,
     type CatWeather,
@@ -1318,6 +1319,7 @@ function Cat({
             scene: clone,
         };
     }, [gltf.scene]);
+    useFaunaActorCulling(catModel.scene);
     const { actions } = useAnimations(gltf.animations, catModel.scene);
     const updateActorGroundingShadow = useActorGroundingShadow({
         id: `cat:${habitat.id}`,

@@ -35,6 +35,7 @@ import {
     getAnimalMovementYAt,
 } from '../animals/animalMovementTerrain';
 import { animalPresenceUpdateIntervalSeconds } from '../animals/animalPresence';
+import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
 import type { CatPathPoint } from '../cats/catPathfinding';
 import {
     createPersistentPetHomeBlockedCells,
@@ -409,6 +410,7 @@ export function Horse({
         );
         return { primaryCasterCount, scene };
     }, [appearance, gltf.scene]);
+    useFaunaActorCulling(model.scene);
     const { actions } = useAnimations(gltf.animations, model.scene);
     const updateActorGroundingShadow = useActorGroundingShadow({
         id: `horse:${block.id}`,
