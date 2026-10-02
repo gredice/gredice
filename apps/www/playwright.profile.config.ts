@@ -11,6 +11,7 @@ export default defineConfig({
         'user-leaderboard.spec.tsx',
         'achievement-catalog.spec.tsx',
         'experience-guide.spec.tsx',
+        'harvest-trace-group.spec.tsx',
     ],
     testIgnore: [],
     webServer: undefined,

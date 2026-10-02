@@ -7,6 +7,7 @@ import {
 } from '@gredice/label-printer';
 import { Button, type ButtonProps } from '@gredice/ui/Button';
 import { Checkbox } from '@gredice/ui/Checkbox';
+import { Input } from '@gredice/ui/Input';
 import { LinkOff, Reset } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
@@ -59,7 +60,7 @@ function getTraceLinkIds(labels: FieldOperationLabelData[]) {
     return Array.from(
         new Set(
             labels
-                .map((label) => label.traceLinkId)
+                .flatMap((label) => label.traceLinkIds ?? [label.traceLinkId])
                 .filter(
                     (traceLinkId): traceLinkId is number =>
                         typeof traceLinkId === 'number',
@@ -99,6 +100,7 @@ export function FieldOperationPrintModal({
     const [excludedLabelKeys, setExcludedLabelKeys] = useState<Set<string>>(
         () => new Set(),
     );
+    const [labelCopies, setLabelCopies] = useState<Record<string, number>>({});
     const [snapshot, setSnapshot] = useState(() =>
         sharedLabelPrinter.getSnapshot(),
     );
@@ -109,9 +111,12 @@ export function FieldOperationPrintModal({
     const selectedLabelPreviewItems = labelPreviewItems.filter(
         (item) => !excludedLabelKeys.has(item.key),
     );
-    const selectedLabels = selectedLabelPreviewItems.map((item) => item.label);
+    const selectedLabels = selectedLabelPreviewItems.flatMap((item) =>
+        Array.from({ length: labelCopies[item.key] ?? 1 }, () => item.label),
+    );
     const allLabelsSelected =
-        selectedLabels.length > 0 && selectedLabels.length === labels.length;
+        selectedLabelPreviewItems.length > 0 &&
+        selectedLabelPreviewItems.length === labels.length;
     const someLabelsSelected = selectedLabels.length > 0 && !allLabelsSelected;
 
     useEffect(() => {
@@ -125,6 +130,7 @@ export function FieldOperationPrintModal({
 
         if (open) {
             setExcludedLabelKeys(new Set());
+            setLabelCopies({});
         }
 
         if (open && snapshot.isConnected) {
@@ -252,9 +258,13 @@ export function FieldOperationPrintModal({
         snapshot.lidClosed !== false;
     const resolvedPrintButtonLabel =
         printButtonLabel ??
-        (labels.length === 1 ? 'Ispiši etiketu' : 'Ispiši odabrane etikete');
+        (labels.length === 1
+            ? selectedLabels.length === 1
+                ? 'Ispiši etiketu'
+                : 'Ispiši etikete'
+            : 'Ispiši odabrane etikete');
     const printButtonText =
-        labels.length > 1
+        labels.length > 1 || selectedLabels.length > 1
             ? `${resolvedPrintButtonLabel} (${selectedLabels.length})`
             : resolvedPrintButtonLabel;
 
@@ -287,8 +297,8 @@ export function FieldOperationPrintModal({
                                     level="body2"
                                     className="text-muted-foreground"
                                 >
-                                    Odabrano: {selectedLabels.length} od{' '}
-                                    {labels.length} etiketa
+                                    Odabrano: {selectedLabelPreviewItems.length}{' '}
+                                    od {labels.length} etiketa
                                 </Typography>
                                 <Checkbox
                                     checked={
@@ -355,6 +365,40 @@ export function FieldOperationPrintModal({
                                                 className="mx-auto block w-full max-w-sm rounded border bg-white shadow-xs"
                                             />
                                         </div>
+                                        <Input
+                                            label="Primjerci"
+                                            type="number"
+                                            min={1}
+                                            max={99}
+                                            step={1}
+                                            aria-label={`Broj primjeraka etikete #${item.position}`}
+                                            value={labelCopies[item.key] ?? 1}
+                                            disabled={
+                                                !isSelected ||
+                                                snapshot.isPrinting
+                                            }
+                                            className="mt-2 w-24"
+                                            onChange={(event) => {
+                                                const value =
+                                                    event.target.valueAsNumber;
+                                                setLabelCopies((current) => ({
+                                                    ...current,
+                                                    [item.key]: Number.isFinite(
+                                                        value,
+                                                    )
+                                                        ? Math.max(
+                                                              1,
+                                                              Math.min(
+                                                                  99,
+                                                                  Math.floor(
+                                                                      value,
+                                                                  ),
+                                                              ),
+                                                          )
+                                                        : 1,
+                                                }));
+                                            }}
+                                        />
                                     </div>
                                 );
                             })}

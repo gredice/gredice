@@ -10,6 +10,7 @@ import {
     createEvent,
     createFarm,
     createOperation,
+    createOrGetHarvestTraceGroup,
     createOrGetHarvestTraceLink,
     events,
     getFarmUserPrintableHarvestTraceLinkIds,
@@ -17,8 +18,11 @@ import {
     getHarvestTraceLinksAdmin,
     getHarvestTraceLinksForOperationIds,
     getPublicHarvestTraceByToken,
+    getPublicHarvestTraceGroupByToken,
     harvestTraceLinks,
     knownEvents,
+    knownEventTypes,
+    operations,
     raisedBedFields,
     raisedBeds,
     recordHarvestTraceScan,
@@ -912,4 +916,180 @@ test('invalid harvest trace tokens are ignored', async () => {
         .select({ id: harvestTraceLinks.id })
         .from(harvestTraceLinks);
     assert.ok(Array.isArray(rows));
+});
+
+async function createGroupFieldLink(
+    fixture: Awaited<ReturnType<typeof createHarvestTraceFixture>>,
+    positionIndex: number,
+) {
+    await upsertRaisedBedField({
+        raisedBedId: fixture.raisedBedId,
+        positionIndex,
+    });
+    const fields = await storage().query.raisedBedFields.findMany({
+        where: eq(raisedBedFields.raisedBedId, fixture.raisedBedId),
+    });
+    const target = fields.find(
+        (candidate) => candidate.positionIndex === positionIndex,
+    );
+    assert.ok(target);
+    const plantPlaceEventId = await insertRaisedBedFieldEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(
+            `${fixture.raisedBedId}|${positionIndex}`,
+            {
+                plantSortId: fixture.plantSortId.toString(),
+                scheduledDate: null,
+                sowingLocation: 'direct',
+            },
+        ),
+        new Date('2026-05-01T08:00:00Z'),
+    );
+    const harvestOperationId = await createAcceptedOperation({
+        ...fixture,
+        raisedBedFieldId: target.id,
+        entityId: fixture.harvestEntityId,
+        timestamp: new Date('2026-05-30T07:30:00Z'),
+        completedAt: new Date('2026-05-30T08:00:00Z'),
+    });
+    return createOrGetHarvestTraceLink({
+        ...fixture,
+        raisedBedFieldId: target.id,
+        fieldPositionIndex: positionIndex,
+        fieldLabel: (positionIndex + 1).toString(),
+        plantPlaceEventId,
+        harvestOperationId,
+    });
+}
+
+test('group traces keep stable membership, select individual crop histories, and respect revocation', async () => {
+    const fixture = await createHarvestTraceFixture();
+    const second = await createGroupFieldLink(fixture, 1);
+    const ids = [fixture.link.id, second.id];
+    const [group, repeated] = await Promise.all([
+        createOrGetHarvestTraceGroup(ids),
+        createOrGetHarvestTraceGroup(ids.toReversed()),
+    ]);
+    assert.equal(group.publicToken, repeated.publicToken);
+    assert.equal(group.fieldLabel, '1-2');
+    const groupEvents = await storage().query.events.findMany({
+        where: eq(events.aggregateId, group.publicToken),
+    });
+    assert.equal(groupEvents.length, 1);
+    assert.equal(
+        groupEvents[0]?.type,
+        knownEventTypes.harvestTraceGroups.create,
+    );
+    const trace = await getPublicHarvestTraceGroupByToken(group.publicToken);
+    assert.deepEqual(trace?.fields, [
+        { fieldLabel: '1', publicPath: `/trag/${fixture.link.publicToken}` },
+        { fieldLabel: '2', publicPath: `/trag/${second.publicToken}` },
+    ]);
+    assert.equal(trace?.raisedBedPhysicalId, fixture.raisedBedPhysicalId);
+    assert.equal('accountId' in (trace ?? {}), false);
+    const child = await getPublicHarvestTraceByToken(second.publicToken);
+    assert.equal(child?.context.fieldLabel, '2');
+    await createGroupFieldLink(fixture, 2);
+    assert.equal(
+        (await getPublicHarvestTraceGroupByToken(group.publicToken))?.fields
+            .length,
+        2,
+    );
+    await storage()
+        .update(raisedBedFields)
+        .set({ isDeleted: true })
+        .where(eq(raisedBedFields.id, fixture.raisedBedFieldId));
+    assert.equal(
+        (await getPublicHarvestTraceGroupByToken(group.publicToken))?.fields
+            .length,
+        1,
+    );
+    await storage()
+        .update(raisedBedFields)
+        .set({ isDeleted: false })
+        .where(eq(raisedBedFields.id, fixture.raisedBedFieldId));
+    await updateHarvestTraceLinkStatus(fixture.link.id, 'revoked');
+    assert.deepEqual(
+        (await getPublicHarvestTraceGroupByToken(group.publicToken))?.fields,
+        [{ fieldLabel: '2', publicPath: `/trag/${second.publicToken}` }],
+    );
+    await updateHarvestTraceLinkStatus(second.id, 'revoked');
+    assert.equal(
+        await getPublicHarvestTraceGroupByToken(group.publicToken),
+        null,
+    );
+    assert.equal(await getPublicHarvestTraceGroupByToken('invalid'), null);
+});
+
+test('group traces reject gaps, mixed harvests, sorts, gardens, and invalid membership sizes', async () => {
+    const fixture = await createHarvestTraceFixture();
+    const second = await createGroupFieldLink(fixture, 1);
+    const ids = [fixture.link.id, second.id];
+    for (const invalid of [
+        [],
+        [fixture.link.id],
+        [fixture.link.id, fixture.link.id],
+        Array.from({ length: 10 }, (_, index) => index + 1),
+        [fixture.link.id, -1],
+    ]) {
+        await assert.rejects(createOrGetHarvestTraceGroup(invalid));
+    }
+    await storage()
+        .update(harvestTraceLinks)
+        .set({ fieldLabel: '3' })
+        .where(eq(harvestTraceLinks.id, second.id));
+    await assert.rejects(createOrGetHarvestTraceGroup(ids));
+    await storage()
+        .update(harvestTraceLinks)
+        .set({ fieldLabel: '2', plantSortId: fixture.harvestEntityId })
+        .where(eq(harvestTraceLinks.id, second.id));
+    await assert.rejects(createOrGetHarvestTraceGroup(ids));
+    await storage()
+        .update(harvestTraceLinks)
+        .set({ plantSortId: fixture.plantSortId })
+        .where(eq(harvestTraceLinks.id, second.id));
+    await storage()
+        .update(operations)
+        .set({ timestamp: new Date('2026-05-31T07:30:00Z') })
+        .where(eq(operations.id, second.harvestOperationId));
+    await assert.rejects(createOrGetHarvestTraceGroup(ids));
+    await storage()
+        .update(operations)
+        .set({
+            timestamp: new Date('2026-05-30T07:30:00Z'),
+            entityId: fixture.bedCareEntityId,
+        })
+        .where(eq(operations.id, second.harvestOperationId));
+    await assert.rejects(createOrGetHarvestTraceGroup(ids));
+    const otherGarden = await createHarvestTraceFixture();
+    await storage()
+        .update(raisedBeds)
+        .set({ physicalId: fixture.raisedBedPhysicalId })
+        .where(eq(raisedBeds.id, otherGarden.raisedBedId));
+    await storage()
+        .update(harvestTraceLinks)
+        .set({ fieldLabel: '2', plantSortId: fixture.plantSortId })
+        .where(eq(harvestTraceLinks.id, otherGarden.link.id));
+    await storage()
+        .update(operations)
+        .set({ entityId: fixture.harvestEntityId })
+        .where(eq(operations.id, otherGarden.harvestOperationId));
+    await assert.rejects(
+        createOrGetHarvestTraceGroup([fixture.link.id, otherGarden.link.id]),
+    );
+});
+
+test('group traces accept exactly nine consecutive harvest fields', async () => {
+    const fixture = await createHarvestTraceFixture();
+    const links = [fixture.link];
+    for (let position = 1; position < 9; position += 1)
+        links.push(await createGroupFieldLink(fixture, position));
+    const group = await createOrGetHarvestTraceGroup(
+        links.map((link) => link.id),
+    );
+    assert.equal(group.fieldLabel, '1-9');
+    assert.equal(
+        (await getPublicHarvestTraceGroupByToken(group.publicToken))?.fields
+            .length,
+        9,
+    );
 });

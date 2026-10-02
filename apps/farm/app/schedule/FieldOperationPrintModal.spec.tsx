@@ -1,6 +1,7 @@
 import type { FieldOperationLabelData } from '@gredice/label-printer';
 import { expect, test } from '@playwright/experimental-ct-react';
 import '../globals.css';
+import { FieldOperationPrintHarness } from '../../playwright/FieldOperationPrintHarness';
 import { FieldOperationPrintModal } from './FieldOperationPrintModal';
 
 const firstLabel: FieldOperationLabelData = {
@@ -134,4 +135,45 @@ test('keeps identical duplicate labels independently selectable', async ({
     await expect(firstCheckbox).toBeChecked();
     await expect(secondCheckbox).not.toBeChecked();
     await expect(dialog.getByText('Odabrano: 1 od 2 etiketa')).toBeVisible();
+});
+
+test('prints the requested copies and records every trace in selected groups', async ({
+    mount,
+    page,
+}) => {
+    await mount(
+        <FieldOperationPrintHarness
+            labels={[
+                { ...firstLabel, fieldLabel: '1-2', traceLinkIds: [101, 102] },
+                { ...firstLabel, fieldLabel: '3-4', traceLinkIds: [103, 104] },
+            ]}
+        />,
+    );
+    await page.getByRole('button', { name: 'Otvori ispis grupe' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Ispis grupe berbe' });
+    await dialog
+        .getByRole('spinbutton', { name: 'Broj primjeraka etikete #1' })
+        .fill('3');
+    await dialog
+        .getByRole('spinbutton', { name: 'Broj primjeraka etikete #2' })
+        .fill('2');
+    await expect(
+        dialog.getByRole('button', { name: 'Ispiši odabrane etikete (5)' }),
+    ).toBeEnabled();
+    await dialog.getByRole('checkbox', { name: 'Uključi etiketu #2' }).click();
+    await expect(
+        dialog.getByRole('spinbutton', { name: 'Broj primjeraka etikete #2' }),
+    ).toBeDisabled();
+    await dialog
+        .getByRole('button', { name: 'Ispiši odabrane etikete (3)' })
+        .click();
+    await expect(page.getByLabel('Poslane etikete')).toHaveText(
+        '["1-2","1-2","1-2"]',
+    );
+    await expect(page.getByLabel('Evidentirani tragovi')).toHaveText(
+        '[101,102]',
+    );
+    await expect(
+        dialog.getByText('Etikete su poslane na pisač.'),
+    ).toBeVisible();
 });

@@ -1,4 +1,7 @@
 export const knownEventTypes = {
+    harvestTraceGroups: {
+        create: 'harvestTraceGroup.create',
+    },
     checkout: {
         operationCreated: 'checkout.operation.created',
     },

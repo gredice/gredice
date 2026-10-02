@@ -31,6 +31,7 @@ import type {
     GardenBlockRemovePayload,
     GardenCreatePayload,
     GardenRenamePayload,
+    HarvestTraceGroupCreatedPayload,
     InventoryChangePayload,
     InvoiceCreatePayload,
     InvoicePaidPayload,
@@ -78,6 +79,17 @@ import type {
 } from './types';
 
 export const knownEvents = {
+    harvestTraceGroups: {
+        createdV1: (
+            aggregateId: string,
+            data: HarvestTraceGroupCreatedPayload,
+        ) => ({
+            type: knownEventTypes.harvestTraceGroups.create,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+    },
     checkout: {
         operationCreatedV1: (
             aggregateId: string,
