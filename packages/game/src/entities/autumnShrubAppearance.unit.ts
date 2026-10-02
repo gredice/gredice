@@ -88,7 +88,7 @@ test('weather disablement restores the full green crown in every season without 
     }
 });
 
-test('shrub canopy stages invalidate cached shadows and preserve the existing bush exclusion', () => {
+test('shrub canopy stages invalidate cached shadows and include the seasonal bush canopy', () => {
     const stacks = [
         {
             blocks: [
@@ -98,13 +98,13 @@ test('shrub canopy stages invalidate cached shadows and preserve the existing bu
             ],
         },
     ];
-    assert.equal(getAutumnCanopyShadowKey(stacks, 1), 'tree:full|shrub:full');
+    assert.equal(getAutumnCanopyShadowKey(stacks, 1), 'tree:full|shrub:full|bush:full');
     assert.equal(
         getAutumnCanopyShadowKey(stacks, 0.45),
-        'tree:thinning|shrub:thinning',
+        'tree:thinning|shrub:thinning|bush:thinning',
     );
     assert.equal(
         getAutumnCanopyShadowKey(stacks, 0.08),
-        'tree:sparse|shrub:bare',
+        'tree:sparse|shrub:bare|bush:sparse',
     );
 });
