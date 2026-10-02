@@ -313,18 +313,7 @@ function Frog({ candidate }: { candidate: FrogSpawnCandidate }) {
     const animalTargetsDebugVisible = useGameState(
         (state) => state.animalTargetsDebugVisible,
     );
-    const setAnimalDebugEntry = useGameState(
-        (state) => state.setAnimalDebugEntry,
-    );
-    const removeAnimalDebugEntry = useGameState(
-        (state) => state.removeAnimalDebugEntry,
-    );
-    const setAnimalPresenceEntry = useGameState(
-        (state) => state.setAnimalPresenceEntry,
-    );
-    const removeAnimalPresenceEntry = useGameState(
-        (state) => state.removeAnimalPresenceEntry,
-    );
+    const faunaWorld = useGameState((state) => state.faunaWorld);
 
     const frogModel = useMemo(() => {
         const scene = gltf.scene.clone(true);
@@ -361,14 +350,14 @@ function Frog({ candidate }: { candidate: FrogSpawnCandidate }) {
 
     useEffect(() => {
         if (!enableDebugHudFlag) {
-            removeAnimalDebugEntry(candidate.id);
+            faunaWorld.removeDebug(candidate.id);
         }
-        return () => removeAnimalDebugEntry(candidate.id);
-    }, [candidate.id, enableDebugHudFlag, removeAnimalDebugEntry]);
+        return () => faunaWorld.removeDebug(candidate.id);
+    }, [candidate.id, enableDebugHudFlag, faunaWorld]);
 
     useEffect(
-        () => () => removeAnimalPresenceEntry(candidate.id),
-        [candidate.id, removeAnimalPresenceEntry],
+        () => () => faunaWorld.removePresence(candidate.id),
+        [candidate.id, faunaWorld],
     );
 
     useEffect(() => {
@@ -664,7 +653,7 @@ function Frog({ candidate }: { candidate: FrogSpawnCandidate }) {
             animalPresenceUpdateIntervalSeconds
         ) {
             lastPresenceUpdateRef.current = now;
-            setAnimalPresenceEntry({
+            faunaWorld.reportPresence({
                 behavior:
                     runtime.phase === 'moving'
                         ? runtime.escape
@@ -682,7 +671,7 @@ function Frog({ candidate }: { candidate: FrogSpawnCandidate }) {
 
         if (enableDebugHudFlag && now - lastDebugUpdateRef.current >= 0.5) {
             lastDebugUpdateRef.current = now;
-            setAnimalDebugEntry(
+            faunaWorld.reportDebug(
                 createFrogDebugEntry({ candidate, group, now, runtime }),
             );
         }

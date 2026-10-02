@@ -337,18 +337,7 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
     const observeAvatarUntilRef = useRef(Number.NEGATIVE_INFINITY);
     const nextAvatarRepathAtRef = useRef(Number.NEGATIVE_INFINITY);
     const herdSpacingStallSecondsRef = useRef(0);
-    const setAnimalDebugEntry = useGameState(
-        (state) => state.setAnimalDebugEntry,
-    );
-    const removeAnimalDebugEntry = useGameState(
-        (state) => state.removeAnimalDebugEntry,
-    );
-    const setAnimalPresenceEntry = useGameState(
-        (state) => state.setAnimalPresenceEntry,
-    );
-    const removeAnimalPresenceEntry = useGameState(
-        (state) => state.removeAnimalPresenceEntry,
-    );
+    const faunaWorld = useGameState((state) => state.faunaWorld);
     const { message: speechMessage, showMessage: showSpeechMessage } =
         useActorHoverSpeech(cowSpeechMessages);
     const habitat = useMemo(
@@ -409,10 +398,10 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
 
     useEffect(
         () => () => {
-            removeAnimalDebugEntry(habitat.id);
-            removeAnimalPresenceEntry(habitat.id);
+            faunaWorld.removeDebug(habitat.id);
+            faunaWorld.removePresence(habitat.id);
         },
-        [habitat.id, removeAnimalDebugEntry, removeAnimalPresenceEntry],
+        [habitat.id, faunaWorld],
     );
 
     useFrame(({ clock }, delta) => {
@@ -436,7 +425,7 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
 
         const gameState = gameStateStore.getState();
         const neighbors = freshAnimalPresences({
-            entries: gameState.animalPresenceEntries,
+            entries: faunaWorld.getSpeciesPresences('Cow'),
             now,
             species: 'Cow',
         }).map((entry) => ({
@@ -673,7 +662,7 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
             animalPresenceUpdateIntervalSeconds
         ) {
             lastPresenceUpdateRef.current = now;
-            setAnimalPresenceEntry({
+            faunaWorld.reportPresence({
                 behavior: activeRuntime.target.behavior,
                 id: habitat.id,
                 position: roundPoint(group.position),
@@ -683,7 +672,7 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
         }
         if (now - lastDebugUpdateRef.current >= 0.5) {
             lastDebugUpdateRef.current = now;
-            setAnimalDebugEntry({
+            faunaWorld.reportDebug({
                 activity:
                     activeRuntime.phase === 'moving'
                         ? `moving to ${activeRuntime.target.behavior}`

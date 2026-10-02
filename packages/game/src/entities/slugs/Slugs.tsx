@@ -446,12 +446,7 @@ function SlugActor({
         feeding: 0,
         feelers: 0,
     });
-    const setAnimalDebugEntry = useGameState(
-        (state) => state.setAnimalDebugEntry,
-    );
-    const removeAnimalDebugEntry = useGameState(
-        (state) => state.removeAnimalDebugEntry,
-    );
+    const faunaWorld = useGameState((state) => state.faunaWorld);
     const animalDebugCommand = useGameState(
         (state) => state.animalDebugCommand,
     );
@@ -501,10 +496,10 @@ function SlugActor({
 
     useEffect(() => {
         if (!enableDebugHudFlag) {
-            removeAnimalDebugEntry(entry.spawn.id);
+            faunaWorld.removeDebug(entry.spawn.id);
         }
-        return () => removeAnimalDebugEntry(entry.spawn.id);
-    }, [enableDebugHudFlag, entry.spawn.id, removeAnimalDebugEntry]);
+        return () => faunaWorld.removeDebug(entry.spawn.id);
+    }, [enableDebugHudFlag, entry.spawn.id, faunaWorld]);
 
     useEffect(
         () => () => {
@@ -624,7 +619,7 @@ function SlugActor({
 
         if (enableDebugHudFlag && now - lastDebugUpdateRef.current >= 0.5) {
             lastDebugUpdateRef.current = now;
-            setAnimalDebugEntry(
+            faunaWorld.reportDebug(
                 createSlugDebugEntry({ entry, group, now, runtime }),
             );
         }
