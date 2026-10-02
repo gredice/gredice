@@ -45,13 +45,14 @@ export type StaticOpaqueSceneCacheReason =
     | 'disabled'
     | 'empty'
     | 'interaction'
+    | 'layer-change'
     | 'lighting-change'
+    | 'low-benefit'
     | 'ready'
     | 'shadow-update'
     | 'target-budget'
     | 'target-resize'
     | 'unsupported'
-    | 'weather'
     | 'wireframe';
 
 export type StaticOpaqueSceneCacheAction =

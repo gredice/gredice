@@ -316,8 +316,6 @@ export function Scene({
         (state) => state.wireframeDebugVisible,
         false,
     );
-    const staticOpaqueCacheActive =
-        staticOpaqueCacheEnabled && qualityProfile.tier === 'high';
     const staticOpaqueCacheQualityKey = [
         qualityProfile.cloudShadowMode,
         qualityProfile.dpr,
@@ -401,8 +399,10 @@ export function Scene({
                         }
                     />
                     <WeatherSurfaceUniformProvider>
+                        {/* Capability, device memory, and measured benefit gate
+                            the cache at runtime for every quality tier. */}
                         <StaticOpaqueSceneCacheProvider
-                            enabled={staticOpaqueCacheActive}
+                            enabled={staticOpaqueCacheEnabled}
                             interactionActive={adaptiveHighInteractionActive}
                             qualityKey={staticOpaqueCacheQualityKey}
                             wireframe={Boolean(

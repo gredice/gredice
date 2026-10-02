@@ -194,6 +194,13 @@ export type StaticOpaqueSceneCacheState =
     | 'ready'
     | 'unsupported';
 
+/** Whether a cache layer's boundaries are cached, live, split, or absent. */
+export type StaticOpaqueSceneCacheLayerState =
+    | 'absent'
+    | 'cached'
+    | 'live'
+    | 'mixed';
+
 export type StaticOpaqueSceneCacheOcclusionFixtureState =
     | 'arming'
     | 'failed'
@@ -553,7 +560,16 @@ export type GameProfileMetadata = {
     snowParticleCapacity?: number;
     snowParticleCount?: number;
     snowParticleGeometryBuildCount?: number;
+    staticOpaqueSceneCacheAllocatedTargetBytes?: number;
+    staticOpaqueSceneCacheBaseTerrainLayer?: StaticOpaqueSceneCacheLayerState;
+    staticOpaqueSceneCacheBenefitEvaluationCount?: number;
+    staticOpaqueSceneCacheBenefitNetGpuMsPerFrame?: number | null;
+    staticOpaqueSceneCacheBenefitNetWorkPerFrame?: number | null;
+    staticOpaqueSceneCacheBenefitReason?: string;
+    staticOpaqueSceneCacheBenefitStatus?: string;
     staticOpaqueSceneCacheBoundaryCount?: number;
+    staticOpaqueSceneCacheBudgetBytes?: number;
+    staticOpaqueSceneCacheBudgetSource?: string;
     staticOpaqueSceneCacheBypassFrameCount?: number;
     staticOpaqueSceneCacheCaptureCount?: number;
     staticOpaqueSceneCacheCaptureSubmissionCount?: number;
@@ -564,10 +580,13 @@ export type GameProfileMetadata = {
     staticOpaqueSceneCacheReplaySubmissionCount?: number;
     staticOpaqueSceneCacheReplayTriangleCount?: number;
     staticOpaqueSceneCacheEnabled?: boolean;
+    staticOpaqueSceneCacheGpuSampleCount?: number;
+    staticOpaqueSceneCacheGpuTimingSupported?: boolean | null;
     staticOpaqueSceneCacheHitFrameCount?: number;
     staticOpaqueSceneCacheIneligibleBoundaryCount?: number;
     staticOpaqueSceneCacheInvalidationCount?: number;
     staticOpaqueSceneCacheLastInvalidationReason?: string;
+    staticOpaqueSceneCacheLiveBoundaryCount?: number;
     staticOpaqueSceneCacheLiveFrameCount?: number;
     staticOpaqueSceneCacheMeshCount?: number;
     staticOpaqueSceneCacheOcclusionBackgroundWitnessMinimumMatchRatio?: number;
@@ -581,10 +600,13 @@ export type GameProfileMetadata = {
     staticOpaqueSceneCacheOcclusionOccluderMinimumMatchRatio?: number;
     staticOpaqueSceneCacheOcclusionTransitionCount?: number;
     staticOpaqueSceneCacheOcclusionVerifiedHitFrameCount?: number;
+    staticOpaqueSceneCachePeakTargetBytes?: number;
+    staticOpaqueSceneCacheProbeFrameCount?: number;
     staticOpaqueSceneCacheReason?: string;
     staticOpaqueSceneCacheSavedSubmissionCount?: number;
     staticOpaqueSceneCacheSavedTriangleCount?: number;
     staticOpaqueSceneCacheState?: StaticOpaqueSceneCacheState;
+    staticOpaqueSceneCacheStaticPropsLayer?: StaticOpaqueSceneCacheLayerState;
     staticOpaqueSceneCacheSupported?: boolean;
     staticOpaqueSceneCacheTargetEstimatedBytes?: number;
     staticOpaqueSceneCacheTargetHeight?: number;
