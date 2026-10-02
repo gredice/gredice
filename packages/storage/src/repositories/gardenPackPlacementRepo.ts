@@ -2,6 +2,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { and, eq, sql } from 'drizzle-orm';
+import { z } from 'zod';
 import { getGardenPackUnits } from '../gardenPackContract';
 import {
     type GardenPackPlacementCommand,
@@ -123,22 +124,20 @@ export async function recordGardenPackPlacement(
     tx: GardenPackTransaction,
 ) {
     gardenPackPlacementResponseSchema.parse(response);
-    await tx
-        .insert(gardenPackUnitEvents)
-        .values({
-            id: randomUUID(),
-            accountId: command.accountId,
-            purchaseId: command.purchaseId,
-            lineId: command.lineId,
-            unitOrdinal: command.unitOrdinal,
-            operationId: command.operationId,
-            kind: 'placed',
-            creditedSunflowers: 0,
-            gardenId: command.gardenId,
-            blockId: response.blockId,
-            placementPayload: gardenPackPlacementPayload(command),
-            placementResponse: response,
-        });
+    await tx.insert(gardenPackUnitEvents).values({
+        id: randomUUID(),
+        accountId: command.accountId,
+        purchaseId: command.purchaseId,
+        lineId: command.lineId,
+        unitOrdinal: command.unitOrdinal,
+        operationId: command.operationId,
+        kind: 'placed',
+        creditedSunflowers: 0,
+        gardenId: command.gardenId,
+        blockId: response.blockId,
+        placementPayload: gardenPackPlacementPayload(command),
+        placementResponse: response,
+    });
     await tx
         .update(gardenPackUnits)
         .set({
@@ -171,7 +170,12 @@ export async function assertGardenPackLifecycleAllowed(
     const result = await db.execute(
         sql`select to_regclass('public.garden_pack_units') is not null as ready`,
     );
-    if (result.rows[0]?.ready !== true) return;
+    if (
+        z
+            .object({ rows: z.array(z.object({ ready: z.boolean() })) })
+            .parse(result).rows[0]?.ready !== true
+    )
+        return;
     const where = input.blockId
         ? eq(gardenPackUnits.blockId, input.blockId)
         : input.gardenId
@@ -187,4 +191,18 @@ export async function assertGardenPackLifecycleAllowed(
         .where(and(where, eq(gardenPackUnits.state, 'placed')))
         .limit(1);
     if (unit) throw new GardenPackLifecyclePendingError();
+}
+
+/** Check receipt columns separately so a partial migration never reaches placement queries. */
+export async function isGardenPackPlacementStorageReady(
+    db: GardenPackTransaction | ReturnType<typeof storage> = storage(),
+) {
+    const result = await db.execute(
+        sql`select count(*) = 2 as ready from information_schema.columns where table_schema = current_schema() and table_name = 'garden_pack_unit_events' and column_name in ('placement_payload', 'placement_response') and data_type = 'jsonb'`,
+    );
+    return (
+        z
+            .object({ rows: z.array(z.object({ ready: z.boolean() })) })
+            .parse(result).rows[0]?.ready === true
+    );
 }

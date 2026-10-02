@@ -1,3 +1,4 @@
+import { gardenPackPlacementRoutes } from './gardenPackPlacementRoutes';
 import {
     type GardenPackInventoryPurchase,
     gardenPackInventoryQuerySchema,
@@ -186,4 +187,4 @@ export function createGardenPacksRoutes(
             },
         );
 }
-export default createGardenPacksRoutes();
+export default createGardenPacksRoutes().route('/', gardenPackPlacementRoutes);

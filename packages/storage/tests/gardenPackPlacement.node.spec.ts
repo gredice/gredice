@@ -1,3 +1,4 @@
+import * as completeSchema from '../src/schema';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { after, before, test } from 'node:test';
@@ -33,9 +34,8 @@ import {
 import { gardenPackProductSnapshotSchema } from '@gredice/storage/gardenPackContract';
 import { generateDrizzleJson, generateMigration } from 'drizzle-kit/api';
 import { eq, sql } from 'drizzle-orm';
-import { gardenPackIntegritySql } from '../../../../packages/storage/src/schema/gardenPackIntegrity';
-import * as packSchema from '../../../../packages/storage/src/schema/gardenPackSchema';
-import { createGardenPackPlacementService } from './gardenPackPlacementService';
+import { createGardenPackPlacementService } from '../../../apps/api/lib/garden/gardenPackPlacementService';
+import { gardenPackIntegritySql } from '../src/schema/gardenPackIntegrity';
 
 const enabled =
     process.env.TEST_ENV === '1' &&
@@ -44,15 +44,7 @@ before(async () => {
     if (!enabled) return;
     const statements = await generateMigration(
         generateDrizzleJson({}),
-        generateDrizzleJson({
-            accounts,
-            events,
-            farms,
-            gardens,
-            gardenBlocks,
-            gardenStacks,
-            ...packSchema,
-        }),
+        generateDrizzleJson(completeSchema),
     );
     for (const statement of statements)
         await storage().execute(sql.raw(statement));
