@@ -634,6 +634,17 @@ export function GameScene({
                                     renderDetails={renderDetails}
                                     weather={weather}
                                 />
+                                <Suspense fallback={null}>
+                                    <Hedgehogs
+                                        enabled={
+                                            renderDetails && zoom !== 'far'
+                                        }
+                                        stacks={retainedScene.stacks}
+                                        gardenId={garden?.id}
+                                        quality={qualityProfile}
+                                        weather={weather}
+                                    />
+                                </Suspense>
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
                                         <SunflowerDropReward
@@ -666,12 +677,6 @@ export function GameScene({
                                             }
                                             farmId={garden?.farmId}
                                             stacks={retainedScene.stacks}
-                                        />
-                                        <Hedgehogs
-                                            stacks={retainedScene.stacks}
-                                            gardenId={garden?.id}
-                                            quality={qualityProfile}
-                                            weather={weather}
                                         />
                                     </Suspense>
                                 )}

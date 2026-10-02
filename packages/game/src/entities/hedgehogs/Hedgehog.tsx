@@ -5,7 +5,6 @@ import {
     useSceneFixedTimeSeconds,
     useSceneRuntimeVisible,
     useSceneTimeInvalidation,
-    useSceneTimeUniform,
 } from '../../scene/SceneTime';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
@@ -26,7 +25,9 @@ export function Hedgehog({
     sequence,
     lowQuality,
     onComplete,
+    enabled = true,
 }: {
+    enabled?: boolean;
     habitat: HedgehogHabitat;
     sequence: number;
     lowQuality: boolean;
@@ -73,9 +74,9 @@ export function Hedgehog({
         complete: false,
         lastPoseAt: -Infinity,
     });
-    const time = useSceneTimeUniform();
     const fixed = useSceneFixedTimeSeconds();
-    const visible = useSceneRuntimeVisible();
+    const runtimeVisible = useSceneRuntimeVisible();
+    const visible = runtimeVisible && enabled;
     const reducedMotion = useSyncExternalStore(
         subscribeMotion,
         getMotion,
@@ -92,8 +93,22 @@ export function Hedgehog({
         lowQuality ? 15 : 24,
     );
     useEffect(() => {
-        if (!visible) state.current.last = null;
-    }, [visible]);
+        if (!visible) {
+            state.current.last = null;
+            const root = group.current;
+            if (root) {
+                root.visible = false;
+                updateShadow?.({
+                    x: root.position.x,
+                    z: root.position.z,
+                    actorY: root.position.y,
+                    receiverY: root.position.y,
+                    yaw: root.rotation.y,
+                    visible: false,
+                });
+            }
+        }
+    }, [visible, updateShadow]);
     useEffect(
         () => () => {
             mixer.stopAllAction();
@@ -109,7 +124,9 @@ export function Hedgehog({
             state.current.last = null;
             return;
         }
-        const now = time.value;
+        // Visit duration follows visible wall time, independent of the capped
+        // render delta used for springs on slow software-rendered frames.
+        const now = performance.now() / 1000;
         if (fixed !== undefined) state.current.elapsed = fixed;
         else {
             if (state.current.last !== null)
