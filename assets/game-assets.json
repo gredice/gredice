@@ -3,6 +3,28 @@
     "outputDirectory": "../apps/garden/public/assets/models",
     "assets": [
         {
+            "name": "AutumnGrassTuft",
+            "source": "AutumnGrassTuft.blend",
+            "output": "AutumnGrassTuft.glb",
+            "version": "f7689621d760",
+            "preload": "lazy",
+            "objects": [
+                "AutumnGrassTuft_Base",
+                "AutumnGrassTuft_Foliage"
+            ]
+        },
+        {
+            "name": "AutumnSeedHeads",
+            "source": "AutumnSeedHeads.blend",
+            "output": "AutumnSeedHeads.glb",
+            "version": "ce09d670c42c",
+            "preload": "lazy",
+            "objects": [
+                "AutumnSeedHeads_Base",
+                "AutumnSeedHeads_Foliage"
+            ]
+        },
+        {
             "name": "GardenBrazier",
             "source": "GardenBrazier.blend",
             "output": "GardenBrazier.glb",
