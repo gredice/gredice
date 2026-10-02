@@ -40,13 +40,13 @@ Use a usable existing read-only build connection. Fresh Vercel pulls omit sensit
 
 ## Durable failed-invalidation retries
 
-A failed request after a real public-content mutation stores only normalized old/new slugs and random generation tokens in the existing durable, `noeviction` Silo database. Dedicated key: `cms-news:production:revalidation:v1`. No content, account identifiers, raw requests, or secrets are stored. No new paid resource is provisioned.
+A failed request after a real public-content mutation stores only bounded old/new invalidation targets and random generation tokens in the existing durable, `noeviction` Silo database. Dedicated key: `cms-news:production:revalidation:v1`. No content, account identifiers, raw requests, or secrets are stored. No new paid resource is provisioned.
 
 | Project | Route | Cadence (UTC) | Empty run |
 | --- | --- | --- | --- |
 | News | `/novosti/api/revalidate` (authenticated GET) | `13 * * * *` | One bounded Redis EVAL/read, no PG reads and no invalidation |
 
-The hash is deduplicated and bounded to 512 slugs (each at most 200 characters); admission is atomic and fails when full. Pending entries have no expiry. The worker invalidates first and acknowledges only matching generation tokens, so a concurrent failure cannot be erased by an older retry. Outages/failures retain pending work. Invalidation and retry admission failures are logged without remote response bodies/credentials; an already saved CMS mutation remains successful. If both immediate delivery and durable admission fail, pre-existing hourly/daily TTL fallback remains (not immediate visibility recovery). This limit must remain explicit operationally.
+The hash is deduplicated and bounded to 512 targets (each at most 200 characters). Valid CMS slugs longer than 200 characters use a 47-character hashed article-tag target, so publish/unpublish/rename still invalidates archives and the corresponding article/image cache without a large request or path. The CMS slug contract is preserved. Admission is atomic and fails when full. Pending entries have no expiry. The worker invalidates first and acknowledges only matching generation tokens, so a concurrent failure cannot be erased by an older retry. Outages/failures retain pending work. Invalidation and retry admission failures are logged without remote response bodies/credentials; an already saved CMS mutation remains successful. If both immediate delivery and durable admission fail, pre-existing hourly/daily TTL fallback remains (not immediate visibility recovery). This limit must remain explicit operationally.
 
 The hourly retry adds 72 function calls/Redis reads per 72 hours, versus the baseline 2,868 dynamic index renders; it does not wake the database when idle. Publication failures add bounded enqueue/internal Redis commands. Actual command cost depends on the existing plan and replication; include it in the comparable-window calculation.
 

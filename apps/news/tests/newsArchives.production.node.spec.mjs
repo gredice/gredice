@@ -360,10 +360,30 @@ describe('production news archive metadata', () => {
         const articleAfter = await fetch(`${origin}${articlePath}`);
         assert.equal(articleAfter.status, 200);
         assert.equal(articleAfter.headers.get('x-nextjs-cache'), 'MISS');
+        // Long CMS slugs use this bounded tag-only target; route cache must expire too.
+        assert.equal(
+            (await fetch(`${origin}${articlePath}`)).headers.get(
+                'x-nextjs-cache',
+            ),
+            'HIT',
+        );
+        const tagTarget = `tag:${createHash('sha256').update(articlePath.slice(1)).digest('base64url')}`;
+        assert.equal((await post([tagTarget])).status, 200);
+        assert.equal(
+            (await fetch(`${origin}${articlePath}`)).headers.get(
+                'x-nextjs-cache',
+            ),
+            'MISS',
+        );
+
         assert.equal(
             (await fetch(`${origin}/novosti/sto-je-novo`)).headers.get(
                 'x-nextjs-cache',
             ),
+            'MISS',
+        );
+        assert.equal(
+            (await fetch(`${origin}/novosti`)).headers.get('x-nextjs-cache'),
             'MISS',
         );
         assert.equal(

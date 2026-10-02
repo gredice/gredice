@@ -108,6 +108,13 @@ test('durable retry survives failed reads and concurrent changes without losing 
     assert.notEqual(newer[0]?.token, first[0]?.token);
     await acknowledgeNewsRevalidations(newer);
     assert.deepEqual(await readPendingNewsRevalidations(), []);
+    const longSlug = `novosti/${'a'.repeat(10_000)}`;
+    await enqueueNewsRevalidation([longSlug]);
+    const longPending = await readPendingNewsRevalidations();
+    assert.equal(longPending.length, 1);
+    assert.match(longPending[0]?.slug ?? '', /^tag:[\w-]{43}$/u);
+    await acknowledgeNewsRevalidations(longPending);
+    assert.deepEqual(await readPendingNewsRevalidations(), []);
     // Admission is atomic at the bound; never discard admitted work to make room.
     for (let i = 0; i < 512; i += 8) {
         await enqueueNewsRevalidation(

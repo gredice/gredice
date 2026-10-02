@@ -87,3 +87,31 @@ test('preview runtime takes precedence over a copied public production flag', as
     await revalidatePublicNewsPages(['novosti/a']);
     assert.equal(calls, 0);
 });
+
+test('valid long CMS slugs still invalidate archives and article tags with bounded payloads', async (t) => {
+    const originalEnv = { ...process.env };
+    const originalFetch = globalThis.fetch;
+    t.after(() => {
+        process.env = originalEnv;
+        globalThis.fetch = originalFetch;
+    });
+    process.env.VERCEL_ENV = 'production';
+    process.env.GREDICE_NEWS_REVALIDATE_SECRET = 'test';
+    let calls = 0;
+    globalThis.fetch = async (_input, init) => {
+        calls++;
+        const body: unknown = JSON.parse(String(init?.body));
+        assert.ok(
+            body &&
+                typeof body === 'object' &&
+                'slugs' in body &&
+                Array.isArray(body.slugs),
+        );
+        assert.equal(body.slugs.length, 1);
+        assert.match(body.slugs[0], /^tag:[\w-]{43}$/u);
+        assert.ok(Buffer.byteLength(String(init?.body)) < 100);
+        return Response.json({ revalidated: true });
+    };
+    await revalidatePublicNewsPages([`novosti/${'a'.repeat(10_000)}`]);
+    assert.equal(calls, 1);
+});

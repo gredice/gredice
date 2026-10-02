@@ -1,11 +1,11 @@
 import 'server-only';
 import {
     enqueueNewsRevalidation,
-    publicNewsSlugs,
+    newsRevalidationTargets,
 } from '@gredice/storage/cmsNewsRevalidation';
 
 export async function revalidatePublicNewsPages(slugs: Iterable<unknown>) {
-    const newsSlugs = publicNewsSlugs(slugs);
+    const newsSlugs = newsRevalidationTargets(slugs);
     if (!newsSlugs.length) return;
     const isProduction =
         (process.env.VERCEL_ENV ?? process.env.NEXT_PUBLIC_VERCEL_ENV) ===

@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import {
     acknowledgeNewsRevalidations,
-    isPublicNewsSlug,
+    isNewsRevalidationTarget,
     maxNewsRevalidationSlugs,
     readPendingNewsRevalidations,
 } from '@gredice/storage/cmsNewsRevalidation';
@@ -34,6 +34,10 @@ function invalidate(slugs: string[]) {
     revalidatePath('/');
     revalidatePath('/sto-je-novo');
     for (const slug of new Set(slugs)) {
+        if (slug.startsWith('tag:')) {
+            revalidateTag(`news-article:${slug.slice(4)}`, { expire: 0 });
+            continue;
+        }
         // Next invalidation uses the route path without the configured basePath.
         revalidateTag(newsArticleTag(slug), { expire: 0 });
         const route = `/${slug.slice('novosti/'.length)}`;
@@ -74,7 +78,7 @@ export async function POST(request: Request) {
         !Array.isArray(body.slugs) ||
         !body.slugs.length ||
         body.slugs.length > maxNewsRevalidationSlugs ||
-        !body.slugs.every(isPublicNewsSlug)
+        !body.slugs.every(isNewsRevalidationTarget)
     ) {
         return result({ error: 'Invalid slugs' }, 400);
     }

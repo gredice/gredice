@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 export const maxNewsRevalidationSlugs = 8;
 const maxPendingSlugs = 512;
@@ -6,14 +6,32 @@ const maxPendingSlugs = 512;
 export function isPublicNewsSlug(value: unknown): value is string {
     return (
         typeof value === 'string' &&
-        value.length <= 200 &&
         /^novosti\/(?:[a-z0-9_-]+\/)*[a-z0-9_-]+$/u.test(value) &&
         value !== 'novosti/sto-je-novo'
     );
 }
 
-export function publicNewsSlugs(values: Iterable<unknown>) {
-    return Array.from(new Set(Array.from(values).filter(isPublicNewsSlug)));
+export function isNewsRevalidationTarget(value: unknown): value is string {
+    return (
+        typeof value === 'string' &&
+        ((value.length <= 200 && isPublicNewsSlug(value)) ||
+            /^tag:[\w-]{43}$/u.test(value))
+    );
+}
+
+export function newsArticleHash(slug: string) {
+    return createHash('sha256').update(slug).digest('base64url');
+}
+
+/** Oversized valid CMS slugs expire their article tag without unbounded payloads. */
+export function newsRevalidationTargets(values: Iterable<unknown>) {
+    const targets: string[] = [];
+    for (const value of values) {
+        if (isNewsRevalidationTarget(value)) targets.push(value);
+        else if (isPublicNewsSlug(value))
+            targets.push(`tag:${newsArticleHash(value)}`);
+    }
+    return Array.from(new Set(targets));
 }
 
 function queueConfig() {
@@ -70,7 +88,7 @@ return 1`;
 
 /** Only called after a failed request for a committed public-content mutation. */
 export async function enqueueNewsRevalidation(slugs: string[]) {
-    const safeSlugs = publicNewsSlugs(slugs);
+    const safeSlugs = newsRevalidationTargets(slugs);
     if (!safeSlugs.length) return;
     if (safeSlugs.length > maxNewsRevalidationSlugs)
         throw new Error('Too many News retry slugs.');
@@ -93,7 +111,7 @@ export async function readPendingNewsRevalidations() {
         const slug: unknown = result[i];
         const token: unknown = result[i + 1];
         if (
-            !isPublicNewsSlug(slug) ||
+            !isNewsRevalidationTarget(slug) ||
             typeof token !== 'string' ||
             token.length > 64
         ) {
