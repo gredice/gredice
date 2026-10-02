@@ -183,14 +183,17 @@ export function GardenPaletteAdmissionScene({
         )
             return;
         const meshes: Mesh[] = [];
+        const raycastMeshes: Mesh[] = [];
         scene.traverse((object) => {
             if (
                 object instanceof Mesh &&
-                !object.name.includes(':visible-range:') &&
                 (object.name.startsWith('BlockInstances:admission:') ||
                     object.name.startsWith('StaticRenderPacket:'))
-            )
-                meshes.push(object);
+            ) {
+                raycastMeshes.push(object);
+                if (!object.name.includes(':visible-range:'))
+                    meshes.push(object);
+            }
         });
         const geometryIds = Object.fromEntries(
             meshes
@@ -204,7 +207,7 @@ export function GardenPaletteAdmissionScene({
             new Vector3(2, 5, 0),
             new Vector3(0, -1, 0),
         );
-        const hit = raycaster.intersectObjects(meshes, false)[0];
+        const hit = raycaster.intersectObjects(raycastMeshes, false)[0];
         frames.current.reported = true;
         onReadback({
             key,

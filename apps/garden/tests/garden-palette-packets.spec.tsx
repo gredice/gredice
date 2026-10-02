@@ -214,6 +214,32 @@ test('production palette packets preserve original main and shadow culling with 
         expect(candidate.materialIds).toHaveLength(1);
         expect(candidate.rangesRestored).toBe(true);
         expect(candidate.sourceDisposals).toBe(0);
+        expect(candidate.sceneRaycastHits).toHaveLength(
+            source.sceneRaycastHits.length,
+        );
+        for (let ray = 0; ray < source.sceneRaycastHits.length; ray++) {
+            const authored = source.sceneRaycastHits[ray],
+                ranged = candidate.sceneRaycastHits[ray];
+            expect(authored).toHaveLength(1);
+            expect(ranged).toHaveLength(authored.length);
+            const sourceHit = authored[0],
+                candidateHit = ranged[0];
+            if (!sourceHit?.uv || !candidateHit?.uv)
+                throw new Error(
+                    'Whole-scene raycast witness requires source and packet UV hits',
+                );
+            expect(candidateHit.distance).toBeCloseTo(sourceHit.distance, 6);
+            for (let axis = 0; axis < 3; axis++)
+                expect(candidateHit.point[axis]).toBeCloseTo(
+                    sourceHit.point[axis],
+                    6,
+                );
+            for (let axis = 0; axis < 2; axis++)
+                expect(candidateHit.uv[axis]).toBeCloseTo(
+                    sourceHit.uv[axis],
+                    6,
+                );
+        }
         expect(result.differentPixelRatio).toBeLessThan(0.001);
         expect(result.maxChannelError).toBeLessThanOrEqual(8);
         await testInfo.attach(`${view}-source`, {

@@ -145,6 +145,13 @@ Paired main/shadow callbacks temporarily select a range and restore the prior
 range after drawing. A renderer-keyed, refcounted commit lease restores ranges
 in `finally` when rendering or a callback throws, including nested renders and
 out-of-order sibling cleanup. It never disposes compiled or borrowed resources.
+Whole-scene avatar occlusion queries also traverse packet objects. The full
+render mesh has raycasting disabled; each source-range mesh runs inherited
+raycasting with its own temporary range and `finally` restoration. This keeps
+unique source intersections, side/distance/UV semantics and linear total
+triangle work. Raycasting does not use the render-camera frustum, so a query can
+still intersect an offscreen source. Animated and pending fallback meshes keep
+their original raycast paths.
 The static cache continues to reject these custom callbacks: capture/replay
 must not bypass range selection, duplicate the restored full range, or count it
 as cached work. A future range-aware cache integration needs its own visual and

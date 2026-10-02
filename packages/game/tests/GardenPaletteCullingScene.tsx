@@ -6,6 +6,7 @@ import {
     Mesh,
     MeshStandardMaterial,
     OrthographicCamera,
+    Raycaster,
     Vector3,
 } from 'three';
 import {
@@ -38,6 +39,11 @@ export type GardenPaletteCullingReadback = {
     rangesRestored: boolean;
     sourceDisposals: number;
     frame: number;
+    sceneRaycastHits: {
+        distance: number;
+        point: number[];
+        uv: number[] | null;
+    }[][];
 };
 
 function instances(id: string, x: number): EntityBlockInstance[] {
@@ -200,6 +206,27 @@ export function GardenPaletteCullingScene({
                 )
                     meshes.push(object);
             });
+            const sceneRaycastHits = [0.525, 6.025].map((x) =>
+                new Raycaster(
+                    new Vector3(x, 0.035, 8),
+                    new Vector3(0, 0, -1),
+                    0,
+                    20,
+                )
+                    .intersectObjects(scene.children, true)
+                    .filter(
+                        (hit) =>
+                            hit.object.name.startsWith(
+                                'BlockInstances:culling:',
+                            ) ||
+                            hit.object.name.startsWith('StaticRenderPacket:'),
+                    )
+                    .map((hit) => ({
+                        distance: hit.distance,
+                        point: hit.point.toArray(),
+                        uv: hit.uv?.toArray() ?? null,
+                    })),
+            );
             const rangesRestored = meshes.every(
                 (mesh) =>
                     mesh.geometry.drawRange.start === 0 &&
@@ -228,6 +255,7 @@ export function GardenPaletteCullingScene({
                 rangesRestored,
                 sourceDisposals: disposals.current,
                 frame: gl.info.render.frame,
+                sceneRaycastHits,
             });
         }, [batch, gl, key, onReadback, scene]),
     );

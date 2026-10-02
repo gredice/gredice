@@ -6,9 +6,11 @@ import {
     type Frustum,
     type FrustumArray,
     type InterleavedBufferAttribute,
+    type Intersection,
     Matrix4,
     Mesh,
     Quaternion,
+    type Raycaster,
     Sphere,
     Vector3,
     type WebGLRenderer,
@@ -332,6 +334,18 @@ export class StaticRenderPacketVisibilityMesh extends Mesh {
         return this.group === undefined
             ? visible.all
             : !visible.all && visible.values[this.group] === 1;
+    }
+
+    override raycast(raycaster: Raycaster, intersections: Intersection[]) {
+        // Whole-scene occlusion queries must intersect each source range once,
+        // including sources outside the current render camera's frustum.
+        if (this.group === undefined || this.range.count === 0) return;
+        this.ranges.enter(this);
+        try {
+            super.raycast(raycaster, intersections);
+        } finally {
+            this.ranges.leave(this);
+        }
     }
 
     override onBeforeRender() {

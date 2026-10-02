@@ -2,16 +2,22 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
     ArrayCamera,
+    BackSide,
     BoxGeometry,
     BufferAttribute,
     BufferGeometry,
+    DoubleSide,
     Frustum,
     FrustumArray,
     InstancedMesh,
+    type Intersection,
     Matrix4,
+    Mesh,
     MeshStandardMaterial,
     OrthographicCamera,
     PerspectiveCamera,
+    Raycaster,
+    Vector3,
     type WebGLRenderer,
 } from 'three';
 import {
@@ -216,6 +222,103 @@ describe('original-source visibility on shared compiled buffers', () => {
         const p = plan([source('empty', 0, { geometry })]);
         assert.deepEqual(visible(p.meshes, frustum()), [false, false]);
         assert.ok(p.meshes.every((mesh) => mesh.range.count === 0));
+    });
+    it('raycasts each source range once with original distance, UV, face and side semantics', () => {
+        const p = plan([source('a', 0), source('b', 4)]);
+        const original = new Mesh(p.geometry, p.material);
+        original.updateMatrixWorld(true);
+        const full = { ...p.geometry.drawRange };
+        const values = (hits: Intersection[]) =>
+            hits.map((hit) => ({
+                distance: hit.distance,
+                point: hit.point.toArray(),
+                uv: hit.uv?.toArray(),
+                normal: hit.normal?.toArray(),
+                faceIndex: hit.faceIndex,
+                face: hit.face
+                    ? {
+                          a: hit.face.a,
+                          b: hit.face.b,
+                          c: hit.face.c,
+                          normal: hit.face.normal.toArray(),
+                          materialIndex: hit.face.materialIndex,
+                      }
+                    : null,
+            }));
+        for (const side of [p.material.side, DoubleSide, BackSide]) {
+            p.material.side = side;
+            for (const x of [0, 4]) {
+                const raycaster = new Raycaster(
+                    new Vector3(x + 0.025, 0.035, 5),
+                    new Vector3(0, 0, -1),
+                    0,
+                    10,
+                );
+                const expected = raycaster.intersectObject(original, false);
+                const actual = raycaster.intersectObjects(p.meshes, false);
+                assert.ok(expected.length > 0);
+                assert.deepEqual(values(actual), values(expected));
+                assert.ok(actual.every((hit) => hit.object !== p.meshes[0]));
+                assert.deepEqual(p.geometry.drawRange, full);
+                raycaster.far = 1;
+                assert.deepEqual(
+                    raycaster.intersectObjects(p.meshes, false),
+                    [],
+                );
+            }
+        }
+        assert.equal(p.meshes[2].intersectsFrustum(frustum()), false);
+        assert.ok(
+            new Raycaster(
+                new Vector3(4.025, 0.035, 5),
+                new Vector3(0, 0, -1),
+            ).intersectObject(p.meshes[2], false).length > 0,
+        );
+        assert.deepEqual(p.geometry.drawRange, full);
+    });
+    it('restores raycast ranges after failure and nested main/shadow range selection', () => {
+        const p = plan([source('a', 0), source('b', 4)]),
+            full = { ...p.geometry.drawRange };
+        const raycaster = new Raycaster(
+            new Vector3(4.025, 0.035, 5),
+            new Vector3(0, 0, -1),
+        );
+        class ThrowingHits extends Array<Intersection> {
+            override push(..._hits: Intersection[]): number {
+                throw new Error('intersection sink');
+            }
+        }
+        assert.throws(
+            () => p.meshes[2].raycast(raycaster, new ThrowingHits()),
+            /intersection sink/,
+        );
+        assert.deepEqual(p.geometry.drawRange, full);
+        p.meshes[1].onBeforeShadow();
+        assert.throws(
+            () => p.meshes[2].raycast(raycaster, new ThrowingHits()),
+            /intersection sink/,
+        );
+        assert.deepEqual(p.geometry.drawRange, { start: 0, count: 36 });
+        p.meshes[1].onAfterShadow();
+        assert.deepEqual(p.geometry.drawRange, full);
+        class NestedHits extends Array<Intersection> {
+            override push(...hits: Intersection[]): number {
+                const range = { ...p.geometry.drawRange };
+                p.meshes[1].raycast(
+                    new Raycaster(
+                        new Vector3(0.025, 0.035, 5),
+                        new Vector3(0, 0, -1),
+                    ),
+                    [],
+                );
+                assert.deepEqual(p.geometry.drawRange, range);
+                return super.push(...hits);
+            }
+        }
+        const hits = new NestedHits();
+        p.meshes[2].raycast(raycaster, hits);
+        assert.ok(hits.length > 0);
+        assert.deepEqual(p.geometry.drawRange, full);
     });
     it('matches actual Float32 InstancedMesh source bounds with nontrivial transforms', () => {
         const a = source('a', 0, {
