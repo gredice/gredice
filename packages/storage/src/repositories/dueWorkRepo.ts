@@ -7,6 +7,23 @@ import { getDeliveryLifecycleReconciliationCandidates } from './deliveryLifecycl
 import { getDeliveryLifecycleEmailCandidates } from './notificationsRepo';
 import { listActiveStripeCheckoutAttemptsForReconciliation } from './stripeCheckoutAttemptRepo';
 
+function outboxMetadataDueAt(
+    field: string,
+    fallback: ReturnType<typeof sql>,
+    now: Date,
+    delaySeconds = 0,
+) {
+    const value = sql`nullif(metadata->>${field}, '')`;
+    // PostgreSQL validates the entire value before casting, including calendar
+    // ranges. Invalid/non-finite values stay due now; only missing values use
+    // the normal queue or submission fallback and its delay.
+    return sql`case
+        when ${value} is null then ${fallback}
+        when not pg_input_is_valid(${value}, 'timestamp with time zone') then ${now}::timestamptz
+        when isfinite(${value}::timestamptz) then ${value}::timestamptz + ${delaySeconds} * interval '1 second'
+        else ${now}::timestamptz end`;
+}
+
 async function minimumDueAt(query: ReturnType<typeof sql>, now: Date) {
     const result = await storage().execute<{ dueAt: string | Date | null }>(
         query,
@@ -59,16 +76,16 @@ export async function getNextDueWorkAt(
         return minimumDueAt(
             sql`
             select min(case
-                when status = 'queued' then coalesce(nullif(metadata->>'nextAttemptAt', '')::timestamptz, queued_at)
-                when provider_status = 'outbox_claimed' then coalesce(nullif(metadata->>'claimExpiresAt', '')::timestamptz, ${now})
+                when status = 'queued' then ${outboxMetadataDueAt('nextAttemptAt', sql`queued_at`, now)}
+                when provider_status = 'outbox_claimed' then ${outboxMetadataDueAt('claimExpiresAt', sql`${now}::timestamptz`, now)}
                 when ${kind} = 'order_confirmation' and provider_status = 'submission_started'
-                    then coalesce(nullif(metadata->>'submissionStartedAt', '')::timestamptz, updated_at) + interval '5 minutes'
+                    then ${outboxMetadataDueAt('submissionStartedAt', sql`updated_at + interval '5 minutes'`, now, 300)}
                 when ${kind} = 'order_confirmation' and provider_status = 'submission_uncertain'
-                    then coalesce(nullif(metadata->>'submissionUncertainAt', '')::timestamptz, updated_at) + interval '5 minutes'
+                    then ${outboxMetadataDueAt('submissionUncertainAt', sql`updated_at + interval '5 minutes'`, now, 300)}
                 when ${kind} = 'order_confirmation' and provider_status = 'reconciliation_pending'
-                    then coalesce(nullif(metadata->>'nextReconciliationAt', '')::timestamptz, ${now})
+                    then ${outboxMetadataDueAt('nextReconciliationAt', sql`${now}::timestamptz`, now)}
                 when ${kind} = 'order_confirmation' and provider_status = 'reconciliation_claimed'
-                    then coalesce(nullif(metadata->>'reconciliationClaimExpiresAt', '')::timestamptz, ${now})
+                    then ${outboxMetadataDueAt('reconciliationClaimExpiresAt', sql`${now}::timestamptz`, now)}
                 else null end) as "dueAt"
             from email_messages where metadata->>'outboxKind' = ${kind} and status in ('queued', 'sending')
         `,

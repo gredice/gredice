@@ -123,6 +123,155 @@ test('outbox due projections retain retry and claim/reconciliation deadlines wit
     }
 });
 
+test('outbox due projections safely validate metadata timestamps and retain missing-value fallbacks', async () => {
+    const db = storage();
+    await db
+        .update(emailMessages)
+        .set({ status: 'sent' })
+        .where(inArray(emailMessages.status, ['queued', 'sending']));
+    const now = new Date('2026-10-02T12:00:00.000Z');
+    const queuedAt = new Date(now.getTime() - 3_600_000);
+    const updatedAt = new Date(now.getTime() - 120_000);
+    const cases = [
+        {
+            field: 'nextAttemptAt',
+            status: 'queued',
+            providerStatus: null,
+            fallback: queuedAt,
+        },
+        {
+            field: 'claimExpiresAt',
+            status: 'sending',
+            providerStatus: 'outbox_claimed',
+            fallback: now,
+        },
+        {
+            field: 'submissionStartedAt',
+            status: 'sending',
+            providerStatus: 'submission_started',
+            fallback: new Date(updatedAt.getTime() + 300_000),
+        },
+        {
+            field: 'submissionUncertainAt',
+            status: 'sending',
+            providerStatus: 'submission_uncertain',
+            fallback: new Date(updatedAt.getTime() + 300_000),
+        },
+        {
+            field: 'nextReconciliationAt',
+            status: 'sending',
+            providerStatus: 'reconciliation_pending',
+            fallback: now,
+        },
+        {
+            field: 'reconciliationClaimExpiresAt',
+            status: 'sending',
+            providerStatus: 'reconciliation_claimed',
+            fallback: now,
+        },
+    ];
+    for (const kind of ['order_confirmation', 'checkout_notification']) {
+        const job =
+            kind === 'order_confirmation'
+                ? 'order-confirmation-emails'
+                : 'checkout-notifications';
+        const [row] = await db
+            .insert(emailMessages)
+            .values({
+                fromAddress: 'no-reply@example.test',
+                subject: 'Metadata validation test',
+                recipients: { to: [{ address: 'test@example.test' }] },
+                status: 'queued',
+                queuedAt,
+                updatedAt,
+                metadata: { outboxKind: kind },
+            })
+            .returning({ id: emailMessages.id });
+        assert.ok(row);
+        try {
+            for (const scenario of cases) {
+                if (
+                    kind === 'checkout_notification' &&
+                    scenario.field !== 'nextAttemptAt' &&
+                    scenario.field !== 'claimExpiresAt'
+                )
+                    continue;
+                for (const value of [
+                    'not-a-date',
+                    '2026-garbage',
+                    '2026-99-99T00:00:00Z',
+                    '2026-02-29T12:00:00Z',
+                    'infinity',
+                    '-infinity',
+                ]) {
+                    await db
+                        .update(emailMessages)
+                        .set({
+                            status: scenario.status,
+                            providerStatus: scenario.providerStatus,
+                            updatedAt,
+                            metadata: {
+                                outboxKind: kind,
+                                [scenario.field]: value,
+                            },
+                        })
+                        .where(eq(emailMessages.id, row.id));
+                    assert.equal(
+                        (await getNextDueWorkAt(job, now))?.toISOString(),
+                        now.toISOString(),
+                        `${kind}/${scenario.field}/${value}`,
+                    );
+                }
+                for (const value of [undefined, null, '']) {
+                    await db
+                        .update(emailMessages)
+                        .set({
+                            status: scenario.status,
+                            providerStatus: scenario.providerStatus,
+                            updatedAt,
+                            metadata: {
+                                outboxKind: kind,
+                                [scenario.field]: value,
+                            },
+                        })
+                        .where(eq(emailMessages.id, row.id));
+                    assert.equal(
+                        (await getNextDueWorkAt(job, now))?.toISOString(),
+                        scenario.fallback.toISOString(),
+                        `${kind}/${scenario.field}/missing:${value}`,
+                    );
+                }
+                const future = new Date(now.getTime() + 60_000);
+                await db
+                    .update(emailMessages)
+                    .set({
+                        status: scenario.status,
+                        providerStatus: scenario.providerStatus,
+                        updatedAt,
+                        metadata: {
+                            outboxKind: kind,
+                            [scenario.field]: future.toISOString(),
+                        },
+                    })
+                    .where(eq(emailMessages.id, row.id));
+                const expectedDueAt = new Date(
+                    future.getTime() +
+                        (scenario.providerStatus?.startsWith('submission_')
+                            ? 300_000
+                            : 0),
+                );
+                assert.equal(
+                    (await getNextDueWorkAt(job, now))?.toISOString(),
+                    expectedDueAt.toISOString(),
+                    `${kind}/${scenario.field}/valid`,
+                );
+            }
+        } finally {
+            await db.delete(emailMessages).where(eq(emailMessages.id, row.id));
+        }
+    }
+});
+
 test('social due projection respects scheduled time and immediately queued status', async () => {
     const db = storage();
     await db
