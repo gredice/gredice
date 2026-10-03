@@ -1,0 +1,257 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-03T23:07:29Z",
+  "kind": "dated-prepared-stack-checkpoint",
+  "candidate": {
+    "commit": "53d041ee15af81901342343a03fd6e0fd46a0dcd",
+    "tree": "45ceea3df3fb7ccefc2fd07958e1744eea72712f",
+    "pullRequest": "https://github.com/gredice/gredice/pull/5151",
+    "baseRef": "feat/4996-autumn-cosmetic-collection"
+  },
+  "releaseStatus": "blocked",
+  "scope": "Prepared source checkpoint includes optional activities; chosen paid-pilot release scope remains separately selected.",
+  "localValidation": [
+    {
+      "id": "game-units",
+      "sourceCommit": "9d2e437c12aee7bf84422b2ead4aeec860181c3b",
+      "environment": "local-node",
+      "passedCases": 2103,
+      "logName": "gredice-autumn-activities-full-game.log",
+      "logSha256": "51e0e8537c5d840ceb67b7a9c34184de79fadd7d90ef5592e3e91803d6f88b03",
+      "limits": "Recorded local result; logs are external run artifacts, not deployed or physical-device acceptance."
+    },
+    {
+      "id": "js-units",
+      "sourceCommit": "9d2e437c12aee7bf84422b2ead4aeec860181c3b",
+      "environment": "local-node",
+      "passedCases": 191,
+      "logName": "gredice-autumn-activities-full-js.log",
+      "logSha256": "62b9c93d3061c3fd1daea461aeec0a8c83183bd3ee65cf235eef5ed5d954f60d",
+      "limits": "Recorded local result; logs are external run artifacts, not deployed or physical-device acceptance."
+    },
+    {
+      "id": "album-browser",
+      "sourceCommit": "bab20ee90dd23f7cb4d30ffbcf7fce43ac301b61",
+      "environment": "local-headless-chromium",
+      "passedCases": 9,
+      "logName": "gredice-4996-final-browser.log",
+      "logSha256": "f13d848db5871b46f34ed8b3a709e16bd524f75b3dfe52539669e35f889ca593",
+      "limits": "Recorded local result; logs are external run artifacts, not deployed or physical-device acceptance."
+    },
+    {
+      "id": "inventory-regressions",
+      "sourceCommit": "bab20ee90dd23f7cb4d30ffbcf7fce43ac301b61",
+      "environment": "local-headless-chromium",
+      "passedCases": 21,
+      "logName": "gredice-4996-inventory-regressions.log",
+      "logSha256": "4447df66a22964e42d2d679fdfb4bd1fccdc117c280d8859e30f1dc0951f5dbf",
+      "limits": "Recorded local result; logs are external run artifacts, not deployed or physical-device acceptance."
+    },
+    {
+      "id": "album-private-pglite",
+      "sourceCommit": "e9b2a234639c6469037c011b75d9fbfc9c4e31eb",
+      "environment": "isolated-private-pglite",
+      "passedCases": 11,
+      "logName": "gredice-4996-pglite.log",
+      "logSha256": "dc169ef3d949599c5cee2cd416b3fc9019af7ed7097ca64d5dcdad38220e43ff",
+      "limits": "Recorded local result; logs are external run artifacts, not deployed or physical-device acceptance."
+    },
+    {
+      "id": "album-disposable-postgres",
+      "sourceCommit": "e9b2a234639c6469037c011b75d9fbfc9c4e31eb",
+      "environment": "local-disposable-postgresql",
+      "passedCases": 11,
+      "logName": "gredice-4996-postgres.log",
+      "logSha256": "179ca91db0e14e909a1e566a5a809eeccd49d8068d4f7288d2942e6fd7b85f75",
+      "limits": "Recorded local result; logs are external run artifacts, not deployed or physical-device acceptance."
+    },
+    {
+      "id": "trail-renderer",
+      "sourceCommit": "9d2e437c12aee7bf84422b2ead4aeec860181c3b",
+      "environment": "local-software-webgl",
+      "passedCases": 3,
+      "logName": "gredice-pumpkin-browser.log",
+      "logSha256": "a347a3210ca1dce80c04ddb9f6de3db1f3856c3fcfc933bea5f2f802eb30917c",
+      "limits": "Recorded local result; logs are external run artifacts, not deployed or physical-device acceptance."
+    },
+    {
+      "id": "trail-public-route",
+      "sourceCommit": "63049e79445e848d512028c64989faab30090986",
+      "environment": "local-built-next-headless-chromium",
+      "passedCases": 2,
+      "logName": "gredice-pumpkin-route.log",
+      "logSha256": "14d79f33a178350cb2d7a32761ad28f10c7ac8298259184a2f7d259669bdab2d",
+      "limits": "Recorded local result; logs are external run artifacts, not deployed or physical-device acceptance."
+    }
+  ],
+  "trackedRendererEvidence": [
+    {
+      "path": "docs/autumn-starter-pack-review-2026/activity-stack-recapture.json",
+      "sha256": "03004929c7c2caf82969118eaa092cd16593ef3b20e0e0c851ab438d613cd8f8"
+    },
+    {
+      "path": "docs/kestenijada-2026/activity-stack-recapture.json",
+      "sha256": "841243e97e4e3ca6ec9c37a8b13fc30f8d132090ec37cd8677700b7c45760fe5"
+    },
+    {
+      "path": "docs/pumpkin-trail-validation-2026/validation.json",
+      "sha256": "65ee31538271bfb4cbd8da99834caf94bf084dc98e8e4b50c058580cc991f39b"
+    }
+  ],
+  "ci": {
+    "kind": "current-candidate-sha-snapshot",
+    "checks": [
+      {
+        "name": "CI - garden / lint",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-03T22:59:36Z",
+        "completedAt": "2026-10-03T23:00:18Z",
+        "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124554"
+      },
+      {
+        "name": "CI - garden / test (chromium 1/2)",
+        "status": "IN_PROGRESS",
+        "conclusion": null,
+        "startedAt": "2026-10-03T23:00:59Z",
+        "completedAt": null,
+        "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124774"
+      },
+      {
+        "name": "CI - garden / test (chromium 2/2)",
+        "status": "IN_PROGRESS",
+        "conclusion": null,
+        "startedAt": "2026-10-03T23:00:50Z",
+        "completedAt": null,
+        "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124759"
+      },
+      {
+        "name": "CI - garden / test (webgl components 1/2)",
+        "status": "IN_PROGRESS",
+        "conclusion": null,
+        "startedAt": "2026-10-03T23:00:27Z",
+        "completedAt": null,
+        "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124675"
+      },
+      {
+        "name": "CI - garden / test (webgl components 2/2)",
+        "status": "IN_PROGRESS",
+        "conclusion": null,
+        "startedAt": "2026-10-03T23:01:15Z",
+        "completedAt": null,
+        "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124778"
+      },
+      {
+        "name": "CI - garden / test (kestenijada route)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-03T23:01:43Z",
+        "completedAt": "2026-10-03T23:04:47Z",
+        "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124763"
+      },
+      {
+        "name": "CI - garden / test (pumpkin trail route)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-03T23:00:18Z",
+        "completedAt": "2026-10-03T23:03:00Z",
+        "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124724"
+      },
+      {
+        "name": "CI - garden / test (outlet layout)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-03T23:00:18Z",
+        "completedAt": "2026-10-03T23:06:17Z",
+        "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124756"
+      },
+      {
+        "name": "CI - garden / test (outlet reconcile)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-03T23:02:45Z",
+        "completedAt": "2026-10-03T23:05:40Z",
+        "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124779"
+      },
+      {
+        "name": "CI - garden / test (outlet lifecycle)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-03T23:00:46Z",
+        "completedAt": "2026-10-03T23:03:21Z",
+        "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124777"
+      },
+      {
+        "name": "CI - garden / test (outlet walk)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-03T23:03:02Z",
+        "completedAt": "2026-10-03T23:06:26Z",
+        "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124866"
+      },
+      {
+        "name": "CI - garden / test (outlet rest)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-03T23:00:19Z",
+        "completedAt": "2026-10-03T23:06:30Z",
+        "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124728"
+      },
+      {
+        "name": "CI - api / lint",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-03T22:59:36Z",
+        "completedAt": "2026-10-03T23:00:26Z",
+        "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124663"
+      },
+      {
+        "name": "CI - api / test",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-03T22:59:46Z",
+        "completedAt": "2026-10-03T23:02:43Z",
+        "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124653"
+      },
+      {
+        "name": "CI - test @gredice/storage",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-03T22:59:36Z",
+        "completedAt": "2026-10-03T23:05:24Z",
+        "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124308"
+      },
+      {
+        "name": "CI - test @gredice/game and @gredice/js",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "startedAt": "2026-10-03T22:59:36Z",
+        "completedAt": "2026-10-03T23:01:40Z",
+        "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124323"
+      }
+    ],
+    "limits": "Pending/cancelled/failed checks remain unresolved; this snapshot is not a waiver or all-green claim."
+  },
+  "inheritedFailures": [
+    {
+      "test": "3D Outlet opens the normal garden in a fresh renderer document",
+      "candidatePullRequest": 5146,
+      "jobUrl": "https://github.com/gredice/gredice/actions/runs/37130654836/job/111225166690",
+      "failure": "60-second timeout waiting for the normal-garden canvas; retry included a closed renderer session.",
+      "logSha256": "dd12417a4597f0b848e21c083d6f053daaf8533a4580bf80c03a932dee367fd6",
+      "parentPullRequest": 5144,
+      "parentFailure": "Same named test timed out; ERR_ABORTED/closed renderer session observed.",
+      "parentLogSha256": "3363d4bec6e1b397be0fa3b0a3b8f5662b742b8f4f9f7601313a83bc8eeb28a5",
+      "disposition": "Same test failed before album changes; the current 53d041ee candidate Outlet-rest job passed. The historical failure cause is not established."
+    }
+  ],
+  "remainingReleaseGates": [
+    "Reviewed storage/guard migration and runtime deployment",
+    "Actual published catalogue and immutable pack products",
+    "Exact deployed model/preview byte readback",
+    "Authorized live purchase/placement/expiry/refund/recycle acceptance",
+    "Final selected-launch combined seasonal/weather matrix and production profile disposition",
+    "Physical mobile touch/audio/thermal evidence",
+    "Explicit optional activity configuration and publication when selected for launch"
+  ]
+}
