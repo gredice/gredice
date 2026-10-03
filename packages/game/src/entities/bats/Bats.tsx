@@ -1,5 +1,3 @@
-import { useAnimations } from '@react-three/drei';
-import { useFrame, useThree } from '@react-three/fiber';
 import {
     useCallback,
     useEffect,
@@ -25,7 +23,9 @@ import {
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
+import { useFaunaFrame } from '../animals/FaunaRuntimeProvider';
 import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
+import { useFaunaAnimations } from '../animals/useFaunaAnimations';
 import {
     type BatLifecyclePhase,
     type BatWeather,
@@ -282,8 +282,7 @@ function Bat({
         return scene;
     }, [gltf.scene]);
     useFaunaActorCulling(batModel);
-    const { actions } = useAnimations(gltf.animations, batModel);
-    const clock = useThree((state) => state.clock);
+    const { actions } = useFaunaAnimations(gltf.animations, batModel);
 
     const setBatAnimation = (next: BatAnimation) => {
         if (animationRef.current === next) {
@@ -403,7 +402,7 @@ function Bat({
         setBatAnimation(nextAnimation);
     }
 
-    useFrame(({ camera }, delta) => {
+    useFaunaFrame(({ camera, clock }, delta) => {
         const group = groupRef.current;
         if (!group) {
             return;
@@ -656,7 +655,7 @@ function Bat({
             return;
         }
         beginNextForagingSegment(group, now, runtime, avoid);
-    });
+    }, groupRef);
 
     return (
         <>

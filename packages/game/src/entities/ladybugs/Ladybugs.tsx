@@ -1,5 +1,4 @@
 import type { BlockData } from '@gredice/client';
-import { useFrame } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Group, Material, Object3D } from 'three';
 import {
@@ -35,6 +34,10 @@ import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
 import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
 import { createAnimalBlockedCells } from '../animals/animalMovementTerrain';
+import {
+    useFaunaFrame,
+    useFaunaRenderFrame,
+} from '../animals/FaunaRuntimeProvider';
 import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
 import { getCactusVariantConfig } from '../Cactus';
 import { tulipBouquetStems } from '../tulipBouquet';
@@ -823,6 +826,7 @@ function LadybugActor({
     const { enableDebugHudFlag = false } = useGameFlags();
     const groupRef = useRef<Group>(null);
     const targetDebugRef = useRef<Group>(null);
+    const poseProgressRef = useRef({ progress: 0, at: 0, duration: 1 });
     const runtimeRef = useRef<LadybugRuntimeState>({ phase: 'hidden' });
     const randomRef = useRef(createLadybugRandom(assignment?.seed ?? slot));
     const assignmentSeedRef = useRef<number | null>(null);
@@ -894,7 +898,7 @@ function LadybugActor({
         }
     }, [animalTargetsDebugVisible]);
 
-    useFrame(({ clock: frameClock }, delta) => {
+    useFaunaFrame(({ clock: frameClock }, delta) => {
         const group = groupRef.current;
         if (!group) {
             return;
@@ -1060,6 +1064,13 @@ function LadybugActor({
         }
 
         const progress = phaseProgress(runtime, now);
+        // Preserve the phase sample used by the legacy pose even on a
+        // transition tick; recomputing from the replacement runtime resets it.
+        poseProgressRef.current = {
+            progress,
+            at: now,
+            duration: 'duration' in runtime ? runtime.duration : 1,
+        };
         switch (runtime.phase) {
             case 'crawl': {
                 const eased = smoothLadybugTransition(progress);
@@ -1226,6 +1237,31 @@ function LadybugActor({
             }
         }
 
+        if (
+            enableDebugHudFlag &&
+            runtime.phase !== 'hidden' &&
+            now - lastDebugUpdateRef.current >= 0.5
+        ) {
+            lastDebugUpdateRef.current = now;
+            faunaWorld.reportDebug(
+                createDebugEntry({ actor: group, id: actorId, now, runtime }),
+            );
+        }
+        reportRuntimeActive(runtime.phase !== 'hidden');
+    }, groupRef);
+
+    useFaunaRenderFrame(({ clock }, delta) => {
+        const group = groupRef.current;
+        const runtime = runtimeRef.current;
+        if (!group || runtime.phase === 'hidden') return;
+        const now = clock.elapsedTime;
+        const poseSample = poseProgressRef.current;
+        const progress = MathUtils.clamp(
+            poseSample.progress + (now - poseSample.at) / poseSample.duration,
+            0,
+            1,
+        );
+        const target = runtimeTarget(runtime);
         updateLadybugRig({
             delta,
             now,
@@ -1246,18 +1282,6 @@ function LadybugActor({
                 z: group.position.z,
             });
         }
-
-        if (
-            enableDebugHudFlag &&
-            runtime.phase !== 'hidden' &&
-            now - lastDebugUpdateRef.current >= 0.5
-        ) {
-            lastDebugUpdateRef.current = now;
-            faunaWorld.reportDebug(
-                createDebugEntry({ actor: group, id: actorId, now, runtime }),
-            );
-        }
-        reportRuntimeActive(runtime.phase !== 'hidden');
     });
 
     useEffect(() => {

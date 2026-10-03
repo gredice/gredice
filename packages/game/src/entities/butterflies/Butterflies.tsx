@@ -1,5 +1,4 @@
 import type { BlockData } from '@gredice/client';
-import { useFrame } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Group, Material, Object3D } from 'three';
 import {
@@ -40,6 +39,10 @@ import {
     createAnimalMovementSurfaces,
     getAnimalMovementSurfaceAt,
 } from '../animals/animalMovementTerrain';
+import {
+    useFaunaFrame,
+    useFaunaRenderFrame,
+} from '../animals/FaunaRuntimeProvider';
 import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
 import { getBeeHabitatGroups } from '../bees/beeBehavior';
 import {
@@ -628,10 +631,13 @@ function updateButterflyRig({
     descriptor: ButterflySpawnDescriptor;
     now: number;
     rig: ButterflyRig;
-    runtime: ButterflyRuntimeState;
+    runtime: ButterflyRuntimeState | null;
 }) {
-    const resting = runtime.phase === 'resting';
-    const landing = runtime.phase === 'landing';
+    // A newly mounted butterfly can render between fixed simulation steps.
+    // Both initial path alternatives are flight, so its render-time damped
+    // rig starts immediately without advancing decisions or locomotion.
+    const resting = runtime?.phase === 'resting';
+    const landing = runtime?.phase === 'landing';
     const slowWingMotion = Math.sin(now * 0.75 + descriptor.seed) * 0.045;
     const flap =
         Math.sin(
@@ -794,7 +800,7 @@ function Butterfly({
         }
     }, [animalTargetsDebugVisible]);
 
-    useFrame(({ clock: frameClock }, delta) => {
+    useFaunaFrame(({ clock: frameClock }, delta) => {
         const group = groupRef.current;
         if (!group) {
             return;
@@ -1131,14 +1137,6 @@ function Butterfly({
             }
         }
 
-        updateButterflyRig({
-            delta,
-            descriptor,
-            now,
-            rig: butterflyModel.rig,
-            runtime,
-        });
-
         const emergenceProgress = MathUtils.clamp(
             (now - descriptor.bornAt) / 0.55,
             0,
@@ -1167,18 +1165,6 @@ function Butterfly({
             }
         }
 
-        if (updateGroundingShadow) {
-            updateGroundingShadow({
-                actorY: group.position.y,
-                receiverY:
-                    runtime.phase === 'resting' ? runtime.target.position.y : 0,
-                visible: runtime.phase === 'resting',
-                x: group.position.x,
-                yaw: group.rotation.y,
-                z: group.position.z,
-            });
-        }
-
         if (enableDebugHudFlag && now - lastDebugUpdateRef.current >= 0.2) {
             lastDebugUpdateRef.current = now;
             faunaWorld.reportDebug(
@@ -1189,6 +1175,31 @@ function Butterfly({
                     runtime,
                 }),
             );
+        }
+    }, groupRef);
+
+    useFaunaRenderFrame(({ clock }, delta) => {
+        const group = groupRef.current;
+        const runtime = runtimeRef.current;
+        if (!group) return;
+        const now = clock.elapsedTime;
+        updateButterflyRig({
+            delta,
+            descriptor,
+            now,
+            rig: butterflyModel.rig,
+            runtime,
+        });
+        if (updateGroundingShadow && runtime) {
+            updateGroundingShadow({
+                actorY: group.position.y,
+                receiverY:
+                    runtime.phase === 'resting' ? runtime.target.position.y : 0,
+                visible: runtime.phase === 'resting',
+                x: group.position.x,
+                yaw: group.rotation.y,
+                z: group.position.z,
+            });
         }
     });
 
@@ -1289,7 +1300,7 @@ export function Butterflies({
         setSpawns(nextSpawns);
     }, []);
 
-    useFrame(({ clock }) => {
+    useFaunaFrame(({ clock }) => {
         const now = clock.getElapsedTime();
         if (now - lastPopulationTickRef.current < butterflyStateTickSeconds) {
             return;

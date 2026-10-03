@@ -1,5 +1,4 @@
 import type { BlockData } from '@gredice/client';
-import { useFrame } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Group, Material, Object3D } from 'three';
 import { MathUtils, type Mesh, Vector3 } from 'three';
@@ -22,6 +21,10 @@ import {
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
+import {
+    useFaunaFrame,
+    useFaunaRenderFrame,
+} from '../animals/FaunaRuntimeProvider';
 import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
 import {
     chooseSlugBehavior,
@@ -512,7 +515,7 @@ function SlugActor({
         [model.materials],
     );
 
-    useFrame(({ clock }, delta) => {
+    useFaunaFrame(({ clock }, delta) => {
         const group = groupRef.current;
         let runtime = runtimeRef.current;
         if (!group || !runtime) {
@@ -602,6 +605,19 @@ function SlugActor({
             }
         }
 
+        if (enableDebugHudFlag && now - lastDebugUpdateRef.current >= 0.5) {
+            lastDebugUpdateRef.current = now;
+            faunaWorld.reportDebug(
+                createSlugDebugEntry({ entry, group, now, runtime }),
+            );
+        }
+    }, groupRef);
+
+    useFaunaRenderFrame(({ clock }, delta) => {
+        const group = groupRef.current;
+        const runtime = runtimeRef.current;
+        if (!group || !runtime) return;
+        const now = clock.elapsedTime;
         updateRig({
             behavior: runtime.behavior,
             blend: animationBlendRef.current,
@@ -618,13 +634,6 @@ function SlugActor({
             yaw: group.rotation.y,
             z: group.position.z,
         });
-
-        if (enableDebugHudFlag && now - lastDebugUpdateRef.current >= 0.5) {
-            lastDebugUpdateRef.current = now;
-            faunaWorld.reportDebug(
-                createSlugDebugEntry({ entry, group, now, runtime }),
-            );
-        }
     });
 
     return (
