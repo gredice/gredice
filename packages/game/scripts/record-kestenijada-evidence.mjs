@@ -43,6 +43,10 @@ const paths = [
     'packages/game/src/scene/gameQuality.ts',
     'packages/game/src/scene/Scene.tsx',
     'packages/game/src/useGameState.ts',
+    'packages/game/src/entities/helpers/GardenNightLight.tsx',
+    'packages/game/src/entities/helpers/nightGardenLight.ts',
+    'packages/game/src/entities/helpers/PumpkinLightOverrideContext.ts',
+    'packages/game/src/scene/GardenLightProvider.tsx',
     'apps/garden/app/kestenijada/page.tsx',
     'apps/garden/app/kestenijada/KestenijadaDiscoveryEntry.tsx',
     'apps/garden/components/providers/ClientAppProvider.tsx',
@@ -77,6 +81,13 @@ for (const file of [...new Set(paths)].sort()) {
         sha256: createHash('sha256').update(bytes).digest('hex'),
     });
 }
+const previousEvidencePath =
+    'docs/kestenijada-2026/pre-activity-stack/evidence.json';
+const previousEvidenceBytes = await readFile(
+    path.join(root, previousEvidencePath),
+);
+const previousEvidence = JSON.parse(previousEvidenceBytes);
+const captureSources = [];
 const captureParity = [];
 for (const view of ['day', 'dusk', 'night', 'mobile-low']) {
     const current = path.join(root, `docs/kestenijada-2026/${view}`);
@@ -92,9 +103,20 @@ for (const view of ['day', 'dusk', 'night', 'mobile-low']) {
     const originalGeometry = JSON.parse(
         await readFile(`${original}.json`, 'utf8'),
     );
+    if (
+        !currentGeometry.source?.commit ||
+        !currentGeometry.source?.tree ||
+        currentGeometry.source.status !== ''
+    )
+        throw new Error(`Missing clean source identity for ${view}`);
+    captureSources.push(currentGeometry.source);
+    const previousPng = await readFile(
+        path.join(root, `docs/kestenijada-2026/pre-activity-stack/${view}.png`),
+    );
     captureParity.push({
         view,
         pngByteIdentical: currentPng.equals(originalPng),
+        previousCapturePngByteIdentical: currentPng.equals(previousPng),
         worldAndScreenBoundsIdentical:
             JSON.stringify(currentGeometry.geometry) ===
             JSON.stringify(originalGeometry.geometry),
@@ -103,40 +125,48 @@ for (const view of ['day', 'dusk', 'night', 'mobile-low']) {
             currentGeometry.height === originalGeometry.height,
     });
 }
+if (
+    captureSources.some(
+        (source) =>
+            JSON.stringify(source) !== JSON.stringify(captureSources[0]),
+    )
+)
+    throw new Error(
+        'Kestenijada captures must share one clean source commit and tree',
+    );
 const evidence = {
-    schemaVersion: 2,
-    originalImplementationCommit: 'd0fee5e13a2230d160c723a4ea65e52d1c285d83',
-    originalEvidencePath:
-        'docs/kestenijada-2026/original-d0fee5e13/evidence.json',
-    originalEvidenceSha256: createHash('sha256')
-        .update(
-            await readFile(
-                path.join(
-                    root,
-                    'docs/kestenijada-2026/original-d0fee5e13/evidence.json',
-                ),
-            ),
-        )
-        .digest('hex'),
-    captureParentCommit: 'f97ddf38b6009103819902f9494a0fd5e2f28286',
-    captureImplementationCommit: '92291768bd704c731976c4decb3f276a9fa9868b',
-    integrationParentCommit: '9b9df59b18d98c4d2e98642d77f5d84504bc04d4',
-    rebasedImplementationCommit: '536eaedb29c975796a7716ad50311d6d03e7dd15',
-    routeCiRegistration: {
-        parentCommit: '87c5d975335fc00acc3ab46966158caf28726a14',
-        scope: 'Test, local fixture and CI registration only; no renderer or asset changes. Original capture commits and bytes remain unchanged.',
-        project: 'CI garden / kestenijada route',
-        excludedFromOrdinaryChromium: true,
+    schemaVersion: 3,
+    originalImplementationCommit: previousEvidence.originalImplementationCommit,
+    originalEvidencePath: previousEvidence.originalEvidencePath,
+    originalEvidenceSha256: previousEvidence.originalEvidenceSha256,
+    previousEvidence: {
+        path: previousEvidencePath,
+        sha256: createHash('sha256')
+            .update(previousEvidenceBytes)
+            .digest('hex'),
+        captureParentCommit: previousEvidence.captureParentCommit,
+        captureImplementationCommit:
+            previousEvidence.captureImplementationCommit,
+        integrationParentCommit: previousEvidence.integrationParentCommit,
+        rebasedImplementationCommit:
+            previousEvidence.rebasedImplementationCommit,
+    },
+    activityStackCapture: {
+        source: captureSources[0],
+        command:
+            'pnpm --filter garden exec playwright test --config playwright.kestenijada.config.ts --workers=1',
+        captureTests: 4,
+        sceneCaptures: 4,
+        suiteTests: 6,
+        scope: 'Fresh captures from the activity and trail stack, including public-scene private-request exclusion and local-photo lifecycle coverage. Route verification is recorded separately in the activity-stack report.',
     },
     sourceIdentity:
         'Exact current-source SHA256 records; verification needs no historic Git objects or network.',
     scope: 'Bounded selected runtime identity evidence, not a complete renderer dependency graph or reproducible full-engine/performance proof.',
     models,
     captureParity,
-    finalParentChange:
-        'Compared with capture parent, final UI parent changed only two test files; production renderer bytes are unchanged.',
     visualReview:
-        'Original authored scene approved by Astra xhigh; fresh integration captures retain measured in-frame geometry. Original reviewed capture provenance is archived separately.',
+        'Original authored scene approval and earlier integration evidence are retained in the archived records. Current image parity and any additional visual review are recorded in activity-stack-recapture.json.',
     rendererCounters:
         'Incidental diagnostic samples, not cost or performance evidence.',
     files,
