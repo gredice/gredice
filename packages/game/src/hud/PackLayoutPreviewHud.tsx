@@ -198,7 +198,7 @@ export function PackLayoutPreviewHud() {
                     </fieldset>
                     <p role="status">
                         {unavailable
-                            ? 'Model se nije učitao. Odustani i ponovno otvori pregled.'
+                            ? 'Model se nije učitao. Osvježi stranicu pa ponovno otvori pregled.'
                             : stale
                               ? 'Vrt se promijenio. Otvori novi pregled prije postavljanja.'
                               : (preview?.error ??
