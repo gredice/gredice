@@ -40,8 +40,11 @@ while a replacement packet is compiling.
 Stable terrain chunks that share a material and vertex layout are joined
 across components into chunk render packets; see
 [static render packets](game-static-render-packets.md).
-Exact stock-material packets borrow immutable authored geometry and own only
-root-scoped material clones. Different PBR uniforms remain separate packets; no
+Exact stock-material props borrow immutable authored geometry and own only
+root-scoped material clones. Original instanced singletons render directly with
+those inputs and do not allocate compiled outputs; compatible aggregates retain
+the compiler path. Existing merged terrain keeps its original material and
+weather ownership. Different PBR uniforms remain separate packets; no
 palette attributes or custom shader family is added. The existing compiler copies source arrays and matrices
 for each dispatched job; it does not register persistent worker source IDs or
 retain a versioned source cache. Compiler telemetry covers preparation,

@@ -50,18 +50,6 @@ test('production entity props batch JSX material nodes, retain untouched chunks 
     page.on('console', (message) => {
         if (message.type() === 'error') errors.push(message.text());
     });
-    // Keep real worker computation, but ensure its result cannot beat the
-    // pending-frame ownership witness on fast hosts. This affects only CT.
-    await page.route('**/meshCompiler.worker-*.js', async (route) => {
-        const response = await route.fetch();
-        await route.fulfill({
-            response,
-            body:
-                'const originalWorkerPostMessage = self.postMessage.bind(self);\n' +
-                'self.postMessage = (...args) => setTimeout(() => originalWorkerPostMessage(...args), 100);\n' +
-                (await response.text()),
-        });
-    });
     const fixture = await mount(<GardenPaletteAdmissionFixture batch />);
     await expect(fixture).toHaveAttribute(
         'data-ready',
@@ -72,16 +60,22 @@ test('production entity props batch JSX material nodes, retain untouched chunks 
     );
     expect(strictInitial.materials.sharedMaterialUsers).toBe(3);
     expect(strictInitial.packets.savedSubmissions).toBe(0);
-    expect(strictInitial.fallbackFrames).toBeGreaterThan(0);
-    expect(strictInitial.nativePendingDraws).toBeGreaterThan(0);
+    expect(strictInitial.fallbackFrames).toBe(0);
+    expect(
+        strictInitial.compiler.syncCompiles +
+            strictInitial.compiler.workerCompiles,
+    ).toBe(0);
+    expect(strictInitial.borrowedSingletonGeometries).toBe(6);
+    expect(strictInitial.borrowedSourceDisposals).toBe(0);
+    expect(strictInitial.nativePendingDraws).toBe(0);
     expect(strictInitial.nativeStockDraws).toBeGreaterThan(0);
     expect(strictInitial.paletteFallbacks).toBe(0);
     expect(strictInitial.borrowedFallbacks).toBe(0);
     expect(strictInitial.liveFallbackMaterials).toBe(0);
-    expect(strictInitial.disposedFallbackMaterials).toBeGreaterThan(0);
+    expect(strictInitial.disposedFallbackMaterials).toBe(0);
     expect(strictInitial.borrowedFallbackGeometries).toBe(0);
     expect(strictInitial.liveFallbackGeometries).toBe(0);
-    expect(strictInitial.disposedFallbackGeometries).toBeGreaterThan(0);
+    expect(strictInitial.disposedFallbackGeometries).toBe(0);
     await fixture.update(<GardenPaletteAdmissionFixture />);
     await expect(fixture).toHaveAttribute(
         'data-ready',
@@ -178,6 +172,110 @@ test('production entity props batch JSX material nodes, retain untouched chunks 
         contentType: 'image/png',
     });
     expect(errors).toEqual([]);
+});
+
+test('singleton stock packets preserve borrowed geometry and compile only after compatible sources join', async ({
+    mount,
+    page,
+}, testInfo) => {
+    test.setTimeout(90_000);
+    // Keep real worker computation, but ensure its result cannot beat the
+    // pending-frame ownership witness on fast hosts. This affects only CT.
+    await page.route('**/meshCompiler.worker-*.js', async (route) => {
+        const response = await route.fetch();
+        await route.fulfill({
+            response,
+            body:
+                'const originalWorkerPostMessage = self.postMessage.bind(self);\n' +
+                'self.postMessage = (...args) => setTimeout(() => originalWorkerPostMessage(...args), 100);\n' +
+                (await response.text()),
+        });
+    });
+
+    const fixture = await mount(
+        <GardenPaletteAdmissionFixture batch aggregate sources={1} />,
+    );
+    const read = async (key: string) => {
+        await expect(fixture).toHaveAttribute('data-ready', key);
+        return JSON.parse((await fixture.getAttribute('data-result')) ?? '{}');
+    };
+    const singleton = await read('true:false:false:true:aggregate:1');
+    expect(singleton.packets.contributions).toBe(2);
+    expect(singleton.packets.savedSubmissions).toBe(0);
+    expect(singleton.singletonMeshes).toBe(2);
+    expect(singleton.borrowedSingletonGeometries).toBe(2);
+    expect(
+        singleton.compiler.syncCompiles + singleton.compiler.workerCompiles,
+    ).toBe(0);
+    expect(singleton.compiler.liveGeometries).toBe(0);
+    expect(singleton.nativeStockDraws).toBeGreaterThan(0);
+    expect(singleton.nativePendingDraws).toBe(0);
+    expect(singleton.borrowedSourceDisposals).toBe(0);
+    await fixture.update(<GardenPaletteAdmissionFixture aggregate />);
+    const authored = await read('false:false:false:true:aggregate:3');
+    const authoredPng = await fixture.locator('canvas').screenshot();
+    await fixture.update(<GardenPaletteAdmissionFixture batch aggregate />);
+    const joined = await read('true:false:false:true:aggregate:3');
+    const joinedPng = await fixture.locator('canvas').screenshot();
+    expect(joined.packets.contributions).toBe(6);
+    expect(joined.packets.packets).toBe(2);
+    expect(joined.packets.savedSubmissions).toBe(4);
+    expect(joined.singletonMeshes).toBe(0);
+    expect(
+        joined.compiler.syncCompiles + joined.compiler.workerCompiles,
+    ).toBeGreaterThan(0);
+    expect(joined.compiler.liveGeometries).toBe(2);
+    expect(joined.nativePendingDraws).toBeGreaterThan(0);
+    expect(joined.nativeStockDraws).toBeGreaterThan(0);
+    expect(joined.liveFallbackMaterials).toBe(0);
+    expect(joined.liveFallbackGeometries).toBe(0);
+    expect(joined.disposedFallbackMaterials).toBeGreaterThan(0);
+    expect(joined.disposedFallbackGeometries).toBeGreaterThan(0);
+    expect(joined.borrowedFallbacks).toBe(0);
+    expect(joined.borrowedFallbackGeometries).toBe(0);
+    expect(joined.borrowedSourceDisposals).toBe(0);
+    expect(joined.triangles).toBe(authored.triangles);
+    expect(joined.hit).toEqual(authored.hit);
+    const diff = compare(await pixels(authoredPng), await pixels(joinedPng));
+    expect(diff.differentPixelRatio).toBeLessThan(0.001);
+    expect(diff.maxChannelError).toBeLessThanOrEqual(8);
+    await fixture.update(
+        <GardenPaletteAdmissionFixture batch aggregate sources={1} />,
+    );
+    const separated = await read('true:false:false:true:aggregate:1');
+    expect(separated.singletonMeshes).toBe(2);
+    expect(separated.borrowedSingletonGeometries).toBe(2);
+    expect(separated.compiler.liveGeometries).toBe(0);
+    expect(separated.compiler.pendingJobs).toBe(0);
+    expect(separated.borrowedSourceDisposals).toBe(0);
+    await fixture.update(
+        <GardenPaletteAdmissionFixture
+            batch
+            aggregate
+            sources={1}
+            mounted={false}
+        />,
+    );
+    const released = await read('true:false:false:false:aggregate:1');
+    expect(released.compiler.liveGeometries).toBe(0);
+    expect(released.materials.sharedMaterialUsers).toBe(0);
+    expect(released.borrowedSourceDisposals).toBe(0);
+    await testInfo.attach('singleton-join-release', {
+        body: JSON.stringify(
+            { singleton, authored, joined, separated, released },
+            null,
+            2,
+        ),
+        contentType: 'application/json',
+    });
+    await testInfo.attach('joined-authored', {
+        body: authoredPng,
+        contentType: 'image/png',
+    });
+    await testInfo.attach('joined-stock', {
+        body: joinedPng,
+        contentType: 'image/png',
+    });
 });
 
 function compare(left: Buffer, right: Buffer) {
@@ -288,7 +386,14 @@ for (const equalUniforms of [false, true]) {
             expect(candidate.packets.savedSubmissions).toBe(
                 equalUniforms ? 2 : 0,
             );
-            expect(candidate.geometryIds).toHaveLength(equalUniforms ? 1 : 3);
+            expect(candidate.geometryIds).toHaveLength(1);
+            if (!equalUniforms) {
+                expect(candidate.compiler.liveGeometries).toBe(0);
+                expect(
+                    candidate.compiler.syncCompiles +
+                        candidate.compiler.workerCompiles,
+                ).toBe(0);
+            }
             expect(candidate.materialIds).toHaveLength(equalUniforms ? 1 : 3);
             expect(candidate.rangesRestored).toBe(true);
             expect(candidate.sourceDisposals).toBe(0);
@@ -435,6 +540,75 @@ test('unsupported partial-range sources retain the original explicit merged path
     expect(result.maxChannelError).toBeLessThanOrEqual(8);
     expect(candidate.sourceDisposals).toBe(0);
     await testInfo.attach('unsupported-merged-source', {
+        body: JSON.stringify({ source, candidate, result }),
+        contentType: 'application/json',
+    });
+    expect(errors).toEqual([]);
+});
+
+test('existing merged sources retain borrowed material ownership when stock admission is enabled', async ({
+    mount,
+    page,
+}, testInfo) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    const fixture = await mount(
+        <GardenPaletteCullingFixture legacyMerged view="all" />,
+    );
+    await expect(fixture).toHaveAttribute(
+        'data-ready',
+        'false:all:legacy-merged',
+    );
+    const source = JSON.parse(
+        (await fixture.getAttribute('data-result')) ?? '{}',
+    );
+    const sourcePng = await fixture.locator('canvas').screenshot();
+    await fixture.update(
+        <GardenPaletteCullingFixture batch legacyMerged view="all" />,
+    );
+    await expect(fixture).toHaveAttribute(
+        'data-ready',
+        'true:all:legacy-merged',
+    );
+    const candidate = JSON.parse(
+        (await fixture.getAttribute('data-result')) ?? '{}',
+    );
+    const candidatePng = await fixture.locator('canvas').screenshot();
+    expect(candidate.localContributions).toHaveLength(3);
+    expect(
+        candidate.localContributions.every(
+            (value: { sourceBoundsCulling: boolean }) =>
+                !value.sourceBoundsCulling,
+        ),
+    ).toBe(true);
+    expect(candidate.stockMaterialCount).toBe(0);
+    expect(candidate.borrowedMaterialIds).toHaveLength(3);
+    expect(candidate.materialIds).toEqual(source.materialIds);
+    expect(candidate.geometryIds).toEqual(source.geometryIds);
+    expect(candidate.sourceDisposals).toBe(0);
+    expect(candidate.sceneRaycastHits).toEqual(source.sceneRaycastHits);
+    for (const pass of ['main', 'shadow'])
+        expect(
+            candidate.receipts
+                .filter((row: { pass: string }) => row.pass === pass)
+                .reduce(
+                    (sum: number, row: { triangles: number }) =>
+                        sum + row.triangles,
+                    0,
+                ),
+        ).toBe(
+            source.receipts
+                .filter((row: { pass: string }) => row.pass === pass)
+                .reduce(
+                    (sum: number, row: { triangles: number }) =>
+                        sum + row.triangles,
+                    0,
+                ),
+        );
+    const result = compare(await pixels(sourcePng), await pixels(candidatePng));
+    expect(result.differentPixelRatio).toBeLessThan(0.001);
+    expect(result.maxChannelError).toBeLessThanOrEqual(8);
+    await testInfo.attach('legacy-material-lifetime', {
         body: JSON.stringify({ source, candidate, result }),
         contentType: 'application/json',
     });
@@ -590,7 +764,8 @@ test('committed, changed and context-restored stock presentation preserves whole
         ).toHaveLength(revision > 0 || restored ? 1 : 0);
         expect(candidate.missingPresentationFrames).toBe(0);
         expect(handoff[0].hiddenPaletteMeshes).toBe(0);
-        expect(handoff[0].visiblePaletteMeshes).toBe(6);
+        // Distinct uniforms now remain three direct singleton InstancedMeshes.
+        expect(handoff[0].visiblePaletteMeshes).toBe(3);
         expect(handoff[0].fallbackMeshes).toBe(0);
         for (const frame of frames) {
             const png = submittedCanvasPng(frame.png);
@@ -902,12 +1077,13 @@ test('palette mutation and StrictMode cleanup preserve frames and release owned 
     expect(errors).toEqual([]);
 });
 
-for (const [entityName, rain] of [
-    ['Tree', false],
-    ['Tree', true],
-    ['Stool', false],
+for (const [entityName, rain, sameChunk] of [
+    ['Tree', false, false],
+    ['Tree', true, false],
+    ['Stool', false, false],
+    ['Stool', false, true],
 ] as const) {
-    test(`actual ${entityName} GLTF packet props preserve hover, pickup, selection, drag and drop pixels with rain=${rain}`, async ({
+    test(`actual ${entityName} GLTF packet props preserve hover, pickup, selection, drag and drop pixels with rain=${rain} sameChunk=${sameChunk}`, async ({
         mount,
         page,
     }, testInfo) => {
@@ -950,6 +1126,7 @@ for (const [entityName, rain] of [
                         batch={batch}
                         rain={rain}
                         entityName={entityName}
+                        sameChunk={sameChunk}
                     />,
                 );
                 await page.waitForFunction(
@@ -1032,6 +1209,8 @@ for (const [entityName, rain] of [
                     }
                     expect(settled).toBe(true);
                 } else await page.clock.runFor(160);
+                let beforeDropPhysical = 0;
+                let beforeDropTransformed = 0;
                 const capture = async (name: string, activeDrop = false) => {
                     const submission = await page.evaluate(
                         (active) =>
@@ -1131,6 +1310,22 @@ for (const [entityName, rain] of [
                             ],
                             pickupOutlineVisible: true,
                         });
+                    if (
+                        activeDrop &&
+                        batch &&
+                        entityName === 'Stool' &&
+                        sameChunk
+                    ) {
+                        expect(
+                            readback.placement
+                                .placementChunkPhysicalRebuildCount,
+                        ).toBeGreaterThan(beforeDropPhysical);
+                        expect(
+                            readback.placement
+                                .placementChunkPhysicalTransformedInstanceCount,
+                        ).toBeGreaterThan(beforeDropTransformed);
+                        expect(readback.singletonMeshes).toBeGreaterThan(0);
+                    }
                     if (activeDrop) {
                         expect(deltaSequence).toEqual(
                             entityName === 'Stool' ? [16, 16] : [16],
@@ -1277,6 +1472,14 @@ for (const [entityName, rain] of [
                 // Rebase the previous drag before beginning the actual drop spring.
                 await fixture.getByTestId('palette-idle').click();
                 await page.clock.runFor(2000);
+                const beforeDrop = await read();
+                if (!beforeDrop)
+                    throw new Error('Missing before-drop telemetry');
+                beforeDropPhysical =
+                    beforeDrop.placement.placementChunkPhysicalRebuildCount;
+                beforeDropTransformed =
+                    beforeDrop.placement
+                        .placementChunkPhysicalTransformedInstanceCount;
                 await fixture.getByTestId('palette-drop').click();
                 await expect
                     .poll(async () => (await read())?.phase)

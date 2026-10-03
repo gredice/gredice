@@ -700,6 +700,7 @@ function IntegratedWeatherEntityInstancesGeometry({
         <EntityInstancesGeometryRenderer
             {...props}
             integratedStableWeather={integratedStableWeather}
+            weatherIntegrated
         />
     );
 }
@@ -707,6 +708,8 @@ function IntegratedWeatherEntityInstancesGeometry({
 function EntityInstancesGeometryRenderer(
     props: EntityInstancesGeometryProps & {
         integratedStableWeather?: IntegratedStableWeather;
+        /** Weather-integrated surfaces retain their original material lifetime. */
+        weatherIntegrated?: boolean;
         weatherSurfaceMode: WeatherSurfaceMode;
     },
 ) {
@@ -726,6 +729,7 @@ function EntityInstancesGeometryRenderer(
         batchStaticMaterial = false,
         staticOpaqueCacheGroup,
         integratedStableWeather,
+        weatherIntegrated = false,
         weatherSurfaceMode,
         castShadow = true,
         receiveShadow = true,
@@ -846,6 +850,7 @@ function EntityInstancesGeometryRenderer(
     const concreteMaterialNode = useStaticGardenMaterialNode(
         materialNode,
         Boolean(packetRegistry) &&
+            !renderStableChunksAsMergedGeometry &&
             (batchStaticMaterial || staticOpaqueCacheGroup !== undefined) &&
             material === undefined &&
             integratedStableWeather === undefined,
@@ -893,9 +898,10 @@ function EntityInstancesGeometryRenderer(
     const stockGeometrySupported =
         supportsStaticPacketVisibility(stableGeometry);
     // Stable instances exclude active drop animation. Known stock
-    // materials can batch props as well as terrain; unsupported sources retain
-    // their authored instancing path unless explicitly opted into merging.
+    // materials batch newly admitted props. Existing merged sources retain
+    // their original material, weather, and JSX presentation ownership.
     const stockCompatible =
+        !renderStableChunksAsMergedGeometry &&
         (batchStaticMaterial || staticOpaqueCacheGroup !== undefined) &&
         stockGeometrySupported &&
         Boolean(
@@ -907,7 +913,12 @@ function EntityInstancesGeometryRenderer(
         renderStableChunksAsMergedGeometry || stockCompatible;
     let packetFallbackReason: StaticRenderPacketFallbackReason | undefined;
     if (packetRegistry && packetRequested) {
-        if (stableMaterialNode !== undefined && stableMaterialNode !== null)
+        if (renderStableChunksAsMergedGeometry && weatherIntegrated)
+            packetFallbackReason = 'weather-integrated';
+        else if (
+            stableMaterialNode !== undefined &&
+            stableMaterialNode !== null
+        )
             packetFallbackReason = 'material-node';
         else if (!stableMaterialClass.batchable)
             packetFallbackReason = stableMaterialClass.reason;
@@ -935,7 +946,9 @@ function EntityInstancesGeometryRenderer(
     const stockPacketSource = useGardenPacketSource(
         stableGeometry,
         stableMaterial,
-        packetEnabled && stockGeometrySupported,
+        packetEnabled &&
+            !renderStableChunksAsMergedGeometry &&
+            stockGeometrySupported,
     );
     const packetGeometry = stockPacketSource.geometry;
     const stableLayoutSignature = useMemo(

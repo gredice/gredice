@@ -18,6 +18,7 @@ export function GardenPaletteCullingFixture({
     view = 'mixed',
     equalUniforms = false,
     unsupportedRange = false,
+    legacyMerged = false,
     transitionWitness = false,
     shaderRevision = 0,
     restoreContext = false,
@@ -26,6 +27,7 @@ export function GardenPaletteCullingFixture({
     view?: GardenPaletteCullingView;
     equalUniforms?: boolean;
     unsupportedRange?: boolean;
+    legacyMerged?: boolean;
     transitionWitness?: boolean;
     shaderRevision?: number;
     restoreContext?: boolean;
@@ -43,7 +45,7 @@ export function GardenPaletteCullingFixture({
         (next: GardenPaletteCullingReadback) => setResult(next),
         [],
     );
-    const key = `${batch}:${view}${equalUniforms ? ':equal' : ''}${unsupportedRange ? ':legacy-range' : ''}${transitionWitness ? `:transition:${shaderRevision}:${restoreContext}` : ''}`;
+    const key = `${batch}:${view}${equalUniforms ? ':equal' : ''}${unsupportedRange ? ':legacy-range' : ''}${legacyMerged ? ':legacy-merged' : ''}${transitionWitness ? `:transition:${shaderRevision}:${restoreContext}` : ''}`;
     return (
         <div
             data-testid="palette-culling"
@@ -74,6 +76,7 @@ export function GardenPaletteCullingFixture({
                             view={view}
                             equalUniforms={equalUniforms}
                             unsupportedRange={unsupportedRange}
+                            legacyMerged={legacyMerged}
                             transitionWitness={transitionWitness}
                             shaderRevision={shaderRevision}
                             restoreContext={restoreContext}

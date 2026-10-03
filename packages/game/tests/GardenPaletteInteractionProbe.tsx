@@ -18,6 +18,7 @@ import {
 } from 'three';
 import { useHoveredBlockStore } from '../src/controls/useHoveredBlockStore';
 import { useEntityBlockInstances } from '../src/entities/EntityInstancesBlock';
+import { readPlacementAnimationProfileMetrics } from '../src/entities/placementAnimationProfileMetrics';
 import type { GLTFResult } from '../src/models/GameAssets';
 import { readChunkCompilerMetrics } from '../src/scene/compiler/chunkCompilerMetrics';
 import { useStaticRenderPacketRegistry } from '../src/scene/compiler/StaticRenderPacketBatch';
@@ -576,10 +577,14 @@ function readInteractionSnapshot({
         })),
         compiler: readChunkCompilerMetrics(),
         packets: readStaticRenderPacketMetrics(),
+        placement: readPlacementAnimationProfileMetrics(),
         paletteMeshes: packetMeshes.filter(
             (mesh) =>
                 !Array.isArray(mesh.material) &&
                 mesh.material.name.endsWith(':GardenStock'),
+        ).length,
+        singletonMeshes: packetMeshes.filter((mesh) =>
+            mesh.name.endsWith(':singleton'),
         ).length,
         pendingMeshes: packetMeshes.filter((mesh) =>
             mesh.name.includes(':fallback:'),

@@ -26,10 +26,12 @@ export function GardenPaletteInteractionFixture({
     batch,
     rain = false,
     entityName = 'Tree',
+    sameChunk = false,
 }: {
     batch: boolean;
     rain?: boolean;
     entityName?: 'Tree' | 'Stool';
+    sameChunk?: boolean;
 }) {
     const [phase, setPhase] = useState<GardenPaletteInteractionPhase>('idle');
     const [stacks] = useState(() => [
@@ -40,7 +42,7 @@ export function GardenPaletteInteractionFixture({
             ],
         },
         {
-            position: new Vector3(1.5, 0, 0),
+            position: new Vector3(sameChunk ? -0.5 : 1.5, 0, 0),
             blocks: [
                 { id: 'palette-static-tree', name: entityName, rotation: 0 },
             ],

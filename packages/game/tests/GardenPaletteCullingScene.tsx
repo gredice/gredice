@@ -70,6 +70,8 @@ export type GardenPaletteCullingReadback = {
     materialIds: string[];
     rangesRestored: boolean;
     sourceDisposals: number;
+    borrowedMaterialIds: string[];
+    stockMaterialCount: number;
     frame: number;
     sceneRaycastHits: RayHit[][];
     transitionFrames: TransitionFrame[];
@@ -98,6 +100,7 @@ export function GardenPaletteCullingScene({
     view,
     equalUniforms,
     unsupportedRange,
+    legacyMerged,
     transitionWitness,
     shaderRevision,
     restoreContext,
@@ -107,6 +110,7 @@ export function GardenPaletteCullingScene({
     view: GardenPaletteCullingView;
     equalUniforms: boolean;
     unsupportedRange: boolean;
+    legacyMerged: boolean;
     transitionWitness: boolean;
     shaderRevision: number;
     restoreContext: boolean;
@@ -145,7 +149,7 @@ export function GardenPaletteCullingScene({
             ],
         };
     }, [equalUniforms, unsupportedRange]);
-    const key = `${batch}:${view}${equalUniforms ? ':equal' : ''}${unsupportedRange ? ':legacy-range' : ''}${transitionWitness ? `:transition:${shaderRevision}:${restoreContext}` : ''}`;
+    const key = `${batch}:${view}${equalUniforms ? ':equal' : ''}${unsupportedRange ? ':legacy-range' : ''}${legacyMerged ? ':legacy-merged' : ''}${transitionWitness ? `:transition:${shaderRevision}:${restoreContext}` : ''}`;
     useLayoutEffect(() => {
         if (!transitionWitness || shaderRevision === 0) return;
         // Zero intensity preserves pixels while changing the real shader's
@@ -488,6 +492,22 @@ export function GardenPaletteCullingScene({
                 ],
                 rangesRestored,
                 sourceDisposals: disposals.current,
+                borrowedMaterialIds: meshes
+                    .filter(
+                        (mesh) =>
+                            mesh.material instanceof MeshStandardMaterial &&
+                            resources.materials.includes(mesh.material),
+                    )
+                    .map((mesh) =>
+                        Array.isArray(mesh.material)
+                            ? 'array'
+                            : mesh.material.uuid,
+                    ),
+                stockMaterialCount: meshes.filter(
+                    (mesh) =>
+                        !Array.isArray(mesh.material) &&
+                        mesh.material.name.endsWith(':GardenStock'),
+                ).length,
                 frame: gl.info.render.frame,
                 sceneRaycastHits,
                 transitionFrames: transitionFrames.current,
@@ -502,6 +522,7 @@ export function GardenPaletteCullingScene({
             key,
             onReadback,
             restoreContext,
+            resources,
             scene,
             shaderRevision,
             transitionWitness,
@@ -515,7 +536,9 @@ export function GardenPaletteCullingScene({
             material={resources.materials[index]}
             instances={value}
             batchStaticMaterial={batch}
-            renderStableChunksAsMergedGeometry={unsupportedRange}
+            renderStableChunksAsMergedGeometry={
+                unsupportedRange || legacyMerged
+            }
             renderSnow={false}
             castShadow
             receiveShadow

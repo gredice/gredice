@@ -38,12 +38,16 @@ function fixtureInstances(name: string, offset: number): EntityBlockInstance[] {
 
 export function GardenPaletteAdmissionScene({
     batch,
+    aggregate,
+    sources,
     mutated,
     patched,
     mounted,
     onReadback,
 }: {
     batch: boolean;
+    aggregate: boolean;
+    sources: 1 | 3;
     mutated: boolean;
     patched: boolean;
     mounted: boolean;
@@ -116,11 +120,21 @@ export function GardenPaletteAdmissionScene({
         },
         [resources],
     );
+    const borrowedSourceDisposals = useRef(0);
+    useLayoutEffect(() => {
+        const disposed = () => borrowedSourceDisposals.current++;
+        resources.geometry.addEventListener('dispose', disposed);
+        resources.workerGeometry.addEventListener('dispose', disposed);
+        return () => {
+            resources.geometry.removeEventListener('dispose', disposed);
+            resources.workerGeometry.removeEventListener('dispose', disposed);
+        };
+    }, [resources]);
     const roof = useMemo(
         () => (patched ? resources.roof.slice(1) : resources.roof),
         [patched, resources.roof],
     );
-    const key = `${batch}:${mutated}:${patched}:${mounted}`;
+    const key = `${batch}:${mutated}:${patched}:${mounted}${aggregate ? `:aggregate:${sources}` : ''}`;
     const frames = useRef({
         key: '',
         count: 0,
@@ -205,7 +219,9 @@ export function GardenPaletteAdmissionScene({
         if (
             compiler.pendingJobs > 0 ||
             packets.packetFallbackMeshes > 0 ||
-            (batch && mounted && packets.contributions !== (patched ? 5 : 6))
+            (batch &&
+                mounted &&
+                packets.contributions !== (sources === 1 ? 2 : patched ? 5 : 6))
         )
             return;
         const meshes: Mesh[] = [];
@@ -265,6 +281,16 @@ export function GardenPaletteAdmissionScene({
                 0,
             ),
             geometryIds,
+            borrowedSourceDisposals: borrowedSourceDisposals.current,
+            singletonMeshes: meshes.filter((mesh) =>
+                mesh.name.endsWith(':singleton'),
+            ).length,
+            borrowedSingletonGeometries: meshes.filter(
+                (mesh) =>
+                    mesh.name.endsWith(':singleton') &&
+                    (mesh.geometry === resources.geometry ||
+                        mesh.geometry === resources.workerGeometry),
+            ).length,
             hit: hit
                 ? { x: hit.point.x, y: hit.point.y, z: hit.point.z }
                 : null,
@@ -303,44 +329,60 @@ export function GardenPaletteAdmissionScene({
                             renderSnow={false}
                             materialNode={
                                 <meshStandardMaterial
-                                    color="#744020"
-                                    roughness={0.9}
-                                    metalness={0}
+                                    color={aggregate ? '#3273bc' : '#744020'}
+                                    roughness={aggregate ? 0.25 : 0.9}
+                                    metalness={aggregate ? 0.4 : 0}
                                     side={DoubleSide}
                                 />
                             }
                         />
-                        <EntityInstancesGeometry
-                            instanceKey="admission:roof"
-                            instances={roof}
-                            geometry={resources.geometry}
-                            batchStaticMaterial={batch}
-                            renderSnow={false}
-                            materialNode={
-                                <meshStandardMaterial
-                                    color={mutated ? '#4b9965' : '#2f3437'}
-                                    roughness={mutated ? 0.3 : 0.62}
-                                    metalness={0.3}
-                                    side={DoubleSide}
+                        {sources === 3 && (
+                            <>
+                                <EntityInstancesGeometry
+                                    instanceKey="admission:roof"
+                                    instances={roof}
+                                    geometry={resources.geometry}
+                                    batchStaticMaterial={batch}
+                                    renderSnow={false}
+                                    materialNode={
+                                        <meshStandardMaterial
+                                            color={
+                                                mutated
+                                                    ? '#4b9965'
+                                                    : aggregate
+                                                      ? '#3273bc'
+                                                      : '#2f3437'
+                                            }
+                                            roughness={
+                                                mutated
+                                                    ? 0.3
+                                                    : aggregate
+                                                      ? 0.25
+                                                      : 0.62
+                                            }
+                                            metalness={aggregate ? 0.4 : 0.3}
+                                            side={DoubleSide}
+                                        />
+                                    }
                                 />
-                            }
-                        />
-                        <EntityInstancesGeometry
-                            instanceKey="admission:metal"
-                            instances={resources.metal}
-                            geometry={resources.workerGeometry}
-                            batchStaticMaterial={batch}
-                            renderSnow={false}
-                            material={resources.material}
-                        />
-                        <EntityInstancesGeometry
-                            instanceKey="admission:unknown"
-                            instances={resources.unknownInstances}
-                            geometry={resources.geometry}
-                            batchStaticMaterial={batch}
-                            renderSnow={false}
-                            material={resources.unknown}
-                        />
+                                <EntityInstancesGeometry
+                                    instanceKey="admission:metal"
+                                    instances={resources.metal}
+                                    geometry={resources.workerGeometry}
+                                    batchStaticMaterial={batch}
+                                    renderSnow={false}
+                                    material={resources.material}
+                                />
+                                <EntityInstancesGeometry
+                                    instanceKey="admission:unknown"
+                                    instances={resources.unknownInstances}
+                                    geometry={resources.geometry}
+                                    batchStaticMaterial={batch}
+                                    renderSnow={false}
+                                    material={resources.unknown}
+                                />
+                            </>
+                        )}
                     </>
                 )}
             </StaticRenderPacketBatchProvider>

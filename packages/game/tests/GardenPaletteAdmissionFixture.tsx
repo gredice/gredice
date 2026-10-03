@@ -12,11 +12,15 @@ export function GardenPaletteAdmissionFixture({
     mutated = false,
     patched = false,
     mounted = true,
+    aggregate = false,
+    sources = 3,
 }: {
     batch?: boolean;
     mutated?: boolean;
     patched?: boolean;
     mounted?: boolean;
+    aggregate?: boolean;
+    sources?: 1 | 3;
 }) {
     const [store] = useState(() =>
         createGameState({
@@ -34,7 +38,7 @@ export function GardenPaletteAdmissionFixture({
         (value: { key: string; [key: string]: unknown }) => setResult(value),
         [],
     );
-    const key = `${batch}:${mutated}:${patched}:${mounted}`;
+    const key = `${batch}:${mutated}:${patched}:${mounted}${aggregate ? `:aggregate:${sources}` : ''}`;
     return (
         <div
             data-testid="garden-palette-admission"
@@ -60,6 +64,8 @@ export function GardenPaletteAdmissionFixture({
                         }}
                     >
                         <GardenPaletteAdmissionScene
+                            aggregate={aggregate}
+                            sources={sources}
                             batch={batch}
                             mutated={mutated}
                             patched={patched}

@@ -2,7 +2,7 @@
 
 `StaticRenderPacketBatchProvider` in `EntityInstances` collects compatible stable
 opaque/cutout geometry into render packets on the existing 8-unit chunk grid.
-Production rigid GLTF and additional prop callers opt in with
+New rigid GLTF and additional prop callers opt in with
 `batchStaticMaterial`; declared static cache groups also qualify. Active
 placement drops, articulated parts, sorted transparency, unknown material hooks,
 and unsupported JSX ownership remain on their authored paths.
@@ -24,9 +24,12 @@ separate clones. The root identity does not enter the native shader key. The
 last active lease disposes the clone, never the source material or its textures.
 StrictMode cleanup and subsequent setup acquire a fresh live lease.
 
-Registered ground/weather hooks keep their exact configuration and mutable
-uniform identities. The cloud decorator is removed from the borrowed source
-callbacks and applied once to the owned clone by its root. New packet/fallback
+Registered weather hooks on newly admitted props keep their exact configuration
+and mutable uniform identities. Existing `renderStableChunksAsMergedGeometry`
+sources retain their original material/JSX/weather route and nonowning sharing
+lease; weather-integrated sources remain excluded from registry packets even
+while their integrated material is not mounted. The cloud decorator is removed
+from the borrowed source callbacks and applied once to the owned clone by its root. New packet/fallback
 candidate tokens are scoped to that root. Existing production weather uses its
 established shared cloud uniform/mask owner; these leases do not claim concurrent
 independent production weather masks.
@@ -50,15 +53,22 @@ A contribution contains one component's stable instances of one geometry in one
 chunk. Contributions join only when chunk, cache group, canonical material,
 shadow flags, render order and complete vertex layout match. Stable owner/chunk
 IDs preserve source ordering. Unchanged contributions retain their packet and
-source-list identities so untouched chunks keep compiled geometry.
+source-list identities so untouched aggregate chunks keep compiled geometry.
+A supported singleton whose original presentation is instanced renders one
+`InstancedMesh` with borrowed immutable geometry and its leased stock material.
+It never mounts a compiler hook, queues a job or allocates a merged buffer.
+Joining compatible contributors mounts compilation; returning to a singleton
+cancels pending work and releases the aggregate's owned geometry. Matrix updates
+retain the original placement rebuild duration and transformed-instance counters;
+first mounts remain uncounted as before.
 
 The existing compiler copies source arrays and matrices for each dispatched
 job. It never transfers live GLTF buffers and has no worker source-ID protocol
 or versioned source-residency cache. Indexed/non-indexed, normalized/interleaved,
 weather and existing color attributes keep their original compiler semantics.
 
-Until a replacement compiles, supported contributions render with committed
-transient geometry/material clones of their authored inputs and the same
+Until an aggregate replacement compiles, supported contributions render with
+committed transient geometry/material clones of their authored inputs and the same
 instance transforms. Clones preserve maps, cutout, exact ground/weather hooks,
 and source-local data. Pending material ownership is root-scoped; immutable
 geometry clones share by source object and release after the last user. Clone
@@ -113,8 +123,11 @@ separate material ownership and surviving sibling rendering.
 
 Actual worker compilation uses a test-only 100 ms response-delivery delay to
 bind a positive pending authored-clone submission and subsequent compiled
-submission/disposal. Culling fixtures retain mixed/all/none/opposite main and
-shadow views, unique whole-scene raycasts, native ranges/triangles and unchanged
+submission/disposal. A separate singleton-to-aggregate-to-singleton witness binds
+zero compile counts, source geometry survival, positive native submissions and
+final owned-output release. Existing merged-source controls require unchanged
+source material identities and no stock clone. Culling fixtures retain
+mixed/all/none/opposite main and shadow views, unique whole-scene raycasts, native ranges/triangles and unchanged
 buffer identities. Light-change/context-restoration receipts capture pixels in
 the actual submitted frame. No shader-warmup delay remains.
 
@@ -126,10 +139,22 @@ wet-overlay draws and Float32 wetness 1. Active drops compare the exact first
 16 ms public spring input, committed 0.1 lift, original animated geometry,
 matching pose/camera/light/weather inputs and same-submission PNGs. Pixel limits
 remain fewer than 0.1% materially different pixels and maximum channel error 8.
-Buttons drive production store state; these tests do not claim pointer hit-test
-coverage or a device GPU benefit.
+The partition repair passes 67 focused units, Game/Garden/WWW typechecks and a
+single 23-case Chromium SwiftShader semantic matrix. That matrix includes both
+the original two-chunk Stool drop and a separate same-chunk retained singleton
+rewrite, with real placement counters. Buttons drive production store state;
+these tests do not claim pointer hit-test coverage or a device GPU benefit.
 
 ## Performance acceptance
+
+The stock candidate `f191ad05` passed all 39 absolute/comparability scenarios but
+failed original-cost admission with 24 binding relative exceptions: 13 geometry
+rows and 11 switch/cold rows. Exact canonical inventories reproduced the geometry
+increase, and native switch traces located repeated terrain clone/program
+lifetimes and cumulative info-log costs. Its artifacts remain rejected evidence.
+The current repair preserves the original merged terrain route and avoids
+compiling zero-benefit original-instanced singletons; its unchanged native and
+relative gates remain pending.
 
 The earlier custom-PBR palette and async-warmup candidate `a62d2277` is rejected:
 its full canonical matrix has a retained telemetry 500 failure and 18 binding
