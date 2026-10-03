@@ -22,6 +22,7 @@ import {
     type ScheduleTaskBlockReasonCode,
 } from './events';
 import { normalizeAssignedUserIds } from './events/normalizeAssignedUserIds';
+import type { OperationStatus } from './operationsRepo';
 import {
     assertOperationTargetAllowsDefinition,
     getFarmUserAcceptedOperationById,
@@ -127,7 +128,7 @@ export type OperationTaskVerificationResult = {
 
 export type OperationCompletionEvidenceUpdateResult = {
     kind: 'operation';
-    status: 'pendingVerification' | 'completed';
+    status: OperationStatus;
     eventId: number;
     occurredAt: Date;
     created: boolean;
@@ -1566,12 +1567,14 @@ export async function submitPlantingTaskBlock(
 
 export async function updateOperationCompletionEvidence(
     {
+        administration = false,
         expectedTaskVersionEventId,
         imageUrls,
         notes,
         operationId,
         updatedBy,
     }: {
+        administration?: boolean;
         expectedTaskVersionEventId: number;
         imageUrls?: readonly string[];
         notes?: string | null;
@@ -1600,7 +1603,11 @@ export async function updateOperationCompletionEvidence(
             await lockOperationAggregateRow(tx, validOperationId);
             const operation = await getOperationById(validOperationId, tx);
             const status = operation.status;
-            if (status !== 'pendingVerification' && status !== 'completed') {
+            if (
+                !administration &&
+                status !== 'pendingVerification' &&
+                status !== 'completed'
+            ) {
                 throw new ScheduleTaskSubmissionError(
                     'invalid_status',
                     'Zapis završetka može se urediti samo za dovršenu radnju.',
@@ -1659,6 +1666,7 @@ export async function updateOperationCompletionEvidence(
             }
 
             if (
+                !administration &&
                 status === 'completed' &&
                 !sameStrings(currentImageUrls, normalizedImageUrls)
             ) {

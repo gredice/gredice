@@ -1,3 +1,4 @@
+import type { OperationTaskAdminEvent } from '../../operationTaskAdministration';
 import { knownEventTypes } from './knownEventTypes';
 import type {
     AccountAiRequestPayload,
@@ -503,6 +504,15 @@ export const knownEvents = {
         }),
     },
     operations: {
+        adminUpdatedV1: (
+            aggregateId: string,
+            data: OperationTaskAdminEvent,
+        ) => ({
+            type: knownEventTypes.operations.adminUpdate,
+            version: 1,
+            aggregateId,
+            data,
+        }),
         acceptanceChangedV1: (
             aggregateId: string,
             data: OperationAcceptancePayload,

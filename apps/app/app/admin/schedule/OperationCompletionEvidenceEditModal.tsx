@@ -43,6 +43,7 @@ type EditOperationCompletionEvidenceModalBaseProps = {
     completionNotesEdited?: boolean;
     initialImageUrls?: string[] | null;
     notesOnly?: boolean;
+    administration?: boolean;
 };
 
 type EditOperationCompletionEvidenceModalProps =
@@ -78,6 +79,7 @@ export function OperationCompletionEvidenceEditModal({
     completionNotesEdited,
     initialImageUrls,
     notesOnly = false,
+    administration = false,
     trigger,
     renderTrigger,
 }: EditOperationCompletionEvidenceModalProps) {
@@ -186,15 +188,22 @@ export function OperationCompletionEvidenceEditModal({
                 return;
             }
 
-            const result = await updateOperationCompletionEvidenceAction(
-                ...buildOperationCompletionEvidenceActionArguments({
+            const actionArguments =
+                buildOperationCompletionEvidenceActionArguments({
                     operationId,
                     expectedTaskVersionEventId:
                         openedTaskVersionEventIdRef.current,
                     imageUrls: nextImageUrls,
                     notes: trimmedNotes,
-                }),
-            );
+                });
+            const result = administration
+                ? await updateOperationCompletionEvidenceAction(
+                      ...actionArguments,
+                      true,
+                  )
+                : await updateOperationCompletionEvidenceAction(
+                      ...actionArguments,
+                  );
             if (!result.success) {
                 setErrorMessage(
                     `${result.message} Zatvorite i ponovno otvorite uređivanje kako biste učitali najnoviju napomenu.`,

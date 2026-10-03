@@ -85,6 +85,7 @@ export * from './repositories/notificationSettingsRepo';
 export * from './repositories/notificationsRepo';
 export * from './repositories/occasionsRepo';
 export * from './repositories/operationsRepo';
+export * from './repositories/operationTaskAdministrationRepo';
 export * from './repositories/orderConfirmationOutboxRepo';
 export * from './repositories/outletCheckoutReservationRepo';
 export * from './repositories/outletOffersRepo';
