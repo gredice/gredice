@@ -6,7 +6,7 @@ type ShoppingCartItemForSunflowerCalculation = Pick<
 >;
 
 /**
- * Calculate the sunflower amount for a cart item based on its shop data.
+ * Calculate the sunflower amount for every unit of a cart item.
  * Returns the amount in sunflowers (multiplied by 1000 for precision).
  */
 export function calculateSunflowerAmount(
