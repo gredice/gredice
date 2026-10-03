@@ -7,6 +7,7 @@ import {
     createEvent,
     getFeaturedPublicGardenSummaries,
     getFeaturedPublicGardens,
+    getPublicGardens,
     knownEvents,
     replaceGardenPreview,
     setGardenLike,
@@ -223,6 +224,13 @@ test('shared featured counts preserve ranking while current public metadata prev
     assert.equal(ownerReads.mock.callCount(), 1);
     assert.equal(fieldReads.mock.callCount(), 0);
     assert.equal(eventReads.mock.callCount(), 0);
+    const publicList = await getPublicGardens();
+    assert.equal(
+        publicList.find(({ id }) => id === firstId)?.activePlantCount,
+        1,
+    );
+    assert.equal(fieldReads.mock.callCount(), 0);
+    assert.equal(eventReads.mock.callCount(), 0);
     t.diagnostic(
         JSON.stringify({
             summaryBytes: Buffer.byteLength(JSON.stringify({ items: cold })),
@@ -263,6 +271,11 @@ test('shared featured counts preserve ranking while current public metadata prev
             status: 'removed',
         }),
     );
+    assert.equal(
+        (await getPublicGardens()).find(({ id }) => id === firstId)
+            ?.activePlantCount,
+        0,
+    );
     assert.deepEqual(
         (await getFeaturedPublicGardenSummaries()).map(({ garden }) => ({
             id: garden.id,
@@ -289,6 +302,7 @@ test('shared featured counts preserve ranking while current public metadata prev
 
     discardInvalidations = true;
     await updateGarden({ id: firstId, isPublic: false });
+    assert.ok((await getPublicGardens()).every(({ id }) => id !== firstId));
     assert.ok(
         (await getFeaturedPublicGardenSummaries()).every(
             ({ garden }) => garden.id !== firstId,

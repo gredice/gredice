@@ -78,6 +78,23 @@ configuration changes and choose a new stable measurement window if necessary.
 Do not join partial billing days or extrapolate a few quiet hours as the required
 72-hour evidence.
 
+## Public API read costs
+
+The public garden list reuses the featured-garden active-plant-count cache
+(45-minute TTL with jitter and the existing lifecycle invalidations). Only
+compact ID/count pairs are cached. Publication/deletion, member profiles and
+preview metadata are read from current rows; a stale count cache cannot restore
+an unpublished garden. Warm list reads do not hydrate field event histories.
+
+Outlet list/detail routes check current availability before loading the formatted
+plant-sort catalogue. Empty lists and missing, expired or sold-out details skip
+that catalogue work. Availability responses retain zero-age cache headers;
+reservation and checkout validation remain unchanged.
+
+Validate these paths with the featured-public-garden storage suites and
+`apps/api/lib/outlet/outletRoutes.node.spec.ts`. Compare matched billing windows
+after deployment; fewer hydrated rows are not proof of lower Neon CU-hours.
+
 ## CI infrastructure isolation
 
 Routine Next.js builds and test shards run through
