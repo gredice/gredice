@@ -19,7 +19,8 @@
         "./outlet-garden-list": "./src/viewers/OutletGardenBrowserViewer.tsx",
         "./theme": "./src/hooks/useThemeManager.ts",
         "./autumn-arrangements": "./src/arrangements/autumnArrangements.ts",
-        "./kestenijada": "./src/kestenijada/KestenijadaViewer.tsx"
+        "./kestenijada": "./src/kestenijada/KestenijadaViewer.tsx",
+        "./pumpkin-trail": "./src/pumpkinTrail/PumpkinTrailViewer.tsx"
     },
     "scripts": {
         "benchmark:chunks": "tsx scripts/benchmark-chunks.ts",

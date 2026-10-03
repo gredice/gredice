@@ -353,6 +353,7 @@ jobs:
           {"name":"webgl components 1/2","args":"--project=chromium-webgl --shard=1/2"},
           {"name":"webgl components 2/2","args":"--project=chromium-webgl --shard=2/2"},
           {"name":"kestenijada route","args":"--config=playwright.kestenijada-route.config.ts"},
+          {"name":"pumpkin trail route","args":"--config=playwright.pumpkin-trail-route.config.ts"},
           {"name":"outlet layout","args":"--project=chromium-webgl-outlet --grep @outlet-layout"},
           {"name":"outlet reconcile","args":"--project=chromium-webgl-outlet --grep @outlet-reconcile"},
           {"name":"outlet lifecycle","args":"--project=chromium-webgl-outlet --grep @outlet-lifecycle"},
