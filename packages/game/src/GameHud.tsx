@@ -24,6 +24,7 @@ import { GardenPackStorefrontHud } from './hud/GardenPackStorefrontHud';
 import { GardenTargetHighlightHud } from './hud/GardenTargetHighlightHud';
 import { InventoryHud } from './hud/InventoryHud';
 import { ItemsHud } from './hud/ItemsHud';
+import { LeafRakingHud } from './hud/LeafRakingHud';
 import { OutletHud } from './hud/OutletHud';
 import { PaymentSuccessfulMessage } from './hud/PaymentSuccessfulMessage';
 import { RaisedBedFieldHud } from './hud/RaisedBedFieldHud';
@@ -259,6 +260,7 @@ export function GameHud({
                     <CameraHud />
                     {viewMode === '3d' ? <AudioHud /> : null}
                     {viewMode === '3d' ? <AutumnPhotoHud /> : null}
+                    {viewMode === '3d' ? <LeafRakingHud /> : null}
                     {viewMode === '3d' ? (
                         <ControlsTooltipHud isCloseup={isCloseup} />
                     ) : null}
