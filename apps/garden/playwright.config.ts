@@ -68,7 +68,8 @@ export const config: PlaywrightTestConfig = {
                 exclude: ['next/font/google'],
             },
             resolve: {
-                dedupe: ['nuqs', 'react', 'react-dom'],
+                // Keep router contexts shared when workspace Next versions differ.
+                dedupe: ['next', 'nuqs', 'react', 'react-dom'],
             },
         },
     },
