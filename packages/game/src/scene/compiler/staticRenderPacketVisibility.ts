@@ -6,6 +6,7 @@ import {
     Euler,
     type Frustum,
     type FrustumArray,
+    InstancedMesh,
     type InterleavedBufferAttribute,
     type Intersection,
     type Material,
@@ -399,6 +400,72 @@ export class StaticRenderPacketVisibilityMesh extends Mesh<
     }
 }
 
+/** Baked stock positions use one identity instance, retaining their authored shader variant. */
+export class StaticRenderPacketVisibilityInstancedMesh extends InstancedMesh<
+    BufferGeometry,
+    Material
+> {
+    private presentationEnabled = true;
+
+    setPresentationEnabled(enabled: boolean) {
+        this.presentationEnabled = enabled;
+        this.visible = enabled;
+    }
+
+    constructor(
+        geometry: BufferGeometry,
+        material: StaticRenderPacket['material'],
+        readonly range: DrawRange,
+        private readonly group: number | undefined,
+        private readonly visibility: PacketVisibility,
+        private readonly ranges: StaticRenderPacketDrawRanges,
+    ) {
+        super(geometry, material, 1);
+        this.matrixAutoUpdate = false;
+    }
+
+    override intersectsFrustum(frustum: Frustum | FrustumArray) {
+        if (this.range.count === 0) return false;
+        const visible = this.visibility.read(frustum, this.matrixWorld);
+        return this.group === undefined
+            ? visible.all
+            : !visible.all && visible.values[this.group] === 1;
+    }
+
+    override raycast(raycaster: Raycaster, intersections: Intersection[]) {
+        if (
+            !this.presentationEnabled ||
+            this.group === undefined ||
+            this.range.count === 0
+        )
+            return;
+        this.ranges.enter(this);
+        try {
+            // Geometry already contains every source transform. Preserve the
+            // compiled range's face/UV semantics without a synthetic instanceId.
+            Mesh.prototype.raycast.call(this, raycaster, intersections);
+        } finally {
+            this.ranges.leave(this);
+        }
+    }
+
+    override onBeforeRender() {
+        this.ranges.enter(this);
+    }
+
+    override onAfterRender() {
+        this.ranges.leave(this);
+    }
+
+    override onBeforeShadow() {
+        this.ranges.enter(this);
+    }
+
+    override onAfterShadow() {
+        this.ranges.leave(this);
+    }
+}
+
 export function createStaticRenderPacketVisibilityMeshes(
     packet: StaticRenderPacket,
     geometry: BufferGeometry,
@@ -440,8 +507,14 @@ export function createStaticRenderPacketVisibilityMeshes(
     for (const [group, ranges] of compiledGroups)
         groups[group].copy(sphereFromPositionRanges(position, ranges));
     const visibility = new PacketVisibility(groups);
+    const VisibilityMesh = packet.contributions.every(
+        ({ originalVisibilityMode, sourceBoundsCulling }) =>
+            sourceBoundsCulling && originalVisibilityMode === 'instanced',
+    )
+        ? StaticRenderPacketVisibilityInstancedMesh
+        : StaticRenderPacketVisibilityMesh;
     const meshes = [
-        new StaticRenderPacketVisibilityMesh(
+        new VisibilityMesh(
             geometry,
             packet.material,
             { start: 0, count: start },
@@ -451,7 +524,7 @@ export function createStaticRenderPacketVisibilityMeshes(
         ),
         ...ranges.map(
             (range) =>
-                new StaticRenderPacketVisibilityMesh(
+                new VisibilityMesh(
                     geometry,
                     packet.material,
                     range,

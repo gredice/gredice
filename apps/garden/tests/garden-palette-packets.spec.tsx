@@ -4,6 +4,7 @@ import { GardenPaletteAdmissionFixture } from '../../../packages/game/tests/Gard
 import { GardenPaletteCullingFixture } from '../../../packages/game/tests/GardenPaletteCullingFixture';
 import { GardenPaletteInteractionFixture } from '../../../packages/game/tests/GardenPaletteInteractionFixture';
 import { GardenPalettePacketFixture } from '../../../packages/game/tests/GardenPalettePacketFixture';
+import { readGardenPacketNativeProgramWitness } from '../../../packages/game/tests/gardenPacketNativeProgramWitness';
 import {
     type GardenPaletteFrameInputSnapshot,
     installGardenPaletteFrameInput,
@@ -43,6 +44,132 @@ function nativeRainInputs(
         ),
     }));
 }
+
+test('stock aggregate draws retain authored native instancing programs and release owned buffers', async ({
+    mount,
+    page,
+}, testInfo) => {
+    test.setTimeout(90_000);
+    await page.route('**/meshCompiler.worker-*.js', async (route) => {
+        const response = await route.fetch();
+        await route.fulfill({
+            response,
+            body:
+                'const originalWorkerPostMessage = self.postMessage.bind(self);\n' +
+                'self.postMessage = (...args) => setTimeout(() => originalWorkerPostMessage(...args), 100);\n' +
+                (await response.text()),
+        });
+    });
+    const fixture = await mount(
+        <GardenPaletteAdmissionFixture aggregate nativeProgramWitness />,
+    );
+    const read = async (key: string) => {
+        await expect(fixture).toHaveAttribute('data-ready', key);
+        const result: unknown = JSON.parse(
+            (await fixture.getAttribute('data-result')) ?? '{}',
+        );
+        if (typeof result !== 'object' || result === null)
+            throw new Error('Native program fixture readback is required.');
+        return readGardenPacketNativeProgramWitness(
+            Reflect.get(result, 'nativePrograms'),
+        );
+    };
+    const authored = await read('false:false:false:true:aggregate:3');
+    await fixture.update(
+        <GardenPaletteAdmissionFixture batch aggregate nativeProgramWitness />,
+    );
+    const joined = await read('true:false:false:true:aggregate:3');
+    await testInfo.attach('authored-and-stock-native-programs', {
+        body: JSON.stringify({ authored, joined }, null, 2),
+        contentType: 'application/json',
+    });
+    const originalDraws = authored.draws.filter(
+        (draw) => draw.kind === 'authored' && draw.pass === 'main',
+    );
+    const compiledDraws = joined.draws.filter(
+        (draw) => draw.kind === 'compiled' && draw.pass === 'main',
+    );
+    const pendingDraws = joined.draws.filter(
+        (draw) => draw.kind === 'pending' && draw.pass === 'main',
+    );
+    expect(originalDraws.length).toBeGreaterThan(0);
+    expect(compiledDraws.length).toBeGreaterThan(0);
+    expect(pendingDraws.length).toBeGreaterThan(0);
+    expect(
+        originalDraws.every((draw) => draw.instancing && draw.shaderInstancing),
+    ).toBe(true);
+    expect(
+        compiledDraws.every(
+            (draw) =>
+                draw.instancing &&
+                draw.shaderInstancing &&
+                draw.instanceCount === 1,
+        ),
+    ).toBe(true);
+    expect(new Set(compiledDraws.map((draw) => draw.cacheKey))).toEqual(
+        new Set(originalDraws.map((draw) => draw.cacheKey)),
+    );
+    expect(new Set(compiledDraws.map((draw) => draw.programId))).toEqual(
+        new Set(originalDraws.map((draw) => draw.programId)),
+    );
+    const originalShadows = authored.draws.filter(
+        (draw) => draw.kind === 'authored' && draw.pass === 'shadow',
+    );
+    const compiledShadows = joined.draws.filter(
+        (draw) => draw.kind === 'compiled' && draw.pass === 'shadow',
+    );
+    expect(originalShadows.length).toBeGreaterThan(0);
+    expect(compiledShadows.length).toBeGreaterThan(0);
+    expect(new Set(compiledShadows.map((draw) => draw.cacheKey))).toEqual(
+        new Set(originalShadows.map((draw) => draw.cacheKey)),
+    );
+    expect(new Set(compiledShadows.map((draw) => draw.programId))).toEqual(
+        new Set(originalShadows.map((draw) => draw.programId)),
+    );
+    expect(joined.createdPrograms).toBe(authored.createdPrograms);
+    expect(joined.programPeak).toBe(authored.programPeak);
+    const released = [];
+    for (let cycle = 0; cycle < 3; cycle++) {
+        await fixture.update(
+            <GardenPaletteAdmissionFixture
+                batch
+                aggregate
+                nativeProgramWitness
+                mounted={false}
+            />,
+        );
+        released.push(await read('true:false:false:false:aggregate:3'));
+        await fixture.update(
+            <GardenPaletteAdmissionFixture
+                batch
+                aggregate
+                nativeProgramWitness
+            />,
+        );
+        await read('true:false:false:true:aggregate:3');
+    }
+    await testInfo.attach('native-program-and-buffer-release-cycles', {
+        body: JSON.stringify(released, null, 2),
+        contentType: 'application/json',
+    });
+    expect(released.map((value) => value.liveBuffers)).toEqual(
+        Array(3).fill(released[0]?.liveBuffers),
+    );
+    expect(released.map((value) => value.livePrograms)).toEqual(
+        Array(3).fill(released[0]?.livePrograms),
+    );
+    expect(released.at(-1)?.deletedBuffers).toBeGreaterThan(
+        joined.deletedBuffers,
+    );
+    // Borrowed authored sources keep these exact programs alive. Owned packet
+    // consumers release their references without recreating shader variants.
+    expect(released.map((value) => value.createdPrograms)).toEqual(
+        Array(3).fill(authored.createdPrograms),
+    );
+    expect(released.map((value) => value.programPeak)).toEqual(
+        Array(3).fill(authored.programPeak),
+    );
+});
 
 test('production entity props batch JSX material nodes, retain untouched chunks and preserve source frames', async ({
     mount,
