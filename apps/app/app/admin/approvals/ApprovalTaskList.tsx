@@ -97,9 +97,11 @@ export function ApprovalTaskList({ items }: { items: ApprovalTaskListItem[] }) {
                 aria-live="polite"
                 tabIndex={-1}
                 className={
-                    pendingCount > 0 || visibleItems.length === 0
-                        ? 'flex items-center justify-center gap-2 p-4 text-sm text-muted-foreground'
-                        : 'sr-only'
+                    pendingCount > 0
+                        ? 'pointer-events-none fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full border bg-background px-4 py-3 text-sm text-muted-foreground shadow-lg'
+                        : visibleItems.length === 0
+                          ? 'flex items-center justify-center gap-2 p-4 text-sm text-muted-foreground'
+                          : 'sr-only'
                 }
             >
                 {pendingCount > 0 ? (
