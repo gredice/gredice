@@ -67,8 +67,14 @@ test('closing a dialog stops hint retries after a failed request', async ({
         requests += 1;
         await route.fulfill({ status: 503 });
     });
+    const firstFailure = page.waitForResponse(
+        (response) =>
+            response.url().includes('/api/gredice/api/auth/last-login') &&
+            response.status() === 503,
+    );
     await mount(<InlineLoginDialogHarness />);
     await expect(page.getByRole('dialog')).toBeVisible();
+    await firstFailure;
     await page.keyboard.press('Escape');
     const requestsAtClose = requests;
     await page.waitForTimeout(1100);

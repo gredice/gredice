@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 
 import {
+    acquireLastLoginProvider,
     type FetchLastLogin,
-    getLastLoginProvider,
     type OAuthProvider,
 } from './lastLoginProviderRequest';
 
@@ -23,6 +23,7 @@ export function useLastLoginProvider(
         setLastLoginProvider(undefined);
         if (!enabled) return;
         let isMounted = true;
+        let releaseRequest: (() => void) | undefined;
 
         const fetchLastLoginProvider = async () => {
             for (const delayMs of delaysMs) {
@@ -40,13 +41,18 @@ export function useLastLoginProvider(
                 }
 
                 try {
-                    const provider = await getLastLoginProvider(fetchLastLogin);
+                    const request = acquireLastLoginProvider(fetchLastLogin);
+                    releaseRequest = request.release;
+                    const provider = await request.promise;
                     if (isMounted) {
                         setLastLoginProvider(provider);
                     }
                     return;
                 } catch {
                     // retry
+                } finally {
+                    releaseRequest?.();
+                    releaseRequest = undefined;
                 }
             }
         };
@@ -55,6 +61,7 @@ export function useLastLoginProvider(
 
         return () => {
             isMounted = false;
+            releaseRequest?.();
         };
     }, [delaysMs, enabled, fetchLastLogin]);
 
