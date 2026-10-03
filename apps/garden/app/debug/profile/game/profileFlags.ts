@@ -20,6 +20,14 @@ export function resolveGameProfileOperationVisuals(value: string | undefined) {
     return value === '1';
 }
 
+/** Resource barriers require the existing renderer and per-root receipt telemetry. */
+export function resolveGameProfileControllerEnabled(
+    enabled: boolean | undefined,
+    cacheClearanceWitnessMode?: string,
+) {
+    return Boolean(enabled || cacheClearanceWitnessMode);
+}
+
 export function resolveGameProfileStaticSceneCache(
     value: string | undefined,
 ): GameProfileStaticSceneCacheMode {

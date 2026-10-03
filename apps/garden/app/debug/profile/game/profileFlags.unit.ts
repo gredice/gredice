@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
     highTargetOperationVisualHighlightTarget,
     resolveGameProfileAdaptiveHigh,
+    resolveGameProfileControllerEnabled,
     resolveGameProfileFlags,
     resolveGameProfileGardenAvatar,
     resolveGameProfileOperationVisuals,
@@ -35,6 +36,34 @@ describe('resolveGameProfileOperationVisuals', () => {
             positionIndex: 0,
             raisedBedId: 2,
         });
+    });
+});
+
+describe('resolveGameProfileControllerEnabled', () => {
+    it('preserves controller opt-ins when the cache witness is absent', () => {
+        assert.equal(resolveGameProfileControllerEnabled(undefined), false);
+        assert.equal(resolveGameProfileControllerEnabled(false), false);
+        assert.equal(resolveGameProfileControllerEnabled(true), true);
+        assert.equal(resolveGameProfileControllerEnabled(false, ''), false);
+    });
+
+    it('mounts canonical renderer receipts for every cache witness scene without another controller flag', () => {
+        for (const mode of [
+            'details',
+            'cloudy',
+            'rain',
+            'snow',
+            'snow-onset',
+        ]) {
+            assert.equal(
+                resolveGameProfileControllerEnabled(false, mode),
+                true,
+            );
+            assert.equal(
+                resolveGameProfileControllerEnabled(undefined, mode),
+                true,
+            );
+        }
     });
 });
 
