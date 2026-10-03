@@ -502,24 +502,29 @@ export function GameCameraRig({
         snapshotDirtyRef.current = true;
     }, [isOrthographicCamera]);
 
-    const applyCamera = useCallback(() => {
-        if (!isOrthographicCamera) {
-            return;
-        }
+    const applyCamera = useCallback(
+        (requestNextFrame = true) => {
+            if (!isOrthographicCamera) {
+                return;
+            }
 
-        camera.lookAt(targetRef.current);
-        camera.updateProjectionMatrix();
-        camera.updateMatrixWorld();
-        getCameraFrame(camera, cameraViewport, targetRef.current.toArray());
-        publishSnapshot();
-        requestRender('camera-change');
-    }, [
-        camera,
-        cameraViewport,
-        isOrthographicCamera,
-        publishSnapshot,
-        requestRender,
-    ]);
+            camera.lookAt(targetRef.current);
+            camera.updateProjectionMatrix();
+            camera.updateMatrixWorld();
+            getCameraFrame(camera, cameraViewport, targetRef.current.toArray());
+            publishSnapshot();
+            if (requestNextFrame) {
+                requestRender('camera-change');
+            }
+        },
+        [
+            camera,
+            cameraViewport,
+            isOrthographicCamera,
+            publishSnapshot,
+            requestRender,
+        ],
+    );
 
     const saveNormalCamera = useCallback(() => {
         if (!isOrthographicCamera || view !== 'normal') {
@@ -553,14 +558,14 @@ export function GameCameraRig({
     );
 
     const panByWorldVector = useCallback(
-        (offset: Vector3) => {
+        (offset: Vector3, requestNextFrame = true) => {
             if (!isOrthographicCamera) {
                 return;
             }
 
             camera.position.add(offset);
             targetRef.current.add(offset);
-            applyCamera();
+            applyCamera(requestNextFrame);
             saveNormalCamera();
         },
         [applyCamera, camera, isOrthographicCamera, saveNormalCamera],
@@ -1273,6 +1278,7 @@ export function GameCameraRig({
             return;
         }
 
+        // This frame draws these updates; interaction leases own future motion.
         if (lastWorldRotationRef.current !== worldRotation) {
             lastWorldRotationRef.current = worldRotation;
             if (view === 'normal') {
@@ -1283,7 +1289,7 @@ export function GameCameraRig({
                         worldRotation,
                     }),
                 );
-                applyCamera();
+                applyCamera(false);
                 saveNormalCamera();
             }
         }
@@ -1310,7 +1316,7 @@ export function GameCameraRig({
             camera.zoom =
                 animation.startZoom +
                 (animation.endZoom - animation.startZoom) * easedProgress;
-            applyCamera();
+            applyCamera(false);
 
             if (
                 progress >= 1 ||
@@ -1324,7 +1330,7 @@ export function GameCameraRig({
                 camera.zoom = animation.endZoom;
                 animationRef.current = null;
                 setIsAnimating(false);
-                applyCamera();
+                applyCamera(false);
                 saveNormalCamera();
                 animation.onComplete?.();
             }
@@ -1343,7 +1349,7 @@ export function GameCameraRig({
                 )
                 .normalize()
                 .multiplyScalar(0.2);
-            panByWorldVector(offset);
+            panByWorldVector(offset, false);
         }
 
         flushSnapshot();
