@@ -127,17 +127,27 @@ test('active ladybugs survive a late Suspense hide/reveal with same-frame meshes
     await page
         .locator('canvas')
         .screenshot({ path: test.info().outputPath('flight.png') });
+    const beforeNightFrame = (await sample()).frame;
     await fixture.getByRole('button', { name: 'Night', exact: true }).click();
-    await expect
-        .poll(async () =>
-            (await sample()).phases.some(
-                (entry: { phase: string }) => entry.phase === 'despawn',
-            ),
-        )
-        .toBe(true);
-    stages.despawn = await sample();
-    expect((await sample()).visibleActors).toBe(spawned.visibleActors);
     await expect.poll(async () => (await sample()).visibleActors).toBe(0);
+    // Debug phases update every 0.5 seconds and retain their last entry after
+    // hiding. Assert the recorded despawn frame atomically; a later browser
+    // round trip can arrive after the 0.55-second despawn has completed.
+    const despawnFrame = async () => {
+        const frames = JSON.parse(
+            (await output.getAttribute('data-history')) ?? '[]',
+        );
+        return frames.find(
+            (frame: { frame: number; phases: { phase: string }[] }) =>
+                frame.frame > beforeNightFrame &&
+                frame.phases.some((entry) => entry.phase === 'despawn'),
+        );
+    };
+    await expect.poll(despawnFrame).toBeDefined();
+    const despawning = await despawnFrame();
+    stages.despawn = despawning;
+    expect(despawning.visibleActors).toBe(spawned.visibleActors);
+    expect(despawning.renderedMeshes).toBeGreaterThan(0);
     const hiddenFrame = (await sample()).frame;
     await expect
         .poll(async () => (await sample()).frame)
