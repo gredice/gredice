@@ -1,3 +1,4 @@
+import { gardenPackGroupMemberOperationId } from './gardenPackGroupPlacementRepo';
 import { isGardenPackLifecycleStorageReady } from './gardenPackLifecycleRepo';
 import 'server-only';
 import { randomUUID } from 'node:crypto';
@@ -163,6 +164,29 @@ export async function recordGardenPackPlacement(
     if (groupReceipt) {
         gardenPackGroupPlacementCommandSchema.parse(groupReceipt.command);
         gardenPackGroupPlacementResponseSchema.parse(groupReceipt.response);
+        const index = groupReceipt.response.placements.findIndex(
+            (p) =>
+                p.lineId === command.lineId &&
+                p.unitOrdinal === command.unitOrdinal,
+        );
+        const member = groupReceipt.response.placements[index];
+        if (
+            !member ||
+            groupReceipt.root !== (index === 0) ||
+            command.accountId !== groupReceipt.command.accountId ||
+            command.purchaseId !== groupReceipt.command.purchaseId ||
+            command.gardenId !== groupReceipt.command.gardenId ||
+            command.operationId !==
+                gardenPackGroupMemberOperationId(groupReceipt.command, index) ||
+            !isDeepStrictEqual(response, {
+                blockId: member.blockId,
+                variant: member.variant,
+                position: member.position,
+            })
+        )
+            throw new GardenPackConflictError(
+                'Group member receipt does not match physical placement',
+            );
     }
     await tx.insert(gardenPackUnitLocations).values({
         purchaseId: command.purchaseId,
