@@ -9,11 +9,13 @@ export function GardenPackInventory({
     blockData,
     placement,
     onPlaced,
+    previewLayouts = false,
 }: {
     inventory: ReturnType<typeof useGardenPackInventory>;
     blockData: BlockData[] | null | undefined;
     placement?: GardenPackInventoryPlacement;
     onPlaced: () => void;
+    previewLayouts?: boolean;
 }) {
     if (!inventory.visible) return null;
     return (
@@ -51,6 +53,7 @@ export function GardenPackInventory({
                     blockData={blockData}
                     placement={placement}
                     onPlaced={onPlaced}
+                    previewLayouts={previewLayouts}
                 />
             ))}
             {inventory.purchases.length > 0 && (

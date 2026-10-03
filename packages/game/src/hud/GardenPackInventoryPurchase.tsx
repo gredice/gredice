@@ -2,6 +2,7 @@ import type { BlockData } from '@gredice/client';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { useState } from 'react';
+import { GardenPackLayoutInventoryAction } from './GardenPackLayoutInventoryAction';
 import {
     type GardenPackInventoryPlacement,
     getOwnedPackLineBlock,
@@ -16,11 +17,13 @@ export function GardenPackInventoryPurchase({
     blockData,
     placement,
     onPlaced,
+    previewLayouts = false,
 }: {
     pack: OwnedGardenPack;
     blockData: BlockData[] | null | undefined;
     placement?: GardenPackInventoryPlacement;
     onPlaced: () => void;
+    previewLayouts?: boolean;
 }) {
     const [failed, setFailed] = useState(false);
     const [placing, setPlacing] = useState(false);
@@ -145,6 +148,13 @@ export function GardenPackInventoryPurchase({
                     );
                 })}
             </ul>
+            {placement && previewLayouts && (
+                <GardenPackLayoutInventoryAction
+                    pack={pack}
+                    blockData={blockData}
+                    onPreview={onPlaced}
+                />
+            )}
             {(failed || placement?.error) && (
                 <p role="alert" className="mt-3 text-sm text-destructive">
                     Postavljanje nije potvrđeno. Osvježi paket ili pokušaj

@@ -540,11 +540,13 @@ function GardenBoxInventoryGroup({
 export function InventoryHud({
     hideTrigger = false,
     packPlacement,
+    previewLayouts = true,
 }: {
     // The avatar walk-through opens garden boxes straight from the world, so
     // the modal is mounted without its HUD shell and backpack button.
     hideTrigger?: boolean;
     packPlacement?: GardenPackInventoryPlacement;
+    previewLayouts?: boolean;
 } = {}) {
     const { data: inventory } = useInventory();
     const { data: operations } = useOperations();
@@ -784,6 +786,7 @@ export function InventoryHud({
                                 inventory={packs}
                                 blockData={blockData}
                                 placement={packPlacement}
+                                previewLayouts={previewLayouts}
                                 onPlaced={() => handleOpenChange(false)}
                             />
                         </TabsContent>
