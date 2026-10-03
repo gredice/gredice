@@ -24,8 +24,8 @@ handlers are unchanged. Active dragging disables this HUD action.
   scene clock. Reduced motion and frozen clocks show a static 180 ms sweep
   acknowledgement and text, with no moving leaves or animation lease.
 - Two small meshes: one eight-instance shared four-facet leaf geometry and a
-  16-segment arc. Leaves remain within 0.28 world units horizontally and 0.195
-  units vertically of the anchor. Idle leaves have count zero and the effect
+  16-segment arc. Leaf-instance centers remain within 0.28 world units horizontally and
+  0.195 units vertically of the anchor. Idle leaves have count zero and the effect
   group is hidden. Instance buffers, geometries and materials are disposed on
   renderer unmount.
 - Account/garden changes, target removal, dragging, scene invisibility and
