@@ -244,10 +244,14 @@ const StaticRenderPacketCompiledMesh = memo(
     }) {
         const build = useCompiledChunkSources(packet.sources);
         const previousBuild = useRef<StaticRenderPacket | undefined>(undefined);
+        const recordedBuild = useRef<typeof build>(undefined);
         useEffect(() => {
             if (!build) return;
-            recordStaticRenderPacketCompile(build.durationMs);
             const previous = previousBuild.current;
+            previousBuild.current = packet;
+            if (recordedBuild.current === build) return;
+            recordedBuild.current = build;
+            recordStaticRenderPacketCompile(build.durationMs);
             if (
                 previous &&
                 (packet.placementContributions ?? packet.contributions).some(
@@ -271,7 +275,6 @@ const StaticRenderPacketCompiledMesh = memo(
                     durationMs: build.durationMs,
                     transformedInstanceCount: packet.instanceCount,
                 });
-            previousBuild.current = packet;
         }, [build, packet]);
         const debugName = `StaticRenderPacket:${packet.chunkKey}:${packet.material.name || packet.material.type}:sources:${packet.contributions.length}:count:${packet.instanceCount}`;
         const sourceBoundsCulling = packet.contributions.every(

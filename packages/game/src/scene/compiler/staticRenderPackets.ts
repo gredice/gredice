@@ -125,14 +125,17 @@ export function planStaticRenderPackets(
             );
             if (group.length === 0) return [];
             const old = previousByKey.get(key);
-            if (
-                old &&
-                sameContributions(
-                    old.placementContributions ?? old.contributions,
-                    placementContributions,
+            if (old && sameContributions(old.contributions, group)) {
+                if (
+                    sameContributions(
+                        old.placementContributions ?? old.contributions,
+                        placementContributions,
+                    )
                 )
-            )
-                return [old];
+                    return [old];
+                // Empty placement members change telemetry, not compiler inputs.
+                return [{ ...old, placementContributions }];
+            }
             const [first] = group;
             if (!first) throw new Error('Empty static render packet group.');
             return [

@@ -1,5 +1,5 @@
 import { useFrame, useThree } from '@react-three/fiber';
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import {
     BoxGeometry,
     type BufferGeometry,
@@ -14,11 +14,62 @@ import {
     type EntityBlockInstance,
     EntityInstancesGeometry,
 } from '../src/entities/EntityInstancesBlock';
+import { readPlacementAnimationProfileMetrics } from '../src/entities/placementAnimationProfileMetrics';
 import { readChunkCompilerMetrics } from '../src/scene/compiler/chunkCompilerMetrics';
-import { StaticRenderPacketBatchProvider } from '../src/scene/compiler/StaticRenderPacketBatch';
+import {
+    StaticRenderPacketBatchProvider,
+    useStaticRenderPacketContributions,
+    useStaticRenderPacketRegistry,
+} from '../src/scene/compiler/StaticRenderPacketBatch';
 import { readStaticRenderPacketMetrics } from '../src/scene/compiler/staticRenderPackets';
 import { readSharedGardenMaterialMetrics } from '../src/scene/gardenMaterials';
 import { countGeometryTriangles } from '../src/scene/weatherSurfaceGeometry';
+
+export type GardenPaletteAdmissionPlacementTelemetry =
+    | 'none'
+    | 'insert'
+    | 'replace'
+    | 'drawable';
+
+function PlacementTelemetryMember({
+    mode,
+}: {
+    mode: GardenPaletteAdmissionPlacementTelemetry;
+}) {
+    const registry = useStaticRenderPacketRegistry();
+    if (!registry) throw new Error('Fixture packet registry is required');
+    const packets = useSyncExternalStore(
+        registry.subscribe,
+        registry.getSnapshot,
+        registry.getSnapshot,
+    );
+    const source = packets[0]?.contributions.find(
+        ({ id }) => id !== 'fixture-placement-telemetry',
+    );
+    const contributions = useMemo(
+        () =>
+            mode === 'none' || !source
+                ? undefined
+                : [
+                      {
+                          ...source,
+                          id: 'fixture-placement-telemetry',
+                          instances:
+                              mode === 'drawable'
+                                  ? source.instances.slice(0, 1)
+                                  : [],
+                          placementSignature: `["${mode}"]`,
+                      },
+                  ],
+        [mode, source],
+    );
+    useStaticRenderPacketContributions(
+        'fixture-placement-owner',
+        contributions,
+        undefined,
+    );
+    return null;
+}
 
 function fixtureInstances(name: string, offset: number): EntityBlockInstance[] {
     return [-6, 2].map((x) => {
@@ -43,6 +94,7 @@ export function GardenPaletteAdmissionScene({
     mutated,
     patched,
     mounted,
+    placementTelemetry,
     onReadback,
 }: {
     batch: boolean;
@@ -51,6 +103,7 @@ export function GardenPaletteAdmissionScene({
     mutated: boolean;
     patched: boolean;
     mounted: boolean;
+    placementTelemetry: GardenPaletteAdmissionPlacementTelemetry;
     onReadback: (value: { key: string; [key: string]: unknown }) => void;
 }) {
     const { scene, gl, camera } = useThree();
@@ -134,7 +187,7 @@ export function GardenPaletteAdmissionScene({
         () => (patched ? resources.roof.slice(1) : resources.roof),
         [patched, resources.roof],
     );
-    const key = `${batch}:${mutated}:${patched}:${mounted}${aggregate ? `:aggregate:${sources}` : ''}`;
+    const key = `${batch}:${mutated}:${patched}:${mounted}${aggregate ? `:aggregate:${sources}` : ''}${placementTelemetry === 'none' ? '' : `:placement:${placementTelemetry}`}`;
     const frames = useRef({
         key: '',
         count: 0,
@@ -221,7 +274,9 @@ export function GardenPaletteAdmissionScene({
             packets.packetFallbackMeshes > 0 ||
             (batch &&
                 mounted &&
-                packets.contributions !== (sources === 1 ? 2 : patched ? 5 : 6))
+                packets.contributions !==
+                    (sources === 1 ? 2 : patched ? 5 : 6) +
+                        (placementTelemetry === 'drawable' ? 1 : 0))
         )
             return;
         const meshes: Mesh[] = [];
@@ -255,6 +310,7 @@ export function GardenPaletteAdmissionScene({
             key,
             packets,
             compiler,
+            placement: readPlacementAnimationProfileMetrics(),
             fallbackFrames: frames.current.fallbackFrames,
             nativePendingDraws: nativeDraws.current.pending,
             nativeStockDraws: nativeDraws.current.stock,
@@ -319,6 +375,7 @@ export function GardenPaletteAdmissionScene({
                 <meshStandardMaterial color="#807767" roughness={1} />
             </mesh>
             <StaticRenderPacketBatchProvider>
+                <PlacementTelemetryMember mode={placementTelemetry} />
                 {mounted && (
                     <>
                         <EntityInstancesGeometry

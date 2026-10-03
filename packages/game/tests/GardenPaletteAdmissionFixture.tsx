@@ -5,7 +5,10 @@ import {
     GameStateContext,
     useDisposeGameStateStore,
 } from '../src/useGameState';
-import { GardenPaletteAdmissionScene } from './GardenPaletteAdmissionScene';
+import {
+    type GardenPaletteAdmissionPlacementTelemetry,
+    GardenPaletteAdmissionScene,
+} from './GardenPaletteAdmissionScene';
 
 export function GardenPaletteAdmissionFixture({
     batch = false,
@@ -14,6 +17,7 @@ export function GardenPaletteAdmissionFixture({
     mounted = true,
     aggregate = false,
     sources = 3,
+    placementTelemetry = 'none',
 }: {
     batch?: boolean;
     mutated?: boolean;
@@ -21,6 +25,7 @@ export function GardenPaletteAdmissionFixture({
     mounted?: boolean;
     aggregate?: boolean;
     sources?: 1 | 3;
+    placementTelemetry?: GardenPaletteAdmissionPlacementTelemetry;
 }) {
     const [store] = useState(() =>
         createGameState({
@@ -38,7 +43,7 @@ export function GardenPaletteAdmissionFixture({
         (value: { key: string; [key: string]: unknown }) => setResult(value),
         [],
     );
-    const key = `${batch}:${mutated}:${patched}:${mounted}${aggregate ? `:aggregate:${sources}` : ''}`;
+    const key = `${batch}:${mutated}:${patched}:${mounted}${aggregate ? `:aggregate:${sources}` : ''}${placementTelemetry === 'none' ? '' : `:placement:${placementTelemetry}`}`;
     return (
         <div
             data-testid="garden-palette-admission"
@@ -70,6 +75,7 @@ export function GardenPaletteAdmissionFixture({
                             mutated={mutated}
                             patched={patched}
                             mounted={mounted}
+                            placementTelemetry={placementTelemetry}
                             onReadback={report}
                         />
                     </Scene>

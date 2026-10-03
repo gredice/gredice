@@ -239,6 +239,70 @@ test('singleton stock packets preserve borrowed geometry and compile only after 
     const diff = compare(await pixels(authoredPng), await pixels(joinedPng));
     expect(diff.differentPixelRatio).toBeLessThan(0.001);
     expect(diff.maxChannelError).toBeLessThanOrEqual(8);
+    const telemetryFrames = [];
+    const telemetryModes: Array<'insert' | 'replace' | 'none'> = [
+        'insert',
+        'replace',
+        'none',
+        'insert',
+    ];
+    for (const mode of telemetryModes) {
+        await fixture.update(
+            <GardenPaletteAdmissionFixture
+                batch
+                aggregate
+                placementTelemetry={mode}
+            />,
+        );
+        const telemetry = await read(
+            `true:false:false:true:aggregate:3${mode === 'none' ? '' : `:placement:${mode}`}`,
+        );
+        expect(telemetry.compiler.workerCompiles).toBe(
+            joined.compiler.workerCompiles,
+        );
+        expect(telemetry.compiler.syncCompiles).toBe(
+            joined.compiler.syncCompiles,
+        );
+        expect(telemetry.packets.packetCompiles).toBe(
+            joined.packets.packetCompiles,
+        );
+        expect(telemetry.placement.placementChunkPhysicalRebuildCount).toBe(
+            joined.placement.placementChunkPhysicalRebuildCount,
+        );
+        expect(telemetry.geometryIds).toEqual(joined.geometryIds);
+        expect(telemetry.triangles).toBe(joined.triangles);
+        expect(telemetry.hit).toEqual(joined.hit);
+        expect(telemetry.nativeStockDraws).toBeGreaterThan(
+            joined.nativeStockDraws,
+        );
+        telemetryFrames.push(telemetry);
+    }
+    const reinserted = telemetryFrames.at(-1);
+    if (!reinserted) throw new Error('Missing settled empty placement member');
+    await fixture.update(
+        <GardenPaletteAdmissionFixture
+            batch
+            aggregate
+            placementTelemetry="drawable"
+        />,
+    );
+    const physical = await read(
+        'true:false:false:true:aggregate:3:placement:drawable',
+    );
+    expect(physical.compiler.workerCompiles).toBeGreaterThan(
+        reinserted.compiler.workerCompiles,
+    );
+    expect(physical.packets.packetCompiles).toBeGreaterThan(
+        reinserted.packets.packetCompiles,
+    );
+    expect(
+        physical.placement.placementChunkPhysicalRebuildCount,
+    ).toBeGreaterThan(reinserted.placement.placementChunkPhysicalRebuildCount);
+    expect(
+        physical.placement.placementChunkPhysicalTransformedInstanceCount,
+    ).toBeGreaterThan(
+        reinserted.placement.placementChunkPhysicalTransformedInstanceCount,
+    );
     await fixture.update(
         <GardenPaletteAdmissionFixture batch aggregate sources={1} />,
     );
@@ -262,7 +326,15 @@ test('singleton stock packets preserve borrowed geometry and compile only after 
     expect(released.borrowedSourceDisposals).toBe(0);
     await testInfo.attach('singleton-join-release', {
         body: JSON.stringify(
-            { singleton, authored, joined, separated, released },
+            {
+                singleton,
+                authored,
+                joined,
+                telemetryFrames,
+                physical,
+                separated,
+                released,
+            },
             null,
             2,
         ),

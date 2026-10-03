@@ -159,6 +159,73 @@ describe('static render packet planning', () => {
             first.find((packet) => packet.chunkKey === '1:0'),
         );
     });
+
+    it('preserves compiler inputs through signed-empty insertion, replacement and removal', () => {
+        const a = contribution('a');
+        const b = contribution('b');
+        const original = planStaticRenderPackets([a, b]);
+        const packet = original[0];
+        assert.ok(packet);
+        const empty = contribution('telemetry', {
+            instances: [],
+            placementSignature: '["first"]',
+        });
+        const inserted = planStaticRenderPackets([a, b, empty], original);
+        const insertedPacket = inserted[0];
+        assert.ok(insertedPacket);
+        assert.notEqual(insertedPacket, packet);
+        assert.equal(insertedPacket.sources, packet.sources);
+        assert.equal(insertedPacket.contributions, packet.contributions);
+        assert.equal(insertedPacket.instanceCount, 2);
+        assert.equal(insertedPacket.triangleCount, 24);
+        assert.equal(
+            planStaticRenderPackets([a, b, empty], inserted),
+            inserted,
+        );
+
+        const replacement = { ...empty, placementSignature: '["second"]' };
+        const replaced = planStaticRenderPackets([replacement, b, a], inserted);
+        assert.notEqual(replaced[0], insertedPacket);
+        assert.equal(replaced[0]?.sources, packet.sources);
+        assert.equal(replaced[0]?.contributions, packet.contributions);
+        assert.equal(replaced[0]?.placementContributions?.at(-1), replacement);
+        assert.equal(
+            planStaticRenderPackets([a, b, replacement], replaced),
+            replaced,
+        );
+
+        const removed = planStaticRenderPackets([a, b], replaced);
+        assert.notEqual(removed[0], replaced[0]);
+        assert.equal(removed[0]?.sources, packet.sources);
+        assert.equal(removed[0]?.contributions, packet.contributions);
+        assert.deepEqual(removed[0]?.placementContributions, [a, b]);
+        assert.equal(planStaticRenderPackets([a, b], removed), removed);
+    });
+
+    it('still invalidates compiler inputs when a signed member becomes drawable or transforms change', () => {
+        const a = contribution('a');
+        const b = contribution('b');
+        const empty = contribution('telemetry', {
+            instances: [],
+            placementSignature: '["telemetry"]',
+        });
+        const original = planStaticRenderPackets([a, b, empty]);
+        const drawable = contribution('telemetry', {
+            placementSignature: '["telemetry"]',
+        });
+        const joined = planStaticRenderPackets([a, b, drawable], original);
+        assert.notEqual(joined[0]?.sources, original[0]?.sources);
+        assert.equal(joined[0]?.sources.length, 3);
+        assert.equal(joined[0]?.instanceCount, 3);
+        const moved = contribution('a', {
+            instances: [{ position: [4, 0, 1], rotation: 1 }],
+            placementSignature: '["a"]',
+        });
+        const changed = planStaticRenderPackets([moved, b, drawable], joined);
+        assert.notEqual(changed[0]?.sources, joined[0]?.sources);
+        assert.notEqual(changed[0]?.contributions, joined[0]?.contributions);
+        assert.equal(changed[0]?.sources[0]?.instances, moved.instances);
+    });
 });
 
 describe('static render packet registry', () => {
