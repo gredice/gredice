@@ -104,6 +104,7 @@ const aiPlantStatusReviewModuleKey =
     'action.createPlantStatusRequestsFromImageAnalysis';
 
 const scheduleInvalidatingEventTypes = new Set<string>([
+    knownEventTypes.operations.adminUpdate,
     knownEventTypes.operations.acceptance,
     knownEventTypes.operations.assign,
     knownEventTypes.operations.entityChange,

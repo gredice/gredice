@@ -1,9 +1,11 @@
 import {
     getAccount,
+    getAssignableFarmUsersByOperationIds,
     getEntitiesFormatted,
     getFarm,
     getGarden,
     getOperationById,
+    getOperationPrices,
     getRaisedBed,
 } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
@@ -17,8 +19,9 @@ import {
 } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
-import { ExternalLink } from '@gredice/ui/icons';
+import { Euro, ExternalLink, Graph, Timer, Wallet } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
+import { OperationImage } from '@gredice/ui/OperationImage';
 import { OperationRequestNote } from '@gredice/ui/OperationRequestNote';
 import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
@@ -39,16 +42,16 @@ import {
 import { AdminPageHeader } from '../../../../components/admin/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
-import { OperationCancelButton } from '../../../../components/operations/OperationCancelButton';
-import { OperationRescheduleButton } from '../../../../components/operations/OperationRescheduleButton';
-import { OperationSwitchButton } from '../../../../components/operations/OperationSwitchButton';
-import { OperationUnacceptButton } from '../../../../components/operations/OperationUnacceptButton';
 import type { EntityStandardized } from '../../../../lib/@types/EntityStandardized';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
-import { AcceptOperationModal } from '../../schedule/AcceptOperationModal';
-import { OperationCompletionEvidenceEditModal } from '../../schedule/OperationCompletionEvidenceEditModal';
 import { VerifyOperationModal } from '../../schedule/VerifyOperationModal';
+import { OperationDescriptionCard } from '../OperationDescriptionCard';
+import { OperationTaskAdminEditModal } from '../OperationTaskAdminEditModal';
+import {
+    operationDefinitionPricing,
+    operationMoneyDisplay,
+} from '../operationDefinitionPricing';
 import { operationDefinitionMatchesTargetScope } from '../operationScope';
 
 export const dynamic = 'force-dynamic';
@@ -167,23 +170,39 @@ export default async function OperationDetailsPage({
         return notFound();
     }
 
-    const [operationsData, account, farm, garden, raisedBed] =
-        await Promise.all([
-            getEntitiesFormatted<EntityStandardized>('operation'),
-            operation.accountId
-                ? getAccount(operation.accountId)
-                : Promise.resolve(undefined),
-            operation.farmId
-                ? getFarm(operation.farmId)
-                : Promise.resolve(null),
-            operation.gardenId
-                ? getGarden(operation.gardenId)
-                : Promise.resolve(undefined),
-            operation.raisedBedId
-                ? getRaisedBed(operation.raisedBedId)
-                : Promise.resolve(undefined),
-        ]);
+    const [
+        operationsData,
+        account,
+        farm,
+        garden,
+        raisedBed,
+        assignableUsersByOperationId,
+    ] = await Promise.all([
+        getEntitiesFormatted<EntityStandardized>('operation'),
+        operation.accountId
+            ? getAccount(operation.accountId)
+            : Promise.resolve(undefined),
+        operation.farmId ? getFarm(operation.farmId) : Promise.resolve(null),
+        operation.gardenId
+            ? getGarden(operation.gardenId)
+            : Promise.resolve(undefined),
+        operation.raisedBedId
+            ? getRaisedBed(operation.raisedBedId)
+            : Promise.resolve(undefined),
+        getAssignableFarmUsersByOperationIds([operation.id]),
+    ]);
 
+    const effectiveFarmId = operation.farmId ?? garden?.farmId;
+    const farmerPrices = effectiveFarmId
+        ? await getOperationPrices(effectiveFarmId)
+        : [];
+    const assignableUsers = [
+        ...(assignableUsersByOperationId[operation.id] ?? []),
+    ];
+    for (const user of operation.assignedUsers ?? []) {
+        if (!assignableUsers.some((option) => option.id === user.id))
+            assignableUsers.push({ ...user, farmId: effectiveFarmId ?? 0 });
+    }
     const operationDetails = operationsData?.find(
         (op) => op.id === operation.entityId,
     );
@@ -264,73 +283,111 @@ export default async function OperationDetailsPage({
             Nije potvrđeno
         </Chip>
     );
-    const operationAction = {
-        id: operation.id,
-        entityId: operation.entityId,
-        taskVersionEventId: operation.taskVersionEventId,
-        scheduledDate: operation.scheduledDate,
-        status: operation.status,
-    };
+    const pricing = operationDefinitionPricing(
+        operation.entityId,
+        operationDetails?.prices?.perOperation,
+        farmerPrices,
+    );
     const operationItems: EntityDetailsPropertyListItem[] = [
-        { id: 'id', label: 'ID radnje', value: operation.id, mono: true },
         {
             id: 'entity-id',
             label: 'ID zapisa',
-            value: operation.entityId,
+            value: (
+                <Link
+                    href={KnownPages.DirectoryEntity(
+                        'operation',
+                        operation.entityId,
+                    )}
+                >
+                    {operation.entityId}
+                </Link>
+            ),
             mono: true,
         },
         {
-            id: 'name',
-            label: 'Naziv',
-            value: operationDetails?.information?.label || operation.entityId,
+            id: 'duration',
+            label: 'Trajanje',
+            value:
+                durationMinutes !== null
+                    ? `${durationMinutes} min`
+                    : 'Nije određeno',
+            visual: <Timer className="size-4" />,
         },
         {
-            id: 'entity-type',
-            label: 'Tip zapisa',
-            value: operation.entityTypeName,
+            id: 'user-price',
+            label: 'Cijena korisnika',
+            value: operationMoneyDisplay(pricing.customerAmount),
+            visual: <Euro className="size-4" />,
         },
         {
-            id: 'status',
-            label: 'Status',
-            value: operationStatusChip(operation.status),
+            id: 'farmer-price',
+            label: 'Cijena farmera',
+            value: operationMoneyDisplay(
+                pricing.farmerAmount,
+                pricing.farmerCurrency,
+            ),
+            visual: <Wallet className="size-4" />,
+        },
+        {
+            id: 'profit',
+            label: 'Dobit po radnji',
+            value: operationMoneyDisplay(pricing.profit),
+            visual: <Graph className="size-4" />,
         },
         {
             id: 'public-link',
             label: 'Javni opis',
             value: (
                 <a
-                    className="inline-flex min-w-0 items-center gap-1 text-primary hover:underline"
+                    className="inline-flex items-center gap-1 text-primary hover:underline"
                     href={publicOperationHref}
-                    rel="noopener noreferrer"
                     target="_blank"
+                    rel="noopener noreferrer"
                 >
-                    <span className="min-w-0 truncate">Otvori</span>
-                    <ExternalLink className="size-3.5 shrink-0" />
+                    Otvori
+                    <ExternalLink className="size-3.5" />
                 </a>
             ),
         },
     ];
-    if (durationMinutes !== null) {
-        operationItems.push({
-            id: 'duration',
-            label: 'Trajanje',
-            value: `${durationMinutes} min`,
-        });
-    }
-    if (typeof operationDetails?.prices?.perOperation === 'number') {
-        operationItems.push({
-            id: 'price',
-            label: 'Cijena po radnji',
-            value: operationDetails.prices.perOperation,
-        });
-    }
-    if (requirements) {
+    if (requirements)
         operationItems.push({
             id: 'completion-requirements',
             label: 'Za završetak',
             value: requirements,
         });
-    }
+    const taskItems: EntityDetailsPropertyListItem[] = [
+        { id: 'id', label: 'ID zadatka', value: operation.id, mono: true },
+        {
+            id: 'status',
+            label: 'Status',
+            value: operationStatusChip(operation.status),
+        },
+    ];
+    const isoDate = (value: Date | null | undefined) =>
+        value?.toISOString() ?? null;
+    const taskAdminValues = {
+        entityId: operation.entityId,
+        status: operation.status,
+        isAccepted: operation.isAccepted,
+        assignedUserIds: operation.assignedUserIds,
+        timestamp: operation.timestamp.toISOString(),
+        createdAt: operation.createdAt.toISOString(),
+        assignedAt: isoDate(operation.assignedAt),
+        scheduledDate: isoDate(operation.scheduledDate),
+        scheduledAt: isoDate(operation.scheduledAt),
+        completedAt: isoDate(operation.completedAt),
+        verifiedAt: isoDate(operation.verifiedAt),
+        blockedAt: isoDate(operation.blockedAt),
+        canceledAt: isoDate(operation.canceledAt),
+        requestNote: operation.requestNote ?? '',
+        blockReasonCode: operation.blockReasonCode ?? '',
+        blockReasonLabel: operation.blockReasonLabel ?? '',
+        blockNote: operation.blockNote ?? '',
+        error: operation.error ?? '',
+        errorCode: operation.errorCode ?? '',
+        cancelReason: operation.cancelReason ?? '',
+    };
 
     const locationItems: EntityDetailsPropertyListItem[] = [];
     if (operation.accountId) {
@@ -620,11 +677,17 @@ export default async function OperationDetailsPage({
     }
 
     const description = operationDetails?.information?.description;
+    const shortDescription =
+        operationDetails?.information?.shortDescription ||
+        description?.split('\n')[0];
     const detailSections = [
         { id: 'operation', title: 'Radnja', items: operationItems },
         { id: 'location', title: 'Lokacija', items: locationItems },
-        { id: 'assignment', title: 'Plan i dodjela', items: assignmentItems },
-        { id: 'outcome', title: 'Ishod', items: outcomeItems },
+        {
+            id: 'task',
+            title: 'Zadatak radnje',
+            items: [...taskItems, ...assignmentItems, ...outcomeItems],
+        },
     ];
     const propertiesPanel = (
         <EntityDetailsPropertiesPanel>
@@ -654,24 +717,6 @@ export default async function OperationDetailsPage({
                     }
                     actions={
                         <Row className="items-center" spacing={2}>
-                            {(operation.status === 'pendingVerification' ||
-                                operation.status === 'completed') && (
-                                <OperationCompletionEvidenceEditModal
-                                    completionNotesEdited={
-                                        operation.completionNotesEdited
-                                    }
-                                    operationId={operation.id}
-                                    expectedTaskVersionEventId={
-                                        operation.taskVersionEventId
-                                    }
-                                    label={operationTitle}
-                                    initialNotes={
-                                        operation.completionNotes ?? ''
-                                    }
-                                    initialImageUrls={operation.imageUrls ?? []}
-                                    notesOnly={operation.status === 'completed'}
-                                />
-                            )}
                             {operation.status === 'pendingVerification' && (
                                 <VerifyOperationModal
                                     operationId={operation.id}
@@ -681,49 +726,6 @@ export default async function OperationDetailsPage({
                                     label={operationTitle}
                                 />
                             )}
-                            {operation.isAccepted ? (
-                                <OperationUnacceptButton
-                                    operationId={operation.id}
-                                    expectedEntityId={operation.entityId}
-                                    expectedTaskVersionEventId={
-                                        operation.taskVersionEventId
-                                    }
-                                    operationStatus={operation.status}
-                                    operationLabel={operationTitle}
-                                />
-                            ) : (
-                                <AcceptOperationModal
-                                    operationId={operation.id}
-                                    expectedEntityId={operation.entityId}
-                                    expectedTaskVersionEventId={
-                                        operation.taskVersionEventId
-                                    }
-                                    operationStatus={operation.status}
-                                    label={operationTitle}
-                                    disabled={!operation.assignedUserId}
-                                    raisedBedPhysicalId={
-                                        raisedBed?.physicalId ?? undefined
-                                    }
-                                />
-                            )}
-                            <OperationSwitchButton
-                                operationId={operation.id}
-                                currentEntityId={operation.entityId}
-                                taskVersionEventId={
-                                    operation.taskVersionEventId
-                                }
-                                operationStatus={operation.status}
-                                operationLabel={operationTitle}
-                                operationOptions={operationSwitchOptions}
-                            />
-                            <OperationRescheduleButton
-                                operation={operationAction}
-                                operationLabel={operationTitle}
-                            />
-                            <OperationCancelButton
-                                operation={operationAction}
-                                operationLabel={operationTitle}
-                            />
                             <EntityDetailsPropertiesToggle />
                         </Row>
                     }
@@ -734,7 +736,7 @@ export default async function OperationDetailsPage({
                         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                             {detailSections.map((section) => (
                                 <Card
-                                    className="min-w-0 overflow-hidden"
+                                    className={`min-w-0 overflow-hidden ${section.id === 'task' ? 'xl:col-span-2' : ''}`}
                                     key={section.id}
                                 >
                                     <CardHeader>
@@ -745,34 +747,119 @@ export default async function OperationDetailsPage({
                                             <CardTitle className="text-lg">
                                                 {section.title}
                                             </CardTitle>
-                                            {section.id === 'operation' &&
-                                                operationStatusChip(
-                                                    operation.status,
-                                                )}
+                                            {section.id === 'task' && (
+                                                <Row
+                                                    spacing={2}
+                                                    className="items-center"
+                                                >
+                                                    {operationStatusChip(
+                                                        operation.status,
+                                                    )}
+                                                    <OperationTaskAdminEditModal
+                                                        operationId={
+                                                            operation.id
+                                                        }
+                                                        taskVersionEventId={
+                                                            operation.taskVersionEventId
+                                                        }
+                                                        initialValues={
+                                                            taskAdminValues
+                                                        }
+                                                        operationOptions={
+                                                            operationSwitchOptions
+                                                        }
+                                                        assignableUsers={
+                                                            assignableUsers
+                                                        }
+                                                    />
+                                                </Row>
+                                            )}
                                         </Row>
                                     </CardHeader>
                                     <CardContent>
-                                        <EntityDetailsPropertyList
-                                            items={section.items}
-                                        />
+                                        {section.id === 'operation' && (
+                                            <Row
+                                                spacing={4}
+                                                className="mb-4 items-center"
+                                            >
+                                                <OperationImage
+                                                    size={96}
+                                                    operation={{
+                                                        ...operationDetails,
+                                                        image:
+                                                            operationDetails?.image ??
+                                                            operationDetails?.images,
+                                                    }}
+                                                    className="rounded-md bg-muted/40"
+                                                />
+                                                <Stack
+                                                    spacing={1}
+                                                    className="min-w-0"
+                                                >
+                                                    <Typography level="h5">
+                                                        {operationTitle}
+                                                    </Typography>
+                                                    {shortDescription && (
+                                                        <Typography
+                                                            level="body2"
+                                                            className="text-muted-foreground"
+                                                        >
+                                                            {shortDescription}
+                                                        </Typography>
+                                                    )}
+                                                </Stack>
+                                            </Row>
+                                        )}
+                                        {section.id === 'task' ? (
+                                            <div className="grid gap-4 lg:grid-cols-2">
+                                                <div>
+                                                    <Typography
+                                                        level="body2"
+                                                        semiBold
+                                                        className="mb-2"
+                                                    >
+                                                        Plan i dodjela
+                                                    </Typography>
+                                                    <EntityDetailsPropertyList
+                                                        items={[
+                                                            ...taskItems,
+                                                            ...assignmentItems,
+                                                        ]}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <Typography
+                                                        level="body2"
+                                                        semiBold
+                                                        className="mb-2"
+                                                    >
+                                                        Ishod
+                                                    </Typography>
+                                                    <EntityDetailsPropertyList
+                                                        items={outcomeItems}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <EntityDetailsPropertyList
+                                                items={section.items}
+                                            />
+                                        )}
                                     </CardContent>
                                 </Card>
                             ))}
                         </div>
-                        {description && (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="text-lg">
-                                        Opis
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <Typography className="whitespace-pre-wrap">
-                                        {description}
-                                    </Typography>
-                                </CardContent>
-                            </Card>
-                        )}
+                        <OperationDescriptionCard
+                            description={description}
+                            operationId={operation.id}
+                            taskVersionEventId={operation.taskVersionEventId}
+                            label={operationTitle}
+                            completionNotes={operation.completionNotes}
+                            completionNotesEdited={
+                                operation.completionNotesEdited
+                            }
+                            imageUrls={operation.imageUrls}
+                        />
                         {operation.requestNote && (
                             <OperationRequestNote
                                 note={operation.requestNote}

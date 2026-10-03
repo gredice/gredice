@@ -73,6 +73,7 @@ export const knownEventTypes = {
         taskCancelled: 'raisedBedPlanting.task.cancelled',
     },
     operations: {
+        adminUpdate: 'operation.admin.update',
         acceptance: 'operation.acceptance',
         assign: 'operation.assign',
         entityChange: 'operation.entityChange',

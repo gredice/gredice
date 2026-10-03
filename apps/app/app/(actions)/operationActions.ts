@@ -1110,10 +1110,12 @@ async function updateOperationCompletionEvidenceMutation(
     expectedTaskVersionEventId: number,
     imageUrls: unknown,
     notes?: string,
+    administration = false,
 ) {
     const { userId } = await auth(['admin']);
     const operation = await getOperationById(operationId);
     await updateOperationCompletionEvidence({
+        administration,
         expectedTaskVersionEventId: assertTaskVersionEventId(
             expectedTaskVersionEventId,
         ),
@@ -1135,6 +1137,7 @@ export async function updateOperationCompletionEvidenceAction(
     expectedTaskVersionEventId: number,
     imageUrls: unknown,
     notes?: string,
+    administration = false,
 ) {
     return runOperationScheduleAction(() =>
         updateOperationCompletionEvidenceMutation(
@@ -1142,6 +1145,7 @@ export async function updateOperationCompletionEvidenceAction(
             expectedTaskVersionEventId,
             imageUrls,
             notes,
+            administration,
         ),
     );
 }

@@ -3,6 +3,7 @@ import type { SelectedPlantingOperationTarget } from '@gredice/js/plants';
 import {
     and,
     asc,
+    between,
     count,
     desc,
     eq,
@@ -22,6 +23,7 @@ import {
     scheduleCacheTtls,
 } from '../cache/scheduleCache';
 import { withTransientDatabaseReadRetry } from '../databaseReadRetry';
+import { operationTaskAdminEventSchema } from '../operationTaskAdministration';
 import {
     attributeDefinitions,
     attributeValues,
@@ -90,10 +92,13 @@ export class CheckoutOperationConflictError extends Error {
 export const SELECTED_PLANTING_PLANT_OPERATION_CONFLICT_MESSAGE =
     'Radnju za pojedinu biljku nije moguće planirati na polju s naprednom sjetvom. Odaberi radnju za cijelo polje ili gredicu.';
 
-export type OperationTargetConflictErrorCode = 'selected_planting_conflict';
+export type OperationTargetConflictErrorCode =
+    | 'selected_planting_conflict'
+    | 'incompatible_scope';
 
 export type OperationTargetGuardOptions = {
     allowSelectedPlantingFieldOperations?: boolean;
+    requireMatchingTargetScope?: boolean;
 };
 
 export class OperationTargetConflictError extends Error {
@@ -279,6 +284,7 @@ async function fillOperationAggregates(
 
     const aggregateIds = operations.map((op) => op.id.toString());
     const aggregateEventTypes = [
+        knownEventTypes.operations.adminUpdate,
         knownEventTypes.operations.acceptance,
         knownEventTypes.operations.assign,
         knownEventTypes.operations.entityChange,
@@ -367,6 +373,56 @@ async function fillOperationAggregates(
 
         for (const event of operationEvents) {
             taskVersionEventId = event.id;
+            if (event.type === knownEventTypes.operations.adminUpdate) {
+                const parsed = operationTaskAdminEventSchema.safeParse(
+                    event.data,
+                );
+                if (!parsed.success) continue;
+                const correction = parsed.data;
+                const task = correction.task;
+                const date = (value: string | null) =>
+                    value ? new Date(value) : undefined;
+                status = task.status;
+                assignedUserIds = task.assignedUserIds;
+                assignedUserId = assignedUserIds[0] ?? null;
+                assignedBy = correction.assignedBy ?? undefined;
+                assignedAt = date(task.assignedAt);
+                scheduledDate = date(task.scheduledDate);
+                scheduledAt = date(task.scheduledAt);
+                completedAt = date(task.completedAt);
+                completedBy = completedAt
+                    ? (correction.completedBy ?? undefined)
+                    : undefined;
+                completionEventId = completedAt
+                    ? (correction.completionEventId ?? event.id)
+                    : undefined;
+                verifiedAt = date(task.verifiedAt);
+                verifiedBy = verifiedAt
+                    ? (correction.verifiedBy ?? undefined)
+                    : undefined;
+                verificationEventId = verifiedAt
+                    ? (correction.verificationEventId ?? event.id)
+                    : undefined;
+                blockedAt = date(task.blockedAt);
+                blockedBy = blockedAt
+                    ? (correction.blockedBy ?? undefined)
+                    : undefined;
+                blockedEventId = blockedAt
+                    ? (correction.blockedEventId ?? event.id)
+                    : undefined;
+                canceledAt = date(task.canceledAt);
+                canceledBy = canceledAt
+                    ? (correction.canceledBy ?? undefined)
+                    : undefined;
+                requestNote = task.requestNote || undefined;
+                blockReasonCode = task.blockReasonCode || undefined;
+                blockReasonLabel = task.blockReasonLabel || undefined;
+                blockNote = task.blockNote || undefined;
+                error = task.error || undefined;
+                errorCode = task.errorCode || undefined;
+                cancelReason = task.cancelReason || undefined;
+                continue;
+            }
             const data = parseOperationEventData(event.data);
             if (event.type === knownEventTypes.operations.assign) {
                 if ('assignedUserId' in data) {
@@ -567,6 +623,7 @@ async function getOperationRows(
 }
 
 const operationTimelineStatusTypes = [
+    knownEventTypes.operations.adminUpdate,
     knownEventTypes.operations.schedule,
     knownEventTypes.operations.complete,
     knownEventTypes.operations.block,
@@ -580,72 +637,88 @@ const operationHistoryStatusTypes = [
     ...operationTimelineStatusTypes,
 ];
 
-function getLatestOperationStatusTypeExpression() {
-    return sql<string | null>`(
-        select ${events.type}
-        from ${events}
-        where ${events.aggregateId} = CAST(${operations.id} as text)
-          and ${events.type} in (${sql.join(
-              operationTimelineStatusTypes.map((value) => sql`${value}`),
-              sql`, `,
-          )})
-        order by ${events.createdAt} desc, ${events.id} desc
-        limit 1
-    )`;
-}
-
 function getOperationScheduledDateExpression() {
     return sql<Date | null>`(
-        select nullif((${events.data} ->> 'scheduledDate'), '')::timestamp
+        select nullif((case when ${events.type} = ${knownEventTypes.operations.adminUpdate}
+            then ${events.data} -> 'task' ->> 'scheduledDate'
+            else ${events.data} ->> 'scheduledDate' end), '')::timestamp
         from ${events}
         where ${events.aggregateId} = CAST(${operations.id} as text)
-          and ${events.type} = ${knownEventTypes.operations.schedule}
-        order by ${events.createdAt} desc, ${events.id} desc
-        limit 1
+          and ${events.type} in (${knownEventTypes.operations.schedule}, ${knownEventTypes.operations.adminUpdate})
+        order by ${events.createdAt} desc, ${events.id} desc limit 1
     )`;
 }
 
 function getOperationCompletedDateExpression() {
+    // An admin correction establishes a new date boundary without altering history.
     return sql<Date | null>`(
-        select ${events.createdAt}
+        select case when ${events.type} = ${knownEventTypes.operations.adminUpdate}
+            then (${events.data} -> 'task' ->> 'completedAt')::timestamp
+            else ${events.createdAt} end
         from ${events}
         where ${events.aggregateId} = CAST(${operations.id} as text)
-          and ${events.type} = ${knownEventTypes.operations.complete}
-          and (
-              not exists (
-                  select 1
-                  from ${events}
-                  where ${events.aggregateId} = CAST(${operations.id} as text)
-                    and ${events.type} = ${knownEventTypes.operations.schedule}
-              )
-              or (${events.createdAt}, ${events.id}) > (
-                  select ${events.createdAt}, ${events.id}
-                  from ${events}
-                  where ${events.aggregateId} = CAST(${operations.id} as text)
-                    and ${events.type} = ${knownEventTypes.operations.schedule}
-                  order by ${events.createdAt} desc, ${events.id} desc
-                  limit 1
-                )
-          )
-        order by ${events.createdAt} asc, ${events.id} asc
-        limit 1
+          and ${events.type} in (${knownEventTypes.operations.complete}, ${knownEventTypes.operations.adminUpdate})
+          and (${events.type} <> ${knownEventTypes.operations.adminUpdate} or ${events.data} -> 'task' ->> 'completedAt' is not null)
+          and (${events.createdAt}, ${events.id}) >= coalesce((
+              select (${events.createdAt}, ${events.id}) from ${events}
+              where ${events.aggregateId} = CAST(${operations.id} as text)
+                and ${events.type} in (${knownEventTypes.operations.schedule}, ${knownEventTypes.operations.adminUpdate})
+              order by ${events.createdAt} desc, ${events.id} desc limit 1
+          ), row(timestamp '1970-01-01', 0))
+        order by ${events.createdAt} asc, ${events.id} asc limit 1
     )`;
 }
 
-function getOperationStatusExpression() {
-    const latestStatusTypeExpression = getLatestOperationStatusTypeExpression();
+async function getCompletionEventCandidateIds({
+    from,
+    to,
+}: {
+    from: Date;
+    to: Date;
+}) {
+    const candidates = await storage()
+        .selectDistinct({ aggregateId: events.aggregateId })
+        .from(events)
+        .where(
+            or(
+                and(
+                    eq(events.type, knownEventTypes.operations.complete),
+                    between(events.createdAt, from, to),
+                ),
+                and(
+                    eq(events.type, knownEventTypes.operations.adminUpdate),
+                    between(
+                        sql<Date>`nullif(${events.data} -> 'task' ->> 'completedAt', '')::timestamp`,
+                        from,
+                        to,
+                    ),
+                ),
+            ),
+        );
+    return candidates
+        .map((candidate) => Number(candidate.aggregateId))
+        .filter(Number.isSafeInteger);
+}
 
-    return sql<OperationStatus>`(
-        case ${latestStatusTypeExpression}
+function getOperationStatusExpression() {
+    return sql<OperationStatus>`coalesce((
+        select case ${events.type}
+            when ${knownEventTypes.operations.adminUpdate} then ${events.data} -> 'task' ->> 'status'
             when ${knownEventTypes.operations.schedule} then 'planned'
             when ${knownEventTypes.operations.complete} then 'pendingVerification'
             when ${knownEventTypes.operations.block} then 'blocked'
             when ${knownEventTypes.operations.verify} then 'completed'
             when ${knownEventTypes.operations.fail} then 'failed'
             when ${knownEventTypes.operations.cancel} then 'canceled'
-            else 'new'
         end
-    )`;
+        from ${events}
+        where ${events.aggregateId} = CAST(${operations.id} as text)
+          and ${events.type} in (${sql.join(
+              operationTimelineStatusTypes.map((value) => sql`${value}`),
+              sql`, `,
+          )})
+        order by ${events.createdAt} desc, ${events.id} desc limit 1
+    ), 'new')`;
 }
 
 function getOperationStatusWhere(
@@ -1383,6 +1456,7 @@ export async function getRaisedBedPhotoPreviews(
                 inArray(events.type, [
                     knownEventTypes.operations.complete,
                     knownEventTypes.operations.completionEvidenceUpdate,
+                    knownEventTypes.operations.adminUpdate,
                     knownEventTypes.operations.schedule,
                 ]),
             ),
@@ -1416,6 +1490,19 @@ export async function getRaisedBedPhotoPreviews(
             evidence.imageUrls = [];
             evidence.completedAt = undefined;
             evidence.completionEventId = undefined;
+            continue;
+        }
+
+        if (row.type === knownEventTypes.operations.adminUpdate) {
+            const parsed = operationTaskAdminEventSchema.safeParse(row.data);
+            if (parsed.success) {
+                evidence.completedAt = parsed.data.task.completedAt
+                    ? new Date(parsed.data.task.completedAt)
+                    : undefined;
+                evidence.completionEventId = evidence.completedAt
+                    ? (parsed.data.completionEventId ?? row.eventId)
+                    : undefined;
+            }
             continue;
         }
 
@@ -1637,24 +1724,30 @@ async function getCompletedFarmUserAcceptedOperationsByCompletionDate(
         to: Date;
     },
 ) {
-    const completionEvents = await storage().query.events.findMany({
-        where: and(
-            eq(events.type, knownEventTypes.operations.complete),
-            gte(events.createdAt, filter.from),
-            lte(events.createdAt, filter.to),
-        ),
-        orderBy: [asc(events.createdAt)],
-    });
-
-    if (completionEvents.length === 0) {
-        return [];
-    }
-
-    const operationIds = completionEvents
-        .map((event) => Number.parseInt(event.aggregateId, 10))
-        .filter((id) => Number.isFinite(id));
-
-    return getFarmUserAcceptedOperationsByIds(userId, operationIds);
+    const candidateIds = await getCompletionEventCandidateIds(filter);
+    if (candidateIds.length === 0) return [];
+    const rows = await storage()
+        .select({ operation: operations })
+        .from(operations)
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .innerJoin(farmUsers, eq(farmUsers.farmId, operationFarmIdExpression()))
+        .where(
+            and(
+                inArray(operations.id, candidateIds),
+                eq(farmUsers.userId, userId),
+                eq(operations.isAccepted, true),
+                eq(operations.isDeleted, false),
+                operationLocationIntegrityWhere(),
+                between(
+                    getOperationCompletedDateExpression(),
+                    filter.from,
+                    filter.to,
+                ),
+            ),
+        )
+        .orderBy(desc(operations.timestamp));
+    return rows.map((row) => row.operation);
 }
 
 export async function getFarmUserAcceptedOperations(
@@ -1930,50 +2023,23 @@ export async function getFarmAcceptedOperationsByScheduleRange({
     from: Date;
     to: Date;
 }) {
-    const scheduledDateExpression = sql<string>`${events.data} ->> 'scheduledDate'`;
+    const scheduledDateExpression = sql<Date>`coalesce(${getOperationScheduledDateExpression()}, ${operations.timestamp})`;
     const scheduledRows = await storage()
         .selectDistinct({ id: operations.id })
         .from(operations)
         .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
         .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
-        .innerJoin(
-            events,
-            and(
-                sql`${events.aggregateId} = cast(${operations.id} as text)`,
-                eq(events.type, knownEventTypes.operations.schedule),
-            ),
-        )
         .where(
             and(
                 eq(operationFarmIdExpression(), farmId),
                 eq(operations.isAccepted, true),
                 eq(operations.isDeleted, false),
                 operationLocationIntegrityWhere(),
-                gte(scheduledDateExpression, from.toISOString()),
-                lte(scheduledDateExpression, to.toISOString()),
+                gte(scheduledDateExpression, from),
+                lte(scheduledDateExpression, to),
             ),
         );
-    const timestampRows = await storage()
-        .selectDistinct({ id: operations.id })
-        .from(operations)
-        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
-        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
-        .where(
-            and(
-                eq(operationFarmIdExpression(), farmId),
-                eq(operations.isAccepted, true),
-                eq(operations.isDeleted, false),
-                operationLocationIntegrityWhere(),
-                gte(operations.timestamp, from),
-                lte(operations.timestamp, to),
-            ),
-        );
-    const operationIds = Array.from(
-        new Set([
-            ...scheduledRows.map((row) => row.id),
-            ...timestampRows.map((row) => row.id),
-        ]),
-    );
+    const operationIds = scheduledRows.map((row) => row.id);
 
     return getOperationsByIds(operationIds);
 }
@@ -1992,48 +2058,22 @@ export async function getRaisedBedOperationsByScheduleRange({
         return [];
     }
 
-    const scheduledDateExpression = sql<string>`${events.data} ->> 'scheduledDate'`;
+    const scheduledDateExpression = sql<Date>`coalesce(${getOperationScheduledDateExpression()}, ${operations.timestamp})`;
     const scheduledRows = await storage()
         .selectDistinct({ id: operations.id })
         .from(operations)
         .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
         .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
-        .innerJoin(
-            events,
-            and(
-                sql`${events.aggregateId} = cast(${operations.id} as text)`,
-                eq(events.type, knownEventTypes.operations.schedule),
-            ),
-        )
         .where(
             and(
                 inArray(operations.raisedBedId, uniqueRaisedBedIds),
                 eq(operations.isDeleted, false),
                 operationLocationIntegrityWhere(),
-                gte(scheduledDateExpression, from.toISOString()),
-                lte(scheduledDateExpression, to.toISOString()),
+                gte(scheduledDateExpression, from),
+                lte(scheduledDateExpression, to),
             ),
         );
-    const timestampRows = await storage()
-        .selectDistinct({ id: operations.id })
-        .from(operations)
-        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
-        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
-        .where(
-            and(
-                inArray(operations.raisedBedId, uniqueRaisedBedIds),
-                eq(operations.isDeleted, false),
-                operationLocationIntegrityWhere(),
-                gte(operations.timestamp, from),
-                lte(operations.timestamp, to),
-            ),
-        );
-    const operationIds = Array.from(
-        new Set([
-            ...scheduledRows.map((row) => row.id),
-            ...timestampRows.map((row) => row.id),
-        ]),
-    );
+    const operationIds = scheduledRows.map((row) => row.id);
 
     return getOperationsByIds(operationIds);
 }
@@ -2067,7 +2107,7 @@ export async function getFarmUserAcceptedOperationsByScheduleRange({
     return cacheScheduleRead(
         scheduleCacheKeys.farmUserScheduledOperations(userId, from, to),
         async () => {
-            const scheduledDateExpression = sql<string>`${events.data} ->> 'scheduledDate'`;
+            const scheduledDateExpression = sql<Date>`coalesce(${getOperationScheduledDateExpression()}, ${operations.timestamp})`;
             const scheduledRows = await storage()
                 .selectDistinct({ id: operations.id })
                 .from(operations)
@@ -2080,21 +2120,14 @@ export async function getFarmUserAcceptedOperationsByScheduleRange({
                     farmUsers,
                     eq(farmUsers.farmId, operationFarmIdExpression()),
                 )
-                .innerJoin(
-                    events,
-                    and(
-                        sql`${events.aggregateId} = cast(${operations.id} as text)`,
-                        eq(events.type, knownEventTypes.operations.schedule),
-                    ),
-                )
                 .where(
                     and(
                         eq(farmUsers.userId, userId),
                         eq(operations.isAccepted, true),
                         eq(operations.isDeleted, false),
                         operationLocationIntegrityWhere(),
-                        gte(scheduledDateExpression, from.toISOString()),
-                        lte(scheduledDateExpression, to.toISOString()),
+                        gte(scheduledDateExpression, from),
+                        lte(scheduledDateExpression, to),
                     ),
                 );
 
@@ -2812,6 +2845,7 @@ export async function switchOperationEntity(
                 plantingId: operations.plantingId,
                 raisedBedId: operations.raisedBedId,
                 gardenId: operations.gardenId,
+                farmId: operations.farmId,
                 accountId: operations.accountId,
             })
             .from(operations)
@@ -2821,6 +2855,41 @@ export async function switchOperationEntity(
 
         if (!currentOperation) {
             throw new Error(`Operation with id ${id} not found`);
+        }
+
+        if (options.requireMatchingTargetScope) {
+            await lockOperationDefinitionApplications(
+                client,
+                await getOperationEntityLineage(client, entity.entityId),
+            );
+            const application = await getEffectiveOperationApplication(
+                client,
+                entity.entityId,
+                entity.entityTypeName,
+            );
+            const targetScope =
+                currentOperation.plantingId || currentOperation.raisedBedFieldId
+                    ? 'plant'
+                    : currentOperation.raisedBedId
+                      ? 'raisedBed'
+                      : currentOperation.gardenId
+                        ? 'garden'
+                        : currentOperation.farmId
+                          ? 'farm'
+                          : undefined;
+            const applicationScope = ['farm', 'garden', 'plant'].includes(
+                application ?? '',
+            )
+                ? application
+                : application
+                  ? 'raisedBed'
+                  : undefined;
+            if (targetScope && applicationScope !== targetScope) {
+                throw new OperationTargetConflictError(
+                    'incompatible_scope',
+                    'Odabrana radnja nije kompatibilna s lokacijom zadatka.',
+                );
+            }
         }
 
         await assertOperationTargetAllowsDefinition(
@@ -2915,34 +2984,22 @@ async function getCompletedOperationsByCompletionDate(filter: {
     from: Date;
     to: Date;
 }) {
-    // First, get completion events within the date range
-    const completionEvents = await storage().query.events.findMany({
-        where: and(
-            eq(events.type, knownEventTypes.operations.complete),
-            gte(events.createdAt, filter.from),
-            lte(events.createdAt, filter.to),
-        ),
-        orderBy: [asc(events.createdAt)],
-    });
-
-    if (completionEvents.length === 0) {
-        return [];
-    }
-
-    // Extract operation IDs from the completion events
-    const operationIds = completionEvents.map((event) =>
-        parseInt(event.aggregateId, 10),
-    );
-
-    // Get the operations that were completed
-    const completedOperations = await storage().query.operations.findMany({
-        where: and(
-            inArray(operations.id, operationIds),
-            eq(operations.isDeleted, false),
-        ),
-        orderBy: desc(operations.timestamp),
-    });
-
-    // Fill aggregates for these specific operations
-    return await fillOperationAggregates(completedOperations);
+    const candidateIds = await getCompletionEventCandidateIds(filter);
+    if (candidateIds.length === 0) return [];
+    const rows = await storage()
+        .select({ operation: operations })
+        .from(operations)
+        .where(
+            and(
+                inArray(operations.id, candidateIds),
+                eq(operations.isDeleted, false),
+                between(
+                    getOperationCompletedDateExpression(),
+                    filter.from,
+                    filter.to,
+                ),
+            ),
+        )
+        .orderBy(desc(operations.timestamp));
+    return fillOperationAggregates(rows.map((row) => row.operation));
 }

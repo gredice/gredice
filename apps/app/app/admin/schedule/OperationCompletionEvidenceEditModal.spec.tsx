@@ -161,3 +161,28 @@ test('suggestions remain readable and applicable on mobile', async ({
         /Predlažemo:/,
     );
 });
+
+test('description card has a right-aligned plain pencil and admins can edit verified photos', async ({
+    mount,
+    page,
+}) => {
+    const card = await mount(
+        <OperationCompletionEvidenceEditHarness administration />,
+    );
+    const edit = card.getByRole('button', { name: 'Uredi zapis', exact: true });
+    await expect(edit).toHaveText('');
+    await expect(edit.locator('svg')).toHaveCount(1);
+    const editBox = await edit.boundingBox();
+    const cardBox = await card.boundingBox();
+    expect(editBox?.x).toBeGreaterThan(
+        (cardBox?.x ?? 0) + (cardBox?.width ?? 0) / 2,
+    );
+    await edit.click();
+    await page.getByRole('button', { name: 'Ukloni sliku 1' }).click();
+    await page.getByRole('button', { name: 'Spremi izmjene' }).click();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+    const saved = await page.evaluate(() =>
+        JSON.parse(document.documentElement.dataset.savedEvidence ?? 'null'),
+    );
+    expect(saved).toEqual([5089, 20, [], 'rajcice vrh odrezat', true]);
+});

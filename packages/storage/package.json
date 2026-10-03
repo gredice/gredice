@@ -12,7 +12,8 @@
         "./entityCompleteness": "./src/helpers/entityCompleteness.ts",
         "./entityPageSections": "./src/helpers/entityPageSections.ts",
         "./cmsPageSections": "./src/cmsPageSections.ts",
-        "./cmsNewsRevalidation": "./src/cmsNewsRevalidation.ts"
+        "./cmsNewsRevalidation": "./src/cmsNewsRevalidation.ts",
+        "./operationTaskAdministration": "./src/operationTaskAdministration.ts"
     },
     "scripts": {
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
