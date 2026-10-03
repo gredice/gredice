@@ -1,15 +1,18 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { getAutumnActivityEventStatus } from '@gredice/js/autumnActivities';
 import {
     autumnActivityActionBodySchema,
     autumnActivityCampaignSchema,
+    autumnActivityStateSchema,
 } from '@gredice/storage/autumnActivityContract';
 import {
     assertAutumnActivityCampaignIdentity,
     assertAutumnActivityRewardDirectory,
     defineAutumnActivityCampaign,
     getAutumnActivityCampaign,
+    prepareAutumnActivityCampaign,
 } from './autumnActivityCampaign';
 import {
     autumnActivityFixtureBlocks,
@@ -108,6 +111,120 @@ test('action body rejects client rewards, account override, unknown action and m
     ])
         assert.equal(
             autumnActivityActionBodySchema.safeParse(value).success,
+            false,
+        );
+});
+
+test('bounded server configuration accepts only prepared immutable hashes, absent config disables and malformed config fails closed', async () => {
+    const previous = process.env.GREDICE_AUTUMN_ACTIVITY_CAMPAIGN;
+    try {
+        delete process.env.GREDICE_AUTUMN_ACTIVITY_CAMPAIGN;
+        assert.equal(await getAutumnActivityCampaign(), null);
+        const campaign = autumnActivityFixtureCampaign();
+        process.env.GREDICE_AUTUMN_ACTIVITY_CAMPAIGN = JSON.stringify(campaign);
+        assert.deepEqual(await getAutumnActivityCampaign(), campaign);
+        process.env.GREDICE_AUTUMN_ACTIVITY_CAMPAIGN = JSON.stringify({
+            ...campaign,
+            name: 'Changed under same version',
+        });
+        await assert.rejects(getAutumnActivityCampaign, /immutable version/);
+        process.env.GREDICE_AUTUMN_ACTIVITY_CAMPAIGN = 'x'.repeat(64_001);
+        await assert.rejects(getAutumnActivityCampaign, /too large/);
+        process.env.GREDICE_AUTUMN_ACTIVITY_CAMPAIGN = '{}';
+        await assert.rejects(getAutumnActivityCampaign);
+    } finally {
+        if (previous === undefined)
+            delete process.env.GREDICE_AUTUMN_ACTIVITY_CAMPAIGN;
+        else process.env.GREDICE_AUTUMN_ACTIVITY_CAMPAIGN = previous;
+    }
+});
+test('offline preparation verifies actual supplied byte digests before returning configuration', () => {
+    const campaign = autumnActivityFixtureCampaign();
+    const evidence = {
+        welcome: {
+            modelBytes: new Uint8Array([1, 2, 3]),
+            previewBytes: new Uint8Array([4, 5]),
+        },
+        completion: {
+            modelBytes: new Uint8Array([6, 7]),
+            previewBytes: new Uint8Array([8, 9]),
+        },
+    };
+    for (const kind of ['welcome', 'completion'] satisfies (
+        | 'welcome'
+        | 'completion'
+    )[]) {
+        campaign.rewards[kind].review.modelSha256 = createHash('sha256')
+            .update(evidence[kind].modelBytes)
+            .digest('hex');
+        campaign.rewards[kind].review.previewSha256 = createHash('sha256')
+            .update(evidence[kind].previewBytes)
+            .digest('hex');
+    }
+    const prepared = prepareAutumnActivityCampaign(
+        campaign,
+        autumnActivityFixtureBlocks(),
+        evidence,
+    );
+    assertAutumnActivityCampaignIdentity(prepared);
+    assert.throws(
+        () =>
+            prepareAutumnActivityCampaign(
+                prepared,
+                autumnActivityFixtureBlocks(),
+                {
+                    ...evidence,
+                    welcome: {
+                        ...evidence.welcome,
+                        modelBytes: new Uint8Array([0]),
+                    },
+                },
+            ),
+        /digest/,
+    );
+    assert.throws(
+        () =>
+            prepareAutumnActivityCampaign(
+                prepared,
+                autumnActivityFixtureBlocks(),
+                {
+                    ...evidence,
+                    welcome: {
+                        ...evidence.welcome,
+                        previewBytes: new Uint8Array(),
+                    },
+                },
+            ),
+        /bounded/,
+    );
+});
+test('state parser rejects contradictory owner-private readiness and progress shapes', () => {
+    const state = {
+        enabled: false,
+        accountId: 'ad174a9b-5da4-4388-ae55-e865a7ee3e30',
+        campaign: null,
+        progress: null,
+        eventStatus: null,
+        actionAvailable: false,
+        readiness: 'disabled',
+    };
+    assert.ok(autumnActivityStateSchema.safeParse(state).success);
+    for (const invalid of [
+        { ...state, actionAvailable: true },
+        { ...state, readiness: 'ready' },
+        {
+            ...state,
+            progress: {
+                discoveredMotifIds: [],
+                completed: false,
+                welcomePurchaseId: null,
+                completionPurchaseId: null,
+            },
+        },
+        { ...state, enabled: true },
+    ])
+        assert.equal(
+            autumnActivityStateSchema.safeParse(invalid).success,
             false,
         );
 });
