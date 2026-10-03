@@ -412,7 +412,6 @@ const StaticRenderPacketInstancedFallback = memo(
         );
         const geometry = resources?.geometry;
         const material = resources?.material;
-        const warmup = useContext(StaticRenderPacketWarmupContext);
 
         useLayoutEffect(() => {
             recordStaticRenderPacketFallbackMesh(1);
@@ -437,19 +436,6 @@ const StaticRenderPacketInstancedFallback = memo(
             mesh.computeBoundingBox();
             mesh.computeBoundingSphere();
         }, [geometry, instances, localTransform, material, scale]);
-        useLayoutEffect(() => {
-            const mesh = meshRef.current;
-            if (
-                !mesh ||
-                !warmup ||
-                geometry === sourceGeometry ||
-                material === sourceMaterial
-            )
-                return;
-            // Existing authored presentation stays visible throughout warmup.
-            return warmup.register(mesh, () => {});
-        }, [geometry, material, sourceGeometry, sourceMaterial, warmup]);
-
         if (!geometry || !material) return null;
 
         return (

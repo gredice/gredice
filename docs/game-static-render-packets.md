@@ -151,9 +151,11 @@ are disposed; late results cannot activate a retired generation. StrictMode
 creates a fresh committed scheduler and lease identities.
 
 This is a bounded first repair, not proof that every first-use task disappears.
-Authored fallback is warmed best-effort while remaining visible, so its first
-draw can still precede async completion. A program input changed during a render
-can leave the existing palette visible for that synchronous pass until React
+Authored fallback remains visible and uses its existing on-demand shader
+compilation. Only replacement palette objects register for async warmup;
+otherwise offscreen fallback variants can compile without ever drawing. A
+program input changed during a render can leave the existing palette visible
+for that synchronous pass until React
 commits fallback; presentation is continuous. Beauty prewarming does not
 prepare depth/shadow shaders. Without parallel-compile support, deferred
 diagnostics can still block. The centralized scene/layout key scan also adds
