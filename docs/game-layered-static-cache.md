@@ -213,8 +213,10 @@ exposure does not claim zero fauna. Enabled, unknown or mismatched shadow modes
 still require valid population telemetry, and malformed counts always fail.
 Actual fixture blocks/plants and fauna trajectories have separate witnesses.
 
-Retained compiler source reuse has a separate 4 MiB/256-source bound documented
-in [game-retained-chunks.md](./game-retained-chunks.md). Shared palette geometry
-is an owned clone with immutable PBR attributes; its identity/version and
-last-owner disposal preserve that compiler contract. Neither cache diagnostic
-owns, detaches or disposes the live GLTF geometry.
+The retained compiler copies source arrays and independently owned transform
+buffers for each dispatched job. The optional versioned source-residency proposal
+[#5068](https://github.com/gredice/gredice/issues/5068) was measured and rejected
+without a production merge. Stock singleton packets borrow immutable source
+geometry; multi-source aggregates own their compiled geometry and release it on
+replacement or unmount. Layered caching owns its render targets and never
+detaches or disposes live GLTF geometry.
