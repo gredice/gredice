@@ -1253,7 +1253,11 @@ function LadybugActor({
     useFaunaRenderFrame(({ clock }, delta) => {
         const group = groupRef.current;
         const runtime = runtimeRef.current;
-        if (!group || runtime.phase === 'hidden') return;
+        if (!group) return;
+        // Suspense can hide this retained group between simulation steps.
+        // Author visibility from behavior before this owned frame is drawn.
+        group.visible = runtime.phase !== 'hidden';
+        if (runtime.phase === 'hidden') return;
         const now = clock.elapsedTime;
         const poseSample = poseProgressRef.current;
         const progress = MathUtils.clamp(
