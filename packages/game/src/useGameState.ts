@@ -472,6 +472,22 @@ export type GameState = {
     setPackLayoutPreview: (
         selection: PackLayoutPreviewSelection | null,
     ) => void;
+    packLayoutPreviewFramed: boolean;
+    setPackLayoutPreviewFramed: (framed: boolean) => void;
+    packLayoutPreviewHudRect: {
+        top: number;
+        left: number;
+        right: number;
+        bottom: number;
+    } | null;
+    setPackLayoutPreviewHudRect: (
+        rect: {
+            top: number;
+            left: number;
+            right: number;
+            bottom: number;
+        } | null,
+    ) => void;
     packLayoutPreviewUnavailable: boolean;
     setPackLayoutPreviewUnavailable: (unavailable: boolean) => void;
     packLayoutPreviewReady: boolean;
@@ -850,6 +866,12 @@ export function createGameState({
         cosmeticLeafRaking: createLeafRakingController(),
         packLayoutPreview: null,
         setPackLayoutPreview: (packLayoutPreview) => set({ packLayoutPreview }),
+        packLayoutPreviewFramed: false,
+        setPackLayoutPreviewFramed: (packLayoutPreviewFramed) =>
+            set({ packLayoutPreviewFramed }),
+        packLayoutPreviewHudRect: null,
+        setPackLayoutPreviewHudRect: (packLayoutPreviewHudRect) =>
+            set({ packLayoutPreviewHudRect }),
         packLayoutPreviewUnavailable: false,
         setPackLayoutPreviewUnavailable: (packLayoutPreviewUnavailable) =>
             set({ packLayoutPreviewUnavailable }),

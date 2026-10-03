@@ -3,7 +3,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { Suspense, useMemo, useState } from 'react';
 import { Vector3 } from 'three';
+import { useStore } from 'zustand';
 import { BlockInteractionRegistryProvider } from '../src/controls/BlockInteractionRegistry';
+import { GameCameraRig } from '../src/controls/GameCameraRig';
 import { EntityFactory } from '../src/entities/EntityFactory';
 import { currentAccountKeys } from '../src/hooks/useCurrentAccount';
 import { currentGardenKeys } from '../src/hooks/useCurrentGarden';
@@ -136,6 +138,12 @@ export function PackLayoutPreviewFixture({
             }),
         [],
     );
+    const packActive = useStore(
+        store,
+        (state) =>
+            state.packLayoutPreview !== null || state.packLayoutPreviewLocked,
+    );
+    const cameraPosition = useMemo(() => new Vector3(-8, 8, -8), []);
     useDisposeGameStateStore(store);
     return (
         <NuqsTestingAdapter hasMemory>
@@ -156,6 +164,12 @@ export function PackLayoutPreviewFixture({
                                 quality={gameQualityProfiles.low}
                                 staticOpaqueCacheEnabled={false}
                             >
+                                <GameCameraRig
+                                    controlsEnabled={false}
+                                    minZoom={packActive ? 1 : undefined}
+                                    initialPosition={cameraPosition}
+                                    initialZoom={65}
+                                />
                                 <ambientLight intensity={2} />
                                 <directionalLight
                                     position={[5, 10, -5]}

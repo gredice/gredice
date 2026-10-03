@@ -160,7 +160,11 @@ export function useGardenPackLayoutPlacement() {
                 anchor: selection.anchor,
                 rotation: selection.rotation,
             });
-            if (!preview.valid || !store.getState().packLayoutPreviewReady)
+            if (
+                !preview.valid ||
+                !store.getState().packLayoutPreviewReady ||
+                !store.getState().packLayoutPreviewFramed
+            )
                 return;
             const cells = getGardenPackLayoutCells(
                 resolveGardenPackLayoutPlacements(

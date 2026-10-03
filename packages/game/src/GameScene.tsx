@@ -888,6 +888,9 @@ export function GameScene({
                                 )}
                             </group>
                             <GameCameraRig
+                                minZoom={
+                                    packLayoutPreviewActive ? 1 : undefined
+                                }
                                 controlsEnabled={
                                     !noControls &&
                                     !gardenAvatarActive &&
