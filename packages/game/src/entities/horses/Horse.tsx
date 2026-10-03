@@ -2,8 +2,6 @@ import {
     getHorseAppearanceVariantDefinition,
     resolveHorseAppearanceVariant,
 } from '@gredice/js/entityAppearanceVariants';
-import { useAnimations } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AnimationAction, Group, Material } from 'three';
 import {
@@ -35,7 +33,12 @@ import {
     getAnimalMovementYAt,
 } from '../animals/animalMovementTerrain';
 import { animalPresenceUpdateIntervalSeconds } from '../animals/animalPresence';
+import {
+    useFaunaFrame,
+    useFaunaRenderFrame,
+} from '../animals/FaunaRuntimeProvider';
 import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
+import { useFaunaAnimations } from '../animals/useFaunaAnimations';
 import type { CatPathPoint } from '../cats/catPathfinding';
 import {
     createPersistentPetHomeBlockedCells,
@@ -411,7 +414,7 @@ export function Horse({
         return { primaryCasterCount, scene };
     }, [appearance, gltf.scene]);
     useFaunaActorCulling(model.scene);
-    const { actions } = useAnimations(gltf.animations, model.scene);
+    const { actions } = useFaunaAnimations(gltf.animations, model.scene);
     const updateActorGroundingShadow = useActorGroundingShadow({
         id: `horse:${block.id}`,
         primaryCasterCount: model.primaryCasterCount,
@@ -452,7 +455,7 @@ export function Horse({
         [block.id, faunaWorld],
     );
 
-    useFrame(({ clock }, delta) => {
+    useFaunaFrame(({ clock }, delta) => {
         const group = groupRef.current;
         if (!group) return;
         const now = clock.elapsedTime;
@@ -623,17 +626,6 @@ export function Horse({
             setActiveAnimation(nextAnimation);
         }
 
-        updateActorGroundingShadow?.({
-            actorY: group.position.y,
-            receiverY: getAnimalMovementYAt(
-                group.position,
-                navigation.surfaces,
-            ),
-            visible: group.visible && model.scene.visible,
-            x: group.position.x,
-            yaw: group.rotation.y,
-            z: group.position.z,
-        });
         if (
             now - lastPresenceUpdateRef.current >=
             animalPresenceUpdateIntervalSeconds
@@ -654,6 +646,22 @@ export function Horse({
                 updatedAt: now,
             });
         }
+    }, groupRef);
+
+    useFaunaRenderFrame(() => {
+        const group = groupRef.current;
+        if (!group) return;
+        updateActorGroundingShadow?.({
+            actorY: group.position.y,
+            receiverY: getAnimalMovementYAt(
+                group.position,
+                navigation.surfaces,
+            ),
+            visible: group.visible && model.scene.visible,
+            x: group.position.x,
+            yaw: group.rotation.y,
+            z: group.position.z,
+        });
     });
 
     return (

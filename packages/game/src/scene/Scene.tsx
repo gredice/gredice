@@ -22,6 +22,7 @@ import {
     type WebGLRendererParameters,
 } from 'three';
 import { ActorGroundingShadowProvider } from '../entities/animals/ActorGroundingShadows';
+import { FaunaRuntimeProvider } from '../entities/animals/FaunaRuntimeProvider';
 import {
     HoverOutlineEffect,
     HoverOutlineProvider,
@@ -412,25 +413,28 @@ export function Scene({
                             <ActorGroundingShadowProvider
                                 enabled={qualityProfile.shadows}
                             >
-                                <HoverOutlineProvider>
-                                    <SceneDebugName />
-                                    {(debugStats || profileStats) && (
-                                        <RendererStatsReporter />
-                                    )}
-                                    <SceneWireframeMode
-                                        enabled={Boolean(
-                                            debugStats && wireframeDebugVisible,
+                                <FaunaRuntimeProvider>
+                                    <HoverOutlineProvider>
+                                        <SceneDebugName />
+                                        {(debugStats || profileStats) && (
+                                            <RendererStatsReporter />
                                         )}
-                                    />
-                                    <AutumnSourcesProvider>
-                                        <AutumnPartsProvider>
-                                            <BreathSourcesProvider>
-                                                {children}
-                                            </BreathSourcesProvider>
-                                        </AutumnPartsProvider>
-                                    </AutumnSourcesProvider>
-                                    <HoverOutlineEffect />
-                                </HoverOutlineProvider>
+                                        <SceneWireframeMode
+                                            enabled={Boolean(
+                                                debugStats &&
+                                                    wireframeDebugVisible,
+                                            )}
+                                        />
+                                        <AutumnSourcesProvider>
+                                            <AutumnPartsProvider>
+                                                <BreathSourcesProvider>
+                                                    {children}
+                                                </BreathSourcesProvider>
+                                            </AutumnPartsProvider>
+                                        </AutumnSourcesProvider>
+                                        <HoverOutlineEffect />
+                                    </HoverOutlineProvider>
+                                </FaunaRuntimeProvider>
                             </ActorGroundingShadowProvider>
                         </StaticOpaqueSceneCacheProvider>
                     </WeatherSurfaceUniformProvider>
