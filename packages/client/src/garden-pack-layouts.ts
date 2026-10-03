@@ -1,6 +1,7 @@
 import {
     gardenPackGroupPlacementBodySchema,
-    gardenPackGroupPlacementResponseSchema,
+    gardenPackGroupPlacementPublicResponseSchema,
+    gardenPackLayoutsResponseSchema,
 } from '@gredice/storage/gardenPackGroupPlacementContract';
 import type { InferRequestType, InferResponseType } from 'hono';
 import { clientAuthenticated } from './hono';
@@ -41,7 +42,8 @@ export class GardenPackGroupPlacementRequestError extends Error {
             this.status === 0 ||
             this.status === 401 ||
             this.status === 403 ||
-            this.status === 408 || this.status === 429 ||
+            this.status === 408 ||
+            this.status === 429 ||
             this.status >= 500 ||
             this.code === 'EXPECTED_ACCOUNT_MISMATCH'
         );
@@ -55,14 +57,19 @@ export async function getGardenPackLayouts(
         { param: { purchaseId } },
         { init: { signal: options.signal } },
     );
-    const result = await response.json();
-    if (!response.ok || !('layouts' in result))
+    const result = await response.json().catch(() => null);
+    const parsed = gardenPackLayoutsResponseSchema.safeParse(result);
+    if (
+        !response.ok ||
+        !parsed.success ||
+        parsed.data.purchaseId !== purchaseId
+    )
         throw new GardenPackGroupPlacementRequestError(
-            response.status,
-            'code' in result ? result.code : 'LAYOUT_READ_FAILED',
+            response.status || 500,
+            'LAYOUT_READ_FAILED',
             'Rasporede trenutačno nije moguće učitati.',
         );
-    return result;
+    return parsed.data;
 }
 export async function placeGardenPackLayout(
     input: GardenPackGroupPlacementBody & {
@@ -71,30 +78,51 @@ export async function placeGardenPackLayout(
     },
 ) {
     const { purchaseId, layoutId, ...json } = input;
-    const response = await layoutEndpoint()[':layoutId'].place.$post({
-        param: { purchaseId, layoutId },
-        json,
-    });
-    const result = await response.json();
-    if (!response.ok || !('placements' in result))
+    const response = await layoutEndpoint()
+        [':layoutId'].place.$post({ param: { purchaseId, layoutId }, json })
+        .catch(() => {
+            throw new GardenPackGroupPlacementRequestError(
+                0,
+                'NETWORK_ERROR',
+                'Potvrda rasporeda nije stigla. Pokušaj ponovno istim zahtjevom.',
+            );
+        });
+    const result = await response.json().catch(() => null);
+    if (!response.ok) {
+        const code =
+            result &&
+            typeof result === 'object' &&
+            'code' in result &&
+            typeof result.code === 'string'
+                ? result.code
+                : 'GROUP_PLACEMENT_FAILED';
+        const message =
+            result &&
+            typeof result === 'object' &&
+            'error' in result &&
+            typeof result.error === 'string'
+                ? result.error
+                : 'Postavljanje rasporeda nije uspjelo.';
         throw new GardenPackGroupPlacementRequestError(
             response.status,
-            'code' in result ? result.code : 'GROUP_PLACEMENT_FAILED',
-            'error' in result
-                ? result.error
-                : 'Postavljanje rasporeda nije uspjelo.',
+            code,
+            message,
         );
-    const { replayed, ...receipt } = result;
-    const parsed = gardenPackGroupPlacementResponseSchema.safeParse(receipt);
+    }
+    const parsed =
+        gardenPackGroupPlacementPublicResponseSchema.safeParse(result);
     if (
         !parsed.success ||
-        typeof replayed !== 'boolean' ||
         parsed.data.operationId !== json.operationId ||
         parsed.data.purchaseId !== purchaseId ||
         parsed.data.gardenId !== json.gardenId ||
         parsed.data.layoutId !== layoutId ||
         parsed.data.layoutVersionId !== json.layoutVersionId ||
         parsed.data.placements.length !== json.units.length ||
+        new Set(parsed.data.placements.map((p) => p.slotId)).size !==
+            json.units.length ||
+        new Set(parsed.data.placements.map((p) => p.blockId)).size !==
+            json.units.length ||
         parsed.data.placements.some(
             (p) =>
                 !json.units.some(
@@ -110,5 +138,5 @@ export async function placeGardenPackLayout(
             'INVALID_RECEIPT',
             'Potvrdu rasporeda nije moguće provjeriti. Pokušaj ponovno istim zahtjevom.',
         );
-    return { ...parsed.data, replayed };
+    return parsed.data;
 }

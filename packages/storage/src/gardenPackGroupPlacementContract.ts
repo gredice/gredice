@@ -107,3 +107,12 @@ export type GardenPackGroupPlacementCommand = z.infer<
 export type GardenPackGroupPlacementResponse = z.infer<
     typeof gardenPackGroupPlacementResponseSchema
 >;
+
+export const gardenPackGroupPlacementPublicResponseSchema =
+    gardenPackGroupPlacementResponseSchema.extend({ replayed: z.boolean() });
+export const gardenPackLayoutsResponseSchema = z.strictObject({
+    enabled: z.boolean(),
+    accountId: z.string().uuid().nullable(),
+    purchaseId: z.string().uuid(),
+    layouts: z.array(gardenPackLayoutSchema).max(3),
+});
