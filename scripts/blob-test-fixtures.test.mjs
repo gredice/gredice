@@ -187,6 +187,11 @@ test('isolated CI allows loopback and blocks infrastructure hosts and literal IP
         await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
         try {
             const origin = 'http://127.0.0.1:' + server.address().port;
+            for (const invalidUrl of ['/relative', 'invalid']) {
+                const result = fetch(invalidUrl);
+                assert.ok(result instanceof Promise);
+                await assert.rejects(result, TypeError);
+            }
             assert.equal(await (await fetch(origin)).text(), 'local fixture');
             for (const host of ['api.gredice.com', 'preview.vercel.app', 'database.neon.tech', 'cache.upstash.io', '192.0.2.1', '[2001:db8::1]']) {
                 await assert.rejects(fetch('https://' + host), /CI blocked/);

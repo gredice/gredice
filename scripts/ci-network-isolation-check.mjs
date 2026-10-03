@@ -3,11 +3,21 @@ import { execFileSync } from 'node:child_process';
 import { networkInterfaces } from 'node:os';
 
 assert.equal(process.env.GREDICE_CI_NETWORK_ISOLATION, '1');
-assert.ok(
-    Object.values(networkInterfaces())
-        .flat()
-        .every((address) => address.internal),
+const interfaces = networkInterfaces();
+assert.deepEqual(Object.keys(interfaces).sort(), ['ci-online', 'lo']);
+assert.ok(interfaces.lo.every((address) => address.internal));
+assert.deepEqual(
+    interfaces['ci-online'].map(({ address, cidr }) => ({ address, cidr })),
+    [{ address: '192.0.2.2', cidr: '192.0.2.2/32' }],
 );
+for (const family of ['-4', '-6']) {
+    assert.equal(
+        execFileSync('ip', [family, 'route', 'show', 'default'], {
+            encoding: 'utf8',
+        }).trim(),
+        '',
+    );
+}
 
 // Verify the kernel boundary independently of the Node preload. Documentation
 // IPs have no production service; an absent namespace fails this check quickly.

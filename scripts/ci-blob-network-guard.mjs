@@ -34,7 +34,7 @@ if (process.env.GREDICE_CI_BLOB_FIXTURES === '1' || isolated) {
     globalThis.fetch = createBlobFixtureFetch(globalThis.fetch);
     if (isolated) {
         const fetchFixture = globalThis.fetch;
-        globalThis.fetch = (input, init) => {
+        globalThis.fetch = async (input, init) => {
             const url = new URL(
                 typeof input === 'object' && input !== null && 'url' in input
                     ? input.url

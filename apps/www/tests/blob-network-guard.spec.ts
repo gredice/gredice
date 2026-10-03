@@ -3,6 +3,21 @@ import { expect, test } from './fixtures';
 
 const blobImage = 'https://ci-fixture.public.blob.vercel-storage.com/photo.jpg';
 
+test('isolated browsers preserve online and explicit offline behavior', async ({
+    context,
+    page,
+}) => {
+    test.skip(
+        process.env.GREDICE_CI_NETWORK_ISOLATION !== '1',
+        'Requires the Linux CI namespace.',
+    );
+    await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(true);
+    await context.setOffline(true);
+    await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(false);
+    await context.setOffline(false);
+    await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(true);
+});
+
 test('Blob images load from local fixtures in every page of the context', async ({
     context,
     page,

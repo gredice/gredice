@@ -137,7 +137,8 @@
     {"id":571,"entityTypeName":"operation","state":"published"},
     {"id":305,"entityTypeName":"plantStage","state":"published"},
     {"id":303,"entityTypeName":"plantStage","state":"published"},
-    {"id":310,"entityTypeName":"plantStage","state":"published"}
+    {"id":310,"entityTypeName":"plantStage","state":"published"},
+    {"id":99001,"entityTypeName":"operation","state":"published"}
   ],
   "values": [
     {"entityId":780,"entityTypeName":"block","attributeDefinitionId":102,"value":"false","order":null},
@@ -4021,7 +4022,22 @@
     {"entityId":303,"entityTypeName":"plantStage","attributeDefinitionId":104,"value":"Priprema tla","order":null},
     {"entityId":303,"entityTypeName":"plantStage","attributeDefinitionId":103,"value":"soilPreparationm","order":null},
     {"entityId":310,"entityTypeName":"plantStage","attributeDefinitionId":104,"value":"Skladištenje","order":null},
-    {"entityId":310,"entityTypeName":"plantStage","attributeDefinitionId":103,"value":"storage","order":null}
+    {"entityId":310,"entityTypeName":"plantStage","attributeDefinitionId":103,"value":"storage","order":null},
+    {"entityId":99001,"entityTypeName":"operation","attributeDefinitionId":55,"value":"0.90","order":null},
+    {"entityId":99001,"entityTypeName":"operation","attributeDefinitionId":296,"value":"false","order":null},
+    {"entityId":99001,"entityTypeName":"operation","attributeDefinitionId":112,"value":"4","order":null},
+    {"entityId":99001,"entityTypeName":"operation","attributeDefinitionId":108,"value":"Očistite gredicu.","order":null},
+    {"entityId":99001,"entityTypeName":"operation","attributeDefinitionId":63,"value":null,"order":null},
+    {"entityId":99001,"entityTypeName":"operation","attributeDefinitionId":57,"value":"{\"url\":\"https://www.gredice.com/assets/operation-icons/watterRaisedBed.webp\",\"alt\":\"Zalijevanje gredice (50L)\"}","order":null},
+    {"entityId":99001,"entityTypeName":"operation","attributeDefinitionId":206,"value":"watering","order":"136"},
+    {"entityId":99001,"entityTypeName":"operation","attributeDefinitionId":52,"value":"Čišćenje gredice","order":null},
+    {"entityId":99001,"entityTypeName":"operation","attributeDefinitionId":48,"value":"periodic","order":null},
+    {"entityId":99001,"entityTypeName":"operation","attributeDefinitionId":56,"value":null,"order":null},
+    {"entityId":99001,"entityTypeName":"operation","attributeDefinitionId":53,"value":"307","order":null},
+    {"entityId":99001,"entityTypeName":"operation","attributeDefinitionId":51,"value":"cleanRaisedBed","order":null},
+    {"entityId":99001,"entityTypeName":"operation","attributeDefinitionId":54,"value":"raisedBedFull","order":null},
+    {"entityId":99001,"entityTypeName":"operation","attributeDefinitionId":50,"value":"Testna radnja za čišćenje gredice.","order":null},
+    {"entityId":99001,"entityTypeName":"operation","attributeDefinitionId":49,"value":"Lokalni CI primjer čišćenja gredice.","order":null}
   ],
   "definitions": [
     {"id":43,"entityTypeName":"block","category":"prices","name":"sunflowers","label":"Suncokreti","dataType":"number","multiple":false,"required":true,"display":true},

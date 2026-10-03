@@ -470,7 +470,7 @@ jobs:
           COREPACK_HOME="$RUNNER_TEMP/gredice-corepack" pnpm exec corepack pnpm --version
 
       - name: ⚒️ Test app
-        run: bash scripts/ci-isolated-tests.sh --database env -u POSTGRES_URL -u TEST_ENV pnpm run test --filter=@gredice/storage --cache=local:rw
+        run: bash scripts/ci-isolated-tests.sh --database env -u POSTGRES_URL -u TEST_ENV -u VERCEL_ENV -u NEXT_PUBLIC_VERCEL_ENV pnpm run test --filter=@gredice/storage --cache=local:rw
 
   test_game_package:
     name: "CI - test @gredice/game and @gredice/js"

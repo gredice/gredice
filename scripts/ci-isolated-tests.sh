@@ -2,13 +2,20 @@
 set -euo pipefail
 
 # Dependency/browser installation happens before this entrypoint. Test children
-# inherit a namespace with no NIC or default route, including raw TCP clients,
+# inherit a namespace with no external interface or route, including raw TCP clients,
 # browser redirects, workers and subprocesses. The Actions runner stays online.
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ci-isolated-tests.sh"
 if [[ "${1:-}" != "--inside" ]]; then
     [[ "$(uname -s)" == Linux ]] || { echo 'CI network isolation requires Linux.' >&2; exit 1; }
     exec sudo --preserve-env env "PATH=$PATH" unshare --net bash -c '
+        set -e
         ip link set lo up
+        # Chromium needs a non-loopback online link for navigator.onLine. This
+        # dummy link has no peer or gateway, so it cannot provide external access.
+        ip link add ci-online type dummy
+        ip address add 192.0.2.2/32 dev ci-online
+        ip link set ci-online up
+        ip -6 address flush dev ci-online
         exec runuser --preserve-environment -u "$1" -- bash "$2" --inside "${@:3}"
     ' bash "$(id -un)" "$SCRIPT_PATH" "$@"
 fi
@@ -29,8 +36,18 @@ CI_DB_DIR=""
 cleanup() {
     kill "$CI_API_PID" 2>/dev/null || true
     if [[ -n "$CI_DB_DIR" ]]; then
-        "$PG_BIN/pg_ctl" -D "$CI_DB_DIR/data" -m immediate stop >/dev/null
-        rm -rf "$CI_DB_DIR"
+        if "$PG_BIN/pg_ctl" -D "$CI_DB_DIR/data" -m immediate stop >/dev/null; then
+            rm -rf "$CI_DB_DIR"
+        else
+            local ci_db_status=0
+            "$PG_BIN/pg_ctl" -D "$CI_DB_DIR/data" status >/dev/null 2>&1 || ci_db_status=$?
+            if [[ "$ci_db_status" -eq 3 || ! -f "$CI_DB_DIR/data/PG_VERSION" ]]; then
+                rm -rf "$CI_DB_DIR"
+            else
+                echo "PostgreSQL stop failed; preserving $CI_DB_DIR" >&2
+                return 1
+            fi
+        fi
     fi
 }
 trap cleanup EXIT
@@ -46,10 +63,14 @@ if [[ "${1:-}" == "--database" ]]; then
     shift
     PG_BIN="$(pg_config --bindir)"
     CI_DB_DIR="$(mktemp -d "${RUNNER_TEMP:-/tmp}/gredice-ci-db.XXXXXX")"
-    "$PG_BIN/initdb" -D "$CI_DB_DIR/data" -U postgres --auth=trust --no-locale >/dev/null
+    "$PG_BIN/initdb" -D "$CI_DB_DIR/data" -U postgres --auth=trust --encoding=UTF8 --locale=C.UTF-8 >/dev/null
     "$PG_BIN/pg_ctl" -D "$CI_DB_DIR/data" -l "$CI_DB_DIR/postgres.log" \
         -o "-h 127.0.0.1 -p 5432 -k $CI_DB_DIR" -w start >/dev/null
     "$PG_BIN/createdb" -h 127.0.0.1 -U postgres gredice_ci
+    [[ "$("$PG_BIN/psql" -h 127.0.0.1 -U postgres -d gredice_ci -Atc 'SHOW server_encoding')" == UTF8 ]] || {
+        echo 'CI PostgreSQL must validate UTF-8 input.' >&2
+        exit 1
+    }
     export TEST_ENV=1 POSTGRES_URL=postgresql://postgres@127.0.0.1:5432/gredice_ci
     export GREDICE_STORAGE_TEST_DB_ADMIN_URL=postgres://postgres@127.0.0.1:5432/postgres
     export CMS_PAGES_PREVIEW_SECRET="$(openssl rand -hex 32)"

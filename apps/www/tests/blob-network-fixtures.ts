@@ -10,8 +10,12 @@ import {
 } from '../../../scripts/blob-test-fixtures.mjs';
 
 export async function installBlobImageFixtures(context: BrowserContext) {
-    const blocked = new Set<string>();
     const isolated = process.env.GREDICE_CI_NETWORK_ISOLATION === '1';
+    // Keep deliberate live-asset QA truthful when the CI fixture mode is off.
+    if (!isolated && process.env.GREDICE_CI_BLOB_FIXTURES !== '1') {
+        return async () => {};
+    }
+    const blocked = new Set<string>();
     const localFetch = createBlobFixtureFetch(() => {
         throw new Error('An explicit local asset fixture is required.');
     });
