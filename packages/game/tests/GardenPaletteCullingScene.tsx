@@ -2,7 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import {
     BoxGeometry,
-    type DirectionalLight,
+    DirectionalLight,
     Mesh,
     MeshStandardMaterial,
     OrthographicCamera,
@@ -28,6 +28,26 @@ type Receipt = {
     calls: number;
     geometry: string;
     material: string;
+    nativeProgramBefore: number | null;
+    nativeReadyBefore: boolean | null;
+    nativeProgramAfter: number | null;
+    nativeReadyAfter: boolean | null;
+};
+type RayHit = { distance: number; point: number[]; uv: number[] | null };
+type WarmupFrame = {
+    phase: 'first-affected' | 'pending' | 'ready';
+    revision: number;
+    restored: boolean;
+    frame: number;
+    hiddenPaletteMeshes: number;
+    visiblePaletteMeshes: number;
+    fallbackMeshes: number;
+    receipts: Receipt[];
+    sceneRaycastHits: RayHit[][];
+    farRejectedHits: number;
+    nearRejectedHits: number;
+    rangesRestored: boolean;
+    png: string;
 };
 export type GardenPaletteCullingReadback = {
     key: string;
@@ -39,11 +59,10 @@ export type GardenPaletteCullingReadback = {
     rangesRestored: boolean;
     sourceDisposals: number;
     frame: number;
-    sceneRaycastHits: {
-        distance: number;
-        point: number[];
-        uv: number[] | null;
-    }[][];
+    sceneRaycastHits: RayHit[][];
+    warmupFrames: WarmupFrame[];
+    missingPresentationFrames: number;
+    png: string | null;
 };
 
 function instances(id: string, x: number): EntityBlockInstance[] {
@@ -65,10 +84,16 @@ function instances(id: string, x: number): EntityBlockInstance[] {
 export function GardenPaletteCullingScene({
     batch,
     view,
+    warmupWitness,
+    shaderRevision,
+    restoreContext,
     onReadback,
 }: {
     batch: boolean;
     view: GardenPaletteCullingView;
+    warmupWitness: boolean;
+    shaderRevision: number;
+    restoreContext: boolean;
     onReadback: (result: GardenPaletteCullingReadback) => void;
 }) {
     const { scene, gl, camera } = useThree();
@@ -76,6 +101,8 @@ export function GardenPaletteCullingScene({
     const frame = useRef({ key: '', count: 0, reported: false });
     const receipts = useRef<Receipt[]>([]);
     const disposals = useRef(0);
+    const warmupFrames = useRef<WarmupFrame[]>([]);
+    const missingPresentationFrames = useRef(0);
     const resources = useMemo(
         () => ({
             geometry: new BoxGeometry(0.8, 0.8, 0.8),
@@ -90,7 +117,48 @@ export function GardenPaletteCullingScene({
         }),
         [],
     );
-    const key = `${batch}:${view}`;
+    const key = `${batch}:${view}${warmupWitness ? `:warmup:${shaderRevision}:${restoreContext}` : ''}`;
+    useLayoutEffect(() => {
+        if (!warmupWitness) return;
+        const original = gl.compileAsync;
+        const delayed: typeof original = async (...args) => {
+            const result = await original.apply(gl, args);
+            // Test-only delay guarantees a submitted pending frame even if
+            // the exact native shader program finishes immediately.
+            await new Promise<void>((resolve) => setTimeout(resolve, 250));
+            return result;
+        };
+        gl.compileAsync = delayed;
+        return () => {
+            if (gl.compileAsync === delayed) gl.compileAsync = original;
+        };
+    }, [gl, warmupWitness]);
+    useLayoutEffect(() => {
+        if (!warmupWitness || shaderRevision === 0) return;
+        // Zero intensity preserves pixels while changing the real shader's
+        // directional-light count, rather than only its material version.
+        const addedLight = new DirectionalLight('#ffffff', 0);
+        scene.add(addedLight);
+        const materials = new Set<MeshStandardMaterial>();
+        scene.traverse((object) => {
+            if (
+                object instanceof Mesh &&
+                object.geometry.hasAttribute('aGardenPalette0') &&
+                object.material instanceof MeshStandardMaterial
+            )
+                materials.add(object.material);
+        });
+        for (const material of materials) material.needsUpdate = true;
+        return () => {
+            scene.remove(addedLight);
+        };
+    }, [scene, shaderRevision, warmupWitness]);
+    useLayoutEffect(() => {
+        if (!warmupWitness || !restoreContext) return;
+        gl.forceContextLoss();
+        const timer = setTimeout(() => gl.forceContextRestore(), 50);
+        return () => clearTimeout(timer);
+    }, [gl, restoreContext, warmupWitness]);
     useLayoutEffect(() => {
         const disposed = () => disposals.current++;
         resources.geometry.addEventListener('dispose', disposed);
@@ -147,6 +215,32 @@ export function GardenPaletteCullingScene({
     }, [camera, view]);
     useLayoutEffect(() => {
         const original = gl.renderBufferDirect;
+        const programIds = new WeakMap<WebGLProgram, number>();
+        let nextProgramId = 0;
+        const programState = (material: unknown) => {
+            const properties: unknown = gl.properties.get(material);
+            const program: unknown =
+                properties !== null &&
+                typeof properties === 'object' &&
+                'currentProgram' in properties
+                    ? properties.currentProgram
+                    : undefined;
+            if (
+                program === null ||
+                typeof program !== 'object' ||
+                !('program' in program) ||
+                !(program.program instanceof WebGLProgram) ||
+                !('isReady' in program) ||
+                typeof program.isReady !== 'function'
+            )
+                return { id: null, ready: null };
+            let id = programIds.get(program.program);
+            if (id === undefined) {
+                id = ++nextProgramId;
+                programIds.set(program.program, id);
+            }
+            return { id, ready: program.isReady.call(program) === true };
+        };
         const observed: typeof original = (...args) => {
             const [drawCamera, , geometry, material, object] = args;
             const tracked =
@@ -156,8 +250,15 @@ export function GardenPaletteCullingScene({
             const calls = gl.info.render.calls,
                 triangles = gl.info.render.triangles;
             const range = { ...geometry.drawRange };
+            const before =
+                tracked && warmupWitness
+                    ? programState(material)
+                    : { id: null, ready: null };
             original.apply(gl, args);
-            if (tracked)
+            if (tracked) {
+                const after = warmupWitness
+                    ? programState(material)
+                    : { id: null, ready: null };
                 receipts.current.push({
                     name: object.name,
                     pass: drawCamera === camera ? 'main' : 'shadow',
@@ -171,14 +272,19 @@ export function GardenPaletteCullingScene({
                     calls: gl.info.render.calls - calls,
                     geometry: geometry.uuid,
                     material: material.uuid,
+                    nativeProgramBefore: before.id,
+                    nativeReadyBefore: before.ready,
+                    nativeProgramAfter: after.id,
+                    nativeReadyAfter: after.ready,
                 });
+            }
         };
         gl.renderBufferDirect = observed;
         return () => {
             if (gl.renderBufferDirect === observed)
                 gl.renderBufferDirect = original;
         };
-    }, [camera, gl]);
+    }, [camera, gl, warmupWitness]);
     useFrame(() => {
         if (frame.current.key !== key)
             frame.current = { key, count: 0, reported: false };
@@ -189,6 +295,111 @@ export function GardenPaletteCullingScene({
     }, -90);
     useSceneAfterFrame(
         useCallback(() => {
+            if (warmupWitness && batch) {
+                const palette: Mesh[] = [],
+                    fallback: Mesh[] = [];
+                scene.traverse((object) => {
+                    if (
+                        !(object instanceof Mesh) ||
+                        !object.name.startsWith('StaticRenderPacket:')
+                    )
+                        return;
+                    if (object.geometry.hasAttribute('aGardenPalette0'))
+                        palette.push(object);
+                    else if (object.name.includes(':fallback:'))
+                        fallback.push(object);
+                });
+                if (palette.length > 0) {
+                    const visiblePalette = palette.filter(
+                        (object) => object.visible,
+                    ).length;
+                    if (visiblePalette === 0 && fallback.length === 0)
+                        missingPresentationFrames.current++;
+                    const phase = visiblePalette === 0 ? 'pending' : 'ready';
+                    const sawPending = warmupFrames.current.some(
+                        (sample) =>
+                            sample.phase === 'pending' &&
+                            sample.revision === shaderRevision &&
+                            sample.restored === restoreContext,
+                    );
+                    const firstAffected =
+                        (shaderRevision > 0 || restoreContext) &&
+                        !warmupFrames.current.some(
+                            (sample) =>
+                                sample.phase === 'first-affected' &&
+                                sample.revision === shaderRevision &&
+                                sample.restored === restoreContext,
+                        );
+                    const capturePhase =
+                        !warmupFrames.current.some(
+                            (sample) =>
+                                sample.phase === phase &&
+                                sample.revision === shaderRevision &&
+                                sample.restored === restoreContext,
+                        ) &&
+                        (phase === 'ready'
+                            ? sawPending && fallback.length === 0
+                            : fallback.length === 3);
+                    if (firstAffected || capturePhase) {
+                        const hits = (near: number, far: number) =>
+                            [0.525, 6.025].map((x) =>
+                                new Raycaster(
+                                    new Vector3(x, 0.035, 8),
+                                    new Vector3(0, 0, -1),
+                                    near,
+                                    far,
+                                )
+                                    .intersectObjects(scene.children, true)
+                                    .filter(
+                                        ({ object }) =>
+                                            object.name.startsWith(
+                                                'StaticRenderPacket:',
+                                            ) ||
+                                            object.name.startsWith(
+                                                'BlockInstances:culling:',
+                                            ),
+                                    )
+                                    .map((hit) => ({
+                                        distance: hit.distance,
+                                        point: hit.point.toArray(),
+                                        uv: hit.uv?.toArray() ?? null,
+                                    })),
+                            );
+                        const sample = {
+                            revision: shaderRevision,
+                            restored: restoreContext,
+                            frame: gl.info.render.frame,
+                            hiddenPaletteMeshes:
+                                palette.length - visiblePalette,
+                            visiblePaletteMeshes: visiblePalette,
+                            fallbackMeshes: fallback.length,
+                            receipts: receipts.current,
+                            sceneRaycastHits: hits(0, 20),
+                            farRejectedHits: hits(0, 1).flat().length,
+                            nearRejectedHits: hits(10, 20).flat().length,
+                            rangesRestored: palette.every(
+                                (mesh) =>
+                                    mesh.geometry.drawRange.start === 0 &&
+                                    mesh.geometry.drawRange.count >=
+                                        (mesh.geometry.index?.count ??
+                                            mesh.geometry.getAttribute(
+                                                'position',
+                                            ).count),
+                            ),
+                            // Read pixels in this same positive-render receipt, before
+                            // React can commit the next presentation handoff.
+                            png: gl.domElement.toDataURL('image/png'),
+                        };
+                        if (firstAffected)
+                            warmupFrames.current.push({
+                                ...sample,
+                                phase: 'first-affected',
+                            });
+                        if (capturePhase)
+                            warmupFrames.current.push({ ...sample, phase });
+                    }
+                }
+            }
             if (frame.current.reported || frame.current.count < 15) return;
             const compiler = readChunkCompilerMetrics(),
                 packets = readStaticRenderPacketMetrics();
@@ -256,8 +467,22 @@ export function GardenPaletteCullingScene({
                 sourceDisposals: disposals.current,
                 frame: gl.info.render.frame,
                 sceneRaycastHits,
+                warmupFrames: warmupFrames.current,
+                missingPresentationFrames: missingPresentationFrames.current,
+                png: warmupWitness
+                    ? gl.domElement.toDataURL('image/png')
+                    : null,
             });
-        }, [batch, gl, key, onReadback, scene]),
+        }, [
+            batch,
+            gl,
+            key,
+            onReadback,
+            restoreContext,
+            scene,
+            shaderRevision,
+            warmupWitness,
+        ]),
     );
     const content = resources.instances.map((value, index) => (
         <EntityInstancesGeometry

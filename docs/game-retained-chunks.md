@@ -40,6 +40,11 @@ while a replacement packet is compiling.
 Stable terrain chunks that share a material and vertex layout are joined
 across components into chunk render packets; see
 [static render packets](game-static-render-packets.md).
+Shared palette packets prepare owned immutable attribute arrays while borrowing
+the authored GLTF source. The existing compiler copies source arrays and matrices
+for each dispatched job; it does not register persistent worker source IDs or
+retain a versioned source cache. Compiler telemetry covers preparation,
+transfers, transforms and compiled geometry lifetime, not source residency.
 
 Each committed geometry has one effect owner. Replacement/unmount cancels its
 job, disposes its GPU geometry, and releases references. The last compiler lease

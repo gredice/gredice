@@ -2,13 +2,16 @@ import {
     Box3,
     type BufferAttribute,
     type BufferGeometry,
+    type Camera,
     Euler,
     type Frustum,
     type FrustumArray,
     type InterleavedBufferAttribute,
     type Intersection,
+    type Material,
     Matrix4,
     Mesh,
+    type Object3D,
     Quaternion,
     type Raycaster,
     Sphere,
@@ -46,6 +49,22 @@ export class StaticRenderPacketDrawRanges {
     private readonly activeGeometries = new Set<BufferGeometry>();
     private readonly scopes: Map<BufferGeometry, number>[] = [];
     private depth = 0;
+    private preparation:
+        | ((scene: Object3D, camera: Camera) => void)
+        | undefined;
+
+    prepareRender(scene: Object3D, camera: Camera) {
+        // Nested capture/outline renders keep their range scope, but must not
+        // mutate Three's outer render state with a compile traversal.
+        if (this.depth === 1) this.preparation?.(scene, camera);
+    }
+
+    registerPreparation(callback: (scene: Object3D, camera: Camera) => void) {
+        this.preparation = callback;
+        return () => {
+            if (this.preparation === callback) this.preparation = undefined;
+        };
+    }
 
     enter(owner: RangeOwner) {
         const geometry = owner.geometry;
@@ -141,6 +160,7 @@ export function guardStaticRenderPacketDrawRanges(
             const owners = state.owners;
             for (const owner of owners) owner.beginRender();
             try {
+                for (const owner of owners) owner.prepareRender(...args);
                 return original.apply(renderer, args);
             } finally {
                 for (let index = owners.length - 1; index >= 0; index--)
@@ -316,7 +336,16 @@ class PacketVisibility {
  * original groups' existing compiled ranges, sharing the same GPU buffers.
  * Custom callbacks deliberately keep these meshes outside cache replay.
  */
-export class StaticRenderPacketVisibilityMesh extends Mesh {
+export class StaticRenderPacketVisibilityMesh extends Mesh<
+    BufferGeometry,
+    Material
+> {
+    private presentationEnabled = true;
+
+    setPresentationEnabled(enabled: boolean) {
+        this.presentationEnabled = enabled;
+        this.visible = enabled;
+    }
     constructor(
         geometry: BufferGeometry,
         material: StaticRenderPacket['material'],
@@ -339,7 +368,12 @@ export class StaticRenderPacketVisibilityMesh extends Mesh {
     override raycast(raycaster: Raycaster, intersections: Intersection[]) {
         // Whole-scene occlusion queries must intersect each source range once,
         // including sources outside the current render camera's frustum.
-        if (this.group === undefined || this.range.count === 0) return;
+        if (
+            !this.presentationEnabled ||
+            this.group === undefined ||
+            this.range.count === 0
+        )
+            return;
         this.ranges.enter(this);
         try {
             super.raycast(raycaster, intersections);
@@ -370,6 +404,7 @@ export function createStaticRenderPacketVisibilityMeshes(
     geometry: BufferGeometry,
     drawRanges: StaticRenderPacketDrawRanges,
     name: string,
+    presentationEnabled = true,
 ) {
     const groups: Sphere[] = [];
     const groupKeys = new Map<string, number>();
@@ -431,6 +466,7 @@ export function createStaticRenderPacketVisibilityMeshes(
         mesh.castShadow = packet.castShadow;
         mesh.receiveShadow = packet.receiveShadow;
         mesh.renderOrder = packet.renderOrder ?? 0;
+        mesh.setPresentationEnabled(presentationEnabled);
     }
     return meshes;
 }

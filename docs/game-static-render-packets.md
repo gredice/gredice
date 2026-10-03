@@ -12,8 +12,10 @@ compatible stable opaque/cutout props even when their old per-component
 `renderStableChunksAsMergedGeometry` flag is absent. Generic callers keep their
 existing path: an unrelated autumn leaf material that changes PBR values in an
 effect, for example, is not opted in. Eligible geometry is immutable or replaced
-by a new source object; any writer must publish attribute `needsUpdate` versions
-before using the compiler's versioned-source cache.
+by a new source object. Palette attributes belong to owned prepared geometry;
+the existing compiler copies those arrays and transforms for each dispatched job.
+It never transfers the live GLTF buffers, and has no versioned source residency
+cache or worker source-ID registration protocol.
 
 Simple intrinsic `<meshStandardMaterial>` nodes can qualify with supported
 scalar/Color constructor props. Their concrete source materials are created in
@@ -104,13 +106,59 @@ commit-owned transient geometry and material clones with identical PBR values, m
 ground callbacks and live weather uniform owners. The scene applies cloud
 attenuation once to each clone. Pending meshes wait for their clone lease;
 borrowed original materials never reach a pending frame. The final fallback
-consumer disposes the clones and their GPU buffers/programs when compilation
-finishes or the component releases. The palette shader is only used for the
-final non-instanced packet. Unknown hooks retain their authored lifetime, and
+consumer disposes the clones and their GPU buffers/programs when the final
+packet's geometry and shader are ready or the component releases. The palette
+shader is only submitted by the final non-instanced packet. Unknown hooks retain their authored lifetime, and
 fallback never disposes source geometry, source materials or their textures.
 Geometry clones share by immutable source object across pending chunks and
 materials, then release after their last fallback user. Replacing a source
 object creates a new clone; fallback copies never alias authored vertex arrays.
+
+## Shader readiness
+
+The authored fallback stays visible while a replacement palette packet prepares
+its shader. Hidden final meshes retain their real geometry/material and receive
+the current scene decorators, but are excluded from rendering, shadows and
+whole-scene raycasts until the layout handoff. Their custom range callbacks keep
+the cache boundary live/ineligible, so hidden warm objects do not add cached
+mesh/submission/triangle counts.
+
+Each committed provider owns a shader scheduler. It starts work only before an
+outer presentation render of that provider's actual scene and current camera
+with no render target. Cache FBO captures, outline scenes, foreign roots and
+nested renders retain their range restoration guards without changing shader
+readiness. One active batch contains at most 64 objects; at most 256 objects can
+register. Overflow stays on authored fallback. There is no idle material pool
+or frame heartbeat.
+
+Compile-only material clones borrow geometry and textures and copy the exact
+live hooks/cache keys and supported object flags. They never submit geometry or
+upload instance buffers. `compileAsync` uses the actual scene/camera/lights; its
+completion is followed by unchanged Three diagnostics and an explicit
+`LINK_STATUS` check. Activation compiles each real active object against the
+current scene and requires its selected CURRENT native program and cache key
+to equal the warmed program before the temporary clone releases. A resident
+older program in the material's program map cannot satisfy that check.
+
+Material/hook/version, geometry layout, object layer/feature and
+light/environment/fog/renderer input changes retire stale readiness. Spot-light
+map presence participates in the light key. Skinning, batching and morph objects
+are unsupported; visible probe grids also retain authored fallback because
+Three's compile traversal does not gather them as its render traversal does.
+Context changes, owner release and a timeout after four seconds cancel jobs and dispose
+only temporary materials. Three stops readiness polling when those materials
+are disposed; late results cannot activate a retired generation. StrictMode
+creates a fresh committed scheduler and lease identities.
+
+This is a bounded first repair, not proof that every first-use task disappears.
+Authored fallback is warmed best-effort while remaining visible, so its first
+draw can still precede async completion. A program input changed during a render
+can leave the existing palette visible for that synchronous pass until React
+commits fallback; presentation is continuous. Beauty prewarming does not
+prepare depth/shadow shaders. Without parallel-compile support, deferred
+diagnostics can still block. The centralized scene/layout key scan also adds
+CPU work. Current-source native task/resource and unchanged canonical captures
+must establish acceptance.
 
 Each static-cache group gets one `StaticOpaqueSceneCacheBoundary`. A packet is
 one potential submission when all original groups are visible; actual submitted
@@ -231,6 +279,30 @@ ranges. Camera-only changes retain the existing compiled geometry and compile
 counters. Pure units cover legacy combined bounds, Float32 instanced bounds,
 morph/partial-range fallback, main/shadow independence, nested draw failures,
 cache rejection and sibling/duplicate lease cleanup.
+
+The warmup mode of this fixture additionally retains the first affected
+submitted frame after a real light-count invalidation and context restoration,
+followed by explicit pending/ready handoff frames. It observes native program
+identity/readiness before and after each actual main/shadow draw, unique
+whole-scene picking with near/far/UV/distance, zero missing presentation and
+PNG pixels captured within each same-submission receipt. The first-affected,
+pending and ready pixels are compared with the authored control at each matching
+fixed light/context state, using the unchanged thresholds. A 250ms delay applies only to the test's real
+`compileAsync` completion, guaranteeing a pending-frame witness on fast hosts;
+production has no such delay. These new witnesses require a current-source
+browser pass before shader-readiness behavior is accepted. Native draw identity
+does not independently bind the temporary compile clone's selected program;
+that transfer is established by source and focused negative unit coverage.
+The GLTF interaction fixture waits for actual async presentation under its live
+clock before freezing matched springs and weather frames; a virtual clock jump
+during compilation would also advance the production timeout.
+It reaches fully wet weather through real updates and asserts the native
+Float32 uniform inputs, camera and lights for every matched state. Active drop
+pixels are captured on the first positive native actor submission after the
+committed 0.1 lift. A test-only observer delegates the public spring advance
+unchanged, recording its exact millisecond input and before/after values. The
+control requires the same single 16ms advance and original source geometry on
+both branches; bounded virtual waits do not reset or manually advance springs.
 
 A separate diagnostic comparison of an uncompiled authored mesh against its
 compiled palette mesh found 378 of 196,608 pixels (0.1923%) differing by more

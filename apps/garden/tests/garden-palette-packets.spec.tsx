@@ -9,6 +9,37 @@ async function pixels(png: Buffer) {
     return sharp(png).ensureAlpha().raw().toBuffer();
 }
 
+function submittedCanvasPng(value: unknown) {
+    const prefix = 'data:image/png;base64,';
+    if (typeof value !== 'string' || !value.startsWith(prefix))
+        throw new Error('Submitted visual witness must contain PNG pixels');
+    return Buffer.from(value.slice(prefix.length), 'base64');
+}
+
+function nativeRainInputs(
+    meshes: { matrixWorld: number[]; materials: Record<string, unknown>[] }[],
+) {
+    return meshes.map((mesh) => ({
+        matrixWorld: mesh.matrixWorld,
+        uniforms: mesh.materials.map((uniforms) =>
+            Object.fromEntries(
+                Object.entries(uniforms).map(([key, value]) => [
+                    key,
+                    typeof value === 'number'
+                        ? Math.fround(value)
+                        : Array.isArray(value)
+                          ? value.map((element: unknown) =>
+                                typeof element === 'number'
+                                    ? Math.fround(element)
+                                    : element,
+                            )
+                          : value,
+                ]),
+            ),
+        ),
+    }));
+}
+
 test('production entity props batch JSX material nodes, retain untouched chunks and preserve source frames', async ({
     mount,
     page,
@@ -274,6 +305,202 @@ test('production palette packets preserve original main and shadow culling with 
     expect(errors).toEqual([]);
 });
 
+test('pending, ready, invalidated and context-restored palette presentation preserves whole-scene picking and native shadows', async ({
+    mount,
+    page,
+}, testInfo) => {
+    test.setTimeout(90_000);
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    const fixture = await mount(<GardenPaletteCullingFixture warmupWitness />);
+    await expect(fixture).toHaveAttribute(
+        'data-ready',
+        'false:mixed:warmup:0:false',
+    );
+    const source = JSON.parse(
+        (await fixture.getAttribute('data-result')) ?? '{}',
+    );
+    const results: unknown[] = [];
+    const frameCaptures: {
+        revision: number;
+        restored: boolean;
+        phase: string;
+        frame: number;
+        png: Buffer;
+    }[] = [];
+    for (const [revision, restored] of [
+        [0, false],
+        [1, false],
+        [1, true],
+    ] as const) {
+        await fixture.update(
+            <GardenPaletteCullingFixture
+                batch
+                warmupWitness
+                shaderRevision={revision}
+                restoreContext={restored}
+            />,
+        );
+        await expect(fixture).toHaveAttribute(
+            'data-ready',
+            `true:mixed:warmup:${revision}:${restored}`,
+        );
+        const candidate = JSON.parse(
+            (await fixture.getAttribute('data-result')) ?? '{}',
+        );
+        const frames = candidate.warmupFrames.filter(
+            (sample: { revision: number; restored: boolean }) =>
+                sample.revision === revision && sample.restored === restored,
+        );
+        const handoff = frames.filter(
+            (sample: { phase: string }) => sample.phase !== 'first-affected',
+        );
+        expect(
+            handoff.map((sample: { phase: string }) => sample.phase),
+        ).toEqual(['pending', 'ready']);
+        expect(
+            frames.filter(
+                (sample: { phase: string }) =>
+                    sample.phase === 'first-affected',
+            ),
+        ).toHaveLength(revision > 0 || restored ? 1 : 0);
+        expect(candidate.missingPresentationFrames).toBe(0);
+        expect(handoff[0].hiddenPaletteMeshes).toBe(4);
+        expect(handoff[0].visiblePaletteMeshes).toBe(0);
+        expect(handoff[0].fallbackMeshes).toBe(3);
+        expect(handoff[1].visiblePaletteMeshes).toBe(4);
+        expect(handoff[1].fallbackMeshes).toBe(0);
+        expect(handoff[1].frame).toBeGreaterThan(handoff[0].frame);
+        for (const frame of frames) {
+            const png = submittedCanvasPng(frame.png);
+            frameCaptures.push({
+                revision,
+                restored,
+                phase: frame.phase,
+                frame: frame.frame,
+                png,
+            });
+            await testInfo.attach(
+                `warmup-${revision}-${restored}-${frame.phase}-frame-${frame.frame}`,
+                { body: png, contentType: 'image/png' },
+            );
+            expect(frame.rangesRestored).toBe(true);
+            expect(frame.farRejectedHits).toBe(0);
+            expect(frame.nearRejectedHits).toBe(0);
+            expect(
+                frame.sceneRaycastHits.map((hits: unknown[]) => hits.length),
+            ).toEqual([1, 1]);
+            for (let ray = 0; ray < source.sceneRaycastHits.length; ray++) {
+                const expectedHit = source.sceneRaycastHits[ray][0],
+                    actualHit = frame.sceneRaycastHits[ray][0];
+                expect(actualHit.distance).toBeCloseTo(expectedHit.distance, 6);
+                for (let axis = 0; axis < 3; axis++)
+                    expect(actualHit.point[axis]).toBeCloseTo(
+                        expectedHit.point[axis],
+                        6,
+                    );
+                if (!actualHit.uv || !expectedHit.uv)
+                    throw new Error('Actual handoff must preserve UV hits');
+                for (let axis = 0; axis < 2; axis++)
+                    expect(actualHit.uv[axis]).toBeCloseTo(
+                        expectedHit.uv[axis],
+                        6,
+                    );
+            }
+            for (const pass of ['main', 'shadow']) {
+                const receipts = frame.receipts.filter(
+                    (receipt: { pass: string }) => receipt.pass === pass,
+                );
+                expect(
+                    receipts.reduce(
+                        (sum: number, receipt: { triangles: number }) =>
+                            sum + receipt.triangles,
+                        0,
+                    ),
+                ).toBe(12);
+                expect(
+                    receipts.every(
+                        (receipt: { name: string }) =>
+                            frame.phase !== 'pending' ||
+                            receipt.name.includes(':fallback:'),
+                    ),
+                ).toBe(true);
+                expect(
+                    receipts.every(
+                        (receipt: {
+                            nativeProgramAfter: number | null;
+                            nativeReadyAfter: boolean | null;
+                        }) =>
+                            receipt.nativeProgramAfter !== null &&
+                            receipt.nativeReadyAfter === true,
+                    ),
+                ).toBe(true);
+            }
+        }
+        const candidatePng = await fixture.locator('canvas').screenshot();
+        await testInfo.attach(`warmup-${revision}-${restored}`, {
+            body: candidatePng,
+            contentType: 'image/png',
+        });
+        results.push({ revision, restored, candidate });
+    }
+    // Preserve uninterrupted ready→invalidated candidate transitions first.
+    // Then capture the authored control at each identical light/context state.
+    const controls: unknown[] = [],
+        framePixels: unknown[] = [];
+    for (const [revision, restored] of [
+        [0, false],
+        [1, false],
+        [1, true],
+    ] as const) {
+        await fixture.update(
+            <GardenPaletteCullingFixture
+                warmupWitness
+                shaderRevision={revision}
+                restoreContext={restored}
+            />,
+        );
+        await expect(fixture).toHaveAttribute(
+            'data-ready',
+            `false:mixed:warmup:${revision}:${restored}`,
+        );
+        const control = JSON.parse(
+            (await fixture.getAttribute('data-result')) ?? '{}',
+        );
+        const controlPng = submittedCanvasPng(control.png);
+        const controlPixels = await pixels(controlPng);
+        await testInfo.attach(
+            `warmup-source-${revision}-${restored}-frame-${control.frame}`,
+            { body: controlPng, contentType: 'image/png' },
+        );
+        for (const capture of frameCaptures.filter(
+            (sample) =>
+                sample.revision === revision && sample.restored === restored,
+        )) {
+            const result = compare(controlPixels, await pixels(capture.png));
+            expect(result.differentPixelRatio).toBeLessThan(0.001);
+            expect(result.maxChannelError).toBeLessThanOrEqual(8);
+            framePixels.push({
+                revision,
+                restored,
+                phase: capture.phase,
+                frame: capture.frame,
+                controlFrame: control.frame,
+                result,
+            });
+        }
+        controls.push({ revision, restored, control });
+    }
+    await testInfo.attach(
+        'actual-pending-ready-invalidation-context-receipts',
+        {
+            body: JSON.stringify({ source, results, controls, framePixels }),
+            contentType: 'application/json',
+        },
+    );
+    expect(errors).toEqual([]);
+});
+
 for (const { weather, night } of [
     { weather: 'combined', night: false },
     { weather: 'rain', night: true },
@@ -484,9 +711,14 @@ for (const rain of [false, true]) {
             }
         >();
         const outcomes: unknown[] = [];
+        const initializations: unknown[] = [];
+        const stateCaptures: unknown[] = [];
         try {
+            // Install before any root can queue a native RAF, then keep its
+            // managed timers live throughout real async shader readiness.
+            await page.clock.install();
             for (const batch of [false, true]) {
-                if (batch) await page.clock.resume();
+                await page.clock.resume();
                 const fixture = await mount(
                     <GardenPaletteInteractionFixture
                         batch={batch}
@@ -498,7 +730,28 @@ for (const rain of [false, true]) {
                     null,
                     { timeout: 15_000, polling: 100 },
                 );
-                if (!batch) await page.clock.install();
+                // Keep Three's real 10ms async readiness polling and the
+                // production timeout live until presentation has committed.
+                // A 60s virtual jump during compilation would expire its job.
+                await expect
+                    .poll(
+                        async () => {
+                            const value = await read();
+                            initializations.push({
+                                batch,
+                                stage: 'real-bootstrap',
+                                value,
+                            });
+                            return value &&
+                                value.receipts > 4 &&
+                                value.compiler.pendingJobs === 0 &&
+                                value.pendingMeshes === 0
+                                ? value.batch
+                                : undefined;
+                        },
+                        { timeout: 15_000 },
+                    )
+                    .toBe(batch);
                 await page.clock.pauseAt(
                     await page.evaluate(() => Date.now() + 60_000),
                 );
@@ -514,16 +767,87 @@ for (const rain of [false, true]) {
                             : undefined;
                     })
                     .toBe(batch);
-                // Frozen RAF steps settle rain uniforms before matched states.
-                await page.clock.runFor(2000);
+                // A clock wait alone is not proof of owned weather frames.
+                // With wetSpeed5, 3.5s actual positive update delta converges
+                // 0→1 beyond half a Float32 ULP; still require the actual value.
+                if (rain) {
+                    let settled = false;
+                    for (let step = 0; step < 100; step++) {
+                        await page.clock.runFor(160);
+                        const value = await read();
+                        const overlays = value?.weatherUniforms.filter((mesh) =>
+                            mesh.materials.some(
+                                (uniforms) => 'uWetness' in uniforms,
+                            ),
+                        );
+                        stateCaptures.push({
+                            batch,
+                            name: 'rain-convergence',
+                            virtualWaitMs: (step + 1) * 160,
+                            readback: value,
+                        });
+                        if (
+                            value &&
+                            value.weatherEvolution.deltaSeconds >= 3.5 &&
+                            value.weatherEvolution.frames > 0 &&
+                            value.rainOverlayDrawCount === 2 &&
+                            overlays?.length === 2 &&
+                            overlays.every((mesh) =>
+                                mesh.materials.every(
+                                    (uniforms) =>
+                                        typeof uniforms.uWetness === 'number' &&
+                                        Math.fround(uniforms.uWetness) === 1,
+                                ),
+                            )
+                        ) {
+                            settled = true;
+                            break;
+                        }
+                    }
+                    expect(settled).toBe(true);
+                } else await page.clock.runFor(160);
                 const capture = async (name: string, activeDrop = false) => {
-                    const readback = await read();
+                    const submission = await page.evaluate(
+                        (active) =>
+                            active
+                                ? window.gardenPaletteInteractionWitness?.activeDrop()
+                                : window.gardenPaletteInteractionWitness?.capture(),
+                        activeDrop,
+                    );
+                    const readback = submission?.readback;
+                    const deltaSequence =
+                        submission && 'deltaSequence' in submission
+                            ? submission.deltaSequence
+                            : undefined;
+                    stateCaptures.push({
+                        batch,
+                        name,
+                        activeDrop,
+                        deltaSequence,
+                        readback,
+                    });
                     expect(readback).toBeDefined();
                     if (!readback) throw new Error('Missing scene witness');
                     expect(readback.receipts).toBeGreaterThan(4);
                     expect(readback.rendererFrame).toBeGreaterThan(4);
                     expect(readback.sourceDisposals).toBe(0);
                     expect(readback.rainSurfaceIntensity).toBe(rain ? 1 : 0);
+                    const rainOverlays = readback.weatherUniforms.filter(
+                        (mesh) =>
+                            mesh.materials.some(
+                                (uniforms) => 'uWetness' in uniforms,
+                            ),
+                    );
+                    expect(rainOverlays).toHaveLength(rain ? 2 : 0);
+                    expect(readback.rainOverlayDrawCount).toBe(rain ? 2 : 0);
+                    for (const mesh of rainOverlays) {
+                        for (const uniforms of mesh.materials) {
+                            if (typeof uniforms.uWetness === 'number')
+                                expect(Math.fround(uniforms.uWetness)).toBe(
+                                    rain ? 1 : 0,
+                                );
+                        }
+                    }
                     if (!activeDrop) {
                         expect(readback.compiler.pendingJobs).toBe(0);
                         expect(readback.pendingMeshes).toBe(0);
@@ -549,6 +873,26 @@ for (const rain of [false, true]) {
                             pickupOutlineVisible: true,
                         });
                     if (activeDrop) {
+                        expect(deltaSequence).toEqual([16]);
+                        expect(readback.springStarted).toBe(true);
+                        expect(readback.dropSpringAdvances).toHaveLength(1);
+                        expect(readback.dropSpringAdvances[0]).toMatchObject({
+                            deltaMs: 16,
+                            before: 0.1,
+                            after: readback.dropOffsetY,
+                        });
+                        expect(readback.renderedTiming.delta).toBeCloseTo(
+                            0.016,
+                            12,
+                        );
+                        expect(readback.dropNativeDraws.length).toBeGreaterThan(
+                            0,
+                        );
+                        for (const draw of readback.dropNativeDraws) {
+                            expect(draw.calls).toBeGreaterThan(0);
+                            expect(draw.triangles).toBeGreaterThan(0);
+                            expect(draw.originalGeometry).toBe(true);
+                        }
                         expect(readback.dropOffsetY).toBeGreaterThan(0.001);
                         expect(readback.dropOffsetY).toBeLessThan(0.1);
                         expect(readback.animatedMeshes).toBeGreaterThan(0);
@@ -561,7 +905,7 @@ for (const rain of [false, true]) {
                         expect(readback.animatedMeshes).toBe(0);
                         expect(readback.dropAnimation).toBeUndefined();
                     }
-                    const png = await fixture.locator('canvas').screenshot();
+                    const png = submittedCanvasPng(submission?.png);
                     await testInfo.attach(
                         `${rain ? 'rain' : 'clear'}-${batch ? 'packets' : 'authored'}-${name}`,
                         { body: png, contentType: 'image/png' },
@@ -571,6 +915,24 @@ for (const rain of [false, true]) {
                         expect(original).toBeDefined();
                         if (!original)
                             throw new Error('Missing authored frame');
+                        expect(readback.sceneTimeSeconds).toBe(
+                            original.readback.sceneTimeSeconds,
+                        );
+                        expect(readback.camera).toEqual(
+                            original.readback.camera,
+                        );
+                        expect(readback.lights).toEqual(
+                            original.readback.lights,
+                        );
+                        const originalRainOverlays =
+                            original.readback.weatherUniforms.filter((mesh) =>
+                                mesh.materials.some(
+                                    (uniforms) => 'uWetness' in uniforms,
+                                ),
+                            );
+                        expect(nativeRainInputs(rainOverlays)).toEqual(
+                            nativeRainInputs(originalRainOverlays),
+                        );
                         expect(readback.sourceInputs).toEqual(
                             original.readback.sourceInputs,
                         );
@@ -633,7 +995,49 @@ for (const rain of [false, true]) {
                 await expect
                     .poll(async () => (await read())?.phase)
                     .toBe('drop');
-                await page.clock.runFor(32);
+                await expect
+                    .poll(async () => {
+                        const value = await read();
+                        stateCaptures.push({
+                            batch,
+                            name: 'drop-initial',
+                            readback: value,
+                        });
+                        return (
+                            value?.dropAnimation?.visualStarted === true &&
+                            value.springStarted &&
+                            value.dropOffsetY === 0.1 &&
+                            value.animatedMeshes > 0 &&
+                            value.animatedOriginalGeometry ===
+                                value.animatedMeshes
+                        );
+                    })
+                    .toBe(true);
+                // Observe the first positive authored drop submission. Equal
+                // wall-clock waits can contain different owned root frames.
+                const dropWaitStarted = Date.now();
+                let dropVirtualWaitMs = 0;
+                for (; dropVirtualWaitMs < 256; dropVirtualWaitMs++) {
+                    await page.clock.runFor(1);
+                    const submitted = await page.evaluate(() =>
+                        window.gardenPaletteInteractionWitness?.activeDrop(),
+                    );
+                    if (submitted) {
+                        dropVirtualWaitMs++;
+                        break;
+                    }
+                }
+                stateCaptures.push({
+                    batch,
+                    name: 'drop-first-submission-wait',
+                    virtualWaitMs: dropVirtualWaitMs,
+                    wallWaitMs: Date.now() - dropWaitStarted,
+                });
+                expect(
+                    await page.evaluate(() =>
+                        window.gardenPaletteInteractionWitness?.activeDrop(),
+                    ),
+                ).toBeDefined();
                 await capture('drop-active', true);
                 await page.clock.runFor(4000);
                 await expect
@@ -662,7 +1066,13 @@ for (const rain of [false, true]) {
             }
         } finally {
             await testInfo.attach('interaction-outcomes', {
-                body: JSON.stringify({ rain, outcomes, errors }),
+                body: JSON.stringify({
+                    rain,
+                    initializations,
+                    stateCaptures,
+                    outcomes,
+                    errors,
+                }),
                 contentType: 'application/json',
             });
         }

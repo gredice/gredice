@@ -16,9 +16,15 @@ export type GardenPaletteCullingView = 'mixed' | 'all' | 'none' | 'opposite';
 export function GardenPaletteCullingFixture({
     batch = false,
     view = 'mixed',
+    warmupWitness = false,
+    shaderRevision = 0,
+    restoreContext = false,
 }: {
     batch?: boolean;
     view?: GardenPaletteCullingView;
+    warmupWitness?: boolean;
+    shaderRevision?: number;
+    restoreContext?: boolean;
 }) {
     const [store] = useState(() =>
         createGameState({
@@ -33,7 +39,7 @@ export function GardenPaletteCullingFixture({
         (next: GardenPaletteCullingReadback) => setResult(next),
         [],
     );
-    const key = `${batch}:${view}`;
+    const key = `${batch}:${view}${warmupWitness ? `:warmup:${shaderRevision}:${restoreContext}` : ''}`;
     return (
         <div
             data-testid="palette-culling"
@@ -62,6 +68,9 @@ export function GardenPaletteCullingFixture({
                         <GardenPaletteCullingScene
                             batch={batch}
                             view={view}
+                            warmupWitness={warmupWitness}
+                            shaderRevision={shaderRevision}
+                            restoreContext={restoreContext}
                             onReadback={report}
                         />
                     </Scene>

@@ -17,6 +17,7 @@ import {
     OrthographicCamera,
     PerspectiveCamera,
     Raycaster,
+    Scene,
     Vector3,
     type WebGLRenderer,
 } from 'three';
@@ -276,6 +277,51 @@ describe('original-source visibility on shared compiled buffers', () => {
         );
         assert.deepEqual(p.geometry.drawRange, full);
     });
+    it('keeps hidden warming packets out of whole-scene picking through ready and invalidated handoffs', () => {
+        const p = plan([source('a', 0), source('b', 4)]);
+        const authored = new Mesh(p.geometry, p.material);
+        const scene = new Scene();
+        scene.add(authored, ...p.meshes);
+        scene.updateMatrixWorld(true);
+        const raycaster = new Raycaster(
+            new Vector3(4.025, 0.035, 5),
+            new Vector3(0, 0, -1),
+            0,
+            10,
+        );
+        const values = (hits: Intersection[]) =>
+            hits.map((hit) => ({
+                distance: hit.distance,
+                point: hit.point.toArray(),
+                uv: hit.uv?.toArray(),
+                faceIndex: hit.faceIndex,
+            }));
+        const expected = values(raycaster.intersectObject(authored, false));
+        assert.ok(expected.length > 0);
+        const full = { ...p.geometry.drawRange };
+        for (const ready of [false, true, false, true]) {
+            for (const mesh of p.meshes) mesh.setPresentationEnabled(ready);
+            if (ready) scene.remove(authored);
+            else scene.add(authored);
+            assert.deepEqual(
+                values(raycaster.intersectObjects(scene.children, true)),
+                expected,
+            );
+            assert.deepEqual(p.geometry.drawRange, full);
+            raycaster.far = 1;
+            assert.deepEqual(
+                raycaster.intersectObjects(scene.children, true),
+                [],
+            );
+            raycaster.far = 10;
+        }
+        assert.equal(p.meshes[2].intersectsFrustum(frustum()), false);
+        assert.deepEqual(
+            values(raycaster.intersectObjects(scene.children, true)),
+            expected,
+        );
+    });
+
     it('restores raycast ranges after failure and nested main/shadow range selection', () => {
         const p = plan([source('a', 0), source('b', 4)]),
             full = { ...p.geometry.drawRange };
@@ -493,5 +539,40 @@ describe('original-source visibility on shared compiled buffers', () => {
         p.meshes[2].onAfterRender();
         assert.deepEqual(p.geometry.drawRange, full);
         second();
+    });
+
+    it('prepares only the outer presentation and restores ranges if preparation fails', () => {
+        const p = plan([source('a', 0), source('b', 4)]);
+        let draws = 0,
+            preparations = 0;
+        const renderer = {
+            render: (...args: Parameters<WebGLRenderer['render']>) => {
+                draws++;
+                if (draws === 1) renderer.render(...args);
+            },
+        } satisfies Pick<WebGLRenderer, 'render'>;
+        const release = guardStaticRenderPacketDrawRanges(renderer, p.ranges);
+        const removePreparation = p.ranges.registerPreparation(() => {
+            preparations++;
+        });
+        const scene = new Scene(),
+            camera = new OrthographicCamera();
+        renderer.render(scene, camera);
+        assert.equal(draws, 2);
+        assert.equal(preparations, 1);
+        removePreparation();
+        const full = { ...p.geometry.drawRange };
+        const removeFailure = p.ranges.registerPreparation(() => {
+            p.meshes[2].onBeforeRender();
+            throw new Error('preparation failure');
+        });
+        assert.throws(
+            () => renderer.render(scene, camera),
+            /preparation failure/,
+        );
+        assert.deepEqual(p.geometry.drawRange, full);
+        assert.equal(draws, 2);
+        removeFailure();
+        release();
     });
 });

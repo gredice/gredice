@@ -11,17 +11,24 @@ import {
     useState,
     useSyncExternalStore,
 } from 'react';
-import type { InstancedMesh } from 'three';
+import type { BufferGeometry, InstancedMesh, Material } from 'three';
 import { createMeshInstanceMatrix } from '../../entities/chunkedMeshGeometry';
 import {
     recordPlacementAnimationChunkRebuild,
     shouldRecordPlacementAnimationChunkRebuild,
 } from '../../entities/placementAnimationProfileMetrics';
 import { useGardenPaletteFallbackResources } from '../gardenPaletteFallbackResources';
+import { useSceneRenderRequest } from '../SceneTime';
 import {
     StaticOpaqueSceneCacheBoundary,
     type StaticOpaqueSceneCacheGroup,
 } from '../StaticOpaqueSceneCache';
+import {
+    compileStaticPacketShaders,
+    type StaticPacketShaderObject,
+    StaticRenderPacketShaderWarmup,
+    staticPacketPresentationPreparation,
+} from './staticRenderPacketShaderWarmup';
 import {
     recordStaticRenderPacketCompile,
     recordStaticRenderPacketFallbackComponent,
@@ -40,6 +47,9 @@ import { useCompiledChunkSources } from './useCompiledChunk';
 
 const StaticRenderPacketContext =
     createContext<StaticRenderPacketRegistry | null>(null);
+const StaticRenderPacketWarmupContext = createContext<
+    StaticRenderPacketShaderWarmup | undefined
+>(undefined);
 
 export function useStaticRenderPacketRegistry() {
     return useContext(StaticRenderPacketContext);
@@ -56,12 +66,59 @@ export function StaticRenderPacketBatchProvider({
     children: ReactNode;
 }) {
     const [registry] = useState(() => new StaticRenderPacketRegistry());
+    const gl = useThree((state) => state.gl);
+    const requestRender = useSceneRenderRequest();
+    const [warmup, setWarmup] = useState<StaticRenderPacketShaderWarmup>();
+    useLayoutEffect(() => {
+        const owner = new StaticRenderPacketShaderWarmup(
+            compileStaticPacketShaders,
+            gl,
+            () => requestRender('static-packet-shader-warmup'),
+        );
+        setWarmup(owner);
+        const invalidate = () => owner.invalidate();
+        gl.domElement.addEventListener('webglcontextlost', invalidate);
+        gl.domElement.addEventListener('webglcontextrestored', invalidate);
+        return () => {
+            gl.domElement.removeEventListener('webglcontextlost', invalidate);
+            gl.domElement.removeEventListener(
+                'webglcontextrestored',
+                invalidate,
+            );
+            owner.dispose();
+        };
+    }, [gl, requestRender]);
 
     return (
         <StaticRenderPacketContext.Provider value={registry}>
-            {children}
-            <StaticRenderPackets registry={registry} />
+            <StaticRenderPacketWarmupContext.Provider value={warmup}>
+                {children}
+                <StaticRenderPackets registry={registry} />
+            </StaticRenderPacketWarmupContext.Provider>
         </StaticRenderPacketContext.Provider>
+    );
+}
+
+function useStaticPacketShaderReady(
+    object: StaticPacketShaderObject | undefined,
+) {
+    const warmup = useContext(StaticRenderPacketWarmupContext);
+    const [state, setState] = useState<{
+        warmup: StaticRenderPacketShaderWarmup;
+        object: StaticPacketShaderObject;
+        ready: boolean;
+    }>();
+    useLayoutEffect(() => {
+        if (!object || !warmup) return;
+        return warmup.register(object, (ready) =>
+            setState({ warmup, object, ready }),
+        );
+    }, [object, warmup]);
+    return Boolean(
+        state &&
+            state.warmup === warmup &&
+            state.object === object &&
+            state.ready,
     );
 }
 
@@ -148,6 +205,21 @@ function StaticRenderPackets({
     const groups = useRetainedGroups(packets);
     const gl = useThree((state) => state.gl);
     const [drawRanges] = useState(() => new StaticRenderPacketDrawRanges());
+    const warmup = useContext(StaticRenderPacketWarmupContext);
+    const scene = useThree((state) => state.scene);
+    const camera = useThree((state) => state.camera);
+    useLayoutEffect(() => {
+        if (!warmup) return;
+        return drawRanges.registerPreparation(
+            staticPacketPresentationPreparation(
+                gl,
+                scene,
+                camera,
+                (rootScene, rootCamera) =>
+                    warmup.prepare(rootScene, rootCamera),
+            ),
+        );
+    }, [camera, drawRanges, gl, scene, warmup]);
     useLayoutEffect(
         () => guardStaticRenderPacketDrawRanges(gl, drawRanges),
         [drawRanges, gl],
@@ -253,12 +325,21 @@ const StaticRenderPacketMesh = memo(function StaticRenderPacketMesh({
                       build.geometry,
                       drawRanges,
                       debugName,
+                      false,
                   )
                 : [],
         [build, debugName, drawRanges, packet, palette],
     );
+    const shaderReady = useStaticPacketShaderReady(meshes[0]);
+    useLayoutEffect(() => {
+        // Raycaster ignores visibility. Keep hidden warm objects outside
+        // whole-scene picking until the authored fallback hands off.
+        for (const mesh of meshes) mesh.setPresentationEnabled(shaderReady);
+    }, [meshes, shaderReady]);
+    const fallback = !build || (palette && !shaderReady);
+    if (build && !build.geometry.getAttribute('position')) return null;
 
-    if (!build) {
+    if (fallback && !palette) {
         // Pending or failed compiles keep the exact instanced presentation.
         return packet.contributions.map((contribution) => (
             <StaticRenderPacketInstancedFallback
@@ -268,6 +349,27 @@ const StaticRenderPacketMesh = memo(function StaticRenderPacketMesh({
             />
         ));
     }
+    if (palette)
+        return (
+            <>
+                {fallback &&
+                    packet.contributions.map((contribution) => (
+                        <StaticRenderPacketInstancedFallback
+                            key={contribution.id}
+                            contribution={contribution}
+                            debugName={`${debugName}:fallback:${contribution.id}`}
+                        />
+                    ))}
+                {meshes.map((mesh) => (
+                    <primitive
+                        key={mesh.uuid}
+                        object={mesh}
+                        visible={Boolean(shaderReady)}
+                    />
+                ))}
+            </>
+        );
+    if (!build) return null;
     if (!build.geometry.getAttribute('position')) return null;
     if (!palette)
         return (
@@ -281,7 +383,7 @@ const StaticRenderPacketMesh = memo(function StaticRenderPacketMesh({
             />
         );
 
-    return meshes.map((mesh) => <primitive key={mesh.uuid} object={mesh} />);
+    return null;
 });
 
 const StaticRenderPacketInstancedFallback = memo(
@@ -292,7 +394,9 @@ const StaticRenderPacketInstancedFallback = memo(
         contribution: StaticRenderPacketContribution;
         debugName: string;
     }) {
-        const meshRef = useRef<InstancedMesh | null>(null);
+        const meshRef = useRef<InstancedMesh<BufferGeometry, Material> | null>(
+            null,
+        );
         const { instances, localTransform, scale } = contribution;
         // Eligible clones release fallback-only GPU buffers and programs when
         // ready. Borrowed originals never reach a pending frame.
@@ -308,6 +412,7 @@ const StaticRenderPacketInstancedFallback = memo(
         );
         const geometry = resources?.geometry;
         const material = resources?.material;
+        const warmup = useContext(StaticRenderPacketWarmupContext);
 
         useLayoutEffect(() => {
             recordStaticRenderPacketFallbackMesh(1);
@@ -332,6 +437,18 @@ const StaticRenderPacketInstancedFallback = memo(
             mesh.computeBoundingBox();
             mesh.computeBoundingSphere();
         }, [geometry, instances, localTransform, material, scale]);
+        useLayoutEffect(() => {
+            const mesh = meshRef.current;
+            if (
+                !mesh ||
+                !warmup ||
+                geometry === sourceGeometry ||
+                material === sourceMaterial
+            )
+                return;
+            // Existing authored presentation stays visible throughout warmup.
+            return warmup.register(mesh, () => {});
+        }, [geometry, material, sourceGeometry, sourceMaterial, warmup]);
 
         if (!geometry || !material) return null;
 
