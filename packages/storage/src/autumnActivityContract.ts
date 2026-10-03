@@ -155,25 +155,69 @@ export type AutumnActivityReceipt = z.infer<typeof autumnActivityReceiptSchema>;
 export const autumnActivityResponseSchema = autumnActivityReceiptSchema.extend({
     replayed: z.boolean(),
 });
-export const autumnActivityStateSchema = z.strictObject({
-    enabled: z.boolean(),
-    accountId: z.string().uuid(),
-    campaign: autumnActivityCampaignSchema.nullable(),
-    progress: autumnActivityProgressSchema.nullable(),
-    eventStatus: z.enum(['upcoming', 'active', 'ended']).nullable(),
-    actionAvailable: z.boolean(),
-    readiness: z.enum([
-        'ready',
-        'disabled',
-        'not-configured',
-        'storage-unavailable',
-        'catalogue-unavailable',
-        'reward-unavailable',
-    ]),
-});
+export const autumnActivityStateSchema = z
+    .strictObject({
+        enabled: z.boolean(),
+        accountId: z.string().uuid(),
+        campaign: autumnActivityCampaignSchema.nullable(),
+        progress: autumnActivityProgressSchema.nullable(),
+        eventStatus: z.enum(['upcoming', 'active', 'ended']).nullable(),
+        actionAvailable: z.boolean(),
+        readiness: z.enum([
+            'ready',
+            'disabled',
+            'not-configured',
+            'storage-unavailable',
+            'catalogue-unavailable',
+            'reward-unavailable',
+        ]),
+    })
+    .superRefine((state, context) => {
+        if (
+            (state.campaign === null) !== (state.progress === null) ||
+            (state.campaign === null) !== (state.eventStatus === null) ||
+            (state.readiness === 'ready' && state.campaign === null) ||
+            state.actionAvailable !==
+                (state.enabled &&
+                    state.readiness === 'ready' &&
+                    state.eventStatus === 'active') ||
+            (state.readiness === 'disabled' && state.enabled)
+        )
+            context.addIssue({
+                code: 'custom',
+                message: 'Contradictory activity state',
+            });
+    });
 export type AutumnActivityState = z.infer<typeof autumnActivityStateSchema>;
-export const autumnActivityStoredEventSchema = z.strictObject({
-    command: autumnActivityActionBodySchema,
-    campaign: autumnActivityCampaignSchema,
-    receipt: autumnActivityReceiptSchema,
-});
+export const autumnActivityStoredEventSchema = z
+    .strictObject({
+        command: autumnActivityActionBodySchema,
+        campaign: autumnActivityCampaignSchema,
+        receipt: autumnActivityReceiptSchema,
+    })
+    .superRefine((event, context) => {
+        const { command, receipt, campaign } = event;
+        if (
+            command.operationId !== receipt.operationId ||
+            command.expectedAccountId !== receipt.accountId ||
+            command.campaignId !== receipt.campaignId ||
+            command.campaignVersionId !== receipt.campaignVersionId ||
+            campaign.id !== command.campaignId ||
+            campaign.versionId !== command.campaignVersionId ||
+            receipt.granted.some(
+                (grant) =>
+                    grant.kind !==
+                        (command.action.kind === 'claim-welcome'
+                            ? 'welcome'
+                            : 'completion') ||
+                    grant.purchaseId !==
+                        (grant.kind === 'welcome'
+                            ? receipt.progress.welcomePurchaseId
+                            : receipt.progress.completionPurchaseId),
+            )
+        )
+            context.addIssue({
+                code: 'custom',
+                message: 'Activity receipt does not match its command',
+            });
+    });

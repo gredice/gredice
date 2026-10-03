@@ -108,10 +108,14 @@ export async function submitAutumnActivityAction(
             parsed.data.progress.welcomePurchaseId === null) ||
         parsed.data.granted.some(
             (grant) =>
+                grant.kind !==
+                    (command.action.kind === 'claim-welcome'
+                        ? 'welcome'
+                        : 'completion') ||
                 grant.purchaseId !==
-                (grant.kind === 'welcome'
-                    ? parsed.data.progress.welcomePurchaseId
-                    : parsed.data.progress.completionPurchaseId),
+                    (grant.kind === 'welcome'
+                        ? parsed.data.progress.welcomePurchaseId
+                        : parsed.data.progress.completionPurchaseId),
         )
     )
         throw new AutumnActivityRequestError(

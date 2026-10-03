@@ -10,6 +10,10 @@ import {
 import { events } from '../schema';
 import { storage } from '../storage';
 import {
+    AccountNotFoundError,
+    lockAccountAndAssertNotDeleting,
+} from './accountDeletionFenceRepo';
+import {
     GardenPackConflictError,
     type GardenPackTransaction,
     recordPurchasedGardenPack,
@@ -40,9 +44,13 @@ export async function readAutumnActivityEvent(
         )
         .orderBy(desc(events.id))
         .limit(1);
-    return event
-        ? autumnActivityStoredEventSchema.parse(event.data)
-        : undefined;
+    if (!event) return undefined;
+    const parsed = autumnActivityStoredEventSchema.parse(event.data);
+    if (parsed.receipt.accountId !== accountId)
+        throw new GardenPackConflictError(
+            'Activity event owner does not match account aggregate',
+        );
+    return parsed;
 }
 export function replayAutumnActivityEvent(
     accountId: string,
@@ -100,12 +108,45 @@ export async function recordAutumnActivityEvent(
         throw new GardenPackConflictError(
             'Activity receipt identity does not match command',
         );
-    await tx
-        .insert(events)
-        .values({
-            aggregateId: accountId,
-            type: autumnActivityEventType,
-            version: 1,
-            data,
-        });
+    if (!(await lockAccountAndAssertNotDeleting(accountId, tx)))
+        throw new AccountNotFoundError(accountId);
+    const existing = await readAutumnActivityEvent(
+        accountId,
+        { operationId: command.operationId },
+        tx,
+    );
+    if (existing) {
+        replayAutumnActivityEvent(accountId, command, existing);
+        if (!isDeepStrictEqual(existing.receipt, receipt))
+            throw new GardenPackConflictError(
+                'Activity operation receipt changed',
+            );
+        return;
+    }
+    const previous = await readAutumnActivityEvent(
+        accountId,
+        { campaignId: command.campaignId },
+        tx,
+    );
+    if (
+        previous &&
+        (previous.receipt.progress.discoveredMotifIds.some(
+            (id) => !receipt.progress.discoveredMotifIds.includes(id),
+        ) ||
+            (previous.receipt.progress.welcomePurchaseId !== null &&
+                previous.receipt.progress.welcomePurchaseId !==
+                    receipt.progress.welcomePurchaseId) ||
+            (previous.receipt.progress.completionPurchaseId !== null &&
+                previous.receipt.progress.completionPurchaseId !==
+                    receipt.progress.completionPurchaseId))
+    )
+        throw new GardenPackConflictError(
+            'Activity ownership and progress cannot be reset',
+        );
+    await tx.insert(events).values({
+        aggregateId: accountId,
+        type: autumnActivityEventType,
+        version: 1,
+        data,
+    });
 }
