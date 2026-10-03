@@ -21,6 +21,8 @@ const paths = [
     'packages/game/src/viewers/PublicGardenViewer.tsx',
     'packages/game/src/viewers/PublicGardenCaptureProbe.tsx',
     'packages/game/src/controls/GameCameraRig.tsx',
+    'packages/game/src/controls/orthographicCameraFit.ts',
+    'packages/game/src/entities/helpers/EntityPreviewContext.ts',
     'packages/game/src/utils/useGameGLTF.ts',
     'packages/game/src/utils/configureGameGLTFMaterials.ts',
     'packages/game/src/utils/stackHeightCore.ts',
@@ -70,14 +72,60 @@ for (const file of [...new Set(paths)].sort()) {
         sha256: createHash('sha256').update(bytes).digest('hex'),
     });
 }
+const captureParity = [];
+for (const view of ['day', 'dusk', 'night', 'mobile-low']) {
+    const current = path.join(root, `docs/kestenijada-2026/${view}`);
+    const original = path.join(
+        root,
+        `docs/kestenijada-2026/original-d0fee5e13/${view}`,
+    );
+    const currentPng = await readFile(`${current}.png`);
+    const originalPng = await readFile(`${original}.png`);
+    const currentGeometry = JSON.parse(
+        await readFile(`${current}.json`, 'utf8'),
+    );
+    const originalGeometry = JSON.parse(
+        await readFile(`${original}.json`, 'utf8'),
+    );
+    captureParity.push({
+        view,
+        pngByteIdentical: currentPng.equals(originalPng),
+        worldAndScreenBoundsIdentical:
+            JSON.stringify(currentGeometry.geometry) ===
+            JSON.stringify(originalGeometry.geometry),
+        viewportIdentical:
+            currentGeometry.width === originalGeometry.width &&
+            currentGeometry.height === originalGeometry.height,
+    });
+}
 const evidence = {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    originalImplementationCommit: 'd0fee5e13a2230d160c723a4ea65e52d1c285d83',
+    originalEvidencePath:
+        'docs/kestenijada-2026/original-d0fee5e13/evidence.json',
+    originalEvidenceSha256: createHash('sha256')
+        .update(
+            await readFile(
+                path.join(
+                    root,
+                    'docs/kestenijada-2026/original-d0fee5e13/evidence.json',
+                ),
+            ),
+        )
+        .digest('hex'),
+    captureParentCommit: 'f97ddf38b6009103819902f9494a0fd5e2f28286',
+    captureImplementationCommit: '92291768bd704c731976c4decb3f276a9fa9868b',
+    integrationParentCommit: '9b9df59b18d98c4d2e98642d77f5d84504bc04d4',
+    rebasedImplementationCommit: '536eaedb29c975796a7716ad50311d6d03e7dd15',
     sourceIdentity:
         'Exact current-source SHA256 records; verification needs no historic Git objects or network.',
     scope: 'Bounded selected runtime identity evidence, not a complete renderer dependency graph or reproducible full-engine/performance proof.',
     models,
+    captureParity,
+    finalParentChange:
+        'Compared with capture parent, final UI parent changed only two test files; production renderer bytes are unchanged.',
     visualReview:
-        'Astra xhigh approved day/dusk/night/mobile scene; measured final geometry is fully in frame.',
+        'Original authored scene approved by Astra xhigh; fresh integration captures retain measured in-frame geometry. Original reviewed capture provenance is archived separately.',
     rendererCounters:
         'Incidental diagnostic samples, not cost or performance evidence.',
     files,
