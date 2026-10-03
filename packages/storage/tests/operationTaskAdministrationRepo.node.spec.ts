@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
     administerOperationTask,
     assignUserToFarm,
+    attributeDefinitions,
     createAccount,
     createAttributeDefinition,
     createEntity,
@@ -23,6 +24,7 @@ import {
     upsertEntityType,
     users,
 } from '@gredice/storage';
+import { and, asc, eq } from 'drizzle-orm';
 import {
     type OperationTaskAdminValues,
     operationTaskStatuses,
@@ -286,13 +288,26 @@ test('a date-only correction keeps original completion/verification identity and
 test('a verified task can change definition while incompatible target scopes are rejected', async () => {
     const f = await fixture();
     await upsertEntityType({ name: 'operation', label: 'Radnja' });
-    const applicationId = await createAttributeDefinition({
-        entityTypeName: 'operation',
-        category: 'attributes',
-        name: 'application',
-        label: 'Primjena',
-        dataType: 'text',
-    });
+    const existingDefinition =
+        await storage().query.attributeDefinitions.findFirst({
+            columns: { id: true },
+            where: and(
+                eq(attributeDefinitions.entityTypeName, 'operation'),
+                eq(attributeDefinitions.category, 'attributes'),
+                eq(attributeDefinitions.name, 'application'),
+                eq(attributeDefinitions.isDeleted, false),
+            ),
+            orderBy: asc(attributeDefinitions.id),
+        });
+    const applicationId =
+        existingDefinition?.id ??
+        (await createAttributeDefinition({
+            entityTypeName: 'operation',
+            category: 'attributes',
+            name: 'application',
+            label: 'Primjena',
+            dataType: 'text',
+        }));
     await createEntity('operation');
     const replacementId = await createEntity('operation');
     assert.notEqual(replacementId, f.values.entityId);
