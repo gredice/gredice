@@ -77,8 +77,11 @@ the next twenty. Only distant flock visibility changes.
 Each reused bird has 712 triangles. The incremental work is exactly one draw
 call and 3,560 triangles on high quality, with no shadow pass. These are headless
 Chromium SwiftShader counts on a shared macOS host. They do not establish
-physical-device frame times or production acceptance. The later leaf/steam stack
-requires its own combined readback after integration.
+physical-device frame times or production acceptance. After stacking onto leaf
+raking and chestnut steam, four flock cases passed with freshly recreated
+captures and identical counts. The record preserves the original evidence and
+separately pins the rebased source, 2,087 Game and 178 JS test results, three
+leaf-raking cases, four photo regressions and consumer typechecks.
 
 Validated commands from the repository root:
 
