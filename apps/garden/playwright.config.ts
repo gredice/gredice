@@ -26,6 +26,8 @@ const webglComponentTestPattern =
 const morningMistComponentTestPattern = /morning-mist\.spec\.tsx/;
 const leafStepsComponentTestPattern = /leaf-steps\.spec\.tsx/;
 const outletGardenRouteTestPattern = /outlet-garden-route\.spec\.ts/;
+// This route needs its own built server with explicit synthetic event config.
+const kestenijadaRouteTestPattern = /kestenijada-route\.spec\.ts/;
 
 // Plugin to intercept next/font/google before Vite's resolver
 function nextFontMockPlugin() {
@@ -84,6 +86,7 @@ export const config: PlaywrightTestConfig = {
                 leafStepsComponentTestPattern,
                 morningMistComponentTestPattern,
                 outletGardenRouteTestPattern,
+                kestenijadaRouteTestPattern,
             ],
             use: { ...devices['Desktop Chrome'] },
         },

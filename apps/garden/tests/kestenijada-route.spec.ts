@@ -54,7 +54,7 @@ test('direct public route and real Link transition fence private reads while pre
     ).toHaveCount(5);
     expect(privateRequests).toEqual([]);
     await expect.poll(() => modelOrigins.length).toBeGreaterThan(0);
-    expect([...new Set(modelOrigins)]).toEqual(['http://localhost:5486']);
+    expect([...new Set(modelOrigins)]).toEqual([new URL(page.url()).origin]);
     await page.evaluate(() => {
         window.sessionStorage.setItem(
             'kestenijada-transition-proof',
