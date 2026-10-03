@@ -91,3 +91,19 @@ test('no usable canvas or no rendered bounds cannot claim a fitting', () => {
         null,
     );
 });
+
+test('a viewport requiring zoom below the rig minimum remains unframed', () => {
+    const camera = new OrthographicCamera(-195, 195, 325, -325);
+    camera.position.set(-8, 8, -8);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld(true);
+    const fit = resolvePackLayoutCameraFit({
+        bounds: new Box3(new Vector3(-2, 0, -2), new Vector3(2, 2, 2)),
+        camera,
+        canvas: { left: 0, top: 0, width: 390, height: 650 },
+        hudTop: 40.5,
+        viewportHeight: 650,
+        originalZoom: 65,
+    });
+    assert.equal(fit, null);
+});
