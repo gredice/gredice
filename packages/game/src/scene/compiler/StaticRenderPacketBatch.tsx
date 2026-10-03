@@ -1,3 +1,4 @@
+import { useThree } from '@react-three/fiber';
 import {
     createContext,
     memo,
@@ -10,8 +11,14 @@ import {
     useState,
     useSyncExternalStore,
 } from 'react';
-import type { InstancedMesh } from 'three';
+import type { BufferGeometry, InstancedMesh, Material } from 'three';
 import { createMeshInstanceMatrix } from '../../entities/chunkedMeshGeometry';
+import {
+    placementAnimationProfileNow,
+    recordPlacementAnimationChunkRebuild,
+    shouldRecordPlacementAnimationChunkRebuild,
+} from '../../entities/placementAnimationProfileMetrics';
+import { useGardenPacketFallbackResources } from '../gardenPacketFallbackResources';
 import {
     StaticOpaqueSceneCacheBoundary,
     type StaticOpaqueSceneCacheGroup,
@@ -25,11 +32,15 @@ import {
     type StaticRenderPacketFallbackReason,
     StaticRenderPacketRegistry,
 } from './staticRenderPackets';
+import {
+    createStaticRenderPacketVisibilityMeshes,
+    guardStaticRenderPacketDrawRanges,
+    StaticRenderPacketDrawRanges,
+} from './staticRenderPacketVisibility';
 import { useCompiledChunkSources } from './useCompiledChunk';
 
 const StaticRenderPacketContext =
     createContext<StaticRenderPacketRegistry | null>(null);
-
 export function useStaticRenderPacketRegistry() {
     return useContext(StaticRenderPacketContext);
 }
@@ -45,7 +56,6 @@ export function StaticRenderPacketBatchProvider({
     children: ReactNode;
 }) {
     const [registry] = useState(() => new StaticRenderPacketRegistry());
-
     return (
         <StaticRenderPacketContext.Provider value={registry}>
             {children}
@@ -135,12 +145,19 @@ function StaticRenderPackets({
         registry.getSnapshot,
     );
     const groups = useRetainedGroups(packets);
+    const gl = useThree((state) => state.gl);
+    const [drawRanges] = useState(() => new StaticRenderPacketDrawRanges());
+    useLayoutEffect(
+        () => guardStaticRenderPacketDrawRanges(gl, drawRanges),
+        [drawRanges, gl],
+    );
 
     return [...groups].map(([group, groupPackets]) => (
         <StaticRenderPacketGroup
             key={group ?? 'live'}
             group={group}
             packets={groupPackets}
+            drawRanges={drawRanges}
         />
     ));
 }
@@ -148,9 +165,11 @@ function StaticRenderPackets({
 const StaticRenderPacketGroup = memo(function StaticRenderPacketGroup({
     group,
     packets,
+    drawRanges,
 }: {
     group: StaticOpaqueSceneCacheGroup | undefined;
     packets: StaticRenderPacket[];
+    drawRanges: StaticRenderPacketDrawRanges;
 }) {
     const counts = useMemo(
         () =>
@@ -173,7 +192,11 @@ const StaticRenderPacketGroup = memo(function StaticRenderPacketGroup({
             triangleCount={counts.triangleCount}
         >
             {packets.map((packet) => (
-                <StaticRenderPacketMesh key={packet.key} packet={packet} />
+                <StaticRenderPacketMesh
+                    key={packet.key}
+                    packet={packet}
+                    drawRanges={drawRanges}
+                />
             ))}
         </StaticOpaqueSceneCacheBoundary>
     );
@@ -181,38 +204,119 @@ const StaticRenderPacketGroup = memo(function StaticRenderPacketGroup({
 
 const StaticRenderPacketMesh = memo(function StaticRenderPacketMesh({
     packet,
+    drawRanges,
 }: {
     packet: StaticRenderPacket;
+    drawRanges: StaticRenderPacketDrawRanges;
 }) {
-    const build = useCompiledChunkSources(packet.sources);
-    useEffect(() => {
-        if (build) recordStaticRenderPacketCompile(build.durationMs);
-    }, [build]);
-    const debugName = `StaticRenderPacket:${packet.chunkKey}:${packet.material.name || packet.material.type}:sources:${packet.contributions.length}:count:${packet.instanceCount}`;
-
-    if (!build) {
-        // Pending or failed compiles keep the exact instanced presentation.
-        return packet.contributions.map((contribution) => (
-            <StaticRenderPacketInstancedFallback
-                key={contribution.id}
-                contribution={contribution}
-                debugName={`${debugName}:fallback:${contribution.id}`}
+    const singleton = packet.contributions[0];
+    if (
+        packet.contributions.length === 1 &&
+        singleton?.sourceBoundsCulling &&
+        singleton.originalVisibilityMode === 'instanced'
+    )
+        return (
+            <StaticRenderPacketInstancedMesh
+                contribution={singleton}
+                recordPlacementChanges
+                geometry={singleton.geometry}
+                material={singleton.material}
+                debugName={`StaticRenderPacket:${packet.chunkKey}:${packet.material.name || packet.material.type}:sources:1:count:${packet.instanceCount}:singleton`}
             />
-        ));
-    }
-    if (!build.geometry.getAttribute('position')) return null;
-
+        );
+    // A separate child owns compilation so a singleton never queues a job or
+    // allocates a merged buffer. Rejoining a group mounts a fresh compile lease.
     return (
-        <mesh
-            name={debugName}
-            castShadow={packet.castShadow}
-            receiveShadow={packet.receiveShadow}
-            renderOrder={packet.renderOrder}
-            geometry={build.geometry}
-            material={packet.material}
+        <StaticRenderPacketCompiledMesh
+            packet={packet}
+            drawRanges={drawRanges}
         />
     );
 });
+
+const StaticRenderPacketCompiledMesh = memo(
+    function StaticRenderPacketCompiledMesh({
+        packet,
+        drawRanges,
+    }: {
+        packet: StaticRenderPacket;
+        drawRanges: StaticRenderPacketDrawRanges;
+    }) {
+        const build = useCompiledChunkSources(packet.sources);
+        const previousBuild = useRef<StaticRenderPacket | undefined>(undefined);
+        const recordedBuild = useRef<typeof build>(undefined);
+        useEffect(() => {
+            if (!build) return;
+            const previous = previousBuild.current;
+            previousBuild.current = packet;
+            if (recordedBuild.current === build) return;
+            recordedBuild.current = build;
+            recordStaticRenderPacketCompile(build.durationMs);
+            if (
+                previous &&
+                (packet.placementContributions ?? packet.contributions).some(
+                    (contribution) => {
+                        const old = (
+                            previous.placementContributions ??
+                            previous.contributions
+                        ).find(({ id }) => id === contribution.id);
+                        return shouldRecordPlacementAnimationChunkRebuild({
+                            currentInstances: contribution.instances,
+                            currentPlacementSignature:
+                                contribution.placementSignature ?? '',
+                            previousInstances: old?.instances,
+                            previousPlacementSignature:
+                                old?.placementSignature ?? '',
+                        });
+                    },
+                )
+            )
+                recordPlacementAnimationChunkRebuild({
+                    durationMs: build.durationMs,
+                    transformedInstanceCount: packet.instanceCount,
+                });
+        }, [build, packet]);
+        const debugName = `StaticRenderPacket:${packet.chunkKey}:${packet.material.name || packet.material.type}:sources:${packet.contributions.length}:count:${packet.instanceCount}`;
+        const sourceBoundsCulling = packet.contributions.every(
+            ({ sourceBoundsCulling }) => sourceBoundsCulling,
+        );
+        const meshes = useMemo(
+            () =>
+                sourceBoundsCulling && build?.geometry.getAttribute('position')
+                    ? createStaticRenderPacketVisibilityMeshes(
+                          packet,
+                          build.geometry,
+                          drawRanges,
+                          debugName,
+                      )
+                    : [],
+            [build, debugName, drawRanges, packet, sourceBoundsCulling],
+        );
+        if (!build)
+            return packet.contributions.map((contribution) => (
+                <StaticRenderPacketInstancedFallback
+                    key={contribution.id}
+                    contribution={contribution}
+                    debugName={`${debugName}:fallback:${contribution.id}`}
+                />
+            ));
+        if (!build.geometry.getAttribute('position')) return null;
+        if (sourceBoundsCulling)
+            return meshes.map((mesh) => (
+                <primitive key={mesh.uuid} object={mesh} />
+            ));
+        return (
+            <mesh
+                name={debugName}
+                castShadow={packet.castShadow}
+                receiveShadow={packet.receiveShadow}
+                renderOrder={packet.renderOrder}
+                geometry={build.geometry}
+                material={packet.material}
+            />
+        );
+    },
+);
 
 const StaticRenderPacketInstancedFallback = memo(
     function StaticRenderPacketInstancedFallback({
@@ -222,17 +326,67 @@ const StaticRenderPacketInstancedFallback = memo(
         contribution: StaticRenderPacketContribution;
         debugName: string;
     }) {
-        const meshRef = useRef<InstancedMesh | null>(null);
-        const { geometry, instances, localTransform, material, scale } =
-            contribution;
+        // Eligible clones release fallback-only GPU buffers and programs when
+        // ready. Borrowed originals never reach a pending frame.
+        const sourceGeometry =
+            contribution.fallbackGeometry ?? contribution.geometry;
+        const sourceMaterial =
+            contribution.fallbackMaterial ?? contribution.material;
+        const resources = useGardenPacketFallbackResources(
+            sourceGeometry,
+            sourceMaterial,
+            sourceMaterial !== contribution.material &&
+                Boolean(contribution.sourceBoundsCulling),
+        );
+        const geometry = resources?.geometry;
+        const material = resources?.material;
 
         useLayoutEffect(() => {
             recordStaticRenderPacketFallbackMesh(1);
             return () => recordStaticRenderPacketFallbackMesh(-1);
         }, []);
+        if (!geometry || !material) return null;
+        return (
+            <StaticRenderPacketInstancedMesh
+                contribution={contribution}
+                debugName={debugName}
+                geometry={geometry}
+                material={material}
+            />
+        );
+    },
+);
+
+const StaticRenderPacketInstancedMesh = memo(
+    function StaticRenderPacketInstancedMesh({
+        contribution,
+        debugName,
+        geometry,
+        material,
+        recordPlacementChanges = false,
+    }: {
+        contribution: StaticRenderPacketContribution;
+        debugName: string;
+        geometry: BufferGeometry;
+        material: Material;
+        recordPlacementChanges?: boolean;
+    }) {
+        const previous = useRef<StaticRenderPacketContribution | undefined>(
+            undefined,
+        );
+        const meshRef = useRef<InstancedMesh<BufferGeometry, Material> | null>(
+            null,
+        );
+        const { instances, localTransform, scale } = contribution;
         useLayoutEffect(() => {
+            const startedAt = placementAnimationProfileNow();
             const mesh = meshRef.current;
-            if (!mesh || mesh.geometry !== geometry) return;
+            if (
+                !mesh ||
+                mesh.geometry !== geometry ||
+                mesh.material !== material
+            )
+                return;
             instances.forEach((instance, index) => {
                 mesh.setMatrixAt(
                     index,
@@ -243,8 +397,31 @@ const StaticRenderPacketInstancedFallback = memo(
             mesh.instanceMatrix.needsUpdate = true;
             mesh.computeBoundingBox();
             mesh.computeBoundingSphere();
-        }, [geometry, instances, localTransform, scale]);
-
+            const old = previous.current;
+            previous.current = contribution;
+            if (
+                recordPlacementChanges &&
+                shouldRecordPlacementAnimationChunkRebuild({
+                    currentInstances: instances,
+                    currentPlacementSignature:
+                        contribution.placementSignature ?? '',
+                    previousInstances: old?.instances,
+                    previousPlacementSignature: old?.placementSignature ?? '',
+                })
+            )
+                recordPlacementAnimationChunkRebuild({
+                    durationMs: placementAnimationProfileNow() - startedAt,
+                    transformedInstanceCount: instances.length,
+                });
+        }, [
+            contribution,
+            geometry,
+            instances,
+            localTransform,
+            material,
+            recordPlacementChanges,
+            scale,
+        ]);
         return (
             <instancedMesh
                 ref={meshRef}

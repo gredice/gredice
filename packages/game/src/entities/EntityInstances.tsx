@@ -235,6 +235,7 @@ function LoadedEntityInstancesAssetBlock({
     return (
         <EntityInstancesBlock
             {...props}
+            batchStaticMaterial
             geometry={geometry(gltf)}
             material={patchedMaterial}
         />
@@ -815,6 +816,7 @@ export function EntityInstances({
                 <Suspense fallback={null}>
                     <AdditionalEntityInstances
                         stacks={stacks}
+                        batchStaticMaterial
                         {...commonSnowProps}
                     />
                 </Suspense>

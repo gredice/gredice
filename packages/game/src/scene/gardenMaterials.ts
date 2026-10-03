@@ -53,6 +53,7 @@ const shaderHookSignatures = new WeakMap<
     {
         customProgramCacheKey: Material['customProgramCacheKey'];
         signature: string;
+        userDataSignature?: string;
     }
 >();
 
@@ -64,10 +65,14 @@ const shaderHookSignatures = new WeakMap<
 export function registerGardenMaterialShaderHooks(
     hooks: Pick<Material, 'customProgramCacheKey' | 'onBeforeCompile'>,
     signature: string,
+    userData?: Material['userData'],
 ) {
     shaderHookSignatures.set(hooks.onBeforeCompile, {
         customProgramCacheKey: hooks.customProgramCacheKey,
         signature,
+        userDataSignature: userData
+            ? serializeMaterialValue(userData)
+            : undefined,
     });
 }
 
@@ -166,17 +171,34 @@ function serializeMaterialValue(value: unknown): string | undefined {
 /**
  * Value signature for materials whose rendered output is fully described by
  * their serializable properties and registered shader hooks. Returns
- * undefined when a material carries user data, clipping planes, unknown
+ * undefined when a material carries unregistered user data, clipping planes, unknown
  * objects, or unregistered shader hooks so it can only batch by identity.
  */
-export function getGardenMaterialSignature(material: Material) {
+export function getGardenMaterialSignature(
+    material: Material,
+    excludedProperties: readonly string[] = [],
+) {
     const hookSignature = getGardenMaterialShaderHookSignature(material);
     if (!hookSignature) return undefined;
-    if (Object.keys(material.userData).length > 0) return undefined;
+    let userDataSignature: string | undefined;
+    if (Object.keys(material.userData).length > 0) {
+        const hooks =
+            getMaterialShaderHooksWithoutCloudShadowAttenuation(material);
+        const registered = shaderHookSignatures.get(hooks.onBeforeCompile);
+        if (
+            !registered?.userDataSignature ||
+            registered.userDataSignature !==
+                serializeMaterialValue(material.userData)
+        )
+            return undefined;
+        userDataSignature = registered.userDataSignature;
+    }
 
     const entries = [`type=${material.type}`, `hooks=${hookSignature}`];
+    if (userDataSignature) entries.push(`userData=${userDataSignature}`);
     for (const key of Object.keys(material).sort()) {
-        if (ignoredMaterialKeys.has(key)) continue;
+        if (ignoredMaterialKeys.has(key) || excludedProperties.includes(key))
+            continue;
         const value: unknown = Reflect.get(material, key);
         if (typeof value === 'function') {
             // Shader hooks are covered above; other own functions are unknown.
@@ -194,6 +216,7 @@ export function getGardenMaterialSignature(material: Material) {
 type SharedGardenMaterialEntry = {
     material: Material;
     users: number;
+    dispose?: () => void;
 };
 
 const sharedMaterialMetrics = {
@@ -216,6 +239,25 @@ export function readSharedGardenMaterialMetrics() {
 }
 
 const sharedMaterials = new Map<string, SharedGardenMaterialEntry>();
+
+/** Owns generated shared shaders until their final packet consumer releases. */
+export function acquireOwnedSharedGardenMaterial(
+    signature: string,
+    createMaterial: () => Material,
+) {
+    if (!sharedMaterials.has(signature)) {
+        const material = createMaterial();
+        sharedMaterials.set(signature, {
+            material,
+            users: 0,
+            dispose: () => material.dispose(),
+        });
+        sharedMaterialMetrics.canonicalMaterials++;
+    }
+    const entry = sharedMaterials.get(signature);
+    if (!entry) throw new Error('Shared garden material was not registered.');
+    return acquireSharedGardenMaterial(entry.material, signature);
+}
 
 /**
  * Resolves a material to the shared instance for its value signature. The
@@ -267,6 +309,7 @@ export function acquireSharedGardenMaterial(
             if (lease.users === 0 && sharedMaterials.get(signature) === lease) {
                 sharedMaterials.delete(signature);
                 sharedMaterialMetrics.canonicalMaterials--;
+                lease.dispose?.();
             }
             publishSharedMaterialMetrics();
         },

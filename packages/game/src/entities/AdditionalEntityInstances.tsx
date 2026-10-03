@@ -110,7 +110,7 @@ import { defaultGameWoodColor } from './woodPalette';
 
 type CommonWeatherProps = Pick<
     EntityInstancesBlockBaseProps,
-    'renderSnow' | 'snowOverlayMinCoverage'
+    'renderSnow' | 'snowOverlayMinCoverage' | 'batchStaticMaterial'
 >;
 
 type ScaleTuple = [number, number, number];
@@ -3117,6 +3117,7 @@ function SimpleAdditionalInstances({
                 assetName="Stool"
                 stacks={stacks}
                 name="Stool"
+                staticOpaqueCacheGroup="static-props"
                 yOffset={1}
                 geometry={(gltf) => gltf.nodes.Stool.geometry}
                 material={(gltf) => gltf.materials[planksMaterialName]}

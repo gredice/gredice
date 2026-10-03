@@ -34,11 +34,18 @@ import type {
     StaticRenderPacketContribution,
     StaticRenderPacketFallbackReason,
 } from '../scene/compiler/staticRenderPackets';
+import { supportsStaticPacketVisibility } from '../scene/compiler/staticRenderPacketVisibility';
 import { useCompiledChunk } from '../scene/compiler/useCompiledChunk';
+import { useStaticGardenMaterialNode } from '../scene/gardenMaterialNodes';
 import {
     classifyGardenMaterial,
+    getGardenMaterialSignature,
     useSharedGardenMaterial,
 } from '../scene/gardenMaterials';
+import {
+    getGardenPacketMaterialSignature,
+    useGardenPacketSource,
+} from '../scene/gardenPacketMaterials';
 import {
     StaticOpaqueSceneCacheBoundary,
     type StaticOpaqueSceneCacheGroup,
@@ -122,6 +129,8 @@ export type EntityInstancesBlockBaseProps = {
     snow?: SnowMaterialOptions;
     renderRainWetOverlay?: boolean;
     renderStableChunksAsMergedGeometry?: boolean;
+    /** Known immutable geometry/PBR sources may join heterogeneous stable packets. */
+    batchStaticMaterial?: boolean;
     staticOpaqueCacheGroup?: StaticOpaqueSceneCacheGroup;
     weatherSurface?: 'base-ground';
     castShadow?: boolean;
@@ -433,6 +442,7 @@ export function EntityInstancesBlock(
         snow,
         renderRainWetOverlay = false,
         renderStableChunksAsMergedGeometry,
+        batchStaticMaterial,
         staticOpaqueCacheGroup,
         weatherSurface,
         castShadow = true,
@@ -456,6 +466,7 @@ export function EntityInstancesBlock(
         renderOrder,
         renderRainWetOverlay,
         renderStableChunksAsMergedGeometry,
+        batchStaticMaterial,
         renderSnow,
         scale,
         snow,
@@ -697,7 +708,7 @@ function IntegratedWeatherEntityInstancesGeometry({
 function EntityInstancesGeometryRenderer(
     props: EntityInstancesGeometryProps & {
         integratedStableWeather?: IntegratedStableWeather;
-        /** Weather-integrated surfaces swap materials with the weather. */
+        /** Weather-integrated surfaces retain their original material lifetime. */
         weatherIntegrated?: boolean;
         weatherSurfaceMode: WeatherSurfaceMode;
     },
@@ -715,6 +726,7 @@ function EntityInstancesGeometryRenderer(
         snowOverlayMinCoverage,
         renderRainWetOverlay = false,
         renderStableChunksAsMergedGeometry = false,
+        batchStaticMaterial = false,
         staticOpaqueCacheGroup,
         integratedStableWeather,
         weatherIntegrated = false,
@@ -833,15 +845,26 @@ function EntityInstancesGeometryRenderer(
     const material = 'material' in props ? props.material : undefined;
     const materialNode =
         'materialNode' in props ? props.materialNode : undefined;
+    const packetRegistry = useStaticRenderPacketRegistry();
     const stableGeometry = integratedStableWeather?.geometry ?? geometry;
-    const stableMaterial = integratedStableWeather?.material ?? material;
+    const concreteMaterialNode = useStaticGardenMaterialNode(
+        materialNode,
+        Boolean(packetRegistry) &&
+            !renderStableChunksAsMergedGeometry &&
+            (batchStaticMaterial || staticOpaqueCacheGroup !== undefined) &&
+            material === undefined &&
+            integratedStableWeather === undefined,
+    );
+    const stableMaterial =
+        integratedStableWeather?.material ?? material ?? concreteMaterialNode;
     const integratesStableRain =
         integratedStableWeather?.integratesRain === true;
     const integratesStableSnow =
         integratedStableWeather?.integratesSnow === true;
-    const stableMaterialNode = integratedStableWeather
-        ? undefined
-        : materialNode;
+    const stableMaterialNode =
+        integratedStableWeather || concreteMaterialNode
+            ? undefined
+            : materialNode;
     const staticOpaqueCacheContentKey = useMemo(
         () => ({
             castShadow,
@@ -870,16 +893,28 @@ function EntityInstancesGeometryRenderer(
             stableScale,
         ],
     );
-    const packetRegistry = useStaticRenderPacketRegistry();
     const packetOwnerId = useStaticRenderPacketOwnerId();
     const stableMaterialClass = classifyGardenMaterial(stableMaterial);
-    const stableLayoutSignature = useMemo(
-        () => meshGeometryLayoutSignature(stableGeometry),
-        [stableGeometry],
-    );
+    const stockGeometrySupported =
+        supportsStaticPacketVisibility(stableGeometry);
+    // Stable instances exclude active drop animation. Known stock
+    // materials batch newly admitted props. Existing merged sources retain
+    // their original material, weather, and JSX presentation ownership.
+    const stockCompatible =
+        !renderStableChunksAsMergedGeometry &&
+        (batchStaticMaterial || staticOpaqueCacheGroup !== undefined) &&
+        stockGeometrySupported &&
+        Boolean(
+            stableMaterial &&
+                !Array.isArray(stableMaterial) &&
+                getGardenPacketMaterialSignature(stableMaterial) !== undefined,
+        );
+    const packetRequested =
+        renderStableChunksAsMergedGeometry || stockCompatible;
     let packetFallbackReason: StaticRenderPacketFallbackReason | undefined;
-    if (packetRegistry && renderStableChunksAsMergedGeometry) {
-        if (weatherIntegrated) packetFallbackReason = 'weather-integrated';
+    if (packetRegistry && packetRequested) {
+        if (renderStableChunksAsMergedGeometry && weatherIntegrated)
+            packetFallbackReason = 'weather-integrated';
         else if (
             stableMaterialNode !== undefined &&
             stableMaterialNode !== null
@@ -889,21 +924,49 @@ function EntityInstancesGeometryRenderer(
             packetFallbackReason = stableMaterialClass.reason;
     }
     const packetEnabled =
-        Boolean(packetRegistry) &&
-        renderStableChunksAsMergedGeometry &&
-        !packetFallbackReason;
+        Boolean(packetRegistry) && packetRequested && !packetFallbackReason;
     const packetFamily = stableMaterialClass.batchable
         ? stableMaterialClass.family
         : undefined;
+    const originalVisibilityMode = renderStableChunksAsMergedGeometry
+        ? 'compiled'
+        : 'instanced';
+    // Before stock admission, plain merged sources with equal materials
+    // already shared a packet. Preserve that original culling group; weather
+    // and JSX-node merged sources previously compiled on their own.
+    const originalPacketGroup =
+        renderStableChunksAsMergedGeometry &&
+        integratedStableWeather === undefined &&
+        materialNode == null &&
+        stableMaterial &&
+        !Array.isArray(stableMaterial) &&
+        stableMaterialClass.batchable
+            ? `${getGardenMaterialSignature(stableMaterial) ?? stableMaterial.uuid}|${meshGeometryLayoutSignature(stableGeometry)}`
+            : undefined;
+    const stockPacketSource = useGardenPacketSource(
+        stableGeometry,
+        stableMaterial,
+        packetEnabled &&
+            !renderStableChunksAsMergedGeometry &&
+            stockGeometrySupported,
+    );
+    const packetGeometry = stockPacketSource.geometry;
+    const stableLayoutSignature = useMemo(
+        () => meshGeometryLayoutSignature(packetGeometry),
+        [packetGeometry],
+    );
     const sharedPacketMaterial = useSharedGardenMaterial(
         stableMaterial,
-        packetEnabled,
+        packetEnabled && !stockPacketSource.stock,
     );
+    const preparedPacketMaterial = stockPacketSource.stock
+        ? stockPacketSource.material
+        : sharedPacketMaterial;
     const packetMaterial =
         packetEnabled &&
-        sharedPacketMaterial &&
-        !Array.isArray(sharedPacketMaterial)
-            ? sharedPacketMaterial
+        preparedPacketMaterial &&
+        !Array.isArray(preparedPacketMaterial)
+            ? preparedPacketMaterial
             : undefined;
     const stableSourceTriangleCount = useMemo(
         () => countGeometryTriangles(stableGeometry),
@@ -917,12 +980,16 @@ function EntityInstancesGeometryRenderer(
         const previous = packetContributionCache.current;
         const next = new Map<string, StaticRenderPacketContribution>();
         const contributions = stableChunks.map((chunk) => {
+            const placementSignature =
+                placementSignatureByChunkKey.get(chunk.key) ?? '';
             const old = previous.get(chunk.key);
             const contribution: StaticRenderPacketContribution =
                 old &&
                 old.instances === chunk.instances &&
-                old.geometry === stableGeometry &&
+                old.geometry === packetGeometry &&
                 old.material === packetMaterial &&
+                old.fallbackGeometry === stableGeometry &&
+                old.fallbackMaterial === stableMaterial &&
                 old.localTransform === localTransform &&
                 old.scale === stableScale &&
                 old.castShadow === castShadow &&
@@ -930,19 +997,32 @@ function EntityInstancesGeometryRenderer(
                 old.renderOrder === renderOrder &&
                 old.cacheGroup === staticOpaqueCacheGroup &&
                 old.layoutSignature === stableLayoutSignature &&
-                old.family === packetFamily
+                old.family === packetFamily &&
+                old.originalVisibilityMode === originalVisibilityMode &&
+                old.originalVisibilityGroup === originalPacketGroup &&
+                old.sourceBoundsCulling === stockPacketSource.stock &&
+                old.placementSignature === placementSignature
                     ? old
                     : {
                           cacheGroup: staticOpaqueCacheGroup,
                           castShadow,
                           chunkKey: chunk.key,
                           family: packetFamily,
-                          geometry: stableGeometry,
+                          fallbackGeometry: stableGeometry,
+                          fallbackMaterial:
+                              stableMaterial && !Array.isArray(stableMaterial)
+                                  ? stableMaterial
+                                  : undefined,
+                          geometry: packetGeometry,
                           id: `${packetOwnerId}:${instanceKey}:${chunk.key}`,
                           instances: chunk.instances,
                           layoutSignature: stableLayoutSignature,
                           localTransform,
                           material: packetMaterial,
+                          originalVisibilityMode,
+                          originalVisibilityGroup: originalPacketGroup,
+                          sourceBoundsCulling: stockPacketSource.stock,
+                          placementSignature,
                           receiveShadow,
                           renderOrder,
                           scale: stableScale,
@@ -957,14 +1037,20 @@ function EntityInstancesGeometryRenderer(
         castShadow,
         instanceKey,
         localTransform,
+        originalPacketGroup,
+        originalVisibilityMode,
         packetFamily,
+        packetGeometry,
         packetMaterial,
         packetOwnerId,
+        placementSignatureByChunkKey,
         receiveShadow,
         renderOrder,
         stableChunks,
+        stockPacketSource.stock,
         stableGeometry,
         stableLayoutSignature,
+        stableMaterial,
         stableScale,
         stableSourceTriangleCount,
         staticOpaqueCacheGroup,

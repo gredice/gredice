@@ -1,8 +1,25 @@
 import type { ColorRepresentation, IUniform, Material } from 'three';
 import { Color, MeshStandardMaterial, NormalBlending, Vector3 } from 'three';
 import { getMaterialShaderHooksWithoutCloudShadowAttenuation } from './cloudShadowAttenuation';
+import {
+    getGardenMaterialShaderHookSignature,
+    getGardenMaterialSignature,
+    registerGardenMaterialShaderHooks,
+} from './gardenMaterials';
 
 const WEATHER_SURFACE_PLUGIN_VARIANT_KEY_PREFIX = 'gredice-weather-surface-v3';
+const weatherUniformIds = new WeakMap<object, number>();
+let nextWeatherUniformId = 0;
+
+function weatherUniformKey(uniform: object | undefined) {
+    if (!uniform) return 'none';
+    let id = weatherUniformIds.get(uniform);
+    if (id === undefined) {
+        id = ++nextWeatherUniformId;
+        weatherUniformIds.set(uniform, id);
+    }
+    return id;
+}
 
 type Vector3Tuple = readonly [number, number, number];
 
@@ -825,6 +842,33 @@ export function createIntegratedWeatherSurfaceMaterial(
         grediceWeatherSurfacePluginMode: pluginMode,
         grediceWeatherSurfacePluginVariantKey: pluginVariantKey,
     };
+    const sourceHookSignature = getGardenMaterialShaderHookSignature(source);
+    if (sourceHookSignature && getGardenMaterialSignature(source)) {
+        // Equal settings may share only when mutable weather uniforms have the
+        // same owner. Values alone cannot prove their future updates agree.
+        const signature = JSON.stringify({
+            source: sourceHookSignature,
+            pluginMode,
+            frost: weatherUniformKey(options.frostIntensityUniform),
+            rain: {
+                ...options.rain,
+                puddleStrengthUniform: weatherUniformKey(
+                    options.rain.puddleStrengthUniform,
+                ),
+                wetnessUniform: weatherUniformKey(options.rain.wetnessUniform),
+            },
+            snow: {
+                ...options.snow,
+                color: new Color(options.snow.color).toArray(),
+                amountUniform: weatherUniformKey(options.snow.amountUniform),
+            },
+        });
+        registerGardenMaterialShaderHooks(
+            material,
+            signature,
+            material.userData,
+        );
+    }
     material.needsUpdate = true;
 
     return material;
