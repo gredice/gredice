@@ -149,6 +149,8 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     authenticatedGardenQueriesEnabled?: boolean;
     /** Owned pack inventory rollout, disabled until the server is configured. */
     gardenPacksEnabled?: boolean;
+    /** Optional private autumn activity UI. Server configuration is authoritative. */
+    autumnActivityEnabled?: boolean;
     continuousRenderLeasesEnabled?: boolean;
     enableGameProfileController?: boolean;
     enableStaticOpaqueSceneCacheOcclusionFixture?: boolean;
