@@ -7,6 +7,7 @@ import { getLocalSandboxBlockData } from '../src/localSandboxBlockData';
 import { ParticleSystemProvider } from '../src/particles/ParticleSystem';
 import { gameQualityProfiles } from '../src/scene/gameQuality';
 import { Scene } from '../src/scene/Scene';
+import { SceneBlockDataBoundary } from '../src/scene/SceneBlockDataBoundary';
 import {
     createGameState,
     GameStateContext,
@@ -146,53 +147,58 @@ export function GardenPaletteInteractionFixture({
                         </button>
                     ))}
                     <div style={{ width: 512, height: 384 }}>
-                        <Scene
-                            position={[4, 6, 9]}
-                            zoom={55}
-                            pixelRatio={1}
-                            quality={gameQualityProfiles.high}
-                            fixedTimeSeconds={43200}
-                            baseFramesPerSecond={60}
-                            animateSprings
-                            adaptiveHighEnabled={false}
-                            staticOpaqueCacheEnabled={false}
-                            rendererOptions={{
-                                alpha: false,
-                                antialias: false,
-                                preserveDrawingBuffer: true,
-                            }}
-                        >
-                            <color attach="background" args={['#ccd9df']} />
-                            <ambientLight intensity={1.2} />
-                            <directionalLight
-                                position={[3, 8, 4]}
-                                intensity={2.5}
-                                castShadow
-                                shadow-mapSize={[1024, 1024]}
-                                shadow-camera-left={-6}
-                                shadow-camera-right={6}
-                                shadow-camera-top={6}
-                                shadow-camera-bottom={-6}
-                                shadow-normalBias={0.015}
-                            />
-                            <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-                                <planeGeometry args={[12, 10]} />
-                                <meshStandardMaterial
-                                    color="#807767"
-                                    roughness={1}
+                        <SceneBlockDataBoundary>
+                            <Scene
+                                position={[4, 6, 9]}
+                                zoom={55}
+                                pixelRatio={1}
+                                quality={gameQualityProfiles.high}
+                                fixedTimeSeconds={43200}
+                                baseFramesPerSecond={60}
+                                animateSprings
+                                adaptiveHighEnabled={false}
+                                staticOpaqueCacheEnabled={false}
+                                rendererOptions={{
+                                    alpha: false,
+                                    antialias: false,
+                                    preserveDrawingBuffer: true,
+                                }}
+                            >
+                                <color attach="background" args={['#ccd9df']} />
+                                <ambientLight intensity={1.2} />
+                                <directionalLight
+                                    position={[3, 8, 4]}
+                                    intensity={2.5}
+                                    castShadow
+                                    shadow-mapSize={[1024, 1024]}
+                                    shadow-camera-left={-6}
+                                    shadow-camera-right={6}
+                                    shadow-camera-top={6}
+                                    shadow-camera-bottom={-6}
+                                    shadow-normalBias={0.015}
                                 />
-                            </mesh>
-                            <ParticleSystemProvider>
-                                <Suspense fallback={null}>
-                                    <GardenPaletteInteractionScene
-                                        batch={batch}
-                                        phase={phase}
-                                        stacks={stacks}
-                                        entityName={entityName}
+                                <mesh
+                                    rotation={[-Math.PI / 2, 0, 0]}
+                                    receiveShadow
+                                >
+                                    <planeGeometry args={[12, 10]} />
+                                    <meshStandardMaterial
+                                        color="#807767"
+                                        roughness={1}
                                     />
-                                </Suspense>
-                            </ParticleSystemProvider>
-                        </Scene>
+                                </mesh>
+                                <ParticleSystemProvider>
+                                    <Suspense fallback={null}>
+                                        <GardenPaletteInteractionScene
+                                            batch={batch}
+                                            phase={phase}
+                                            stacks={stacks}
+                                            entityName={entityName}
+                                        />
+                                    </Suspense>
+                                </ParticleSystemProvider>
+                            </Scene>
+                        </SceneBlockDataBoundary>
                     </div>
                 </div>
             </GameStateContext.Provider>

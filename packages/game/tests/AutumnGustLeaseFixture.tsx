@@ -11,6 +11,7 @@ import {
     createRuntimeFrameLoopProfileTelemetry,
     updateGameProfileMetadata,
 } from '../src/scene/gameProfileMetadata';
+import { SceneBlockDataBoundary } from '../src/scene/SceneBlockDataBoundary';
 import { SceneTimeProvider } from '../src/scene/SceneTime';
 import { getSeasonDebugDates } from '../src/scene/seasonDebugDates';
 import {
@@ -60,28 +61,30 @@ export function AutumnGustLeaseFixture() {
     return (
         <QueryClientProvider client={client}>
             <GameStateContext.Provider value={store}>
-                <Canvas
-                    camera={{ position: [4, 4, 6], zoom: 95 }}
-                    frameloop="never"
-                    orthographic
-                    style={{ width: 640, height: 420 }}
-                >
-                    <SceneTimeProvider
-                        ambientFramesPerSecond={30}
-                        baseFramesPerSecond={0}
-                        runtimeFrameLoop={runtimeFrameLoop}
+                <SceneBlockDataBoundary>
+                    <Canvas
+                        camera={{ position: [4, 4, 6], zoom: 95 }}
+                        frameloop="never"
+                        orthographic
+                        style={{ width: 640, height: 420 }}
                     >
-                        <AutumnSourcesProvider>
-                            <BareAutumnSource />
-                            <AutumnLeaves
-                                gardenId={7}
-                                stacks={stacks}
-                                tier="low"
-                                windSpeed={3}
-                            />
-                        </AutumnSourcesProvider>
-                    </SceneTimeProvider>
-                </Canvas>
+                        <SceneTimeProvider
+                            ambientFramesPerSecond={30}
+                            baseFramesPerSecond={0}
+                            runtimeFrameLoop={runtimeFrameLoop}
+                        >
+                            <AutumnSourcesProvider>
+                                <BareAutumnSource />
+                                <AutumnLeaves
+                                    gardenId={7}
+                                    stacks={stacks}
+                                    tier="low"
+                                    windSpeed={3}
+                                />
+                            </AutumnSourcesProvider>
+                        </SceneTimeProvider>
+                    </Canvas>
+                </SceneBlockDataBoundary>
             </GameStateContext.Provider>
         </QueryClientProvider>
     );
