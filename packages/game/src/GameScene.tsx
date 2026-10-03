@@ -87,6 +87,7 @@ import { RaisedBedNotificationBubbles } from './hud/RaisedBedNotificationBubbles
 import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { PlacementGrid } from './indicators/PlacementGrid';
 import { isOperationVisualRewardDebugProfile } from './operationVisualRewardDebugProfile';
+import { PackLayoutPreviewScene } from './packLayouts/PackLayoutPreviewScene';
 import { ParticleSystemProvider } from './particles/ParticleSystem';
 import {
     type AdaptiveHighQualityLevelProfile,
@@ -490,6 +491,10 @@ export function GameScene({
             setGardenAvatarView('overview');
         }
     }, [gardenAvatarEnabled, gardenAvatarView, setGardenAvatarView]);
+    const packLayoutPreviewActive = useGameState(
+        (state) =>
+            state.packLayoutPreview !== null || state.packLayoutPreviewLocked,
+    );
     const isLoading = gardenLoading && transitionedGardenData === undefined;
     const interactWithAvatarBlock = useCallback(
         (block: Block): GardenAvatarInteractionResult => {
@@ -614,6 +619,7 @@ export function GameScene({
                         <BlockInteractionRegistryProvider>
                             <PlacementGrid />
                             <CosmeticLeafRaking noSound={noSound} />
+                            <PackLayoutPreviewScene />
                             {!hideHud ? <HudPlacementDragPreview /> : null}
                             <Environment
                                 cloudShadowUpdateMs={
@@ -638,7 +644,9 @@ export function GameScene({
                                 <RetainedEntityChunks
                                     scene={retainedScene}
                                     farmId={garden?.farmId}
-                                    noControl={noControls}
+                                    noControl={
+                                        noControls || packLayoutPreviewActive
+                                    }
                                     weather={weather}
                                     weatherDisabled={weatherDisabled}
                                 />
@@ -687,7 +695,9 @@ export function GameScene({
                                 <BlockInteractionLayer
                                     scene={retainedScene}
                                     controlsEnabled={
-                                        !noControls && !gardenAvatarActive
+                                        !noControls &&
+                                        !gardenAvatarActive &&
+                                        !packLayoutPreviewActive
                                     }
                                     sharedControllerEnabled
                                     stacks={retainedScene.stacks}
@@ -879,7 +889,9 @@ export function GameScene({
                             </group>
                             <GameCameraRig
                                 controlsEnabled={
-                                    !noControls && !gardenAvatarActive
+                                    !noControls &&
+                                    !gardenAvatarActive &&
+                                    !packLayoutPreviewActive
                                 }
                                 initialPosition={sceneCameraPosition}
                                 initialSnapshot={gardenHomeCamera}

@@ -6,7 +6,7 @@ Design for #4993, a **Later** exploration under #4946. This specifies a future
 offer; it adds no endpoint, schema, purchase control or production configuration.
 The existing [pack contract](garden-packs.md) continues to sell complete finite
 sets independently of possessions. [Manual examples](autumn-arrangements-2026.md)
-remain manual; group placement is separate work in #4992.
+remain manual. #4992 implements a separate [owned-pack group preview](garden-pack-group-layouts.md); it creates no ownership-aware quote or additional purchase.
 
 The customer chooses which eligible pieces to reuse, reviews only the additional
 pieces and their price, and buys those additions into account-owned inventory.
@@ -129,9 +129,9 @@ conflicts, including reuse through another purchase-command kind.
 
 After commit another action can still use an old selected unit because there is
 no reservation. The UI must not promise a guaranteed complete placement. #4992
-must revalidate and atomically consume the exact selected units and create all
-blocks; a missing unit, collision or stale garden state places nothing. It must
-never compensate by buying additional copies automatically.
+revalidates and atomically consumes the exact selected units and creates all
+blocks; a missing unit, collision or stale garden state places nothing. It does
+not compensate by buying additional copies automatically.
 
 ## Edge cases and acceptance before implementation
 
@@ -153,13 +153,13 @@ unchecked reuse, zero-addition reviews and private owner isolation. Future servi
 tests need real concurrent PostgreSQL connections for confirm vs refund/placement,
 rollback injection and exact receipt replay. Browser tests must cover keyboard/
 touch review, account switches, changed quotes and uncertain responses. Profile
-and collision checks belong to #4992 when group placement is implemented.
+and collision checks for the existing owned-pack placement are documented in [#4992](garden-pack-group-layouts.md). New mixed owned/additions offers still need their own acceptance.
 
 ## Dependencies and source map
 
 - #4991 publishes verified exact products; #4984–#4990 supply immutable contracts,
   ownership, receipts, purchase and lifecycle handling. #4992 supplies optional
-  atomic group placement. This design does not enable either feature in pack v1.
+  atomic group placement under the existing pack gate. This design does not enable ownership-aware offers or change pack sales.
 - Requirements/scenery: `packages/js/src/autumnArrangements/index.ts`.
 - Appearance matching: `packages/js/src/gardenPackAppearanceVariant/index.ts`.
 - Current inventory projection: `packages/storage/src/repositories/gardenPackReadRepo.ts`

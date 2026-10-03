@@ -25,6 +25,7 @@ import {
     defaultGardenAvatarCameraZoom,
     scaleGardenAvatarCameraZoom,
 } from './entities/avatar/gardenAvatarCameraZoom';
+import type { PackLayoutPreviewSelection } from './packLayouts/packLayoutPreviewState';
 import { type AutumnState, getAutumnState } from './scene/autumnState';
 import {
     getGameBackgroundPaletteIndexByKey,
@@ -467,6 +468,16 @@ export type GameState = {
     autumnState: AutumnState;
 
     cosmeticLeafRaking: ReturnType<typeof createLeafRakingController>;
+    packLayoutPreview: PackLayoutPreviewSelection | null;
+    setPackLayoutPreview: (
+        selection: PackLayoutPreviewSelection | null,
+    ) => void;
+    packLayoutPreviewUnavailable: boolean;
+    setPackLayoutPreviewUnavailable: (unavailable: boolean) => void;
+    packLayoutPreviewReady: boolean;
+    setPackLayoutPreviewReady: (ready: boolean) => void;
+    packLayoutPreviewLocked: boolean;
+    setPackLayoutPreviewLocked: (locked: boolean) => void;
 
     // Pickup system
     pickupBlock: Block | null;
@@ -837,6 +848,17 @@ export function createGameState({
         autumnState: getAutumnState(seasonState),
 
         cosmeticLeafRaking: createLeafRakingController(),
+        packLayoutPreview: null,
+        setPackLayoutPreview: (packLayoutPreview) => set({ packLayoutPreview }),
+        packLayoutPreviewUnavailable: false,
+        setPackLayoutPreviewUnavailable: (packLayoutPreviewUnavailable) =>
+            set({ packLayoutPreviewUnavailable }),
+        packLayoutPreviewReady: false,
+        setPackLayoutPreviewReady: (packLayoutPreviewReady) =>
+            set({ packLayoutPreviewReady }),
+        packLayoutPreviewLocked: false,
+        setPackLayoutPreviewLocked: (packLayoutPreviewLocked) =>
+            set({ packLayoutPreviewLocked }),
 
         // Pickup system
         pickupBlock: null,

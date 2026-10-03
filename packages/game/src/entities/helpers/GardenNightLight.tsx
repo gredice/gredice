@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useContext, useEffect, useRef } from 'react';
 import type { PointLight } from 'three';
 import {
     type GardenEmissiveMaterialRef,
     useGardenLightRegistry,
 } from '../../scene/GardenLightProvider';
+import { EntityPreviewContext } from './EntityPreviewContext';
 import {
     resolveGardenNightLightEmissivePeakIntensity,
     resolveGardenNightLightIntensity,
@@ -34,33 +35,33 @@ export function GardenNightLight({
     lightKey: string;
     position: readonly [number, number, number];
 }) {
+    const preview = useContext(EntityPreviewContext);
     const registry = useGardenLightRegistry();
     const lightRef = useRef<PointLight>(null);
 
-    useEffect(
-        () =>
-            registry.register({
-                emissiveBaseIntensity,
-                emissiveMaterialRefs,
-                emissivePeakIntensity:
-                    resolveGardenNightLightEmissivePeakIntensity(
-                        emissivePeakIntensity,
-                    ),
-                key: lightKey,
-                lightIntensity:
-                    resolveGardenNightLightIntensity(lightIntensity),
-                lightRef,
-            }),
-        [
+    useEffect(() => {
+        if (preview) return;
+        return registry.register({
             emissiveBaseIntensity,
             emissiveMaterialRefs,
-            emissivePeakIntensity,
-            lightIntensity,
-            lightKey,
-            registry,
-        ],
-    );
+            emissivePeakIntensity: resolveGardenNightLightEmissivePeakIntensity(
+                emissivePeakIntensity,
+            ),
+            key: lightKey,
+            lightIntensity: resolveGardenNightLightIntensity(lightIntensity),
+            lightRef,
+        });
+    }, [
+        preview,
+        emissiveBaseIntensity,
+        emissiveMaterialRefs,
+        emissivePeakIntensity,
+        lightIntensity,
+        lightKey,
+        registry,
+    ]);
 
+    if (preview) return null;
     return (
         <pointLight
             castShadow={false}
