@@ -1,5 +1,7 @@
 import type { AutumnActivityState } from '@gredice/client';
+import { Button } from '@gredice/ui/Button';
 import Image from 'next/image';
+import { useState } from 'react';
 
 export function AutumnActivityReward({
     reward,
@@ -10,6 +12,7 @@ export function AutumnActivityReward({
     title: string;
     claimed: boolean;
 }) {
+    const [failedUrl, setFailedUrl] = useState<string | null>(null);
     const line = reward.snapshot.lines[0];
     if (!line) return null;
     const label =
@@ -21,14 +24,17 @@ export function AutumnActivityReward({
             aria-label={title}
             className="flex items-center gap-3 rounded-lg bg-muted/50 p-3"
         >
-            <Image
-                src={`/assets/blocks/${line.modelName}.webp`}
-                unoptimized
-                alt=""
-                width={64}
-                height={64}
-                className="size-16 object-contain"
-            />
+            {failedUrl !== reward.review.previewUrl ? (
+                <Image
+                    src={reward.review.previewUrl}
+                    unoptimized
+                    alt={`Prikaz: ${label}`}
+                    width={64}
+                    height={64}
+                    className="size-16 object-contain"
+                    onError={() => setFailedUrl(reward.review.previewUrl)}
+                />
+            ) : null}
             <div>
                 <h3 className="font-semibold">{title}</h3>
                 <p>
@@ -39,6 +45,18 @@ export function AutumnActivityReward({
                         ? 'Spremljeno u tvoje pakete.'
                         : 'Bez naplate suncokreta.'}
                 </p>
+                {failedUrl === reward.review.previewUrl && (
+                    <div className="text-sm">
+                        <p>Prikaz ukrasa nije učitan.</p>
+                        <Button
+                            size="sm"
+                            variant="plain"
+                            onClick={() => setFailedUrl(null)}
+                        >
+                            Ponovno učitaj prikaz
+                        </Button>
+                    </div>
+                )}
             </div>
         </section>
     );

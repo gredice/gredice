@@ -14,6 +14,21 @@ import {
 } from '../../../packages/game/tests/autumnActivityFixture';
 import { AutumnActivityStory } from './AutumnActivityStory';
 
+test.beforeEach(async ({ page }) => {
+    await page.route('https://example.test/WoodlandAcorns.png', (route) =>
+        route.fulfill({
+            path: '../www/public/assets/blocks/WoodlandAcorns.webp',
+            contentType: 'image/webp',
+        }),
+    );
+    await page.route('https://example.test/AutumnWreathPost.png', (route) =>
+        route.fulfill({
+            path: '../www/public/assets/blocks/AutumnWreathPost.webp',
+            contentType: 'image/webp',
+        }),
+    );
+});
+
 function apply(
     state: ReturnType<typeof createAutumnActivityFixture>,
     command: AutumnActivityCommand,
@@ -97,9 +112,17 @@ test('mobile keyboard rules and exact gifts precede participation; server progre
     await expect(page.getByText('Šumski žirevi × 1')).toBeVisible();
     await expect(page.getByText('Jesenski vijenac × 1')).toBeVisible();
     expect(commands).toEqual([]);
+    for (const image of await page.getByRole('img', { name: /Prikaz:/ }).all())
+        await expect
+            .poll(() =>
+                image.evaluate(
+                    (element) =>
+                        element instanceof HTMLImageElement &&
+                        element.naturalWidth > 0,
+                ),
+            )
+            .toBe(true);
     await page.screenshot({ path: '/tmp/gredice-4996-mobile-rewards.png' });
-    await page.getByText('Prikupljeno 0 od 6 motiva').scrollIntoViewIfNeeded();
-    await page.screenshot({ path: '/tmp/gredice-4996-mobile-album.png' });
     await page
         .getByRole('button', {
             name: 'Preuzmi ukras dobrodošlice',
@@ -123,7 +146,15 @@ test('mobile keyboard rules and exact gifts precede participation; server progre
                     : `Prikupljeno ${index + 1} od 6 motiva`,
             ),
         ).toBeVisible();
-        if (index === 1) await remount(page);
+        if (index === 1) {
+            await page
+                .getByRole('button', { name: /Kapica žira.*Prikupi motiv/ })
+                .scrollIntoViewIfNeeded();
+            await page.screenshot({
+                path: '/tmp/gredice-4996-mobile-album.png',
+            });
+            await remount(page);
+        }
     }
     expect(commands).toHaveLength(7);
     expect(new Set(commands.map((command) => command.operationId)).size).toBe(
@@ -478,5 +509,56 @@ test('reconnect refreshes authoritative progress without posting or granting loc
     await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(true);
     await expect(page.getByText('Prikupljeno 1 od 6 motiva')).toBeVisible();
     expect(writes).toBe(0);
+    for (const image of await page.getByRole('img', { name: /Prikaz:/ }).all())
+        await expect
+            .poll(() =>
+                image.evaluate(
+                    (element) =>
+                        element instanceof HTMLImageElement &&
+                        element.naturalWidth > 0,
+                ),
+            )
+            .toBe(true);
     await page.screenshot({ path: '/tmp/gredice-4996-desktop-album.png' });
+});
+
+test('reviewed reward preview failure is visible and retry preserves exact configured URL', async ({
+    mount,
+    page,
+}) => {
+    const state = createAutumnActivityFixture();
+    let failed = true;
+    let attempts = 0;
+    await page.route('**/api/accounts/current/autumn-activity', (route) =>
+        route.fulfill({ json: state }),
+    );
+    await page.route('https://example.test/WoodlandAcorns.png', (route) => {
+        attempts++;
+        return failed
+            ? route.abort('failed')
+            : route.fulfill({
+                  path: '../www/public/assets/blocks/WoodlandAcorns.webp',
+                  contentType: 'image/webp',
+              });
+    });
+    await mount(<AutumnActivityStory />);
+    await open(page);
+    await expect(page.getByText('Prikaz ukrasa nije učitan.')).toBeVisible();
+    failed = false;
+    await page.getByRole('button', { name: 'Ponovno učitaj prikaz' }).click();
+    const image = page.getByRole('img', { name: 'Prikaz: Šumski žirevi' });
+    await expect
+        .poll(() =>
+            image.evaluate(
+                (element) =>
+                    element instanceof HTMLImageElement &&
+                    element.naturalWidth > 0,
+            ),
+        )
+        .toBe(true);
+    await expect(image).toHaveAttribute(
+        'src',
+        'https://example.test/WoodlandAcorns.png',
+    );
+    expect(attempts).toBe(2);
 });

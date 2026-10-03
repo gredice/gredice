@@ -9,7 +9,10 @@ The explicit welcome action grants one configured `WoodlandAcorns`; the final
 first-time motif discovery grants one configured `AutumnWreathPost` atomically
 on the server. Both snapshots contain one static `variant: null` piece and zero
 paid/refund/recycling allocations. The UI reads the immutable configured name
-and quantity. It reuses existing local thumbnails without creating model assets.
+and quantity. It renders the exact configured reviewed preview URL (the contract requires it
+to equal the snapshot preview). A visible failure state offers an explicit
+image retry. Local fixtures serve existing reviewed WebP bytes for those test
+URLs without creating model assets.
 The completed album and acquired decorations survive the campaign window.
 The separate pumpkin trail has no reward or required connection to this album.
 
