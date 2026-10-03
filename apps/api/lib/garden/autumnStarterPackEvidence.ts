@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 import { autumnArrangements } from '@gredice/js/autumnArrangements';
 import {
     autumnStarterPackRecipes,
@@ -46,6 +47,16 @@ export async function loadReviewedAutumnStarterPackEvidence(
         if (sha256(capture) !== proof.captureSha256)
             throw new Error(
                 `Committed reviewed capture record changed: ${recipe.arrangementId}`,
+            );
+        if (
+            proof.recapture &&
+            !isDeepStrictEqual(
+                JSON.parse(new TextDecoder().decode(capture)).source,
+                proof.recapture.source,
+            )
+        )
+            throw new Error(
+                `Reviewed recapture source differs: ${recipe.arrangementId}`,
             );
         const preview = await readBytes(
             `apps/garden/public${arrangement.preview}`,
