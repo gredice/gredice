@@ -37,3 +37,22 @@ Current captured source SHA256:
 | `packages/game/src/scene/SteamSources.tsx` | `ffdcbd70b2078d97379856e335673fa0a65cec33315186afdc2ace4563483dfc` |
 | `apps/garden/tests/localized-steam.spec.tsx` | `8494e4e48fc54508c05f370cd88bda881b1181a8d6adeba9e665ee95d80682df` |
 | `apps/garden/tests/chestnut-steam.spec.tsx` | `b64c3cae745afadc6715fad6b95c2cb82948c4a2408343d4b37f818112205e72` |
+
+## Final event-stack verification
+
+A separate six-profile run on 2026-10-03 passed **6/6 (3.9 minutes)** against commit `644ee83ad83af9e8f08fb1cf975155c383385a18`, tree `6ba5738076a51c9fe1afd61dd1d51c94822338c2`, directly above final event parent `a2c0ffc71dd7c376159d1dc6e9176ee2a64a634a`. The original measurements and source identity above remain intact. [Final-stack measurements and capture manifest](stacked-profile.json) SHA256: `e9aa12602a1d2f36c0f3b09befc0f2564dd805bed5b4a63781db7d31c87f5338`.
+
+All nine recorded fixture, probe, steam runtime and spec source hashes above match this stack exactly. The transitive game-state module includes the intervening owned-layout state changes; its captured SHA256 is `d65a1175bacf1414654f7ffdab768fab2e7dd90800fa03d8d215ae9a37a6eff4`. The manifest records all ten hashes. The fixture still excludes rare flocks with the single `noDistantBirdFlocks` prop; production runtime is unchanged by this follow-up.
+
+The run used one worker on port 5487, the same Node/pnpm/Playwright versions, 60 warm-up frames and 120 sample frames, and unchanged 1.1 draw-call/110-triangle limits and test/expect timeouts. No retries were needed. Root held other browser and large CPU checks during these measurements. SwiftShader timing remains diagnostic rather than a device performance claim.
+
+| Scenario | Tier | Additional calls | Additional triangles | Steam particles |
+| --- | --- | ---: | ---: | ---: |
+| mixed-tea-cart | low | 0.000 | 0.000 | 0 |
+| mixed-tea-cart | medium | 1.000 | 48.000 | 24 |
+| mixed-tea-cart | high | 1.000 | 96.000 | 48 |
+| tea | low | 0.000 | 0.000 | 0 |
+| tea | medium | 1.000 | 48.000 | 24 |
+| tea | high | 1.000 | 96.000 | 48 |
+
+The full new runner log is `/tmp/gredice-steam-stacked-isolation.log`, SHA256 `a4f88962970da6de66e4fe8704f6b828555dcb8886ae4f81fc134f29c4130d46`. The ephemeral combined config SHA256 is `86e767d888d2b2000cd454c9d91a672f6ec25e143e90d392e92ecc4685a26d57`; its exact contents are preserved in the manifest for reproduction. Only test selection and port differ from the existing steam config. The config was removed after validation; no runtime, budgets, timeouts or snapshots were changed. Prior tea/cart evidence and the original `profile.json` are byte-identical to their pre-restack versions.
