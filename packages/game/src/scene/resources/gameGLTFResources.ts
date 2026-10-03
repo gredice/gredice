@@ -2,6 +2,7 @@ import { useGLTF } from '@react-three/drei';
 import { BufferGeometry, Material, type Object3D, Texture } from 'three';
 import { updateGameProfileMetadata } from '../gameProfileMetadata';
 import { GameResourceCache } from './gameResourceCache';
+import { registerResidentGardenMaterial } from './gardenMaterialOrigins';
 
 /** Unreferenced GLTF bytes kept warm for quick returns to a recent garden. */
 export const gameResourceIdleBudgetBytes = 24 * 1024 * 1024;
@@ -130,16 +131,33 @@ export function disposeGameGLTFResources(resources: GameGLTFResources) {
     for (const material of resources.materials) material.dispose();
 }
 
+const materialRegistrations = new Map<string, { release: () => void }>();
+
 /** Registers a decoded GLTF so the cache can measure and later evict it. */
 export function trackGameGLTF(url: string, gltf: unknown) {
     getGameResourceCache().track(url, 'gltf', gltf, () => {
         const resources = collectGameGLTFResources(gltf);
+        const previous = materialRegistrations.get(url);
+        const releases = [...resources.materials].map(
+            registerResidentGardenMaterial,
+        );
+        // A decoded replacement may share originals with the previous value.
+        previous?.release();
+        const registration = {
+            release: () => {
+                for (const release of releases) release();
+            },
+        };
+        materialRegistrations.set(url, registration);
         return {
             bytes: resources.bytes,
             dispose: () => {
                 // Drop the loader cache entry first so the next consumer
                 // decodes a fresh copy instead of reusing disposed objects.
                 useGLTF.clear(url);
+                registration.release();
+                if (materialRegistrations.get(url) === registration)
+                    materialRegistrations.delete(url);
                 disposeGameGLTFResources(resources);
             },
         };

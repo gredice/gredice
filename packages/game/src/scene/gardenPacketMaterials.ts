@@ -10,10 +10,8 @@ import {
     getMaterialShaderHooksWithoutCloudShadowAttenuation,
     registerCloudShadowAttenuationMaterialCandidate,
 } from './cloudShadowAttenuation';
-import {
-    acquireOwnedSharedGardenMaterial,
-    getGardenMaterialSignature,
-} from './gardenMaterials';
+import { getGardenMaterialSignature } from './gardenMaterials';
+import { acquireGardenPacketMaterialLifetime } from './gardenPacketMaterialLifetime';
 
 /** Every stock shader uniform, map and registered hook participates in compatibility. */
 export function getGardenPacketMaterialSignature(material: Material) {
@@ -46,8 +44,10 @@ export function acquireGardenPacketMaterial(
 ) {
     const signature = getGardenPacketMaterialSignature(source);
     if (!signature) return undefined;
-    const lease = acquireOwnedSharedGardenMaterial(
-        `${root.uuid}:${signature}`,
+    const lease = acquireGardenPacketMaterialLifetime(
+        root,
+        source,
+        signature,
         () => createGardenPacketMaterial(source),
     );
     const unregisterCloud = registerCloudShadowAttenuationMaterialCandidate(

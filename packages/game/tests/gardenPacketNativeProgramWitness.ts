@@ -30,6 +30,8 @@ export class GardenPacketNativeProgramWitness {
     private deletedPrograms = 0;
     private createdBuffers = 0;
     private deletedBuffers = 0;
+    private lostPrograms = 0;
+    private lostBuffers = 0;
 
     setEpoch(epoch: string) {
         if (this.epoch === epoch) return;
@@ -131,12 +133,23 @@ export class GardenPacketNativeProgramWitness {
                     calls: renderer.info.render.calls - calls,
                 });
         };
+        const contextLost = () => {
+            this.lostPrograms += this.programs.size;
+            this.lostBuffers += this.buffers.size;
+            this.programs.clear();
+            this.buffers.clear();
+        };
+        renderer.domElement.addEventListener('webglcontextlost', contextLost);
         context.createProgram = programCreated;
         context.deleteProgram = programDeleted;
         context.createBuffer = bufferCreated;
         context.deleteBuffer = bufferDeleted;
         renderer.renderBufferDirect = observed;
         return () => {
+            renderer.domElement.removeEventListener(
+                'webglcontextlost',
+                contextLost,
+            );
             if (context.createProgram === programCreated)
                 context.createProgram = createProgram;
             if (context.deleteProgram === programDeleted)
@@ -175,6 +188,8 @@ export class GardenPacketNativeProgramWitness {
             deletedPrograms: this.deletedPrograms,
             createdBuffers: this.createdBuffers,
             deletedBuffers: this.deletedBuffers,
+            lostPrograms: this.lostPrograms,
+            lostBuffers: this.lostBuffers,
         };
     }
 }
@@ -233,5 +248,7 @@ export function readGardenPacketNativeProgramWitness(value: unknown) {
         deletedPrograms: count('deletedPrograms'),
         createdBuffers: count('createdBuffers'),
         deletedBuffers: count('deletedBuffers'),
+        lostPrograms: count('lostPrograms'),
+        lostBuffers: count('lostBuffers'),
     };
 }

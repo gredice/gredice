@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import sharp from 'sharp';
+import { GardenPacketLifetimeFixture } from '../../../packages/game/tests/GardenPacketLifetimeFixture';
 import { GardenPaletteAdmissionFixture } from '../../../packages/game/tests/GardenPaletteAdmissionFixture';
 import { GardenPaletteCullingFixture } from '../../../packages/game/tests/GardenPaletteCullingFixture';
 import { GardenPaletteInteractionFixture } from '../../../packages/game/tests/GardenPaletteInteractionFixture';
@@ -1847,3 +1848,494 @@ for (const [entityName, rain, sameChunk] of [
         expect(errors).toEqual([]);
     });
 }
+
+function lifetimeReadback(value: unknown) {
+    if (typeof value !== 'object' || value === null)
+        throw new Error('Lifetime readback required.');
+    const counts = Reflect.get(value, 'counts'),
+        lifetime = Reflect.get(value, 'lifetime');
+    if (
+        typeof counts !== 'object' ||
+        counts === null ||
+        typeof lifetime !== 'object' ||
+        lifetime === null
+    )
+        throw new Error('Lifetime counts required.');
+    const count = (object: object, name: string) => {
+        const result: unknown = Reflect.get(object, name);
+        if (
+            typeof result !== 'number' ||
+            !Number.isSafeInteger(result) ||
+            result < 0
+        )
+            throw new Error(`Invalid lifetime count ${name}.`);
+        return result;
+    };
+    const uniforms: unknown = Reflect.get(value, 'uniforms');
+    const png: unknown = Reflect.get(value, 'png');
+    const firstMain: unknown = Reflect.get(value, 'firstMainUniforms');
+    if (!Array.isArray(firstMain))
+        throw new Error('First actual positive GPU submission is required.');
+    if (!Array.isArray(uniforms) || typeof png !== 'string')
+        throw new Error('Actual uniform/pixel witness required.');
+    return {
+        native: readGardenPacketNativeProgramWitness(
+            Reflect.get(value, 'nativePrograms'),
+        ),
+        counts: {
+            ownedCreated: count(counts, 'ownedCreated'),
+            ownedDisposed: count(counts, 'ownedDisposed'),
+            borrowedDisposed: count(counts, 'borrowedDisposed'),
+            contextLost: count(counts, 'contextLost'),
+            contextRestored: count(counts, 'contextRestored'),
+        },
+        lifetime: {
+            idleOrigins: count(lifetime, 'idleOrigins'),
+            activeSignatures: count(lifetime, 'activeSignatures'),
+        },
+        uniforms: uniforms.map((uniform: unknown) => {
+            if (typeof uniform !== 'object' || uniform === null)
+                throw new Error('Uniform witness required.');
+            const uuid: unknown = Reflect.get(uniform, 'uuid'),
+                cloudStrength: unknown = Reflect.get(uniform, 'cloudStrength'),
+                wetStrength: unknown = Reflect.get(uniform, 'wetStrength');
+            if (
+                typeof uuid !== 'string' ||
+                (cloudStrength !== undefined &&
+                    typeof cloudStrength !== 'number') ||
+                typeof wetStrength !== 'number'
+            )
+                throw new Error('Current cloud/wet uniforms required.');
+            return { uuid, cloudStrength, wetStrength };
+        }),
+        png,
+        resources: Reflect.get(value, 'resources'),
+        programInventory: Reflect.get(value, 'programInventory'),
+        firstMainUniforms: firstMain.map((draw: unknown) => {
+            if (typeof draw !== 'object' || draw === null)
+                throw new Error('First GPU uniform submission required.');
+            const cloud: unknown = Reflect.get(draw, 'cloud'),
+                wet: unknown = Reflect.get(draw, 'wet'),
+                cacheKey: unknown = Reflect.get(draw, 'cacheKey'),
+                material: unknown = Reflect.get(draw, 'material');
+            if (
+                (cloud !== undefined &&
+                    (typeof cloud !== 'number' || !Number.isFinite(cloud))) ||
+                typeof wet !== 'number' ||
+                !Number.isFinite(wet) ||
+                typeof cacheKey !== 'string' ||
+                typeof material !== 'string'
+            )
+                throw new Error('First actual GPU uniform values required.');
+            return {
+                cloud,
+                wet,
+                cacheKey,
+                material,
+                bounds: Reflect.get(draw, 'bounds'),
+                projection: Reflect.get(draw, 'projection'),
+                hardness: Reflect.get(draw, 'hardness'),
+                mapMatches: Reflect.get(draw, 'mapMatches'),
+            };
+        }),
+    };
+}
+
+function expectCurrentCloudGpu(
+    readback: ReturnType<typeof lifetimeReadback>,
+    strength: number,
+) {
+    expect(readback.firstMainUniforms.length).toBeGreaterThan(0);
+    for (const draw of readback.firstMainUniforms) {
+        expect(draw.cloud).toBe(Math.fround(strength));
+        expect(draw.wet).toBe(Math.fround(0.4));
+        expect(draw.bounds).toEqual([-10, -10, 0.04, 0.04].map(Math.fround));
+        expect(draw.projection).toEqual([0.15, -0.2].map(Math.fround));
+        expect(draw.hardness).toBe(Math.fround(0.6));
+        expect(draw.mapMatches).toBe(true);
+    }
+}
+
+function lifetimeMainPrograms(readback: ReturnType<typeof lifetimeReadback>) {
+    const draws = readback.native.draws.filter(
+        (draw) =>
+            draw.pass === 'main' &&
+            (draw.kind === 'singleton' || draw.kind === 'compiled'),
+    );
+    expect(draws.length).toBeGreaterThan(0);
+    expect(
+        draws.every(
+            (draw) =>
+                draw.calls > 0 && draw.instancing && draw.shaderInstancing,
+        ),
+    ).toBe(true);
+    return new Map(draws.map((draw) => [draw.cacheKey, draw.programId]));
+}
+
+test('resident Dirt returns reuse actual native programs with current cloud uniforms and bounded root cleanup', async ({
+    mount,
+    page,
+}, testInfo) => {
+    test.setTimeout(90_000);
+    const fixture = await mount(<GardenPacketLifetimeFixture />);
+    const read = async (key: string) => {
+        await expect(fixture).toHaveAttribute('data-ready', key);
+        return lifetimeReadback(
+            JSON.parse((await fixture.getAttribute('data-result')) ?? '{}'),
+        );
+    };
+    const first = await read('true:0.4:0.2:false');
+    const programs = lifetimeMainPrograms(first);
+    const receipts = [first];
+    expect(first.uniforms.length).toBeGreaterThan(0);
+    expect(
+        first.uniforms.every(
+            (uniform) =>
+                uniform.cloudStrength === 0.2 && uniform.wetStrength === 0.4,
+        ),
+    ).toBe(true);
+    for (let i = 0; i < 4; i++) {
+        await fixture.update(
+            <GardenPacketLifetimeFixture mounted={false} cloudStrength={0.8} />,
+        );
+        const idle = await read('false:0.4:0.8:false');
+        receipts.push(idle);
+        await fixture.update(
+            <GardenPacketLifetimeFixture cloudStrength={0.8} />,
+        );
+        const returned = await read('true:0.4:0.8:false');
+        receipts.push(returned);
+        await testInfo.attach(`resident-dirt-return-${i + 1}`, {
+            body: JSON.stringify({ first, idle, returned }, null, 2),
+            contentType: 'application/json',
+        });
+        expect(lifetimeMainPrograms(returned)).toEqual(programs);
+        expect(idle.lifetime).toEqual({ idleOrigins: 1, activeSignatures: 0 });
+        expect(idle.native.liveBuffers).toBe(first.native.liveBuffers - 2);
+        expect(returned.native.liveBuffers).toBe(first.native.liveBuffers);
+        expect(returned.native.createdPrograms).toBe(
+            first.native.createdPrograms,
+        );
+        expectCurrentCloudGpu(returned, 0.8);
+        expect(returned.firstMainUniforms.length).toBeGreaterThan(0);
+        expect(
+            returned.firstMainUniforms.every(
+                (draw) =>
+                    draw.cloud === Math.fround(0.8) &&
+                    draw.wet === Math.fround(0.4),
+            ),
+        ).toBe(true);
+        expect(returned.uniforms.length).toBeGreaterThan(0);
+        expect(
+            returned.uniforms.every(
+                (uniform) =>
+                    uniform.cloudStrength === 0.8 &&
+                    uniform.wetStrength === 0.4,
+            ),
+        ).toBe(true);
+        expect(returned.counts.ownedCreated).toBe(first.counts.ownedCreated);
+        expect(returned.counts.borrowedDisposed).toBe(0);
+    }
+    expect(await pixels(submittedCanvasPng(first.png))).not.toEqual(
+        await pixels(submittedCanvasPng(receipts[2].png)),
+    );
+    await testInfo.attach('resident-dirt-native-program-return-receipts', {
+        body: JSON.stringify(receipts, null, 2),
+        contentType: 'application/json',
+    });
+    const beforeClose = receipts.at(-1);
+    if (!beforeClose) throw new Error('Positive return receipt required.');
+    await fixture.unmount();
+    const closed = lifetimeReadback(
+        await page.evaluate(() => window.gardenPacketLifetimeWitness?.read()),
+    );
+    await testInfo.attach('resident-dirt-root-cleanup', {
+        body: JSON.stringify(closed, null, 2),
+        contentType: 'application/json',
+    });
+    expect(closed.lifetime).toEqual({ idleOrigins: 0, activeSignatures: 0 });
+    expect(closed.counts.ownedDisposed).toBe(closed.counts.ownedCreated);
+    expect(closed.counts.borrowedDisposed).toBe(0);
+    expect(closed.native.deletedPrograms).toBeGreaterThan(
+        beforeClose.native.deletedPrograms,
+    );
+    expect(closed.native.deletedBuffers).toBe(
+        beforeClose.native.deletedBuffers + 2,
+    );
+    await page.evaluate(() =>
+        window.gardenPacketLifetimeWitness?.stopObserving(),
+    );
+});
+
+test('resident stock configuration changes and aborted Suspense stay bounded across context restoration', async ({
+    mount,
+    page,
+}, testInfo) => {
+    test.setTimeout(90_000);
+    const fixture = await mount(<GardenPacketLifetimeFixture aborted />);
+    const read = async (key: string) => {
+        await expect(fixture).toHaveAttribute('data-ready', key);
+        return lifetimeReadback(
+            JSON.parse((await fixture.getAttribute('data-result')) ?? '{}'),
+        );
+    };
+    const first = await read('true:0.4:0.2:true');
+    expect(first.lifetime).toEqual({ idleOrigins: 0, activeSignatures: 1 });
+    const receipts = [first];
+    for (let i = 0; i < 6; i++) {
+        const wetStrength = i % 2 ? 0.4 : 0.9;
+        await fixture.update(
+            <GardenPacketLifetimeFixture wetStrength={wetStrength} aborted />,
+        );
+        const changed = await read(`true:${wetStrength}:0.2:true`);
+        receipts.push(changed);
+        expect(changed.lifetime).toEqual({
+            idleOrigins: 0,
+            activeSignatures: 1,
+        });
+        expect(changed.uniforms.length).toBeGreaterThan(0);
+        expect(
+            changed.uniforms.every(
+                (uniform) => uniform.wetStrength === wetStrength,
+            ),
+        ).toBe(true);
+        expect(changed.counts.ownedCreated - changed.counts.ownedDisposed).toBe(
+            1,
+        );
+        expect(changed.counts.borrowedDisposed).toBe(0);
+    }
+    expect(await pixels(submittedCanvasPng(first.png))).not.toEqual(
+        await pixels(submittedCanvasPng(receipts[1].png)),
+    );
+    await page.evaluate(() =>
+        window.gardenPacketLifetimeWitness?.loseContext(),
+    );
+    await expect
+        .poll(
+            async () =>
+                lifetimeReadback(
+                    await page.evaluate(() =>
+                        window.gardenPacketLifetimeWitness?.read(),
+                    ),
+                ).counts.contextLost,
+        )
+        .toBe(1);
+    await page.evaluate(() =>
+        window.gardenPacketLifetimeWitness?.restoreContext(),
+    );
+    await expect
+        .poll(
+            async () =>
+                lifetimeReadback(
+                    await page.evaluate(() =>
+                        window.gardenPacketLifetimeWitness?.read(),
+                    ),
+                ).counts.contextRestored,
+        )
+        .toBe(1);
+    await fixture.update(
+        <GardenPacketLifetimeFixture
+            wetStrength={0.4}
+            cloudStrength={0.8}
+            aborted
+        />,
+    );
+    const restored = await read('true:0.4:0.8:true');
+    receipts.push(restored);
+    await testInfo.attach('resident-stock-config-and-context-receipts', {
+        body: JSON.stringify(receipts, null, 2),
+        contentType: 'application/json',
+    });
+
+    expect(restored.lifetime).toEqual({ idleOrigins: 0, activeSignatures: 1 });
+    expect(
+        restored.uniforms.every(
+            (uniform) =>
+                uniform.cloudStrength === 0.8 && uniform.wetStrength === 0.4,
+        ),
+    ).toBe(true);
+    const beforeLoss = receipts.at(-2);
+    if (!beforeLoss) throw new Error('Pre-loss draw required.');
+    expect(restored.counts.ownedCreated).toBe(beforeLoss.counts.ownedCreated);
+    expect(restored.uniforms.map((uniform) => uniform.uuid)).toEqual(
+        beforeLoss.uniforms.map((uniform) => uniform.uuid),
+    );
+    expect([...lifetimeMainPrograms(restored).keys()]).toEqual([
+        ...lifetimeMainPrograms(beforeLoss).keys(),
+    ]);
+    expect([...lifetimeMainPrograms(restored).values()]).not.toEqual([
+        ...lifetimeMainPrograms(beforeLoss).values(),
+    ]);
+    expect(restored.native.livePrograms).toBe(beforeLoss.native.livePrograms);
+    expect(restored.native.lostPrograms).toBe(beforeLoss.native.livePrograms);
+    expect(restored.native.lostBuffers).toBe(beforeLoss.native.liveBuffers);
+    await fixture.unmount();
+    const closed = lifetimeReadback(
+        await page.evaluate(() => window.gardenPacketLifetimeWitness?.read()),
+    );
+    expect(closed.counts.ownedDisposed).toBe(closed.counts.ownedCreated);
+    expect(closed.lifetime).toEqual({ idleOrigins: 0, activeSignatures: 0 });
+    await page.evaluate(() =>
+        window.gardenPacketLifetimeWitness?.stopObserving(),
+    );
+});
+
+test('resident stock cloud program variants use current custom uniforms after an unpatched draw', async ({
+    mount,
+    page,
+}, testInfo) => {
+    test.setTimeout(60_000);
+    const fixture = await mount(<GardenPacketLifetimeFixture />);
+    const read = async (key: string) => {
+        await expect(fixture).toHaveAttribute('data-ready', key);
+        return lifetimeReadback(
+            JSON.parse((await fixture.getAttribute('data-result')) ?? '{}'),
+        );
+    };
+    const first = await read('true:0.4:0.2:false');
+    await fixture.update(
+        <GardenPacketLifetimeFixture mounted={false} cloudStrength={0} />,
+    );
+    const idle = await read('false:0.4:0:false');
+    await fixture.update(<GardenPacketLifetimeFixture cloudStrength={0} />);
+    const unpatched = await read('true:0.4:0:false');
+    expect(unpatched.uniforms.length).toBeGreaterThan(0);
+    expect(
+        unpatched.uniforms.every(
+            (uniform) =>
+                uniform.cloudStrength === undefined &&
+                uniform.wetStrength === 0.4,
+        ),
+    ).toBe(true);
+    await fixture.update(
+        <GardenPacketLifetimeFixture mounted={false} cloudStrength={0.8} />,
+    );
+    await read('false:0.4:0.8:false');
+    await fixture.update(<GardenPacketLifetimeFixture cloudStrength={0.8} />);
+    const returned = await read('true:0.4:0.8:false');
+    await testInfo.attach('resident-stock-cloud-program-variants', {
+        body: JSON.stringify({ first, idle, unpatched, returned }, null, 2),
+        contentType: 'application/json',
+    });
+    expectCurrentCloudGpu(returned, 0.8);
+    expect(returned.uniforms.length).toBeGreaterThan(0);
+    expect(
+        returned.uniforms.every(
+            (uniform) =>
+                uniform.cloudStrength === 0.8 && uniform.wetStrength === 0.4,
+        ),
+    ).toBe(true);
+    expect(lifetimeMainPrograms(returned)).toEqual(lifetimeMainPrograms(first));
+    await fixture.unmount();
+    await page.evaluate(() =>
+        window.gardenPacketLifetimeWitness?.stopObserving(),
+    );
+});
+
+test('active stock cloud program variants bind current uniforms on their first actual return draw', async ({
+    mount,
+    page,
+}, testInfo) => {
+    test.setTimeout(60_000);
+    const fixture = await mount(<GardenPacketLifetimeFixture />);
+    const read = async (key: string) => {
+        await expect(fixture).toHaveAttribute('data-ready', key);
+        return lifetimeReadback(
+            JSON.parse((await fixture.getAttribute('data-result')) ?? '{}'),
+        );
+    };
+    const first = await read('true:0.4:0.2:false');
+    await fixture.update(<GardenPacketLifetimeFixture cloudStrength={0} />);
+    const unpatched = await read('true:0.4:0:false');
+    await fixture.update(<GardenPacketLifetimeFixture cloudStrength={0.8} />);
+    const returned = await read('true:0.4:0.8:false');
+    await testInfo.attach('active-stock-cloud-first-return-uniforms', {
+        body: JSON.stringify({ first, unpatched, returned }, null, 2),
+        contentType: 'application/json',
+    });
+    expect(returned.uniforms.map((uniform) => uniform.uuid)).toEqual(
+        first.uniforms.map((uniform) => uniform.uuid),
+    );
+    expect(lifetimeMainPrograms(returned)).toEqual(lifetimeMainPrograms(first));
+    expectCurrentCloudGpu(returned, 0.8);
+    expect(returned.firstMainUniforms.length).toBeGreaterThan(0);
+    expect(
+        returned.firstMainUniforms.every(
+            (draw) =>
+                draw.cloud === Math.fround(0.8) &&
+                draw.wet === Math.fround(0.4),
+        ),
+    ).toBe(true);
+    await fixture.unmount();
+    await page.evaluate(() =>
+        window.gardenPacketLifetimeWitness?.stopObserving(),
+    );
+});
+
+test('resident stock cloud uniforms remain isolated between live Canvas roots and sibling release', async ({
+    mount,
+    page,
+}, testInfo) => {
+    test.setTimeout(60_000);
+    const fixture = await mount(
+        <div>
+            <GardenPacketLifetimeFixture key="first" cloudStrength={0.2} />
+            <GardenPacketLifetimeFixture key="second" cloudStrength={0.8} />
+        </div>,
+    );
+    const read = async (index: number, key: string) => {
+        const root = fixture.getByTestId('garden-packet-lifetime').nth(index);
+        await expect(root).toHaveAttribute('data-ready', key);
+        return lifetimeReadback(
+            JSON.parse((await root.getAttribute('data-result')) ?? '{}'),
+        );
+    };
+    const first = await read(0, 'true:0.4:0.2:false');
+    const second = await read(1, 'true:0.4:0.8:false');
+    expect(first.uniforms.length).toBeGreaterThan(0);
+    expect(second.uniforms.length).toBeGreaterThan(0);
+    expect(first.uniforms.map((uniform) => uniform.uuid)).not.toEqual(
+        second.uniforms.map((uniform) => uniform.uuid),
+    );
+    expect(first.firstMainUniforms.length).toBeGreaterThan(0);
+    for (const draw of first.firstMainUniforms) {
+        expect(draw.cloud).toBe(Math.fround(0.2));
+        expect(draw.bounds).toEqual([-20, -20, 0.025, 0.025].map(Math.fround));
+        expect(draw.projection).toEqual([0, 0]);
+        expect(draw.hardness).toBe(0);
+        expect(draw.mapMatches).toBe(true);
+    }
+    expectCurrentCloudGpu(second, 0.8);
+    await fixture.update(
+        <div>
+            <GardenPacketLifetimeFixture key="second" cloudStrength={0} />
+        </div>,
+    );
+    const unpatched = await read(0, 'true:0.4:0:false');
+    await fixture.update(
+        <div>
+            <GardenPacketLifetimeFixture key="second" cloudStrength={0.9} />
+        </div>,
+    );
+    const returned = await read(0, 'true:0.4:0.9:false');
+    await testInfo.attach('resident-stock-isolated-root-cloud-uniforms', {
+        body: JSON.stringify({ first, second, unpatched, returned }, null, 2),
+        contentType: 'application/json',
+    });
+    expect(returned.uniforms.map((uniform) => uniform.uuid)).toEqual(
+        second.uniforms.map((uniform) => uniform.uuid),
+    );
+    expect(lifetimeMainPrograms(returned)).toEqual(
+        lifetimeMainPrograms(second),
+    );
+    expectCurrentCloudGpu(returned, 0.9);
+    expect(returned.counts.borrowedDisposed).toBe(0);
+    expect(returned.counts.ownedCreated - returned.counts.ownedDisposed).toBe(
+        1,
+    );
+    expect(returned.lifetime).toEqual({ idleOrigins: 0, activeSignatures: 1 });
+    await fixture.unmount();
+    await page.evaluate(() =>
+        window.gardenPacketLifetimeWitness?.stopObserving(),
+    );
+});
