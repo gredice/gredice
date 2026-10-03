@@ -2,21 +2,21 @@ import type { ShoppingCartItemWithShopData } from './cartInfo';
 
 type ShoppingCartItemForSunflowerCalculation = Pick<
     ShoppingCartItemWithShopData,
-    'currency' | 'id' | 'shopData' | 'status'
+    'amount' | 'currency' | 'id' | 'shopData' | 'status'
 >;
 
 /**
- * Calculate the sunflower amount for a cart item based on its shop data.
+ * Calculate the sunflower amount for every unit of a cart item.
  * Returns the amount in sunflowers (multiplied by 1000 for precision).
  */
 export function calculateSunflowerAmount(
-    item: Pick<ShoppingCartItemWithShopData, 'shopData'>,
+    item: Pick<ShoppingCartItemWithShopData, 'amount' | 'shopData'>,
 ): number {
     const price =
         typeof item.shopData.discountPrice === 'number'
             ? item.shopData.discountPrice
             : (item.shopData.price ?? 0);
-    return Math.round(price * 1000);
+    return Math.round(price * 1000) * item.amount;
 }
 
 export function getDefaultCartItemCurrency({
