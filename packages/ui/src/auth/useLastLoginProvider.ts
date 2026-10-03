@@ -2,17 +2,26 @@
 
 import { useEffect, useState } from 'react';
 
-export type OAuthProvider = 'google' | 'facebook';
+import {
+    type FetchLastLogin,
+    getLastLoginProvider,
+    type OAuthProvider,
+} from './lastLoginProviderRequest';
+
+export type { OAuthProvider } from './lastLoginProviderRequest';
 
 const defaultDelaysMs = [0, 250, 750];
 
 export function useLastLoginProvider(
-    fetchLastLogin: () => Promise<Response>,
+    fetchLastLogin: FetchLastLogin,
     delaysMs: number[] = defaultDelaysMs,
+    enabled = true,
 ) {
     const [lastLoginProvider, setLastLoginProvider] = useState<OAuthProvider>();
 
     useEffect(() => {
+        setLastLoginProvider(undefined);
+        if (!enabled) return;
         let isMounted = true;
 
         const fetchLastLoginProvider = async () => {
@@ -31,25 +40,9 @@ export function useLastLoginProvider(
                 }
 
                 try {
-                    const response = await fetchLastLogin();
-                    if (!response.ok) {
-                        continue;
-                    }
-
-                    const data: unknown = await response.json();
-                    if (
-                        data &&
-                        typeof data === 'object' &&
-                        'provider' in data
-                    ) {
-                        const provider = data.provider;
-                        if (
-                            (provider === 'google' ||
-                                provider === 'facebook') &&
-                            isMounted
-                        ) {
-                            setLastLoginProvider(provider);
-                        }
+                    const provider = await getLastLoginProvider(fetchLastLogin);
+                    if (isMounted) {
+                        setLastLoginProvider(provider);
                     }
                     return;
                 } catch {
@@ -63,7 +56,7 @@ export function useLastLoginProvider(
         return () => {
             isMounted = false;
         };
-    }, [delaysMs, fetchLastLogin]);
+    }, [delaysMs, enabled, fetchLastLogin]);
 
-    return lastLoginProvider;
+    return enabled ? lastLoginProvider : undefined;
 }
