@@ -14,6 +14,7 @@ import { AutumnLeaves } from '../src/scene/AutumnLeaves';
 import type { GameQualityTier } from '../src/scene/gameQuality';
 import { gameQualityProfiles } from '../src/scene/gameQuality';
 import { Scene } from '../src/scene/Scene';
+import { SceneBlockDataBoundary } from '../src/scene/SceneBlockDataBoundary';
 import { animated, useSpring } from '../src/scene/sceneSpring';
 import { getSeasonDebugDates } from '../src/scene/seasonDebugDates';
 import {
@@ -289,168 +290,178 @@ export function AutumnVisualFixture({
                             Start motion
                         </button>
                     )}
-                    <Scene
-                        position={[
-                            4 + (focus?.[0] ?? 0),
-                            cameraHeight + (focus?.[1] ?? 0),
-                            6 + (focus?.[2] ?? 0),
-                        ]}
-                        zoom={zoom}
-                        quality={gameQualityProfiles.low}
-                        fixedTimeSeconds={gusts ? 10.7 : 12}
-                        animateSprings={animateSprings}
-                        style={{ width: '100%', height: '100%' }}
-                    >
-                        <color attach="background" args={['#e7e2cc']} />
-                        <ambientLight
-                            intensity={lighting === 'twilight' ? 0.45 : 1.5}
-                        />
-                        <directionalLight
-                            position={[4, 8, 3]}
-                            intensity={
-                                lighting === 'cloudy'
-                                    ? 0.4
-                                    : lighting === 'twilight'
-                                      ? 0.6
-                                      : 2
-                            }
-                            color={
-                                lighting === 'twilight' ? '#efac78' : '#ffffff'
-                            }
-                        />
-                        {leaves && (
-                            <AutumnLeaves
-                                tier={tier}
-                                windSpeed={wind}
-                                windDirection={90}
-                                stacks={gusts ? stacks : undefined}
-                                gardenId={7}
-                                rain={rain}
-                                snow={snow}
-                                enabled={!disabled}
+                    <SceneBlockDataBoundary>
+                        <Scene
+                            position={[
+                                4 + (focus?.[0] ?? 0),
+                                cameraHeight + (focus?.[1] ?? 0),
+                                6 + (focus?.[2] ?? 0),
+                            ]}
+                            zoom={zoom}
+                            quality={gameQualityProfiles.low}
+                            fixedTimeSeconds={gusts ? 10.7 : 12}
+                            animateSprings={animateSprings}
+                            style={{ width: '100%', height: '100%' }}
+                        >
+                            <color attach="background" args={['#e7e2cc']} />
+                            <ambientLight
+                                intensity={lighting === 'twilight' ? 0.45 : 1.5}
                             />
-                        )}
-                        <Suspense fallback={null}>
-                            {instanced ? (
-                                <>
-                                    <EntityInstances
-                                        stacks={stacks}
-                                        quality={
-                                            gameQualityProfiles[
-                                                ground ||
-                                                entities ||
-                                                partEntities
-                                                    ? tier
-                                                    : 'low'
-                                            ]
-                                        }
-                                        weather={{
-                                            windSpeed: 0,
-                                            windDirection: 0,
-                                        }}
-                                        renderGroundDecorations={false}
-                                    />
-                                    {partEntities &&
-                                        stacks.map((stack) => {
-                                            const block = stack.blocks.at(-1);
-                                            if (!block) return null;
-                                            const props = {
-                                                stack,
-                                                block,
-                                                rotation: block.rotation,
-                                            };
-                                            if (block.name === 'WoodenBench')
-                                                return motionDrop ? (
-                                                    <ParticleSystemProvider
-                                                        key={block.id}
-                                                    >
-                                                        <QueuedPlacementDropAnimation
-                                                            block={block}
-                                                            particlePosition={[
-                                                                stack.position
-                                                                    .x,
-                                                                0,
-                                                                stack.position
-                                                                    .z,
-                                                            ]}
-                                                        >
-                                                            <WoodenBench
-                                                                {...props}
-                                                            />
-                                                        </QueuedPlacementDropAnimation>
-                                                    </ParticleSystemProvider>
-                                                ) : (
-                                                    <WoodenBench
-                                                        key={block.id}
-                                                        {...props}
-                                                    />
-                                                );
-                                            if (
-                                                block.name ===
-                                                'OutletDisplayTable'
-                                            )
-                                                return (
-                                                    <OutletDisplayTable
-                                                        key={block.id}
-                                                        {...props}
-                                                    />
-                                                );
-                                            if (
-                                                block.name === 'FenceGate' ||
-                                                block.name ===
-                                                    'StoneFenceGate' ||
-                                                block.name ===
-                                                    'PolishedStoneFenceGate'
-                                            )
-                                                return (
-                                                    <FenceGate
-                                                        key={block.id}
-                                                        {...props}
-                                                    />
-                                                );
-                                            return null;
-                                        })}
-                                    {standaloneBox && (
-                                        <GardenBox
-                                            stack={boxStack}
-                                            block={boxStack.blocks[0]}
-                                            rotation={partRotation % 4}
-                                        />
-                                    )}
-                                    {movingBenchTargetX !== undefined && (
-                                        <MovingAutumnBench
-                                            targetX={movingBenchTargetX}
-                                        />
-                                    )}
-                                </>
-                            ) : (
-                                stacks.map((stack) => (
-                                    <Foliage
-                                        weatherDisabled={weatherDisabled}
-                                        key={stack.blocks[0].id}
-                                        stack={stack}
-                                        block={stack.blocks[0]}
-                                        rotation={0}
-                                    />
-                                ))
+                            <directionalLight
+                                position={[4, 8, 3]}
+                                intensity={
+                                    lighting === 'cloudy'
+                                        ? 0.4
+                                        : lighting === 'twilight'
+                                          ? 0.6
+                                          : 2
+                                }
+                                color={
+                                    lighting === 'twilight'
+                                        ? '#efac78'
+                                        : '#ffffff'
+                                }
+                            />
+                            {leaves && (
+                                <AutumnLeaves
+                                    tier={tier}
+                                    windSpeed={wind}
+                                    windDirection={90}
+                                    stacks={gusts ? stacks : undefined}
+                                    gardenId={7}
+                                    rain={rain}
+                                    snow={snow}
+                                    enabled={!disabled}
+                                />
                             )}
-                            <AutumnSceneProbe
-                                onReady={setReady}
-                                onSprigColors={setSprigColors}
-                                onLeafCount={setLeafCount}
-                                onLeafHeights={setLeafHeights}
-                                onGustCount={setGustCount}
-                                onGroundCount={setGroundCount}
-                                onEntityCount={setEntityCount}
-                                onPartCount={setPartCount}
-                                onPartMismatchFrames={setPartMismatchFrames}
-                                onPartMotionSamples={setPartMotionSamples}
-                                onPartMismatchDetail={setPartMismatchDetail}
-                                onDropMotionSamples={setDropMotionSamples}
-                                focus={focus}
-                            />
-                        </Suspense>
-                    </Scene>
+                            <Suspense fallback={null}>
+                                {instanced ? (
+                                    <>
+                                        <EntityInstances
+                                            stacks={stacks}
+                                            quality={
+                                                gameQualityProfiles[
+                                                    ground ||
+                                                    entities ||
+                                                    partEntities
+                                                        ? tier
+                                                        : 'low'
+                                                ]
+                                            }
+                                            weather={{
+                                                windSpeed: 0,
+                                                windDirection: 0,
+                                            }}
+                                            renderGroundDecorations={false}
+                                        />
+                                        {partEntities &&
+                                            stacks.map((stack) => {
+                                                const block =
+                                                    stack.blocks.at(-1);
+                                                if (!block) return null;
+                                                const props = {
+                                                    stack,
+                                                    block,
+                                                    rotation: block.rotation,
+                                                };
+                                                if (
+                                                    block.name === 'WoodenBench'
+                                                )
+                                                    return motionDrop ? (
+                                                        <ParticleSystemProvider
+                                                            key={block.id}
+                                                        >
+                                                            <QueuedPlacementDropAnimation
+                                                                block={block}
+                                                                particlePosition={[
+                                                                    stack
+                                                                        .position
+                                                                        .x,
+                                                                    0,
+                                                                    stack
+                                                                        .position
+                                                                        .z,
+                                                                ]}
+                                                            >
+                                                                <WoodenBench
+                                                                    {...props}
+                                                                />
+                                                            </QueuedPlacementDropAnimation>
+                                                        </ParticleSystemProvider>
+                                                    ) : (
+                                                        <WoodenBench
+                                                            key={block.id}
+                                                            {...props}
+                                                        />
+                                                    );
+                                                if (
+                                                    block.name ===
+                                                    'OutletDisplayTable'
+                                                )
+                                                    return (
+                                                        <OutletDisplayTable
+                                                            key={block.id}
+                                                            {...props}
+                                                        />
+                                                    );
+                                                if (
+                                                    block.name ===
+                                                        'FenceGate' ||
+                                                    block.name ===
+                                                        'StoneFenceGate' ||
+                                                    block.name ===
+                                                        'PolishedStoneFenceGate'
+                                                )
+                                                    return (
+                                                        <FenceGate
+                                                            key={block.id}
+                                                            {...props}
+                                                        />
+                                                    );
+                                                return null;
+                                            })}
+                                        {standaloneBox && (
+                                            <GardenBox
+                                                stack={boxStack}
+                                                block={boxStack.blocks[0]}
+                                                rotation={partRotation % 4}
+                                            />
+                                        )}
+                                        {movingBenchTargetX !== undefined && (
+                                            <MovingAutumnBench
+                                                targetX={movingBenchTargetX}
+                                            />
+                                        )}
+                                    </>
+                                ) : (
+                                    stacks.map((stack) => (
+                                        <Foliage
+                                            weatherDisabled={weatherDisabled}
+                                            key={stack.blocks[0].id}
+                                            stack={stack}
+                                            block={stack.blocks[0]}
+                                            rotation={0}
+                                        />
+                                    ))
+                                )}
+                                <AutumnSceneProbe
+                                    onReady={setReady}
+                                    onSprigColors={setSprigColors}
+                                    onLeafCount={setLeafCount}
+                                    onLeafHeights={setLeafHeights}
+                                    onGustCount={setGustCount}
+                                    onGroundCount={setGroundCount}
+                                    onEntityCount={setEntityCount}
+                                    onPartCount={setPartCount}
+                                    onPartMismatchFrames={setPartMismatchFrames}
+                                    onPartMotionSamples={setPartMotionSamples}
+                                    onPartMismatchDetail={setPartMismatchDetail}
+                                    onDropMotionSamples={setDropMotionSamples}
+                                    focus={focus}
+                                />
+                            </Suspense>
+                        </Scene>
+                    </SceneBlockDataBoundary>
                 </div>
             </GameStateContext.Provider>
         </QueryClientProvider>

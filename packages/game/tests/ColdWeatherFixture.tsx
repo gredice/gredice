@@ -12,6 +12,7 @@ import {
 } from '../src/scene/gameQuality';
 import { Drops } from '../src/scene/Rain/Drops';
 import { Scene } from '../src/scene/Scene';
+import { SceneBlockDataBoundary } from '../src/scene/SceneBlockDataBoundary';
 import { getSeasonDebugDates } from '../src/scene/seasonDebugDates';
 import {
     createGameState,
@@ -129,63 +130,68 @@ export function ColdWeatherFixture({
                     data-sample="{}"
                     style={{ width: 640, height: 420 }}
                 >
-                    <Scene
-                        position={[8, 9, 12]}
-                        zoom={45}
-                        quality={gameQualityProfiles.low}
-                        fixedTimeSeconds={live ? undefined : fixedTime}
-                        profileStats
-                    >
-                        <color attach="background" args={['#d1dbe0']} />
-                        <ambientLight intensity={1.5} />
-                        <directionalLight
-                            position={[4, 8, 3]}
-                            intensity={1.5}
-                        />
-                        <Suspense fallback={null}>
-                            <EntityInstances
-                                stacks={stacks}
-                                quality={gameQualityProfiles[tier]}
-                                weather={{ windSpeed: 1, windDirection: 90 }}
-                                renderGroundDecorations={false}
+                    <SceneBlockDataBoundary>
+                        <Scene
+                            position={[8, 9, 12]}
+                            zoom={45}
+                            quality={gameQualityProfiles.low}
+                            fixedTimeSeconds={live ? undefined : fixedTime}
+                            profileStats
+                        >
+                            <color attach="background" args={['#d1dbe0']} />
+                            <ambientLight intensity={1.5} />
+                            <directionalLight
+                                position={[4, 8, 3]}
+                                intensity={1.5}
                             />
-                            <AutumnLeaves
-                                stacks={stacks}
-                                gardenId={7}
-                                tier={tier}
-                                windSpeed={1}
-                                rain={rain}
-                                snow={snow}
-                                enabled={!disabled}
-                            />
-                            {precipitation && rain > 0 && (
-                                <Drops intensity={rain} count={700} />
-                            )}
-                            <RainRipples
-                                stacks={stacks}
-                                gardenId={7}
-                                tier={tier}
-                                enabled={!disabled}
-                                snow={snow}
-                            />
-                            {mounted && (
-                                <ColdWeatherEffects
+                            <Suspense fallback={null}>
+                                <EntityInstances
+                                    stacks={stacks}
+                                    quality={gameQualityProfiles[tier]}
                                     weather={{
-                                        ...weather,
-                                        rainy: rain,
-                                        snowy: snow,
-                                        snowAccumulation: snow * 30,
+                                        windSpeed: 1,
+                                        windDirection: 90,
                                     }}
+                                    renderGroundDecorations={false}
+                                />
+                                <AutumnLeaves
+                                    stacks={stacks}
+                                    gardenId={7}
                                     tier={tier}
+                                    windSpeed={1}
+                                    rain={rain}
+                                    snow={snow}
                                     enabled={!disabled}
                                 />
-                            )}
-                            {actorIds.map(({ id, index }) => (
-                                <ColdWeatherActor key={id} index={index} />
-                            ))}
-                            <ColdWeatherProbe onSample={reportSample} />
-                        </Suspense>
-                    </Scene>
+                                {precipitation && rain > 0 && (
+                                    <Drops intensity={rain} count={700} />
+                                )}
+                                <RainRipples
+                                    stacks={stacks}
+                                    gardenId={7}
+                                    tier={tier}
+                                    enabled={!disabled}
+                                    snow={snow}
+                                />
+                                {mounted && (
+                                    <ColdWeatherEffects
+                                        weather={{
+                                            ...weather,
+                                            rainy: rain,
+                                            snowy: snow,
+                                            snowAccumulation: snow * 30,
+                                        }}
+                                        tier={tier}
+                                        enabled={!disabled}
+                                    />
+                                )}
+                                {actorIds.map(({ id, index }) => (
+                                    <ColdWeatherActor key={id} index={index} />
+                                ))}
+                                <ColdWeatherProbe onSample={reportSample} />
+                            </Suspense>
+                        </Scene>
+                    </SceneBlockDataBoundary>
                 </div>
             </GameStateContext.Provider>
         </QueryClientProvider>

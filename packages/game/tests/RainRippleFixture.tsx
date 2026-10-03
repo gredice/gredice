@@ -11,6 +11,7 @@ import {
 } from '../src/scene/gameQuality';
 import { Drops } from '../src/scene/Rain/Drops';
 import { Scene } from '../src/scene/Scene';
+import { SceneBlockDataBoundary } from '../src/scene/SceneBlockDataBoundary';
 import { getSeasonDebugDates } from '../src/scene/seasonDebugDates';
 import {
     createGameState,
@@ -169,67 +170,74 @@ export function RainRippleFixture({
                     data-sample="{}"
                     style={{ width: 640, height: 420 }}
                 >
-                    <Scene
-                        position={[8, 9, 12]}
-                        zoom={focusSquirrel ? 500 : surface ? 75 : 45}
-                        quality={gameQualityProfiles.low}
-                        fixedTimeSeconds={live ? undefined : fixedTime}
-                        profileStats
-                    >
-                        <color attach="background" args={['#d1dbe0']} />
-                        <ambientLight intensity={1.5} />
-                        <directionalLight
-                            position={[4, 8, 3]}
-                            intensity={1.5}
-                        />
-                        <Suspense fallback={null}>
-                            {renderLayers && (
-                                <>
-                                    <EntityInstances
-                                        stacks={stacks}
-                                        quality={gameQualityProfiles[tier]}
-                                        weather={{
-                                            windSpeed: 1,
-                                            windDirection: 90,
-                                        }}
-                                        renderGroundDecorations={false}
-                                    />
-                                    <AutumnLeaves
-                                        stacks={stacks}
-                                        gardenId={7}
-                                        tier={tier}
-                                        windSpeed={1}
-                                        rain={rain}
-                                        snow={snow}
-                                        enabled={!disabled}
-                                    />
-                                    {precipitation && rain > 0 && (
-                                        <Drops intensity={rain} count={700} />
-                                    )}
-                                    {mounted && (
-                                        <RainRipples
+                    <SceneBlockDataBoundary>
+                        <Scene
+                            position={[8, 9, 12]}
+                            zoom={focusSquirrel ? 500 : surface ? 75 : 45}
+                            quality={gameQualityProfiles.low}
+                            fixedTimeSeconds={live ? undefined : fixedTime}
+                            profileStats
+                        >
+                            <color attach="background" args={['#d1dbe0']} />
+                            <ambientLight intensity={1.5} />
+                            <directionalLight
+                                position={[4, 8, 3]}
+                                intensity={1.5}
+                            />
+                            <Suspense fallback={null}>
+                                {renderLayers && (
+                                    <>
+                                        <EntityInstances
+                                            stacks={stacks}
+                                            quality={gameQualityProfiles[tier]}
+                                            weather={{
+                                                windSpeed: 1,
+                                                windDirection: 90,
+                                            }}
+                                            renderGroundDecorations={false}
+                                        />
+                                        <AutumnLeaves
                                             stacks={stacks}
                                             gardenId={7}
                                             tier={tier}
-                                            enabled={!disabled}
+                                            windSpeed={1}
+                                            rain={rain}
                                             snow={snow}
+                                            enabled={!disabled}
                                         />
-                                    )}
-                                </>
-                            )}
-                            {squirrels && (
-                                <Squirrels
-                                    farmId={7}
-                                    stacks={stacks}
-                                    seasonalEffectsEnabled={seasonalSquirrels}
+                                        {precipitation && rain > 0 && (
+                                            <Drops
+                                                intensity={rain}
+                                                count={700}
+                                            />
+                                        )}
+                                        {mounted && (
+                                            <RainRipples
+                                                stacks={stacks}
+                                                gardenId={7}
+                                                tier={tier}
+                                                enabled={!disabled}
+                                                snow={snow}
+                                            />
+                                        )}
+                                    </>
+                                )}
+                                {squirrels && (
+                                    <Squirrels
+                                        farmId={7}
+                                        stacks={stacks}
+                                        seasonalEffectsEnabled={
+                                            seasonalSquirrels
+                                        }
+                                    />
+                                )}
+                                <RainRippleProbe
+                                    onSample={reportSample}
+                                    focusSquirrel={focusSquirrel}
                                 />
-                            )}
-                            <RainRippleProbe
-                                onSample={reportSample}
-                                focusSquirrel={focusSquirrel}
-                            />
-                        </Suspense>
-                    </Scene>
+                            </Suspense>
+                        </Scene>
+                    </SceneBlockDataBoundary>
                 </div>
             </GameStateContext.Provider>
         </QueryClientProvider>

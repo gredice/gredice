@@ -8,6 +8,7 @@ import {
     type GameQualityProfile,
     resolveGameQualityProfile,
 } from '../scene/gameQuality';
+import { SceneBlockDataBoundary } from '../scene/SceneBlockDataBoundary';
 import { snowPresets } from '../snow/snowPresets';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
@@ -339,7 +340,7 @@ export function EntityInstances({
         renderStableChunksAsMergedGeometry: true,
     };
 
-    return (
+    const content = (
         <EntityBlockInstanceIndexContext.Provider
             value={entityBlockInstanceIndex}
         >
@@ -823,4 +824,5 @@ export function EntityInstances({
             </StaticRenderPacketBatchProvider>
         </EntityBlockInstanceIndexContext.Provider>
     );
+    return <SceneBlockDataBoundary>{content}</SceneBlockDataBoundary>;
 }

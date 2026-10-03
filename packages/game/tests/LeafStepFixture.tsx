@@ -7,6 +7,7 @@ import { EntityInstances } from '../src/entities/EntityInstances';
 import { AutumnLeaves } from '../src/scene/AutumnLeaves';
 import { gameQualityProfiles } from '../src/scene/gameQuality';
 import { Scene } from '../src/scene/Scene';
+import { SceneBlockDataBoundary } from '../src/scene/SceneBlockDataBoundary';
 import { getSeasonDebugDates } from '../src/scene/seasonDebugDates';
 import {
     createGameState,
@@ -106,46 +107,51 @@ export function LeafStepFixture({
                     Toggle master
                 </button>
                 <div style={{ width: 640, height: 420 }}>
-                    <Scene
-                        position={[6, 7, 9]}
-                        zoom={50}
-                        quality={gameQualityProfiles[tier]}
-                        fixedTimeSeconds={fixed ? 12 : undefined}
-                        profileStats
-                    >
-                        <ambientLight intensity={1.5} />
-                        <Suspense fallback={null}>
-                            <EntityInstances
-                                stacks={stacks}
-                                quality={gameQualityProfiles[tier]}
-                                weather={{ windSpeed: 1 }}
-                            />
-                            <AutumnLeaves
-                                stacks={stacks}
-                                gardenId={7}
-                                tier={tier}
-                                windSpeed={1}
-                                rain={rain}
-                                snow={snow}
-                                enabled={!disabled}
-                            />
-                            <AutumnRustle windSpeed={1} enabled={!disabled} />
-                            {mounted && (
-                                <GardenAvatar
+                    <SceneBlockDataBoundary>
+                        <Scene
+                            position={[6, 7, 9]}
+                            zoom={50}
+                            quality={gameQualityProfiles[tier]}
+                            fixedTimeSeconds={fixed ? 12 : undefined}
+                            profileStats
+                        >
+                            <ambientLight intensity={1.5} />
+                            <Suspense fallback={null}>
+                                <EntityInstances
                                     stacks={stacks}
-                                    initialSpawnPoint={spawn}
-                                    roamSeed="leaf-step-fixture"
-                                    onPresenceChange={(presence) => {
-                                        Reflect.set(
-                                            window,
-                                            '__leafStepPosition',
-                                            presence.position,
-                                        );
-                                    }}
+                                    quality={gameQualityProfiles[tier]}
+                                    weather={{ windSpeed: 1 }}
                                 />
-                            )}
-                        </Suspense>
-                    </Scene>
+                                <AutumnLeaves
+                                    stacks={stacks}
+                                    gardenId={7}
+                                    tier={tier}
+                                    windSpeed={1}
+                                    rain={rain}
+                                    snow={snow}
+                                    enabled={!disabled}
+                                />
+                                <AutumnRustle
+                                    windSpeed={1}
+                                    enabled={!disabled}
+                                />
+                                {mounted && (
+                                    <GardenAvatar
+                                        stacks={stacks}
+                                        initialSpawnPoint={spawn}
+                                        roamSeed="leaf-step-fixture"
+                                        onPresenceChange={(presence) => {
+                                            Reflect.set(
+                                                window,
+                                                '__leafStepPosition',
+                                                presence.position,
+                                            );
+                                        }}
+                                    />
+                                )}
+                            </Suspense>
+                        </Scene>
+                    </SceneBlockDataBoundary>
                 </div>
             </GameStateContext.Provider>
         </QueryClientProvider>

@@ -103,6 +103,7 @@ import {
 import { GardenSceneResourceController } from './scene/resources/GardenSceneResourceController';
 import { useGardenSceneManifests } from './scene/resources/useGardenSceneManifests';
 import { Scene } from './scene/Scene';
+import { SceneBlockDataProvider } from './scene/SceneBlockDataProvider';
 import { StaticOpaqueSceneCacheOcclusionFixture } from './scene/StaticOpaqueSceneCacheOcclusionFixture';
 import type { Block } from './types/Block';
 import type { Stack } from './types/Stack';
@@ -557,7 +558,7 @@ export function GameScene({
         markDetailedInspectionSeen(inspection);
     }
 
-    return (
+    const content = (
         <div
             className={cx(
                 styles.interactionSurface,
@@ -912,5 +913,10 @@ export function GameScene({
                 />
             )}
         </div>
+    );
+    return (
+        <SceneBlockDataProvider data={blockData}>
+            {content}
+        </SceneBlockDataProvider>
     );
 }
