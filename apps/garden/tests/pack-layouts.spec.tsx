@@ -45,6 +45,35 @@ async function source(page: import('@playwright/test').Page, missing = false) {
         });
     });
 }
+async function assertFramed(page: import('@playwright/test').Page) {
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect
+        .poll(
+            async () => {
+                const points = (await sample(page)).projected;
+                const hud = await page
+                    .getByRole('region', {
+                        name: 'Pregled rasporeda iz paketa',
+                    })
+                    .boundingBox();
+                const canvas = await page.locator('canvas').boundingBox();
+                return (
+                    points?.length === 8 &&
+                    hud &&
+                    canvas &&
+                    points.every(
+                        ([x, y]: number[]) =>
+                            x >= canvas.x + 10 &&
+                            x <= canvas.x + canvas.width - 10 &&
+                            y >= Math.max(0, canvas.y) + 10 &&
+                            y <= Math.min(canvas.y + canvas.height, hud.y) - 10,
+                    )
+                );
+            },
+            { timeout: 30000 },
+        )
+        .toBe(true);
+}
 async function start(page: import('@playwright/test').Page) {
     await page.locator('[data-owned-pack]').locator('summary').click();
     await page
@@ -53,6 +82,7 @@ async function start(page: import('@playwright/test').Page) {
     await expect(
         page.getByRole('region', { name: 'Pregled rasporeda iz paketa' }),
     ).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, 0));
     await expect
         .poll(async () => (await sample(page)).ghosts, { timeout: 30000 })
         .toBe(4);
@@ -62,7 +92,7 @@ test('real translucent complete preview rotates all four ways, moves by keyboard
     mount,
     page,
 }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
+    await page.setViewportSize({ width: 390, height: 650 });
     await source(page);
     const writes: string[] = [];
     page.on('request', (request) => {
@@ -70,6 +100,10 @@ test('real translucent complete preview rotates all four ways, moves by keyboard
     });
     await mount(<PackLayoutPreviewFixture />);
     const original = await page.getByTestId('layout-garden').textContent();
+    await expect
+        .poll(async () => Boolean((await sample(page)).camera))
+        .toBe(true);
+    const originalCamera = (await sample(page)).camera;
     await start(page);
     const region = page.getByRole('region', {
         name: 'Pregled rasporeda iz paketa',
@@ -84,9 +118,13 @@ test('real translucent complete preview rotates all four ways, moves by keyboard
         ),
     ).toBe(true);
     expect((await sample(page)).cellColors).toEqual(Array(5).fill('4ade80'));
+    await assertFramed(page);
     await page
         .locator('canvas')
-        .screenshot({ path: '/tmp/gredice-owned-layout-preview.png' });
+        .screenshot({ path: '/tmp/gredice-owned-layout-preview-mobile-0.png' });
+    await page.screenshot({
+        path: '/tmp/gredice-owned-layout-preview-mobile-0-full.png',
+    });
     expect((await sample(page)).opaque).toBe(0);
     expect((await sample(page)).lights).toBe(0);
     expect((await sample(page)).steam).toBe(0);
@@ -100,10 +138,22 @@ test('real translucent complete preview rotates all four ways, moves by keyboard
             .poll(async () => (await sample(page)).rotation)
             .toBe(rotation);
         await expect.poll(async () => (await sample(page)).cells).toBe(5);
+        await assertFramed(page);
+        if (rotation === 1)
+            await page.screenshot({
+                path: '/tmp/gredice-owned-layout-preview-mobile-90.png',
+            });
         await expect(
             page.getByRole('button', { name: 'Potvrdi postavljanje' }),
         ).toBeEnabled();
     }
+    await region.locator('summary').click();
+    await assertFramed(page);
+    await page.screenshot({
+        path: '/tmp/gredice-owned-layout-preview-mobile-expanded.png',
+    });
+    await region.locator('summary').click();
+    await assertFramed(page);
     await region.focus();
     await page.keyboard.press('ArrowRight');
     await expect.poll(async () => (await sample(page)).anchor?.x).toBe(1);
@@ -131,6 +181,9 @@ test('real translucent complete preview rotates all four ways, moves by keyboard
     expect(await page.getByTestId('layout-garden').textContent()).toBe(
         original,
     );
+    await expect
+        .poll(async () => (await sample(page)).camera)
+        .toEqual(originalCamera);
     expect(writes).toEqual([]);
 });
 
@@ -150,6 +203,7 @@ test('collision, missing quantities and stale garden retain full red preview and
     ).toBeDisabled();
     expect((await sample(page)).ghosts).toBe(4);
     expect((await sample(page)).valid).toBe(false);
+    await assertFramed(page);
     expect((await sample(page)).cellColors).toEqual(Array(5).fill('ef4444'));
     expect(
         (await sample(page)).cellHeights.every(
@@ -225,6 +279,10 @@ test('lost group response survives remount as an exact owner-bound retry without
         });
     });
     let component = await mount(<PackLayoutPreviewFixture />);
+    await expect
+        .poll(async () => Boolean((await sample(page)).camera))
+        .toBe(true);
+    const originalCamera = (await sample(page)).camera;
     await start(page);
     await page.getByRole('button', { name: 'Potvrdi postavljanje' }).click();
     await expect(
@@ -233,6 +291,9 @@ test('lost group response survives remount as an exact owner-bound retry without
     await page.getByRole('button', { name: 'Promijeni račun' }).click();
     await expect(page.getByRole('region')).toHaveCount(0);
     await expect.poll(async () => (await sample(page)).active).toBe(false);
+    await expect
+        .poll(async () => (await sample(page)).camera)
+        .toEqual(originalCamera);
     await page.getByRole('button', { name: 'Vrati račun' }).click();
     await expect(
         page.getByRole('button', { name: 'Provjeri isti zahtjev' }),
@@ -248,6 +309,9 @@ test('lost group response survives remount as an exact owner-bound retry without
     await expect(page.getByRole('region')).toContainText(
         'Postavljeno 4 predmeta',
     );
+    await expect
+        .poll(async () => (await sample(page)).camera)
+        .toEqual(originalCamera);
     expect(commands).toHaveLength(2);
     expect(commands[1]).toEqual(commands[0]);
     expect(commands[0]?.expectedAccountId).toBe(packLayoutFixtureAccountId);

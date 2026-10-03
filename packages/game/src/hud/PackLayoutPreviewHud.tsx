@@ -13,7 +13,7 @@ import {
     getPackLayoutQuantities,
     resolveOwnedPackLayout,
 } from '../packLayouts/packLayoutProjection';
-import { useGameState } from '../useGameState';
+import { useGameState, useGameStateStore } from '../useGameState';
 
 export function PackLayoutPreviewHud() {
     const selection = useGameState((state) => state.packLayoutPreview);
@@ -22,6 +22,7 @@ export function PackLayoutPreviewHud() {
     const unavailable = useGameState(
         (state) => state.packLayoutPreviewUnavailable,
     );
+    const framed = useGameState((state) => state.packLayoutPreviewFramed);
     const ready = useGameState((state) => state.packLayoutPreviewReady);
     const setReady = useGameState((state) => state.setPackLayoutPreviewReady);
     const flow = useGardenPackLayoutPlacement();
@@ -29,9 +30,48 @@ export function PackLayoutPreviewHud() {
     const { data: garden } = useCurrentGarden();
     const { data: blockData } = useBlockData();
     const focus = useRef<HTMLElement>(null);
+    const store = useGameStateStore();
+    const surfaceKey =
+        selection?.key ??
+        flow.session?.command?.body.operationId ??
+        flow.session?.receipt?.operationId;
+    const eligible = flow.context.eligible;
+    useEffect(() => {
+        const element = focus.current;
+        if (!surfaceKey || !eligible || !element) return;
+        const measure = () => {
+            if (!element.isConnected) return;
+            const rect = element.getBoundingClientRect();
+            const previous = store.getState().packLayoutPreviewHudRect;
+            if (
+                previous?.top === rect.top &&
+                previous.left === rect.left &&
+                previous.right === rect.right &&
+                previous.bottom === rect.bottom
+            )
+                return;
+            store.getState().setPackLayoutPreviewHudRect({
+                top: rect.top,
+                left: rect.left,
+                right: rect.right,
+                bottom: rect.bottom,
+            });
+        };
+        measure();
+        const observer = new ResizeObserver(measure);
+        observer.observe(element);
+        window.addEventListener('resize', measure);
+        window.addEventListener('scroll', measure, true);
+        return () => {
+            observer.disconnect();
+            window.removeEventListener('resize', measure);
+            window.removeEventListener('scroll', measure, true);
+            store.getState().setPackLayoutPreviewHudRect(null);
+        };
+    }, [surfaceKey, eligible, store]);
     const previewKey = selection?.key;
     useEffect(() => {
-        if (previewKey) focus.current?.focus();
+        if (previewKey) focus.current?.focus({ preventScroll: true });
     }, [previewKey]);
     const layout = layouts.data?.layouts.find(
         (item) => item.id === selection?.layoutId,
@@ -239,7 +279,8 @@ export function PackLayoutPreviewHud() {
                                 stale ||
                                 unavailable ||
                                 !layout ||
-                                !ready))
+                                !ready ||
+                                !framed))
                     }
                     onClick={() => void flow.confirm(layout, blockData)}
                 >

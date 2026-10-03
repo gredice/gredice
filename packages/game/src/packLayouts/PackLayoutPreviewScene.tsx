@@ -1,18 +1,20 @@
 import { useThree } from '@react-three/fiber';
 import { Suspense, useCallback, useEffect, useMemo, useRef } from 'react';
-import { Plane, Raycaster, Vector2, Vector3 } from 'three';
+import { type Group, Plane, Raycaster, Vector2, Vector3 } from 'three';
 import { useBlockData } from '../hooks/useBlockData';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useOwnedPackLayouts } from '../hooks/useOwnedPackLayouts';
 import { useSceneRenderRequest } from '../scene/SceneTime';
 import { useGameState, useGameStateStore } from '../useGameState';
 import { getStackHeight } from '../utils/stackHeightCore';
+import { PackLayoutPreviewCamera } from './PackLayoutPreviewCamera';
 import { PackLayoutRenderBoundary } from './PackLayoutRenderBoundary';
 import { resolveOwnedPackLayout } from './packLayoutProjection';
 import { TranslucentPackLayoutItem } from './TranslucentPackLayoutItem';
 
 const ground = new Plane(new Vector3(0, 1, 0), 0);
 export function PackLayoutPreviewScene() {
+    const root = useRef<Group>(null);
     const selection = useGameState((state) => state.packLayoutPreview);
     const locked = useGameState((state) => state.packLayoutPreviewLocked);
     const store = useGameStateStore();
@@ -61,7 +63,7 @@ export function PackLayoutPreviewScene() {
                 .getState()
                 .setPackLayoutPreviewReady(
                     Boolean(
-                        preview?.valid &&
+                        preview?.placements.length &&
                             readiness.ready.size === preview.placements.length,
                     ),
                 );
@@ -155,6 +157,7 @@ export function PackLayoutPreviewScene() {
         return null;
     return (
         <group
+            ref={root}
             name="Interaction:PackLayoutPreview"
             userData={{
                 valid: preview.valid,
@@ -163,6 +166,11 @@ export function PackLayoutPreviewScene() {
                 quantity: preview.placements.length,
             }}
         >
+            <PackLayoutPreviewCamera
+                previewKey={selection.key}
+                identity={identity}
+                root={root}
+            />
             {preview.placements.map((item) => {
                 const cells = Array.from(
                     { length: item.footprint.width * item.footprint.depth },

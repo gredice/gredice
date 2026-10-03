@@ -1,6 +1,13 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
-import { Color, Mesh, PointLight, Vector3 } from 'three';
+import {
+    Box3,
+    Color,
+    Mesh,
+    OrthographicCamera,
+    PointLight,
+    Vector3,
+} from 'three';
 import { useSceneRenderRequest } from '../src/scene/SceneTime';
 import { useSteamSources } from '../src/scene/SteamSources';
 import { useGameState } from '../src/useGameState';
@@ -69,6 +76,32 @@ export function PackLayoutPreviewProbe({
         const ground = new Vector3(3, 0, 3).project(camera);
         const rect = gl.domElement.getBoundingClientRect();
         const sample = JSON.stringify({
+            camera: {
+                position: camera.position.toArray(),
+                quaternion: camera.quaternion.toArray(),
+                zoom: camera instanceof OrthographicCamera ? camera.zoom : 0,
+            },
+            projected: preview
+                ? (() => {
+                      preview.updateWorldMatrix(true, true);
+                      const box = new Box3().setFromObject(preview, true);
+                      const points: number[][] = [];
+                      for (const x of [box.min.x, box.max.x])
+                          for (const y of [box.min.y, box.max.y])
+                              for (const z of [box.min.z, box.max.z]) {
+                                  const point = new Vector3(x, y, z).project(
+                                      camera,
+                                  );
+                                  points.push([
+                                      rect.left +
+                                          ((point.x + 1) * rect.width) / 2,
+                                      rect.top +
+                                          ((1 - point.y) * rect.height) / 2,
+                                  ]);
+                              }
+                      return points;
+                  })()
+                : [],
             exists: Boolean(preview),
             ghosts,
             cells,
