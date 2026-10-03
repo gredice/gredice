@@ -4,6 +4,10 @@ import { GardenPaletteAdmissionFixture } from '../../../packages/game/tests/Gard
 import { GardenPaletteCullingFixture } from '../../../packages/game/tests/GardenPaletteCullingFixture';
 import { GardenPaletteInteractionFixture } from '../../../packages/game/tests/GardenPaletteInteractionFixture';
 import { GardenPalettePacketFixture } from '../../../packages/game/tests/GardenPalettePacketFixture';
+import {
+    type GardenPaletteFrameInputSnapshot,
+    installGardenPaletteFrameInput,
+} from '../../../packages/game/tests/gardenPaletteFrameInput';
 
 async function pixels(png: Buffer) {
     return sharp(png).ensureAlpha().raw().toBuffer();
@@ -1191,6 +1195,7 @@ for (const [entityName, rain, sameChunk] of [
             // Install before any root can queue a native RAF, then keep its
             // managed timers live until worker compilation and native presentation complete.
             await page.clock.install();
+            await page.evaluate(installGardenPaletteFrameInput);
             for (const batch of [false, true]) {
                 await page.clock.resume();
                 const fixture = await mount(
@@ -1552,7 +1557,60 @@ for (const [entityName, rain, sameChunk] of [
                 beforeDropTransformed =
                     beforeDrop.placement
                         .placementChunkPhysicalTransformedInstanceCount;
-                await fixture.getByTestId('palette-drop').click();
+                // Prospectively align the input to an already admitted root
+                // RAF on the unchanged fake16ms display grid. No spring exists
+                // while waiting; no additional frame/timer/render is requested.
+                const expectedRoot = await page.evaluate(
+                    () =>
+                        window.gardenPaletteInteractionWitness?.frameInput()
+                            ?.rootId,
+                );
+                if (expectedRoot === undefined)
+                    throw new Error(
+                        'Missing native root identity before input',
+                    );
+                let armedInput: GardenPaletteFrameInputSnapshot | undefined;
+                for (let waitMs = 0; waitMs <= 1000; waitMs++) {
+                    const decision = await page.evaluate((rootId) => {
+                        const witness = window.gardenPaletteInteractionWitness;
+                        const value = witness?.snapshot();
+                        const input = witness?.frameInput();
+                        if (!input || input.rootId !== rootId)
+                            throw new Error(
+                                'Native root ownership changed before input',
+                            );
+                        const noDrop =
+                            value?.phase === 'idle' &&
+                            value?.dropAnimation === undefined &&
+                            value?.springStarted === false &&
+                            witness?.activeDrop() === undefined;
+                        if (!noDrop)
+                            throw new Error('Drop exists before input barrier');
+                        if (!input?.ready) return { dispatched: false, input };
+                        const button = document.querySelector(
+                            '[data-testid="palette-drop"]',
+                        );
+                        if (!(button instanceof HTMLButtonElement))
+                            throw new Error('Missing drop input button');
+                        button.click();
+                        return { dispatched: true, input };
+                    }, expectedRoot);
+                    stateCaptures.push({
+                        batch,
+                        name: 'drop-pre-input',
+                        virtualWaitMs: waitMs,
+                        ...decision,
+                    });
+                    if (decision.dispatched) {
+                        armedInput = decision.input;
+                        break;
+                    }
+                    if (waitMs < 1000) await page.clock.runFor(1);
+                }
+                if (!armedInput)
+                    throw new Error(
+                        'No equivalent admitted next16 root frame before drop',
+                    );
                 await expect
                     .poll(async () => (await read())?.phase)
                     .toBe('drop');
@@ -1599,6 +1657,15 @@ for (const [entityName, rain, sameChunk] of [
                         window.gardenPaletteInteractionWitness?.activeDrop(),
                     ),
                 ).toBeDefined();
+                const actualDrop = await page.evaluate(() =>
+                    window.gardenPaletteInteractionWitness?.activeDrop(),
+                );
+                expect(actualDrop?.frameInputReceipt).toEqual({
+                    rootId: armedInput.rootId,
+                    callbackId: armedInput.callbackId,
+                    requestId: armedInput.queued[0].requestId,
+                    timestamp: armedInput.dueAt,
+                });
                 await capture('drop-active', true);
                 await page.clock.runFor(4000);
                 await expect
@@ -1626,6 +1693,16 @@ for (const [entityName, rain, sameChunk] of [
                     .toBe(true);
             }
         } finally {
+            const frameInputHistory = await page.evaluate(() => {
+                const observer = window.gardenPaletteFrameInput;
+                const history = observer?.history();
+                const restored = observer?.restore();
+                return { ...history, restored };
+            });
+            await testInfo.attach('pre-input-owned-frame-history', {
+                body: JSON.stringify(frameInputHistory),
+                contentType: 'application/json',
+            });
             await testInfo.attach('interaction-outcomes', {
                 body: JSON.stringify({
                     rain,
@@ -1636,6 +1713,8 @@ for (const [entityName, rain, sameChunk] of [
                 }),
                 contentType: 'application/json',
             });
+            expect(frameInputHistory.errors).toEqual([]);
+            expect(frameInputHistory.restored).toBe(true);
         }
         expect(outcomes).toHaveLength(7);
         expect(errors).toEqual([]);

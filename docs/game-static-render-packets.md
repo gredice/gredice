@@ -139,11 +139,21 @@ wet-overlay draws and Float32 wetness 1. Active drops compare the exact first
 16 ms public spring input, committed 0.1 lift, original animated geometry,
 matching pose/camera/light/weather inputs and same-submission PNGs. Pixel limits
 remain fewer than 0.1% materially different pixels and maximum channel error 8.
-The partition repair passes 67 focused units, Game/Garden/WWW typechecks and a
-single 23-case Chromium SwiftShader semantic matrix. That matrix includes both
+The packet retention repair passes 69 focused units, Game/Garden/WWW typechecks
+and a single 23-case Chromium SwiftShader semantic matrix. That matrix includes both
 the original two-chunk Stool drop and a separate same-chunk retained singleton
 rewrite, with real placement counters. Buttons drive production store state;
 these tests do not claim pointer hit-test coverage or a device GPU benefit.
+
+The active-drop control prospectively waits, before any drop or spring exists,
+for one uncancelled owned root RAF on the unchanged Playwright 16 ms display
+phase, then dispatches the existing button synchronously. Public root receipts
+bind the original callback identity; the submitted drop must match that exact
+root, request and next timestamp before the existing spring and pixel assertions
+run. Bounded readiness history and native-wrapper restoration are checked.
+Earlier strict 32 ms failures and delegated diagnostic passes remain preserved;
+this control establishes matched pre-input test conditions, not a general
+production guarantee that every render interval is 16 ms.
 
 ## Performance acceptance
 
@@ -152,18 +162,23 @@ failed original-cost admission with 24 binding relative exceptions: 13 geometry
 rows and 11 switch/cold rows. Exact canonical inventories reproduced the geometry
 increase, and native switch traces located repeated terrain clone/program
 lifetimes and cumulative info-log costs. Its artifacts remain rejected evidence.
-The current repair preserves the original merged terrain route and avoids
-compiling zero-benefit original-instanced singletons; its unchanged native and
-relative gates remain pending.
+The subsequent `7c5775ac` partition repair preserved the original merged terrain
+route and avoided compiling zero-benefit original-instanced singletons. It passed
+all 39 absolute/comparability scenarios and 343 of 344 original-cost metrics with
+all 42 invariants, but cold garden-switch canvas readiness remained rejected:
+483 to 610 ms exceeded both unchanged relative limits. The later signed-empty
+placement metadata/build accounting repair and the prospective input control
+have current semantic proof; matched native admission remains pending. Neither
+change is claimed to repair the retained cold rejection.
 
 The earlier custom-PBR palette and async-warmup candidate `a62d2277` is rejected:
 its full canonical matrix has a retained telemetry 500 failure and 18 binding
 relative exceptions, including repeated switch long tasks, cold canvas latency
 and peak shader growth. Those artifacts remain separate historical evidence.
 
-Stock grouping is a new candidate. Inventory projects 33 Fauna uniform buckets
-following the explicit Stool classification, but contribution savings do not
-predict actual main/shadow submission counts. Native Fauna runs and the unchanged
+The historical `f191ad05` inventory projected 33 Fauna uniform buckets following
+the explicit Stool classification; that planner topology predates singleton
+passthrough and is not the current submitted draw count. Native Fauna runs and the unchanged
 full canonical CPU/GPU/cold/lifecycle/resource gates must establish acceptance.
 No threshold, quality, population, clock, camera, shader diagnostic, or baseline
 eligibility exception is implied by successful semantic tests. Transparent

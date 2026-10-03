@@ -23,13 +23,20 @@ import type { GLTFResult } from '../src/models/GameAssets';
 import { readChunkCompilerMetrics } from '../src/scene/compiler/chunkCompilerMetrics';
 import { useStaticRenderPacketRegistry } from '../src/scene/compiler/StaticRenderPacketBatch';
 import { readStaticRenderPacketMetrics } from '../src/scene/compiler/staticRenderPackets';
-import { useSceneTimeUniform } from '../src/scene/SceneTime';
+import {
+    useSceneFrameReceiptSubscription,
+    useSceneTimeUniform,
+} from '../src/scene/SceneTime';
 import { getSceneRootRuntime } from '../src/scene/sceneRootRuntime';
 import { SceneSpringValue } from '../src/scene/sceneSpring';
 import { useSceneAfterFrame } from '../src/scene/useSceneAfterFrame';
 import type { Stack } from '../src/types/Stack';
 import { useGameStateStore } from '../src/useGameState';
 import type { GardenPaletteInteractionPhase } from './GardenPaletteInteractionFixture';
+import type {
+    GardenPaletteFrameInputReceipt,
+    GardenPaletteFrameInputSnapshot,
+} from './gardenPaletteFrameInput';
 
 type DropNativeDraw = {
     geometry: string;
@@ -41,6 +48,7 @@ type ActiveDropCapture = {
     readback: ReturnType<typeof readInteractionSnapshot>;
     png: string;
     deltaSequence: number[];
+    frameInputReceipt: GardenPaletteFrameInputReceipt | undefined;
 };
 type DropSpringAdvance = {
     springIdentity: number;
@@ -161,6 +169,20 @@ export function GardenPaletteInteractionProbe({
     const clock = useThree((state) => state.clock);
     const time = useSceneTimeUniform();
     const runtime = getSceneRootRuntime(useStore());
+    const subscribeFrameReceipt = useSceneFrameReceiptSubscription();
+    useLayoutEffect(() => {
+        const release = subscribeFrameReceipt((timestamp) => {
+            window.gardenPaletteFrameInput?.bindReceipt(
+                runtime,
+                timestamp,
+                gl.info.render.frame,
+            );
+        });
+        return () => {
+            release();
+            window.gardenPaletteFrameInput?.releaseRoot(runtime);
+        };
+    }, [runtime, gl, subscribeFrameReceipt]);
     const store = useGameStateStore();
     const instances = useEntityBlockInstances({
         name: entityName,
@@ -415,8 +437,10 @@ export function GardenPaletteInteractionProbe({
                     readback: structuredClone(value),
                     png: gl.domElement.toDataURL('image/png'),
                     deltaSequence: [...dropDeltas.current],
+                    frameInputReceipt:
+                        window.gardenPaletteFrameInput?.activeReceipt(runtime),
                 };
-        }, [clock, phase, snapshot, gl, scene]),
+        }, [clock, phase, snapshot, gl, scene, runtime]),
     );
     useLayoutEffect(() => {
         const witness = {
@@ -426,6 +450,7 @@ export function GardenPaletteInteractionProbe({
                 png: gl.domElement.toDataURL('image/png'),
             }),
             activeDrop: () => activeDrop.current,
+            frameInput: () => window.gardenPaletteFrameInput?.snapshot(runtime),
         };
         window.gardenPaletteInteractionWitness = witness;
         return () => {
@@ -619,6 +644,7 @@ declare global {
                 png: string;
             };
             activeDrop: () => ActiveDropCapture | undefined;
+            frameInput: () => GardenPaletteFrameInputSnapshot | undefined;
         };
     }
 }
