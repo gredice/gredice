@@ -137,10 +137,12 @@ const materialRegistrations = new Map<string, { release: () => void }>();
 export function trackGameGLTF(url: string, gltf: unknown) {
     getGameResourceCache().track(url, 'gltf', gltf, () => {
         const resources = collectGameGLTFResources(gltf);
-        materialRegistrations.get(url)?.release();
+        const previous = materialRegistrations.get(url);
         const releases = [...resources.materials].map(
             registerResidentGardenMaterial,
         );
+        // A decoded replacement may share originals with the previous value.
+        previous?.release();
         const registration = {
             release: () => {
                 for (const release of releases) release();

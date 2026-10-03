@@ -130,4 +130,51 @@ describe('game GLTF resources', () => {
             collectGameGLTFResources({ scene: first.scene }),
         );
     });
+    it('preserves the warm clone through a replacement sharing the same authored material, then releases it on actual eviction', () => {
+        const first = createGLTF();
+        const replacementGeometry = first.geometry.clone();
+        const replacementScene = new Group();
+        replacementScene.add(new Mesh(replacementGeometry, first.material));
+        const url = '/unit-replaced-shared-stock-origin.glb';
+        trackGameGLTF(url, { scene: first.scene });
+        const root = new Scene();
+        const close = acquireGardenPacketMaterialRoot(root);
+        const lease = acquireGardenPacketMaterial(first.material, root);
+        assert.ok(lease);
+        const disposals = { owned: 0, source: 0, texture: 0, old: 0, next: 0 };
+        lease.material.addEventListener('dispose', () => disposals.owned++);
+        first.material.addEventListener('dispose', () => disposals.source++);
+        first.texture.addEventListener('dispose', () => disposals.texture++);
+        first.geometry.addEventListener('dispose', () => disposals.old++);
+        replacementGeometry.addEventListener('dispose', () => disposals.next++);
+        lease.release();
+        trackGameGLTF(url, { scene: replacementScene });
+        assert.deepEqual(disposals, {
+            owned: 0,
+            source: 0,
+            texture: 0,
+            old: 0,
+            next: 0,
+        });
+        assert.equal(isResidentGardenMaterial(first.material), true);
+        assert.equal(readGardenPacketMaterialLifetime(root).idleOrigins, 1);
+        const returned = acquireGardenPacketMaterial(first.material, root);
+        assert.ok(returned);
+        assert.equal(returned.material, lease.material);
+        returned.release();
+        getGameResourceCache().evictIdle();
+        assert.deepEqual(disposals, {
+            owned: 1,
+            source: 1,
+            texture: 1,
+            old: 0,
+            next: 1,
+        });
+        assert.equal(isResidentGardenMaterial(first.material), false);
+        assert.equal(readGardenPacketMaterialLifetime(root).idleOrigins, 0);
+        close();
+        assert.equal(disposals.owned, 1);
+        // Cache replacement did not take ownership of the superseded geometry.
+        first.geometry.dispose();
+    });
 });

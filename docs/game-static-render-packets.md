@@ -28,7 +28,9 @@ incompatible idle slot; older active variants finish under their own leases
 without retaining a history of configurations. Pure ground-patch decoration
 carries exact original material identity without acquiring asset residency.
 
-Asset eviction/disposal and root cleanup release the idle ownership. Existing
+Asset eviction/disposal and root cleanup release the idle ownership. GLTF
+replacement registers the new resident materials before releasing the previous
+registration, preserving shared originals through that handoff. Existing
 GLTF budget, grace and consumer references remain unchanged; borrowed textures,
 geometry and source materials retain their existing owners. Root generations
 isolate StrictMode cleanup from later setup, and aborted render acquires no
