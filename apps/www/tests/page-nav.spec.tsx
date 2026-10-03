@@ -1,5 +1,5 @@
 import { PageNav } from '@gredice/ui/Nav';
-import { expect, test } from '@playwright/experimental-ct-react';
+import { expect, test } from './component-fixtures';
 import '../app/globals.css';
 
 test('is transparent at the top and surfaces after scrolling', async ({

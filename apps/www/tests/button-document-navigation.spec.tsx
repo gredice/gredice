@@ -1,5 +1,5 @@
 import { Button } from '@gredice/ui/Button';
-import { expect, test } from '@playwright/experimental-ct-react';
+import { expect, test } from './component-fixtures';
 
 test('document links preserve loading and disabled click guards', async ({
     mount,

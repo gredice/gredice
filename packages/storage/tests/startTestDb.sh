@@ -48,6 +48,8 @@ cleanup_started_container() {
 trap cleanup_started_container EXIT
 
 docker_available() {
+    # A host Docker daemon is outside the CI test network namespace.
+    [[ "${GREDICE_CI_NETWORK_ISOLATION:-}" != "1" ]] || return 1
     command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1
 }
 

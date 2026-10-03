@@ -78,6 +78,64 @@ configuration changes and choose a new stable measurement window if necessary.
 Do not join partial billing days or extrapolate a few quiet hours as the required
 72-hour evidence.
 
+## CI infrastructure isolation
+
+Routine Next.js builds and test shards run through
+`scripts/ci-isolated-tests.sh` on Ubuntu 24.04. Dependency/browser installation
+happens first. The wrapper creates a Linux network namespace with only loopback
+enabled; subprocesses, Chromium, native clients, redirects and raw IP connections
+cannot reach production, previews or other external services. The Actions runner
+and artifact/cache actions remain outside the test namespace. A CI check verifies
+that external TCP is unreachable with the JavaScript preload removed.
+Storage, game, JS, email and guard unit-test jobs use the same namespace boundary.
+
+CI does not pull Vercel environments, inherit project secrets or use Turbo remote
+caching. Storage uses a disposable PostgreSQL instance inside the namespace and
+a bounded checked-in public catalogue fixture. Production-style news tests use
+synthetic local CMS pages. API/news rewrites point to loopback, featured gardens
+use the existing fixture, and Google Fonts use system-font CSS fixtures. Blob/CDN
+images and Open Graph emoji fetches receive local fixtures; checked-in game assets
+are served from disk. New tests
+must supply local fixtures/services rather than adding an external allowlist.
+
+The fixture modes, database environment and fixture inputs participate in Turbo
+cache keys. Next build caches use a separate isolation prefix. Fixture artifacts
+must never become production deployment output.
+
+### Blob fixtures
+
+Routine GitHub Actions Next.js build/test jobs enable
+`GREDICE_CI_BLOB_FIXTURES=1` and preload
+`scripts/ci-blob-network-guard.mjs` through `NODE_OPTIONS`. Node image reads from
+any Vercel Blob tenant receive the checked-in plant placeholder. Writes and
+non-image reads require an explicit local fixture. DNS lookups for Blob hosts
+are blocked as a backstop for redirects and clients that bypass global `fetch`.
+
+Chromium regression configs also block Blob host resolution in this mode. WWW
+route and component tests use context-wide image fixtures, including extra
+pages; manually created contexts must call `installBlobImageFixtures`. Service
+workers are disabled in these fixtures so they cannot bypass interception.
+Unexpected non-image Blob requests fail with a fixture instruction.
+
+This protects routine CI from repeatedly downloading the production photos. It
+does not measure their visual content or prove a production asset is reachable.
+Keep any deliberate live-asset verification bounded and separate from routine
+CI. Local servers and production builds do not enable the preload. Turbo hashes
+the fixture mode separately and tracks the guard/placeholder inputs so fixture
+build output cannot be reused for a production build.
+
+Run the guard checks without building the app or accessing production storage:
+
+```bash
+pnpm --filter www run test:blob-guard
+```
+
+Existing CI concurrency cancels superseded runs; keep that protection and batch
+related pushes. Keep sitemap/accessibility checks over the local fixture
+catalogue and route-family unit coverage. Attribute transfer again after the
+guard is merged before claiming billed
+savings. Vercel usage alerts are a secondary signal, not the CI egress guard.
+
 ## Repeatable Vercel report
 
 Export the full team's newline-delimited charge data from the official

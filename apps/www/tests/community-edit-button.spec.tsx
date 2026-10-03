@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { CommunityEditButtonHarness } from './CommunityEditButtonHarness';
+import { expect, test } from './component-fixtures';
 import '../app/globals.css';
 
 test('prompts anonymous users before editing', async ({ mount, page }) => {

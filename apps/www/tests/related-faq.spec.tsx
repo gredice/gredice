@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/experimental-ct-react';
 import { FaqSectionView } from '../components/faq/FaqSectionView';
 import { faqTestEntries } from '../components/faq/faqTestEntries';
+import { expect, test } from './component-fixtures';
 
 for (const width of [390, 768, 1280]) {
     test(`shared FAQ is keyboard accessible with working Markdown links at ${width}px`, async ({

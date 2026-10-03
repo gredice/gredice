@@ -10,6 +10,7 @@ import {
     getPlaywrightBaseUrl,
     shouldReusePlaywrightServer,
 } from '../../scripts/app-registry.ts';
+import { blobGuardLaunchArgs } from '../../scripts/blob-test-fixtures.mjs';
 
 const app = getAppByName('farm');
 const scheduleActionsMockPath = fileURLToPath(
@@ -30,6 +31,7 @@ export const config: PlaywrightTestConfig = {
     workers: process.env.CI ? 1 : undefined,
     reporter,
     use: {
+        launchOptions: { args: blobGuardLaunchArgs() },
         baseURL: getPlaywrightBaseUrl(app),
         trace: 'on-first-retry',
         ctPort: getComponentTestPort(app),

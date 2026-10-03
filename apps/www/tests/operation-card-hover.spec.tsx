@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import type { ComponentProps } from 'react';
 import { OperationCard } from '../app/radnje/OperationCard';
+import { expect, test } from './component-fixtures';
 import '../app/globals.css';
 
 const operation = {

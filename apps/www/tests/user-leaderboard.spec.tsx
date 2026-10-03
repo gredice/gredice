@@ -1,10 +1,10 @@
 import AxeBuilder from '@axe-core/playwright';
 import { getAchievementDefinitions } from '@gredice/js/achievements';
 import { UserAchievementProgress } from '@gredice/ui/UserAvatar';
-import { expect, test } from '@playwright/experimental-ct-react';
 import UsersError from '../app/korisnici/error';
 import UsersLoading from '../app/korisnici/loading';
 import { UserLeaderboard } from '../app/korisnici/UserLeaderboard';
+import { expect, test } from './component-fixtures';
 
 const items = Array.from({ length: 10 }, (_, index) => ({
     id: `user-${index}`,

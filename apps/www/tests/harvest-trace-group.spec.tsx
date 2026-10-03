@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/experimental-ct-react';
 import { HarvestTraceGroup } from '../app/trag/grupa/[token]/HarvestTraceGroup';
+import { expect, test } from './component-fixtures';
 
 for (const width of [320, 768, 1280]) {
     test(`group trace offers the correct field histories at ${width}px`, async ({

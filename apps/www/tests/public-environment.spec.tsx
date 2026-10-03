@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { PublicChromeProvider, PublicFooter } from '@gredice/ui/PublicChrome';
-import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
+import { expect, test } from './component-fixtures';
 import '../app/globals.css';
 import { PublicEnvironmentHarness } from './PublicEnvironmentHarness';
 

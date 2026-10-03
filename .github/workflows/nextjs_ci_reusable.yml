@@ -13,10 +13,6 @@ on:
         required: true
         type: string
         description: "Path to the package or application to analzye"
-      vercelProjectIdSecretName:
-        required: true
-        type: string
-        description: "Name of the secret containing the Vercel project ID"
       nextBuildCache:
         required: false
         type: boolean
@@ -38,16 +34,10 @@ on:
         description: "Package script that runs Playwright tests for a shard"
         default: "test:run"
 
-env:
-  VERCEL_PROJECT_ID: ${{ secrets[format(inputs.vercelProjectIdSecretName)] }}
-  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-  TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-  TURBO_TEAM: gredice
-
 jobs:
   lint:
     timeout-minutes: 10
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v7.0.1
@@ -76,13 +66,13 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: 📦️ Install dependencies
-        run: pnpm install --frozen-lockfile --filter ${{ inputs.name }}... --filter .
+        run: pnpm install --frozen-lockfile --filter ${{ inputs.name }}... --filter @gredice/storage... --filter .
 
       - name: 🔎 Lint app
         run: pnpm lint --filter=${{ inputs.name }}
   test:
     timeout-minutes: 15
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request'
     name: "test${{ matrix.shard.name && format(' ({0})', matrix.shard.name) || (matrix.shard.total != 1 && format(' ({0}/{1})', matrix.shard.index, matrix.shard.total) || '') }}"
     strategy:
@@ -120,19 +110,12 @@ jobs:
         name: ✨ Setup Next.js build cache
         with:
           path: ${{ inputs.path }}/.next/cache
-          key: ${{ runner.os }}-nextjs-${{ inputs.name }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          key: ${{ runner.os }}-isolated-nextjs-${{ inputs.name }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-nextjs-${{ inputs.name }}-${{ hashFiles('pnpm-lock.yaml') }}-
+            ${{ runner.os }}-isolated-nextjs-${{ inputs.name }}-${{ hashFiles('pnpm-lock.yaml') }}-
 
       - name: 📦️ Install dependencies
-        run: pnpm install --frozen-lockfile --filter ${{ inputs.name }}... --filter .
-
-      - name: ✨ Setup Vercel CLI
-        run: npm i --global vercel@latest
-
-      - name: ⚙️ Pull Vercel Environment Information
-        run: vercel env pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
-        working-directory: ${{ inputs.path }}/
+        run: pnpm install --frozen-lockfile --filter ${{ inputs.name }}... --filter @gredice/storage... --filter .
 
       - name: 🔎 Check Playwright dependency
         id: playwright
@@ -177,21 +160,13 @@ jobs:
         working-directory: ${{ inputs.path }}/
 
       - name: ⚒️ Test app
+        run: |
+          database_args=(--database)
+          if [ "${{ inputs.name }}" = "garden" ]; then database_args=(); fi
+          bash scripts/ci-isolated-tests.sh "${database_args[@]}" bash scripts/ci-test-app.sh
         env:
           TEST_ARGS: ${{ matrix.shard.args || (matrix.shard.total != 1 && format('--shard={0}/{1}', matrix.shard.index, matrix.shard.total)) || '' }}
-        run: |
-          # Sensitive Vercel values are not available to `vercel env pull`.
-          # Keep WWW's signed OG build/runtime test aligned with an ephemeral key.
-          if [ "${{ inputs.name }}" = "www" ]; then
-            export CMS_PAGES_PREVIEW_SECRET="$(openssl rand -hex 32)"
-          fi
-
-          if [ -z "$TEST_ARGS" ]; then
-            pnpm run test --filter=${{ inputs.name }}
-          else
-            pnpm build --filter=${{ inputs.name }}
-            if [ -n "${{ inputs.testShardPrepareScript }}" ]; then
-              pnpm --dir ${{ inputs.path }} run ${{ inputs.testShardPrepareScript }}
-            fi
-            pnpm --dir ${{ inputs.path }} run ${{ inputs.testShardRunScript }} $TEST_ARGS
-          fi
+          CI_APP_NAME: ${{ inputs.name }}
+          CI_APP_PATH: ${{ inputs.path }}
+          CI_PREPARE_SCRIPT: ${{ inputs.testShardPrepareScript }}
+          CI_RUN_SCRIPT: ${{ inputs.testShardRunScript }}

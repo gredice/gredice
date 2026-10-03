@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/experimental-ct-react';
 import type { LandingGardenCandidate } from '../app/landingGardenCarousel';
 import { AvatarProfileLinksHarness } from './AvatarProfileLinksHarness';
+import { expect, test } from './component-fixtures';
 
 const featuredGardens: LandingGardenCandidate[] = [
     {

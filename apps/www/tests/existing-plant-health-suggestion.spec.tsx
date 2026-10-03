@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import { CommunityEntitySuggestionButtonHarness } from './CommunityEntitySuggestionButtonHarness';
+import { expect, test } from './component-fixtures';
 import '../app/globals.css';
 
 async function mockIssues(
