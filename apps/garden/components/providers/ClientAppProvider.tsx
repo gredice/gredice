@@ -1,10 +1,12 @@
 'use client';
 
 import { useThemeManager } from '@gredice/game/theme';
+import { isKestenijadaPublicSamplePath } from '@gredice/js/kestenijada';
 import { AuthProvider } from '@gredice/ui/auth';
 import { NotificationsContainer } from '@gredice/ui/notifications';
 import { NuqsAdapter } from '@gredice/ui/nuqs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { usePathname } from 'next/navigation';
 import { ThemeProvider } from 'next-themes';
 import type { PropsWithChildren } from 'react';
 import { markReturningUser } from '../../lib/auth/returningUser';
@@ -65,6 +67,14 @@ async function currentUserFactory() {
 const queryClient = new QueryClient();
 
 export function ClientAppProvider({ children }: PropsWithChildren) {
+    const pathname = usePathname();
+    if (isKestenijadaPublicSamplePath(pathname)) {
+        return (
+            <ThemeProvider attribute="class" defaultTheme="light">
+                <NuqsAdapter>{children}</NuqsAdapter>
+            </ThemeProvider>
+        );
+    }
     return (
         <NuqsAdapter>
             <QueryClientProvider client={queryClient}>

@@ -18,7 +18,8 @@
         "./outlet-garden-commerce": "./src/viewers/OutletGardenCommerce.tsx",
         "./outlet-garden-list": "./src/viewers/OutletGardenBrowserViewer.tsx",
         "./theme": "./src/hooks/useThemeManager.ts",
-        "./autumn-arrangements": "./src/arrangements/autumnArrangements.ts"
+        "./autumn-arrangements": "./src/arrangements/autumnArrangements.ts",
+        "./kestenijada": "./src/kestenijada/KestenijadaViewer.tsx"
     },
     "scripts": {
         "benchmark:chunks": "tsx scripts/benchmark-chunks.ts",

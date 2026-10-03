@@ -7,6 +7,7 @@ import { TemporaryAccountUpgradeModal } from '../components/auth/TemporaryAccoun
 import { GameSceneWithAnalytics } from '../components/game/GameSceneWithAnalytics';
 import { GardenRouteLoading } from '../components/game/GardenRouteLoading';
 import { getGardenGameFlags } from './getGardenGameFlags';
+import { KestenijadaDiscoveryEntry } from './kestenijada/KestenijadaDiscoveryEntry';
 
 const impersonationFlagCookieName = 'gredice_impersonating';
 
@@ -58,6 +59,9 @@ async function GardenHome() {
                     />
                 </TemporaryAccountBootstrap>
             </SignedOut>
+            <Suspense fallback={null}>
+                <KestenijadaDiscoveryEntry />
+            </Suspense>
             <TemporaryAccountUpgradeModal />
         </div>
     );
