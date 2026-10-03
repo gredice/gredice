@@ -18,6 +18,7 @@ export function GardenPaletteAdmissionFixture({
     aggregate = false,
     sources = 3,
     placementTelemetry = 'none',
+    nativeProgramWitness = false,
 }: {
     batch?: boolean;
     mutated?: boolean;
@@ -26,6 +27,7 @@ export function GardenPaletteAdmissionFixture({
     aggregate?: boolean;
     sources?: 1 | 3;
     placementTelemetry?: GardenPaletteAdmissionPlacementTelemetry;
+    nativeProgramWitness?: boolean;
 }) {
     const [store] = useState(() =>
         createGameState({
@@ -76,6 +78,7 @@ export function GardenPaletteAdmissionFixture({
                             patched={patched}
                             mounted={mounted}
                             placementTelemetry={placementTelemetry}
+                            nativeProgramWitness={nativeProgramWitness}
                             onReadback={report}
                         />
                     </Scene>

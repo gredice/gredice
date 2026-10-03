@@ -9,6 +9,7 @@ import {
     DoubleSide,
     Frustum,
     FrustumArray,
+    Group,
     InstancedMesh,
     type Intersection,
     Matrix4,
@@ -116,6 +117,64 @@ function visible(meshes: ReturnType<typeof plan>['meshes'], view: Frustum) {
 }
 
 describe('original-source visibility on shared compiled buffers', () => {
+    it('retains stock instancing without changing compiled range picking or parent transforms', () => {
+        const a = source('a', 0),
+            b = source('b', 4);
+        const original = plan([a, b]);
+        const stock = plan(
+            [a, b].map((contribution) => ({
+                ...contribution,
+                sourceBoundsCulling: true,
+                originalVisibilityMode: 'instanced',
+            })),
+        );
+        const parent = new Group();
+        parent.position.set(1, 0.5, -0.5);
+        parent.scale.set(1.2, 0.8, 1.1);
+        parent.add(...original.meshes, ...stock.meshes);
+        parent.updateMatrixWorld(true);
+        for (const mesh of stock.meshes) {
+            assert.ok(mesh instanceof InstancedMesh);
+            assert.equal(mesh.count, 1);
+            const matrix = new Matrix4();
+            mesh.getMatrixAt(0, matrix);
+            assert.deepEqual(matrix.elements, new Matrix4().elements);
+        }
+        for (const x of [-5, 0, 1, 4, 6, 10]) {
+            const view = frustum(x);
+            assert.deepEqual(
+                visible(stock.meshes, view),
+                visible(original.meshes, view),
+            );
+            const raycaster = new Raycaster(
+                new Vector3(x, 0.5, 5),
+                new Vector3(0, 0, -1),
+            );
+            const values = (hits: Intersection[]) =>
+                hits.map((hit) => ({
+                    distance: hit.distance,
+                    point: hit.point.toArray(),
+                    uv: hit.uv?.toArray(),
+                    faceIndex: hit.faceIndex,
+                    instanceId: hit.instanceId,
+                }));
+            assert.deepEqual(
+                values(raycaster.intersectObjects(stock.meshes, false)),
+                values(raycaster.intersectObjects(original.meshes, false)),
+            );
+        }
+        let geometryDisposals = 0;
+        let materialDisposals = 0;
+        stock.geometry.addEventListener('dispose', () => geometryDisposals++);
+        stock.material.addEventListener('dispose', () => materialDisposals++);
+        for (const mesh of stock.meshes)
+            if (mesh instanceof InstancedMesh) mesh.dispose();
+        assert.equal(geometryDisposals, 0);
+        assert.equal(materialDisposals, 0);
+        assert.ok(
+            original.meshes.every((mesh) => !(mesh instanceof InstancedMesh)),
+        );
+    });
     it('uses one full packet for all-visible, source ranges for mixed, and no draw for none', () => {
         const p = plan([source('a', 0), source('b', 4)]);
         assert.deepEqual(visible(p.meshes, frustum(0)), [false, true, false]);

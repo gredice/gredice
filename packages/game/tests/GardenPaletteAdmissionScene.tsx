@@ -24,6 +24,7 @@ import {
 import { readStaticRenderPacketMetrics } from '../src/scene/compiler/staticRenderPackets';
 import { readSharedGardenMaterialMetrics } from '../src/scene/gardenMaterials';
 import { countGeometryTriangles } from '../src/scene/weatherSurfaceGeometry';
+import { GardenPacketNativeProgramWitness } from './gardenPacketNativeProgramWitness';
 
 export type GardenPaletteAdmissionPlacementTelemetry =
     | 'none'
@@ -95,6 +96,7 @@ export function GardenPaletteAdmissionScene({
     patched,
     mounted,
     placementTelemetry,
+    nativeProgramWitness,
     onReadback,
 }: {
     batch: boolean;
@@ -104,11 +106,16 @@ export function GardenPaletteAdmissionScene({
     patched: boolean;
     mounted: boolean;
     placementTelemetry: GardenPaletteAdmissionPlacementTelemetry;
+    nativeProgramWitness: boolean;
     onReadback: (value: { key: string; [key: string]: unknown }) => void;
 }) {
     const { scene, gl, camera } = useThree();
+    const programWitness = useRef(new GardenPacketNativeProgramWitness());
     const nativeDraws = useRef({ pending: 0, stock: 0 });
     useLayoutEffect(() => {
+        const stopProgramWitness = nativeProgramWitness
+            ? programWitness.current.install(gl, camera)
+            : () => {};
         const original = gl.renderBufferDirect;
         const observed: typeof original = (...args) => {
             const [drawCamera, , , material, object] = args;
@@ -131,8 +138,9 @@ export function GardenPaletteAdmissionScene({
         return () => {
             if (gl.renderBufferDirect === observed)
                 gl.renderBufferDirect = original;
+            stopProgramWitness();
         };
-    }, [camera, gl]);
+    }, [camera, gl, nativeProgramWitness]);
     const resources = useMemo(() => {
         const geometry = new BoxGeometry(1, 1, 1);
         // Force the real worker path so initial pending fallback reaches a frame.
@@ -206,6 +214,7 @@ export function GardenPaletteAdmissionScene({
         disposed: new Set<BufferGeometry>(),
     });
     useFrame(() => {
+        programWitness.current.setEpoch(key);
         if (frames.current.key !== key)
             frames.current = {
                 key,
@@ -338,6 +347,7 @@ export function GardenPaletteAdmissionScene({
             ),
             geometryIds,
             borrowedSourceDisposals: borrowedSourceDisposals.current,
+            nativePrograms: programWitness.current.read(),
             singletonMeshes: meshes.filter((mesh) =>
                 mesh.name.endsWith(':singleton'),
             ).length,

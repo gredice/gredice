@@ -11,7 +11,7 @@ import {
     useState,
     useSyncExternalStore,
 } from 'react';
-import type { BufferGeometry, InstancedMesh, Material } from 'three';
+import { type BufferGeometry, InstancedMesh, type Material } from 'three';
 import { createMeshInstanceMatrix } from '../../entities/chunkedMeshGeometry';
 import {
     placementAnimationProfileNow,
@@ -291,6 +291,15 @@ const StaticRenderPacketCompiledMesh = memo(
                       )
                     : [],
             [build, debugName, drawRanges, packet, sourceBoundsCulling],
+        );
+        useLayoutEffect(
+            () => () => {
+                // Primitives retain borrowed geometry/material ownership, but
+                // each identity instance owns a GPU matrix buffer.
+                for (const mesh of meshes)
+                    if (mesh instanceof InstancedMesh) mesh.dispose();
+            },
+            [meshes],
         );
         if (!build)
             return packet.contributions.map((contribution) => (
