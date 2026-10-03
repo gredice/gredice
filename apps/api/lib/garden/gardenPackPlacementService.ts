@@ -304,8 +304,8 @@ export function createGardenPackPlacementService<Transaction>(
         }
     };
 }
-export const placeGardenPackUnitForAccount =
-    createGardenPackPlacementService<GardenPackTransaction>({
+export const placeGardenPackUnitDependencies: GardenPackPlacementDependencies<GardenPackTransaction> =
+    {
         withAccountTransaction: (accountId, callback) =>
             withSunflowerAccountTransaction(accountId, (tx) =>
                 withAccountDeletionFenceTransaction(accountId, callback, tx),
@@ -319,4 +319,7 @@ export const placeGardenPackUnitForAccount =
         createStack: createGardenStack,
         updateStack: updateGardenStack,
         recordPlacement: recordGardenPackPlacement,
-    });
+    };
+export const placeGardenPackUnitForAccount = createGardenPackPlacementService(
+    placeGardenPackUnitDependencies,
+);

@@ -1,7 +1,7 @@
 {
     "harvest-corner": {
         "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
-        "captureSha256": "0752f6d6c819bc9f47d9aca039477edf73717c903c649a85df94de50746c24d8",
+        "captureSha256": "38c485b660fd703b0375fc418cb2204f122dcf06df157eda9462c8a9757b187f",
         "included": [
             {
                 "entityName": "HarvestPumpkinGroupOrange",
@@ -754,7 +754,7 @@
             },
             {
                 "path": "packages/js/src/gardenBlocks/index.ts",
-                "sha256": "68b85e98ebbf5b19a2d0541b4b4228f272165a41fab895d56444f57272432744"
+                "sha256": "48716a80b03d5242ab31ba48f75db6a2ee9b69774ebde1b1e21f8efe3d561a73"
             },
             {
                 "path": "packages/js/src/harvestCrates/index.ts",
@@ -765,11 +765,20 @@
                 "sha256": "c5b0d9331754c40a42c2b81499c0bc64236542779fac2fd698fc8b994f14ca62"
             }
         ],
-        "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd"
+        "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
+        "recapture": {
+            "source": {
+                "commit": "a78a73d11910690d511da631bf69ab35eec7d0b7",
+                "tree": "234709607afeb0574fbd0183313c0f43ea31a20f",
+                "status": ""
+            },
+            "previousCaptureSha256": "0752f6d6c819bc9f47d9aca039477edf73717c903c649a85df94de50746c24d8",
+            "previousPreviewSha256": "ed1b245678a3613a093026ecdfadd3a416a3332972f926ab9aa3a552bb95c2e2"
+        }
     },
     "woodland-path": {
         "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
-        "captureSha256": "075c39bf1a386029e7f2469474f13bd26ad5e5cd86b7c53b949d78c533a2a10d",
+        "captureSha256": "786b7689381e7847bbf738d6b542a98ec0ba27cd47942f7118d38b5153619265",
         "included": [
             {
                 "entityName": "WoodlandMushrooms",
@@ -1537,14 +1546,23 @@
             },
             {
                 "path": "packages/js/src/gardenBlocks/index.ts",
-                "sha256": "68b85e98ebbf5b19a2d0541b4b4228f272165a41fab895d56444f57272432744"
+                "sha256": "48716a80b03d5242ab31ba48f75db6a2ee9b69774ebde1b1e21f8efe3d561a73"
             }
         ],
-        "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd"
+        "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
+        "recapture": {
+            "source": {
+                "commit": "a78a73d11910690d511da631bf69ab35eec7d0b7",
+                "tree": "234709607afeb0574fbd0183313c0f43ea31a20f",
+                "status": ""
+            },
+            "previousCaptureSha256": "075c39bf1a386029e7f2469474f13bd26ad5e5cd86b7c53b949d78c533a2a10d",
+            "previousPreviewSha256": "2f21c98172611d2e3d37d71d4fd5c5c7685c044239f406a271a09d5e775c5e55"
+        }
     },
     "evening-seat": {
         "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
-        "captureSha256": "8226d4cac4522767dbe51872399c41859902f9f5cdfe724fce133e4db4d42c78",
+        "captureSha256": "b1ed300c31ae0835b5a684b80b6f6c1f273798671f9c8c7eaa966df1c8628572",
         "included": [
             {
                 "entityName": "AutumnBlanketBench",
@@ -2313,13 +2331,22 @@
             },
             {
                 "path": "packages/js/src/gardenBlocks/index.ts",
-                "sha256": "68b85e98ebbf5b19a2d0541b4b4228f272165a41fab895d56444f57272432744"
+                "sha256": "48716a80b03d5242ab31ba48f75db6a2ee9b69774ebde1b1e21f8efe3d561a73"
             },
             {
                 "path": "packages/js/src/gardenTeaTable/index.ts",
                 "sha256": "00371804bba753c64ba88235e2ca9bba285c5dce78f0b1fb1d41f3de2c0e0744"
             }
         ],
-        "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd"
+        "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
+        "recapture": {
+            "source": {
+                "commit": "a78a73d11910690d511da631bf69ab35eec7d0b7",
+                "tree": "234709607afeb0574fbd0183313c0f43ea31a20f",
+                "status": ""
+            },
+            "previousCaptureSha256": "8226d4cac4522767dbe51872399c41859902f9f5cdfe724fce133e4db4d42c78",
+            "previousPreviewSha256": "48325aa58a719dafebafa403c3b3f51565d3128d9bbbac9ce80d93e539d434d7"
+        }
     }
 }
