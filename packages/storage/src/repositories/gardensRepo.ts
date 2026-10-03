@@ -445,12 +445,21 @@ export async function getPublicGardens() {
         where: and(eq(gardens.isDeleted, false), eq(gardens.isPublic, true)),
         orderBy: desc(gardens.updatedAt),
     });
-    const [previews, membersByAccountId] = await Promise.all([
-        getGardenPreviewsForGardenIds(publicGardens.map((garden) => garden.id)),
-        getPublicGardenMembersByAccountIds(
-            publicGardens.map((garden) => garden.accountId),
-        ),
-    ]);
+    const [previews, membersByAccountId, activePlantCounts] = await Promise.all(
+        [
+            getGardenPreviewsForGardenIds(
+                publicGardens.map((garden) => garden.id),
+            ),
+            getPublicGardenMembersByAccountIds(
+                publicGardens.map((garden) => garden.accountId),
+            ),
+            publicGardens.length > 0
+                ? getCachedPublicGardenActivePlantCounts(
+                      publicGardens.map(({ id }) => id),
+                  )
+                : Promise.resolve(new Map<number, number>()),
+        ],
+    );
     const previewImagesByGardenId = gardenPreviewImagesByGardenId(previews);
 
     return publicGardens.map((garden) => {
@@ -459,6 +468,7 @@ export async function getPublicGardens() {
         const members = membersByAccountId.get(garden.accountId) ?? [];
         return {
             ...garden,
+            activePlantCount: activePlantCounts.get(garden.id) ?? 0,
             owner: members.at(0) ?? null,
             members,
             previewImage: previewImages.day,

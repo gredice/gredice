@@ -79,7 +79,6 @@ import {
     getRaisedBedIdsByAccount,
     getRaisedBedPlanting,
     getRaisedBedSensors,
-    getRaisedBedsForGardens,
     getSandboxGardenDeletionCandidate,
     getSelectedPlantingDiaryEntries,
     getUnreadNotificationsByType,
@@ -148,7 +147,6 @@ import {
 } from '../../../lib/garden/gardenPreviewBlobDeletion';
 import { patchGardenStacksForAccount } from '../../../lib/garden/gardenStacksPatchService';
 import {
-    countPublicGardenActivePlants,
     serializePublicRaisedBedField,
     serializeRaisedBedPlantingsForGardenView,
 } from '../../../lib/garden/publicGardenSerialization';
@@ -1128,15 +1126,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const publicGardens = await getPublicGardens();
             const publicGardenIds = publicGardens.map((garden) => garden.id);
-            const raisedBedsByGardenId =
-                await getRaisedBedsForGardens(publicGardenIds);
             const likeCounts = await getGardenLikeCounts(publicGardenIds);
 
             return context.json({
                 items: publicGardens.map((garden) => {
-                    const raisedBeds =
-                        raisedBedsByGardenId.get(garden.id) ?? [];
-
                     return {
                         id: garden.id,
                         name: garden.name,
@@ -1151,8 +1144,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         previewImages: serializePublicGardenPreviewImages(
                             garden.previewImages,
                         ),
-                        activePlantCount:
-                            countPublicGardenActivePlants(raisedBeds),
+                        activePlantCount: garden.activePlantCount,
                         likeCount: likeCounts.get(garden.id) ?? 0,
                         createdAt: garden.createdAt,
                         updatedAt: garden.updatedAt,
