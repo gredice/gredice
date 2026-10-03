@@ -1,16 +1,17 @@
+import { useThree } from '@react-three/fiber';
 import { useLayoutEffect, useState } from 'react';
-import type { BufferGeometry, Material } from 'three';
+import type { BufferGeometry, Material, Object3D } from 'three';
 import {
-    acquireGardenPaletteFallbackMaterial,
-    getGardenPaletteFallbackMaterialKey,
-} from './gardenPaletteFallbackMaterials';
+    acquireGardenPacketFallbackMaterial,
+    getGardenPacketFallbackMaterialKey,
+} from './gardenPacketFallbackMaterials';
 
 const geometries = new Map<
     BufferGeometry,
     { geometry: BufferGeometry; users: number }
 >();
 
-/** Eligible palette inputs are immutable geometry or replaced source objects. */
+/** Eligible stock inputs are immutable geometry or replaced source objects. */
 function acquireFallbackGeometry(source: BufferGeometry) {
     let entry = geometries.get(source);
     if (!entry) {
@@ -35,11 +36,12 @@ function acquireFallbackGeometry(source: BufferGeometry) {
 }
 
 /** Releases fallback GPU buffers and programs without disposing borrowed inputs. */
-export function acquireGardenPaletteFallbackResources(
+export function acquireGardenPacketFallbackResources(
     geometry: BufferGeometry,
     material: Material,
+    root: Object3D,
 ) {
-    const shader = acquireGardenPaletteFallbackMaterial(material);
+    const shader = acquireGardenPacketFallbackMaterial(material, root);
     if (!shader) return undefined;
     try {
         const buffers = acquireFallbackGeometry(geometry);
@@ -58,13 +60,14 @@ export function acquireGardenPaletteFallbackResources(
 }
 
 /** No borrowed input reaches a pending frame before its paired lease commits. */
-export function useGardenPaletteFallbackResources(
+export function useGardenPacketFallbackResources(
     geometry: BufferGeometry,
     material: Material,
     enabled: boolean,
 ) {
+    const root = useThree((state) => state.scene);
     const materialKey = enabled
-        ? getGardenPaletteFallbackMaterialKey(material)
+        ? getGardenPacketFallbackMaterialKey(material, root)
         : undefined;
     const key = materialKey ? `${geometry.uuid}:${materialKey}` : undefined;
     const [leased, setLeased] = useState<{
@@ -74,11 +77,15 @@ export function useGardenPaletteFallbackResources(
     }>();
     useLayoutEffect(() => {
         if (!key) return;
-        const lease = acquireGardenPaletteFallbackResources(geometry, material);
+        const lease = acquireGardenPacketFallbackResources(
+            geometry,
+            material,
+            root,
+        );
         if (!lease) return;
         setLeased({ key, geometry: lease.geometry, material: lease.material });
         return lease.release;
-    }, [geometry, key, material]);
+    }, [geometry, key, material, root]);
     if (!key) return { geometry, material };
     return leased?.key === key ? leased : undefined;
 }

@@ -25,19 +25,25 @@ export type GardenPaletteInteractionPhase =
 export function GardenPaletteInteractionFixture({
     batch,
     rain = false,
+    entityName = 'Tree',
 }: {
     batch: boolean;
     rain?: boolean;
+    entityName?: 'Tree' | 'Stool';
 }) {
     const [phase, setPhase] = useState<GardenPaletteInteractionPhase>('idle');
     const [stacks] = useState(() => [
         {
             position: new Vector3(-1.5, 0, 0),
-            blocks: [{ id: 'palette-picked-tree', name: 'Tree', rotation: 1 }],
+            blocks: [
+                { id: 'palette-picked-tree', name: entityName, rotation: 1 },
+            ],
         },
         {
             position: new Vector3(1.5, 0, 0),
-            blocks: [{ id: 'palette-static-tree', name: 'Tree', rotation: 0 }],
+            blocks: [
+                { id: 'palette-static-tree', name: entityName, rotation: 0 },
+            ],
         },
         {
             position: new Vector3(0, 0, 1.5),
@@ -86,7 +92,9 @@ export function GardenPaletteInteractionFixture({
         state.setOpenGardenBoxBlockId(null);
         useHoveredBlockStore.getState().setHoveredBlock(null);
         if (next === 'hover')
-            useHoveredBlockStore.getState().setHoveredBlock(box);
+            useHoveredBlockStore
+                .getState()
+                .setHoveredBlock(entityName === 'Stool' ? tree : box);
         if (next === 'pickup') {
             state.setPickupBlock(tree);
             state.setPickupSelectionTargets([target]);
@@ -178,6 +186,7 @@ export function GardenPaletteInteractionFixture({
                                         batch={batch}
                                         phase={phase}
                                         stacks={stacks}
+                                        entityName={entityName}
                                     />
                                 </Suspense>
                             </ParticleSystemProvider>

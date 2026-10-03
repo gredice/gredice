@@ -40,8 +40,9 @@ while a replacement packet is compiling.
 Stable terrain chunks that share a material and vertex layout are joined
 across components into chunk render packets; see
 [static render packets](game-static-render-packets.md).
-Shared palette packets prepare owned immutable attribute arrays while borrowing
-the authored GLTF source. The existing compiler copies source arrays and matrices
+Exact stock-material packets borrow immutable authored geometry and own only
+root-scoped material clones. Different PBR uniforms remain separate packets; no
+palette attributes or custom shader family is added. The existing compiler copies source arrays and matrices
 for each dispatched job; it does not register persistent worker source IDs or
 retain a versioned source cache. Compiler telemetry covers preparation,
 transfers, transforms and compiled geometry lifetime, not source residency.

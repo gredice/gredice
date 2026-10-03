@@ -17,18 +17,11 @@ import {
     recordPlacementAnimationChunkRebuild,
     shouldRecordPlacementAnimationChunkRebuild,
 } from '../../entities/placementAnimationProfileMetrics';
-import { useGardenPaletteFallbackResources } from '../gardenPaletteFallbackResources';
-import { useSceneRenderRequest } from '../SceneTime';
+import { useGardenPacketFallbackResources } from '../gardenPacketFallbackResources';
 import {
     StaticOpaqueSceneCacheBoundary,
     type StaticOpaqueSceneCacheGroup,
 } from '../StaticOpaqueSceneCache';
-import {
-    compileStaticPacketShaders,
-    type StaticPacketShaderObject,
-    StaticRenderPacketShaderWarmup,
-    staticPacketPresentationPreparation,
-} from './staticRenderPacketShaderWarmup';
 import {
     recordStaticRenderPacketCompile,
     recordStaticRenderPacketFallbackComponent,
@@ -47,10 +40,6 @@ import { useCompiledChunkSources } from './useCompiledChunk';
 
 const StaticRenderPacketContext =
     createContext<StaticRenderPacketRegistry | null>(null);
-const StaticRenderPacketWarmupContext = createContext<
-    StaticRenderPacketShaderWarmup | undefined
->(undefined);
-
 export function useStaticRenderPacketRegistry() {
     return useContext(StaticRenderPacketContext);
 }
@@ -66,59 +55,11 @@ export function StaticRenderPacketBatchProvider({
     children: ReactNode;
 }) {
     const [registry] = useState(() => new StaticRenderPacketRegistry());
-    const gl = useThree((state) => state.gl);
-    const requestRender = useSceneRenderRequest();
-    const [warmup, setWarmup] = useState<StaticRenderPacketShaderWarmup>();
-    useLayoutEffect(() => {
-        const owner = new StaticRenderPacketShaderWarmup(
-            compileStaticPacketShaders,
-            gl,
-            () => requestRender('static-packet-shader-warmup'),
-        );
-        setWarmup(owner);
-        const invalidate = () => owner.invalidate();
-        gl.domElement.addEventListener('webglcontextlost', invalidate);
-        gl.domElement.addEventListener('webglcontextrestored', invalidate);
-        return () => {
-            gl.domElement.removeEventListener('webglcontextlost', invalidate);
-            gl.domElement.removeEventListener(
-                'webglcontextrestored',
-                invalidate,
-            );
-            owner.dispose();
-        };
-    }, [gl, requestRender]);
-
     return (
         <StaticRenderPacketContext.Provider value={registry}>
-            <StaticRenderPacketWarmupContext.Provider value={warmup}>
-                {children}
-                <StaticRenderPackets registry={registry} />
-            </StaticRenderPacketWarmupContext.Provider>
+            {children}
+            <StaticRenderPackets registry={registry} />
         </StaticRenderPacketContext.Provider>
-    );
-}
-
-function useStaticPacketShaderReady(
-    object: StaticPacketShaderObject | undefined,
-) {
-    const warmup = useContext(StaticRenderPacketWarmupContext);
-    const [state, setState] = useState<{
-        warmup: StaticRenderPacketShaderWarmup;
-        object: StaticPacketShaderObject;
-        ready: boolean;
-    }>();
-    useLayoutEffect(() => {
-        if (!object || !warmup) return;
-        return warmup.register(object, (ready) =>
-            setState({ warmup, object, ready }),
-        );
-    }, [object, warmup]);
-    return Boolean(
-        state &&
-            state.warmup === warmup &&
-            state.object === object &&
-            state.ready,
     );
 }
 
@@ -205,21 +146,6 @@ function StaticRenderPackets({
     const groups = useRetainedGroups(packets);
     const gl = useThree((state) => state.gl);
     const [drawRanges] = useState(() => new StaticRenderPacketDrawRanges());
-    const warmup = useContext(StaticRenderPacketWarmupContext);
-    const scene = useThree((state) => state.scene);
-    const camera = useThree((state) => state.camera);
-    useLayoutEffect(() => {
-        if (!warmup) return;
-        return drawRanges.registerPreparation(
-            staticPacketPresentationPreparation(
-                gl,
-                scene,
-                camera,
-                (rootScene, rootCamera) =>
-                    warmup.prepare(rootScene, rootCamera),
-            ),
-        );
-    }, [camera, drawRanges, gl, scene, warmup]);
     useLayoutEffect(
         () => guardStaticRenderPacketDrawRanges(gl, drawRanges),
         [drawRanges, gl],
@@ -314,33 +240,22 @@ const StaticRenderPacketMesh = memo(function StaticRenderPacketMesh({
         previousBuild.current = packet;
     }, [build, packet]);
     const debugName = `StaticRenderPacket:${packet.chunkKey}:${packet.material.name || packet.material.type}:sources:${packet.contributions.length}:count:${packet.instanceCount}`;
-    const palette = packet.contributions.some(({ geometry }) =>
-        geometry.hasAttribute('aGardenPalette0'),
+    const sourceBoundsCulling = packet.contributions.every(
+        ({ sourceBoundsCulling }) => sourceBoundsCulling,
     );
     const meshes = useMemo(
         () =>
-            palette && build?.geometry.getAttribute('position')
+            sourceBoundsCulling && build?.geometry.getAttribute('position')
                 ? createStaticRenderPacketVisibilityMeshes(
                       packet,
                       build.geometry,
                       drawRanges,
                       debugName,
-                      false,
                   )
                 : [],
-        [build, debugName, drawRanges, packet, palette],
+        [build, debugName, drawRanges, packet, sourceBoundsCulling],
     );
-    const shaderReady = useStaticPacketShaderReady(meshes[0]);
-    useLayoutEffect(() => {
-        // Raycaster ignores visibility. Keep hidden warm objects outside
-        // whole-scene picking until the authored fallback hands off.
-        for (const mesh of meshes) mesh.setPresentationEnabled(shaderReady);
-    }, [meshes, shaderReady]);
-    const fallback = !build || (palette && !shaderReady);
-    if (build && !build.geometry.getAttribute('position')) return null;
-
-    if (fallback && !palette) {
-        // Pending or failed compiles keep the exact instanced presentation.
+    if (!build)
         return packet.contributions.map((contribution) => (
             <StaticRenderPacketInstancedFallback
                 key={contribution.id}
@@ -348,42 +263,21 @@ const StaticRenderPacketMesh = memo(function StaticRenderPacketMesh({
                 debugName={`${debugName}:fallback:${contribution.id}`}
             />
         ));
-    }
-    if (palette)
-        return (
-            <>
-                {fallback &&
-                    packet.contributions.map((contribution) => (
-                        <StaticRenderPacketInstancedFallback
-                            key={contribution.id}
-                            contribution={contribution}
-                            debugName={`${debugName}:fallback:${contribution.id}`}
-                        />
-                    ))}
-                {meshes.map((mesh) => (
-                    <primitive
-                        key={mesh.uuid}
-                        object={mesh}
-                        visible={Boolean(shaderReady)}
-                    />
-                ))}
-            </>
-        );
-    if (!build) return null;
     if (!build.geometry.getAttribute('position')) return null;
-    if (!palette)
-        return (
-            <mesh
-                name={debugName}
-                castShadow={packet.castShadow}
-                receiveShadow={packet.receiveShadow}
-                renderOrder={packet.renderOrder}
-                geometry={build.geometry}
-                material={packet.material}
-            />
-        );
-
-    return null;
+    if (sourceBoundsCulling)
+        return meshes.map((mesh) => (
+            <primitive key={mesh.uuid} object={mesh} />
+        ));
+    return (
+        <mesh
+            name={debugName}
+            castShadow={packet.castShadow}
+            receiveShadow={packet.receiveShadow}
+            renderOrder={packet.renderOrder}
+            geometry={build.geometry}
+            material={packet.material}
+        />
+    );
 });
 
 const StaticRenderPacketInstancedFallback = memo(
@@ -404,11 +298,11 @@ const StaticRenderPacketInstancedFallback = memo(
             contribution.fallbackGeometry ?? contribution.geometry;
         const sourceMaterial =
             contribution.fallbackMaterial ?? contribution.material;
-        const resources = useGardenPaletteFallbackResources(
+        const resources = useGardenPacketFallbackResources(
             sourceGeometry,
             sourceMaterial,
             sourceMaterial !== contribution.material &&
-                contribution.geometry.hasAttribute('aGardenPalette0'),
+                Boolean(contribution.sourceBoundsCulling),
         );
         const geometry = resources?.geometry;
         const material = resources?.material;

@@ -16,13 +16,17 @@ export type GardenPaletteCullingView = 'mixed' | 'all' | 'none' | 'opposite';
 export function GardenPaletteCullingFixture({
     batch = false,
     view = 'mixed',
-    warmupWitness = false,
+    equalUniforms = false,
+    unsupportedRange = false,
+    transitionWitness = false,
     shaderRevision = 0,
     restoreContext = false,
 }: {
     batch?: boolean;
     view?: GardenPaletteCullingView;
-    warmupWitness?: boolean;
+    equalUniforms?: boolean;
+    unsupportedRange?: boolean;
+    transitionWitness?: boolean;
     shaderRevision?: number;
     restoreContext?: boolean;
 }) {
@@ -39,7 +43,7 @@ export function GardenPaletteCullingFixture({
         (next: GardenPaletteCullingReadback) => setResult(next),
         [],
     );
-    const key = `${batch}:${view}${warmupWitness ? `:warmup:${shaderRevision}:${restoreContext}` : ''}`;
+    const key = `${batch}:${view}${equalUniforms ? ':equal' : ''}${unsupportedRange ? ':legacy-range' : ''}${transitionWitness ? `:transition:${shaderRevision}:${restoreContext}` : ''}`;
     return (
         <div
             data-testid="palette-culling"
@@ -68,7 +72,9 @@ export function GardenPaletteCullingFixture({
                         <GardenPaletteCullingScene
                             batch={batch}
                             view={view}
-                            warmupWitness={warmupWitness}
+                            equalUniforms={equalUniforms}
+                            unsupportedRange={unsupportedRange}
+                            transitionWitness={transitionWitness}
                             shaderRevision={shaderRevision}
                             restoreContext={restoreContext}
                             onReadback={report}

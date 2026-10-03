@@ -5,8 +5,8 @@ import {
     packMeshGeometry,
     unpackMeshGeometry,
 } from '../src/scene/compiler/meshBuffers';
-import { useGardenPaletteFallbackResources } from '../src/scene/gardenPaletteFallbackResources';
-import { useGardenPalettePacketSource } from '../src/scene/gardenPaletteMaterials';
+import { useGardenPacketFallbackResources } from '../src/scene/gardenPacketFallbackResources';
+import { useGardenPacketSource } from '../src/scene/gardenPacketMaterials';
 import { createWeatherSurfaceGeometry } from '../src/scene/weatherSurfaceGeometry';
 import { createIntegratedWeatherSurfaceMaterial } from '../src/scene/weatherSurfaceMaterial';
 import type {
@@ -75,7 +75,7 @@ export function GardenPaletteFixtureMesh({
                 : source.geometry,
         [source, weather],
     );
-    const prepared = useGardenPalettePacketSource(
+    const prepared = useGardenPacketSource(
         weatherGeometry,
         integrated ?? source.material,
         palette,
@@ -95,7 +95,7 @@ export function GardenPaletteFixtureMesh({
             ),
         );
     }, [prepared.geometry, source]);
-    const fallbackResources = useGardenPaletteFallbackResources(
+    const fallbackResources = useGardenPacketFallbackResources(
         compiled,
         integrated ?? source.material,
         fallback,

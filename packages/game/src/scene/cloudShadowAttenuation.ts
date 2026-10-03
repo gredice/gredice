@@ -147,7 +147,10 @@ const materialPatchStates = new WeakMap<
     Material,
     CloudShadowMaterialPatchState
 >();
-const registeredMaterialCandidateTokens = new Map<Material, Set<symbol>>();
+const registeredMaterialCandidateTokens = new Map<
+    Material,
+    Map<symbol, Object3D | undefined>
+>();
 let registeredMaterialCandidateRevision = 0;
 // The production garden owns one active weather scene, so one stable uniform
 // set lets shared materials keep a single compiled program across transitions.
@@ -229,11 +232,13 @@ export function getCloudShadowAttenuationMaterialUniforms() {
  */
 export function registerCloudShadowAttenuationMaterialCandidate(
     material: Material,
+    root?: Object3D,
 ) {
     const token = Symbol(material.uuid);
     const tokens =
-        registeredMaterialCandidateTokens.get(material) ?? new Set<symbol>();
-    tokens.add(token);
+        registeredMaterialCandidateTokens.get(material) ??
+        new Map<symbol, Object3D | undefined>();
+    tokens.set(token, root);
     registeredMaterialCandidateTokens.set(material, tokens);
     registeredMaterialCandidateRevision += 1;
 
@@ -559,8 +564,13 @@ export function syncCloudShadowAttenuationMaterials({
             }
         };
 
-        for (const material of registeredMaterialCandidateTokens.keys()) {
-            activateMaterial(material);
+        for (const [material, tokens] of registeredMaterialCandidateTokens) {
+            if (
+                [...tokens.values()].some(
+                    (owner) => owner === undefined || owner === root,
+                )
+            )
+                activateMaterial(material);
         }
         root.traverse((object) => {
             for (const material of getObjectMaterials(object)) {

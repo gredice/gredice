@@ -47,6 +47,7 @@ export function GardenPalettePacketScene({
         if (frames.current.count !== 8) return;
         const materials = new Set();
         let meshes = 0;
+        let stockMeshes = 0;
         let paletteVertices = 0;
         scene.traverse((object) => {
             if (
@@ -56,6 +57,11 @@ export function GardenPalettePacketScene({
                 return;
             meshes++;
             materials.add(object.material);
+            if (
+                !Array.isArray(object.material) &&
+                object.material.name.endsWith(':GardenStock')
+            )
+                stockMeshes++;
             paletteVertices +=
                 object.geometry.getAttribute('aGardenPalette0')?.count ?? 0;
         });
@@ -65,6 +71,7 @@ export function GardenPalettePacketScene({
             materials: materials.size,
             meshes,
             paletteVertices,
+            stockMeshes,
             paletteMaterials: metrics.canonicalMaterials,
             sharedMaterialUsers: metrics.sharedMaterialUsers,
         });

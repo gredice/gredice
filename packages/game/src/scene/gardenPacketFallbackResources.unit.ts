@@ -4,12 +4,21 @@ import {
     BoxGeometry,
     Float32BufferAttribute,
     MeshStandardMaterial,
+    Scene,
 } from 'three';
 import { readSharedGardenMaterialMetrics } from './gardenMaterials';
-import { acquireGardenPaletteFallbackResources } from './gardenPaletteFallbackResources';
+import { acquireGardenPacketFallbackResources as acquireInRoot } from './gardenPacketFallbackResources';
 import { createWeatherSurfaceGeometry } from './weatherSurfaceGeometry';
 
-describe('paired transient palette fallback ownership', () => {
+const root = new Scene();
+function acquireGardenPacketFallbackResources(
+    geometry: Parameters<typeof acquireInRoot>[0],
+    material: Parameters<typeof acquireInRoot>[1],
+) {
+    return acquireInRoot(geometry, material, root);
+}
+
+describe('paired transient stock fallback ownership', () => {
     it('copies all vertex/index/weather inputs and retains exact groups, draw range and bounds', () => {
         const source = createWeatherSurfaceGeometry(new BoxGeometry(), {
             includeSnowSkirts: true,
@@ -25,7 +34,7 @@ describe('paired transient palette fallback ownership', () => {
         );
         source.computeBoundingBox();
         source.computeBoundingSphere();
-        const lease = acquireGardenPaletteFallbackResources(
+        const lease = acquireGardenPacketFallbackResources(
             source,
             new MeshStandardMaterial(),
         );
@@ -56,11 +65,11 @@ describe('paired transient palette fallback ownership', () => {
         let borrowedDisposals = 0;
         for (const resource of [geometry, firstMaterial, secondMaterial])
             resource.addEventListener('dispose', () => borrowedDisposals++);
-        const first = acquireGardenPaletteFallbackResources(
+        const first = acquireGardenPacketFallbackResources(
             geometry,
             firstMaterial,
         );
-        const second = acquireGardenPaletteFallbackResources(
+        const second = acquireGardenPacketFallbackResources(
             geometry,
             secondMaterial,
         );
@@ -85,17 +94,17 @@ describe('paired transient palette fallback ownership', () => {
     it('reacquires fresh buffers and shaders after final release or source-object replacement', () => {
         const geometry = new BoxGeometry();
         const material = new MeshStandardMaterial();
-        const first = acquireGardenPaletteFallbackResources(geometry, material);
+        const first = acquireGardenPacketFallbackResources(geometry, material);
         assert.ok(first);
         first.release();
-        const remounted = acquireGardenPaletteFallbackResources(
+        const remounted = acquireGardenPacketFallbackResources(
             geometry,
             material,
         );
         assert.ok(remounted);
         assert.notEqual(remounted.geometry, first.geometry);
         assert.notEqual(remounted.material, first.material);
-        const replacement = acquireGardenPaletteFallbackResources(
+        const replacement = acquireGardenPacketFallbackResources(
             new BoxGeometry(2, 1, 1),
             material,
         );
@@ -108,7 +117,7 @@ describe('paired transient palette fallback ownership', () => {
 
     it('keeps cloned arrays independent from borrowed inputs', () => {
         const geometry = new BoxGeometry();
-        const lease = acquireGardenPaletteFallbackResources(
+        const lease = acquireGardenPacketFallbackResources(
             geometry,
             new MeshStandardMaterial(),
         );
@@ -127,7 +136,7 @@ describe('paired transient palette fallback ownership', () => {
         const unknown = new MeshStandardMaterial();
         unknown.onBeforeCompile = () => {};
         assert.equal(
-            acquireGardenPaletteFallbackResources(geometry, unknown),
+            acquireGardenPacketFallbackResources(geometry, unknown),
             undefined,
         );
     });
@@ -140,7 +149,7 @@ describe('paired transient palette fallback ownership', () => {
         const before = readSharedGardenMaterialMetrics();
         assert.throws(
             () =>
-                acquireGardenPaletteFallbackResources(
+                acquireGardenPacketFallbackResources(
                     geometry,
                     new MeshStandardMaterial(),
                 ),

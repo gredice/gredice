@@ -4,12 +4,12 @@ import { createElement } from 'react';
 import { Color, DoubleSide, MeshStandardMaterial } from 'three';
 import { readStaticGardenMaterialNode } from './gardenMaterialNodes';
 import {
-    createGardenPaletteMaterial,
-    getGardenPaletteMaterialSignature,
-} from './gardenPaletteMaterials';
+    createGardenPacketMaterial,
+    getGardenPacketMaterialSignature,
+} from './gardenPacketMaterials';
 
 describe('static garden material node admission', () => {
-    it('preserves authored constructor values and shares heterogeneous PBR nodes', () => {
+    it('preserves authored constructor values and keeps heterogeneous PBR nodes in separate stock buckets', () => {
         const wood = readStaticGardenMaterialNode(
             createElement('meshStandardMaterial', {
                 color: '#744020',
@@ -34,11 +34,11 @@ describe('static garden material node admission', () => {
         assert.equal(first.roughness, 0.9);
         assert.equal(second.metalness, 0.3);
         assert.equal(first.side, DoubleSide);
-        assert.equal(
-            getGardenPaletteMaterialSignature(first),
-            getGardenPaletteMaterialSignature(second),
+        assert.notEqual(
+            getGardenPacketMaterialSignature(first),
+            getGardenPacketMaterialSignature(second),
         );
-        const shared = createGardenPaletteMaterial(first);
+        const shared = createGardenPacketMaterial(first);
         shared.dispose();
         first.dispose();
         second.dispose();

@@ -1,316 +1,145 @@
 # Static render packets and shared garden materials
 
-Static terrain chunks used to submit one draw per component and chunk. Each
-component also cloned its own material, so terrain materials could not share
-a draw even when only palette/PBR values differed. `StaticRenderPacketBatchProvider` in
-`EntityInstances` collects the stable merged chunks of every participating
-component and compiles the compatible ones into one chunk render packet.
+`StaticRenderPacketBatchProvider` in `EntityInstances` collects compatible stable
+opaque/cutout geometry into render packets on the existing 8-unit chunk grid.
+Production rigid GLTF and additional prop callers opt in with
+`batchStaticMaterial`; declared static cache groups also qualify. Active
+placement drops, articulated parts, sorted transparency, unknown material hooks,
+and unsupported JSX ownership remain on their authored paths.
 
-The production GLTF and additional rigid-prop callers opt in with
-`batchStaticMaterial`; declared static cache groups also qualify. This admits
-compatible stable opaque/cutout props even when their old per-component
-`renderStableChunksAsMergedGeometry` flag is absent. Generic callers keep their
-existing path: an unrelated autumn leaf material that changes PBR values in an
-effect, for example, is not opted in. Eligible geometry is immutable or replaced
-by a new source object. Palette attributes belong to owned prepared geometry;
-the existing compiler copies those arrays and transforms for each dispatched job.
-It never transfers the live GLTF buffers, and has no versioned source residency
-cache or worker source-ID registration protocol.
+## Exact stock material compatibility
 
-Simple intrinsic `<meshStandardMaterial>` nodes can qualify with supported
-scalar/Color constructor props. Their concrete source materials are created in
-layout-effect leases, disposed on cleanup, and freshly allocated after
-StrictMode replay. Refs, constructor `args`, children, maps, custom hooks and
-unknown JSX components stay on the authored path. Active placement-drop meshes
-and pickup outlines retain source geometry and JSX; stable drag projections use
-their existing instance positions and packet rebuilds.
+`getGardenPacketMaterialSignature` accepts supported `MeshStandardMaterial`
+sources and includes every serializable rendered property: color, roughness,
+metalness, emissive and intensity, maps, alpha/cutout, side, depth/blend state,
+vertex-color flags, and registered shader configuration. Different PBR uniforms
+remain separate packets. No palette attributes, custom GLSL, new vertex-color
+flag, async warmup policy, or idle material pool is introduced.
 
-## Material families
+`useGardenPacketSource` acquires a committed owned clone. It preserves the
+original values, texture references, authored `onBeforeCompile`, and
+`customProgramCacheKey`. The ownership key includes the actual scene root;
+equal supported materials share within that root, while independent roots own
+separate clones. The root identity does not enter the native shader key. The
+last active lease disposes the clone, never the source material or its textures.
+StrictMode cleanup and subsequent setup acquire a fresh live lease.
 
-`classifyGardenMaterial` sorts a stable chunk's material into one of three
-families:
+Registered ground/weather hooks keep their exact configuration and mutable
+uniform identities. The cloud decorator is removed from the borrowed source
+callbacks and applied once to the owned clone by its root. New packet/fallback
+candidate tokens are scoped to that root. Existing production weather uses its
+established shared cloud uniform/mask owner; these leases do not claim concurrent
+independent production weather masks.
 
-- **Opaque**: single, non-transparent material with no `alphaTest`. Batched.
-- **Cutout**: single, non-transparent material with `alphaTest > 0`. Batched.
-- **Transparent**: depends on per-object sorting. Stays on its existing path.
+Simple intrinsic `<meshStandardMaterial>` nodes can qualify through supported
+scalar/Color constructor values. Their concrete source materials are created in
+layout effects and disposed by their source owner. Refs, `args`, children, maps,
+custom hooks and unknown JSX components retain the authored path. Geometry must
+be immutable or replaced by a new source object; morph-bearing geometry and
+partial authored draw ranges retain the previous explicit merged/instanced path.
 
-`getGardenMaterialSignature` describes a material by its type, every
-serializable own property (colors, roughness, metalness, emissive, side, alpha,
-depth/blend state, texture UUIDs, and so on), and its shader hooks. Equal
-signatures render identically. A material with unknown objects, user data,
-clipping planes, or unregistered `onBeforeCompile` hooks has no signature and
-batches only by identity. The scene-owned cloud-shadow decorator does not count,
-because the cloud layer applies it to whichever shared instance is rendered.
+Stool's rigid AdditionalEntityInstances caller explicitly belongs to
+`static-props`, like its compatible planks peers. Its active drop is excluded
+from stable chunks; drag, pickup outlines, articulated/live overlays, and
+placement identity keep their existing owners. Cache group remains part of the
+packet key; no grouping boundary is removed.
 
-Shader decorators that are pure functions of their configuration register that
-configuration with `registerGardenMaterialShaderHooks`. Ground patches do this,
-so two `dirt` patches of equal source materials share one instance, while
-`dirt`, `grass`, and different wet patches stay separate.
+## Packet planning and ownership
 
-`useSharedGardenMaterial` resolves a participating material to the first live
-material with the same signature. The registry never creates or disposes
-source materials. Ownership stays with the component that made the material, and the
-canonical entry is dropped when its last user releases it.
+A contribution contains one component's stable instances of one geometry in one
+chunk. Contributions join only when chunk, cache group, canonical material,
+shadow flags, render order and complete vertex layout match. Stable owner/chunk
+IDs preserve source ordering. Unchanged contributions retain their packet and
+source-list identities so untouched chunks keep compiled geometry.
 
-`useGardenPalettePacketSource` migrates compatible `MeshStandardMaterial`
-sources to one generated shared shader. Color, roughness, metalness, and
-emissive multiplied by emissive intensity are stored in two constant `vec4`
-attributes per source vertex. They survive retained-chunk transforms and
-concatenation, so different palettes share one packet without changing their
-linear PBR inputs. Existing vertex color and texture maps still multiply the
-same inputs. Alpha maps, cutout thresholds, side, depth and shadow settings
-remain on the original built-in shader path.
+The existing compiler copies source arrays and matrices for each dispatched
+job. It never transfers live GLTF buffers and has no worker source-ID protocol
+or versioned source-residency cache. Indexed/non-indexed, normalized/interleaved,
+weather and existing color attributes keep their original compiler semantics.
 
-All remaining properties and registered hook settings stay in the compatibility
-signature. Unknown shaders, physical-material extensions, clipping planes and
-unregistered user data retain their existing material path. Generated shaders
-are owned by the registry and disposed only after their last user releases.
-Prepared source geometry is copied and disposed independently of GLTF geometry,
-placement animations and outlines.
+Until a replacement compiles, supported contributions render with committed
+transient geometry/material clones of their authored inputs and the same
+instance transforms. Clones preserve maps, cutout, exact ground/weather hooks,
+and source-local data. Pending material ownership is root-scoped; immutable
+geometry clones share by source object and release after the last user. Clone
+failure unwinds the material lease. Pending or failed work never disposes source
+geometry, materials or textures. Once the compiled replacement commits, the
+transient clones and their GPU buffers/programs release. Compilation failure
+keeps authored presentation. No shader-readiness presentation gate is added.
 
-Integrated weather materials register their exact settings and the identities
-of their mutable rain, frost and snow uniforms. Equal values with independent
-uniform owners cannot share. Palette tint runs before ground patches and
-weather blending; authored snow-local attributes survive compilation. Weather
-surfaces can therefore join compatible packets, while their moving shaders
-remain live at the cache boundary. Static palette materials retain opaque cache
-eligibility, but the per-pass visibility meshes described below deliberately
-retain the cache's unknown-callback rejection and render live.
+Each committed compiled geometry has its existing effect owner. Replacement or
+unmount cancels jobs, rejects stale results, and disposes only owned geometry.
+The compiler worker and queue retain their existing final-owner cleanup.
 
-## Packet planning
+## Original visibility and picking
 
-A contribution is one component's stable instances of one geometry in one
-8-unit chunk. `planStaticRenderPackets` joins contributions only when all of the
-following match:
+Supported stock contributions explicitly opt into original-source visibility;
+unsupported sources already using explicit merging retain their previous path.
+Instanced source bounds use the same Float32 matrices and ordered sphere unions
+as Three's `InstancedMesh`. Sources previously compiled together retain their
+original combined bounds, rather than acquiring finer culling.
 
-- chunk;
-- static-cache group;
-- canonical material instance;
-- `castShadow` and `receiveShadow`;
-- `renderOrder`;
-- vertex layout. Attribute names, array types, item sizes, normalization,
-  half-float storage, GPU type, morph targets, and indexing must all be equal.
+When every original group intersects the actual render-camera frustum, a single
+mesh submits the complete compiled packet. Mixed visibility submits only visible
+groups through contiguous ranges of the same compiled buffer and material.
+No visible groups means no native draw. Main and shadow camera decisions are
+independent; camera motion does not recompile or allocate additional buffers.
 
-Contributions keep owner-and-chunk IDs, and a packet orders its sources by those
-IDs. A packet with an unchanged contribution list keeps its object and source
-list. Untouched chunks therefore keep their compiled buffers when another chunk
-changes. `MeshCompiler` jobs accept several sources. `compileMeshBufferSources`
-transforms each source and then concatenates them, rebasing indices and moving
-to 32-bit indices only when the joined packet needs them. The small synchronous
-path, the worker path, cancellation, and the instanced fallback for pending or
-failed compiles work as they did for single-geometry chunks.
+Paired main/shadow callbacks select a range and restore it after drawing. A
+renderer-keyed, refcounted guard restores ranges in `finally`, including callback
+failures, nested renders and sibling cleanup. Whole-scene raycasts skip the full
+render-only mesh and raycast each source range once under the same range guard.
+Distance, UV, face, side and near/far semantics remain inherited from Three;
+raycasting can still hit an offscreen source. These callbacks remain rejected
+by static-cache replay until a separately tested range-aware integration exists.
 
-While compilation is pending, each contribution renders its authored stable
-geometry with the same instance transforms. Eligible palette sources use
-commit-owned transient geometry and material clones with identical PBR values, maps, cutout,
-ground callbacks and live weather uniform owners. The scene applies cloud
-attenuation once to each clone. Pending meshes wait for their clone lease;
-borrowed original materials never reach a pending frame. The final fallback
-consumer disposes the clones and their GPU buffers/programs when the final
-packet's geometry and shader are ready or the component releases. The palette
-shader is only submitted by the final non-instanced packet. Unknown hooks retain their authored lifetime, and
-fallback never disposes source geometry, source materials or their textures.
-Geometry clones share by immutable source object across pending chunks and
-materials, then release after their last fallback user. Replacing a source
-object creates a new clone; fallback copies never alias authored vertex arrays.
+## Diagnostics and validation
 
-## Shader readiness
+`window.__grediceGameProfile.renderPackets` reports contributions, packets,
+material/family counts, completed compiles, live fallback meshes and fallback
+reasons. `savedSubmissions` is potential all-visible contribution-minus-packet
+work, not measured native draws. `gardenMaterials` reports active canonical,
+shared, deduplicated and identity-only material users. Compiler telemetry covers
+preparation/transfers/transforms and compiled geometry lifetime, not source
+residency or total heap/VRAM.
 
-The authored fallback stays visible while a replacement palette packet prepares
-its shader. Hidden final meshes retain their real geometry/material and receive
-the current scene decorators, but are excluded from rendering, shadows and
-whole-scene raycasts until the layout handoff. Their custom range callbacks keep
-the cache boundary live/ineligible, so hidden warm objects do not add cached
-mesh/submission/triangle counts.
+The historical `GardenPalette*` fixture names remain test entry points; their
+current assertions test stock materials. Controls preserve day/night,
+clear/rain/snow/combined weather, mapped PBR, existing vertex colors, cutout
+shadows and foreground depth. Mutation/StrictMode tests require owned cleanup
+and remount. Distinct PBR values stay separate; equal-uniform sources must
+actually aggregate positive native main/shadow draws. Root fixtures verify
+separate material ownership and surviving sibling rendering.
 
-Each committed provider owns a shader scheduler. It starts work only before an
-outer presentation render of that provider's actual scene and current camera
-with no render target. Cache FBO captures, outline scenes, foreign roots and
-nested renders retain their range restoration guards without changing shader
-readiness. One active batch contains at most 64 objects; at most 256 objects can
-register. Overflow stays on authored fallback. There is no idle material pool
-or frame heartbeat.
+Actual worker compilation uses a test-only 100 ms response-delivery delay to
+bind a positive pending authored-clone submission and subsequent compiled
+submission/disposal. Culling fixtures retain mixed/all/none/opposite main and
+shadow views, unique whole-scene raycasts, native ranges/triangles and unchanged
+buffer identities. Light-change/context-restoration receipts capture pixels in
+the actual submitted frame. No shader-warmup delay remains.
 
-Compile-only material clones borrow geometry and textures and copy the exact
-live hooks/cache keys and supported object flags. They never submit geometry or
-upload instance buffers. `compileAsync` uses the actual scene/camera/lights; its
-completion is followed by unchanged Three diagnostics and an explicit
-`LINK_STATUS` check. Activation compiles each real active object against the
-current scene and requires its selected CURRENT native program and cache key
-to equal the warmed program before the temporary clone releases. A resident
-older program in the material's program map cannot satisfy that check.
+The real Tree/GardenBox interaction controls retain hover, pickup, selection,
+drag, active drop and settled drop states. A separate Stool case exercises the
+new explicit static group through the actual production Additional path. Rain
+controls converge through real positive weather frames and require two native
+wet-overlay draws and Float32 wetness 1. Active drops compare the exact first
+16 ms public spring input, committed 0.1 lift, original animated geometry,
+matching pose/camera/light/weather inputs and same-submission PNGs. Pixel limits
+remain fewer than 0.1% materially different pixels and maximum channel error 8.
+Buttons drive production store state; these tests do not claim pointer hit-test
+coverage or a device GPU benefit.
 
-Material/hook/version, geometry layout, object layer/feature and
-light/environment/fog/renderer input changes retire stale readiness. Spot-light
-map presence participates in the light key. Skinning, batching and morph objects
-are unsupported; visible probe grids also retain authored fallback because
-Three's compile traversal does not gather them as its render traversal does.
-Context changes, owner release and a timeout after four seconds cancel jobs and dispose
-only temporary materials. Three stops readiness polling when those materials
-are disposed; late results cannot activate a retired generation. StrictMode
-creates a fresh committed scheduler and lease identities.
+## Performance acceptance
 
-This is a bounded first repair, not proof that every first-use task disappears.
-Authored fallback remains visible and uses its existing on-demand shader
-compilation. Only replacement palette objects register for async warmup;
-otherwise offscreen fallback variants can compile without ever drawing. A
-program input changed during a render can leave the existing palette visible
-for that synchronous pass until React
-commits fallback; presentation is continuous. Beauty prewarming does not
-prepare depth/shadow shaders. Without parallel-compile support, deferred
-diagnostics can still block. The centralized scene/layout key scan also adds
-CPU work. Current-source native task/resource and unchanged canonical captures
-must establish acceptance.
+The earlier custom-PBR palette and async-warmup candidate `a62d2277` is rejected:
+its full canonical matrix has a retained telemetry 500 failure and 18 binding
+relative exceptions, including repeated switch long tasks, cold canvas latency
+and peak shader growth. Those artifacts remain separate historical evidence.
 
-Each static-cache group gets one `StaticOpaqueSceneCacheBoundary`. A packet is
-one potential submission when all original groups are visible; actual submitted
-work still comes from renderer receipts. Packets render in the provider's
-coordinate space. Explicit merged-terrain participants and compatible opted-in
-rigid props all render garden-space instances. Empty placement members stay in
-packet telemetry so dropping a contributor's last stable instance and rejoining
-it can still identify a completed physical rebuild; empty members never enter
-compiler sources, rendered contribution counts or saved-submission estimates.
-If an entire packet disappears there is no rebuild to time; its later recreation
-is a new compile, visible in general compiler counters.
-
-## Original visibility and shared ranges
-
-Joining source geometry can make a packet's bounding sphere intersect a camera
-even when one original source mesh would have been culled. Palette packets
-preserve each source's original culling group for both the scene camera and the
-actual shadow camera. Instanced groups use the same Float32 instance matrices
-and ordered sphere unions as `InstancedMesh`. Sources already compiled together
-retain their former combined positional bounds rather than gaining finer
-culling. Morph-bearing geometry and partial authored draw ranges keep their
-pre-palette presentation.
-
-When every original group intersects the current frustum, one mesh submits the
-whole packet. With mixed visibility, only visible groups submit their existing
-contiguous compiled ranges. These range meshes share the same compiled geometry
-and material; camera movement neither recompiles nor allocates more buffers.
-No visible groups means no native draw. Main and shadow visibility are evaluated
-independently, with cached plane and world-matrix inputs.
-
-Paired main/shadow callbacks temporarily select a range and restore the prior
-range after drawing. A renderer-keyed, refcounted commit lease restores ranges
-in `finally` when rendering or a callback throws, including nested renders and
-out-of-order sibling cleanup. It never disposes compiled or borrowed resources.
-Whole-scene avatar occlusion queries also traverse packet objects. The full
-render mesh has raycasting disabled; each source-range mesh runs inherited
-raycasting with its own temporary range and `finally` restoration. This keeps
-unique source intersections, side/distance/UV semantics and linear total
-triangle work. Raycasting does not use the render-camera frustum, so a query can
-still intersect an offscreen source. Animated and pending fallback meshes keep
-their original raycast paths.
-The static cache continues to reject these custom callbacks: capture/replay
-must not bypass range selection, duplicate the restored full range, or count it
-as cached work. A future range-aware cache integration needs its own visual and
-native-submission witnesses.
-
-## Fallbacks
-
-These components keep their per-component merged chunks unchanged:
-
-- **`material-node`**: unsupported JSX material children.
-- **`material-array`**, **`missing-material`**, and **`transparent`**.
-
-Transparent effects, including additive effects, retain per-object sorting
-against other alpha effects and weather. Additive contributions commute with
-each other, but moving their draw order relative to ordinary transparency can
-change the combined result, so they are not merged without an isolated-layer
-visual parity witness.
-
-Placement-drop animations, pickup outlines, and rain/snow overlays still use
-each component's own paths. Interaction comes from the spatial index, not from
-raycasts against terrain meshes, so it does not change.
-
-## Diagnostics
-
-`window.__grediceGameProfile.renderPackets` reports:
-
-- packet and contribution counts;
-- potential saved submissions (`contributions - packets`) for all-visible packets;
-- opaque and cutout packet counts;
-- distinct packet materials;
-- packet compiles and their maximum duration;
-- live instanced fallback meshes;
-- fallback component counts by reason.
-
-`window.__grediceGameProfile.gardenMaterials` reports:
-
-- canonical material count;
-- shared users;
-- deduplicated users;
-- identity-only users.
-
-## Not yet covered
-
-Production cross-tier profiles, GPU timing, and deterministic visual captures
-are required before accepting a performance improvement. Transparent effects
-remain on the safe fallback path until their own overlap comparisons establish
-an ordering-preserving batching strategy.
-
-The deterministic `GardenPalettePacketFixture` and
-`apps/garden/tests/garden-palette-packets.spec.tsx` compare authored and palette
-shaders with identical compiled transforms under day/night lighting and clear/rain/snow/combined
-weather. They include mapped PBR inputs, vertex colors, cutout shadows,
-foreground depth occlusion, in-place palette mutation, StrictMode mounting and
-last-user disposal/remount. PNGs and numeric difference diagnostics are attached
-to each browser test result; this fixture proves visual parity, not device GPU
-savings.
-
-`GardenPaletteAdmissionFixture` exercises the actual `EntityInstancesGeometry`
-production path with GLTF-style materials and authored material nodes. It starts
-with batching enabled under StrictMode, then compares source and packet pixels,
-unchanged triangles and raycast hits, six contributions sharing two spatial
-packets, a local membership patch retaining the other chunk's geometry, palette
-mutation, an unknown-hook fallback, and final release/remount. Shared packet
-compilation also publishes physical placement rebuild timing and transformed
-instance counts when placement membership changes. A deliberately large source
-forces real worker compilation; the browser test delays only worker response
-delivery by 100 ms so even a fast host must render a pending frame. Those frames
-contain only transient authored shader clones, and every observed clone is
-disposed after readiness and final release. This test delay is not used by
-production or performance captures.
-
-`GardenPaletteCullingFixture` uses the production `EntityInstancesGeometry`
-path with mixed, all-visible, invisible and opposite main/shadow views. It
-records actual native draw ranges, calls and triangle deltas, verifies identical
-source/palette pixels, and checks shared buffer/material identity and restored
-ranges. Camera-only changes retain the existing compiled geometry and compile
-counters. Pure units cover legacy combined bounds, Float32 instanced bounds,
-morph/partial-range fallback, main/shadow independence, nested draw failures,
-cache rejection and sibling/duplicate lease cleanup.
-
-The warmup mode of this fixture additionally retains the first affected
-submitted frame after a real light-count invalidation and context restoration,
-followed by explicit pending/ready handoff frames. It observes native program
-identity/readiness before and after each actual main/shadow draw, unique
-whole-scene picking with near/far/UV/distance, zero missing presentation and
-PNG pixels captured within each same-submission receipt. The first-affected,
-pending and ready pixels are compared with the authored control at each matching
-fixed light/context state, using the unchanged thresholds. A 250ms delay applies only to the test's real
-`compileAsync` completion, guaranteeing a pending-frame witness on fast hosts;
-production has no such delay. These new witnesses require a current-source
-browser pass before shader-readiness behavior is accepted. Native draw identity
-does not independently bind the temporary compile clone's selected program;
-that transfer is established by source and focused negative unit coverage.
-The GLTF interaction fixture waits for actual async presentation under its live
-clock before freezing matched springs and weather frames; a virtual clock jump
-during compilation would also advance the production timeout.
-It reaches fully wet weather through real updates and asserts the native
-Float32 uniform inputs, camera and lights for every matched state. Active drop
-pixels are captured on the first positive native actor submission after the
-committed 0.1 lift. A test-only observer delegates the public spring advance
-unchanged, recording its exact millisecond input and before/after values. The
-control requires the same single 16ms advance and original source geometry on
-both branches; bounded virtual waits do not reset or manually advance springs.
-
-A separate diagnostic comparison of an uncompiled authored mesh against its
-compiled palette mesh found 378 of 196,608 pixels (0.1923%) differing by more
-than two channel values, with a maximum channel difference of 8/255. The
-differences were confined to the rain-only frost grain on ground tops. Baking
-world transforms to Float32 geometry changes the high-frequency world-noise
-rounding relative to a shader-applied model matrix. Existing stable weather
-chunks already use compiled transforms; the palette parity fixture uses that
-same production transform path on both sides and keeps its original thresholds.
+Stock grouping is a new candidate. Inventory projects 33 Fauna uniform buckets
+following the explicit Stool classification, but contribution savings do not
+predict actual main/shadow submission counts. Native Fauna runs and the unchanged
+full canonical CPU/GPU/cold/lifecycle/resource gates must establish acceptance.
+No threshold, quality, population, clock, camera, shader diagnostic, or baseline
+eligibility exception is implied by successful semantic tests. Transparent
+batching remains unsupported pending an ordering-preserving visual witness.

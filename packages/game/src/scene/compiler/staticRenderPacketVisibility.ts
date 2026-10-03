@@ -28,8 +28,8 @@ type PacketRange = DrawRange & {
 };
 type RangeOwner = { geometry: BufferGeometry; range: DrawRange };
 
-/** Morph bounds and partial authored ranges retain the pre-palette path. */
-export function supportsStaticPaletteVisibility(geometry: BufferGeometry) {
+/** Morph bounds and partial authored ranges retain the pre-stock path. */
+export function supportsStaticPacketVisibility(geometry: BufferGeometry) {
     const position = geometry.getAttribute('position');
     return Boolean(
         position &&

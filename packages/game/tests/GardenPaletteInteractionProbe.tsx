@@ -16,9 +16,11 @@ import {
     ShaderMaterial,
     Vector3,
 } from 'three';
+import { useHoveredBlockStore } from '../src/controls/useHoveredBlockStore';
 import { useEntityBlockInstances } from '../src/entities/EntityInstancesBlock';
 import type { GLTFResult } from '../src/models/GameAssets';
 import { readChunkCompilerMetrics } from '../src/scene/compiler/chunkCompilerMetrics';
+import { useStaticRenderPacketRegistry } from '../src/scene/compiler/StaticRenderPacketBatch';
 import { readStaticRenderPacketMetrics } from '../src/scene/compiler/staticRenderPackets';
 import { useSceneTimeUniform } from '../src/scene/SceneTime';
 import { getSceneRootRuntime } from '../src/scene/sceneRootRuntime';
@@ -40,6 +42,7 @@ type ActiveDropCapture = {
     deltaSequence: number[];
 };
 type DropSpringAdvance = {
+    springIdentity: number;
     deltaMs: number;
     before: number;
     after: number;
@@ -60,6 +63,20 @@ function isInside(object: Object3D, prefix: string) {
         current = current.parent;
     }
     return false;
+}
+
+function readPacketBlock(instance: object) {
+    const block: unknown = Reflect.get(instance, 'block');
+    if (
+        block === null ||
+        typeof block !== 'object' ||
+        !('id' in block) ||
+        !('name' in block) ||
+        typeof block.id !== 'string' ||
+        typeof block.name !== 'string'
+    )
+        return { blockId: '', blockName: '' };
+    return { blockId: block.id, blockName: block.name };
 }
 
 function materialInputs(material: Material | Material[]) {
@@ -127,13 +144,16 @@ export function GardenPaletteInteractionProbe({
     stacks,
     tree,
     box,
+    entityName,
 }: {
     batch: boolean;
     phase: GardenPaletteInteractionPhase;
     stacks: Stack[];
     tree: GLTFResult;
+    entityName: 'Tree' | 'Stool';
     box: GLTFResult;
 }) {
+    const registry = useStaticRenderPacketRegistry();
     const scene = useThree((state) => state.scene);
     const gl = useThree((state) => state.gl);
     const camera = useThree((state) => state.camera);
@@ -142,9 +162,9 @@ export function GardenPaletteInteractionProbe({
     const runtime = getSceneRootRuntime(useStore());
     const store = useGameStateStore();
     const instances = useEntityBlockInstances({
-        name: 'Tree',
+        name: entityName,
         stacks,
-        yOffset: 0.5,
+        yOffset: entityName === 'Stool' ? 1 : 0.5,
     });
     const receipts = useRef(0);
     const lastDelta = useRef(0);
@@ -176,11 +196,11 @@ export function GardenPaletteInteractionProbe({
     const sourceDisposals = useRef(0);
     const sources = useMemo(
         () => [
-            tree.nodes.Tree_1_1,
+            entityName === 'Stool' ? tree.nodes.Stool : tree.nodes.Tree_1_1,
             box.nodes.GardenBox_Body_Planks,
             box.nodes.GardenBox_Lid_HingeOrigin,
         ],
-        [box, tree],
+        [box, entityName, tree],
     );
     useLayoutEffect(() => {
         if (phase !== 'drop') {
@@ -193,8 +213,11 @@ export function GardenPaletteInteractionProbe({
     }, [phase]);
     useLayoutEffect(() => {
         // Observe the exact public spring input without changing its arguments,
-        // scheduling or value. This fixture owns a single active drop spring.
+        // scheduling or value. Tree has one drop owner; Stool also has its
+        // independent authored rain-overlay drop owner.
         const original = SceneSpringValue.prototype.advance;
+        const identities = new WeakMap<object, number>();
+        let nextIdentity = 0;
         const observed: typeof original = function (
             this: SceneSpringValue<unknown>,
             deltaMs,
@@ -206,13 +229,20 @@ export function GardenPaletteInteractionProbe({
                 this.key === 'dropOffsetY' &&
                 typeof before === 'number' &&
                 typeof after === 'number'
-            )
+            ) {
+                let springIdentity = identities.get(this);
+                if (springIdentity === undefined) {
+                    springIdentity = ++nextIdentity;
+                    identities.set(this, springIdentity);
+                }
                 pendingDropAdvances.current.push({
+                    springIdentity,
                     deltaMs,
                     before,
                     after,
                     performanceNow: performance.now(),
                 });
+            }
             return result;
         };
         SceneSpringValue.prototype.advance = observed;
@@ -251,7 +281,7 @@ export function GardenPaletteInteractionProbe({
                 rainNativeDraws.current.add(object.uuid);
             if (
                 drawCamera === camera &&
-                isInside(object, 'Animation:PlacementDrop:Tree:') &&
+                isInside(object, `Animation:PlacementDrop:${entityName}:`) &&
                 gl.info.render.calls > calls
             )
                 dropNativeDraws.current.push({
@@ -266,7 +296,7 @@ export function GardenPaletteInteractionProbe({
             if (gl.renderBufferDirect === observed)
                 gl.renderBufferDirect = original;
         };
-    }, [camera, gl, sources]);
+    }, [camera, entityName, gl, sources]);
     useLayoutEffect(() => {
         const resources = new Set<BufferGeometry | Material>();
         for (const source of sources) {
@@ -288,6 +318,7 @@ export function GardenPaletteInteractionProbe({
         () =>
             readInteractionSnapshot({
                 batch,
+                entityName,
                 phase,
                 scene,
                 gl,
@@ -304,8 +335,31 @@ export function GardenPaletteInteractionProbe({
                 dropSpringAdvances: dropSpringAdvances.current,
                 weatherEvolution: weatherEvolution.current,
                 rainOverlayDrawCount: rainNativeDraws.current.size,
+                stockContributions:
+                    registry?.getSnapshot().flatMap((packet) =>
+                        packet.contributions.flatMap((contribution) =>
+                            contribution.instances.map((instance) => ({
+                                ...readPacketBlock(instance),
+                                cacheGroup: contribution.cacheGroup ?? null,
+                                sourceBoundsCulling:
+                                    contribution.sourceBoundsCulling === true,
+                            })),
+                        ),
+                    ) ?? [],
             }),
-        [batch, phase, scene, gl, camera, time, sources, store, instances],
+        [
+            batch,
+            entityName,
+            phase,
+            registry,
+            scene,
+            gl,
+            camera,
+            time,
+            sources,
+            store,
+            instances,
+        ],
     );
     useSceneAfterFrame(
         useCallback(() => {
@@ -383,6 +437,7 @@ export function GardenPaletteInteractionProbe({
 
 function readInteractionSnapshot({
     batch,
+    entityName,
     phase,
     scene,
     gl,
@@ -399,8 +454,10 @@ function readInteractionSnapshot({
     dropSpringAdvances,
     weatherEvolution,
     rainOverlayDrawCount,
+    stockContributions,
 }: {
     batch: boolean;
+    entityName: 'Tree' | 'Stool';
     phase: GardenPaletteInteractionPhase;
     scene: RootState['scene'];
     gl: RootState['gl'];
@@ -422,6 +479,12 @@ function readInteractionSnapshot({
     dropSpringAdvances: DropSpringAdvance[];
     weatherEvolution: WeatherEvolution;
     rainOverlayDrawCount: number;
+    stockContributions: {
+        blockId: string;
+        blockName: string;
+        cacheGroup: string | null;
+        sourceBoundsCulling: boolean;
+    }[];
 }) {
     const originalGeometries = new Set(sources.map((s) => s.geometry));
     const packetMeshes: Mesh[] = [];
@@ -439,20 +502,23 @@ function readInteractionSnapshot({
             !object.name.includes(':visible-range:')
         )
             packetMeshes.push(object);
-        if (isInside(object, 'Animation:PlacementDrop:Tree:'))
+        if (isInside(object, `Animation:PlacementDrop:${entityName}:`))
             animatedMeshes.push(object);
         if (isInside(object, 'Interaction:HoverOutlineTarget'))
             outlineMeshes.push(object);
-        if (object.name.startsWith('BlockInstances:Tree:'))
+        if (object.name.startsWith(`BlockInstances:${entityName}:`))
             authoredMeshes.push(object);
     });
     const drop = scene.getObjectByName(
-        'Animation:PlacementDropOffset:Tree:palette-picked-tree',
+        `Animation:PlacementDropOffset:${entityName}:palette-picked-tree`,
     );
     const state = store.getState();
     return {
         batch,
         phase,
+        stockContributions,
+        hoveredBlockId:
+            useHoveredBlockStore.getState().hoveredBlock?.id ?? null,
         receipts: receipts,
         rendererFrame: gl.info.render.frame,
         springStarted,
@@ -510,8 +576,10 @@ function readInteractionSnapshot({
         })),
         compiler: readChunkCompilerMetrics(),
         packets: readStaticRenderPacketMetrics(),
-        paletteMeshes: packetMeshes.filter((mesh) =>
-            mesh.geometry.hasAttribute('aGardenPalette0'),
+        paletteMeshes: packetMeshes.filter(
+            (mesh) =>
+                !Array.isArray(mesh.material) &&
+                mesh.material.name.endsWith(':GardenStock'),
         ).length,
         pendingMeshes: packetMeshes.filter((mesh) =>
             mesh.name.includes(':fallback:'),

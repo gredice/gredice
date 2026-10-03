@@ -40,7 +40,7 @@ import {
     createStaticRenderPacketVisibilityMeshes,
     guardStaticRenderPacketDrawRanges,
     StaticRenderPacketDrawRanges,
-    supportsStaticPaletteVisibility,
+    supportsStaticPacketVisibility,
 } from './staticRenderPacketVisibility';
 
 const localTransform = {
@@ -429,14 +429,14 @@ describe('original-source visibility on shared compiled buffers', () => {
     });
     it('rejects morph and partial-range palette migration while leaving borrowed geometry untouched', () => {
         const geometry = new BoxGeometry();
-        assert.equal(supportsStaticPaletteVisibility(geometry), true);
+        assert.equal(supportsStaticPacketVisibility(geometry), true);
         geometry.morphAttributes.position = [
             geometry.getAttribute('position').clone(),
         ];
-        assert.equal(supportsStaticPaletteVisibility(geometry), false);
+        assert.equal(supportsStaticPacketVisibility(geometry), false);
         geometry.morphAttributes = {};
         geometry.setDrawRange(3, 6);
-        assert.equal(supportsStaticPaletteVisibility(geometry), false);
+        assert.equal(supportsStaticPacketVisibility(geometry), false);
         assert.deepEqual(geometry.drawRange, { start: 3, count: 6 });
         const s = source('a', 0);
         const original = s.geometry.getAttribute('position').array.slice();

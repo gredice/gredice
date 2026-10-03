@@ -71,8 +71,10 @@ test('production entity props batch JSX material nodes, retain untouched chunks 
         (await fixture.getAttribute('data-result')) ?? '{}',
     );
     expect(strictInitial.materials.sharedMaterialUsers).toBe(3);
-    expect(strictInitial.packets.savedSubmissions).toBe(4);
+    expect(strictInitial.packets.savedSubmissions).toBe(0);
     expect(strictInitial.fallbackFrames).toBeGreaterThan(0);
+    expect(strictInitial.nativePendingDraws).toBeGreaterThan(0);
+    expect(strictInitial.nativeStockDraws).toBeGreaterThan(0);
     expect(strictInitial.paletteFallbacks).toBe(0);
     expect(strictInitial.borrowedFallbacks).toBe(0);
     expect(strictInitial.liveFallbackMaterials).toBe(0);
@@ -97,9 +99,9 @@ test('production entity props batch JSX material nodes, retain untouched chunks 
     const initial = await read();
     const batchedPng = await fixture.locator('canvas').screenshot();
     expect(initial.packets.contributions).toBe(6);
-    expect(initial.packets.packets).toBe(2);
-    expect(initial.packets.savedSubmissions).toBe(4);
-    expect(initial.meshes).toBe(4);
+    expect(initial.packets.packets).toBe(6);
+    expect(initial.packets.savedSubmissions).toBe(0);
+    expect(initial.meshes).toBe(8);
     expect(baseline.meshes).toBe(8);
     expect(initial.triangles).toBe(baseline.triangles);
     expect(initial.hit).toEqual(baseline.hit);
@@ -111,8 +113,24 @@ test('production entity props batch JSX material nodes, retain untouched chunks 
     await fixture.update(<GardenPaletteAdmissionFixture batch patched />);
     await expect(fixture).toHaveAttribute('data-ready', 'true:false:true:true');
     const patched = await read();
-    expect(patched.geometryIds['0:0']).toBe(initial.geometryIds['0:0']);
-    expect(patched.geometryIds['-1:0']).not.toBe(initial.geometryIds['-1:0']);
+    const initialGeometries = Object.fromEntries(
+            Object.entries(initial.geometryIds),
+        ),
+        patchedGeometries = Object.fromEntries(
+            Object.entries(patched.geometryIds),
+        );
+    expect(Object.keys(initialGeometries)).toHaveLength(6);
+    expect(Object.keys(patchedGeometries)).toHaveLength(5);
+    for (const [key, geometry] of Object.entries(patchedGeometries))
+        expect(geometry).toBe(initialGeometries[key]);
+    expect(
+        Object.keys(patchedGeometries).filter((key) => key.startsWith('0:0|')),
+    ).toHaveLength(3);
+    const removed = Object.keys(initialGeometries).filter(
+        (key) => !(key in patchedGeometries),
+    );
+    expect(removed).toHaveLength(1);
+    expect(removed[0].startsWith('-1:0|')).toBe(true);
     expect(patched.triangles).toBe(initial.triangles - 12);
     await fixture.update(<GardenPaletteAdmissionFixture batch mutated />);
     await expect(fixture).toHaveAttribute('data-ready', 'true:true:false:true');
@@ -182,140 +200,346 @@ function compare(left: Buffer, right: Buffer) {
     };
 }
 
-test('production palette packets preserve original main and shadow culling with shared native ranges', async ({
+for (const equalUniforms of [false, true]) {
+    test(`production stock packets preserve main/shadow culling for equal uniforms=${equalUniforms}`, async ({
+        mount,
+        page,
+    }, testInfo) => {
+        test.setTimeout(90_000);
+        const errors: string[] = [];
+        page.on('pageerror', (error) => errors.push(error.message));
+        const fixture = await mount(
+            <GardenPaletteCullingFixture equalUniforms={equalUniforms} />,
+        );
+        const snapshots: Record<string, unknown> = {};
+        for (const view of ['mixed', 'all', 'none', 'opposite'] as const) {
+            await fixture.update(
+                <GardenPaletteCullingFixture
+                    equalUniforms={equalUniforms}
+                    view={view}
+                />,
+            );
+            await expect(fixture).toHaveAttribute(
+                'data-ready',
+                `false:${view}${equalUniforms ? ':equal' : ''}`,
+            );
+            const source = JSON.parse(
+                (await fixture.getAttribute('data-result')) ?? '{}',
+            );
+            const sourcePng = await fixture.locator('canvas').screenshot();
+            await fixture.update(
+                <GardenPaletteCullingFixture
+                    equalUniforms={equalUniforms}
+                    batch
+                    view={view}
+                />,
+            );
+            await expect(fixture).toHaveAttribute(
+                'data-ready',
+                `true:${view}${equalUniforms ? ':equal' : ''}`,
+            );
+            const candidate = JSON.parse(
+                (await fixture.getAttribute('data-result')) ?? '{}',
+            );
+            const packetPng = await fixture.locator('canvas').screenshot();
+            const result = compare(
+                await pixels(sourcePng),
+                await pixels(packetPng),
+            );
+            for (const pass of ['main', 'shadow']) {
+                const sourceRows = source.receipts.filter(
+                    (r: { pass: string }) => r.pass === pass,
+                );
+                const packetRows = candidate.receipts.filter(
+                    (r: { pass: string }) => r.pass === pass,
+                );
+                const expectedTriangles =
+                    view === 'all' ? 36 : view === 'none' ? 0 : 12;
+                expect(
+                    sourceRows.reduce(
+                        (total: number, r: { triangles: number }) =>
+                            total + r.triangles,
+                        0,
+                    ),
+                ).toBe(expectedTriangles);
+                expect(
+                    packetRows.reduce(
+                        (total: number, r: { triangles: number }) =>
+                            total + r.triangles,
+                        0,
+                    ),
+                ).toBe(expectedTriangles);
+                expect(
+                    packetRows.every(
+                        (r: { calls: number; count: number }) =>
+                            r.calls === 1 && r.count > 0,
+                    ),
+                ).toBe(true);
+                expect(packetRows.length).toBe(
+                    view === 'none'
+                        ? 0
+                        : view === 'all' && !equalUniforms
+                          ? 3
+                          : 1,
+                );
+            }
+            expect(candidate.packets.contributions).toBe(3);
+            expect(candidate.packets.packets).toBe(equalUniforms ? 1 : 3);
+            expect(candidate.packets.savedSubmissions).toBe(
+                equalUniforms ? 2 : 0,
+            );
+            expect(candidate.geometryIds).toHaveLength(equalUniforms ? 1 : 3);
+            expect(candidate.materialIds).toHaveLength(equalUniforms ? 1 : 3);
+            expect(candidate.rangesRestored).toBe(true);
+            expect(candidate.sourceDisposals).toBe(0);
+            expect(candidate.sceneRaycastHits).toHaveLength(
+                source.sceneRaycastHits.length,
+            );
+            for (let ray = 0; ray < source.sceneRaycastHits.length; ray++) {
+                const authored = source.sceneRaycastHits[ray],
+                    ranged = candidate.sceneRaycastHits[ray];
+                expect(authored).toHaveLength(1);
+                expect(ranged).toHaveLength(authored.length);
+                const sourceHit = authored[0],
+                    candidateHit = ranged[0];
+                if (!sourceHit?.uv || !candidateHit?.uv)
+                    throw new Error(
+                        'Whole-scene raycast witness requires source and packet UV hits',
+                    );
+                expect(candidateHit.distance).toBeCloseTo(
+                    sourceHit.distance,
+                    6,
+                );
+                for (let axis = 0; axis < 3; axis++)
+                    expect(candidateHit.point[axis]).toBeCloseTo(
+                        sourceHit.point[axis],
+                        6,
+                    );
+                for (let axis = 0; axis < 2; axis++)
+                    expect(candidateHit.uv[axis]).toBeCloseTo(
+                        sourceHit.uv[axis],
+                        6,
+                    );
+            }
+            expect(result.differentPixelRatio).toBeLessThan(0.001);
+            expect(result.maxChannelError).toBeLessThanOrEqual(8);
+            await testInfo.attach(`${view}-source`, {
+                body: sourcePng,
+                contentType: 'image/png',
+            });
+            await testInfo.attach(`${view}-packet`, {
+                body: packetPng,
+                contentType: 'image/png',
+            });
+            snapshots[view] = { source, candidate, result };
+        }
+        // Camera-only changes retain the committed packet and its existing buffers.
+        await fixture.update(
+            <GardenPaletteCullingFixture
+                equalUniforms={equalUniforms}
+                batch
+                view="mixed"
+            />,
+        );
+        await expect(fixture).toHaveAttribute(
+            'data-ready',
+            `true:mixed${equalUniforms ? ':equal' : ''}`,
+        );
+        const before = JSON.parse(
+            (await fixture.getAttribute('data-result')) ?? '{}',
+        );
+        await fixture.update(
+            <GardenPaletteCullingFixture
+                equalUniforms={equalUniforms}
+                batch
+                view="opposite"
+            />,
+        );
+        await expect(fixture).toHaveAttribute(
+            'data-ready',
+            `true:opposite${equalUniforms ? ':equal' : ''}`,
+        );
+        const after = JSON.parse(
+            (await fixture.getAttribute('data-result')) ?? '{}',
+        );
+        expect(after.geometryIds).toEqual(before.geometryIds);
+        expect(after.materialIds).toEqual(before.materialIds);
+        expect(after.compiler.syncCompiles).toBe(before.compiler.syncCompiles);
+        expect(after.compiler.workerCompiles).toBe(
+            before.compiler.workerCompiles,
+        );
+        await testInfo.attach('actual-main-shadow-submissions', {
+            body: JSON.stringify({ snapshots, cameraOnly: { before, after } }),
+            contentType: 'application/json',
+        });
+        expect(errors).toEqual([]);
+    });
+}
+
+test('unsupported partial-range sources retain the original explicit merged path', async ({
     mount,
     page,
 }, testInfo) => {
-    test.setTimeout(90_000);
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
-    const fixture = await mount(<GardenPaletteCullingFixture />);
-    const snapshots: Record<string, unknown> = {};
-    for (const view of ['mixed', 'all', 'none', 'opposite'] as const) {
-        await fixture.update(<GardenPaletteCullingFixture view={view} />);
-        await expect(fixture).toHaveAttribute('data-ready', `false:${view}`);
-        const source = JSON.parse(
-            (await fixture.getAttribute('data-result')) ?? '{}',
-        );
-        const sourcePng = await fixture.locator('canvas').screenshot();
-        await fixture.update(<GardenPaletteCullingFixture batch view={view} />);
-        await expect(fixture).toHaveAttribute('data-ready', `true:${view}`);
-        const candidate = JSON.parse(
-            (await fixture.getAttribute('data-result')) ?? '{}',
-        );
-        const packetPng = await fixture.locator('canvas').screenshot();
-        const result = compare(
-            await pixels(sourcePng),
-            await pixels(packetPng),
-        );
-        for (const pass of ['main', 'shadow']) {
-            const sourceRows = source.receipts.filter(
-                (r: { pass: string }) => r.pass === pass,
-            );
-            const packetRows = candidate.receipts.filter(
-                (r: { pass: string }) => r.pass === pass,
-            );
-            const expectedTriangles =
-                view === 'all' ? 36 : view === 'none' ? 0 : 12;
-            expect(
-                sourceRows.reduce(
-                    (total: number, r: { triangles: number }) =>
-                        total + r.triangles,
-                    0,
-                ),
-            ).toBe(expectedTriangles);
-            expect(
-                packetRows.reduce(
-                    (total: number, r: { triangles: number }) =>
-                        total + r.triangles,
-                    0,
-                ),
-            ).toBe(expectedTriangles);
-            expect(
-                packetRows.every(
-                    (r: { calls: number; count: number }) =>
-                        r.calls === 1 && r.count > 0,
-                ),
-            ).toBe(true);
-            expect(packetRows.length).toBe(view === 'none' ? 0 : 1);
-        }
-        expect(candidate.packets.contributions).toBe(3);
-        expect(candidate.packets.packets).toBe(1);
-        expect(candidate.geometryIds).toHaveLength(1);
-        expect(candidate.materialIds).toHaveLength(1);
-        expect(candidate.rangesRestored).toBe(true);
-        expect(candidate.sourceDisposals).toBe(0);
-        expect(candidate.sceneRaycastHits).toHaveLength(
-            source.sceneRaycastHits.length,
-        );
-        for (let ray = 0; ray < source.sceneRaycastHits.length; ray++) {
-            const authored = source.sceneRaycastHits[ray],
-                ranged = candidate.sceneRaycastHits[ray];
-            expect(authored).toHaveLength(1);
-            expect(ranged).toHaveLength(authored.length);
-            const sourceHit = authored[0],
-                candidateHit = ranged[0];
-            if (!sourceHit?.uv || !candidateHit?.uv)
-                throw new Error(
-                    'Whole-scene raycast witness requires source and packet UV hits',
-                );
-            expect(candidateHit.distance).toBeCloseTo(sourceHit.distance, 6);
-            for (let axis = 0; axis < 3; axis++)
-                expect(candidateHit.point[axis]).toBeCloseTo(
-                    sourceHit.point[axis],
-                    6,
-                );
-            for (let axis = 0; axis < 2; axis++)
-                expect(candidateHit.uv[axis]).toBeCloseTo(
-                    sourceHit.uv[axis],
-                    6,
-                );
-        }
-        expect(result.differentPixelRatio).toBeLessThan(0.001);
-        expect(result.maxChannelError).toBeLessThanOrEqual(8);
-        await testInfo.attach(`${view}-source`, {
-            body: sourcePng,
-            contentType: 'image/png',
-        });
-        await testInfo.attach(`${view}-packet`, {
-            body: packetPng,
-            contentType: 'image/png',
-        });
-        snapshots[view] = { source, candidate, result };
-    }
-    // Camera-only changes retain the committed packet and its existing buffers.
-    await fixture.update(<GardenPaletteCullingFixture batch view="mixed" />);
-    await expect(fixture).toHaveAttribute('data-ready', 'true:mixed');
-    const before = JSON.parse(
+    const fixture = await mount(
+        <GardenPaletteCullingFixture unsupportedRange view="all" />,
+    );
+    await expect(fixture).toHaveAttribute(
+        'data-ready',
+        'false:all:legacy-range',
+    );
+    const source = JSON.parse(
         (await fixture.getAttribute('data-result')) ?? '{}',
     );
-    await fixture.update(<GardenPaletteCullingFixture batch view="opposite" />);
-    await expect(fixture).toHaveAttribute('data-ready', 'true:opposite');
-    const after = JSON.parse(
+    const sourcePng = await fixture.locator('canvas').screenshot();
+    await fixture.update(
+        <GardenPaletteCullingFixture batch unsupportedRange view="all" />,
+    );
+    await expect(fixture).toHaveAttribute(
+        'data-ready',
+        'true:all:legacy-range',
+    );
+    const candidate = JSON.parse(
         (await fixture.getAttribute('data-result')) ?? '{}',
     );
-    expect(after.geometryIds).toEqual(before.geometryIds);
-    expect(after.materialIds).toEqual(before.materialIds);
-    expect(after.compiler.syncCompiles).toBe(before.compiler.syncCompiles);
-    expect(after.compiler.workerCompiles).toBe(before.compiler.workerCompiles);
-    await testInfo.attach('actual-main-shadow-submissions', {
-        body: JSON.stringify({ snapshots, cameraOnly: { before, after } }),
+    const candidatePng = await fixture.locator('canvas').screenshot();
+    expect(candidate.localContributions).toHaveLength(3);
+    expect(
+        candidate.localContributions.every(
+            (value: { sourceBoundsCulling: boolean }) =>
+                value.sourceBoundsCulling === false,
+        ),
+    ).toBe(true);
+    expect(candidate.sceneRaycastHits).toEqual(source.sceneRaycastHits);
+    for (const pass of ['main', 'shadow'])
+        expect(
+            candidate.receipts
+                .filter((row: { pass: string }) => row.pass === pass)
+                .reduce(
+                    (sum: number, row: { triangles: number }) =>
+                        sum + row.triangles,
+                    0,
+                ),
+        ).toBe(
+            source.receipts
+                .filter((row: { pass: string }) => row.pass === pass)
+                .reduce(
+                    (sum: number, row: { triangles: number }) =>
+                        sum + row.triangles,
+                    0,
+                ),
+        );
+    const result = compare(await pixels(sourcePng), await pixels(candidatePng));
+    expect(result.differentPixelRatio).toBeLessThan(0.001);
+    expect(result.maxChannelError).toBeLessThanOrEqual(8);
+    expect(candidate.sourceDisposals).toBe(0);
+    await testInfo.attach('unsupported-merged-source', {
+        body: JSON.stringify({ source, candidate, result }),
         contentType: 'application/json',
     });
     expect(errors).toEqual([]);
 });
 
-test('pending, ready, invalidated and context-restored palette presentation preserves whole-scene picking and native shadows', async ({
+test('equal stock sources keep independent Canvas ownership through sibling release', async ({
+    mount,
+    page,
+}, testInfo) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    const fixture = await mount(
+        <div>
+            <div key="first" data-testid="first-root">
+                <GardenPaletteCullingFixture batch equalUniforms />
+            </div>
+            <div key="second" data-testid="second-root">
+                <GardenPaletteCullingFixture batch equalUniforms />
+            </div>
+        </div>,
+    );
+    const first = fixture
+            .getByTestId('first-root')
+            .getByTestId('palette-culling'),
+        second = fixture
+            .getByTestId('second-root')
+            .getByTestId('palette-culling');
+    await expect(first).toHaveAttribute('data-ready', 'true:mixed:equal');
+    await expect(second).toHaveAttribute('data-ready', 'true:mixed:equal');
+    const a = JSON.parse((await first.getAttribute('data-result')) ?? '{}'),
+        b = JSON.parse((await second.getAttribute('data-result')) ?? '{}');
+    expect(a.materialIds).toHaveLength(1);
+    expect(b.materialIds).toHaveLength(1);
+    expect(a.materialIds).not.toEqual(b.materialIds);
+    const before = await second.locator('canvas').screenshot();
+    await fixture.update(
+        <div>
+            <div key="first" data-testid="first-root" />
+            <div key="second" data-testid="second-root">
+                <GardenPaletteCullingFixture batch equalUniforms />
+            </div>
+        </div>,
+    );
+    await expect(second).toHaveAttribute('data-ready', 'true:mixed:equal');
+    // Observe a fresh actual surviving-root submission after sibling release.
+    await fixture.update(
+        <div>
+            <div key="first" data-testid="first-root" />
+            <div key="second" data-testid="second-root">
+                <GardenPaletteCullingFixture
+                    batch
+                    equalUniforms
+                    view="opposite"
+                />
+            </div>
+        </div>,
+    );
+    await expect(second).toHaveAttribute('data-ready', 'true:opposite:equal');
+    await fixture.update(
+        <div>
+            <div key="first" data-testid="first-root" />
+            <div key="second" data-testid="second-root">
+                <GardenPaletteCullingFixture batch equalUniforms />
+            </div>
+        </div>,
+    );
+    await expect(second).toHaveAttribute('data-ready', 'true:mixed:equal');
+    const surviving = JSON.parse(
+        (await second.getAttribute('data-result')) ?? '{}',
+    );
+    expect(surviving.frame).toBeGreaterThan(b.frame);
+    expect(surviving.localContributions).toHaveLength(3);
+    expect(
+        surviving.receipts.some(
+            (row: { pass: string; calls: number }) =>
+                row.pass === 'main' && row.calls > 0,
+        ),
+    ).toBe(true);
+    expect(surviving.materialIds).toEqual(b.materialIds);
+    expect(surviving.sourceDisposals).toBe(0);
+    const after = await second.locator('canvas').screenshot();
+    const result = compare(await pixels(before), await pixels(after));
+    expect(result.differentPixelRatio).toBeLessThan(0.001);
+    expect(result.maxChannelError).toBeLessThanOrEqual(8);
+    await testInfo.attach('independent-root-ownership', {
+        body: JSON.stringify({ a, b, surviving, result }),
+        contentType: 'application/json',
+    });
+    expect(errors).toEqual([]);
+});
+
+test('committed, changed and context-restored stock presentation preserves whole-scene picking and native shadows', async ({
     mount,
     page,
 }, testInfo) => {
     test.setTimeout(90_000);
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
-    const fixture = await mount(<GardenPaletteCullingFixture warmupWitness />);
+    const fixture = await mount(
+        <GardenPaletteCullingFixture transitionWitness />,
+    );
     await expect(fixture).toHaveAttribute(
         'data-ready',
-        'false:mixed:warmup:0:false',
+        'false:mixed:transition:0:false',
     );
     const source = JSON.parse(
         (await fixture.getAttribute('data-result')) ?? '{}',
@@ -336,19 +560,19 @@ test('pending, ready, invalidated and context-restored palette presentation pres
         await fixture.update(
             <GardenPaletteCullingFixture
                 batch
-                warmupWitness
+                transitionWitness
                 shaderRevision={revision}
                 restoreContext={restored}
             />,
         );
         await expect(fixture).toHaveAttribute(
             'data-ready',
-            `true:mixed:warmup:${revision}:${restored}`,
+            `true:mixed:transition:${revision}:${restored}`,
         );
         const candidate = JSON.parse(
             (await fixture.getAttribute('data-result')) ?? '{}',
         );
-        const frames = candidate.warmupFrames.filter(
+        const frames = candidate.transitionFrames.filter(
             (sample: { revision: number; restored: boolean }) =>
                 sample.revision === revision && sample.restored === restored,
         );
@@ -357,7 +581,7 @@ test('pending, ready, invalidated and context-restored palette presentation pres
         );
         expect(
             handoff.map((sample: { phase: string }) => sample.phase),
-        ).toEqual(['pending', 'ready']);
+        ).toEqual(['ready']);
         expect(
             frames.filter(
                 (sample: { phase: string }) =>
@@ -365,12 +589,9 @@ test('pending, ready, invalidated and context-restored palette presentation pres
             ),
         ).toHaveLength(revision > 0 || restored ? 1 : 0);
         expect(candidate.missingPresentationFrames).toBe(0);
-        expect(handoff[0].hiddenPaletteMeshes).toBe(4);
-        expect(handoff[0].visiblePaletteMeshes).toBe(0);
-        expect(handoff[0].fallbackMeshes).toBe(3);
-        expect(handoff[1].visiblePaletteMeshes).toBe(4);
-        expect(handoff[1].fallbackMeshes).toBe(0);
-        expect(handoff[1].frame).toBeGreaterThan(handoff[0].frame);
+        expect(handoff[0].hiddenPaletteMeshes).toBe(0);
+        expect(handoff[0].visiblePaletteMeshes).toBe(6);
+        expect(handoff[0].fallbackMeshes).toBe(0);
         for (const frame of frames) {
             const png = submittedCanvasPng(frame.png);
             frameCaptures.push({
@@ -381,7 +602,7 @@ test('pending, ready, invalidated and context-restored palette presentation pres
                 png,
             });
             await testInfo.attach(
-                `warmup-${revision}-${restored}-${frame.phase}-frame-${frame.frame}`,
+                `stock-transition-${revision}-${restored}-${frame.phase}-frame-${frame.frame}`,
                 { body: png, contentType: 'image/png' },
             );
             expect(frame.rangesRestored).toBe(true);
@@ -438,7 +659,7 @@ test('pending, ready, invalidated and context-restored palette presentation pres
             }
         }
         const candidatePng = await fixture.locator('canvas').screenshot();
-        await testInfo.attach(`warmup-${revision}-${restored}`, {
+        await testInfo.attach(`stock-transition-${revision}-${restored}`, {
             body: candidatePng,
             contentType: 'image/png',
         });
@@ -455,14 +676,14 @@ test('pending, ready, invalidated and context-restored palette presentation pres
     ] as const) {
         await fixture.update(
             <GardenPaletteCullingFixture
-                warmupWitness
+                transitionWitness
                 shaderRevision={revision}
                 restoreContext={restored}
             />,
         );
         await expect(fixture).toHaveAttribute(
             'data-ready',
-            `false:mixed:warmup:${revision}:${restored}`,
+            `false:mixed:transition:${revision}:${restored}`,
         );
         const control = JSON.parse(
             (await fixture.getAttribute('data-result')) ?? '{}',
@@ -470,7 +691,7 @@ test('pending, ready, invalidated and context-restored palette presentation pres
         const controlPng = submittedCanvasPng(control.png);
         const controlPixels = await pixels(controlPng);
         await testInfo.attach(
-            `warmup-source-${revision}-${restored}-frame-${control.frame}`,
+            `stock-transition-source-${revision}-${restored}-frame-${control.frame}`,
             { body: controlPng, contentType: 'image/png' },
         );
         for (const capture of frameCaptures.filter(
@@ -561,7 +782,7 @@ for (const { weather, night } of [
 
 for (const weather of ['clear', 'rain', 'snow', 'combined'] as const) {
     for (const night of [false, true]) {
-        test(`palette packets preserve ${weather} ${night ? 'night' : 'day'} colors, shadows, maps and depth`, async ({
+        test(`stock packets preserve ${weather} ${night ? 'night' : 'day'} colors, shadows, maps and depth`, async ({
             mount,
             page,
         }, testInfo) => {
@@ -605,7 +826,8 @@ for (const weather of ['clear', 'rain', 'snow', 'combined'] as const) {
                 (await fixture.getAttribute('data-result')) ?? '{}',
             );
             expect(readback.meshes).toBe(6);
-            expect(readback.paletteVertices).toBeGreaterThan(100);
+            expect(readback.paletteVertices).toBe(0);
+            expect(readback.stockMeshes).toBe(6);
             const result = compare(original, palette);
             await testInfo.attach('original', {
                 body: originalPng,
@@ -680,8 +902,12 @@ test('palette mutation and StrictMode cleanup preserve frames and release owned 
     expect(errors).toEqual([]);
 });
 
-for (const rain of [false, true]) {
-    test(`actual GLTF packet props preserve hover, pickup, selection, drag and drop pixels with rain=${rain}`, async ({
+for (const [entityName, rain] of [
+    ['Tree', false],
+    ['Tree', true],
+    ['Stool', false],
+] as const) {
+    test(`actual ${entityName} GLTF packet props preserve hover, pickup, selection, drag and drop pixels with rain=${rain}`, async ({
         mount,
         page,
     }, testInfo) => {
@@ -715,7 +941,7 @@ for (const rain of [false, true]) {
         const stateCaptures: unknown[] = [];
         try {
             // Install before any root can queue a native RAF, then keep its
-            // managed timers live throughout real async shader readiness.
+            // managed timers live until worker compilation and native presentation complete.
             await page.clock.install();
             for (const batch of [false, true]) {
                 await page.clock.resume();
@@ -723,6 +949,7 @@ for (const rain of [false, true]) {
                     <GardenPaletteInteractionFixture
                         batch={batch}
                         rain={rain}
+                        entityName={entityName}
                     />,
                 );
                 await page.waitForFunction(
@@ -730,9 +957,8 @@ for (const rain of [false, true]) {
                     null,
                     { timeout: 15_000, polling: 100 },
                 );
-                // Keep Three's real 10ms async readiness polling and the
-                // production timeout live until presentation has committed.
-                // A 60s virtual jump during compilation would expire its job.
+                // Let actual worker delivery and positive native frames commit
+                // before freezing matched spring/weather inputs.
                 await expect
                     .poll(
                         async () => {
@@ -855,12 +1081,41 @@ for (const rain of [false, true]) {
                         expect(readback.packets.contributions > 0).toBe(batch);
                     }
                     if (
-                        ['hover', 'pickup', 'selection', 'drag'].includes(name)
+                        ['pickup', 'selection', 'drag'].includes(name) ||
+                        (name === 'hover' && entityName === 'Tree')
                     ) {
                         expect(readback.outlineMeshes).toBeGreaterThan(0);
                         expect(readback.outlineOriginalGeometry).toBe(
                             readback.outlineMeshes,
                         );
+                    }
+                    if (entityName === 'Stool') {
+                        if (name === 'hover')
+                            expect(readback.outlineMeshes).toBe(0);
+                        expect(readback.hoveredBlockId).toBe(
+                            name === 'hover' ? 'palette-picked-tree' : null,
+                        );
+                        const stoolMembers = readback.stockContributions.filter(
+                            (value) => value.blockName === 'Stool',
+                        );
+                        const pickedMember = stoolMembers.find(
+                            (value) => value.blockId === 'palette-picked-tree',
+                        );
+                        expect(
+                            stoolMembers.some(
+                                (value) =>
+                                    value.blockId === 'palette-static-tree' &&
+                                    value.sourceBoundsCulling &&
+                                    value.cacheGroup === 'static-props',
+                            ),
+                        ).toBe(batch);
+                        if (batch && activeDrop)
+                            expect(pickedMember).toBeUndefined();
+                        if (batch && !activeDrop)
+                            expect(pickedMember).toMatchObject({
+                                cacheGroup: 'static-props',
+                                sourceBoundsCulling: true,
+                            });
                     }
                     if (name === 'drag')
                         expect(
@@ -869,18 +1124,34 @@ for (const rain of [false, true]) {
                             ),
                         ).toEqual({
                             id: 'palette-picked-tree',
-                            position: [-0.75, 0.85, -0.5],
+                            position: [
+                                -0.75,
+                                entityName === 'Stool' ? 1.35 : 0.85,
+                                -0.5,
+                            ],
                             pickupOutlineVisible: true,
                         });
                     if (activeDrop) {
-                        expect(deltaSequence).toEqual([16]);
+                        expect(deltaSequence).toEqual(
+                            entityName === 'Stool' ? [16, 16] : [16],
+                        );
                         expect(readback.springStarted).toBe(true);
-                        expect(readback.dropSpringAdvances).toHaveLength(1);
-                        expect(readback.dropSpringAdvances[0]).toMatchObject({
-                            deltaMs: 16,
-                            before: 0.1,
-                            after: readback.dropOffsetY,
-                        });
+                        expect(readback.dropSpringAdvances).toHaveLength(
+                            entityName === 'Stool' ? 2 : 1,
+                        );
+                        expect(
+                            new Set(
+                                readback.dropSpringAdvances.map(
+                                    (advance) => advance.springIdentity,
+                                ),
+                            ).size,
+                        ).toBe(entityName === 'Stool' ? 2 : 1);
+                        for (const advance of readback.dropSpringAdvances)
+                            expect(advance).toMatchObject({
+                                deltaMs: 16,
+                                before: 0.1,
+                                after: readback.dropOffsetY,
+                            });
                         expect(readback.renderedTiming.delta).toBeCloseTo(
                             0.016,
                             12,
@@ -960,7 +1231,22 @@ for (const rain of [false, true]) {
                         expect(result.maxChannelError).toBeLessThanOrEqual(8);
                     } else {
                         const idle = originals.get('idle');
-                        if (idle && name !== 'drop-settled')
+                        if (
+                            idle &&
+                            name === 'hover' &&
+                            entityName === 'Stool'
+                        ) {
+                            const hoverPixels = compare(
+                                await pixels(idle.png),
+                                await pixels(png),
+                            );
+                            expect(
+                                hoverPixels.differentPixelRatio,
+                            ).toBeLessThan(0.001);
+                            expect(
+                                hoverPixels.maxChannelError,
+                            ).toBeLessThanOrEqual(8);
+                        } else if (idle && name !== 'drop-settled')
                             expect(
                                 compare(
                                     await pixels(idle.png),

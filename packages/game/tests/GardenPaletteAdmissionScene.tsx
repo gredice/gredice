@@ -49,7 +49,33 @@ export function GardenPaletteAdmissionScene({
     mounted: boolean;
     onReadback: (value: { key: string; [key: string]: unknown }) => void;
 }) {
-    const scene = useThree((state) => state.scene);
+    const { scene, gl, camera } = useThree();
+    const nativeDraws = useRef({ pending: 0, stock: 0 });
+    useLayoutEffect(() => {
+        const original = gl.renderBufferDirect;
+        const observed: typeof original = (...args) => {
+            const [drawCamera, , , material, object] = args;
+            const calls = gl.info.render.calls;
+            original.apply(gl, args);
+            if (drawCamera !== camera || gl.info.render.calls <= calls) return;
+            if (
+                object.name.startsWith('StaticRenderPacket:') &&
+                object.name.includes(':fallback:') &&
+                material.name.endsWith(':StaticPacketFallback')
+            )
+                nativeDraws.current.pending++;
+            if (
+                object.name.startsWith('StaticRenderPacket:') &&
+                material.name.endsWith(':GardenStock')
+            )
+                nativeDraws.current.stock++;
+        };
+        gl.renderBufferDirect = observed;
+        return () => {
+            if (gl.renderBufferDirect === observed)
+                gl.renderBufferDirect = original;
+        };
+    }, [camera, gl]);
     const resources = useMemo(() => {
         const geometry = new BoxGeometry(1, 1, 1);
         // Force the real worker path so initial pending fallback reaches a frame.
@@ -199,7 +225,7 @@ export function GardenPaletteAdmissionScene({
             meshes
                 .filter((mesh) => mesh.name.startsWith('StaticRenderPacket:'))
                 .map((mesh) => [
-                    mesh.name.split(':').slice(1, 3).join(':'),
+                    `${mesh.name.split(':').slice(1, 3).join(':')}|${Array.isArray(mesh.material) ? 'array' : mesh.material.uuid}`,
                     mesh.geometry.uuid,
                 ]),
         );
@@ -214,6 +240,8 @@ export function GardenPaletteAdmissionScene({
             packets,
             compiler,
             fallbackFrames: frames.current.fallbackFrames,
+            nativePendingDraws: nativeDraws.current.pending,
+            nativeStockDraws: nativeDraws.current.stock,
             paletteFallbacks: frames.current.paletteFallbacks,
             borrowedFallbacks: frames.current.borrowedFallbacks,
             liveFallbackMaterials:

@@ -14,8 +14,14 @@ import {
     EntityInstancesGeometry,
 } from '../src/entities/EntityInstancesBlock';
 import { readChunkCompilerMetrics } from '../src/scene/compiler/chunkCompilerMetrics';
-import { StaticRenderPacketBatchProvider } from '../src/scene/compiler/StaticRenderPacketBatch';
-import { readStaticRenderPacketMetrics } from '../src/scene/compiler/staticRenderPackets';
+import {
+    StaticRenderPacketBatchProvider,
+    useStaticRenderPacketRegistry,
+} from '../src/scene/compiler/StaticRenderPacketBatch';
+import {
+    readStaticRenderPacketMetrics,
+    type StaticRenderPacketRegistry,
+} from '../src/scene/compiler/staticRenderPackets';
 import { useSceneAfterFrame } from '../src/scene/useSceneAfterFrame';
 import type { GardenPaletteCullingView } from './GardenPaletteCullingFixture';
 
@@ -34,7 +40,7 @@ type Receipt = {
     nativeReadyAfter: boolean | null;
 };
 type RayHit = { distance: number; point: number[]; uv: number[] | null };
-type WarmupFrame = {
+type TransitionFrame = {
     phase: 'first-affected' | 'pending' | 'ready';
     revision: number;
     restored: boolean;
@@ -53,6 +59,12 @@ export type GardenPaletteCullingReadback = {
     key: string;
     receipts: Receipt[];
     compiler: ReturnType<typeof readChunkCompilerMetrics>;
+    localContributions: {
+        id: string;
+        sourceBoundsCulling: boolean;
+        material: string;
+        geometry: string;
+    }[];
     packets: ReturnType<typeof readStaticRenderPacketMetrics>;
     geometryIds: string[];
     materialIds: string[];
@@ -60,7 +72,7 @@ export type GardenPaletteCullingReadback = {
     sourceDisposals: number;
     frame: number;
     sceneRaycastHits: RayHit[][];
-    warmupFrames: WarmupFrame[];
+    transitionFrames: TransitionFrame[];
     missingPresentationFrames: number;
     png: string | null;
 };
@@ -84,57 +96,58 @@ function instances(id: string, x: number): EntityBlockInstance[] {
 export function GardenPaletteCullingScene({
     batch,
     view,
-    warmupWitness,
+    equalUniforms,
+    unsupportedRange,
+    transitionWitness,
     shaderRevision,
     restoreContext,
     onReadback,
 }: {
     batch: boolean;
     view: GardenPaletteCullingView;
-    warmupWitness: boolean;
+    equalUniforms: boolean;
+    unsupportedRange: boolean;
+    transitionWitness: boolean;
     shaderRevision: number;
     restoreContext: boolean;
     onReadback: (result: GardenPaletteCullingReadback) => void;
 }) {
     const { scene, gl, camera } = useThree();
+    const registry = useRef<StaticRenderPacketRegistry | null>(null);
+    const bindRegistry = useCallback(
+        (value: StaticRenderPacketRegistry | null) => {
+            registry.current = value;
+        },
+        [],
+    );
     const light = useRef<DirectionalLight>(null);
     const frame = useRef({ key: '', count: 0, reported: false });
     const receipts = useRef<Receipt[]>([]);
     const disposals = useRef(0);
-    const warmupFrames = useRef<WarmupFrame[]>([]);
+    const transitionFrames = useRef<TransitionFrame[]>([]);
     const missingPresentationFrames = useRef(0);
-    const resources = useMemo(
-        () => ({
-            geometry: new BoxGeometry(0.8, 0.8, 0.8),
+    const resources = useMemo(() => {
+        const geometry = new BoxGeometry(0.8, 0.8, 0.8);
+        if (unsupportedRange) geometry.setDrawRange(0, 18);
+        return {
+            geometry,
             materials: ['#d84e39', '#409c6d', '#3f72b1'].map(
-                (color) => new MeshStandardMaterial({ color, roughness: 0.7 }),
+                (color) =>
+                    new MeshStandardMaterial({
+                        color: equalUniforms ? '#d84e39' : color,
+                        roughness: 0.7,
+                    }),
             ),
             instances: [
                 instances('a', 0.5),
                 instances('b', 3),
                 instances('c', 6),
             ],
-        }),
-        [],
-    );
-    const key = `${batch}:${view}${warmupWitness ? `:warmup:${shaderRevision}:${restoreContext}` : ''}`;
-    useLayoutEffect(() => {
-        if (!warmupWitness) return;
-        const original = gl.compileAsync;
-        const delayed: typeof original = async (...args) => {
-            const result = await original.apply(gl, args);
-            // Test-only delay guarantees a submitted pending frame even if
-            // the exact native shader program finishes immediately.
-            await new Promise<void>((resolve) => setTimeout(resolve, 250));
-            return result;
         };
-        gl.compileAsync = delayed;
-        return () => {
-            if (gl.compileAsync === delayed) gl.compileAsync = original;
-        };
-    }, [gl, warmupWitness]);
+    }, [equalUniforms, unsupportedRange]);
+    const key = `${batch}:${view}${equalUniforms ? ':equal' : ''}${unsupportedRange ? ':legacy-range' : ''}${transitionWitness ? `:transition:${shaderRevision}:${restoreContext}` : ''}`;
     useLayoutEffect(() => {
-        if (!warmupWitness || shaderRevision === 0) return;
+        if (!transitionWitness || shaderRevision === 0) return;
         // Zero intensity preserves pixels while changing the real shader's
         // directional-light count, rather than only its material version.
         const addedLight = new DirectionalLight('#ffffff', 0);
@@ -143,7 +156,8 @@ export function GardenPaletteCullingScene({
         scene.traverse((object) => {
             if (
                 object instanceof Mesh &&
-                object.geometry.hasAttribute('aGardenPalette0') &&
+                !Array.isArray(object.material) &&
+                object.material.name.endsWith(':GardenStock') &&
                 object.material instanceof MeshStandardMaterial
             )
                 materials.add(object.material);
@@ -152,13 +166,13 @@ export function GardenPaletteCullingScene({
         return () => {
             scene.remove(addedLight);
         };
-    }, [scene, shaderRevision, warmupWitness]);
+    }, [scene, shaderRevision, transitionWitness]);
     useLayoutEffect(() => {
-        if (!warmupWitness || !restoreContext) return;
+        if (!transitionWitness || !restoreContext) return;
         gl.forceContextLoss();
         const timer = setTimeout(() => gl.forceContextRestore(), 50);
         return () => clearTimeout(timer);
-    }, [gl, restoreContext, warmupWitness]);
+    }, [gl, restoreContext, transitionWitness]);
     useLayoutEffect(() => {
         const disposed = () => disposals.current++;
         resources.geometry.addEventListener('dispose', disposed);
@@ -245,18 +259,19 @@ export function GardenPaletteCullingScene({
             const [drawCamera, , geometry, material, object] = args;
             const tracked =
                 object instanceof Mesh &&
-                (object.name.startsWith('BlockInstances:culling:') ||
+                (object.name.startsWith('MergedBlockChunk:culling:') ||
+                    object.name.startsWith('BlockInstances:culling:') ||
                     object.name.startsWith('StaticRenderPacket:'));
             const calls = gl.info.render.calls,
                 triangles = gl.info.render.triangles;
             const range = { ...geometry.drawRange };
             const before =
-                tracked && warmupWitness
+                tracked && transitionWitness
                     ? programState(material)
                     : { id: null, ready: null };
             original.apply(gl, args);
             if (tracked) {
-                const after = warmupWitness
+                const after = transitionWitness
                     ? programState(material)
                     : { id: null, ready: null };
                 receipts.current.push({
@@ -284,7 +299,7 @@ export function GardenPaletteCullingScene({
             if (gl.renderBufferDirect === observed)
                 gl.renderBufferDirect = original;
         };
-    }, [camera, gl, warmupWitness]);
+    }, [camera, gl, transitionWitness]);
     useFrame(() => {
         if (frame.current.key !== key)
             frame.current = { key, count: 0, reported: false };
@@ -295,7 +310,7 @@ export function GardenPaletteCullingScene({
     }, -90);
     useSceneAfterFrame(
         useCallback(() => {
-            if (warmupWitness && batch) {
+            if (transitionWitness && batch) {
                 const palette: Mesh[] = [],
                     fallback: Mesh[] = [];
                 scene.traverse((object) => {
@@ -304,7 +319,7 @@ export function GardenPaletteCullingScene({
                         !object.name.startsWith('StaticRenderPacket:')
                     )
                         return;
-                    if (object.geometry.hasAttribute('aGardenPalette0'))
+                    if (!object.name.includes(':fallback:'))
                         palette.push(object);
                     else if (object.name.includes(':fallback:'))
                         fallback.push(object);
@@ -316,29 +331,23 @@ export function GardenPaletteCullingScene({
                     if (visiblePalette === 0 && fallback.length === 0)
                         missingPresentationFrames.current++;
                     const phase = visiblePalette === 0 ? 'pending' : 'ready';
-                    const sawPending = warmupFrames.current.some(
-                        (sample) =>
-                            sample.phase === 'pending' &&
-                            sample.revision === shaderRevision &&
-                            sample.restored === restoreContext,
-                    );
                     const firstAffected =
                         (shaderRevision > 0 || restoreContext) &&
-                        !warmupFrames.current.some(
+                        !transitionFrames.current.some(
                             (sample) =>
                                 sample.phase === 'first-affected' &&
                                 sample.revision === shaderRevision &&
                                 sample.restored === restoreContext,
                         );
                     const capturePhase =
-                        !warmupFrames.current.some(
+                        !transitionFrames.current.some(
                             (sample) =>
                                 sample.phase === phase &&
                                 sample.revision === shaderRevision &&
                                 sample.restored === restoreContext,
                         ) &&
                         (phase === 'ready'
-                            ? sawPending && fallback.length === 0
+                            ? fallback.length === 0
                             : fallback.length === 3);
                     if (firstAffected || capturePhase) {
                         const hits = (near: number, far: number) =>
@@ -391,22 +400,32 @@ export function GardenPaletteCullingScene({
                             png: gl.domElement.toDataURL('image/png'),
                         };
                         if (firstAffected)
-                            warmupFrames.current.push({
+                            transitionFrames.current.push({
                                 ...sample,
                                 phase: 'first-affected',
                             });
                         if (capturePhase)
-                            warmupFrames.current.push({ ...sample, phase });
+                            transitionFrames.current.push({ ...sample, phase });
                     }
                 }
             }
             if (frame.current.reported || frame.current.count < 15) return;
             const compiler = readChunkCompilerMetrics(),
                 packets = readStaticRenderPacketMetrics();
+            const localContributions =
+                registry.current?.getSnapshot().flatMap((packet) =>
+                    packet.contributions.map((contribution) => ({
+                        id: contribution.id,
+                        sourceBoundsCulling:
+                            contribution.sourceBoundsCulling === true,
+                        material: contribution.material.uuid,
+                        geometry: contribution.geometry.uuid,
+                    })),
+                ) ?? [];
             if (
                 compiler.pendingJobs > 0 ||
                 packets.packetFallbackMeshes > 0 ||
-                (batch && packets.contributions !== 3)
+                (batch && localContributions.length !== 3)
             )
                 return;
             const meshes: Mesh[] = [];
@@ -427,6 +446,9 @@ export function GardenPaletteCullingScene({
                     .intersectObjects(scene.children, true)
                     .filter(
                         (hit) =>
+                            hit.object.name.startsWith(
+                                'MergedBlockChunk:culling:',
+                            ) ||
                             hit.object.name.startsWith(
                                 'BlockInstances:culling:',
                             ) ||
@@ -451,6 +473,7 @@ export function GardenPaletteCullingScene({
                 receipts: receipts.current,
                 compiler,
                 packets,
+                localContributions,
                 geometryIds: [
                     ...new Set(meshes.map((mesh) => mesh.geometry.uuid)),
                 ],
@@ -467,9 +490,9 @@ export function GardenPaletteCullingScene({
                 sourceDisposals: disposals.current,
                 frame: gl.info.render.frame,
                 sceneRaycastHits,
-                warmupFrames: warmupFrames.current,
+                transitionFrames: transitionFrames.current,
                 missingPresentationFrames: missingPresentationFrames.current,
-                png: warmupWitness
+                png: transitionWitness
                     ? gl.domElement.toDataURL('image/png')
                     : null,
             });
@@ -481,7 +504,7 @@ export function GardenPaletteCullingScene({
             restoreContext,
             scene,
             shaderRevision,
-            warmupWitness,
+            transitionWitness,
         ]),
     );
     const content = resources.instances.map((value, index) => (
@@ -492,6 +515,7 @@ export function GardenPaletteCullingScene({
             material={resources.materials[index]}
             instances={value}
             batchStaticMaterial={batch}
+            renderStableChunksAsMergedGeometry={unsupportedRange}
             renderSnow={false}
             castShadow
             receiveShadow
@@ -516,8 +540,22 @@ export function GardenPaletteCullingScene({
                 <meshStandardMaterial color="#898577" roughness={1} />
             </mesh>
             <StaticRenderPacketBatchProvider>
+                <RootRegistryWitness onRegistry={bindRegistry} />
                 {content}
             </StaticRenderPacketBatchProvider>
         </>
     );
+}
+
+function RootRegistryWitness({
+    onRegistry,
+}: {
+    onRegistry: (registry: StaticRenderPacketRegistry | null) => void;
+}) {
+    const registry = useStaticRenderPacketRegistry();
+    useLayoutEffect(() => {
+        onRegistry(registry);
+        return () => onRegistry(null);
+    }, [onRegistry, registry]);
+    return null;
 }

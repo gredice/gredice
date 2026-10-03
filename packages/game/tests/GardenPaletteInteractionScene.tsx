@@ -10,27 +10,31 @@ export function GardenPaletteInteractionScene({
     batch,
     phase,
     stacks,
+    entityName,
 }: {
     batch: boolean;
     phase: GardenPaletteInteractionPhase;
     stacks: Stack[];
+    entityName: 'Tree' | 'Stool';
 }) {
-    const tree = useGameGLTF('Tree');
+    const tree = useGameGLTF(entityName);
     const box = useGameGLTF('GardenBox');
     const content = (
         <>
             {/* Same trunk inputs as production EntityInstancesAssetBlock. */}
-            <EntityInstancesBlock
-                name="Tree"
-                stacks={stacks}
-                geometry={tree.nodes.Tree_1_1.geometry}
-                material={tree.nodes.Tree_1_1.material}
-                yOffset={0.5}
-                scale={[0.125, 0.5, 0.125]}
-                staticOpaqueCacheGroup="static-props"
-                batchStaticMaterial
-                renderSnow={false}
-            />
+            {entityName === 'Tree' && (
+                <EntityInstancesBlock
+                    name="Tree"
+                    stacks={stacks}
+                    geometry={tree.nodes.Tree_1_1.geometry}
+                    material={tree.nodes.Tree_1_1.material}
+                    yOffset={0.5}
+                    scale={[0.125, 0.5, 0.125]}
+                    staticOpaqueCacheGroup="static-props"
+                    batchStaticMaterial
+                    renderSnow={false}
+                />
+            )}
             {/* Uses the real body/lid, hover, open and placement components. */}
             <AdditionalEntityInstances
                 stacks={stacks}
@@ -42,6 +46,7 @@ export function GardenPaletteInteractionScene({
                 phase={phase}
                 stacks={stacks}
                 tree={tree}
+                entityName={entityName}
                 box={box}
             />
         </>

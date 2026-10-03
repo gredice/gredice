@@ -24,6 +24,7 @@ export type GardenPaletteFixtureReadback = {
     meshes: number;
     paletteMaterials: number;
     paletteVertices: number;
+    stockMeshes: number;
     sharedMaterialUsers: number;
 };
 

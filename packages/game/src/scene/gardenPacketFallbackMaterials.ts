@@ -1,4 +1,4 @@
-import type { Material } from 'three';
+import type { Material, Object3D } from 'three';
 import {
     getMaterialShaderHooksWithoutCloudShadowAttenuation,
     registerCloudShadowAttenuationMaterialCandidate,
@@ -7,14 +7,17 @@ import {
     acquireOwnedSharedGardenMaterial,
     getGardenMaterialSignature,
 } from './gardenMaterials';
-import { getGardenPaletteMaterialSignature } from './gardenPaletteMaterials';
+import { getGardenPacketMaterialSignature } from './gardenPacketMaterials';
 
-export function getGardenPaletteFallbackMaterialKey(source: Material) {
-    if (source.transparent || !getGardenPaletteMaterialSignature(source))
+export function getGardenPacketFallbackMaterialKey(
+    source: Material,
+    root: Object3D,
+) {
+    if (source.transparent || !getGardenPacketMaterialSignature(source))
         return undefined;
     const signature = getGardenMaterialSignature(source);
     return signature
-        ? `static-packet-fallback:${source.uuid}:${signature}`
+        ? `static-packet-fallback:${root.uuid}:${source.uuid}:${signature}`
         : undefined;
 }
 
@@ -24,8 +27,11 @@ export function getGardenPaletteFallbackMaterialKey(source: Material) {
  * Registered ground/weather callbacks keep the same live uniform owners;
  * cloud attenuation belongs to the scene and is applied once to the clone.
  */
-export function acquireGardenPaletteFallbackMaterial(source: Material) {
-    const key = getGardenPaletteFallbackMaterialKey(source);
+export function acquireGardenPacketFallbackMaterial(
+    source: Material,
+    root: Object3D,
+) {
+    const key = getGardenPacketFallbackMaterialKey(source, root);
     if (!key) return undefined;
     const lease = acquireOwnedSharedGardenMaterial(key, () => {
         const material = source.clone();
@@ -38,6 +44,7 @@ export function acquireGardenPaletteFallbackMaterial(source: Material) {
     });
     const unregisterCloud = registerCloudShadowAttenuationMaterialCandidate(
         lease.material,
+        root,
     );
     let released = false;
     return {

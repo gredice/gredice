@@ -34,7 +34,7 @@ import type {
     StaticRenderPacketContribution,
     StaticRenderPacketFallbackReason,
 } from '../scene/compiler/staticRenderPackets';
-import { supportsStaticPaletteVisibility } from '../scene/compiler/staticRenderPacketVisibility';
+import { supportsStaticPacketVisibility } from '../scene/compiler/staticRenderPacketVisibility';
 import { useCompiledChunk } from '../scene/compiler/useCompiledChunk';
 import { useStaticGardenMaterialNode } from '../scene/gardenMaterialNodes';
 import {
@@ -43,9 +43,9 @@ import {
     useSharedGardenMaterial,
 } from '../scene/gardenMaterials';
 import {
-    getGardenPaletteMaterialSignature,
-    useGardenPalettePacketSource,
-} from '../scene/gardenPaletteMaterials';
+    getGardenPacketMaterialSignature,
+    useGardenPacketSource,
+} from '../scene/gardenPacketMaterials';
 import {
     StaticOpaqueSceneCacheBoundary,
     type StaticOpaqueSceneCacheGroup,
@@ -890,21 +890,21 @@ function EntityInstancesGeometryRenderer(
     );
     const packetOwnerId = useStaticRenderPacketOwnerId();
     const stableMaterialClass = classifyGardenMaterial(stableMaterial);
-    const paletteGeometrySupported =
-        supportsStaticPaletteVisibility(stableGeometry);
-    // Stable instances exclude active drop animation. Known palette
-    // shaders can batch props as well as terrain; unsupported sources retain
+    const stockGeometrySupported =
+        supportsStaticPacketVisibility(stableGeometry);
+    // Stable instances exclude active drop animation. Known stock
+    // materials can batch props as well as terrain; unsupported sources retain
     // their authored instancing path unless explicitly opted into merging.
-    const paletteCompatible =
+    const stockCompatible =
         (batchStaticMaterial || staticOpaqueCacheGroup !== undefined) &&
-        paletteGeometrySupported &&
+        stockGeometrySupported &&
         Boolean(
             stableMaterial &&
                 !Array.isArray(stableMaterial) &&
-                getGardenPaletteMaterialSignature(stableMaterial) !== undefined,
+                getGardenPacketMaterialSignature(stableMaterial) !== undefined,
         );
     const packetRequested =
-        renderStableChunksAsMergedGeometry || paletteCompatible;
+        renderStableChunksAsMergedGeometry || stockCompatible;
     let packetFallbackReason: StaticRenderPacketFallbackReason | undefined;
     if (packetRegistry && packetRequested) {
         if (stableMaterialNode !== undefined && stableMaterialNode !== null)
@@ -920,7 +920,7 @@ function EntityInstancesGeometryRenderer(
     const originalVisibilityMode = renderStableChunksAsMergedGeometry
         ? 'compiled'
         : 'instanced';
-    // Before palette admission, plain merged sources with equal materials
+    // Before stock admission, plain merged sources with equal materials
     // already shared a packet. Preserve that original culling group; weather
     // and JSX-node merged sources previously compiled on their own.
     const originalPacketGroup =
@@ -932,22 +932,22 @@ function EntityInstancesGeometryRenderer(
         stableMaterialClass.batchable
             ? `${getGardenMaterialSignature(stableMaterial) ?? stableMaterial.uuid}|${meshGeometryLayoutSignature(stableGeometry)}`
             : undefined;
-    const palettePacketSource = useGardenPalettePacketSource(
+    const stockPacketSource = useGardenPacketSource(
         stableGeometry,
         stableMaterial,
-        packetEnabled && paletteGeometrySupported,
+        packetEnabled && stockGeometrySupported,
     );
-    const packetGeometry = palettePacketSource.geometry;
+    const packetGeometry = stockPacketSource.geometry;
     const stableLayoutSignature = useMemo(
         () => meshGeometryLayoutSignature(packetGeometry),
         [packetGeometry],
     );
     const sharedPacketMaterial = useSharedGardenMaterial(
         stableMaterial,
-        packetEnabled && !palettePacketSource.palette,
+        packetEnabled && !stockPacketSource.stock,
     );
-    const preparedPacketMaterial = palettePacketSource.palette
-        ? palettePacketSource.material
+    const preparedPacketMaterial = stockPacketSource.stock
+        ? stockPacketSource.material
         : sharedPacketMaterial;
     const packetMaterial =
         packetEnabled &&
@@ -987,6 +987,7 @@ function EntityInstancesGeometryRenderer(
                 old.family === packetFamily &&
                 old.originalVisibilityMode === originalVisibilityMode &&
                 old.originalVisibilityGroup === originalPacketGroup &&
+                old.sourceBoundsCulling === stockPacketSource.stock &&
                 old.placementSignature === placementSignature
                     ? old
                     : {
@@ -1007,6 +1008,7 @@ function EntityInstancesGeometryRenderer(
                           material: packetMaterial,
                           originalVisibilityMode,
                           originalVisibilityGroup: originalPacketGroup,
+                          sourceBoundsCulling: stockPacketSource.stock,
                           placementSignature,
                           receiveShadow,
                           renderOrder,
@@ -1032,6 +1034,7 @@ function EntityInstancesGeometryRenderer(
         receiveShadow,
         renderOrder,
         stableChunks,
+        stockPacketSource.stock,
         stableGeometry,
         stableLayoutSignature,
         stableMaterial,

@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
     DoubleSide,
     MeshStandardMaterial,
+    Scene,
     ShaderLib,
     Texture,
     UniformsUtils,
@@ -12,8 +13,15 @@ import {
 import { applyGroundPatchMaterial } from '../entities/helpers/groundPatchMaterial';
 import { retainCloudShadowAttenuationMaterial } from './cloudShadowAttenuation';
 import { readSharedGardenMaterialMetrics } from './gardenMaterials';
-import { acquireGardenPaletteFallbackMaterial } from './gardenPaletteFallbackMaterials';
+import { acquireGardenPacketFallbackMaterial as acquireInRoot } from './gardenPacketFallbackMaterials';
 import { createIntegratedWeatherSurfaceMaterial } from './weatherSurfaceMaterial';
+
+const root = new Scene();
+function acquireGardenPacketFallbackMaterial(
+    source: Parameters<typeof acquireInRoot>[0],
+) {
+    return acquireInRoot(source, root);
+}
 
 function shader(material: MeshStandardMaterial) {
     const program = {
@@ -25,7 +33,7 @@ function shader(material: MeshStandardMaterial) {
     return program;
 }
 
-describe('transient palette packet fallback materials', () => {
+describe('transient stock packet fallback materials', () => {
     it('retains exact authored PBR, maps and cutout without owning the source or textures', () => {
         const source = new MeshStandardMaterial({
             color: '#3478b9',
@@ -44,8 +52,8 @@ describe('transient palette packet fallback materials', () => {
         source.map?.addEventListener('dispose', () => mapDisposals++);
         source.alphaMap?.addEventListener('dispose', () => mapDisposals++);
         const before = readSharedGardenMaterialMetrics();
-        const first = acquireGardenPaletteFallbackMaterial(source);
-        const second = acquireGardenPaletteFallbackMaterial(source);
+        const first = acquireGardenPacketFallbackMaterial(source);
+        const second = acquireGardenPacketFallbackMaterial(source);
         assert.ok(first && second);
         assert.ok(first.material instanceof MeshStandardMaterial);
         assert.notEqual(first.material, source);
@@ -78,14 +86,14 @@ describe('transient palette packet fallback materials', () => {
 
     it('uses a fresh clone after final release and observes supported source mutation', () => {
         const source = new MeshStandardMaterial({ color: '#3273bc' });
-        const first = acquireGardenPaletteFallbackMaterial(source);
+        const first = acquireGardenPacketFallbackMaterial(source);
         assert.ok(first);
         first.release();
-        const remounted = acquireGardenPaletteFallbackMaterial(source);
+        const remounted = acquireGardenPacketFallbackMaterial(source);
         assert.ok(remounted);
         assert.notEqual(remounted.material, first.material);
         source.color.set('#bc7332');
-        const changed = acquireGardenPaletteFallbackMaterial(source);
+        const changed = acquireGardenPacketFallbackMaterial(source);
         assert.ok(changed);
         assert.ok(changed.material instanceof MeshStandardMaterial);
         assert.notEqual(changed.material, remounted.material);
@@ -125,7 +133,7 @@ describe('transient palette packet fallback materials', () => {
                 slopeExponent: 2.4,
             },
         });
-        const lease = acquireGardenPaletteFallbackMaterial(source);
+        const lease = acquireGardenPacketFallbackMaterial(source);
         assert.ok(lease);
         assert.ok(lease.material instanceof MeshStandardMaterial);
         assert.equal(
@@ -153,7 +161,7 @@ describe('transient palette packet fallback materials', () => {
             strength: { value: 0.5 },
         };
         const cloud = retainCloudShadowAttenuationMaterial(source, uniforms);
-        const lease = acquireGardenPaletteFallbackMaterial(source);
+        const lease = acquireGardenPacketFallbackMaterial(source);
         assert.ok(lease);
         assert.ok(lease.material instanceof MeshStandardMaterial);
         assert.notDeepEqual(shader(lease.material), shader(source));
@@ -167,12 +175,34 @@ describe('transient palette packet fallback materials', () => {
         cloud.release();
     });
 
+    it('isolates equal pending clones across roots while sharing within one root', () => {
+        const source = new MeshStandardMaterial({ map: new Texture() });
+        const firstRoot = new Scene(),
+            secondRoot = new Scene();
+        const first = acquireInRoot(source, firstRoot),
+            sameRoot = acquireInRoot(source, firstRoot),
+            otherRoot = acquireInRoot(source, secondRoot);
+        assert.ok(first && sameRoot && otherRoot);
+        assert.equal(first.material, sameRoot.material);
+        assert.notEqual(first.material, otherRoot.material);
+        let firstDisposed = 0,
+            otherDisposed = 0;
+        first.material.addEventListener('dispose', () => firstDisposed++);
+        otherRoot.material.addEventListener('dispose', () => otherDisposed++);
+        first.release();
+        sameRoot.release();
+        assert.equal(firstDisposed, 1);
+        assert.equal(otherDisposed, 0);
+        otherRoot.release();
+        assert.equal(otherDisposed, 1);
+    });
+
     it('keeps unsupported hooks and sorted transparency on their authored lifetime', () => {
         const unknown = new MeshStandardMaterial();
         unknown.onBeforeCompile = () => {};
-        assert.equal(acquireGardenPaletteFallbackMaterial(unknown), undefined);
+        assert.equal(acquireGardenPacketFallbackMaterial(unknown), undefined);
         assert.equal(
-            acquireGardenPaletteFallbackMaterial(
+            acquireGardenPacketFallbackMaterial(
                 new MeshStandardMaterial({ transparent: true, opacity: 0.4 }),
             ),
             undefined,
