@@ -116,3 +116,24 @@ returns in the same document with no private calls after the public sample mount
 No fixture request reaches live auth/storage or modifies external data. Production
 publication, deployed catalogue readiness and physical-device acceptance remain
 separate release work.
+
+## Integration provenance
+
+The original checkpoint `d0fee5e13a2230d160c723a4ea65e52d1c285d83` and its
+nine capture/evidence files are archived without changing bytes in
+`docs/kestenijada-2026/original-d0fee5e13/`. Fresh six-case browser captures on
+the #4992 renderer parent `f97ddf38b6009103819902f9494a0fd5e2f28286` produced
+byte-identical day/dusk/night/mobile PNGs, identical decoration world/screen
+bounds and identical viewport sizes. This carries Astra's pixel review forward
+without claiming a new, different visual approval. The recorder also pins the
+extracted `orthographicCameraFit.ts` and `EntityPreviewContext.ts` inputs.
+
+Final UI parent `9b9df59b18d98c4d2e98642d77f5d84504bc04d4` adds only two
+test repairs to that verified renderer source. The typed private photo account
+fixture now matches the actual current-account/balance response (including
+sunflower history); all five existing photo/WebP regressions pass. Its initial
+failure reproduced on exact parent f97 before any capture began, so the fix is
+in the UI parent rather than an event workaround. No waits or privacy assertions
+were relaxed. Final consumer typechecks and the selected-input readback verify
+the restacked event. The evidence JSON distinguishes capture commits, final
+integration parent and current byte bindings.
