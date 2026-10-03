@@ -7,6 +7,12 @@
   "captureImplementationCommit": "92291768bd704c731976c4decb3f276a9fa9868b",
   "integrationParentCommit": "9b9df59b18d98c4d2e98642d77f5d84504bc04d4",
   "rebasedImplementationCommit": "536eaedb29c975796a7716ad50311d6d03e7dd15",
+  "routeCiRegistration": {
+    "parentCommit": "87c5d975335fc00acc3ab46966158caf28726a14",
+    "scope": "Test, local fixture and CI registration only; no renderer or asset changes. Original capture commits and bytes remain unchanged.",
+    "project": "CI garden / kestenijada route",
+    "excludedFromOrdinaryChromium": true
+  },
   "sourceIdentity": "Exact current-source SHA256 records; verification needs no historic Git objects or network.",
   "scope": "Bounded selected runtime identity evidence, not a complete renderer dependency graph or reproducible full-engine/performance proof.",
   "models": [
@@ -49,6 +55,11 @@
   "rendererCounters": "Incidental diagnostic samples, not cost or performance evidence.",
   "files": [
     {
+      "path": ".github/workflows/ci.yml",
+      "bytes": 18715,
+      "sha256": "c4929475f879854aba2aef6430438d84c6a444d78e8ecc0520ede8ceed37cc4d"
+    },
+    {
       "path": "apps/garden/app/kestenijada/KestenijadaDiscoveryEntry.tsx",
       "bytes": 1358,
       "sha256": "f4b30d6d202afc7b4afd2c005089e4db3a798467d6f7dc1232d0c1b4c4b5ef03"
@@ -67,6 +78,16 @@
       "path": "apps/garden/components/providers/ClientAppProvider.tsx",
       "bytes": 2935,
       "sha256": "d59ece31969fcc502a624421acc90c76402aba8a3736cab90c311a8b9a2f8fdd"
+    },
+    {
+      "path": "apps/garden/playwright.config.ts",
+      "bytes": 5432,
+      "sha256": "e1868e390edb8ca0dd1f861f6450518fc748ef3b2fbdbe9600cadab5299d4dc5"
+    },
+    {
+      "path": "apps/garden/playwright.kestenijada-route.config.ts",
+      "bytes": 854,
+      "sha256": "653dff1c81042f277c7ce0c89827ab328a73d5ff396bd2473e31117f24d03351"
     },
     {
       "path": "apps/garden/public/assets/models/AutumnBlanketBench.glb",
@@ -102,6 +123,16 @@
       "path": "apps/garden/public/assets/models/WoodenHandLantern.glb",
       "bytes": 135152,
       "sha256": "583d3ee528345d79cdaa6ba8fd045218bd7336439be728c42f249578165684f9"
+    },
+    {
+      "path": "apps/garden/tests/fixtures/kestenijada-server.mjs",
+      "bytes": 2316,
+      "sha256": "b76c9ebf324397ddd94dfb07a9cb6ebd7608185b67cd711ce188ad48439414dd"
+    },
+    {
+      "path": "apps/garden/tests/kestenijada-route.spec.ts",
+      "bytes": 4761,
+      "sha256": "82582626f928aceff5b2d45842eca502b13ee53caaa2312aa71822b26f5e15a6"
     },
     {
       "path": "apps/garden/tests/kestenijada.spec.tsx",
@@ -150,8 +181,8 @@
     },
     {
       "path": "packages/game/scripts/record-kestenijada-evidence.mjs",
-      "bytes": 5761,
-      "sha256": "962df41eba6a01e389bcb77d414ec057e9b4e9ed2129d726bbb8652b50c8b2af"
+      "bytes": 6340,
+      "sha256": "091f1677b509cbd6bf90f02a95dd0d537bf7d948f99fd201dd0f14c1c8833056"
     },
     {
       "path": "packages/game/src/controls/GameCameraRig.tsx",

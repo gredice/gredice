@@ -17,17 +17,40 @@ const server = createServer((req, res) => {
         res.end('{}');
     }
 });
-await new Promise((resolve) => server.listen(5488, '127.0.0.1', resolve));
+const appOrigin = new URL(
+    process.env.GREDICE_KESTENIJADA_TEST_ORIGIN ?? 'http://127.0.0.1:5486',
+);
+if (
+    appOrigin.protocol !== 'http:' ||
+    !['localhost', '127.0.0.1'].includes(appOrigin.hostname) ||
+    appOrigin.pathname !== '/' ||
+    appOrigin.search ||
+    appOrigin.hash ||
+    appOrigin.username ||
+    appOrigin.password
+)
+    throw new Error('Fixture requires a local HTTP origin');
+await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+const apiAddress = server.address();
+if (!apiAddress || typeof apiAddress === 'string')
+    throw new Error('Fixture API did not bind');
 const now = Date.now();
 const child = spawn(
     process.execPath,
-    ['node_modules/next/dist/bin/next', 'start', '-p', '5486'],
+    [
+        'node_modules/next/dist/bin/next',
+        'start',
+        '-H',
+        appOrigin.hostname,
+        '-p',
+        appOrigin.port || '80',
+    ],
     {
         stdio: 'inherit',
         env: {
             ...process.env,
             VERCEL_ENV: 'development',
-            GREDICE_API_HOST: 'http://127.0.0.1:5488',
+            GREDICE_API_HOST: `http://127.0.0.1:${apiAddress.port}`,
             GREDICE_KESTENIJADA_EVENT_CONFIG: JSON.stringify({
                 enabled: true,
                 assetsVerified: true,
