@@ -60,6 +60,10 @@ test('real public route never reads private data, resets on reload and restores 
     await page
         .getByRole('link', { name: 'Posjeti Kestenijadu', exact: true })
         .click();
+    await expect(page).toHaveURL(/\/kestenijada$/);
+    await expect(
+        page.getByRole('heading', { name: 'Kestenijada', exact: true }),
+    ).toBeVisible();
     // Kestenijada may read its public offer directory, never an account.
     expect(
         privateRequests.filter((url) =>
