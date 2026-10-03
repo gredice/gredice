@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import { SearchInteractive } from '../app/pretraga/SearchInteractive';
+import { expect, test } from './component-fixtures';
 import '../app/globals.css';
 
 const longSummary = Array.from(

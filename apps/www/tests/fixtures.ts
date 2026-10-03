@@ -1,10 +1,13 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { test as base, expect } from '@playwright/test';
+import { blobNetworkGuard } from './blob-network-fixtures';
 
 export type { Locator } from '@playwright/test';
 
-export const test = base.extend({
+export const test = base.extend<{ blobNetworkGuard: undefined }>({
+    serviceWorkers: 'block',
+    blobNetworkGuard,
     page: async ({ page }, use) => {
         await page.route(
             '**/api/gredice/api/auth/current-claims**',

@@ -4,8 +4,8 @@ import {
     getAchievementDefinitions,
     getAchievementFamilies,
 } from '@gredice/js/achievements';
-import { expect, test } from '@playwright/experimental-ct-react';
 import { AchievementCatalog } from '../app/postignuca/AchievementCatalog';
+import { expect, test } from './component-fixtures';
 
 for (const width of [320, 768, 1280]) {
     test(`all achievements and rewards are accessible at ${width}px`, async ({

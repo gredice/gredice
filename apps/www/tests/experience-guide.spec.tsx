@@ -3,8 +3,8 @@ import {
     getAchievementDefinitions,
     getAchievementProgress,
 } from '@gredice/js/achievements';
-import { expect, test } from '@playwright/experimental-ct-react';
 import { ExperienceGuide } from '../app/iskustvo-i-razine/ExperienceGuide';
+import { expect, test } from './component-fixtures';
 
 for (const width of [320, 768, 1280]) {
     test(`XP guide matches progression and stays accessible at ${width}px`, async ({

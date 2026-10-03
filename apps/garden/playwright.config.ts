@@ -11,6 +11,7 @@ import {
     getPlaywrightBaseUrl,
     shouldReusePlaywrightServer,
 } from '../../scripts/app-registry.ts';
+import { blobGuardLaunchArgs } from '../../scripts/blob-test-fixtures.mjs';
 import { faunaPoseOraclePlugin } from './playwright/faunaPoseOraclePlugin.mjs';
 import { gardenTestFlagsSecret } from './playwright/gardenFlagTestSupport';
 
@@ -56,6 +57,7 @@ export const config: PlaywrightTestConfig = {
     workers: process.env.CI ? 1 : undefined,
     reporter,
     use: {
+        launchOptions: { args: blobGuardLaunchArgs() },
         baseURL: getPlaywrightBaseUrl(app),
         trace: 'on-first-retry',
         ctPort: getComponentTestPort(app),
@@ -102,6 +104,7 @@ export const config: PlaywrightTestConfig = {
                     // software WebGL fallback. Keep the lower-security switch
                     // isolated to our trusted 3D capture fixture.
                     args: [
+                        ...blobGuardLaunchArgs(),
                         '--use-gl=angle',
                         '--use-angle=swiftshader',
                         '--enable-unsafe-swiftshader',
@@ -119,6 +122,7 @@ export const config: PlaywrightTestConfig = {
                 actionTimeout: 60_000,
                 launchOptions: {
                     args: [
+                        ...blobGuardLaunchArgs(),
                         '--use-gl=angle',
                         '--use-angle=swiftshader',
                         '--enable-unsafe-swiftshader',

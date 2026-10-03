@@ -2,8 +2,8 @@ import {
     PublicChromeProvider,
     PublicEnvironmentFooterControls,
 } from '@gredice/ui/PublicChrome';
-import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
+import { expect, test } from './component-fixtures';
 import '../app/globals.css';
 import { PublicGardenPreviewImage } from '../app/vrtovi/PublicGardenPreviewImage';
 

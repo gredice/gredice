@@ -1,5 +1,5 @@
 import { Modal } from '@gredice/ui/Modal';
-import { expect, test } from '@playwright/experimental-ct-react';
+import { expect, test } from './component-fixtures';
 import '../app/globals.css';
 
 test('keeps portaled overlays outside the isolated application root', async ({

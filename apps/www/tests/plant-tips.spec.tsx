@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/experimental-ct-react';
+import { expect, test } from './component-fixtures';
 import { PlantTipsHarness } from './PlantTipsHarness';
 import '../app/globals.css';
 

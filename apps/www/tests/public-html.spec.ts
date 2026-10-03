@@ -1,5 +1,6 @@
 import { Buffer } from 'node:buffer';
 import { devices } from '@playwright/test';
+import { installBlobImageFixtures } from './blob-network-fixtures';
 import { expect, test } from './fixtures';
 
 const warningBudget = 1_000_000;
@@ -15,7 +16,9 @@ for (const device of ['Desktop Chrome', 'Pixel 7']) {
             const context = await browser.newContext({
                 ...devices[device],
                 javaScriptEnabled: false,
+                serviceWorkers: 'block',
             });
+            const verifyBlobRequests = await installBlobImageFixtures(context);
             const page = await context.newPage();
             try {
                 const response = await page.goto(`${baseURL}${path}`);
@@ -128,7 +131,11 @@ for (const device of ['Desktop Chrome', 'Pixel 7']) {
                     ).toBeAttached();
                 }
             } finally {
-                await context.close();
+                try {
+                    await verifyBlobRequests();
+                } finally {
+                    await context.close();
+                }
             }
         });
     }

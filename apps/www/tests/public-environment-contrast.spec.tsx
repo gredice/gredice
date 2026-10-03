@@ -1,4 +1,3 @@
-import { expect, test } from '@playwright/experimental-ct-react';
 import type { Page } from '@playwright/test';
 import sharp from 'sharp';
 import {
@@ -6,6 +5,7 @@ import {
     resolvePublicEnvironmentDateAtMinutes,
     resolvePublicEnvironmentSnapshot,
 } from '../../../packages/ui/src/PublicChrome/publicEnvironment';
+import { expect, test } from './component-fixtures';
 import { PublicEnvironmentHarness } from './PublicEnvironmentHarness';
 
 const date = new Date('2026-09-22T10:00:00Z');

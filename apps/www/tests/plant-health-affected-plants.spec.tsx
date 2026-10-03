@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/experimental-ct-react';
+import { expect, test } from './component-fixtures';
 import { PlantHealthAffectedPlantsHarness } from './PlantHealthAffectedPlantsHarness';
 
 const plants = [
