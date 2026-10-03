@@ -7,6 +7,7 @@ import { test } from '@playwright/experimental-ct-react';
 import sharp from 'sharp';
 import { allGameAssetNames } from '../../../packages/game/src/data/models';
 import { gameQualityProfiles } from '../../../packages/game/src/scene/gameQuality';
+import { snapshotFreezeTime } from './blockSnapshotFreezeTime';
 import { EntitySnapshotViewer } from './EntitySnapshotViewer';
 
 const snapshotDeviceScaleFactor = 4;
@@ -112,6 +113,7 @@ for (const entity of entities) {
                         ]}
                         cameraTarget={target}
                         cameraUp={[0, 0, -1]}
+                        freezeTime={snapshotFreezeTime}
                         entityName={entity.information.name}
                         message={
                             entity.information.name === 'WoodenSign'
