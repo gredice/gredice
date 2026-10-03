@@ -12,6 +12,7 @@ import {
     BulkCancelRaisedBedButton,
     buildFieldCancelFormData,
 } from './BulkCancelRaisedBedButton';
+import { settleScheduleActions } from './scheduleActionQueue';
 import {
     isDayBulkFieldApprovalTargetVisible,
     isDayBulkFieldAssignmentTargetVisible,
@@ -82,15 +83,18 @@ export function ScheduleDayPlantingsBulkActions({
                             id: field.id,
                             patch: { plantStatus: 'planned' },
                         })),
-                        action: () =>
-                            Promise.all(
+                        action: (getVersion) =>
+                            settleScheduleActions(
                                 visibleFieldsToApprove.map((field) =>
                                     acceptRaisedBedFieldAction(
                                         field.raisedBedId,
                                         field.positionIndex,
                                         field.expectedPlantCycleEventId,
                                         field.expectedPlantSortId,
-                                        field.expectedPlantCycleVersionEventId,
+                                        getVersion(
+                                            `field:${field.id}`,
+                                            field.expectedPlantCycleVersionEventId,
+                                        ),
                                     ),
                                 ),
                             ),
@@ -114,14 +118,17 @@ export function ScheduleDayPlantingsBulkActions({
                                 assignedUserIds,
                             },
                         })),
-                        action: () =>
-                            Promise.all(
+                        action: (getVersion) =>
+                            settleScheduleActions(
                                 visibleFieldsToAssign.map((field) =>
                                     assignRaisedBedFieldUserAction(
                                         field.id,
                                         field.expectedPlantCycleEventId,
                                         field.expectedPlantSortId,
-                                        field.expectedPlantCycleVersionEventId,
+                                        getVersion(
+                                            `field:${field.id}`,
+                                            field.expectedPlantCycleVersionEventId,
+                                        ),
                                         assignedUserIds,
                                     ),
                                 ),
@@ -143,12 +150,19 @@ export function ScheduleDayPlantingsBulkActions({
                             id: field.id,
                             patch: { isDeleted: true },
                         })),
-                        action: () =>
-                            Promise.all(
+                        action: (getVersion) =>
+                            settleScheduleActions(
                                 visibleFieldsToCancel.map((field) =>
                                     cancelRaisedBedFieldAction(
                                         buildFieldCancelFormData(
-                                            field,
+                                            {
+                                                ...field,
+                                                expectedPlantCycleVersionEventId:
+                                                    getVersion(
+                                                        `field:${field.id}`,
+                                                        field.expectedPlantCycleVersionEventId,
+                                                    ),
+                                            },
                                             formData,
                                         ),
                                     ),

@@ -25,6 +25,7 @@ import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
+import { scheduleTaskVersionChange } from '../admin/schedule/scheduleActionQueue';
 import {
     activePlantCycleEventId,
     activePlantCycleVersionEventId,
@@ -62,6 +63,22 @@ async function revalidateRaisedBedPaths(raisedBed: {
         revalidatePath(KnownPages.Garden(raisedBed.gardenId));
     revalidatePath(KnownPages.RaisedBed(raisedBed.id));
     revalidatePath(KnownPages.Greenhouse);
+}
+
+// Capture the version while the task lock is held, before another editor can write.
+async function fieldVersionChange(
+    raisedBedId: number,
+    positionIndex: number,
+    previous: number,
+    transaction: Parameters<typeof getRaisedBedFieldsWithEvents>[1],
+) {
+    const field = (
+        await getRaisedBedFieldsWithEvents(raisedBedId, transaction)
+    ).find((item) => item.positionIndex === positionIndex && item.active);
+    if (!field) throw new Error('Polje za sijanje nije pronađeno.');
+    const current = activePlantCycleVersionEventId(field);
+    if (!current) throw new Error('Trenutna verzija sijanja nije ispravna.');
+    return scheduleTaskVersionChange(`field:${field.id}`, previous, current);
 }
 
 async function notifyCompletedPlanting({
@@ -246,6 +263,12 @@ async function applyRaisedBedFieldPlantUpdate({
             }
 
             return {
+                ...(await fieldVersionChange(
+                    raisedBed.id,
+                    positionIndex,
+                    expectedPlantCycleVersionEventId,
+                    transaction,
+                )),
                 sortIdToUse: plantSortId ?? existingField.plantSortId,
                 statusChanged,
             };
@@ -316,6 +339,7 @@ async function applyRaisedBedFieldPlantUpdate({
             `No plant sort found for raised bed ${raisedBed.id} at position ${positionIndex}.`,
         );
     }
+    return { scheduleTaskVersions: mutation.scheduleTaskVersions };
 }
 
 export async function raisedBedPlanted(
@@ -376,7 +400,14 @@ export async function raisedBedPlanted(
 
     await revalidateRaisedBedPaths(raisedBed);
 
-    return { success: true };
+    return {
+        success: true,
+        ...scheduleTaskVersionChange(
+            `field:${field.id}`,
+            expectedPlantCycleVersionEventId,
+            result.eventId,
+        ),
+    };
 }
 
 export async function raisedBedFieldUpdatePlant({
@@ -409,7 +440,7 @@ export async function raisedBedFieldUpdatePlant({
         throw new Error(`Raised bed with ID ${raisedBedId} not found.`);
     }
 
-    await applyRaisedBedFieldPlantUpdate({
+    const versionChange = await applyRaisedBedFieldPlantUpdate({
         raisedBed,
         positionIndex,
         status,
@@ -424,7 +455,7 @@ export async function raisedBedFieldUpdatePlant({
 
     await revalidateRaisedBedPaths(raisedBed);
 
-    return { success: true };
+    return { success: true, ...versionChange };
 }
 
 export async function setRaisedBedFieldWeedState({
@@ -507,7 +538,14 @@ export async function verifyRaisedBedPlantingAction(
 
     await revalidateRaisedBedPaths(raisedBed);
 
-    return { success: true };
+    return {
+        success: true,
+        ...scheduleTaskVersionChange(
+            `field:${field.id}`,
+            expectedPlantCycleVersionEventId,
+            result.eventId,
+        ),
+    };
 }
 
 export async function moveRaisedBedFieldPlantAction({
@@ -602,7 +640,7 @@ export async function acceptRaisedBedFieldAction(
     const expectedField = raisedBed.fields.find(
         (item) => item.positionIndex === positionIndex && item.active,
     );
-    await withPlantingScheduleTaskTransaction(
+    const versionChange = await withPlantingScheduleTaskTransaction(
         raisedBedId,
         positionIndex,
         async (transaction) => {
@@ -647,9 +685,16 @@ export async function acceptRaisedBedFieldAction(
                     transaction,
                 );
             }
+            return fieldVersionChange(
+                raisedBedId,
+                positionIndex,
+                expectedPlantCycleVersionEventId,
+                transaction,
+            );
         },
     );
     revalidatePath(KnownPages.Schedule);
+    return { success: true, ...versionChange };
 }
 
 export async function rescheduleRaisedBedFieldAction(formData: FormData) {
@@ -688,7 +733,7 @@ export async function rescheduleRaisedBedFieldAction(formData: FormData) {
             candidate.positionIndex === positionIndex && candidate.active,
     );
     const normalizedScheduledDate = new Date(scheduledDate).toISOString();
-    await withPlantingScheduleTaskTransaction(
+    const versionChange = await withPlantingScheduleTaskTransaction(
         raisedBedId,
         positionIndex,
         async (transaction) => {
@@ -737,6 +782,12 @@ export async function rescheduleRaisedBedFieldAction(formData: FormData) {
                     transaction,
                 );
             }
+            return fieldVersionChange(
+                raisedBedId,
+                positionIndex,
+                expectedPlantCycleVersionEventId,
+                transaction,
+            );
         },
     );
 
@@ -747,7 +798,7 @@ export async function rescheduleRaisedBedFieldAction(formData: FormData) {
         revalidatePath(KnownPages.Garden(raisedBed.gardenId));
     revalidatePath(KnownPages.RaisedBed(raisedBedId));
 
-    return { success: true };
+    return { success: true, ...versionChange };
 }
 
 export async function setRaisedBedFieldSowingLocationAction(
@@ -795,7 +846,7 @@ export async function setRaisedBedFieldSowingLocationAction(
                 );
             }
             if (field.sowingLocation === sowingLocation) {
-                return false;
+                return undefined;
             }
 
             await createEvent(
@@ -809,7 +860,12 @@ export async function setRaisedBedFieldSowingLocationAction(
                 ),
                 transaction,
             );
-            return true;
+            return fieldVersionChange(
+                raisedBedId,
+                positionIndex,
+                expectedPlantCycleVersionEventId,
+                transaction,
+            );
         },
     );
     if (!changed) {
@@ -818,7 +874,7 @@ export async function setRaisedBedFieldSowingLocationAction(
 
     await revalidateRaisedBedPaths(raisedBed);
 
-    return { success: true };
+    return { success: true, ...changed };
 }
 
 export async function cancelRaisedBedFieldAction(formData: FormData) {
@@ -975,5 +1031,12 @@ export async function assignRaisedBedFieldUserAction(
 
     await revalidateRaisedBedPaths(matchedRaisedBed);
 
-    return { success: true };
+    return {
+        success: true,
+        ...scheduleTaskVersionChange(
+            `field:${raisedBedFieldId}`,
+            expectedPlantCycleVersionEventId,
+            assignment.eventId ?? expectedPlantCycleVersionEventId,
+        ),
+    };
 }

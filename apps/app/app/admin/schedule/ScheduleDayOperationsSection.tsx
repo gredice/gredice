@@ -26,7 +26,6 @@ import {
     isOperationCompleted,
     isOperationPendingVerification,
 } from './scheduleShared';
-import { OptimisticScheduleActionsProvider } from './useOptimisticScheduleActions';
 
 interface ScheduleDayOperationsSectionProps {
     isToday: boolean;
@@ -172,54 +171,50 @@ export async function ScheduleDayOperationsSection({
         }));
 
     return (
-        <OptimisticScheduleActionsProvider>
-            <Stack spacing={4}>
-                <Row spacing={2} alignItems="center" className="w-full">
-                    <Typography level="h6" className="grow">
-                        Radnje
-                    </Typography>
-                    <Row spacing={1} className="ml-auto shrink-0">
-                        <ScheduleDayOperationsBulkActions
-                            photoOperationTargets={photoOperationTargets}
-                            operationsToApprove={dayOperationsToApprove}
-                            operationsToAssign={dayOperationsToAssign}
-                            operationsToCancel={dayOperationsToCancel}
-                        />
-                    </Row>
+        <Stack spacing={4}>
+            <Row spacing={2} alignItems="center" className="w-full">
+                <Typography level="h6" className="grow">
+                    Radnje
+                </Typography>
+                <Row spacing={1} className="ml-auto shrink-0">
+                    <ScheduleDayOperationsBulkActions
+                        photoOperationTargets={photoOperationTargets}
+                        operationsToApprove={dayOperationsToApprove}
+                        operationsToAssign={dayOperationsToAssign}
+                        operationsToCancel={dayOperationsToCancel}
+                    />
                 </Row>
-                {raisedBedGroups.map(
-                    ({ key, physicalId, raisedBeds: beds }) => {
-                        return (
-                            <RaisedBedOperationsScheduleSection
-                                key={key}
-                                dateKey={dateKey}
-                                timeZone={timeZone}
-                                physicalId={physicalId}
-                                raisedBeds={beds}
-                                scheduledOperations={scheduledOperations}
-                                plantSorts={plantSorts}
-                                operationsData={operationsData}
-                                assignableFarmUsersByOperationId={
-                                    assignableFarmUsersByOperationId
-                                }
-                            />
-                        );
-                    },
-                )}
-                {operationFarms.map((farm) => (
-                    <FarmOperationsScheduleSection
-                        key={farm.id}
+            </Row>
+            {raisedBedGroups.map(({ key, physicalId, raisedBeds: beds }) => {
+                return (
+                    <RaisedBedOperationsScheduleSection
+                        key={key}
                         dateKey={dateKey}
                         timeZone={timeZone}
-                        farm={farm}
+                        physicalId={physicalId}
+                        raisedBeds={beds}
                         scheduledOperations={scheduledOperations}
+                        plantSorts={plantSorts}
                         operationsData={operationsData}
                         assignableFarmUsersByOperationId={
                             assignableFarmUsersByOperationId
                         }
                     />
-                ))}
-            </Stack>
-        </OptimisticScheduleActionsProvider>
+                );
+            })}
+            {operationFarms.map((farm) => (
+                <FarmOperationsScheduleSection
+                    key={farm.id}
+                    dateKey={dateKey}
+                    timeZone={timeZone}
+                    farm={farm}
+                    scheduledOperations={scheduledOperations}
+                    operationsData={operationsData}
+                    assignableFarmUsersByOperationId={
+                        assignableFarmUsersByOperationId
+                    }
+                />
+            ))}
+        </Stack>
     );
 }
