@@ -59,6 +59,7 @@ import { GiftBoxGreenGold } from './GiftBoxGreenGold';
 import { GiftBoxPurpleSilver } from './GiftBoxPurpleSilver';
 import { GiftBoxRedWhite } from './GiftBoxRedWhite';
 import { GiftBoxWhiteGreen } from './GiftBoxWhiteGreen';
+import { HarvestPumpkin } from './HarvestPumpkin';
 import { HazelLightArch } from './HazelLightArch';
 import { Horse } from './horses/Horse';
 import { IceCreamCart } from './IceCreamCart';
@@ -184,6 +185,15 @@ export const entityNameMap = {
     LemonadeStand: LemonadeStand,
     IceCreamCart: IceCreamCart,
     SummerHat: SummerHat,
+    HarvestPumpkinSquatOrange: HarvestPumpkin,
+    HarvestPumpkinSquatCream: HarvestPumpkin,
+    HarvestPumpkinSquatGreen: HarvestPumpkin,
+    HarvestPumpkinGourdOrange: HarvestPumpkin,
+    HarvestPumpkinGourdCream: HarvestPumpkin,
+    HarvestPumpkinGourdGreen: HarvestPumpkin,
+    HarvestPumpkinGroupOrange: HarvestPumpkin,
+    HarvestPumpkinGroupCream: HarvestPumpkin,
+    HarvestPumpkinGroupGreen: HarvestPumpkin,
     BeachTowelStriped: BeachTowelStriped,
     InflatablePoolSmall: InflatablePoolSmall,
     BeachChair: BeachChair,
