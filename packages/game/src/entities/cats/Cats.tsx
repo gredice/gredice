@@ -1,6 +1,5 @@
 import type { BlockData } from '@gredice/client';
-import { useAnimations } from '@react-three/drei';
-import { type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
+import { type ThreeEvent, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AnimationAction, Group, Material } from 'three';
 import { MathUtils, type Mesh, MeshStandardMaterial, Vector3 } from 'three';
@@ -58,7 +57,12 @@ import {
     groundBirdEntries,
 } from '../animals/animalPresence';
 import { initializeAnimalAtHome } from '../animals/animalRuntimeLifecycle';
+import {
+    useFaunaFrame,
+    useFaunaRenderFrame,
+} from '../animals/FaunaRuntimeProvider';
 import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
+import { useFaunaAnimations } from '../animals/useFaunaAnimations';
 import {
     type CatBehavior,
     type CatWeather,
@@ -1320,7 +1324,7 @@ function Cat({
         };
     }, [gltf.scene]);
     useFaunaActorCulling(catModel.scene);
-    const { actions } = useAnimations(gltf.animations, catModel.scene);
+    const { actions } = useFaunaAnimations(gltf.animations, catModel.scene);
     const updateActorGroundingShadow = useActorGroundingShadow({
         id: `cat:${habitat.id}`,
         primaryCasterCount: catModel.primaryCasterCount,
@@ -1457,7 +1461,7 @@ function Cat({
         }
     }
 
-    useFrame(({ clock }, delta) => {
+    useFaunaFrame(({ clock }, delta) => {
         const group = groupRef.current;
         if (!group) {
             return;
@@ -1724,9 +1728,31 @@ function Cat({
                 timeOfDay,
                 weather,
             });
+    }, groupRef);
+
+    useFaunaFrame(({ clock }) => {
+        const group = groupRef.current;
+        const runtime = runtimeRef.current;
+        if (!group || !runtime) return;
+        const now = clock.elapsedTime;
+        if (
+            runtime &&
+            group &&
+            now - lastAnimalPresenceUpdateRef.current >=
+                animalPresenceUpdateIntervalSeconds
+        ) {
+            lastAnimalPresenceUpdateRef.current = now;
+            faunaWorld.reportPresence({
+                id: habitat.id,
+                species: 'Cat',
+                behavior: runtime.target.behavior,
+                position: roundCatDebugPoint(group.position),
+                updatedAt: now,
+            });
+        }
     });
 
-    useFrame(({ clock }) => {
+    useFaunaRenderFrame(({ clock }) => {
         const runtime = runtimeRef.current;
         const group = groupRef.current;
         const now = clock.elapsedTime;
@@ -1742,22 +1768,6 @@ function Cat({
                 x: group.position.x,
                 yaw: group.rotation.y,
                 z: group.position.z,
-            });
-        }
-
-        if (
-            runtime &&
-            group &&
-            now - lastAnimalPresenceUpdateRef.current >=
-                animalPresenceUpdateIntervalSeconds
-        ) {
-            lastAnimalPresenceUpdateRef.current = now;
-            faunaWorld.reportPresence({
-                id: habitat.id,
-                species: 'Cat',
-                behavior: runtime.target.behavior,
-                position: roundCatDebugPoint(group.position),
-                updatedAt: now,
             });
         }
 
