@@ -131,8 +131,8 @@
     },
     {
       "path": "apps/garden/tests/kestenijada-route.spec.ts",
-      "bytes": 3781,
-      "sha256": "a33dff6feebab1f1384e229de6bcdac30c37e620e971156c46776223198fa8c7"
+      "bytes": 4761,
+      "sha256": "82582626f928aceff5b2d45842eca502b13ee53caaa2312aa71822b26f5e15a6"
     },
     {
       "path": "apps/garden/tests/kestenijada.spec.tsx",
