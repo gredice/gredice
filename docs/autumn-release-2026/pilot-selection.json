@@ -1,0 +1,749 @@
+{
+  "schemaVersion": 1,
+  "scope": "autumn-ab-pilot",
+  "families": [
+    {
+      "issue": 4948,
+      "manifest": "docs/harvest-pumpkins-2026/release-manifest.json",
+      "sha256": "8a3dd634f0f876637a804f0eb1edb2a3ae16f4154911ca5b45dd85c5c1f989c3"
+    },
+    {
+      "issue": 4949,
+      "manifest": "docs/garden-scarecrow-2026/release-manifest.json",
+      "sha256": "b0775695d0f651ac3c3468ac37611a224dec862ee5df078e14ef10ceb886bafb"
+    },
+    {
+      "issue": 4950,
+      "manifest": "docs/harvest-crates-2026/release-manifest.json",
+      "sha256": "3cff1964ada145c250bed9ad68a101c978eeca9b623e63e6a7eac24efa6b4e1c"
+    },
+    {
+      "issue": 4951,
+      "manifest": "docs/harvest-wheelbarrow-2026/release-manifest.json",
+      "sha256": "d3522bc9a63abbb30edfa4ae86515a7c8f7639e5e396320fe71c47d9b4b3e851"
+    },
+    {
+      "issue": 4952,
+      "manifest": "docs/autumn-aster-pots-2026/release-manifest.json",
+      "sha256": "83b8167838b4a3d9f0dac4c890287b12421a95ad604066b5cbd26838b22eebd7"
+    },
+    {
+      "issue": 4953,
+      "manifest": "docs/autumn-shrub-2026/release-manifest.json",
+      "sha256": "ee42e6028e6a4b5a7f4fa3aa785c994a0353a377e2f8dc6cc013398db341679f"
+    },
+    {
+      "issue": 4954,
+      "manifest": "docs/woodland-mushrooms-2026/release-manifest.json",
+      "sha256": "25c0c0c2a32f27bc7d682e6133549c518666c6a45ae242de5ecbb96a5c2873a1"
+    },
+    {
+      "issue": 4955,
+      "manifest": "docs/fallen-log-2026/release-manifest.json",
+      "sha256": "89428e1e3b79607547e34322f837948a1bf002a2d3893f8df7c2c9e4d58a8914"
+    },
+    {
+      "issue": 4956,
+      "manifest": "docs/autumn-leaf-piles-2026/release-manifest.json",
+      "sha256": "b272f5ce845f43579c009fd89ab83f702dcb2ce723246fd7b021f2f859683c0e"
+    },
+    {
+      "issue": 4957,
+      "manifest": "docs/leaf-rake-2026/release-manifest.json",
+      "sha256": "4089aacd493b68d8b857bb4a376d98c8e9918e7482dea0255d86897268db877a"
+    },
+    {
+      "issue": 4958,
+      "manifest": "docs/autumn-blanket-bench-2026/release-manifest.json",
+      "sha256": "ee1bbb819b39fccbe86ef25f557d92a0eb704a6584b563d8b73ca9289071bcdd"
+    },
+    {
+      "issue": 4959,
+      "manifest": "docs/garden-tea-table-2026/release-manifest.json",
+      "sha256": "24da94b6ee6e841730a38332b8a298ca5dc29230beeada8bb65e99523a760f42"
+    }
+  ],
+  "additionalSources": [
+    {
+      "path": "assets/game-assets/HarvestPumpkinSquat.blend",
+      "sha256": "daba6c9b2da6396ad97807da72f7907caa9c665dca6f75b79e5823bb49730357",
+      "reason": "Existing pumpkin source absent from family manifest; resolved through assets/game-assets.json. Byte identity only; not a new art approval."
+    },
+    {
+      "path": "assets/game-assets/HarvestPumpkinGourd.blend",
+      "sha256": "de4f4055b9dd512ba888129dc3da796424fcbe433722d4fabd86073dd97e09de",
+      "reason": "Existing pumpkin source absent from family manifest; resolved through assets/game-assets.json. Byte identity only; not a new art approval."
+    },
+    {
+      "path": "assets/game-assets/HarvestPumpkinGroup.blend",
+      "sha256": "bf515e1c80e12450c36386f69ce00768cf417f2696d08187f6b50a61b749b835",
+      "reason": "Existing pumpkin source absent from family manifest; resolved through assets/game-assets.json. Byte identity only; not a new art approval."
+    }
+  ],
+  "products": [
+    "autumn-harvest",
+    "autumn-woodland",
+    "autumn-evening"
+  ],
+  "excludedIssues": [
+    4960,
+    4961,
+    4962,
+    4963,
+    4964,
+    4965,
+    4966,
+    4967,
+    4968,
+    4969,
+    4970,
+    4974,
+    4975,
+    4977,
+    4978,
+    4979,
+    4980,
+    4981,
+    4992,
+    4993,
+    4994,
+    4995,
+    4996,
+    4997,
+    4998
+  ],
+  "exclusionNote": "Optional C/Later props, effects, activities and group/ownership offers are source-prepared separately but excluded from this narrow pilot. Existing seasonal/audio foundations and shared pack lifecycle remain prerequisites.",
+  "legacyDependencies": [
+    {
+      "name": "StoneMedium",
+      "modelUrl": "/assets/models/StoneMedium.glb",
+      "catalogueId": null,
+      "files": [
+        {
+          "path": "assets/game-assets/StoneMedium.blend",
+          "sha256": "cc5eea0841783f9d2f08026711639b5a6d574d7b951421fca15c4a68307b0e4a"
+        },
+        {
+          "path": "apps/garden/public/assets/models/StoneMedium.glb",
+          "sha256": "8fe24b65423aa4fb217869b2ec7de575614eac4f9f29035050034616f4e5b00e"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/StoneMedium.webp",
+          "sha256": "eeb3dd930aabda52c037726f36c8e6bff372a7407ec15bb5bd9d091daea9a539"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/StoneMedium_1.webp",
+          "sha256": "eeb3dd930aabda52c037726f36c8e6bff372a7407ec15bb5bd9d091daea9a539"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/StoneMedium_2.webp",
+          "sha256": "b8dd368e7ed8d18b143d33b1af0c5c2987ef2e25cdc8172da34d23990634e397"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/StoneMedium_3.webp",
+          "sha256": "37b89e83af8618774cb1a0e5fe3ca7ee2489b4836529e205130f084e5f1825a8"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/StoneMedium_4.webp",
+          "sha256": "7baa193339c75ce2f55313a47b477b0dbaa72754b5852102cce58445883ff23b"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/StoneMedium_1.webp",
+          "sha256": "c70ec9a44516f49707100ff4a3d73a417652a55954e41ff93e75e8efc6584c1c"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/StoneMedium_2.webp",
+          "sha256": "a5a799a822e67a65527307cd7533cd8eb9113f00ab3710a734cda7d1371e641f"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/StoneMedium_3.webp",
+          "sha256": "2014d99484ecd59f989f88cc5326f283f96b1867c8c6ae60902881d2d5893ad1"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/StoneMedium_4.webp",
+          "sha256": "806fe355ac43fa3a0fbebf88646466a6f8d8cbd53eead77075f7839c0df59506"
+        }
+      ],
+      "note": "Existing included dependency. Unversioned StoneMedium is intentional. Only numbered top-down images exist; do not invent base filenames."
+    },
+    {
+      "name": "EnamelGardenLamp",
+      "modelUrl": "/assets/models/EnamelGardenLamp.glb?v=c945af2c0198",
+      "catalogueId": null,
+      "files": [
+        {
+          "path": "assets/game-assets/EnamelGardenLamp.blend",
+          "sha256": "27081a50ee24907d1096375774bde2e09cfd01e78be79e219f05f6c699855d9f"
+        },
+        {
+          "path": "apps/garden/public/assets/models/EnamelGardenLamp.glb",
+          "sha256": "c945af2c019864ee8644d6bcee80bbb0a8c428c321f8f26b71f251d23fabd7c3"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/EnamelGardenLamp.webp",
+          "sha256": "c92c5cfa53eac2c10e1400ca6a5e552e5fe652ce71e89c1e76df4f803d074b00"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/EnamelGardenLamp_1.webp",
+          "sha256": "c92c5cfa53eac2c10e1400ca6a5e552e5fe652ce71e89c1e76df4f803d074b00"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/EnamelGardenLamp_2.webp",
+          "sha256": "660b5f18ca72c3f79a114ff9799c9e665af0725f96a1c349ef9cea7c17b1e2d2"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/EnamelGardenLamp_3.webp",
+          "sha256": "e9f13caf4ac4cb0e275b4e410689d2fdc20e8828361d2e18361789f38e43e4e5"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/EnamelGardenLamp_4.webp",
+          "sha256": "52c3c879fcae11b91de295414e90f89ca5ada1965836665e4e4cdb6b2b797f0b"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/EnamelGardenLamp_1.webp",
+          "sha256": "b31f11dd6aab53417f9bc2da70a439e2911f44f95626fc209b1cbbc11b6a6069"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/EnamelGardenLamp_2.webp",
+          "sha256": "79fc130efd3563b6467c832d38dd6edbd3477c168f698c649fcc4294170cad38"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/EnamelGardenLamp_3.webp",
+          "sha256": "990c3a8ef932b2c8a39ff5a5fe03ae1b6b82cd80cbcb3647534886fd8349b80e"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/EnamelGardenLamp_4.webp",
+          "sha256": "4138fd846da242ff9c7fc52b873f4691c21e6416f0b8ad5065a3809e9b8dd42b"
+        }
+      ],
+      "note": "Existing included dependency. Unversioned StoneMedium is intentional. Only numbered top-down images exist; do not invent base filenames."
+    }
+  ],
+  "sourceInputs": [
+    {
+      "path": "apps/api/lib/garden/autumnStarterPackEvidence.reviewed.json",
+      "sha256": "18ec76227c8b71c265f4259f2dd38aaca53d5753f2fdaf52e467aac3e8a02d71"
+    },
+    {
+      "path": "apps/api/lib/garden/autumnStarterPackEvidence.ts",
+      "sha256": "ad9de4a96fdcf296dada8f49c32b05304510d4131c670d3c9e8112ae52023ed1"
+    },
+    {
+      "path": "apps/api/lib/garden/autumnStarterPackPreparation.ts",
+      "sha256": "e017df6c5aba37981460e8890951c49c448ae5270ed078109547b442cb65868e"
+    },
+    {
+      "path": "apps/api/lib/garden/gardenPackCatalogue.ts",
+      "sha256": "3bd0d91c76a9951db96bf5a888a232ec815174d5dc42f9fa4dbf4bbeff487854"
+    },
+    {
+      "path": "apps/api/lib/garden/gardenPackEligibility.ts",
+      "sha256": "0d0138817d1ca6d405edb7bb59a53f1460f696f34927892dbb796f86be34c119"
+    },
+    {
+      "path": "assets/game-assets.json",
+      "sha256": "43e3ecc705f04ade794ee868ea9244f93ac089a21b0a1ee86c19da1d7fa64685"
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/evening-seat.json",
+      "sha256": "7cdd43bab41e43e05bb334fd5952b09d9a8956ab84022bc1161aeb899c3a3992"
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/harvest-corner.json",
+      "sha256": "5f342081c539d52e6a14ce2f183cfddabc1997aeec28cf49c9e72f7d63306480"
+    },
+    {
+      "path": "docs/autumn-arrangements-2026/woodland-path.json",
+      "sha256": "325531d479340a4c0f80ab45c1affecaad4649384b86f73024935e2fb4a5da2e"
+    },
+    {
+      "path": "docs/autumn-aster-pots-2026/release-manifest.json",
+      "sha256": "83b8167838b4a3d9f0dac4c890287b12421a95ad604066b5cbd26838b22eebd7"
+    },
+    {
+      "path": "docs/autumn-blanket-bench-2026/release-manifest.json",
+      "sha256": "ee1bbb819b39fccbe86ef25f557d92a0eb704a6584b563d8b73ca9289071bcdd"
+    },
+    {
+      "path": "docs/autumn-leaf-piles-2026/release-manifest.json",
+      "sha256": "b272f5ce845f43579c009fd89ab83f702dcb2ce723246fd7b021f2f859683c0e"
+    },
+    {
+      "path": "docs/autumn-shrub-2026/release-manifest.json",
+      "sha256": "ee42e6028e6a4b5a7f4fa3aa785c994a0353a377e2f8dc6cc013398db341679f"
+    },
+    {
+      "path": "docs/fallen-log-2026/release-manifest.json",
+      "sha256": "89428e1e3b79607547e34322f837948a1bf002a2d3893f8df7c2c9e4d58a8914"
+    },
+    {
+      "path": "docs/garden-scarecrow-2026/release-manifest.json",
+      "sha256": "b0775695d0f651ac3c3468ac37611a224dec862ee5df078e14ef10ceb886bafb"
+    },
+    {
+      "path": "docs/garden-tea-table-2026/release-manifest.json",
+      "sha256": "24da94b6ee6e841730a38332b8a298ca5dc29230beeada8bb65e99523a760f42"
+    },
+    {
+      "path": "docs/harvest-crates-2026/release-manifest.json",
+      "sha256": "3cff1964ada145c250bed9ad68a101c978eeca9b623e63e6a7eac24efa6b4e1c"
+    },
+    {
+      "path": "docs/harvest-pumpkins-2026/release-manifest.json",
+      "sha256": "8a3dd634f0f876637a804f0eb1edb2a3ae16f4154911ca5b45dd85c5c1f989c3"
+    },
+    {
+      "path": "docs/harvest-wheelbarrow-2026/release-manifest.json",
+      "sha256": "d3522bc9a63abbb30edfa4ae86515a7c8f7639e5e396320fe71c47d9b4b3e851"
+    },
+    {
+      "path": "docs/leaf-rake-2026/release-manifest.json",
+      "sha256": "4089aacd493b68d8b857bb4a376d98c8e9918e7482dea0255d86897268db877a"
+    },
+    {
+      "path": "docs/woodland-mushrooms-2026/release-manifest.json",
+      "sha256": "25c0c0c2a32f27bc7d682e6133549c518666c6a45ae242de5ecbb96a5c2873a1"
+    },
+    {
+      "path": "packages/game/src/arrangements/autumnArrangements.ts",
+      "sha256": "e43767268e295afd799e4ec8c643ace3506c45695dadf3a90fa3e7b69022ff7e"
+    },
+    {
+      "path": "packages/game/src/data/gameAssetModels.generated.ts",
+      "sha256": "c36273e4dcd24aed6834b944408f82bd99b977d11f9bdd700654719bb74f323e"
+    },
+    {
+      "path": "packages/game/src/entities/AutumnAsterPot.tsx",
+      "sha256": "3de529a909c3d83fa7ae46ceeb87ec7fb0f0765e5dee2ec4f1518b8a3699a2ba"
+    },
+    {
+      "path": "packages/game/src/entities/AutumnBlanketBench.tsx",
+      "sha256": "f4d6d78dc81a7ffa38d5a891613e183b3294105389eb247023ff3dfcaf1de354"
+    },
+    {
+      "path": "packages/game/src/entities/AutumnLeafPile.tsx",
+      "sha256": "3a1e95f816d3c2960c5f7126af7347617993324c706df3a0c4bbd5acb88bf6bc"
+    },
+    {
+      "path": "packages/game/src/entities/AutumnShrub.tsx",
+      "sha256": "e4ee19cc78f2e1ce778da7bb3ebe8c96e61afaaef545dc518701a9dc9bbdb990"
+    },
+    {
+      "path": "packages/game/src/entities/BlockGrass.tsx",
+      "sha256": "1a096cad524d08ba9daa40a5de62d7295455db6c42d4d095a1bd29ca2c5fd099"
+    },
+    {
+      "path": "packages/game/src/entities/EnamelGardenLamp.tsx",
+      "sha256": "445218fd7221acfe5f560bf3f118f3cc88bc20767e1ab73858017cc056a5df1e"
+    },
+    {
+      "path": "packages/game/src/entities/EntityFactory.tsx",
+      "sha256": "cef0bb630cc10034fecbf1c7d9216e22413cb0d53224eef3da7956a8411d19a8"
+    },
+    {
+      "path": "packages/game/src/entities/entityNameMap.ts",
+      "sha256": "a5afced89a89b0dcfe5b624a0ea09eca7a1cf0187aa877eefd8a985854c0e110"
+    },
+    {
+      "path": "packages/game/src/entities/FallenLog.tsx",
+      "sha256": "977d33e5808d6f5cc77c7b05875d9a9cf06324332972b9e5fd693fe725b639ac"
+    },
+    {
+      "path": "packages/game/src/entities/GardenScarecrow.tsx",
+      "sha256": "8b68c2adfd45df93ece102a4ed14168226def09c263b9f3dc940e75db35e3403"
+    },
+    {
+      "path": "packages/game/src/entities/GardenTeaTable.tsx",
+      "sha256": "8569495c1d0ebb37311a20b0f950859cc90431df0ddece9920a2c5d9e7a59601"
+    },
+    {
+      "path": "packages/game/src/entities/HarvestCrate.tsx",
+      "sha256": "a2a75435a576f07e57649760982860a67473567e0726da659a9a3fde4161bbec"
+    },
+    {
+      "path": "packages/game/src/entities/HarvestPumpkin.tsx",
+      "sha256": "20c14c629db9b8cab249c95f057dcb99235f760eaed144fe2eda4a7902c6a1c4"
+    },
+    {
+      "path": "packages/game/src/entities/HarvestWheelbarrow.tsx",
+      "sha256": "03ff6f5428ea080ed69cb82df3d871c94b3dcf96bded28a73844ef74acdac51c"
+    },
+    {
+      "path": "packages/game/src/entities/helpers/EntityPreviewContext.ts",
+      "sha256": "d8c0baff5bc19d5c7a0ee2c8e5560678d85ecc466b5f3cf593426124bc1e3cb6"
+    },
+    {
+      "path": "packages/game/src/entities/helpers/GardenNightLight.tsx",
+      "sha256": "9295ed5f3d020de021902d48956517d865bb009f69f3e4956ed483c0f7a7fc9a"
+    },
+    {
+      "path": "packages/game/src/entities/helpers/nightGardenLight.ts",
+      "sha256": "8810a4076baee9dc07d6c3db70aefd9a235be0578d1dfad890d0a5ce758edd8f"
+    },
+    {
+      "path": "packages/game/src/entities/helpers/PumpkinLightOverrideContext.ts",
+      "sha256": "8058e8355f022f42a18f68856ee5b78db947e4b2c26b027222d0dfd329ba2f0f"
+    },
+    {
+      "path": "packages/game/src/entities/helpers/timeDrivenMaterialAnimation.ts",
+      "sha256": "28dcf390a243f63c224255f0eb11651081dcd991fecaeb5863602e4353574db5"
+    },
+    {
+      "path": "packages/game/src/entities/helpers/useAnimatedEntityRotation.ts",
+      "sha256": "98a631d2bcb1a722524379c61cc14a321ff3700f682b0f489762a23a08d4a342"
+    },
+    {
+      "path": "packages/game/src/entities/helpers/WeatheredEntityPart.tsx",
+      "sha256": "f5ed6fe3210284ea65c4cef6b9c7e91ecae6514a85fdc4ec1bcb7c099d10b92f"
+    },
+    {
+      "path": "packages/game/src/entities/helpers/WindWeatheredEntityPart.tsx",
+      "sha256": "00678b802ff3f99651867cb607df11e2d269d610ed539f3ce0595c4074adb542"
+    },
+    {
+      "path": "packages/game/src/entities/LeafRake.tsx",
+      "sha256": "abc5eb5df4cca9a9fe051a4244d060805587e2effc799e641fd5d232aaa80276"
+    },
+    {
+      "path": "packages/game/src/entities/Pine.tsx",
+      "sha256": "f4e139f271eb003aba068f8d67a6c0d156f13fb658b5a69f5af37bec4c204c23"
+    },
+    {
+      "path": "packages/game/src/entities/StoneMedium.tsx",
+      "sha256": "9ec50d9e3202e129e88336d5e0c7f9ee6fe69cb22f91da5361fac6a875c16510"
+    },
+    {
+      "path": "packages/game/src/entities/StoneWalkway.tsx",
+      "sha256": "a10e67814378fe80d894b2e308804b70c146dc938326eaa86a498dd1daee1006"
+    },
+    {
+      "path": "packages/game/src/entities/Tree.tsx",
+      "sha256": "a75781a8c5ea86ef1114d6e8818fa18dcfe91d1e43715fd214676761da858283"
+    },
+    {
+      "path": "packages/game/src/entities/walkwayPlacement.ts",
+      "sha256": "d206bf0f2aa2e886b02fd7265d1f52f656b69b989135ca7fd6161bf3dd1e6838"
+    },
+    {
+      "path": "packages/game/src/entities/WoodlandMushrooms.tsx",
+      "sha256": "89161b0de9afc4b080e8788f5e7b00e382d9df4788464841cc222a3d796fb53e"
+    },
+    {
+      "path": "packages/game/src/hooks/useAutumnFoliageGeometry.ts",
+      "sha256": "b9974e3aef35fb8ae8080225c824826ccadfd0b28f27103bee44e1476cb5de7a"
+    },
+    {
+      "path": "packages/game/src/hooks/useAutumnState.ts",
+      "sha256": "50e3d935c35ca7d798709146e528b69d3a7d868c4fc1cdcac27d517d385642e8"
+    },
+    {
+      "path": "packages/game/src/hud/autumnItemCollections.ts",
+      "sha256": "76df1ba0ffad4d7f393c9f377824e2301552a3928a48899427877306690fddc7"
+    },
+    {
+      "path": "packages/game/src/hud/ItemsHud.tsx",
+      "sha256": "1e65daed0c8d9fc65fd50321c57460166445ca3d0922ee9b6e51faa6ae6baa1a"
+    },
+    {
+      "path": "packages/game/src/internalSceneBlockData.ts",
+      "sha256": "2f0c1386d371bee380d856cfc138cf9fe41ba2792038ebe1e8b3bbcd7096090f"
+    },
+    {
+      "path": "packages/game/src/localSandboxBlockData.ts",
+      "sha256": "323ee3506cc34605dca9374c0ccf5831287d3792414dd42327daabdd08dae01d"
+    },
+    {
+      "path": "packages/game/src/rain/RainWetOverlay.tsx",
+      "sha256": "5936bd2ac52183b4cb2a0c6ac7b494beddfc30add8ed1dabc2c606179e81cd5a"
+    },
+    {
+      "path": "packages/game/src/scene/autumnCanopy.ts",
+      "sha256": "ba9db903f45aafd5f585c682d9bf0c2897a400c01489be67da73d37616145154"
+    },
+    {
+      "path": "packages/game/src/scene/autumnPalette.ts",
+      "sha256": "4cee69fb04ac8ea7191d12b7c8ebed05b10d9a5808a59ff4b82b71cf69080dce"
+    },
+    {
+      "path": "packages/game/src/scene/Environment.tsx",
+      "sha256": "c33fe3cfe2492025d4a712d9e26d53f90aea6c9e29f9065606ce3985cdf2966f"
+    },
+    {
+      "path": "packages/game/src/scene/gameQuality.ts",
+      "sha256": "80cf6a53c07f63c8aa82c914fcc6d2e21cf545333bc2a10b648df4c2d0329aa2"
+    },
+    {
+      "path": "packages/game/src/scene/gardenLightBudget.ts",
+      "sha256": "7729d1fe29c92391c9d3924a0bbd786414558731eec9ded548ac415b81eb0153"
+    },
+    {
+      "path": "packages/game/src/scene/GardenLightProvider.tsx",
+      "sha256": "ccadf96a8a911d490e59f9a40e6ba8fdd6f931c70a752b515a0b6c35a3fef2d3"
+    },
+    {
+      "path": "packages/game/src/scene/gardenLightRegistry.ts",
+      "sha256": "a46e3efd45c431967c31b3d756f5c1c20e5a027753f5435ccd442f57b19aee4b"
+    },
+    {
+      "path": "packages/game/src/scene/Scene.tsx",
+      "sha256": "fc4519167920321aacb864a2a3a8777e1dfa3105f39dc2ed14b32c06038a6167"
+    },
+    {
+      "path": "packages/game/src/scene/SteamEmitter.tsx",
+      "sha256": "89e796792b757e06192243929f51d94c9b8eba5901d4628bc0d8e7bb12ac0f05"
+    },
+    {
+      "path": "packages/game/src/snow/SnowOverlay.tsx",
+      "sha256": "c2a09eda9067fa8373afd9ed093469fa533e459791732328edb45822d43623de"
+    },
+    {
+      "path": "packages/game/src/snow/snowPresets.ts",
+      "sha256": "1ffc976a1ab7c77479a00ff59630c613faaff88933c54a90b303770185eda9e0"
+    },
+    {
+      "path": "packages/game/src/spatial/useCameraFrame.ts",
+      "sha256": "e3ed73ee7bb0214741e55bcf88678c11babb04e8e60e60ef31bd6ad09d26c4e1"
+    },
+    {
+      "path": "packages/game/src/useGameState.ts",
+      "sha256": "3902a31eb255dbc853ef9839fc4dc07132c5984ed0c3dab9738b7027b4e9c289"
+    },
+    {
+      "path": "packages/game/src/utils/configureGameGLTFMaterials.ts",
+      "sha256": "cf25f07c1978d81c033faefad74edd605ed989183bd7056e5efa51c0f74f3347"
+    },
+    {
+      "path": "packages/game/src/utils/getStackHeight.ts",
+      "sha256": "6dd3a7b10a0ec1f0079afd1c41b04e8066b5f5a407c42bf951d80f65eda37d85"
+    },
+    {
+      "path": "packages/game/src/utils/useGameGLTF.ts",
+      "sha256": "cecb0cda7acb92a2c8bb41e8c7ef84e25843d04c1fc1d8c27d48d84642afa0b0"
+    },
+    {
+      "path": "packages/game/tests/AutumnArrangementFixture.tsx",
+      "sha256": "5b94d9cf7a9ac7ed44d9b202fabf261a14d125bd6c121518fa8ede4400700033"
+    },
+    {
+      "path": "packages/game/tests/AutumnArrangementProbe.tsx",
+      "sha256": "b00d64fb10f17245f775fff569a46c047c45cef83a10ac3f44bb0b8e55da9e0b"
+    },
+    {
+      "path": "packages/js/src/autumnArrangements/index.ts",
+      "sha256": "508fdfd7a91325ea7bc4eac2a70bce60c31515348412850e705560c267ab3c86"
+    },
+    {
+      "path": "packages/js/src/autumnAsterPots/index.ts",
+      "sha256": "89931a56cfe4b66a96ed0ad141143a0ac5413e4cc6b9e6da436207fdf3d1ad67"
+    },
+    {
+      "path": "packages/js/src/autumnBlanketBench/index.ts",
+      "sha256": "f2ea8c57455f4ae07dc5ecc0d11aaf852a4cffe2211c444863da437edf678c49"
+    },
+    {
+      "path": "packages/js/src/autumnLeafPiles/index.ts",
+      "sha256": "520670fddd7f7d1a24f92cef5079f0f79a4911e2fc7093de51cf73e1255ba6f5"
+    },
+    {
+      "path": "packages/js/src/fallenLog/index.ts",
+      "sha256": "7ab60e6af039b415af52932c8643daf2ad946ff2802a692c2dd983204655cf47"
+    },
+    {
+      "path": "packages/js/src/gardenBlocks/index.ts",
+      "sha256": "48716a80b03d5242ab31ba48f75db6a2ee9b69774ebde1b1e21f8efe3d561a73"
+    },
+    {
+      "path": "packages/js/src/gardenTeaTable/index.ts",
+      "sha256": "00371804bba753c64ba88235e2ca9bba285c5dce78f0b1fb1d41f3de2c0e0744"
+    },
+    {
+      "path": "packages/js/src/harvestCrates/index.ts",
+      "sha256": "bb8ac7d497e04c2bd9baf68017a9ef84a3939ed6d1939707cc8efb0918e875cc"
+    },
+    {
+      "path": "packages/js/src/harvestPumpkins/index.ts",
+      "sha256": "c5b0d9331754c40a42c2b81499c0bc64236542779fac2fd698fc8b994f14ca62"
+    },
+    {
+      "path": "packages/js/src/harvestWheelbarrow/index.ts",
+      "sha256": "b34f62c533c56fa4e7ab3c5ecc738597de81b6007d4229ee5c311afd620b200c"
+    }
+  ],
+  "pickerMembers": [
+    {
+      "name": "HarvestPumpkinSquatOrange",
+      "collections": [
+        "harvest",
+        "pumpkin-night"
+      ]
+    },
+    {
+      "name": "HarvestPumpkinSquatCream",
+      "collections": [
+        "harvest",
+        "pumpkin-night"
+      ]
+    },
+    {
+      "name": "HarvestPumpkinSquatGreen",
+      "collections": [
+        "harvest",
+        "pumpkin-night"
+      ]
+    },
+    {
+      "name": "HarvestPumpkinGourdOrange",
+      "collections": [
+        "harvest",
+        "pumpkin-night"
+      ]
+    },
+    {
+      "name": "HarvestPumpkinGourdCream",
+      "collections": [
+        "harvest",
+        "pumpkin-night"
+      ]
+    },
+    {
+      "name": "HarvestPumpkinGourdGreen",
+      "collections": [
+        "harvest",
+        "pumpkin-night"
+      ]
+    },
+    {
+      "name": "HarvestPumpkinGroupOrange",
+      "collections": [
+        "harvest",
+        "pumpkin-night"
+      ]
+    },
+    {
+      "name": "HarvestPumpkinGroupCream",
+      "collections": [
+        "harvest",
+        "pumpkin-night"
+      ]
+    },
+    {
+      "name": "HarvestPumpkinGroupGreen",
+      "collections": [
+        "harvest",
+        "pumpkin-night"
+      ]
+    },
+    {
+      "name": "GardenScarecrow",
+      "collections": [
+        "harvest"
+      ]
+    },
+    {
+      "name": "HarvestCrate",
+      "collections": [
+        "harvest",
+        "chestnuts"
+      ]
+    },
+    {
+      "name": "HarvestCrateOrchard",
+      "collections": [
+        "harvest",
+        "chestnuts"
+      ]
+    },
+    {
+      "name": "HarvestWheelbarrow",
+      "collections": [
+        "harvest"
+      ]
+    },
+    {
+      "name": "AutumnAsterPotMauve",
+      "collections": [
+        "evening",
+        "garden"
+      ]
+    },
+    {
+      "name": "AutumnAsterPotCream",
+      "collections": [
+        "garden"
+      ]
+    },
+    {
+      "name": "AutumnAsterPotGold",
+      "collections": [
+        "garden"
+      ]
+    },
+    {
+      "name": "AutumnShrub",
+      "collections": [
+        "woodland",
+        "garden"
+      ]
+    },
+    {
+      "name": "WoodlandMushrooms",
+      "collections": [
+        "woodland"
+      ]
+    },
+    {
+      "name": "FallenLog",
+      "collections": [
+        "woodland"
+      ]
+    },
+    {
+      "name": "AutumnLeafPileMound",
+      "collections": [
+        "woodland",
+        "garden"
+      ]
+    },
+    {
+      "name": "AutumnLeafPileCrescent",
+      "collections": [
+        "woodland",
+        "garden"
+      ]
+    },
+    {
+      "name": "LeafRake",
+      "collections": [
+        "garden"
+      ]
+    },
+    {
+      "name": "AutumnBlanketBench",
+      "collections": [
+        "evening",
+        "chestnuts"
+      ]
+    },
+    {
+      "name": "GardenTeaTable",
+      "collections": [
+        "evening",
+        "chestnuts"
+      ]
+    }
+  ],
+  "excludedIssueParts": [
+    {
+      "issue": 4972,
+      "excluded": "Chestnut cart C-half; tea-table B-half remains in pilot source."
+    }
+  ],
+  "foundationIssues": [
+    2631,
+    2726,
+    4921,
+    4971,
+    4973,
+    4976
+  ]
+}
