@@ -1,0 +1,264 @@
+{
+  "state": "unpublished",
+  "publicationIssue": 5000,
+  "sources": [
+    {
+      "path": "assets/game-assets/AutumnAsterPot.blend",
+      "bytes": 127369,
+      "sha256": "02536e550fb25285149923f330da63be1eb37f81db2d2b8cea7ed3cfcd475a81"
+    }
+  ],
+  "reusedPot": {
+    "path": "assets/game-assets/PotLowBowl.blend",
+    "bytes": 91268,
+    "sha256": "649c07f1a59b54cd502734bb886b1034835f20426f2ae81625abf3d000310e5c"
+  },
+  "models": [
+    {
+      "name": "AutumnAsterPot",
+      "path": "apps/garden/public/assets/models/AutumnAsterPot.glb",
+      "bytes": 128672,
+      "sha256": "f6a6dc858dbb4d186770b80d0fcc1e6391fa14b7a1c7cf572894d144fe2641a5",
+      "url": "https://vrt.gredice.com/assets/models/AutumnAsterPot.glb?v=f6a6dc858dbb",
+      "triangles": 2152,
+      "meshCount": 5,
+      "materialCount": 5
+    }
+  ],
+  "items": [
+    {
+      "name": "AutumnAsterPotMauve",
+      "color": "#9B709C",
+      "centerColor": "#D6B83F",
+      "information": {
+        "label": "Ukrasni jesenski asteri – ljubičasti",
+        "shortDescription": "Pet širokih cvjetova u niskoj posudi od terakote.",
+        "fullDescription": "Ukrasni jesenski asteri u niskoj posudi od terakote, uvijek u odabranoj boji. Zauzimaju jedno polje. Služe samo za ukrašavanje: ne siju se, ne rastu i ne daju urod. Nisu kupnja stvarne biljke."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.61,
+        "hitboxHeight": 0.61,
+        "hitboxWidth": 0.72,
+        "hitboxDepth": 0.72,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 45,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/AutumnAsterPotMauve.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/AutumnAsterPotMauve.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/AutumnAsterPotMauve.webp",
+          "bytes": 11230,
+          "sha256": "020bb40b07c9081cfafd558d5428773977d97ffc379769c116f1b90e72f57460"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnAsterPotMauve_1.webp",
+          "bytes": 11230,
+          "sha256": "020bb40b07c9081cfafd558d5428773977d97ffc379769c116f1b90e72f57460"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnAsterPotMauve_2.webp",
+          "bytes": 11098,
+          "sha256": "b750e4b1fab6ace8441c3a4f667fcb3b890b07d4a07ae584f49482e1ed117821"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnAsterPotMauve_3.webp",
+          "bytes": 11112,
+          "sha256": "666eef0f55adb205bce31835900d74dd300670f7558a866a23e8cd066ffed53d"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnAsterPotMauve_4.webp",
+          "bytes": 10948,
+          "sha256": "fcfc2250ca1a4580b7f4b2490f7fe9cf3102e521dd69d3b2660df92c538f9b99"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotMauve.webp",
+          "bytes": 5688,
+          "sha256": "5dbc5e8e1183d79a639f33f617d5c195ea0022e40e8244a521ed101e7f102949"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotMauve_1.webp",
+          "bytes": 5688,
+          "sha256": "5dbc5e8e1183d79a639f33f617d5c195ea0022e40e8244a521ed101e7f102949"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotMauve_2.webp",
+          "bytes": 5854,
+          "sha256": "68ecf6dcb0210e42debe6a715622a3f20720e79296df4f53af7be23475500c97"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotMauve_3.webp",
+          "bytes": 5866,
+          "sha256": "27b508f6f0d0e13ab8b84f0ee880049eca7ec4d8b89f6cde3a5c4da9b45d6bc2"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotMauve_4.webp",
+          "bytes": 5734,
+          "sha256": "7e0c14d4535060739813415639be3eb9b590b06a0ca37677e76c5bb74a024a24"
+        }
+      ]
+    },
+    {
+      "name": "AutumnAsterPotCream",
+      "color": "#EEE3CB",
+      "centerColor": "#D6B83F",
+      "information": {
+        "label": "Ukrasni jesenski asteri – krem",
+        "shortDescription": "Pet širokih cvjetova u niskoj posudi od terakote.",
+        "fullDescription": "Ukrasni jesenski asteri u niskoj posudi od terakote, uvijek u odabranoj boji. Zauzimaju jedno polje. Služe samo za ukrašavanje: ne siju se, ne rastu i ne daju urod. Nisu kupnja stvarne biljke."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.61,
+        "hitboxHeight": 0.61,
+        "hitboxWidth": 0.72,
+        "hitboxDepth": 0.72,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 45,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/AutumnAsterPotCream.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/AutumnAsterPotCream.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/AutumnAsterPotCream.webp",
+          "bytes": 10010,
+          "sha256": "5b49e3292afbcd6d13949d12d4b55d118f73bb19a4351956a1e6a65dff97e76e"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnAsterPotCream_1.webp",
+          "bytes": 10010,
+          "sha256": "5b49e3292afbcd6d13949d12d4b55d118f73bb19a4351956a1e6a65dff97e76e"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnAsterPotCream_2.webp",
+          "bytes": 9936,
+          "sha256": "0efc8dcd2f6b1894b4f0dcb079a129b21dc1357c4fbbd20a9140c3c81b7dc09d"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnAsterPotCream_3.webp",
+          "bytes": 10088,
+          "sha256": "ccaf40d0f5b1cc10019eaa5d3047619969bbdb6e910189f52bba78626214a6bc"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnAsterPotCream_4.webp",
+          "bytes": 9754,
+          "sha256": "1a77a983a19ad88f912e68629854d56a0970e6ce65c7e85750873a4144e2acd2"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotCream.webp",
+          "bytes": 5282,
+          "sha256": "b4e046dda7db9b97422563b1167f86872e049a4f9515122005680e547a3445a5"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotCream_1.webp",
+          "bytes": 5282,
+          "sha256": "b4e046dda7db9b97422563b1167f86872e049a4f9515122005680e547a3445a5"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotCream_2.webp",
+          "bytes": 5198,
+          "sha256": "bb3b7c854c7388109bd153884b27e9c94deb101521ef6c0f1b55e658126f380b"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotCream_3.webp",
+          "bytes": 5450,
+          "sha256": "1512a23b0ea0451b779aed3de72707fe798a69c811328e858c877894f36b3574"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotCream_4.webp",
+          "bytes": 5296,
+          "sha256": "7cdec05248fb9d757aa571351dd5f2f8f42921c71f551ea017f876f39a67da46"
+        }
+      ]
+    },
+    {
+      "name": "AutumnAsterPotGold",
+      "color": "#D6B83F",
+      "centerColor": "#965D30",
+      "information": {
+        "label": "Ukrasni jesenski asteri – zlatni",
+        "shortDescription": "Pet širokih cvjetova u niskoj posudi od terakote.",
+        "fullDescription": "Ukrasni jesenski asteri u niskoj posudi od terakote, uvijek u odabranoj boji. Zauzimaju jedno polje. Služe samo za ukrašavanje: ne siju se, ne rastu i ne daju urod. Nisu kupnja stvarne biljke."
+      },
+      "attributes": {
+        "type": "decoration",
+        "height": 0.61,
+        "hitboxHeight": 0.61,
+        "hitboxWidth": 0.72,
+        "hitboxDepth": 0.72,
+        "spanWidth": 1,
+        "spanDepth": 1,
+        "stackable": false,
+        "placeableOnWater": false,
+        "nightOnlyPurchase": false
+      },
+      "sunflowers": 45,
+      "catalogueId": null,
+      "cover": "https://www.gredice.com/assets/blocks/AutumnAsterPotGold.webp",
+      "topDown": "https://vrt.gredice.com/assets/blocks/top-down/AutumnAsterPotGold.webp",
+      "images": [
+        {
+          "path": "apps/www/public/assets/blocks/AutumnAsterPotGold.webp",
+          "bytes": 11028,
+          "sha256": "b9713c11bf2c72e35b4f8156eb4a507ef3038e8881d9d12b985f56fdeaac7351"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnAsterPotGold_1.webp",
+          "bytes": 11028,
+          "sha256": "b9713c11bf2c72e35b4f8156eb4a507ef3038e8881d9d12b985f56fdeaac7351"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnAsterPotGold_2.webp",
+          "bytes": 11098,
+          "sha256": "184cdca0d226cb3e0e9519196a6d5487badd57e0d33a8465df8782b7a14ad989"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnAsterPotGold_3.webp",
+          "bytes": 11280,
+          "sha256": "da7ea5d71e2105373a1518306b6f93f11bee48532eac82f275f83903d9c1e27f"
+        },
+        {
+          "path": "apps/www/public/assets/blocks/AutumnAsterPotGold_4.webp",
+          "bytes": 11012,
+          "sha256": "379337d9db11f78292b686eb0dea0dcc728974ca23ac20bbde23209cffc21652"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotGold.webp",
+          "bytes": 6008,
+          "sha256": "2599e6000596d150ecceb986091544656318a105ef96bc22b1b612e343936e2a"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotGold_1.webp",
+          "bytes": 6008,
+          "sha256": "2599e6000596d150ecceb986091544656318a105ef96bc22b1b612e343936e2a"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotGold_2.webp",
+          "bytes": 5732,
+          "sha256": "8f2123caba473fdad60e514e6a94a500528366ec4addc795c1dfbec7d4617c64"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotGold_3.webp",
+          "bytes": 6130,
+          "sha256": "3502b6586fb936f4999471b469474bf32cde9ca337c6b210eb1af781b9026659"
+        },
+        {
+          "path": "apps/garden/public/assets/blocks/top-down/AutumnAsterPotGold_4.webp",
+          "bytes": 5870,
+          "sha256": "92deddf7bbd5d83d4f807865fc3a7d996bdbdbe1063e045fed2dea1c23679c22"
+        }
+      ]
+    }
+  ]
+}
