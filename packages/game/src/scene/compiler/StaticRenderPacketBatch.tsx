@@ -12,7 +12,7 @@ import {
     useSyncExternalStore,
 } from 'react';
 import type { BufferGeometry, InstancedMesh, Material } from 'three';
-import { createMeshInstanceMatrix } from '../../entities/chunkedMeshGeometry';
+import { writeMeshInstanceMatrices } from '../../entities/chunkedMeshGeometry';
 import {
     placementAnimationProfileNow,
     recordPlacementAnimationChunkRebuild,
@@ -387,12 +387,14 @@ const StaticRenderPacketInstancedMesh = memo(
                 mesh.material !== material
             )
                 return;
-            instances.forEach((instance, index) => {
-                mesh.setMatrixAt(
-                    index,
-                    createMeshInstanceMatrix(instance, localTransform, scale),
-                );
-            });
+            writeMeshInstanceMatrices(
+                instances,
+                localTransform,
+                scale,
+                (matrix, index) => {
+                    mesh.setMatrixAt(index, matrix);
+                },
+            );
             mesh.count = instances.length;
             mesh.instanceMatrix.needsUpdate = true;
             mesh.computeBoundingBox();
