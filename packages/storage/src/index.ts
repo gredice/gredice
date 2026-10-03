@@ -69,6 +69,7 @@ export * from './repositories/fiscalizationRepo';
 export * from './repositories/gardenDiaryCancelRepo';
 export * from './repositories/gardenDiaryRescheduleRepo';
 export * from './repositories/gardenMutationOperationsRepo';
+export * from './repositories/gardenPackGroupPlacementRepo';
 export * from './repositories/gardenPackLifecycleRepo';
 export * from './repositories/gardenPackPlacementRepo';
 export * from './repositories/gardenPackReadRepo';

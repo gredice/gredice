@@ -1296,6 +1296,9 @@ importers:
       '@gredice/directory-types':
         specifier: workspace:*
         version: link:../directory-types
+      '@gredice/storage':
+        specifier: workspace:*
+        version: link:../storage
       openapi-fetch:
         specifier: 0.17.0
         version: 0.17.0

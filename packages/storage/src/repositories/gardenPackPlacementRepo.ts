@@ -6,6 +6,12 @@ import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { getGardenPackUnits } from '../gardenPackContract';
 import {
+    type GardenPackGroupPlacementCommand,
+    type GardenPackGroupPlacementResponse,
+    gardenPackGroupPlacementCommandSchema,
+    gardenPackGroupPlacementResponseSchema,
+} from '../gardenPackGroupPlacementContract';
+import {
     type GardenPackPlacementCommand,
     type GardenPackPlacementResponse,
     gardenPackPlacementResponseSchema,
@@ -147,8 +153,17 @@ export async function recordGardenPackPlacement(
     command: GardenPackPlacementCommand,
     response: GardenPackPlacementResponse,
     tx: GardenPackTransaction,
+    groupReceipt?: {
+        command: GardenPackGroupPlacementCommand;
+        response: GardenPackGroupPlacementResponse;
+        root: boolean;
+    },
 ) {
     gardenPackPlacementResponseSchema.parse(response);
+    if (groupReceipt) {
+        gardenPackGroupPlacementCommandSchema.parse(groupReceipt.command);
+        gardenPackGroupPlacementResponseSchema.parse(groupReceipt.response);
+    }
     await tx.insert(gardenPackUnitLocations).values({
         purchaseId: command.purchaseId,
         lineId: command.lineId,
@@ -167,8 +182,18 @@ export async function recordGardenPackPlacement(
         creditedSunflowers: 0,
         gardenId: command.gardenId,
         blockId: response.blockId,
-        placementPayload: gardenPackPlacementPayload(command),
-        placementResponse: response,
+        placementPayload: groupReceipt
+            ? {
+                  kind: groupReceipt.root
+                      ? 'group-placement:v1'
+                      : 'group-member:v1',
+                  command: groupReceipt.command,
+              }
+            : gardenPackPlacementPayload(command),
+        // Keep scalar physical provenance fields for deferred lifecycle guards.
+        placementResponse: groupReceipt
+            ? { ...response, group: groupReceipt.response }
+            : response,
     });
     await tx
         .update(gardenPackUnits)
