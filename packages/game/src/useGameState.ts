@@ -399,6 +399,7 @@ export type GameState = {
     // General
     authenticatedGardenQueriesEnabled: boolean;
     gardenPacksEnabled: boolean;
+    autumnActivityEnabled: boolean;
     isMock: boolean;
     mockGardenProfile: MockGardenProfile;
     setMockGardenProfile: (mockGardenProfile: MockGardenProfile) => void;
@@ -643,6 +644,7 @@ export function createGameState({
     appBaseUrl,
     authenticatedGardenQueriesEnabled = true,
     gardenPacksEnabled = false,
+    autumnActivityEnabled = false,
     spriteBaseUrl,
     dayNightCycleDisabled: initialDayNightCycleDisabled,
     freezeTime,
@@ -659,6 +661,7 @@ export function createGameState({
     appBaseUrl: string;
     authenticatedGardenQueriesEnabled?: boolean;
     gardenPacksEnabled?: boolean;
+    autumnActivityEnabled?: boolean;
     spriteBaseUrl?: string;
     dayNightCycleDisabled?: boolean;
     freezeTime: Date | null;
@@ -696,6 +699,7 @@ export function createGameState({
     return createStore<GameState>((set, get) => ({
         authenticatedGardenQueriesEnabled,
         gardenPacksEnabled,
+        autumnActivityEnabled,
         isMock: isMock,
         mockGardenProfile: mockGardenProfile ?? 'default',
         setMockGardenProfile: (mockGardenProfile) =>

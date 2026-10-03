@@ -27,8 +27,7 @@ export function GardenPackInventoryPurchase({
 }) {
     const [failed, setFailed] = useState(false);
     const [placing, setPlacing] = useState(false);
-    const name =
-        pack.name.hr ?? Object.values(pack.name)[0] ?? 'Kupljeni paket';
+    const name = pack.name.hr ?? Object.values(pack.name)[0] ?? 'Moj paket';
     return (
         <details
             className="border-b pb-3 min-w-0"
@@ -41,15 +40,15 @@ export function GardenPackInventoryPurchase({
                     {pack.remainingQuantity}/{pack.totalQuantity} preostalo
                 </span>
                 <span className="block text-sm text-muted-foreground">
-                    {getOwnedPackStateLabel(pack)} ·{' '}
+                    {getOwnedPackStateLabel(pack)} · Preuzeto{' '}
                     {new Date(pack.purchasedAt).toLocaleDateString('hr-HR')}
                 </span>
                 <span className="block break-all text-xs text-muted-foreground">
-                    Kupnja {pack.purchaseId.slice(-8)}
+                    Paket {pack.purchaseId.slice(-8)}
                 </span>
             </summary>
             <p className="break-all text-xs text-muted-foreground">
-                Kupnja {pack.purchaseId}
+                Paket {pack.purchaseId}
             </p>
             <ul
                 className="space-y-3 pt-2"
