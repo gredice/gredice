@@ -52,13 +52,22 @@ PNGs and four Kestenijada PNGs byte for byte. Each recapture retains its actual
 source/tree identity and archives the preceding proofs. Original mobile/static
 captures remain dated original evidence.
 
-The JSON lists exact current-candidate CI conclusions; pending checks remain
-pending. The normal-garden fresh-renderer Outlet test failed on #5146 and the
+The JSON lists exact current-candidate CI conclusions. Both ordinary Chromium,
+API/storage, public-route and Outlet jobs passed. Both broad WebGL component
+jobs were cancelled and the full CI gate remains incomplete. The normal-garden fresh-renderer Outlet test failed on #5146 and the
 preceding #5144, including timeout/closed-renderer symptoms. Repetition before
 album changes does not establish its cause. The current candidate's Outlet-rest
-job passed; other pending checks remain listed separately. The October 2 WebGL
+job passed; the cancelled WebGL checks remain unresolved. The October 2 WebGL
 cancellation below is historical evidence, not a statement of the latest
 candidate's result.
+
+The cancelled WebGL jobs include observed tree/steam/hedgehog and Kestenijada
+attempts. Investigation found Vercel 62 environment setup rewriting the tracked
+Garden ignore file before the new strict clean-source capture check. The
+preflight continuation predeclares the CLI's exact `.env*` line while keeping
+`.env.example` visible; the provenance assertion is retained. The two Kestenijada
+photo lifecycle failures do not call that source checker and remain separate
+investigation. A fix and a local pass do not stand in for a subsequent CI result.
 
 Prepared source includes optional C activities and Later layout/design work.
 They do not automatically become A/B pilot launch requirements. The first-wave

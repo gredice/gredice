@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "observedAt": "2026-10-03T23:07:29Z",
+  "observedAt": "2026-10-03T23:26:38Z",
   "kind": "dated-prepared-stack-checkpoint",
   "candidate": {
     "commit": "53d041ee15af81901342343a03fd6e0fd46a0dcd",
@@ -111,34 +111,34 @@
       },
       {
         "name": "CI - garden / test (chromium 1/2)",
-        "status": "IN_PROGRESS",
-        "conclusion": null,
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
         "startedAt": "2026-10-03T23:00:59Z",
-        "completedAt": null,
+        "completedAt": "2026-10-03T23:09:58Z",
         "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124774"
       },
       {
         "name": "CI - garden / test (chromium 2/2)",
-        "status": "IN_PROGRESS",
-        "conclusion": null,
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
         "startedAt": "2026-10-03T23:00:50Z",
-        "completedAt": null,
+        "completedAt": "2026-10-03T23:07:04Z",
         "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124759"
       },
       {
         "name": "CI - garden / test (webgl components 1/2)",
-        "status": "IN_PROGRESS",
-        "conclusion": null,
+        "status": "COMPLETED",
+        "conclusion": "CANCELLED",
         "startedAt": "2026-10-03T23:00:27Z",
-        "completedAt": null,
+        "completedAt": "2026-10-03T23:15:42Z",
         "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124675"
       },
       {
         "name": "CI - garden / test (webgl components 2/2)",
-        "status": "IN_PROGRESS",
-        "conclusion": null,
+        "status": "COMPLETED",
+        "conclusion": "CANCELLED",
         "startedAt": "2026-10-03T23:01:15Z",
-        "completedAt": null,
+        "completedAt": "2026-10-03T23:16:32Z",
         "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124778"
       },
       {
@@ -230,7 +230,41 @@
         "url": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124323"
       }
     ],
-    "limits": "Pending/cancelled/failed checks remain unresolved; this snapshot is not a waiver or all-green claim."
+    "limits": "All listed ordinary/API/storage/public-route/Outlet jobs passed. Both broad WebGL component jobs were cancelled; full CI remains incomplete.",
+    "cancelledWebglDiagnostics": [
+      {
+        "jobUrl": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124675",
+        "logSha256": "50e1478a92dc05d9cae3bea537113291044d61fa445394394535e4f3316ba581",
+        "failedAttemptNames": [
+          "deciduous trees at summer",
+          "matched mixed tea/cart steam cost with existing autumn and warm-prop layers on low"
+        ],
+        "limits": "Job cancellation prevented a complete report. Named attempts are observed failures, not proven root causes or release waivers."
+      },
+      {
+        "jobUrl": "https://github.com/gredice/gredice/actions/runs/37160264626/job/111312124778",
+        "logSha256": "83fed7d543ec6035c89899622fb69a35896ac204533a34b357f7c5b555f6f22b",
+        "failedAttemptNames": [
+          "hedgehog live visit pauses offscreen then returns and enters cooldown",
+          "hedgehog close-up HedgehogWalk",
+          "hedgehog close-up HedgehogSniff",
+          "hedgehog close-up HedgehogIdle",
+          "authored Dan view shows all five decorations, exact geometry and scenery without private requests",
+          "authored Sumrak view shows all five decorations, exact geometry and scenery without private requests",
+          "authored Noć view shows all five decorations, exact geometry and scenery without private requests",
+          "mobile low/reduced-motion/weather-disabled view remains complete and directory retry does not invent offers",
+          "active local PNG can cancel, retry, close and share only static canonical permalink",
+          "photo encoder error persists and delayed cancelled work cannot replace the fresh local preview"
+        ],
+        "limits": "Job cancellation prevented a complete report. Named attempts are observed failures, not proven root causes or release waivers."
+      }
+    ],
+    "sourceSetupMismatch": {
+      "detail": "Vercel62.2.0 env pull adds a literal .env* entry when it is absent from the linked cwd ignore file. This CI setup precedes the strict Kestenijada capture source check and dirties tracked apps/garden/.gitignore.",
+      "fix": "Predeclare .env* and retain !.env.example in the Garden ignore file; preserve the strict capture source check.",
+      "verification": "Exact Vercel62 source and CI log inspected; the subsequent candidate must receive its own CI result.",
+      "photoCases": "The two photo lifecycle failures do not invoke captureSource and require separate investigation; the ignore fix is not claimed to resolve them."
+    }
   },
   "inheritedFailures": [
     {
