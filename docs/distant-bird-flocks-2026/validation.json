@@ -1,0 +1,119 @@
+{
+    "schemaVersion": 1,
+    "issue": 4978,
+    "recordedAt": "2026-10-03T10:40:59.396325+00:00",
+    "sourceParentCommit": "777702079e62f414428be7cc5013e3a016c34d86",
+    "sourceStatus": "Final working-tree source before local commit; these hashes identify the tested source, without asserting deployment.",
+    "sourceSha256": {
+        "packages/game/src/scene/DistantBirdFlocks.tsx": "81b7ab439868fb482929c29143efe994910b021c1ce0b0eec6c0eff0e40c6995",
+        "packages/game/src/scene/DistantBirdFlockMesh.tsx": "c57a17b2f64b5dc50a2e4e65170eace054efc1174e66b2737ebf5c12fe0a2f34",
+        "packages/game/src/scene/distantBirdFlock.ts": "1d2e8749734b437143c4f976aa8bca07e1bcdf46f53a00d51841584eefecb9df",
+        "packages/game/src/scene/distantBirdFlock.unit.ts": "13bd54aad35090f1fddd2afd92fc5c0102338c56a4c937ec5c46ec7bb494f18f",
+        "packages/game/src/scene/distantBirdGeometry.ts": "fb22ae526892509008c6fd6775e85ce06cd72c4814f4ec5075f4cab39f191de7",
+        "packages/game/src/scene/distantBirdGeometry.unit.ts": "98d272cbb12929d104667113688ded582620880fae83a07247c64755c084cbe1",
+        "packages/game/src/scene/sceneElapsedTime.ts": "0f2458110c6812962c9663558bf9c6c557cae36f1312d981d2d90210daceaef4",
+        "packages/game/src/scene/sceneElapsedTime.unit.ts": "25fecb83c1ad6036ea5083c626426ce3ecace8fec39069a51afafddc6f7c30f8",
+        "packages/game/src/scene/SceneTime.tsx": "078521dd159074f5ded5135140ccf571ae5ef8451ef89bf2ea010466c7b057bb",
+        "packages/game/src/scene/Environment.tsx": "c33fe3cfe2492025d4a712d9e26d53f90aea6c9e29f9065606ce3985cdf2966f",
+        "packages/game/tests/DistantBirdFlockFixture.tsx": "6fa01b48f692d4a92a5f0ee66370db8d3e298528bea6ee1716e212d96adf176a",
+        "packages/game/tests/DistantBirdFlockProbe.tsx": "4f80694f5ffb77f21129244b032d7d20101ebc7ca553fd92bb16d96eef891014",
+        "packages/game/tests/DistantBirdFlockProfileFixture.tsx": "16fdd393ff752aa117fcd39dcf2c4934e1761792d5ae86bcf362c55fe59ddba6",
+        "packages/game/tests/DistantBirdFlockProfileProbe.tsx": "b3b3603598cfb447ea6f621f3cd91db48c04291636b75bc774d3f577fbf727a6",
+        "apps/garden/playwright.config.ts": "4cc6a1ccf18496eb487c6ef8cc0f7d195621b827e0b7862938ee0c81eca117e2",
+        "apps/garden/playwright.distant-bird-flocks.config.ts": "d3500e5683ea3181f78867ca17ac5cbbbe15d756274ec1463b0ff0581a5e9789",
+        "apps/garden/tests/distant-bird-flocks.spec.tsx": "af12e775301530b1c181633a4f7e17b6ace12577a201806d2300208f3d05d04d",
+        "packages/game/src/scene/sceneRootRuntime.ts": "f7619441aad6f341b66e22938406d6bc7d95ca13f672b8e60c3365b68fd2ef3c",
+        "packages/game/src/scene/GameRuntimeScheduler.ts": "96b4e91bea70690b5ebf00c9b08f04b7e4336ec82594aa5d0fb67a088c39b95c",
+        "apps/garden/tests/scene-root-isolation.spec.tsx": "bc398b9b48f6e9d4194cde0e718eb54e793ca5492f97923ea5744a14e4059a43"
+    },
+    "assetSha256": {
+        "apps/garden/public/assets/models/BirdSmall.glb": "683e9b15b5982b9f7023eb21fdf23da72ab9e94e022c338c156959a79c38a0d3"
+    },
+    "captures": {
+        "apps/garden/__snapshots__/tests/distant-bird-flocks.spec.tsx-snapshots/distant-flock-dense-autumn.png": {
+            "sha256": "06e4f0d18050d26c69501c935630c59ebb182283723810f8e56e1d99baa4bbf4",
+            "capturedAt": "2026-10-03T10:25:58.120855+00:00",
+            "refresh": "--update-snapshots=all after final runtime source changes"
+        },
+        "apps/garden/__snapshots__/tests/distant-bird-flocks.spec.tsx-snapshots/distant-flock-midflight.png": {
+            "sha256": "3adc3b2893580bf509d83ce87355027bb5416e89517f9f3d86777f29cbe59dc8",
+            "capturedAt": "2026-10-03T10:25:59.191187+00:00",
+            "refresh": "--update-snapshots=all after final runtime source changes"
+        }
+    },
+    "validation": {
+        "newUnitCases": 7,
+        "existingSchedulerCases": 70,
+        "unitCasesPassed": 77,
+        "featureWebglCasesPassed": 4,
+        "existingTwoRootIsolationCasesPassed": 1,
+        "uniqueBrowserCasesPassed": 5,
+        "typechecks": ["@gredice/game", "garden", "www"],
+        "changedSourceBiomeFiles": 17,
+        "browser": "Chromium WebGL / SwiftShader",
+        "port": 5485,
+        "workers": 1,
+        "node": "v24.15.0",
+        "pnpm": "12.5.1"
+    },
+    "matchedScene": {
+        "quality": "high",
+        "groundTiles": 225,
+        "deciduousTrees": 25,
+        "autumnProps": 50,
+        "teaTables": 4,
+        "calendarTime": "2026-10-22T12:00:00+02:00",
+        "semanticWindow": {
+            "seed": "99998:2026-10-22",
+            "slot": 0,
+            "sample": "start + duration / 2"
+        },
+        "camera": {
+            "position": [-100, 100, -100],
+            "zoom": 16
+        },
+        "canvas": [680, 520],
+        "warmupFrames": 10,
+        "sampleFrames": 20,
+        "rawProfiler": {
+            "baseline": {
+                "enabled": false,
+                "frames": 20,
+                "calls": 215,
+                "triangles": 164070,
+                "birds": 0,
+                "birdTriangles": 0,
+                "steam": 48,
+                "falling": 160,
+                "ground": 221,
+                "entity": 20
+            },
+            "candidate": {
+                "enabled": true,
+                "frames": 20,
+                "calls": 216,
+                "triangles": 167630,
+                "birds": 5,
+                "birdTriangles": 712,
+                "steam": 48,
+                "falling": 160,
+                "ground": 221,
+                "entity": 20
+            }
+        },
+        "assertion": "Exactly one incremental draw call and 3560 triangles; no physical-device timing or production-acceptance claim."
+    },
+    "localLogSha256": {
+        "gredice-distant-flocks-unit-20261003.log": "efa15f036b90a41263b07606c8f260ed41bf67c4f7ad4503b11a91f1e9c5a76f",
+        "gredice-distant-flocks-webgl-20261003.log": "eb60d4f0caedccf68fcf68f743d2e87facb550a6511ec921b6f68a8f1dcf7283",
+        "gredice-distant-flocks-isolation-20261003.log": "176dc8f9a0a274c888fe753501ee52f110ffc524a5282203585fef2b24e4a28d",
+        "gredice-distant-flocks-captures-20261003.log": "8153fb5e025a1a2c4186f8d5fedd659504456947195fe75743184a71aa1c49f8"
+    },
+    "notes": [
+        "Existing animation/shader clock remains capped; provider-owned semantic elapsed time admits otherwise idle rare events.",
+        "The live browser regression contains no animation-clock mutator and covers natural flight completion, deadline rearming, hidden elapsed slots and unmount.",
+        "The shared isolation case used a temporary derived dedicated config for the existing scene-root-isolation spec, port5485/workers1; the temporary file was removed.",
+        "Astra xhigh model review approved the corrected attached Y-splayed wing pose and explicit-all refreshed captures.",
+        "Leaf/steam stacked-source verification, CI, production and physical-device checks remain separate."
+    ]
+}
