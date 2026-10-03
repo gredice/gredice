@@ -77,6 +77,8 @@ export type ButtonLinkProps = ButtonOwnProps &
         keyof ButtonOwnProps | 'href'
     > & {
         href: string;
+        /** Use document navigation when the destination belongs to another app. */
+        navigation?: 'client' | 'document';
         prefetch?: ComponentProps<typeof NextLink>['prefetch'];
     };
 
@@ -188,7 +190,9 @@ export function Button(props: ButtonProps) {
             fullWidth,
             href,
             loading,
+            navigation,
             onClick,
+            prefetch,
             size,
             startDecorator,
             variant,
@@ -206,25 +210,36 @@ export function Button(props: ButtonProps) {
         const handleLinkClick =
             disabled || loading || onClick ? handleClick : undefined;
 
+        const linkProps = {
+            'aria-disabled': disabled || loading,
+            className: cx(
+                buttonClassNames({ fullWidth, size, variant }),
+                buttonColorClassName(variant, color),
+                className,
+            ),
+            href,
+            onClick: handleLinkClick,
+            tabIndex: disabled || loading ? -1 : rest.tabIndex,
+            ...rest,
+        };
+        const content = buttonContent({
+            children,
+            endDecorator,
+            loading,
+            startDecorator,
+        });
+
+        if (navigation === 'document') {
+            return <a {...linkProps}>{content}</a>;
+        }
+
         return (
             <NextLink
-                aria-disabled={disabled || loading}
-                className={cx(
-                    buttonClassNames({ fullWidth, size, variant }),
-                    buttonColorClassName(variant, color),
-                    className,
-                )}
+                {...linkProps}
                 href={href as ComponentProps<typeof NextLink>['href']}
-                onClick={handleLinkClick}
-                tabIndex={disabled || loading ? -1 : rest.tabIndex}
-                {...rest}
+                prefetch={prefetch}
             >
-                {buttonContent({
-                    children,
-                    endDecorator,
-                    loading,
-                    startDecorator,
-                })}
+                {content}
             </NextLink>
         );
     }

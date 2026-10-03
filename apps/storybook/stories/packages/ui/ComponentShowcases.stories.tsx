@@ -1032,6 +1032,15 @@ function PublicContentShowcase() {
                     { href: '/', text: 'Biljke' },
                     { href: '/', text: 'Dostava' },
                     { href: '/', text: 'Recepti' },
+                    <Button
+                        key="news"
+                        href="/novosti"
+                        navigation="document"
+                        size="lg"
+                        variant="plain"
+                    >
+                        Novosti
+                    </Button>,
                 ]}
             >
                 <UserAvatarLink
