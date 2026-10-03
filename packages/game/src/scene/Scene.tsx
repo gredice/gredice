@@ -46,6 +46,7 @@ import {
     type GameQualityProfile,
     resolveGameQualityProfile,
 } from './gameQuality';
+import { GardenPacketMaterialRoot } from './gardenPacketMaterialLifetime';
 import { subscribeToRendererContextLoss } from './RendererContextLossReporter';
 import { createRendererStatsPublisher } from './rendererStats';
 import {
@@ -386,6 +387,7 @@ export function Scene({
                 runtimeFrameLoop={runtimeFrameLoop}
                 suspendWhenOffscreen={suspendWhenOffscreen}
             >
+                <GardenPacketMaterialRoot />
                 <GardenLightProvider qualityTier={qualityProfile.tier}>
                     <AdaptiveHighQualityController
                         effectiveDprCeiling={qualityProfile.dpr}

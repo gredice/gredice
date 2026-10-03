@@ -14,15 +14,33 @@ sources and includes every serializable rendered property: color, roughness,
 metalness, emissive and intensity, maps, alpha/cutout, side, depth/blend state,
 vertex-color flags, and registered shader configuration. Different PBR uniforms
 remain separate packets. No palette attributes, custom GLSL, new vertex-color
-flag, async warmup policy, or idle material pool is introduced.
+flag or async warmup policy is introduced.
 
 `useGardenPacketSource` acquires a committed owned clone. It preserves the
 original values, texture references, authored `onBeforeCompile`, and
 `customProgramCacheKey`. The ownership key includes the actual scene root;
 equal supported materials share within that root, while independent roots own
 separate clones. The root identity does not enter the native shader key. The
-last active lease disposes the clone, never the source material or its textures.
-StrictMode cleanup and subsequent setup acquire a fresh live lease.
+last active lease disposes unverified or unsupported clones. For a verified
+resident authored GLTF material, the persistent Scene root may retain one
+compatible idle opaque stock clone. Its selected full signature replaces an
+incompatible idle slot; older active variants finish under their own leases
+without retaining a history of configurations. Pure ground-patch decoration
+carries exact original material identity without acquiring asset residency.
+
+Asset eviction/disposal and root cleanup release the idle ownership. Existing
+GLTF budget, grace and consumer references remain unchanged; borrowed textures,
+geometry and source materials retain their existing owners. Root generations
+isolate StrictMode cleanup from later setup, and aborted render acquires no
+lease. Transparent JSX, unregistered hooks and weather-integrated material routes
+retain their existing ownership. Cloud candidates stay consumer-scoped. Before
+repatching a cached cloud program, the scene layer supplies its actual renderer
+and refreshes only the five current cloud uniform bindings. This covers active
+and idle cloud-feature changes without altering shader code, callbacks, native
+keys or program reference counts. The uniform-table shape is guarded against the
+pinned Three 0.186 implementation; newly compiled programs receive the same
+bindings through their normal shader hook. Program reuse and uniform correctness
+are verified separately from native timing acceptance.
 
 Registered weather hooks on newly admitted props keep their exact configuration
 and mutable uniform identities. Existing `renderStableChunksAsMergedGeometry`

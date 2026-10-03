@@ -4,6 +4,7 @@ import {
     getGardenMaterialInstalledShaderHookSignature,
     registerGardenMaterialShaderHooks,
 } from '../../scene/gardenMaterials';
+import { inheritGardenMaterialOrigin } from '../../scene/resources/gardenMaterialOrigins';
 import { dryGroundDarkColor, dryGroundLightColor } from '../dryGroundPalette';
 
 export type GroundPatchSurface =
@@ -477,7 +478,9 @@ function createGroundPatchMaterial(
         return material;
     }
 
-    return applyGroundPatchMaterial(material.clone(), surface, options);
+    const clone = applyGroundPatchMaterial(material.clone(), surface, options);
+    inheritGardenMaterialOrigin(clone, material);
+    return clone;
 }
 
 export function useGroundPatchMaterial(
