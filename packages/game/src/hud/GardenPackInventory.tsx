@@ -21,7 +21,7 @@ export function GardenPackInventory({
     return (
         <div className="min-w-0 space-y-3" aria-busy={inventory.isFetching}>
             {inventory.isPending && (
-                <p role="status">Učitavanje kupljenih paketa…</p>
+                <p role="status">Učitavanje mojih paketa…</p>
             )}
             {inventory.isError && (
                 <div role="alert" className="space-y-2">
@@ -43,7 +43,7 @@ export function GardenPackInventory({
                 !inventory.isError &&
                 inventory.purchases.length === 0 && (
                     <p className="text-sm text-muted-foreground">
-                        Još nema kupljenih paketa.
+                        Još nema preuzetih paketa.
                     </p>
                 )}
             {inventory.purchases.map((pack) => (
