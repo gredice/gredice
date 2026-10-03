@@ -214,3 +214,27 @@ overhead and all Silo/provider costs. If the combined measured budget exceeds
 the targets, name the remaining SKU/project/wakeup source and propose a bounded
 change. Retain unresolved billing/configuration or authenticated acceptance
 explicitly; the report must never turn unknown metrics into a passed budget.
+
+
+## Garden operation scene reads
+
+Garden detail/preview reads and the garden operations endpoint use
+`getAppliedRaisedBedOperationSummariesForGarden`. It returns the eight scene
+fields and reuses canonical operation replay, but fetches only status/date event
+types. Ordinary event payloads contain only the scheduled date; admin corrections
+retain their complete payload for schema validation. Evidence, assignments and
+assigned-user enrichment are omitted. Full operation history readers retain their
+existing behavior. There is no persisted snapshot or new cross-request cache.
+
+A bounded read-only production sample on 2026-10-04 compared the same 1,228
+applied operations in a large garden. Event rows fell from 5,913 to 3,869 and
+`row_to_json` payload bytes from 1,321,596 to 545,359 (58.7% less). Warm database
+execution including selection was 21.3 ms for full history and 24.9 ms for the
+compact read, with identical shared-buffer hits. These are a single query-plan
+sample and serialized row sizes, not measured network billing or end-to-end p95.
+
+Compare matched post-deployment traffic for garden detail/operations requests:
+Neon transfer and compute, Vercel function CPU/duration, error rate, and p95.
+Confirm correction, rescheduling, edited/deleted events and cross-account access
+still behave as expected. Persistent snapshots need a separate writer/concurrency
+migration; this read optimization keeps immediate event replay semantics.

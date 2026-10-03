@@ -276,40 +276,69 @@ function parseOperationEventData(value: unknown): OperationEventsAnyPayload {
 async function fillOperationAggregates(
     operations: SelectOperation[],
     db: DatabaseClient = storage(),
-    readRecoveryContext?: { gardenId: number },
+    readRecoveryContext?: { gardenId: number; sceneOnly?: boolean },
 ) {
     if (operations.length === 0) {
         return [];
     }
 
     const aggregateIds = operations.map((op) => op.id.toString());
-    const aggregateEventTypes = [
-        knownEventTypes.operations.adminUpdate,
-        knownEventTypes.operations.acceptance,
-        knownEventTypes.operations.assign,
-        knownEventTypes.operations.entityChange,
-        knownEventTypes.operations.schedule,
-        knownEventTypes.operations.complete,
-        knownEventTypes.operations.block,
-        knownEventTypes.operations.completionEvidenceUpdate,
-        knownEventTypes.operations.verify,
-        knownEventTypes.operations.fail,
-        knownEventTypes.operations.cancel,
-    ];
+    const aggregateEventTypes = readRecoveryContext?.sceneOnly
+        ? operationTimelineStatusTypes
+        : [
+              knownEventTypes.operations.adminUpdate,
+              knownEventTypes.operations.acceptance,
+              knownEventTypes.operations.assign,
+              knownEventTypes.operations.entityChange,
+              knownEventTypes.operations.schedule,
+              knownEventTypes.operations.complete,
+              knownEventTypes.operations.block,
+              knownEventTypes.operations.completionEvidenceUpdate,
+              knownEventTypes.operations.verify,
+              knownEventTypes.operations.fail,
+              knownEventTypes.operations.cancel,
+          ];
     const aggregatesEvents: Awaited<ReturnType<typeof getEvents>> = [];
     const eventPageSize = 10000;
     for (let offset = 0; ; offset += eventPageSize) {
         const readEventPage = () =>
-            getEvents(
-                aggregateEventTypes,
-                aggregateIds,
-                offset,
-                eventPageSize,
-                db,
-            );
+            readRecoveryContext?.sceneOnly
+                ? db
+                      .select({
+                          id: events.id,
+                          type: events.type,
+                          version: events.version,
+                          aggregateId: events.aggregateId,
+                          createdAt: events.createdAt,
+                          // Keep complete correction payloads for canonical schema
+                          // validation. Ordinary scene events only need the date.
+                          data: sql<unknown>`case
+                              when ${events.type} = ${knownEventTypes.operations.adminUpdate} then ${events.data}
+                              when ${events.type} = ${knownEventTypes.operations.schedule} then jsonb_build_object('scheduledDate', ${events.data} -> 'scheduledDate')
+                              else '{}'::jsonb end`,
+                      })
+                      .from(events)
+                      .where(
+                          and(
+                              inArray(events.type, aggregateEventTypes),
+                              inArray(events.aggregateId, aggregateIds),
+                          ),
+                      )
+                      .orderBy(asc(events.createdAt), asc(events.id))
+                      .offset(offset)
+                      .limit(eventPageSize)
+                : getEvents(
+                      aggregateEventTypes,
+                      aggregateIds,
+                      offset,
+                      eventPageSize,
+                      db,
+                  );
         const eventPage = readRecoveryContext
             ? await withTransientDatabaseReadRetry(readEventPage, {
-                  operation: 'hydrate-garden-operation-events',
+                  operation: readRecoveryContext.sceneOnly
+                      ? 'hydrate-garden-operation-scene-events'
+                      : 'hydrate-garden-operation-events',
                   context: {
                       gardenId: readRecoveryContext.gardenId,
                       aggregateCount: aggregateIds.length,
@@ -563,7 +592,7 @@ async function fillOperationAggregates(
     );
 
     const assignedUsers =
-        assignedUserIds.length > 0
+        !readRecoveryContext?.sceneOnly && assignedUserIds.length > 0
             ? await db.query.users.findMany({
                   extras: userAchievementExtras,
                   columns: {
@@ -1599,6 +1628,47 @@ export async function getAppliedRaisedBedOperationsForGarden(
     accountId: string,
     gardenId: number,
 ) {
+    return readAppliedRaisedBedOperationsForGarden(accountId, gardenId);
+}
+
+/** Scene-only read: replay the canonical status/date events without evidence or users. */
+export async function getAppliedRaisedBedOperationSummariesForGarden(
+    accountId: string,
+    gardenId: number,
+) {
+    const rows = await readAppliedRaisedBedOperationsForGarden(
+        accountId,
+        gardenId,
+        true,
+    );
+    return rows.map(
+        ({
+            id,
+            entityId,
+            raisedBedId,
+            raisedBedFieldId,
+            status,
+            createdAt,
+            scheduledDate,
+            completedAt,
+        }) => ({
+            id,
+            entityId,
+            raisedBedId,
+            raisedBedFieldId,
+            status,
+            createdAt,
+            scheduledDate,
+            completedAt,
+        }),
+    );
+}
+
+async function readAppliedRaisedBedOperationsForGarden(
+    accountId: string,
+    gardenId: number,
+    sceneOnly = false,
+) {
     // Select matching operation rows directly. Re-hydrating an intermediate
     // ID list creates an unbounded IN query for long-lived gardens.
     const db = storage();
@@ -1616,7 +1686,7 @@ export async function getAppliedRaisedBedOperationsForGarden(
 
     // This repository path is read-only. Retry only a failed event page so a
     // transport disconnect cannot discard otherwise complete public history.
-    return fillOperationAggregates(rows, db, { gardenId });
+    return fillOperationAggregates(rows, db, { gardenId, sceneOnly });
 }
 
 export async function getAllOperations(filter?: {
