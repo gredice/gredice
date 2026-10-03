@@ -14,6 +14,7 @@ import {
     getAllEvents,
     getAllOperations,
     getFarmAcceptedOperationsByScheduleRange,
+    getFarmUserAcceptedOperations,
     getFarmUserAcceptedOperationsByScheduleRange,
     getOperationById,
     getOperationsPage,
@@ -369,6 +370,8 @@ test('a date-only correction keeps original completion/verification identity and
         values: {
             ...f.values,
             status: 'completed',
+            isAccepted: true,
+            assignedUserIds: [f.farmerId],
             completedAt: corrected,
             verifiedAt: current.verifiedAt?.toISOString(),
         },
@@ -392,6 +395,16 @@ test('a date-only correction keeps original completion/verification identity and
         completedTo: new Date('2025-02-14T23:59:59Z'),
     });
     assert.ok(correctedRange.some((item) => item.id === f.operationId));
+    const priorFarmRange = await getFarmUserAcceptedOperations(f.farmerId, {
+        completedFrom: new Date(current.completedAt.getTime() - 1000),
+        completedTo: new Date(current.completedAt.getTime() + 1000),
+    });
+    assert.ok(!priorFarmRange.some((item) => item.id === f.operationId));
+    const correctedFarmRange = await getFarmUserAcceptedOperations(f.farmerId, {
+        completedFrom: new Date('2025-02-14T00:00:00Z'),
+        completedTo: new Date('2025-02-14T23:59:59Z'),
+    });
+    assert.ok(correctedFarmRange.some((item) => item.id === f.operationId));
 });
 
 test('a verified task can change definition while incompatible target scopes are rejected', async () => {

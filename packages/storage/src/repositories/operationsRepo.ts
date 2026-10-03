@@ -3,6 +3,7 @@ import type { SelectedPlantingOperationTarget } from '@gredice/js/plants';
 import {
     and,
     asc,
+    between,
     count,
     desc,
     eq,
@@ -666,6 +667,37 @@ function getOperationCompletedDateExpression() {
           ), row(timestamp '1970-01-01', 0))
         order by ${events.createdAt} asc, ${events.id} asc limit 1
     )`;
+}
+
+async function getCompletionEventCandidateIds({
+    from,
+    to,
+}: {
+    from: Date;
+    to: Date;
+}) {
+    const candidates = await storage()
+        .selectDistinct({ aggregateId: events.aggregateId })
+        .from(events)
+        .where(
+            or(
+                and(
+                    eq(events.type, knownEventTypes.operations.complete),
+                    between(events.createdAt, from, to),
+                ),
+                and(
+                    eq(events.type, knownEventTypes.operations.adminUpdate),
+                    between(
+                        sql<Date>`nullif(${events.data} -> 'task' ->> 'completedAt', '')::timestamp`,
+                        from,
+                        to,
+                    ),
+                ),
+            ),
+        );
+    return candidates
+        .map((candidate) => Number(candidate.aggregateId))
+        .filter(Number.isSafeInteger);
 }
 
 function getOperationStatusExpression() {
@@ -1692,20 +1724,30 @@ async function getCompletedFarmUserAcceptedOperationsByCompletionDate(
         to: Date;
     },
 ) {
+    const candidateIds = await getCompletionEventCandidateIds(filter);
+    if (candidateIds.length === 0) return [];
     const rows = await storage()
-        .select({ id: operations.id })
+        .select({ operation: operations })
         .from(operations)
+        .leftJoin(raisedBeds, eq(operations.raisedBedId, raisedBeds.id))
+        .leftJoin(gardens, eq(gardens.id, operationGardenIdExpression()))
+        .innerJoin(farmUsers, eq(farmUsers.farmId, operationFarmIdExpression()))
         .where(
             and(
+                inArray(operations.id, candidateIds),
+                eq(farmUsers.userId, userId),
+                eq(operations.isAccepted, true),
                 eq(operations.isDeleted, false),
-                gte(getOperationCompletedDateExpression(), filter.from),
-                lte(getOperationCompletedDateExpression(), filter.to),
+                operationLocationIntegrityWhere(),
+                between(
+                    getOperationCompletedDateExpression(),
+                    filter.from,
+                    filter.to,
+                ),
             ),
-        );
-    return getFarmUserAcceptedOperationsByIds(
-        userId,
-        rows.map((row) => row.id),
-    );
+        )
+        .orderBy(desc(operations.timestamp));
+    return rows.map((row) => row.operation);
 }
 
 export async function getFarmUserAcceptedOperations(
@@ -2942,17 +2984,22 @@ async function getCompletedOperationsByCompletionDate(filter: {
     from: Date;
     to: Date;
 }) {
-    // First, get completion events within the date range
+    const candidateIds = await getCompletionEventCandidateIds(filter);
+    if (candidateIds.length === 0) return [];
     const rows = await storage()
-        .select()
+        .select({ operation: operations })
         .from(operations)
         .where(
             and(
+                inArray(operations.id, candidateIds),
                 eq(operations.isDeleted, false),
-                gte(getOperationCompletedDateExpression(), filter.from),
-                lte(getOperationCompletedDateExpression(), filter.to),
+                between(
+                    getOperationCompletedDateExpression(),
+                    filter.from,
+                    filter.to,
+                ),
             ),
         )
         .orderBy(desc(operations.timestamp));
-    return fillOperationAggregates(rows);
+    return fillOperationAggregates(rows.map((row) => row.operation));
 }
