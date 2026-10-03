@@ -26,9 +26,11 @@ import { SteamProfileProbe } from './SteamProfileProbe';
 export function SteamProfileFixture({
     tier,
     steam,
+    chestnuts = false,
 }: {
     tier: GameQualityTier;
     steam: boolean;
+    chestnuts?: boolean;
 }) {
     const [report, setReport] = useState('');
     const garden = useMemo(() => {
@@ -49,8 +51,17 @@ export function SteamProfileFixture({
                 });
             }
         }
+        if (chestnuts)
+            for (const stack of mock.stacks) {
+                if (stack.position.x === -4 && Math.abs(stack.position.z) === 2)
+                    stack.blocks.push({
+                        name: 'ChestnutRoastingCart',
+                        id: `profile-cart:${stack.position.z}`,
+                        rotation: 0,
+                    });
+            }
         return mock;
-    }, []);
+    }, [chestnuts]);
     const stacks = useMemo(
         () =>
             garden.stacks.map((stack) => ({
@@ -151,6 +162,7 @@ export function SteamProfileFixture({
                                 </Suspense>
                             </ParticleSystemProvider>
                             <SteamProfileProbe
+                                expectedSources={chestnuts ? 10 : 8}
                                 enabled={steam}
                                 onReport={setReport}
                             />

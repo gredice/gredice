@@ -1,0 +1,61 @@
+{
+  "validatedAt": "2026-10-03",
+  "baseCommit": "777702079e62f414428be7cc5013e3a016c34d86",
+  "sourceIdentity": "Capture and test inputs are identified by SHA-256 below; no historical git objects are required.",
+  "sourceSha256": {
+    "packages/game/src/entities/ChestnutRoastingCart.tsx": "9eb8772cfd8159315b14d4967b63056f4008a76549459cdf66b030043f19d60d",
+    "packages/game/src/scene/SteamEmitter.tsx": "51ee2c11f2aec8b50b014374f2e64375bee43308c9459b2cfc2bc8b33785164d",
+    "packages/game/src/scene/SteamSources.tsx": "ffdcbd70b2078d97379856e335673fa0a65cec33315186afdc2ace4563483dfc",
+    "packages/game/src/scene/LocalizedSteam.tsx": "cfecd8de0f495c89707e4f489017461fda1f205bf1ac8a6fbad155b2e26b53c1",
+    "packages/game/src/scene/steamMotion.ts": "3015bb1a04c968eecde17728b4c23317185235293b51ca1c54af86f5907c8b43",
+    "packages/game/src/scene/chestnutSteam.unit.ts": "1bde860af80314774be8b34d53522bcb0ce5462308dec122f547a16845e8fe8a",
+    "packages/game/tests/ChestnutRoastingCartFixture.tsx": "dcb0b5f421a5b932509e0b489888ed5281457884c1db107aa575d6e808dd13d2",
+    "packages/game/tests/SteamLifecycleFixture.tsx": "2261170e6c60f17f279d25d0e6385aee0369fd1b5684f3436f9b00610055c7cc",
+    "packages/game/tests/SteamProbe.tsx": "65608457c88530d1f9212730089b311cd78abf9569e02b60389d0a2152da5492",
+    "packages/game/tests/SteamProfileFixture.tsx": "31e5d024d03926cb1e3401bff4a4786a55f32c3bc75513e4e96e90b5eaa1b9e0",
+    "packages/game/tests/SteamProfileProbe.tsx": "a6d723f8e5ceb126e09c717fdc156bf825398bea27d9f866297ef4324282b1b6",
+    "apps/garden/playwright.config.ts": "e0731ab17bdab4b62b4ae3f06a30120d918200c25e84411a09f2e237de821ede",
+    "apps/garden/playwright.chestnut-steam.config.ts": "7d05e079c6de2279ed3a5e467bcf9871072b69e545db6b6e580f26f4cf078bed",
+    "apps/garden/tests/chestnut-steam.spec.tsx": "b64c3cae745afadc6715fad6b95c2cb82948c4a2408343d4b37f818112205e72",
+    "packages/js/src/chestnutRoastingCart/index.ts": "53139953a15f17e3dec39dc246bd3a8a86668b02d44aa6762135cb8e01146b61",
+    "apps/garden/public/assets/models/ChestnutRoastingCart.glb": "16c0c20649872c4af3b9c4278e70d93e14aecdfd8cdfaedbaa19d2925276a2de"
+  },
+  "artifactSha256": {
+    "cart-steam-raised-0.png": "19fd5987247a36f7f304d17edfdbde1850484396d378a549798b82e94f289146",
+    "cart-steam-raised-0.json": "113276ae2ffe950bf677d8919403f42174607b0dc39edce598aa746795c45d6e",
+    "cart-steam-night.png": "6854e48d365f5e1eef5645ff2d5cfed143724228b54e529117c10d66f266625a",
+    "profile.json": "9d6b673d4e18a8bb222574a313b6456b30ee2d907f8302d6770831fcd230d9cb"
+  },
+  "tooling": {
+    "node": "v24.15.0",
+    "pnpm": "12.5.1",
+    "playwright": "1.62.1",
+    "renderer": "Chromium headless SwiftShader",
+    "workers": 1,
+    "ctPort": 5484,
+    "viewport": {
+      "width": 720,
+      "height": 580,
+      "dpr": 1
+    }
+  },
+  "results": {
+    "focusedUnits": 13,
+    "steamWebglTests": 9,
+    "finalFunctionalCaptureReplay": 6,
+    "parentStaticSnapshotReplay": 2,
+    "sharedSyntheticLifecycleAndCanvasIsolation": 2,
+    "typechecks": [
+      "@gredice/game",
+      "garden",
+      "www"
+    ],
+    "focusedBiome": "10 files",
+    "regularCiDiscovery": 9
+  },
+  "limits": [
+    "Local component rendering only; no deployment/live catalogue or production mutation.",
+    "Shared software-renderer timing under competing host work is diagnostic, not hardware acceptance.",
+    "No assets, models or generated geometry changed."
+  ]
+}
