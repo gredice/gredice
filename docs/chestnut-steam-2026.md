@@ -39,7 +39,10 @@ The [validation record](chestnut-steam-2026/validation.json) records the exact
 source/GLB/artifact hashes and tooling. Thirteen focused unit tests, nine steam
 WebGL tests (with the six functional cases replayed), two parent snapshots, two
 shared lifecycle/isolation cases, all three typechecks and focused lint pass.
-The suite is included in regular Garden WebGL CI discovery. Local checks:
+The suite is included in regular Garden WebGL CI discovery. All nine tests also
+passed after stacking onto leaf raking; the validation record preserves the
+original capture inputs and separately records the rebased source hashes.
+Local checks:
 
 ```sh
 pnpm --filter garden exec playwright test --config playwright.chestnut-steam.config.ts
