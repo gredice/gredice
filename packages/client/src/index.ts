@@ -1,3 +1,4 @@
+export * from './autumn-activity';
 export * from './directories-api';
 export * from './favorites';
 export * from './garden-likes';
