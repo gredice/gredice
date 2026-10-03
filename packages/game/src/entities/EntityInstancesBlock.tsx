@@ -17,7 +17,6 @@ import {
     getActiveDragPreviewTargetPositionOffset,
 } from '../dragPreviewIdentity';
 import { useGameFlags } from '../GameFlagsContext';
-import { useBlockData } from '../hooks/useBlockData';
 import {
     RainWetOverlay,
     useRainWetOverlayMaterial,
@@ -46,6 +45,7 @@ import {
     getGardenPacketMaterialSignature,
     useGardenPacketSource,
 } from '../scene/gardenPacketMaterials';
+import { useSceneBlockData } from '../scene/SceneBlockDataContext';
 import {
     StaticOpaqueSceneCacheBoundary,
     type StaticOpaqueSceneCacheGroup,
@@ -333,7 +333,7 @@ export function useEntityBlockInstances({
     stacks: Stack[] | undefined;
     yOffset?: number;
 }) {
-    const { data: blockData } = useBlockData();
+    const blockData = useSceneBlockData();
     const entityBlockInstanceIndex = useEntityBlockInstanceIndex(stacks);
     const { blockNameByActiveDragTargetKey } = entityBlockInstanceIndex;
     const activeDragPreview = useGameState((state) =>

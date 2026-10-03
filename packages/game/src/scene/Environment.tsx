@@ -41,6 +41,7 @@ import { Perseids } from './PerseidMeteorShower';
 import { getPerseidsMeteorRatePerHour, shouldRenderPerseids } from './perseids';
 import { Drops } from './Rain/Drops';
 import { resolveRainParticleState } from './Rain/rainParticles';
+import { SceneBlockDataBoundary } from './SceneBlockDataBoundary';
 import {
     useSceneDeadline,
     useSceneRenderRequest,
@@ -1099,36 +1100,38 @@ export function Environment({
                 windSpeed={blendedWeather?.windSpeed ?? 0}
                 enabled={!noSound && !weatherDisabled && sceneRuntimeVisible}
             />
-            <AutumnLeaves
-                tier={qualityProfile.tier}
-                stacks={sceneGarden?.stacks}
-                gardenId={garden?.id}
-                enabled={!weatherDisabled}
-                windSpeed={blendedWeather?.windSpeed ?? 0}
-                windDirection={windDirection}
-                rain={blendedWeather?.rainy ?? 0}
-                snow={blendedWeather?.snowy ?? 0}
-            />
-            <MorningMist
-                stacks={sceneGarden?.stacks}
-                gardenId={garden?.id}
-                tier={qualityProfile.tier}
-                enabled={!weatherDisabled}
-                timeOfDay={timeOfDay}
-                weather={blendedWeather}
-            />
-            <ColdWeatherEffects
-                weather={actualWeather}
-                tier={qualityProfile.tier}
-                enabled={!weatherDisabled}
-            />
-            <RainRipples
-                stacks={sceneGarden?.stacks}
-                gardenId={garden?.id}
-                tier={qualityProfile.tier}
-                enabled={!weatherDisabled}
-                snow={blendedWeather?.snowy ?? 0}
-            />
+            <SceneBlockDataBoundary>
+                <AutumnLeaves
+                    tier={qualityProfile.tier}
+                    stacks={sceneGarden?.stacks}
+                    gardenId={garden?.id}
+                    enabled={!weatherDisabled}
+                    windSpeed={blendedWeather?.windSpeed ?? 0}
+                    windDirection={windDirection}
+                    rain={blendedWeather?.rainy ?? 0}
+                    snow={blendedWeather?.snowy ?? 0}
+                />
+                <MorningMist
+                    stacks={sceneGarden?.stacks}
+                    gardenId={garden?.id}
+                    tier={qualityProfile.tier}
+                    enabled={!weatherDisabled}
+                    timeOfDay={timeOfDay}
+                    weather={blendedWeather}
+                />
+                <ColdWeatherEffects
+                    weather={actualWeather}
+                    tier={qualityProfile.tier}
+                    enabled={!weatherDisabled}
+                />
+                <RainRipples
+                    stacks={sceneGarden?.stacks}
+                    gardenId={garden?.id}
+                    tier={qualityProfile.tier}
+                    enabled={!weatherDisabled}
+                    snow={blendedWeather?.snowy ?? 0}
+                />
+            </SceneBlockDataBoundary>
             {!weatherDisabled && blendedWeather && (
                 <CloudLayer
                     cloudy={blendedWeather.cloudy ?? 0}
