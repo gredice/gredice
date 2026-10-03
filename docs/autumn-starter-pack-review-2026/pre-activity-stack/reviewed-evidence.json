@@ -1,7 +1,7 @@
 {
     "harvest-corner": {
         "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
-        "captureSha256": "5f342081c539d52e6a14ce2f183cfddabc1997aeec28cf49c9e72f7d63306480",
+        "captureSha256": "d32f55ad5e618814061716bb4eb69482e9a5329a1876f3752680baf3f67e228d",
         "included": [
             {
                 "entityName": "HarvestPumpkinGroupOrange",
@@ -637,10 +637,6 @@
                 "sha256": "94466dada84f27d863dd64b8973a80070a96063cf62be1304755257bd2ffffed"
             },
             {
-                "path": "packages/game/src/arrangements/autumnArrangements.ts",
-                "sha256": "e43767268e295afd799e4ec8c643ace3506c45695dadf3a90fa3e7b69022ff7e"
-            },
-            {
                 "path": "packages/game/src/data/gameAssetModels.generated.ts",
                 "sha256": "c36273e4dcd24aed6834b944408f82bd99b977d11f9bdd700654719bb74f323e"
             },
@@ -681,16 +677,8 @@
                 "sha256": "a5afced89a89b0dcfe5b624a0ea09eca7a1cf0187aa877eefd8a985854c0e110"
             },
             {
-                "path": "packages/game/src/entities/helpers/EntityPreviewContext.ts",
-                "sha256": "d8c0baff5bc19d5c7a0ee2c8e5560678d85ecc466b5f3cf593426124bc1e3cb6"
-            },
-            {
                 "path": "packages/game/src/entities/helpers/GardenNightLight.tsx",
-                "sha256": "9295ed5f3d020de021902d48956517d865bb009f69f3e4956ed483c0f7a7fc9a"
-            },
-            {
-                "path": "packages/game/src/entities/helpers/PumpkinLightOverrideContext.ts",
-                "sha256": "8058e8355f022f42a18f68856ee5b78db947e4b2c26b027222d0dfd329ba2f0f"
+                "sha256": "115e59d62737891f3c7292fa7f0340a916e52970047331977726c275eacc3541"
             },
             {
                 "path": "packages/game/src/entities/helpers/WeatheredEntityPart.tsx",
@@ -699,10 +687,6 @@
             {
                 "path": "packages/game/src/entities/helpers/WindWeatheredEntityPart.tsx",
                 "sha256": "00678b802ff3f99651867cb607df11e2d269d610ed539f3ce0595c4074adb542"
-            },
-            {
-                "path": "packages/game/src/entities/helpers/nightGardenLight.ts",
-                "sha256": "8810a4076baee9dc07d6c3db70aefd9a235be0578d1dfad890d0a5ce758edd8f"
             },
             {
                 "path": "packages/game/src/entities/helpers/timeDrivenMaterialAnimation.ts",
@@ -725,24 +709,8 @@
                 "sha256": "50e3d935c35ca7d798709146e528b69d3a7d868c4fc1cdcac27d517d385642e8"
             },
             {
-                "path": "packages/game/src/localSandboxBlockData.ts",
-                "sha256": "323ee3506cc34605dca9374c0ccf5831287d3792414dd42327daabdd08dae01d"
-            },
-            {
                 "path": "packages/game/src/rain/RainWetOverlay.tsx",
                 "sha256": "5936bd2ac52183b4cb2a0c6ac7b494beddfc30add8ed1dabc2c606179e81cd5a"
-            },
-            {
-                "path": "packages/game/src/scene/Environment.tsx",
-                "sha256": "c33fe3cfe2492025d4a712d9e26d53f90aea6c9e29f9065606ce3985cdf2966f"
-            },
-            {
-                "path": "packages/game/src/scene/GardenLightProvider.tsx",
-                "sha256": "ccadf96a8a911d490e59f9a40e6ba8fdd6f931c70a752b515a0b6c35a3fef2d3"
-            },
-            {
-                "path": "packages/game/src/scene/Scene.tsx",
-                "sha256": "fc4519167920321aacb864a2a3a8777e1dfa3105f39dc2ed14b32c06038a6167"
             },
             {
                 "path": "packages/game/src/scene/SteamEmitter.tsx",
@@ -757,32 +725,12 @@
                 "sha256": "4cee69fb04ac8ea7191d12b7c8ebed05b10d9a5808a59ff4b82b71cf69080dce"
             },
             {
-                "path": "packages/game/src/scene/gameQuality.ts",
-                "sha256": "80cf6a53c07f63c8aa82c914fcc6d2e21cf545333bc2a10b648df4c2d0329aa2"
-            },
-            {
-                "path": "packages/game/src/scene/gardenLightBudget.ts",
-                "sha256": "7729d1fe29c92391c9d3924a0bbd786414558731eec9ded548ac415b81eb0153"
-            },
-            {
-                "path": "packages/game/src/scene/gardenLightRegistry.ts",
-                "sha256": "a46e3efd45c431967c31b3d756f5c1c20e5a027753f5435ccd442f57b19aee4b"
-            },
-            {
                 "path": "packages/game/src/snow/SnowOverlay.tsx",
                 "sha256": "c2a09eda9067fa8373afd9ed093469fa533e459791732328edb45822d43623de"
             },
             {
                 "path": "packages/game/src/snow/snowPresets.ts",
                 "sha256": "1ffc976a1ab7c77479a00ff59630c613faaff88933c54a90b303770185eda9e0"
-            },
-            {
-                "path": "packages/game/src/spatial/useCameraFrame.ts",
-                "sha256": "e3ed73ee7bb0214741e55bcf88678c11babb04e8e60e60ef31bd6ad09d26c4e1"
-            },
-            {
-                "path": "packages/game/src/useGameState.ts",
-                "sha256": "3902a31eb255dbc853ef9839fc4dc07132c5984ed0c3dab9738b7027b4e9c289"
             },
             {
                 "path": "packages/game/src/utils/configureGameGLTFMaterials.ts",
@@ -805,10 +753,6 @@
                 "sha256": "b00d64fb10f17245f775fff569a46c047c45cef83a10ac3f44bb0b8e55da9e0b"
             },
             {
-                "path": "packages/js/src/autumnArrangements/index.ts",
-                "sha256": "508fdfd7a91325ea7bc4eac2a70bce60c31515348412850e705560c267ab3c86"
-            },
-            {
                 "path": "packages/js/src/gardenBlocks/index.ts",
                 "sha256": "48716a80b03d5242ab31ba48f75db6a2ee9b69774ebde1b1e21f8efe3d561a73"
             },
@@ -819,22 +763,26 @@
             {
                 "path": "packages/js/src/harvestPumpkins/index.ts",
                 "sha256": "c5b0d9331754c40a42c2b81499c0bc64236542779fac2fd698fc8b994f14ca62"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/EntityPreviewContext.ts",
+                "sha256": "d8c0baff5bc19d5c7a0ee2c8e5560678d85ecc466b5f3cf593426124bc1e3cb6"
             }
         ],
         "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
         "recapture": {
             "source": {
-                "commit": "6f7d5700a5426282d78b417908da9ce2ce6b0e00",
-                "tree": "b783e17be5439ee9ebe7dc10dccf87b7653a568d",
+                "commit": "61fd90f03d0f738917acdc6ba20f75582ca9e95f",
+                "tree": "814b97fdba2bfd48b31495e4a307dab7b1cc8d38",
                 "status": ""
             },
-            "previousCaptureSha256": "d32f55ad5e618814061716bb4eb69482e9a5329a1876f3752680baf3f67e228d",
+            "previousCaptureSha256": "38c485b660fd703b0375fc418cb2204f122dcf06df157eda9462c8a9757b187f",
             "previousPreviewSha256": "ed1b245678a3613a093026ecdfadd3a416a3332972f926ab9aa3a552bb95c2e2"
         }
     },
     "woodland-path": {
         "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
-        "captureSha256": "325531d479340a4c0f80ab45c1affecaad4649384b86f73024935e2fb4a5da2e",
+        "captureSha256": "ef392c712140d91aff3d972da0f9143318c72c639e506b81b0c5d0da09172c01",
         "included": [
             {
                 "entityName": "WoodlandMushrooms",
@@ -1473,10 +1421,6 @@
                 "sha256": "54e12e9d7d7e40d77fd8c9d7a96e2f5e282ccbd7d6f5301652a17d29cdcc5006"
             },
             {
-                "path": "packages/game/src/arrangements/autumnArrangements.ts",
-                "sha256": "e43767268e295afd799e4ec8c643ace3506c45695dadf3a90fa3e7b69022ff7e"
-            },
-            {
                 "path": "packages/game/src/data/gameAssetModels.generated.ts",
                 "sha256": "c36273e4dcd24aed6834b944408f82bd99b977d11f9bdd700654719bb74f323e"
             },
@@ -1521,16 +1465,8 @@
                 "sha256": "a5afced89a89b0dcfe5b624a0ea09eca7a1cf0187aa877eefd8a985854c0e110"
             },
             {
-                "path": "packages/game/src/entities/helpers/EntityPreviewContext.ts",
-                "sha256": "d8c0baff5bc19d5c7a0ee2c8e5560678d85ecc466b5f3cf593426124bc1e3cb6"
-            },
-            {
                 "path": "packages/game/src/entities/helpers/GardenNightLight.tsx",
-                "sha256": "9295ed5f3d020de021902d48956517d865bb009f69f3e4956ed483c0f7a7fc9a"
-            },
-            {
-                "path": "packages/game/src/entities/helpers/PumpkinLightOverrideContext.ts",
-                "sha256": "8058e8355f022f42a18f68856ee5b78db947e4b2c26b027222d0dfd329ba2f0f"
+                "sha256": "115e59d62737891f3c7292fa7f0340a916e52970047331977726c275eacc3541"
             },
             {
                 "path": "packages/game/src/entities/helpers/WeatheredEntityPart.tsx",
@@ -1539,10 +1475,6 @@
             {
                 "path": "packages/game/src/entities/helpers/WindWeatheredEntityPart.tsx",
                 "sha256": "00678b802ff3f99651867cb607df11e2d269d610ed539f3ce0595c4074adb542"
-            },
-            {
-                "path": "packages/game/src/entities/helpers/nightGardenLight.ts",
-                "sha256": "8810a4076baee9dc07d6c3db70aefd9a235be0578d1dfad890d0a5ce758edd8f"
             },
             {
                 "path": "packages/game/src/entities/helpers/timeDrivenMaterialAnimation.ts",
@@ -1565,24 +1497,8 @@
                 "sha256": "50e3d935c35ca7d798709146e528b69d3a7d868c4fc1cdcac27d517d385642e8"
             },
             {
-                "path": "packages/game/src/localSandboxBlockData.ts",
-                "sha256": "323ee3506cc34605dca9374c0ccf5831287d3792414dd42327daabdd08dae01d"
-            },
-            {
                 "path": "packages/game/src/rain/RainWetOverlay.tsx",
                 "sha256": "5936bd2ac52183b4cb2a0c6ac7b494beddfc30add8ed1dabc2c606179e81cd5a"
-            },
-            {
-                "path": "packages/game/src/scene/Environment.tsx",
-                "sha256": "c33fe3cfe2492025d4a712d9e26d53f90aea6c9e29f9065606ce3985cdf2966f"
-            },
-            {
-                "path": "packages/game/src/scene/GardenLightProvider.tsx",
-                "sha256": "ccadf96a8a911d490e59f9a40e6ba8fdd6f931c70a752b515a0b6c35a3fef2d3"
-            },
-            {
-                "path": "packages/game/src/scene/Scene.tsx",
-                "sha256": "fc4519167920321aacb864a2a3a8777e1dfa3105f39dc2ed14b32c06038a6167"
             },
             {
                 "path": "packages/game/src/scene/SteamEmitter.tsx",
@@ -1597,32 +1513,12 @@
                 "sha256": "4cee69fb04ac8ea7191d12b7c8ebed05b10d9a5808a59ff4b82b71cf69080dce"
             },
             {
-                "path": "packages/game/src/scene/gameQuality.ts",
-                "sha256": "80cf6a53c07f63c8aa82c914fcc6d2e21cf545333bc2a10b648df4c2d0329aa2"
-            },
-            {
-                "path": "packages/game/src/scene/gardenLightBudget.ts",
-                "sha256": "7729d1fe29c92391c9d3924a0bbd786414558731eec9ded548ac415b81eb0153"
-            },
-            {
-                "path": "packages/game/src/scene/gardenLightRegistry.ts",
-                "sha256": "a46e3efd45c431967c31b3d756f5c1c20e5a027753f5435ccd442f57b19aee4b"
-            },
-            {
                 "path": "packages/game/src/snow/SnowOverlay.tsx",
                 "sha256": "c2a09eda9067fa8373afd9ed093469fa533e459791732328edb45822d43623de"
             },
             {
                 "path": "packages/game/src/snow/snowPresets.ts",
                 "sha256": "1ffc976a1ab7c77479a00ff59630c613faaff88933c54a90b303770185eda9e0"
-            },
-            {
-                "path": "packages/game/src/spatial/useCameraFrame.ts",
-                "sha256": "e3ed73ee7bb0214741e55bcf88678c11babb04e8e60e60ef31bd6ad09d26c4e1"
-            },
-            {
-                "path": "packages/game/src/useGameState.ts",
-                "sha256": "3902a31eb255dbc853ef9839fc4dc07132c5984ed0c3dab9738b7027b4e9c289"
             },
             {
                 "path": "packages/game/src/utils/configureGameGLTFMaterials.ts",
@@ -1645,10 +1541,6 @@
                 "sha256": "b00d64fb10f17245f775fff569a46c047c45cef83a10ac3f44bb0b8e55da9e0b"
             },
             {
-                "path": "packages/js/src/autumnArrangements/index.ts",
-                "sha256": "508fdfd7a91325ea7bc4eac2a70bce60c31515348412850e705560c267ab3c86"
-            },
-            {
                 "path": "packages/js/src/autumnLeafPiles/index.ts",
                 "sha256": "520670fddd7f7d1a24f92cef5079f0f79a4911e2fc7093de51cf73e1255ba6f5"
             },
@@ -1659,22 +1551,26 @@
             {
                 "path": "packages/js/src/gardenBlocks/index.ts",
                 "sha256": "48716a80b03d5242ab31ba48f75db6a2ee9b69774ebde1b1e21f8efe3d561a73"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/EntityPreviewContext.ts",
+                "sha256": "d8c0baff5bc19d5c7a0ee2c8e5560678d85ecc466b5f3cf593426124bc1e3cb6"
             }
         ],
         "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
         "recapture": {
             "source": {
-                "commit": "6f7d5700a5426282d78b417908da9ce2ce6b0e00",
-                "tree": "b783e17be5439ee9ebe7dc10dccf87b7653a568d",
+                "commit": "61fd90f03d0f738917acdc6ba20f75582ca9e95f",
+                "tree": "814b97fdba2bfd48b31495e4a307dab7b1cc8d38",
                 "status": ""
             },
-            "previousCaptureSha256": "ef392c712140d91aff3d972da0f9143318c72c639e506b81b0c5d0da09172c01",
+            "previousCaptureSha256": "786b7689381e7847bbf738d6b542a98ec0ba27cd47942f7118d38b5153619265",
             "previousPreviewSha256": "2f21c98172611d2e3d37d71d4fd5c5c7685c044239f406a271a09d5e775c5e55"
         }
     },
     "evening-seat": {
         "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
-        "captureSha256": "7cdd43bab41e43e05bb334fd5952b09d9a8956ab84022bc1161aeb899c3a3992",
+        "captureSha256": "1e565534ceb1c40a255744cbadcb81963ece1c4503e5fef318ad1c43ce4667e8",
         "included": [
             {
                 "entityName": "AutumnBlanketBench",
@@ -2314,10 +2210,6 @@
                 "sha256": "94466dada84f27d863dd64b8973a80070a96063cf62be1304755257bd2ffffed"
             },
             {
-                "path": "packages/game/src/arrangements/autumnArrangements.ts",
-                "sha256": "e43767268e295afd799e4ec8c643ace3506c45695dadf3a90fa3e7b69022ff7e"
-            },
-            {
                 "path": "packages/game/src/data/gameAssetModels.generated.ts",
                 "sha256": "c36273e4dcd24aed6834b944408f82bd99b977d11f9bdd700654719bb74f323e"
             },
@@ -2362,16 +2254,8 @@
                 "sha256": "a5afced89a89b0dcfe5b624a0ea09eca7a1cf0187aa877eefd8a985854c0e110"
             },
             {
-                "path": "packages/game/src/entities/helpers/EntityPreviewContext.ts",
-                "sha256": "d8c0baff5bc19d5c7a0ee2c8e5560678d85ecc466b5f3cf593426124bc1e3cb6"
-            },
-            {
                 "path": "packages/game/src/entities/helpers/GardenNightLight.tsx",
-                "sha256": "9295ed5f3d020de021902d48956517d865bb009f69f3e4956ed483c0f7a7fc9a"
-            },
-            {
-                "path": "packages/game/src/entities/helpers/PumpkinLightOverrideContext.ts",
-                "sha256": "8058e8355f022f42a18f68856ee5b78db947e4b2c26b027222d0dfd329ba2f0f"
+                "sha256": "115e59d62737891f3c7292fa7f0340a916e52970047331977726c275eacc3541"
             },
             {
                 "path": "packages/game/src/entities/helpers/WeatheredEntityPart.tsx",
@@ -2380,10 +2264,6 @@
             {
                 "path": "packages/game/src/entities/helpers/WindWeatheredEntityPart.tsx",
                 "sha256": "00678b802ff3f99651867cb607df11e2d269d610ed539f3ce0595c4074adb542"
-            },
-            {
-                "path": "packages/game/src/entities/helpers/nightGardenLight.ts",
-                "sha256": "8810a4076baee9dc07d6c3db70aefd9a235be0578d1dfad890d0a5ce758edd8f"
             },
             {
                 "path": "packages/game/src/entities/helpers/timeDrivenMaterialAnimation.ts",
@@ -2406,24 +2286,8 @@
                 "sha256": "50e3d935c35ca7d798709146e528b69d3a7d868c4fc1cdcac27d517d385642e8"
             },
             {
-                "path": "packages/game/src/localSandboxBlockData.ts",
-                "sha256": "323ee3506cc34605dca9374c0ccf5831287d3792414dd42327daabdd08dae01d"
-            },
-            {
                 "path": "packages/game/src/rain/RainWetOverlay.tsx",
                 "sha256": "5936bd2ac52183b4cb2a0c6ac7b494beddfc30add8ed1dabc2c606179e81cd5a"
-            },
-            {
-                "path": "packages/game/src/scene/Environment.tsx",
-                "sha256": "c33fe3cfe2492025d4a712d9e26d53f90aea6c9e29f9065606ce3985cdf2966f"
-            },
-            {
-                "path": "packages/game/src/scene/GardenLightProvider.tsx",
-                "sha256": "ccadf96a8a911d490e59f9a40e6ba8fdd6f931c70a752b515a0b6c35a3fef2d3"
-            },
-            {
-                "path": "packages/game/src/scene/Scene.tsx",
-                "sha256": "fc4519167920321aacb864a2a3a8777e1dfa3105f39dc2ed14b32c06038a6167"
             },
             {
                 "path": "packages/game/src/scene/SteamEmitter.tsx",
@@ -2438,32 +2302,12 @@
                 "sha256": "4cee69fb04ac8ea7191d12b7c8ebed05b10d9a5808a59ff4b82b71cf69080dce"
             },
             {
-                "path": "packages/game/src/scene/gameQuality.ts",
-                "sha256": "80cf6a53c07f63c8aa82c914fcc6d2e21cf545333bc2a10b648df4c2d0329aa2"
-            },
-            {
-                "path": "packages/game/src/scene/gardenLightBudget.ts",
-                "sha256": "7729d1fe29c92391c9d3924a0bbd786414558731eec9ded548ac415b81eb0153"
-            },
-            {
-                "path": "packages/game/src/scene/gardenLightRegistry.ts",
-                "sha256": "a46e3efd45c431967c31b3d756f5c1c20e5a027753f5435ccd442f57b19aee4b"
-            },
-            {
                 "path": "packages/game/src/snow/SnowOverlay.tsx",
                 "sha256": "c2a09eda9067fa8373afd9ed093469fa533e459791732328edb45822d43623de"
             },
             {
                 "path": "packages/game/src/snow/snowPresets.ts",
                 "sha256": "1ffc976a1ab7c77479a00ff59630c613faaff88933c54a90b303770185eda9e0"
-            },
-            {
-                "path": "packages/game/src/spatial/useCameraFrame.ts",
-                "sha256": "e3ed73ee7bb0214741e55bcf88678c11babb04e8e60e60ef31bd6ad09d26c4e1"
-            },
-            {
-                "path": "packages/game/src/useGameState.ts",
-                "sha256": "3902a31eb255dbc853ef9839fc4dc07132c5984ed0c3dab9738b7027b4e9c289"
             },
             {
                 "path": "packages/game/src/utils/configureGameGLTFMaterials.ts",
@@ -2486,10 +2330,6 @@
                 "sha256": "b00d64fb10f17245f775fff569a46c047c45cef83a10ac3f44bb0b8e55da9e0b"
             },
             {
-                "path": "packages/js/src/autumnArrangements/index.ts",
-                "sha256": "508fdfd7a91325ea7bc4eac2a70bce60c31515348412850e705560c267ab3c86"
-            },
-            {
                 "path": "packages/js/src/autumnAsterPots/index.ts",
                 "sha256": "89931a56cfe4b66a96ed0ad141143a0ac5413e4cc6b9e6da436207fdf3d1ad67"
             },
@@ -2504,16 +2344,20 @@
             {
                 "path": "packages/js/src/gardenTeaTable/index.ts",
                 "sha256": "00371804bba753c64ba88235e2ca9bba285c5dce78f0b1fb1d41f3de2c0e0744"
+            },
+            {
+                "path": "packages/game/src/entities/helpers/EntityPreviewContext.ts",
+                "sha256": "d8c0baff5bc19d5c7a0ee2c8e5560678d85ecc466b5f3cf593426124bc1e3cb6"
             }
         ],
         "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
         "recapture": {
             "source": {
-                "commit": "6f7d5700a5426282d78b417908da9ce2ce6b0e00",
-                "tree": "b783e17be5439ee9ebe7dc10dccf87b7653a568d",
+                "commit": "61fd90f03d0f738917acdc6ba20f75582ca9e95f",
+                "tree": "814b97fdba2bfd48b31495e4a307dab7b1cc8d38",
                 "status": ""
             },
-            "previousCaptureSha256": "1e565534ceb1c40a255744cbadcb81963ece1c4503e5fef318ad1c43ce4667e8",
+            "previousCaptureSha256": "b1ed300c31ae0835b5a684b80b6f6c1f273798671f9c8c7eaa966df1c8628572",
             "previousPreviewSha256": "48325aa58a719dafebafa403c3b3f51565d3128d9bbbac9ce80d93e539d434d7"
         }
     }

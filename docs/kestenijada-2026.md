@@ -119,7 +119,7 @@ No fixture request reaches live auth/storage or modifies external data. Producti
 publication, deployed catalogue readiness and physical-device acceptance remain
 separate release work.
 
-## Integration provenance
+## Historical integration provenance
 
 The original checkpoint `d0fee5e13a2230d160c723a4ea65e52d1c285d83` and its
 nine capture/evidence files are archived without changing bytes in
@@ -155,3 +155,31 @@ This CI-only correction changes test/fixture/registration bytes; the recorder
 pins those inputs separately while preserving the original capture commits,
 archived evidence and byte-identical visual/geometry proof. It does not provide
 a new renderer capture or alter any model.
+
+## Activity and trail stack recapture (2026-10-03)
+
+Four fresh day/dusk/night/mobile-low captures were produced from clean
+`6f7d5700a5426282d78b417908da9ce2ce6b0e00` (tree
+`b783e17be5439ee9ebe7dc10dccf87b7653a568d`), above activity/trail source
+`9d2e437c12aee7bf84422b2ead4aeec860181c3b`. Their JSON records now contain
+that actual source/tree and empty scoped capture-input status. All four PNGs
+are byte-identical to the previous and original authored captures; all other
+JSON fields are also unchanged. Existing visual approval is retained without
+claiming another image review.
+
+`pre-activity-stack/` preserves the previous current evidence and all four
+JSON/PNG pairs. Current `evidence.json` records the fresh capture separately
+from those historical capture/rebase commits, with a hash link to the archived
+record. `activity-stack-recapture.json` records comparisons, commands and local
+log hashes. Selected pins now include the changed shared night-light wrapper,
+its helper/provider and pumpkin override context. These are bounded source
+identity checks, not a complete renderer graph or performance proof.
+
+The six component cases pass, including the public private-request fence,
+mobile directory recovery and local-photo cancellation/retry. The built Garden
+app and dedicated actual-route/privacy case pass. Root navigation generated
+remote block-thumbnail 404 diagnostics, while the captured scene models/assets
+were local and all privacy assertions passed. No live data, campaign config,
+model/Blender/GLB sources or renderer behavior changed in this evidence work.
+Physical devices, deployed asset/catalogue verification and publication remain
+separate release gates.

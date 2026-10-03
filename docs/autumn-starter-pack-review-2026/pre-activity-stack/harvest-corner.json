@@ -1,7 +1,7 @@
 {
   "source": {
-    "commit": "6f7d5700a5426282d78b417908da9ce2ce6b0e00",
-    "tree": "b783e17be5439ee9ebe7dc10dccf87b7653a568d",
+    "commit": "61fd90f03d0f738917acdc6ba20f75582ca9e95f",
+    "tree": "814b97fdba2bfd48b31495e4a307dab7b1cc8d38",
     "status": ""
   },
   "browser": "151.0.7922.34",
@@ -29,19 +29,19 @@
   "quality": "high",
   "included": [
     {
-      "entityName": "WoodlandMushrooms",
+      "entityName": "HarvestPumpkinGroupOrange",
       "quantity": 1
     },
     {
-      "entityName": "StoneMedium",
+      "entityName": "HarvestPumpkinSquatCream",
       "quantity": 1
     },
     {
-      "entityName": "AutumnLeafPileCrescent",
+      "entityName": "HarvestCrateOrchard",
       "quantity": 1
     },
     {
-      "entityName": "FallenLog",
+      "entityName": "GardenScarecrow",
       "quantity": 1
     }
   ],
@@ -66,8 +66,8 @@
   "layout": {
     "placements": [
       {
-        "id": "WoodlandMushrooms",
-        "entityName": "WoodlandMushrooms",
+        "id": "HarvestPumpkinGroupOrange",
+        "entityName": "HarvestPumpkinGroupOrange",
         "x": 0,
         "z": 1,
         "rotation": 0,
@@ -82,10 +82,10 @@
         ]
       },
       {
-        "id": "StoneMedium",
-        "entityName": "StoneMedium",
+        "id": "HarvestPumpkinSquatCream",
+        "entityName": "HarvestPumpkinSquatCream",
         "x": 0,
-        "z": 2,
+        "z": 3,
         "rotation": 0,
         "role": "included",
         "width": 1,
@@ -93,13 +93,13 @@
         "cells": [
           {
             "x": 0,
-            "z": 2
+            "z": 3
           }
         ]
       },
       {
-        "id": "AutumnLeafPileCrescent",
-        "entityName": "AutumnLeafPileCrescent",
+        "id": "HarvestCrateOrchard",
+        "entityName": "HarvestCrateOrchard",
         "x": 1,
         "z": 2,
         "rotation": 0,
@@ -114,19 +114,15 @@
         ]
       },
       {
-        "id": "FallenLog",
-        "entityName": "FallenLog",
-        "x": 0,
+        "id": "GardenScarecrow",
+        "entityName": "GardenScarecrow",
+        "x": 1,
         "z": 3,
         "rotation": 0,
         "role": "included",
-        "width": 2,
+        "width": 1,
         "depth": 1,
         "cells": [
-          {
-            "x": 0,
-            "z": 3
-          },
           {
             "x": 1,
             "z": 3
@@ -482,12 +478,12 @@
       "z": 1,
       "width": 2,
       "depth": 3,
-      "occupiedCells": 5
+      "occupiedCells": 4
     }
   },
   "records": [
     {
-      "file": "woodland-path-earlyAutumn-day.png",
+      "file": "harvest-corner-earlyAutumn-day.png",
       "stage": "earlyAutumn",
       "light": "day",
       "date": "2026-09-22T10:00:00.000Z",
@@ -499,91 +495,91 @@
       },
       "objects": [
         {
-          "id": "WoodlandMushrooms",
-          "entityName": "WoodlandMushrooms",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3852750062942505,
+            -2.4132381081581116,
             0.4,
-            -1.405000001192093
+            -1.3732381165027618
           ],
           "max": [
-            -1.646800011396408,
-            0.7799999952316284,
-            -0.6550000011920929
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 403.6782741525117,
-            "maxX": 487.87913515402175,
-            "minY": 343.738728726607,
-            "maxY": 417.10069765249074
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "StoneMedium",
-          "entityName": "StoneMedium",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3604909362792967,
+            -2.3474830090999603,
             0.4,
-            -0.2916891402006149
+            0.6525169909000397
           ],
           "max": [
-            -1.7207217555046082,
-            0.7216320897340776,
-            0.31613454699516297
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 470.8382922254519,
-            "maxX": 541.4128023936031,
-            "minY": 318.31127764892926,
-            "maxY": 380.00549918162284
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "AutumnLeafPileCrescent",
-          "entityName": "AutumnLeafPileCrescent",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
-          "meshes": 1,
+          "meshes": 5,
           "min": [
-            -1.2714017033576965,
+            -1.420500010251999,
             0.4,
-            -0.373699814081192
+            -0.35750001668930054
           ],
           "max": [
-            -0.625,
-            0.5224285736680031,
-            0.373699814081192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 404.2156852461262,
-            "maxX": 483.06099509770127,
-            "minY": 293.7459028404551,
-            "maxY": 347.1806635676495
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "FallenLog",
-          "entityName": "FallenLog",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 1,
+          "meshes": 6,
           "min": [
-            -2.4210000038146973,
+            -1.4197290241718292,
             0.4,
-            0.7007499933242798
+            0.7950000017881393
           ],
           "max": [
-            -0.5789999961853027,
-            0.8320000112056732,
-            1.407802253961563
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 462.393591664447,
-            "maxX": 606.5897632236724,
-            "minY": 238.29947392356794,
-            "maxY": 349.63006228526615
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -1051,7 +1047,7 @@
       ]
     },
     {
-      "file": "woodland-path-earlyAutumn-overcast.png",
+      "file": "harvest-corner-earlyAutumn-overcast.png",
       "stage": "earlyAutumn",
       "light": "overcast",
       "date": "2026-09-22T10:00:00.000Z",
@@ -1063,91 +1059,91 @@
       },
       "objects": [
         {
-          "id": "WoodlandMushrooms",
-          "entityName": "WoodlandMushrooms",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3852750062942505,
+            -2.4132381081581116,
             0.4,
-            -1.405000001192093
+            -1.3732381165027618
           ],
           "max": [
-            -1.646800011396408,
-            0.7799999952316284,
-            -0.6550000011920929
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 403.6782741525117,
-            "maxX": 487.87913515402175,
-            "minY": 343.738728726607,
-            "maxY": 417.10069765249074
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "StoneMedium",
-          "entityName": "StoneMedium",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3604909362792967,
+            -2.3474830090999603,
             0.4,
-            -0.2916891402006149
+            0.6525169909000397
           ],
           "max": [
-            -1.7207217555046082,
-            0.7216320897340776,
-            0.31613454699516297
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 470.8382922254519,
-            "maxX": 541.4128023936031,
-            "minY": 318.31127764892926,
-            "maxY": 380.00549918162284
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "AutumnLeafPileCrescent",
-          "entityName": "AutumnLeafPileCrescent",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
-          "meshes": 1,
+          "meshes": 5,
           "min": [
-            -1.2714017033576965,
+            -1.420500010251999,
             0.4,
-            -0.373699814081192
+            -0.35750001668930054
           ],
           "max": [
-            -0.625,
-            0.5224285736680031,
-            0.373699814081192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 404.2156852461262,
-            "maxX": 483.06099509770127,
-            "minY": 293.7459028404551,
-            "maxY": 347.1806635676495
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "FallenLog",
-          "entityName": "FallenLog",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 1,
+          "meshes": 6,
           "min": [
-            -2.4210000038146973,
+            -1.4197290241718292,
             0.4,
-            0.7007499933242798
+            0.7950000017881393
           ],
           "max": [
-            -0.5789999961853027,
-            0.8320000112056732,
-            1.407802253961563
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 462.393591664447,
-            "maxX": 606.5897632236724,
-            "minY": 238.29947392356794,
-            "maxY": 349.63006228526615
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -1615,7 +1611,7 @@
       ]
     },
     {
-      "file": "woodland-path-earlyAutumn-dusk.png",
+      "file": "harvest-corner-earlyAutumn-dusk.png",
       "stage": "earlyAutumn",
       "light": "dusk",
       "date": "2026-09-22T16:51:00.000Z",
@@ -1627,91 +1623,91 @@
       },
       "objects": [
         {
-          "id": "WoodlandMushrooms",
-          "entityName": "WoodlandMushrooms",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3852750062942505,
+            -2.4132381081581116,
             0.4,
-            -1.405000001192093
+            -1.3732381165027618
           ],
           "max": [
-            -1.646800011396408,
-            0.7799999952316284,
-            -0.6550000011920929
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 403.6782741525117,
-            "maxX": 487.87913515402175,
-            "minY": 343.738728726607,
-            "maxY": 417.10069765249074
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "StoneMedium",
-          "entityName": "StoneMedium",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3604909362792967,
+            -2.3474830090999603,
             0.4,
-            -0.2916891402006149
+            0.6525169909000397
           ],
           "max": [
-            -1.7207217555046082,
-            0.7216320897340776,
-            0.31613454699516297
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 470.8382922254519,
-            "maxX": 541.4128023936031,
-            "minY": 318.31127764892926,
-            "maxY": 380.00549918162284
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "AutumnLeafPileCrescent",
-          "entityName": "AutumnLeafPileCrescent",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
-          "meshes": 1,
+          "meshes": 5,
           "min": [
-            -1.2714017033576965,
+            -1.420500010251999,
             0.4,
-            -0.373699814081192
+            -0.35750001668930054
           ],
           "max": [
-            -0.625,
-            0.5224285736680031,
-            0.373699814081192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 404.2156852461262,
-            "maxX": 483.06099509770127,
-            "minY": 293.7459028404551,
-            "maxY": 347.1806635676495
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "FallenLog",
-          "entityName": "FallenLog",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 1,
+          "meshes": 6,
           "min": [
-            -2.4210000038146973,
+            -1.4197290241718292,
             0.4,
-            0.7007499933242798
+            0.7950000017881393
           ],
           "max": [
-            -0.5789999961853027,
-            0.8320000112056732,
-            1.407802253961563
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 462.393591664447,
-            "maxX": 606.5897632236724,
-            "minY": 238.29947392356794,
-            "maxY": 349.63006228526615
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -2179,7 +2175,7 @@
       ]
     },
     {
-      "file": "woodland-path-earlyAutumn-night.png",
+      "file": "harvest-corner-earlyAutumn-night.png",
       "stage": "earlyAutumn",
       "light": "night",
       "date": "2026-09-22T20:30:00.000Z",
@@ -2191,91 +2187,91 @@
       },
       "objects": [
         {
-          "id": "WoodlandMushrooms",
-          "entityName": "WoodlandMushrooms",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3852750062942505,
+            -2.4132381081581116,
             0.4,
-            -1.405000001192093
+            -1.3732381165027618
           ],
           "max": [
-            -1.646800011396408,
-            0.7799999952316284,
-            -0.6550000011920929
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 403.6782741525117,
-            "maxX": 487.87913515402175,
-            "minY": 343.738728726607,
-            "maxY": 417.10069765249074
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "StoneMedium",
-          "entityName": "StoneMedium",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3604909362792967,
+            -2.3474830090999603,
             0.4,
-            -0.2916891402006149
+            0.6525169909000397
           ],
           "max": [
-            -1.7207217555046082,
-            0.7216320897340776,
-            0.31613454699516297
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 470.8382922254519,
-            "maxX": 541.4128023936031,
-            "minY": 318.31127764892926,
-            "maxY": 380.00549918162284
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "AutumnLeafPileCrescent",
-          "entityName": "AutumnLeafPileCrescent",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
-          "meshes": 1,
+          "meshes": 5,
           "min": [
-            -1.2714017033576965,
+            -1.420500010251999,
             0.4,
-            -0.373699814081192
+            -0.35750001668930054
           ],
           "max": [
-            -0.625,
-            0.5224285736680031,
-            0.373699814081192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 404.2156852461262,
-            "maxX": 483.06099509770127,
-            "minY": 293.7459028404551,
-            "maxY": 347.1806635676495
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "FallenLog",
-          "entityName": "FallenLog",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 1,
+          "meshes": 6,
           "min": [
-            -2.4210000038146973,
+            -1.4197290241718292,
             0.4,
-            0.7007499933242798
+            0.7950000017881393
           ],
           "max": [
-            -0.5789999961853027,
-            0.8320000112056732,
-            1.407802253961563
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 462.393591664447,
-            "maxX": 606.5897632236724,
-            "minY": 238.29947392356794,
-            "maxY": 349.63006228526615
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -2743,7 +2739,7 @@
       ]
     },
     {
-      "file": "woodland-path-midAutumn-day.png",
+      "file": "harvest-corner-midAutumn-day.png",
       "stage": "midAutumn",
       "light": "day",
       "date": "2026-10-22T10:00:00.000Z",
@@ -2755,91 +2751,91 @@
       },
       "objects": [
         {
-          "id": "WoodlandMushrooms",
-          "entityName": "WoodlandMushrooms",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3852750062942505,
+            -2.4132381081581116,
             0.4,
-            -1.405000001192093
+            -1.3732381165027618
           ],
           "max": [
-            -1.646800011396408,
-            0.7799999952316284,
-            -0.6550000011920929
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 403.6782741525117,
-            "maxX": 487.87913515402175,
-            "minY": 343.738728726607,
-            "maxY": 417.10069765249074
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "StoneMedium",
-          "entityName": "StoneMedium",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3604909362792967,
+            -2.3474830090999603,
             0.4,
-            -0.2916891402006149
+            0.6525169909000397
           ],
           "max": [
-            -1.7207217555046082,
-            0.7216320897340776,
-            0.31613454699516297
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 470.8382922254519,
-            "maxX": 541.4128023936031,
-            "minY": 318.31127764892926,
-            "maxY": 380.00549918162284
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "AutumnLeafPileCrescent",
-          "entityName": "AutumnLeafPileCrescent",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
-          "meshes": 1,
+          "meshes": 5,
           "min": [
-            -1.2714017033576965,
+            -1.420500010251999,
             0.4,
-            -0.373699814081192
+            -0.35750001668930054
           ],
           "max": [
-            -0.625,
-            0.5224285736680031,
-            0.373699814081192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 404.2156852461262,
-            "maxX": 483.06099509770127,
-            "minY": 293.7459028404551,
-            "maxY": 347.1806635676495
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "FallenLog",
-          "entityName": "FallenLog",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 1,
+          "meshes": 6,
           "min": [
-            -2.4210000038146973,
+            -1.4197290241718292,
             0.4,
-            0.7007499933242798
+            0.7950000017881393
           ],
           "max": [
-            -0.5789999961853027,
-            0.8320000112056732,
-            1.407802253961563
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 462.393591664447,
-            "maxX": 606.5897632236724,
-            "minY": 238.29947392356794,
-            "maxY": 349.63006228526615
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -3307,7 +3303,7 @@
       ]
     },
     {
-      "file": "woodland-path-midAutumn-overcast.png",
+      "file": "harvest-corner-midAutumn-overcast.png",
       "stage": "midAutumn",
       "light": "overcast",
       "date": "2026-10-22T10:00:00.000Z",
@@ -3319,91 +3315,91 @@
       },
       "objects": [
         {
-          "id": "WoodlandMushrooms",
-          "entityName": "WoodlandMushrooms",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3852750062942505,
+            -2.4132381081581116,
             0.4,
-            -1.405000001192093
+            -1.3732381165027618
           ],
           "max": [
-            -1.646800011396408,
-            0.7799999952316284,
-            -0.6550000011920929
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 403.6782741525117,
-            "maxX": 487.87913515402175,
-            "minY": 343.738728726607,
-            "maxY": 417.10069765249074
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "StoneMedium",
-          "entityName": "StoneMedium",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3604909362792967,
+            -2.3474830090999603,
             0.4,
-            -0.2916891402006149
+            0.6525169909000397
           ],
           "max": [
-            -1.7207217555046082,
-            0.7216320897340776,
-            0.31613454699516297
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 470.8382922254519,
-            "maxX": 541.4128023936031,
-            "minY": 318.31127764892926,
-            "maxY": 380.00549918162284
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "AutumnLeafPileCrescent",
-          "entityName": "AutumnLeafPileCrescent",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
-          "meshes": 1,
+          "meshes": 5,
           "min": [
-            -1.2714017033576965,
+            -1.420500010251999,
             0.4,
-            -0.373699814081192
+            -0.35750001668930054
           ],
           "max": [
-            -0.625,
-            0.5224285736680031,
-            0.373699814081192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 404.2156852461262,
-            "maxX": 483.06099509770127,
-            "minY": 293.7459028404551,
-            "maxY": 347.1806635676495
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "FallenLog",
-          "entityName": "FallenLog",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 1,
+          "meshes": 6,
           "min": [
-            -2.4210000038146973,
+            -1.4197290241718292,
             0.4,
-            0.7007499933242798
+            0.7950000017881393
           ],
           "max": [
-            -0.5789999961853027,
-            0.8320000112056732,
-            1.407802253961563
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 462.393591664447,
-            "maxX": 606.5897632236724,
-            "minY": 238.29947392356794,
-            "maxY": 349.63006228526615
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -3871,7 +3867,7 @@
       ]
     },
     {
-      "file": "woodland-path-midAutumn-dusk.png",
+      "file": "harvest-corner-midAutumn-dusk.png",
       "stage": "midAutumn",
       "light": "dusk",
       "date": "2026-10-22T15:56:00.000Z",
@@ -3883,91 +3879,91 @@
       },
       "objects": [
         {
-          "id": "WoodlandMushrooms",
-          "entityName": "WoodlandMushrooms",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3852750062942505,
+            -2.4132381081581116,
             0.4,
-            -1.405000001192093
+            -1.3732381165027618
           ],
           "max": [
-            -1.646800011396408,
-            0.7799999952316284,
-            -0.6550000011920929
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 403.6782741525117,
-            "maxX": 487.87913515402175,
-            "minY": 343.738728726607,
-            "maxY": 417.10069765249074
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "StoneMedium",
-          "entityName": "StoneMedium",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3604909362792967,
+            -2.3474830090999603,
             0.4,
-            -0.2916891402006149
+            0.6525169909000397
           ],
           "max": [
-            -1.7207217555046082,
-            0.7216320897340776,
-            0.31613454699516297
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 470.8382922254519,
-            "maxX": 541.4128023936031,
-            "minY": 318.31127764892926,
-            "maxY": 380.00549918162284
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "AutumnLeafPileCrescent",
-          "entityName": "AutumnLeafPileCrescent",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
-          "meshes": 1,
+          "meshes": 5,
           "min": [
-            -1.2714017033576965,
+            -1.420500010251999,
             0.4,
-            -0.373699814081192
+            -0.35750001668930054
           ],
           "max": [
-            -0.625,
-            0.5224285736680031,
-            0.373699814081192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 404.2156852461262,
-            "maxX": 483.06099509770127,
-            "minY": 293.7459028404551,
-            "maxY": 347.1806635676495
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "FallenLog",
-          "entityName": "FallenLog",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 1,
+          "meshes": 6,
           "min": [
-            -2.4210000038146973,
+            -1.4197290241718292,
             0.4,
-            0.7007499933242798
+            0.7950000017881393
           ],
           "max": [
-            -0.5789999961853027,
-            0.8320000112056732,
-            1.407802253961563
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 462.393591664447,
-            "maxX": 606.5897632236724,
-            "minY": 238.29947392356794,
-            "maxY": 349.63006228526615
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -4435,7 +4431,7 @@
       ]
     },
     {
-      "file": "woodland-path-midAutumn-night.png",
+      "file": "harvest-corner-midAutumn-night.png",
       "stage": "midAutumn",
       "light": "night",
       "date": "2026-10-22T20:30:00.000Z",
@@ -4447,91 +4443,91 @@
       },
       "objects": [
         {
-          "id": "WoodlandMushrooms",
-          "entityName": "WoodlandMushrooms",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3852750062942505,
+            -2.4132381081581116,
             0.4,
-            -1.405000001192093
+            -1.3732381165027618
           ],
           "max": [
-            -1.646800011396408,
-            0.7799999952316284,
-            -0.6550000011920929
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 403.6782741525117,
-            "maxX": 487.87913515402175,
-            "minY": 343.738728726607,
-            "maxY": 417.10069765249074
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "StoneMedium",
-          "entityName": "StoneMedium",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3604909362792967,
+            -2.3474830090999603,
             0.4,
-            -0.2916891402006149
+            0.6525169909000397
           ],
           "max": [
-            -1.7207217555046082,
-            0.7216320897340776,
-            0.31613454699516297
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 470.8382922254519,
-            "maxX": 541.4128023936031,
-            "minY": 318.31127764892926,
-            "maxY": 380.00549918162284
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "AutumnLeafPileCrescent",
-          "entityName": "AutumnLeafPileCrescent",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
-          "meshes": 1,
+          "meshes": 5,
           "min": [
-            -1.2714017033576965,
+            -1.420500010251999,
             0.4,
-            -0.373699814081192
+            -0.35750001668930054
           ],
           "max": [
-            -0.625,
-            0.5224285736680031,
-            0.373699814081192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 404.2156852461262,
-            "maxX": 483.06099509770127,
-            "minY": 293.7459028404551,
-            "maxY": 347.1806635676495
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "FallenLog",
-          "entityName": "FallenLog",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 1,
+          "meshes": 6,
           "min": [
-            -2.4210000038146973,
+            -1.4197290241718292,
             0.4,
-            0.7007499933242798
+            0.7950000017881393
           ],
           "max": [
-            -0.5789999961853027,
-            0.8320000112056732,
-            1.407802253961563
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 462.393591664447,
-            "maxX": 606.5897632236724,
-            "minY": 238.29947392356794,
-            "maxY": 349.63006228526615
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -4999,7 +4995,7 @@
       ]
     },
     {
-      "file": "woodland-path-lateAutumn-day.png",
+      "file": "harvest-corner-lateAutumn-day.png",
       "stage": "lateAutumn",
       "light": "day",
       "date": "2026-11-21T11:00:00.000Z",
@@ -5011,91 +5007,91 @@
       },
       "objects": [
         {
-          "id": "WoodlandMushrooms",
-          "entityName": "WoodlandMushrooms",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3852750062942505,
+            -2.4132381081581116,
             0.4,
-            -1.405000001192093
+            -1.3732381165027618
           ],
           "max": [
-            -1.646800011396408,
-            0.7799999952316284,
-            -0.6550000011920929
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 403.6782741525117,
-            "maxX": 487.87913515402175,
-            "minY": 343.738728726607,
-            "maxY": 417.10069765249074
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "StoneMedium",
-          "entityName": "StoneMedium",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3604909362792967,
+            -2.3474830090999603,
             0.4,
-            -0.2916891402006149
+            0.6525169909000397
           ],
           "max": [
-            -1.7207217555046082,
-            0.7216320897340776,
-            0.31613454699516297
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 470.8382922254519,
-            "maxX": 541.4128023936031,
-            "minY": 318.31127764892926,
-            "maxY": 380.00549918162284
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "AutumnLeafPileCrescent",
-          "entityName": "AutumnLeafPileCrescent",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
-          "meshes": 1,
+          "meshes": 5,
           "min": [
-            -1.2714017033576965,
+            -1.420500010251999,
             0.4,
-            -0.373699814081192
+            -0.35750001668930054
           ],
           "max": [
-            -0.625,
-            0.5224285736680031,
-            0.373699814081192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 404.2156852461262,
-            "maxX": 483.06099509770127,
-            "minY": 293.7459028404551,
-            "maxY": 347.1806635676495
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "FallenLog",
-          "entityName": "FallenLog",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 1,
+          "meshes": 6,
           "min": [
-            -2.4210000038146973,
+            -1.4197290241718292,
             0.4,
-            0.7007499933242798
+            0.7950000017881393
           ],
           "max": [
-            -0.5789999961853027,
-            0.8320000112056732,
-            1.407802253961563
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 462.393591664447,
-            "maxX": 606.5897632236724,
-            "minY": 238.29947392356794,
-            "maxY": 349.63006228526615
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -5563,7 +5559,7 @@
       ]
     },
     {
-      "file": "woodland-path-lateAutumn-overcast.png",
+      "file": "harvest-corner-lateAutumn-overcast.png",
       "stage": "lateAutumn",
       "light": "overcast",
       "date": "2026-11-21T11:00:00.000Z",
@@ -5575,91 +5571,91 @@
       },
       "objects": [
         {
-          "id": "WoodlandMushrooms",
-          "entityName": "WoodlandMushrooms",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3852750062942505,
+            -2.4132381081581116,
             0.4,
-            -1.405000001192093
+            -1.3732381165027618
           ],
           "max": [
-            -1.646800011396408,
-            0.7799999952316284,
-            -0.6550000011920929
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 403.6782741525117,
-            "maxX": 487.87913515402175,
-            "minY": 343.738728726607,
-            "maxY": 417.10069765249074
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "StoneMedium",
-          "entityName": "StoneMedium",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3604909362792967,
+            -2.3474830090999603,
             0.4,
-            -0.2916891402006149
+            0.6525169909000397
           ],
           "max": [
-            -1.7207217555046082,
-            0.7216320897340776,
-            0.31613454699516297
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 470.8382922254519,
-            "maxX": 541.4128023936031,
-            "minY": 318.31127764892926,
-            "maxY": 380.00549918162284
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "AutumnLeafPileCrescent",
-          "entityName": "AutumnLeafPileCrescent",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
-          "meshes": 1,
+          "meshes": 5,
           "min": [
-            -1.2714017033576965,
+            -1.420500010251999,
             0.4,
-            -0.373699814081192
+            -0.35750001668930054
           ],
           "max": [
-            -0.625,
-            0.5224285736680031,
-            0.373699814081192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 404.2156852461262,
-            "maxX": 483.06099509770127,
-            "minY": 293.7459028404551,
-            "maxY": 347.1806635676495
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "FallenLog",
-          "entityName": "FallenLog",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 1,
+          "meshes": 6,
           "min": [
-            -2.4210000038146973,
+            -1.4197290241718292,
             0.4,
-            0.7007499933242798
+            0.7950000017881393
           ],
           "max": [
-            -0.5789999961853027,
-            0.8320000112056732,
-            1.407802253961563
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 462.393591664447,
-            "maxX": 606.5897632236724,
-            "minY": 238.29947392356794,
-            "maxY": 349.63006228526615
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -6127,7 +6123,7 @@
       ]
     },
     {
-      "file": "woodland-path-lateAutumn-dusk.png",
+      "file": "harvest-corner-lateAutumn-dusk.png",
       "stage": "lateAutumn",
       "light": "dusk",
       "date": "2026-11-21T15:17:00.000Z",
@@ -6139,91 +6135,91 @@
       },
       "objects": [
         {
-          "id": "WoodlandMushrooms",
-          "entityName": "WoodlandMushrooms",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3852750062942505,
+            -2.4132381081581116,
             0.4,
-            -1.405000001192093
+            -1.3732381165027618
           ],
           "max": [
-            -1.646800011396408,
-            0.7799999952316284,
-            -0.6550000011920929
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 403.6782741525117,
-            "maxX": 487.87913515402175,
-            "minY": 343.738728726607,
-            "maxY": 417.10069765249074
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "StoneMedium",
-          "entityName": "StoneMedium",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3604909362792967,
+            -2.3474830090999603,
             0.4,
-            -0.2916891402006149
+            0.6525169909000397
           ],
           "max": [
-            -1.7207217555046082,
-            0.7216320897340776,
-            0.31613454699516297
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 470.8382922254519,
-            "maxX": 541.4128023936031,
-            "minY": 318.31127764892926,
-            "maxY": 380.00549918162284
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "AutumnLeafPileCrescent",
-          "entityName": "AutumnLeafPileCrescent",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
-          "meshes": 1,
+          "meshes": 5,
           "min": [
-            -1.2714017033576965,
+            -1.420500010251999,
             0.4,
-            -0.373699814081192
+            -0.35750001668930054
           ],
           "max": [
-            -0.625,
-            0.5224285736680031,
-            0.373699814081192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 404.2156852461262,
-            "maxX": 483.06099509770127,
-            "minY": 293.7459028404551,
-            "maxY": 347.1806635676495
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "FallenLog",
-          "entityName": "FallenLog",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 1,
+          "meshes": 6,
           "min": [
-            -2.4210000038146973,
+            -1.4197290241718292,
             0.4,
-            0.7007499933242798
+            0.7950000017881393
           ],
           "max": [
-            -0.5789999961853027,
-            0.8320000112056732,
-            1.407802253961563
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 462.393591664447,
-            "maxX": 606.5897632236724,
-            "minY": 238.29947392356794,
-            "maxY": 349.63006228526615
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
@@ -6691,7 +6687,7 @@
       ]
     },
     {
-      "file": "woodland-path-lateAutumn-night.png",
+      "file": "harvest-corner-lateAutumn-night.png",
       "stage": "lateAutumn",
       "light": "night",
       "date": "2026-11-21T21:30:00.000Z",
@@ -6703,91 +6699,91 @@
       },
       "objects": [
         {
-          "id": "WoodlandMushrooms",
-          "entityName": "WoodlandMushrooms",
+          "id": "HarvestPumpkinGroupOrange",
+          "entityName": "HarvestPumpkinGroupOrange",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3852750062942505,
+            -2.4132381081581116,
             0.4,
-            -1.405000001192093
+            -1.3732381165027618
           ],
           "max": [
-            -1.646800011396408,
-            0.7799999952316284,
-            -0.6550000011920929
+            -1.5996452569961548,
+            0.7987999856472016,
+            -0.574999988079071
           ],
           "screen": {
-            "minX": 403.6782741525117,
-            "maxX": 487.87913515402175,
-            "minY": 343.738728726607,
-            "maxY": 417.10069765249074
+            "minX": 402.8075219481505,
+            "maxX": 493.986451211476,
+            "minY": 338.3649870437867,
+            "maxY": 416.9768796835152
           }
         },
         {
-          "id": "StoneMedium",
-          "entityName": "StoneMedium",
+          "id": "HarvestPumpkinSquatCream",
+          "entityName": "HarvestPumpkinSquatCream",
           "role": "included",
-          "meshes": 1,
+          "meshes": 2,
           "min": [
-            -2.3604909362792967,
+            -2.3474830090999603,
             0.4,
-            -0.2916891402006149
+            0.6525169909000397
           ],
           "max": [
-            -1.7207217555046082,
-            0.7216320897340776,
-            0.31613454699516297
+            -1.6525169909000397,
+            0.8101000130176544,
+            1.3474830090999603
           ],
           "screen": {
-            "minX": 470.8382922254519,
-            "maxX": 541.4128023936031,
-            "minY": 318.31127764892926,
-            "maxY": 380.00549918162284
+            "minX": 520.3924127516971,
+            "maxX": 599.0188422178373,
+            "minY": 276.6878036898035,
+            "maxY": 348.80595290159414
           }
         },
         {
-          "id": "AutumnLeafPileCrescent",
-          "entityName": "AutumnLeafPileCrescent",
+          "id": "HarvestCrateOrchard",
+          "entityName": "HarvestCrateOrchard",
           "role": "included",
-          "meshes": 1,
+          "meshes": 5,
           "min": [
-            -1.2714017033576965,
+            -1.420500010251999,
             0.4,
-            -0.373699814081192
+            -0.35750001668930054
           ],
           "max": [
-            -0.625,
-            0.5224285736680031,
-            0.373699814081192
+            -0.5794999897480011,
+            0.8943065643310547,
+            0.35750001668930054
           ],
           "screen": {
-            "minX": 404.2156852461262,
-            "maxX": 483.06099509770127,
-            "minY": 293.7459028404551,
-            "maxY": 347.1806635676495
+            "minX": 402.5582149098389,
+            "maxX": 490.57887008000046,
+            "minY": 268.47550668041214,
+            "maxY": 351.51237303420066
           }
         },
         {
-          "id": "FallenLog",
-          "entityName": "FallenLog",
+          "id": "GardenScarecrow",
+          "entityName": "GardenScarecrow",
           "role": "included",
-          "meshes": 1,
+          "meshes": 6,
           "min": [
-            -2.4210000038146973,
+            -1.4197290241718292,
             0.4,
-            0.7007499933242798
+            0.7950000017881393
           ],
           "max": [
-            -0.5789999961853027,
-            0.8320000112056732,
-            1.407802253961563
+            -0.5802421569824219,
+            1.8099750518798827,
+            1.2049999982118607
           ],
           "screen": {
-            "minX": 462.393591664447,
-            "maxX": 606.5897632236724,
-            "minY": 238.29947392356794,
-            "maxY": 349.63006228526615
+            "minX": 467.7954444992191,
+            "maxX": 538.4770952403675,
+            "minY": 181.00485725612435,
+            "maxY": 313.92252385797235
           }
         },
         {
