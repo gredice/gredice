@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import { OperationTaskAdminEditHarness } from '../../../playwright/OperationTaskAdminEditHarness';
 
+test.use({ timezoneId: 'Europe/Zagreb' });
+
 for (const status of [
     'new',
     'planned',
@@ -55,7 +57,7 @@ test('saves approval, assignees, dates, and preserved precision for a verified t
         timestamp: '2026-09-29T08:15:30.123Z',
         requestNote: 'Ujutro',
     });
-    expect(saved[2].completedAt).toBe('2026-10-02T08:30:00.000Z');
+    expect(saved[2].completedAt).toBe('2026-10-02T06:30:00.000Z');
 });
 
 test('a concurrent edit preserves the draft and locks save until the editor is reopened', async ({

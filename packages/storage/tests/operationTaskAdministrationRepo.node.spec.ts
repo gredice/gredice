@@ -14,8 +14,10 @@ import {
     getAllEvents,
     getAllOperations,
     getFarmAcceptedOperationsByScheduleRange,
+    getFarmUserAcceptedOperationsByScheduleRange,
     getOperationById,
     getOperationsPage,
+    getRaisedBedOperationsByScheduleRange,
     knownEvents,
     knownEventTypes,
     storage,
@@ -29,9 +31,14 @@ import {
     type OperationTaskAdminValues,
     operationTaskStatuses,
 } from '../src/operationTaskAdministration';
+import {
+    createTestBlock,
+    createTestGarden,
+    createTestRaisedBed,
+} from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
-async function fixture() {
+async function fixture({ withRaisedBed = false } = {}) {
     createTestDb();
     const adminId = randomUUID();
     const farmerId = randomUUID();
@@ -48,11 +55,23 @@ async function fixture() {
     });
     await assignUserToFarm(farmId, farmerId);
     const accountId = await createAccount();
+    const gardenId = withRaisedBed
+        ? await createTestGarden({ accountId, farmId })
+        : undefined;
+    const raisedBedId = gardenId
+        ? await createTestRaisedBed(
+              gardenId,
+              accountId,
+              await createTestBlock(gardenId, 'Raised_Bed'),
+          )
+        : undefined;
     const operationId = await createOperation({
         entityId: 1,
         entityTypeName: 'operation',
         farmId,
         accountId,
+        gardenId,
+        raisedBedId,
     });
     const current = await getOperationById(operationId);
     const values: OperationTaskAdminValues = {
@@ -77,7 +96,15 @@ async function fixture() {
         errorCode: '',
         cancelReason: '',
     };
-    return { operationId, adminId, farmerId, farmId, accountId, values };
+    return {
+        operationId,
+        adminId,
+        farmerId,
+        farmId,
+        accountId,
+        raisedBedId,
+        values,
+    };
 }
 
 for (const status of operationTaskStatuses) {
@@ -161,6 +188,15 @@ test('admin corrections reject farmers, stale versions, invalid dates, and users
     await assert.rejects(
         administerOperationTask({
             ...f,
+            values: { ...f.values, isAccepted: true },
+            updatedBy: f.adminId,
+            expectedTaskVersionEventId: 0,
+        }),
+        { name: 'ZodError' },
+    );
+    await assert.rejects(
+        administerOperationTask({
+            ...f,
             updatedBy: f.farmerId,
             expectedTaskVersionEventId: 0,
         }),
@@ -192,6 +228,79 @@ test('admin corrections reject farmers, stale versions, invalid dates, and users
         { code: 'not_authorized' },
     );
     assert.equal((await getOperationById(f.operationId)).taskVersionEventId, 0);
+});
+
+test('all schedule readers use the corrected date and timestamp only after the date is cleared', async () => {
+    const f = await fixture({ withRaisedBed: true });
+    assert.ok(f.raisedBedId);
+    const raisedBedId = f.raisedBedId;
+    const timestamp = '2026-09-27T08:00:00.000Z';
+    const oldDate = '2026-09-29T08:00:00.000Z';
+    const newDate = '2026-09-30T08:00:00.000Z';
+    await createEvent(
+        knownEvents.operations.scheduledV1(f.operationId.toString(), {
+            scheduledDate: oldDate,
+        }),
+    );
+    const values = {
+        ...f.values,
+        status: 'planned',
+        isAccepted: true,
+        assignedUserIds: [f.farmerId],
+        assignedAt: timestamp,
+        timestamp,
+        scheduledDate: newDate,
+        scheduledAt: timestamp,
+    };
+    await administerOperationTask({
+        ...f,
+        values,
+        updatedBy: f.adminId,
+        expectedTaskVersionEventId: (await getOperationById(f.operationId))
+            .taskVersionEventId,
+    });
+    const readers = [
+        (range: { from: Date; to: Date }) =>
+            getFarmAcceptedOperationsByScheduleRange({
+                ...range,
+                farmId: f.farmId,
+            }),
+        (range: { from: Date; to: Date }) =>
+            getRaisedBedOperationsByScheduleRange({
+                ...range,
+                raisedBedIds: [raisedBedId],
+            }),
+        (range: { from: Date; to: Date }) =>
+            getFarmUserAcceptedOperationsByScheduleRange({
+                ...range,
+                userId: f.farmerId,
+            }),
+    ];
+    const assertScheduled = async (date: string, expected: boolean) => {
+        for (const read of readers) {
+            const items = await read({
+                from: new Date(`${date}T00:00:00Z`),
+                to: new Date(`${date}T23:59:59Z`),
+            });
+            assert.equal(
+                items.some((item) => item.id === f.operationId),
+                expected,
+            );
+        }
+    };
+    await assertScheduled('2026-09-27', false);
+    await assertScheduled('2026-09-29', false);
+    await assertScheduled('2026-09-30', true);
+    await administerOperationTask({
+        ...f,
+        values: { ...values, scheduledDate: null },
+        updatedBy: f.adminId,
+        expectedTaskVersionEventId: (await getOperationById(f.operationId))
+            .taskVersionEventId,
+    });
+    await assertScheduled('2026-09-27', true);
+    await assertScheduled('2026-09-29', false);
+    await assertScheduled('2026-09-30', false);
 });
 
 test('administration can update notes and photos in every state while preserving state and audit dates', async () => {

@@ -14,6 +14,7 @@ customer note, and outcome details. Changing status prefills the corresponding
 dates, and returning to new/planned clears completion and verification dates.
 Date inputs use the administrator's browser timezone; stored values remain UTC.
 Untouched dates retain their original precision.
+Accepted tasks require at least one assigned user.
 
 The description card has an icon-only pencil for completion notes and photos.
 On this detail page, administrators can edit evidence in every state, including
@@ -28,8 +29,9 @@ remain after leaving the farm. Original completion and verification event IDs
 are retained for date-only corrections. Changing acceptance or status is an
 administrative correction; it does not issue refunds or send workflow
 notifications. Entering completed still applies the existing selected-planting
-verification behavior. Reopening a task does not reverse a physical planting
-lifecycle change or a prior payout.
+verification behavior once. Reclosing a reopened transplant or removal task
+recognizes the prior physical effect. Reopening a task does not reverse a
+physical planting lifecycle change or a prior payout.
 
 Operation aggregates, list sorting/filtering, completion date reports, schedule
 reads, and bed photo projections include the corrected task state. Schedule caches are invalidated after the transaction commits; the admin

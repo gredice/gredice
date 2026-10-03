@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     accountUsers,
+    administerOperationTask,
     assignSelectedRaisedBedPlantingTask,
     assignUserToFarm,
     attributeDefinitions,
@@ -55,6 +56,7 @@ import {
     verifySelectedRaisedBedPlantingTask,
 } from '@gredice/storage';
 import { and, eq } from 'drizzle-orm';
+import { operationTaskAdminSchema } from '../src/operationTaskAdministration';
 import {
     createTestBlock,
     createTestGarden,
@@ -859,6 +861,106 @@ test('explicit multi-field transplant is idempotent and moves location only when
         moved?.lifecycleVersionEventId,
     );
 });
+
+for (const entityId of [593, 346]) {
+    for (const firstVerification of ['completion', 'administration']) {
+        test(`reclosing planting operation ${entityId} preserves its physical effect after ${firstVerification}`, async () => {
+            const fixture = await createSproutedOperationFixture();
+            const task =
+                entityId === 346
+                    ? (
+                          await updateSelectedRaisedBedPlantingLifecycleStatus({
+                              ...commandIdentity(fixture.sprouted.task),
+                              actor: fixture.actor,
+                              status: 'died',
+                          })
+                      ).task
+                    : fixture.sprouted.task;
+            const { operationId } = await createSelectedPlantingOperation({
+                ...task.identity,
+                actor: fixture.actor,
+                entityId,
+            });
+            const operation = await getOperationById(operationId);
+            const date = new Date().toISOString();
+            const completedValues = operationTaskAdminSchema.parse({
+                ...operation,
+                status: 'completed',
+                isAccepted: false,
+                timestamp: operation.timestamp.toISOString(),
+                createdAt: operation.createdAt.toISOString(),
+                assignedAt: operation.assignedAt?.toISOString() ?? null,
+                scheduledDate: operation.scheduledDate?.toISOString() ?? null,
+                scheduledAt: operation.scheduledAt?.toISOString() ?? null,
+                completedAt: date,
+                verifiedAt: date,
+                blockedAt: null,
+                canceledAt: null,
+                requestNote: '',
+                blockReasonCode: '',
+                blockReasonLabel: '',
+                blockNote: '',
+                error: '',
+                errorCode: '',
+                cancelReason: '',
+            });
+            if (firstVerification === 'completion') {
+                await submitOperationTaskCompletion({
+                    operationId,
+                    actor: fixture.actor,
+                });
+            } else {
+                await administerOperationTask({
+                    operationId,
+                    expectedTaskVersionEventId: operation.taskVersionEventId,
+                    updatedBy: fixture.adminId,
+                    values: completedValues,
+                });
+            }
+            const applied = await getRaisedBedPlanting(fixture.plantingId);
+            assert.ok(applied);
+            if (entityId === 593) {
+                assert.equal(applied.selectedTask?.sowingLocation, 'direct');
+            } else {
+                assert.equal(applied.isActive, false);
+                assert.equal(applied.lifecycleStatus, 'removed');
+            }
+            const reopened = await administerOperationTask({
+                operationId,
+                expectedTaskVersionEventId: (
+                    await getOperationById(operationId)
+                ).taskVersionEventId,
+                updatedBy: fixture.adminId,
+                values: {
+                    ...completedValues,
+                    status: 'planned',
+                    completedAt: null,
+                    verifiedAt: null,
+                },
+            });
+            await administerOperationTask({
+                operationId,
+                expectedTaskVersionEventId: reopened.id,
+                updatedBy: fixture.adminId,
+                values: completedValues,
+            });
+            const unchanged = await getRaisedBedPlanting(fixture.plantingId);
+            assert.equal(
+                unchanged?.lifecycleVersionEventId,
+                applied.lifecycleVersionEventId,
+            );
+            assert.equal(unchanged?.isActive, applied.isActive);
+            assert.equal(
+                unchanged?.selectedTask?.sowingLocation,
+                applied.selectedTask?.sowingLocation,
+            );
+            assert.equal(
+                (await getOperationById(operationId)).status,
+                'completed',
+            );
+        });
+    }
+}
 
 test('planting operations reject unauthorized, stale, mixed and retired targets', async () => {
     const fixture = await createSproutedOperationFixture();

@@ -1,9 +1,9 @@
 import 'server-only';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { v5 as uuidV5 } from 'uuid';
 import { bustScheduleCache } from '../cache/scheduleCache';
-import { operations, raisedBeds } from '../schema';
-import { createEvent, knownEvents } from './events';
+import { events, operations, raisedBedPlantings, raisedBeds } from '../schema';
+import { createEvent, knownEvents, knownEventTypes } from './events';
 import {
     acceptOperation,
     assertOperationTargetAllowsDefinition,
@@ -164,6 +164,59 @@ export async function applySelectedPlantingOperationVerification(
     verifiedBy: string,
     tx: ScheduleTaskTransaction,
 ) {
+    if (
+        operation.plantingId &&
+        [SELECTED_PLANTING_TRANSPLANT_OPERATION_ID, 346].includes(
+            operation.entityId,
+        )
+    ) {
+        const planting = await tx.query.raisedBedPlantings.findFirst({
+            columns: { eventAggregateId: true },
+            where: eq(raisedBedPlantings.id, operation.plantingId),
+        });
+        const verificationEvents = await tx.query.events.findMany({
+            columns: { id: true },
+            where: and(
+                eq(events.aggregateId, operation.id.toString()),
+                inArray(events.type, [
+                    knownEventTypes.operations.verify,
+                    knownEventTypes.operations.adminUpdate,
+                ]),
+            ),
+        });
+        const prefix =
+            operation.entityId === 346
+                ? 'selected-removal-operation'
+                : 'selected-transplant-operation';
+        const appliedCommandIds = verificationEvents.map((event) =>
+            uuidV5(
+                `${prefix}:${operation.id}:verification:${event.id}`,
+                uuidV5.URL,
+            ),
+        );
+        const priorEffect =
+            planting && appliedCommandIds.length
+                ? await tx.query.events.findFirst({
+                      columns: { id: true },
+                      where: and(
+                          eq(events.aggregateId, planting.eventAggregateId),
+                          eq(
+                              events.type,
+                              operation.entityId === 346
+                                  ? knownEventTypes.raisedBedPlantings
+                                        .lifecycleStatusChanged
+                                  : knownEventTypes.raisedBedPlantings
+                                        .transplanted,
+                          ),
+                          inArray(
+                              sql<string>`${events.data} ->> 'commandId'`,
+                              appliedCommandIds,
+                          ),
+                      ),
+                  })
+                : undefined;
+        if (priorEffect) return;
+    }
     if (operation.plantingId)
         await assertOperationTargetAllowsDefinition(operation, tx);
     if (

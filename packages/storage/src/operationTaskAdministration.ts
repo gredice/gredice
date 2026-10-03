@@ -37,6 +37,13 @@ export const operationTaskAdminSchema = z
         cancelReason: note,
     })
     .superRefine((value, context) => {
+        if (value.isAccepted && value.assignedUserIds.length === 0) {
+            context.addIssue({
+                code: 'custom',
+                path: ['assignedUserIds'],
+                message: 'Potvrđena radnja mora biti dodijeljena korisniku.',
+            });
+        }
         if (
             ['pendingVerification', 'completed'].includes(value.status) &&
             !value.completedAt

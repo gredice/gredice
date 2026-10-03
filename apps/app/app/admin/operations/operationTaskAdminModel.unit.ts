@@ -12,7 +12,7 @@ const task = operationTaskAdminSchema.parse({
     entityId: 169,
     status: 'completed',
     isAccepted: true,
-    assignedUserIds: [],
+    assignedUserIds: ['farmer'],
     timestamp: date,
     createdAt: date,
     assignedAt: null,
@@ -37,6 +37,16 @@ test('reopening a verified task clears lifecycle dates and preserves evidence-in
     assert.equal(reopened.verifiedAt, null);
     assert.equal(reopened.scheduledDate, date);
     assert.equal(task.status, 'completed');
+});
+
+test('approval requires an assignee while an unapproved task can be unassigned', () => {
+    const unassigned = { ...task, assignedUserIds: [] };
+    assert.equal(operationTaskAdminSchema.safeParse(unassigned).success, false);
+    assert.equal(
+        operationTaskAdminSchema.safeParse({ ...unassigned, isAccepted: false })
+            .success,
+        true,
+    );
 });
 
 test('completion and verification prefill dates but retain explicitly chosen dates', () => {
