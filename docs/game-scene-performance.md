@@ -1693,6 +1693,10 @@ wheel and rotation-key actions are discrete requests over a persistent 30 FPS
 ambient owner set. It observes the scalar target on every RAF and hard-gates
 28–32 rendered FPS; sustained held-input 60 FPS remains the responsibility of
 the runtime-owner profiles above.
+Camera transforms applied inside `useFrame` are submitted by that same frame,
+so they do not request another urgent render. Animation and held keyboard pan
+retain their interaction lease, while wheel, drag, and immediate focus/restore
+updates outside a frame still request a render.
 
 Full profiler telemetry remains pull-based and coherent. A consumer that reads
 the full object, including a `structuredClone` burst, receives one exact full

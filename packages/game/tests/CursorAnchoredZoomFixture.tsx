@@ -9,6 +9,7 @@ import {
     GameStateContext,
     useGameState,
 } from '../src/useGameState';
+import { CameraRenderedProbe } from './CameraRenderedProbe';
 
 const anchor = new Vector3(1.5, 0, -1.25);
 const initialPosition = new Vector3(-10, 10, -10);
@@ -67,7 +68,13 @@ function CameraProjectionProbe() {
     );
 }
 
-export function CursorAnchoredZoomFixture() {
+export function CursorAnchoredZoomFixture({
+    baseFramesPerSecond = 0,
+    observeFrames = false,
+}: {
+    baseFramesPerSecond?: number;
+    observeFrames?: boolean;
+}) {
     const [viewportRevision, setViewportRevision] = useState(0);
     const queryClient = useMemo(
         () =>
@@ -96,8 +103,10 @@ export function CursorAnchoredZoomFixture() {
                         style={{ height: 600, width: 800 }}
                     >
                         <Scene
+                            baseFramesPerSecond={baseFramesPerSecond}
                             pixelRatio={1}
                             position={initialPosition}
+                            profileStats={observeFrames}
                             suspendWhenOffscreen={false}
                             zoom={initialZoom}
                         >
@@ -112,6 +121,7 @@ export function CursorAnchoredZoomFixture() {
                                 initialTarget={initialTarget}
                                 initialZoom={initialZoom}
                             />
+                            {observeFrames && <CameraRenderedProbe />}
                         </Scene>
                         <CameraProjectionProbe />
                         <button
@@ -121,6 +131,51 @@ export function CursorAnchoredZoomFixture() {
                             }
                         >
                             Refresh viewport
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                gameStore.getState().worldRotate('cw')
+                            }
+                        >
+                            Rotate camera
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                gameStore
+                                    .getState()
+                                    .gameCamera?.focus(new Vector3(1, 0, 1), {
+                                        immediate: true,
+                                    })
+                            }
+                        >
+                            Focus immediately
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                gameStore
+                                    .getState()
+                                    .gameCamera?.focus(new Vector3(1, 0, 1))
+                            }
+                        >
+                            Animate focus
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                gameStore.getState().gameCamera?.restore(
+                                    {
+                                        position: [-10, 10, -10],
+                                        target: [0, 0, 0],
+                                        zoom: initialZoom,
+                                    },
+                                    { immediate: true },
+                                )
+                            }
+                        >
+                            Restore immediately
                         </button>
                     </div>
                 </GameStateContext.Provider>
