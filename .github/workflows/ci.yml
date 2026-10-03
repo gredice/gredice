@@ -31,7 +31,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v7.0.0
         with:
-          node-version: 24
+          node-version: 24.21.0
       - run: bash scripts/ci-isolated-tests.sh node --test scripts/check-ui-primitives.test.mjs
       - run: bash scripts/ci-isolated-tests.sh node --test scripts/blob-test-fixtures.test.mjs
       - run: bash scripts/ci-isolated-tests.sh node scripts/ci-network-isolation-check.mjs
@@ -308,7 +308,7 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-node@v7.0.0
         with:
-          node-version: 24
+          node-version: 24.21.0
       - run: node scripts/check-plugins.mjs
 
   ci_www:

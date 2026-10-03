@@ -51,7 +51,7 @@ jobs:
         uses: actions/setup-java@v6.0.1
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "17.0.20+8"
 
       - name: 🤖 Setup Android SDK
         uses: android-actions/setup-android@v4.0.4
