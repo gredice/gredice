@@ -11,6 +11,7 @@ import type {
     GameCameraRigApi,
     GameCameraSnapshot,
 } from './controls/GameCameraRigApi';
+import { createLeafRakingController } from './cosmeticLeafRaking/leafRaking';
 import {
     type ActiveDragPreviewTarget,
     type ActiveDragPreviewTargetOffset,
@@ -465,6 +466,8 @@ export type GameState = {
     seasonState: SeasonState;
     autumnState: AutumnState;
 
+    cosmeticLeafRaking: ReturnType<typeof createLeafRakingController>;
+
     // Pickup system
     pickupBlock: Block | null;
     setPickupBlock: (block: Block | null) => void;
@@ -832,6 +835,8 @@ export function createGameState({
         sunsetTime: sunset,
         seasonState,
         autumnState: getAutumnState(seasonState),
+
+        cosmeticLeafRaking: createLeafRakingController(),
 
         // Pickup system
         pickupBlock: null,
@@ -1390,6 +1395,7 @@ export function useDisposeGameStateStore(store: GameStateStore | null) {
                 }
 
                 pendingStoreDisposals.delete(store);
+                store.getState().cosmeticLeafRaking.reset();
                 store.getState().audio.dispose();
                 store.getState().faunaWorld.dispose();
             }, 0);

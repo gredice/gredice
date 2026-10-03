@@ -15,6 +15,7 @@ import { BlockInteractionLayer } from './controls/BlockInteractionLayer';
 import { BlockInteractionRegistryProvider } from './controls/BlockInteractionRegistry';
 import { GameCameraRig } from './controls/GameCameraRig';
 import { HudPlacementDragPreview } from './controls/HudPlacementDragPreview';
+import { CosmeticLeafRaking } from './cosmeticLeafRaking/CosmeticLeafRaking';
 import { DetailedInspectionFarmer } from './entities/avatar/DetailedInspectionFarmer';
 import { findDetailedInspectionFarmerTransform } from './entities/avatar/detailedInspectionFarmerPosition';
 import { GardenAvatar } from './entities/avatar/GardenAvatar';
@@ -612,6 +613,7 @@ export function GameScene({
                     <ParticleSystemProvider>
                         <BlockInteractionRegistryProvider>
                             <PlacementGrid />
+                            <CosmeticLeafRaking noSound={noSound} />
                             {!hideHud ? <HudPlacementDragPreview /> : null}
                             <Environment
                                 cloudShadowUpdateMs={
