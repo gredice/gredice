@@ -464,6 +464,11 @@ jobs:
       - name: 📦️ Install dependencies
         run: pnpm install --frozen-lockfile --filter @gredice/storage... --filter .
 
+      - name: 📦 Prepare offline package manager
+        run: |
+          echo "COREPACK_HOME=$RUNNER_TEMP/gredice-corepack" >> "$GITHUB_ENV"
+          COREPACK_HOME="$RUNNER_TEMP/gredice-corepack" pnpm exec corepack pnpm --version
+
       - name: ⚒️ Test app
         run: bash scripts/ci-isolated-tests.sh --database env -u POSTGRES_URL -u TEST_ENV pnpm run test --filter=@gredice/storage --cache=local:rw
 
@@ -503,6 +508,11 @@ jobs:
       - name: 📦️ Install dependencies
         run: pnpm install --frozen-lockfile --filter @gredice/game... --filter @gredice/js... --filter .
 
+      - name: 📦 Prepare offline package manager
+        run: |
+          echo "COREPACK_HOME=$RUNNER_TEMP/gredice-corepack" >> "$GITHUB_ENV"
+          COREPACK_HOME="$RUNNER_TEMP/gredice-corepack" pnpm exec corepack pnpm --version
+
       - name: ⚒️ Test packages
         run: bash scripts/ci-isolated-tests.sh pnpm run test --filter=@gredice/game --filter=@gredice/js --cache=local:rw
 
@@ -541,6 +551,11 @@ jobs:
 
       - name: 📦️ Install dependencies
         run: pnpm install --frozen-lockfile --filter @gredice/email... --filter .
+
+      - name: 📦 Prepare offline package manager
+        run: |
+          echo "COREPACK_HOME=$RUNNER_TEMP/gredice-corepack" >> "$GITHUB_ENV"
+          COREPACK_HOME="$RUNNER_TEMP/gredice-corepack" pnpm exec corepack pnpm --version
 
       - name: ⚒️ Test package
         run: bash scripts/ci-isolated-tests.sh pnpm --filter @gredice/email test

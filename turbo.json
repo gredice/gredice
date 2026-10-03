@@ -16,7 +16,9 @@
         "POSTGRES_URL"
     ],
     "globalPassThroughEnv": [
-        "NODE_OPTIONS"
+        "NODE_OPTIONS",
+        "COREPACK_HOME",
+        "COREPACK_ENABLE_NETWORK"
     ],
     "globalDependencies": [
         "scripts/blob-test-fixtures.mjs",
