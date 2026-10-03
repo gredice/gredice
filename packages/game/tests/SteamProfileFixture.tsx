@@ -132,6 +132,7 @@ export function SteamProfileFixture({
                                 quality={quality}
                                 weather={weather}
                                 noSound
+                                noDistantBirdFlocks
                             />
                             <ParticleSystemProvider>
                                 <Suspense fallback={null}>
