@@ -72,7 +72,8 @@ Run its isolated regression without a database:
 
 The public-garden operation-history read retries one page once when an awaited
 query fails with a Neon `ErrorEvent`, a transport code, or a PostgreSQL
-connection exception. It is reported as `hydrate-garden-operation-events` with
+connection exception. It is reported as `hydrate-garden-operation-events`
+(or `hydrate-garden-operation-scene-events` for the compact scene read) with
 bounded query counts and the garden ID. The pool discards the failed active
 connection and the retry checks out a replacement; it does not reset the shared
 pool. Stable `storage.database.read.retry`, `.recovered`, and `.failed` events

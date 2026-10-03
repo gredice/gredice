@@ -10,6 +10,7 @@ import {
     createOperation,
     events,
     getAllOperations,
+    getAppliedRaisedBedOperationSummariesForGarden,
     getAppliedRaisedBedOperations,
     getAppliedRaisedBedOperationsForGarden,
     getAssignableFarmUsersByOperationIds,
@@ -725,7 +726,7 @@ test('all operations can be filtered by event-derived status', async () => {
     assert.ok(!operationIds.includes(pendingOperationId));
 });
 
-test('getAppliedRaisedBedOperationsForGarden matches the previous in-memory applied raised-bed filter', async () => {
+test('getAppliedRaisedBedOperationsForGarden matches the previous in-memory applied raised-bed filter', async (t) => {
     createTestDb();
 
     const accountId = await createAccount();
@@ -896,6 +897,53 @@ test('getAppliedRaisedBedOperationsForGarden matches the previous in-memory appl
             [completedRaisedBedOperationId, 'completed'],
             [pendingRaisedBedOperationId, 'pendingVerification'],
         ]),
+    );
+    const historyReads = t.mock.method(
+        storage().query.events,
+        'findMany',
+        () => {
+            throw new Error('Summary must not hydrate full event payloads');
+        },
+    );
+    const userReads = t.mock.method(storage().query.users, 'findMany', () => {
+        throw new Error('Scene must not hydrate assigned users');
+    });
+    const summaries = await getAppliedRaisedBedOperationSummariesForGarden(
+        accountId,
+        gardenId,
+    );
+    assert.deepEqual(
+        summaries,
+        appliedOperations.map(
+            ({
+                id,
+                entityId,
+                raisedBedId,
+                raisedBedFieldId,
+                status,
+                createdAt,
+                scheduledDate,
+                completedAt,
+            }) => ({
+                id,
+                entityId,
+                raisedBedId,
+                raisedBedFieldId,
+                status,
+                createdAt,
+                scheduledDate,
+                completedAt,
+            }),
+        ),
+    );
+    assert.equal(historyReads.mock.callCount(), 0);
+    assert.equal(userReads.mock.callCount(), 0);
+    assert.deepEqual(
+        await getAppliedRaisedBedOperationSummariesForGarden(
+            randomUUID(),
+            gardenId,
+        ),
+        [],
     );
     for (const operation of appliedOperations) {
         assert.ok(operation.completedAt instanceof Date);

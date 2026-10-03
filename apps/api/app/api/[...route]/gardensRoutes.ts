@@ -57,7 +57,7 @@ import {
     getAccount,
     getAccountGardensMetadata,
     getAllEvents,
-    getAppliedRaisedBedOperationsForGarden,
+    getAppliedRaisedBedOperationSummariesForGarden,
     getEntityFormatted,
     getFeaturedPublicGardenSummaries,
     getFeaturedPublicGardens,
@@ -729,7 +729,7 @@ function serializePublicGardenPreviewImages(
 type GardenDetail = NonNullable<Awaited<ReturnType<typeof getGarden>>>;
 type GardenBlocks = Awaited<ReturnType<typeof getGardenBlocks>>;
 type AppliedGardenOperations = Awaited<
-    ReturnType<typeof getAppliedRaisedBedOperationsForGarden>
+    ReturnType<typeof getAppliedRaisedBedOperationSummariesForGarden>
 >;
 
 function serializeGardenStacks(garden: GardenDetail, blocks: GardenBlocks) {
@@ -936,7 +936,10 @@ async function getAuthorizedGardenPreviewSource(
 
     const [blocks, operations] = await Promise.all([
         getGardenBlocks(gardenId),
-        getAppliedRaisedBedOperationsForGarden(garden.accountId, gardenId),
+        getAppliedRaisedBedOperationSummariesForGarden(
+            garden.accountId,
+            gardenId,
+        ),
     ]);
 
     const details = await serializeGardenDetails(garden, blocks, operations);
@@ -2155,7 +2158,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const [operations, queuedTasks] = await Promise.all([
-                getAppliedRaisedBedOperationsForGarden(
+                getAppliedRaisedBedOperationSummariesForGarden(
                     garden.accountId,
                     gardenIdNumber,
                 ),
