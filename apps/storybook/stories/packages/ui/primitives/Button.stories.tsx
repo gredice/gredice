@@ -106,6 +106,23 @@ export const LinkWithoutPrefetch: Story = {
     },
 };
 
+export const DocumentNavigation: Story = {
+    args: {
+        children: 'Novosti',
+        href: '/novosti',
+        navigation: 'document',
+        type: undefined,
+        variant: 'plain',
+    },
+    parameters: {
+        docs: {
+            description: {
+                story: 'Use navigation="document" for links between Next.js apps, including WWW to News on the same domain. This renders a native anchor with no RSC prefetch and preserves the button styles, loading and disabled behavior. Links within the same app keep the default client navigation.',
+            },
+        },
+    },
+};
+
 export const Variants: Story = {
     parameters: {
         docs: {
