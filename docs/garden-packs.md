@@ -4,6 +4,10 @@
 
 A **collection / kolekcija** groups individually available decorations for browsing. A **pack / paket** is one account purchase granting exact finite quantities. A **layout / predložak** describes an arrangement and grants nothing. A purchased pack is separate from a garden box (six item-type stacks of ten); no box slot or appearance restriction applies to the pack entitlement.
 
+The separate [ownership-aware scene offer design](garden-complete-scene-offer.md)
+specifies a future opt-in additions purchase for #4993. It remains excluded from
+this simple pack flow; no possessions are automatically deducted from a purchase.
+
 Customers buy and place account-owned pieces in their own active, ordinary gardens. Sandbox gardens have no economy and cannot consume paid pack inventory. Account members act through the authenticated account; sharing/public viewing does not confer ownership. Admins configure products, and the server validates every item, variant, price and lifecycle policy. Ambient autumn effects remain available to everyone.
 
 ## Configuration and shared contract
