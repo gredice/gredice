@@ -49,6 +49,7 @@ import { DesertStone } from './DesertStone';
 import { DogHouse } from './DogHouse';
 import { DoubleGardenLightPole } from './DoubleGardenLightPole';
 import { EnamelGardenLamp } from './EnamelGardenLamp';
+import { FallenLog } from './FallenLog';
 import { Fence } from './Fence';
 import { FenceGate } from './FenceGate';
 import { FireflyJar } from './FireflyJar';
@@ -199,6 +200,7 @@ export const entityNameMap = {
     HarvestWheelbarrow,
     AutumnShrub,
     WoodlandMushrooms,
+    FallenLog,
     HarvestCrateOrchard: HarvestCrate,
     HarvestPumpkinSquatOrange: HarvestPumpkin,
     HarvestPumpkinSquatCream: HarvestPumpkin,
