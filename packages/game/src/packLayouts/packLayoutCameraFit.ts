@@ -49,11 +49,11 @@ export function resolvePackLayoutCameraFit({
         cameraHeight: ((camera.top - camera.bottom) * height) / canvas.height,
         padding: 0.9,
     });
-    return zoom === null
+    return zoom === null || zoom < 1 || originalZoom < 1
         ? null
         : {
               target: center,
-              zoom: Math.max(1, Math.min(originalZoom, zoom)),
+              zoom: Math.min(originalZoom, zoom),
               screenPosition: {
                   x: 0.5,
                   y: ((top + bottom) / 2 - canvas.top) / canvas.height,
