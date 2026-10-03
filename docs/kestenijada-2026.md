@@ -108,7 +108,9 @@ pnpm --filter garden typecheck
 pnpm --filter www typecheck
 ```
 
-The actual-route test starts only a local fixture API and built app on5486. Its
+The actual-route test starts only a local fixture API and built app on port 5486
+by default (`GREDICE_KESTENIJADA_TEST_ORIGIN` can select another local HTTP
+origin). Its
 sales-like rows/one-hour window are synthetic test data. It verifies direct
 navigation has no private reads, model requests use the app origin, a real Link
 to the ordinary root preserves login/bootstrap behavior, and the discovery Link
@@ -137,3 +139,19 @@ in the UI parent rather than an event workaround. No waits or privacy assertions
 were relaxed. Final consumer typechecks and the selected-input readback verify
 the restacked event. The evidence JSON distinguishes capture commits, final
 integration parent and current byte bindings.
+
+## Actual-route CI registration
+
+The Garden CI matrix has a dedicated `kestenijada route` shard using
+`playwright.kestenijada-route.config.ts`. This config starts the built app with
+an explicit synthetic active event and an isolated local directory API. The
+ordinary Chromium project excludes this route test because its regular server
+has no event configuration. Component tests remain in the ordinary WebGL shard.
+The route test compares model origins with the actual page origin, rather than
+a developer machine's host and port. It retains direct navigation, same-document
+Link transitions, configured discovery and private-request fences.
+
+This CI-only correction changes test/fixture/registration bytes; the recorder
+pins those inputs separately while preserving the original capture commits,
+archived evidence and byte-identical visual/geometry proof. It does not provide
+a new renderer capture or alter any model.
