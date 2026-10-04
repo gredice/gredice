@@ -1,22 +1,26 @@
 'use client';
 
 import { Button } from '@gredice/ui/Button';
+import { Warning } from '@gredice/ui/icons';
 import { Popper } from '@gredice/ui/Popper';
 import { Row } from '@gredice/ui/Row';
 import { Typography } from '@gredice/ui/Typography';
-import { useLiveTime } from '../hooks/useLiveTime';
+import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useWeatherForecast } from '../hooks/useWeatherForecast';
 import { useWeatherNow } from '../hooks/useWeatherNow';
 import { HudCard } from './components/HudCard';
-import { TimeDisplay } from './components/TimeDisplay';
 import { WeatherForecastDetails } from './components/weather/WeatherForecastDetails';
 import { weatherIcons } from './components/weather/WeatherIcons';
 import { WeatherNowDetails } from './components/weather/WeatherNowDetails';
 
+const weatherPopperClassName =
+    'w-fit max-w-[calc(100vw-1rem)] overflow-hidden border-tertiary border-b-4';
+
 export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
-    const currentTime = useLiveTime();
     const weatherEnabled = !noWeather;
-    const { data: weatherData } = useWeatherNow(weatherEnabled);
+    const { data: currentGarden } = useCurrentGarden();
+    const farmId = currentGarden?.farmId;
+    const { data: weatherData } = useWeatherNow(weatherEnabled, farmId);
     const { data: forecastData } = useWeatherForecast(weatherEnabled);
     if (!weatherEnabled) return null;
     // TODO: Add loading indicator
@@ -25,10 +29,7 @@ export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
 
     const WeatherIcon =
         weatherData?.symbol != null ? weatherIcons[weatherData.symbol] : null;
-    const formattedTime = currentTime?.toLocaleTimeString('hr-HR', {
-        hour: '2-digit',
-        minute: '2-digit',
-    });
+    const hasAlerts = (weatherData?.alerts?.length ?? 0) > 0;
 
     return (
         <HudCard open position="floating" className="static md:px-1">
@@ -37,7 +38,7 @@ export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
                     <Popper
                         side="bottom"
                         sideOffset={12}
-                        className="overflow-hidden border-tertiary border-b-4 w-full"
+                        className={weatherPopperClassName}
                         trigger={
                             <Button
                                 title="Trenutno vrijeme"
@@ -47,6 +48,9 @@ export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
                                 <Row>
                                     {WeatherIcon && (
                                         <WeatherIcon.day className="size-6" />
+                                    )}
+                                    {hasAlerts && (
+                                        <Warning className="size-4 shrink-0 text-amber-600" />
                                     )}
                                     <Typography
                                         level="body2"
@@ -63,17 +67,17 @@ export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
                             </Button>
                         }
                     >
-                        <WeatherNowDetails />
+                        <WeatherNowDetails farmId={farmId} />
                     </Popper>
                 )}
-                {weatherData && (forecastData || formattedTime) && (
+                {weatherData && forecastData && (
                     <div className="w-[1px] h-4 border-r" />
                 )}
                 {forecastData && (
                     <Popper
                         side="bottom"
                         sideOffset={12}
-                        className="overflow-hidden border-tertiary border-b-4"
+                        className={weatherPopperClassName}
                         trigger={
                             <Button
                                 title="Prognoza vremena"
@@ -97,29 +101,6 @@ export function WeatherHud({ noWeather }: { noWeather?: boolean }) {
                         }
                     >
                         <WeatherForecastDetails />
-                    </Popper>
-                )}
-                {forecastData && formattedTime && (
-                    <div className="w-[1px] h-4 border-r hidden md:inline" />
-                )}
-                {formattedTime && (
-                    <Popper
-                        side="bottom"
-                        sideOffset={12}
-                        className="overflow-hidden border-tertiary border-b-4"
-                        trigger={
-                            <Button
-                                title="Doba dana"
-                                variant="plain"
-                                className="rounded-full px-2 md:pr-2 pr-3"
-                            >
-                                <Typography level="body2" className="text-base">
-                                    {formattedTime}
-                                </Typography>
-                            </Button>
-                        }
-                    >
-                        <TimeDisplay />
                     </Popper>
                 )}
             </Row>

@@ -52,6 +52,10 @@ function getAssetModelUrl(asset) {
     return `/assets/models/${asset.output}${version}`;
 }
 
+function quoteTypeScriptString(value) {
+    return `'${value.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
+}
+
 function writeGeneratedModels(manifest) {
     const assets = manifest.assets;
     const lines = [
@@ -61,7 +65,7 @@ function writeGeneratedModels(manifest) {
         'export const gameAssetModels = {',
         ...assets.map(
             (asset) =>
-                `    ${asset.name}: { url: ${JSON.stringify(getAssetModelUrl(asset))} },`,
+                `    ${asset.name}: { url: ${quoteTypeScriptString(getAssetModelUrl(asset))} },`,
         ),
         '} satisfies Record<string, { url: string }>;',
         '',
@@ -92,6 +96,17 @@ function writeGeneratedModels(manifest) {
     writeFileSync(generatedModelsPath, `${lines.join('\n')}\n`, 'utf8');
 }
 
+function formatGeneratedModels() {
+    execFileSync(
+        'pnpm',
+        ['exec', 'biome', 'format', '--write', generatedModelsPath],
+        {
+            cwd: join(repoRoot, 'packages', 'game'),
+            stdio: 'inherit',
+        },
+    );
+}
+
 function exportTypesBundle() {
     mkdirSync(tmpDir, { recursive: true });
     execFileSync(
@@ -114,7 +129,7 @@ function exportTypesBundle() {
 
 function generateTypes() {
     execSync(
-        `pnpm dlx gltfjsx@6.5.3 ${JSON.stringify(tmpTypesGlb)} --types --typeonly --output ../../packages/game/src/models/GameAssets.tsx`,
+        `pnpm dlx --allow-build=sharp gltfjsx@6.5.3 ${JSON.stringify(tmpTypesGlb)} --types --typeonly --output ../../packages/game/src/models/GameAssets.tsx`,
         {
             cwd: gardenDir,
             stdio: 'inherit',
@@ -129,6 +144,7 @@ function generateTypes() {
 try {
     const manifest = readManifest();
     writeGeneratedModels(manifest);
+    formatGeneratedModels();
     exportTypesBundle();
     generateTypes();
 } finally {

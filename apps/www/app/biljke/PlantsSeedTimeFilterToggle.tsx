@@ -1,6 +1,6 @@
 'use client';
 
-import { ThumbsUp } from '@gredice/ui/icons';
+import { GameSeedlingIcon } from '@gredice/ui/GameIcons';
 import { cx } from '@gredice/ui/utils';
 import { useClientSearchParam } from '../../hooks/useClientSearchParam';
 
@@ -45,7 +45,7 @@ export function PlantsSeedTimeFilterToggle({
                             : 'bg-lime-100 text-lime-700',
                     )}
                 >
-                    <ThumbsUp className="size-3.5" />
+                    <GameSeedlingIcon aria-hidden className="size-5" />
                 </span>
                 <span className="min-w-0 text-left leading-tight">
                     Samo &quot;Vrijeme za sijanje&quot;

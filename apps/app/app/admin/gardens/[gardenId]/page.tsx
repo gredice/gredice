@@ -1,6 +1,7 @@
 import { getGarden } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Card, CardOverflow } from '@gredice/ui/Card';
+import { Chip } from '@gredice/ui/Chip';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import Image from 'next/image';
@@ -21,26 +22,33 @@ import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPag
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
 import { RaisedBedsTableCard } from '../../accounts/[accountId]/RaisedBedsTableCard';
+import { AdminGardenVisibilityToggle } from './AdminGardenVisibilityToggle';
 
 export const dynamic = 'force-dynamic';
 
 function GardenPreviewCard({
-    gardenId,
     gardenName,
+    previewImageUrl,
 }: {
-    gardenId: number;
     gardenName: string;
+    previewImageUrl?: string | null;
 }) {
     return (
         <Card className="overflow-hidden">
             <CardOverflow>
-                <Image
-                    src={`https://vrt.gredice.com/vrtovi/${gardenId}/opengraph-image?fullscreen=true`}
-                    alt={gardenName}
-                    layout="responsive"
-                    width={1200}
-                    height={630}
-                />
+                {previewImageUrl ? (
+                    <Image
+                        src={previewImageUrl}
+                        alt={`Prikaz vrta ${gardenName}`}
+                        width={1200}
+                        height={630}
+                        className="h-auto w-full"
+                    />
+                ) : (
+                    <div className="grid aspect-[1200/630] place-items-center bg-muted px-6 text-center text-muted-foreground text-sm">
+                        Pregled vrta još nije generiran.
+                    </div>
+                )}
             </CardOverflow>
         </Card>
     );
@@ -58,9 +66,15 @@ export default async function GardenPage({
     if (!garden) {
         notFound();
     }
+    const publicGardenUrl = KnownPages.GredicePublicGarden(garden.id);
     const propertyItems: EntityDetailsPropertyListItem[] = [
         { id: 'id', label: 'ID vrta', value: garden.id, mono: true },
         { id: 'name', label: 'Naziv', value: garden.name },
+        {
+            id: 'public',
+            label: 'Javan',
+            value: garden.isPublic ? 'Da' : 'Ne',
+        },
         {
             id: 'account',
             label: 'Račun',
@@ -89,6 +103,26 @@ export default async function GardenPage({
         <EntityDetailsPropertiesPanel>
             <EntityDetailsPanelCard title="Detalji">
                 <EntityDetailsPropertyList items={propertyItems} />
+            </EntityDetailsPanelCard>
+            <EntityDetailsPanelCard
+                title="Vidljivost"
+                action={
+                    garden.isPublic ? (
+                        <Chip color="success" size="sm" variant="soft">
+                            Public
+                        </Chip>
+                    ) : (
+                        <Chip color="neutral" size="sm" variant="soft">
+                            Private
+                        </Chip>
+                    )
+                }
+            >
+                <AdminGardenVisibilityToggle
+                    gardenId={garden.id}
+                    isPublic={garden.isPublic}
+                    publicUrl={publicGardenUrl}
+                />
             </EntityDetailsPanelCard>
         </EntityDetailsPropertiesPanel>
     );
@@ -120,8 +154,8 @@ export default async function GardenPage({
                     <Stack spacing={8}>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             <GardenPreviewCard
-                                gardenId={gardenId}
                                 gardenName={garden.name}
+                                previewImageUrl={garden.previewImage?.url}
                             />
                         </div>
                         <RaisedBedsTableCard gardenId={gardenId} />

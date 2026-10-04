@@ -5,6 +5,7 @@ import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
 import { GardenBoxSelectableGroup } from './GardenBoxSelectableGroup';
 import { GiftBoxSelectableGroup } from './GiftBoxSelectableGroup';
 import { RaisedBedSelectableGroup } from './RaisedBedSelectableGroup';
+import { WoodenSignSelectableGroup } from './WoodenSignSelectableGroup';
 
 export function SelectableGroup({
     children,
@@ -21,10 +22,22 @@ export function SelectableGroup({
     }
 
     if (block.name === 'GardenBox') {
+        if (garden?.isSandbox) {
+            return <>{children}</>;
+        }
+
         return (
             <GardenBoxSelectableGroup block={block}>
                 {children}
             </GardenBoxSelectableGroup>
+        );
+    }
+
+    if (block.name === 'WoodenSign') {
+        return (
+            <WoodenSignSelectableGroup block={block}>
+                {children}
+            </WoodenSignSelectableGroup>
         );
     }
 

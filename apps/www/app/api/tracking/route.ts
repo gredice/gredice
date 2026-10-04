@@ -1,6 +1,10 @@
 import { cookies, headers } from 'next/headers';
 import { after, NextResponse } from 'next/server';
 import { sendFacebookCapiEvent } from '../../../lib/facebook-capi';
+import {
+    isAllowedTrackingEventSourceUrl,
+    isAllowedTrackingOrigin,
+} from './trackingOrigin';
 
 type TrackingRequestBody = {
     eventId?: string;
@@ -35,6 +39,7 @@ export async function POST(request: Request) {
     }
 
     const origin = headerStore.get('origin');
+    let validatedOriginUrl: URL | undefined;
     if (origin) {
         if (origin === 'null') {
             console.error('CSRF check failed: forbidden null Origin header');
@@ -53,14 +58,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
         }
 
-        const isSameOrigin =
-            originUrl.origin === requestUrl.origin ||
-            (isLocalhost(originUrl.hostname) &&
-                isLocalhost(requestUrl.hostname) &&
-                originUrl.port === requestUrl.port &&
-                originUrl.protocol === requestUrl.protocol);
-
-        if (!isSameOrigin) {
+        if (!isAllowedTrackingOrigin(originUrl, requestUrl)) {
             console.error(
                 'CSRF check failed: origin mismatch',
                 origin,
@@ -68,6 +66,8 @@ export async function POST(request: Request) {
             );
             return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
         }
+
+        validatedOriginUrl = originUrl;
     }
 
     let rawBody: unknown;
@@ -114,14 +114,13 @@ export async function POST(request: Request) {
                 requestUrl.origin,
             );
 
-            const isSameOrigin =
-                parsedEventSourceUrl.origin === requestUrl.origin ||
-                (isLocalhost(parsedEventSourceUrl.hostname) &&
-                    isLocalhost(requestUrl.hostname) &&
-                    parsedEventSourceUrl.port === requestUrl.port &&
-                    parsedEventSourceUrl.protocol === requestUrl.protocol);
-
-            if (isSameOrigin) {
+            if (
+                isAllowedTrackingEventSourceUrl(
+                    parsedEventSourceUrl,
+                    requestUrl,
+                    validatedOriginUrl,
+                )
+            ) {
                 safeEventSourceUrl = parsedEventSourceUrl.toString();
             }
         } catch (error) {
@@ -162,12 +161,4 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ ok: true });
-}
-
-function isLocalhost(hostname: string): boolean {
-    return (
-        hostname === 'localhost' ||
-        hostname === '127.0.0.1' ||
-        hostname === '[::1]'
-    );
 }

@@ -1,8 +1,7 @@
 'use client';
 
-import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
 import { Duplicate } from '@gredice/ui/icons';
-import { Row } from '@gredice/ui/Row';
 import type { MouseEvent } from 'react';
 import { useState } from 'react';
 
@@ -35,20 +34,21 @@ export function CopySummaryButton({
     };
 
     return (
-        <Row spacing={2}>
-            <Button
-                title="Kopiraj sažetak u međuspremnik"
+        <>
+            <IconButton
+                title={copied ? 'Sažetak kopiran' : 'Kopiraj sažetak'}
                 onClick={handleCopy}
-                variant="link"
-                startDecorator={<Duplicate className="size-4 shrink-0" />}
+                variant="plain"
+                size="xs"
+                color={copied ? 'success' : 'neutral'}
                 disabled={disabled}
             >
-                Kopiraj sažetak
-            </Button>
-            {copied && (
-                <span className="text-sm text-green-500">Kopirano!</span>
-            )}
-        </Row>
+                <Duplicate className="size-4 shrink-0" />
+            </IconButton>
+            <span className="sr-only" aria-live="polite">
+                {copied ? 'Kopirano!' : ''}
+            </span>
+        </>
     );
 }
 

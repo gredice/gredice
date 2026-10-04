@@ -1,6 +1,6 @@
+import { Slider } from '@gredice/ui/Slider';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { Slider } from './Slider';
 
 interface SoundSliderProps {
     label: string;

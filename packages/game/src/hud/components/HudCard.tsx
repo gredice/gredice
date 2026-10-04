@@ -3,6 +3,7 @@
 import { cx } from '@gredice/ui/utils';
 import { animated, useSpring } from '@react-spring/web';
 import { type HTMLAttributes, useMemo } from 'react';
+import styles from './HudCard.module.css';
 
 type HudCardProps = HTMLAttributes<HTMLDivElement> & {
     open?: boolean;
@@ -17,6 +18,7 @@ type HudCardProps = HTMLAttributes<HTMLDivElement> & {
         | 'bottom-right'
         | 'bottom-left';
     animateHeight?: boolean;
+    glow?: boolean;
 };
 
 export function HudCard({
@@ -25,6 +27,7 @@ export function HudCard({
     className,
     style,
     animateHeight,
+    glow,
     ...rest
 }: HudCardProps) {
     const atBottom = useMemo(() => {
@@ -62,6 +65,7 @@ export function HudCard({
                 position === 'top-left' && 'rounded-br-xl border-b-4',
                 position === 'bottom-right' && 'rounded-tl-xl border-t-4',
                 position === 'bottom-left' && 'rounded-tr-xl border-t-4',
+                glow && styles.glow,
                 className,
             )}
             style={{

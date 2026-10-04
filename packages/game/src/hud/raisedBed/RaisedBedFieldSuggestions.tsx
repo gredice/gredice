@@ -302,7 +302,7 @@ export function RaisedBedFieldSuggestions({
         >
             <Typography
                 level="body2"
-                className="dark:text-primary-foreground hidden md:block"
+                className="hidden text-primary md:block dark:text-lime-50"
                 noWrap
             >
                 Brzo sijanje

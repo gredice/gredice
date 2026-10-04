@@ -1,13 +1,17 @@
+import type { ChipProps } from '@gredice/ui/Chip';
 import { Chip } from '@gredice/ui/Chip';
 import { getDeliveryRequestModeLabel } from '../deliveryRequestUtils';
 
+type DeliveryRequestModeChipProps = Omit<ChipProps, 'children' | 'color'> & {
+    mode: string | null | undefined;
+};
+
 export function DeliveryRequestModeChip({
     mode,
-}: {
-    mode: string | null | undefined;
-}) {
+    ...chipProps
+}: DeliveryRequestModeChipProps) {
     return (
-        <Chip color="primary" className="w-fit">
+        <Chip color="primary" {...chipProps}>
             {getDeliveryRequestModeLabel(mode)}
         </Chip>
     );

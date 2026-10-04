@@ -14,26 +14,33 @@ export function ForgotPasswordForm() {
     const searchParams = useSearchParams();
     const [email, setEmail] = useState(searchParams.get('email') || '');
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
 
         setError('');
-        const response = await clientPublic().api.auth[
-            'send-change-password-email'
-        ].$post({
-            json: {
-                email,
-            },
-        });
+        setIsLoading(true);
+        try {
+            const response = await clientPublic().api.auth[
+                'send-change-password-email'
+            ].$post({
+                json: {
+                    email,
+                },
+            });
 
-        if (!response.ok) {
-            console.error(response.statusText);
+            if (response.ok) {
+                router.push('/prijava/zaboravljena-zaporka/poslano');
+                return;
+            }
+
             setError(errorMessages.forgotPasswordEmail);
-            return;
+        } catch {
+            setError(errorMessages.forgotPasswordEmail);
+        } finally {
+            setIsLoading(false);
         }
-
-        router.push('/prijava/zaboravljena-zaporka/poslano');
     };
 
     return (
@@ -48,14 +55,30 @@ export function ForgotPasswordForm() {
                     label="Email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    className="h-11"
+                    fullWidth
+                    inputMode="email"
                     required
+                    style={{ fontSize: '16px' }}
                 />
                 {error && (
-                    <Typography level="body2" color="danger" semiBold>
+                    <Typography
+                        level="body2"
+                        color="danger"
+                        role="alert"
+                        semiBold
+                    >
                         {error}
                     </Typography>
                 )}
-                <Button type="submit" variant="soft" fullWidth>
+                <Button
+                    type="submit"
+                    variant="soft"
+                    fullWidth
+                    loading={isLoading}
+                    size="lg"
+                >
                     Pošalji email
                 </Button>
             </Stack>

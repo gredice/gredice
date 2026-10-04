@@ -1,0 +1,5 @@
+ALTER TABLE "harvest_trace_links" ALTER COLUMN "plant_place_event_id" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "harvest_trace_links" ADD COLUMN "planting_id" integer;--> statement-breakpoint
+ALTER TABLE "harvest_trace_links" ADD CONSTRAINT "harvest_trace_links_planting_id_raised_bed_plantings_id_fk" FOREIGN KEY ("planting_id") REFERENCES "public"."raised_bed_plantings"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "harvest_trace_links_planting_target_unique" ON "harvest_trace_links" USING btree ("harvest_operation_id","planting_id");--> statement-breakpoint
+ALTER TABLE "harvest_trace_links" ADD CONSTRAINT "harvest_trace_links_crop_identity" CHECK (("harvest_trace_links"."planting_id" IS NULL) <> ("harvest_trace_links"."plant_place_event_id" IS NULL));

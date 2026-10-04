@@ -1,44 +1,74 @@
 import type { OperationData } from '@gredice/client';
 import { formatPrice } from '@gredice/js/currency';
+import {
+    normalizeOperationRequestNote,
+    operationRequestNoteMaxLength,
+} from '@gredice/js/operations';
 import { getHarvestOperationRemovalDisclaimer } from '@gredice/js/plants';
+import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
-import { Input } from '@gredice/ui/Input';
+import { EventCalendar } from '@gredice/ui/EventCalendar';
 import { Calendar } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { useState } from 'react';
+import { useId, useState } from 'react';
+import { useLiveTime } from '../../../hooks/useLiveTime';
+import { GameModal } from '../../../shared-ui/game-modal';
 import { formatLocalDate } from '../RaisedBedPlantPicker';
+import {
+    isWateringOperation,
+    RaisedBedWateringCalendar,
+} from '../RaisedBedWateringCalendar';
+import { OperationScheduleCalendar } from './OperationScheduleCalendar';
 
-export function OperationScheduleModal({
-    operation,
-    onConfirm,
-    trigger,
-}: {
-    operation: OperationData;
-    onConfirm: (date: Date) => Promise<void>;
-    trigger: React.ReactElement;
-}) {
-    const [open, setOpen] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-
-    async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-        event.preventDefault();
-        const formData = new FormData(event.currentTarget);
-        const date = formData.get('scheduledDate') as string;
-        if (date) {
-            const scheduledDate = new Date(date);
-            setIsLoading(true);
-            await onConfirm(scheduledDate);
-            setOpen(false);
-            setIsLoading(false);
-        }
+function parseLocalDateInput(value: string) {
+    const [year, month, day] = value.split('-').map(Number);
+    if (!year || !month || !day) {
+        return null;
     }
 
-    const today = new Date();
+    const date = new Date(year, month - 1, day);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function OperationScheduleModal({
+    defaultOpen = false,
+    onClose,
+    targetLabel,
+    gardenId,
+    initialScheduledDate,
+    operation,
+    onConfirm,
+    positionIndex,
+    raisedBedId,
+    showHistory = true,
+    trigger,
+}: {
+    defaultOpen?: boolean;
+    onClose?: () => void;
+    targetLabel?: string;
+    gardenId: number;
+    initialScheduledDate?: string;
+    operation: OperationData;
+    onConfirm: (date: Date, requestNote?: string) => Promise<void>;
+    positionIndex?: number;
+    raisedBedId?: number;
+    showHistory?: boolean;
+    trigger?: React.ReactElement;
+}) {
+    const requestNoteId = useId();
+    const [requestNote, setRequestNote] = useState('');
+    const [open, setOpen] = useState(defaultOpen);
+    const [isLoading, setIsLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [scheduledDateInput, setScheduledDateInput] = useState<string | null>(
+        null,
+    );
+
+    const today = useLiveTime();
     const tomorrow = new Date(
         today.getFullYear(),
         today.getMonth(),
@@ -49,9 +79,19 @@ export function OperationScheduleModal({
         tomorrow.getMonth() + 3,
         tomorrow.getDate(),
     );
-    const operationDefaultDate = formatLocalDate(tomorrow);
-    const min = formatLocalDate(tomorrow);
-    const max = formatLocalDate(threeMonthsFromTomorrow);
+    const parsedInitialScheduledDate = initialScheduledDate
+        ? parseLocalDateInput(initialScheduledDate)
+        : null;
+    const operationDefaultDate =
+        parsedInitialScheduledDate &&
+        parsedInitialScheduledDate >= tomorrow &&
+        parsedInitialScheduledDate <= threeMonthsFromTomorrow
+            ? formatLocalDate(parsedInitialScheduledDate)
+            : formatLocalDate(tomorrow);
+    const selectedDateInput = scheduledDateInput ?? operationDefaultDate;
+    const selectedDate = parseLocalDateInput(selectedDateInput);
+    const showWateringCalendar =
+        raisedBedId != null && isWateringOperation(operation);
     const isHarvestOperation =
         operation.attributes.stage.information?.name === 'harvest';
     const harvestPlantRemovalDescription = isHarvestOperation
@@ -61,18 +101,57 @@ export function OperationScheduleModal({
           )
         : null;
 
+    async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        const scheduledDate = new Date(selectedDateInput);
+        if (Number.isNaN(scheduledDate.getTime())) {
+            setErrorMessage('Odaberi datum radnje.');
+            return;
+        }
+
+        setErrorMessage(null);
+        setIsLoading(true);
+        try {
+            await onConfirm(
+                scheduledDate,
+                normalizeOperationRequestNote(requestNote),
+            );
+            setRequestNote('');
+            setOpen(false);
+            onClose?.();
+        } catch {
+            setErrorMessage('Zakazivanje nije uspjelo. Pokušaj ponovno.');
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    const handleDateSelect = (date: Date) => {
+        setScheduledDateInput(formatLocalDate(date));
+    };
+
     return (
-        <Modal
-            className="border border-tertiary border-b-4"
+        <GameModal
             trigger={trigger}
             title={`Zakaži radnju: ${operation.information.label}`}
+            headerDescription={targetLabel}
             open={open}
-            onOpenChange={setOpen}
+            onOpenChange={(nextOpen) => {
+                setOpen(nextOpen);
+                if (!nextOpen) {
+                    setErrorMessage(null);
+                    setScheduledDateInput(null);
+                    setRequestNote('');
+                    onClose?.();
+                }
+            }}
         >
             <form onSubmit={handleSubmit}>
                 <Stack spacing={4}>
-                    <Typography level="h5">Zakazivanje radnje</Typography>
-                    <Typography>
+                    <Typography level="body2" semiBold>
+                        Zakazivanje radnje
+                    </Typography>
+                    <Typography level="body2" secondary>
                         Ova radnja će biti zakazana za odabrani datum.
                     </Typography>
                     <Card>
@@ -108,21 +187,90 @@ export function OperationScheduleModal({
                             </Row>
                         </CardContent>
                     </Card>
-                    <Input
-                        type="date"
-                        label="Željeni datum radnje"
-                        name="scheduledDate"
-                        className="w-full bg-card"
-                        disabled={isLoading}
-                        defaultValue={operationDefaultDate}
-                        min={min}
-                        max={max}
-                        required
-                    />
+                    {errorMessage ? (
+                        <Alert color="danger">
+                            <Typography level="body2">
+                                {errorMessage}
+                            </Typography>
+                        </Alert>
+                    ) : null}
+                    {open && showWateringCalendar ? (
+                        <RaisedBedWateringCalendar
+                            className="shadow-none"
+                            gardenId={gardenId}
+                            maxSelectableDate={threeMonthsFromTomorrow}
+                            minSelectableDate={tomorrow}
+                            onDateSelect={handleDateSelect}
+                            previewDate={selectedDate}
+                            previewOperation={operation}
+                            raisedBedId={raisedBedId}
+                            referenceDate={today}
+                            selectedDate={selectedDate}
+                            visibleFrom={tomorrow}
+                            visibleTo={threeMonthsFromTomorrow}
+                        />
+                    ) : null}
+                    {open && !showWateringCalendar && showHistory ? (
+                        <OperationScheduleCalendar
+                            className="shadow-none"
+                            gardenId={gardenId}
+                            maxSelectableDate={threeMonthsFromTomorrow}
+                            minSelectableDate={tomorrow}
+                            onDateSelect={handleDateSelect}
+                            operation={operation}
+                            positionIndex={positionIndex}
+                            previewDate={selectedDate}
+                            raisedBedId={raisedBedId}
+                            referenceDate={today}
+                            selectedDate={selectedDate}
+                            visibleFrom={tomorrow}
+                            visibleTo={threeMonthsFromTomorrow}
+                        />
+                    ) : null}
+                    {open && !showWateringCalendar && !showHistory ? (
+                        <EventCalendar
+                            className="shadow-none"
+                            emptyLabel={null}
+                            entries={[]}
+                            maxSelectableDate={threeMonthsFromTomorrow}
+                            minSelectableDate={tomorrow}
+                            onDateSelect={handleDateSelect}
+                            referenceDate={today}
+                            selectedDate={selectedDate}
+                            visibleFrom={tomorrow}
+                            visibleTo={threeMonthsFromTomorrow}
+                        />
+                    ) : null}
+                    <Stack spacing={1}>
+                        <label
+                            htmlFor={requestNoteId}
+                            className="text-sm font-medium"
+                        >
+                            Napomena za vrtlara (neobavezno)
+                        </label>
+                        <textarea
+                            id={requestNoteId}
+                            name="requestNote"
+                            value={requestNote}
+                            onChange={(event) =>
+                                setRequestNote(event.target.value)
+                            }
+                            maxLength={operationRequestNoteMaxLength}
+                            rows={3}
+                            disabled={isLoading}
+                            placeholder="Što želiš da vrtlar zna prije radnje?"
+                            className="w-full min-w-0 rounded-md border border-input bg-field px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        />
+                    </Stack>
                     <Row spacing={2}>
                         <Button
+                            type="button"
                             variant="plain"
-                            onClick={() => setOpen(false)}
+                            onClick={() => {
+                                setOpen(false);
+                                setRequestNote('');
+                                onClose?.();
+                            }}
                             disabled={isLoading}
                         >
                             Odustani
@@ -141,6 +289,6 @@ export function OperationScheduleModal({
                     </Row>
                 </Stack>
             </form>
-        </Modal>
+        </GameModal>
     );
 }

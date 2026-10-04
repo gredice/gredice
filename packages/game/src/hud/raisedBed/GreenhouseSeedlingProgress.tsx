@@ -9,6 +9,7 @@ import type { RaisedBedFieldPlantHistoryEntry } from '../../utils/raisedBedField
 import type { GreenhouseSeedlingProgressData } from './greenhouseSeedlings';
 import type { PlantLifecycleAttributes } from './PlantLifecycleProgress';
 import { PlantStageSection } from './PlantStageSection';
+import { plantLifecycleMilestones } from './plantLifecycleMilestones';
 
 const greenhouseStageDescriptions = {
     germination:
@@ -30,6 +31,7 @@ export function GreenhouseSeedlingProgress({
     plantDetailsUrl?: string;
     statusTrigger: ReactNode;
 }) {
+    const milestones = plantLifecycleMilestones(field);
     const plantScheduledDate = field.plantScheduledDate
         ? new Date(field.plantScheduledDate)
         : null;
@@ -64,7 +66,7 @@ export function GreenhouseSeedlingProgress({
                       percentage: lifecycleData.germinationPercentage,
                       color: 'stroke-yellow-500',
                       trackColor: 'stroke-yellow-200 dark:stroke-yellow-50',
-                      pulse: !field.plantGrowthDate,
+                      pulse: !milestones.sprouted,
                       borderColor: 'stroke-yellow-500',
                   },
                   {
@@ -118,10 +120,9 @@ export function GreenhouseSeedlingProgress({
                         legendColorClass="bg-yellow-500"
                         legendBorderColorClass="border-yellow-500"
                         legendPulse={
-                            Boolean(field.plantSowDate) &&
-                            !field.plantGrowthDate
+                            Boolean(field.plantSowDate) && !milestones.sprouted
                         }
-                        legendFilled={Boolean(field.plantGrowthDate)}
+                        legendFilled={milestones.sprouted}
                         windowMin={plantAttributes?.germinationWindowMin}
                         windowMax={plantAttributes?.germinationWindowMax}
                         startDate={
@@ -136,9 +137,17 @@ export function GreenhouseSeedlingProgress({
                                   ? new Date(field.stoppedDate)
                                   : null
                         }
-                        daysCount={lifecycleData.germinatingDays}
+                        daysCount={
+                            milestones.sprouted && !field.plantGrowthDate
+                                ? undefined
+                                : lifecycleData.germinatingDays
+                        }
                         dayPlural={germinatingDaysDayPlural}
-                        fallbackText="Nije posijano"
+                        fallbackText={
+                            milestones.sowed
+                                ? 'Datum nije zabilježen'
+                                : 'Nije posijano'
+                        }
                         stageDescription={
                             greenhouseStageDescriptions.germination
                         }
@@ -163,7 +172,11 @@ export function GreenhouseSeedlingProgress({
                         endDate={seedlingEndDate}
                         daysCount={lifecycleData.seedlingDays}
                         dayPlural={seedlingDaysDayPlural}
-                        fallbackText="Nije proklijalo"
+                        fallbackText={
+                            milestones.sprouted
+                                ? 'Datum nije zabilježen'
+                                : 'Nije proklijalo'
+                        }
                         stageDescription={
                             greenhouseStageDescriptions.replanting
                         }

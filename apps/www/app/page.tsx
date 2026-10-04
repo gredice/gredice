@@ -1,5 +1,4 @@
 import { clientPublic } from '@gredice/client';
-import { Card, CardContent } from '@gredice/ui/Card';
 import { Container } from '@gredice/ui/Container';
 import { CountingNumber } from '@gredice/ui/CountingNumber';
 import type { SectionData } from '@gredice/ui/cms';
@@ -7,20 +6,34 @@ import { SectionsView } from '@gredice/ui/cms';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import { Suspense } from 'react';
 import DeliveryTruck from '../assets/DeliveryTruck.webp';
 import RaisedBedMaintenance from '../assets/RaisedBedMaintenance.webp';
 import SeedsAndTransplants from '../assets/SeedsAndTransplants.webp';
+import { RelatedFaq } from '../components/faq/RelatedFaq';
+import { Card, CardContent } from '../components/shared/Card';
 import { sectionsComponentRegistry } from '../components/shared/sectionsComponentRegistry';
 import { FacebookCard } from '../components/social/FacebookCard';
 import { InstagramCard } from '../components/social/InstagramCard';
 import { WhatsAppCard } from '../components/social/WhatsAppCard';
 import { WinterModeToggle } from '../components/WinterModeToggle';
 import { KnownPages } from '../src/KnownPages';
+import { getLandingFeaturedGardens } from './getLandingFeaturedGardens';
+import { LandingFeaturedGardens } from './LandingFeaturedGardens';
 import { LandingGameScene, LandingGameSignupCta } from './LandingGameScene';
 import { NewsletterSignUp } from './NewsletterSignUp';
+import { OutletLandingSection } from './outlet/OutletLandingSection';
 import { PlantsShowcase } from './PlantsShowcase';
+
+export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+    alternates: {
+        canonical: KnownPages.Landing,
+    },
+};
 
 const sectionsData: SectionData[] = [
     {
@@ -71,7 +84,7 @@ function PlantsStatisticsLoading() {
 async function PlantsStatistics() {
     try {
         const response = await clientPublic().api.data.statistics.plants.$get();
-        if (!response || response.status !== 200) {
+        if (response?.status !== 200) {
             return null;
         }
 
@@ -224,9 +237,9 @@ function StepsSection() {
                             <NavigatingButton
                                 variant="link"
                                 className="w-fit"
-                                href={KnownPages.Delivery}
+                                href={KnownPages.DeliveryZagreb}
                             >
-                                Više o dostavi
+                                Dostava povrća u Zagrebu
                             </NavigatingButton>
                         </Stack>
                     </CardContent>
@@ -236,7 +249,10 @@ function StepsSection() {
     );
 }
 
-export default function Home() {
+export default async function Home() {
+    const featuredGardens = await getLandingFeaturedGardens();
+    const showFeaturedGardens = featuredGardens.length > 0;
+
     return (
         <Stack>
             <div className="relative pb-4">
@@ -255,33 +271,44 @@ export default function Home() {
                             src="/seo-fallback.png"
                             width={1920}
                         />
-                        <LandingGameScene />
+                        {showFeaturedGardens ? (
+                            <LandingFeaturedGardens
+                                featuredGardens={featuredGardens}
+                            />
+                        ) : (
+                            <LandingGameScene />
+                        )}
                     </div>
                     <LandingGameSignupCta />
-                    <div className="pointer-events-none absolute left-8 right-8 top-8 z-10 sm:left-10 sm:right-10 md:top-10 lg:left-16 lg:right-16 lg:top-12">
-                        <div className="pointer-events-auto flex flex-col items-start sm:flex-row sm:items-start sm:justify-between gap-4">
-                            <Card
-                                className="w-fit max-w-[19rem] rounded-[var(--landing-card-radius)] border-tertiary border-b-4 sm:max-w-none"
-                                data-testid="landing-hero-card"
-                            >
-                                <CardContent
-                                    noHeader
-                                    className="p-5 sm:p-6 lg:pr-10"
+                    {!showFeaturedGardens ? (
+                        <div className="pointer-events-none absolute left-8 right-8 top-8 z-10 sm:left-10 sm:right-10 md:top-10 lg:left-16 lg:right-16 lg:top-12">
+                            <div className="pointer-events-auto flex flex-col items-start sm:flex-row sm:items-start sm:justify-between gap-4">
+                                <Card
+                                    className="w-fit max-w-[19rem] rounded-[var(--landing-card-radius)] border-tertiary border-b-4 sm:max-w-none"
+                                    data-testid="landing-hero-card"
                                 >
-                                    <Stack spacing={4}>
-                                        <Typography level="h2" component="h1">
-                                            Vrt po tvom 🌱
-                                        </Typography>
-                                        <Typography level="body1">
-                                            Dobiješ povrće iz svojih gredica -
-                                            nit oro, nit kopo!
-                                        </Typography>
-                                    </Stack>
-                                </CardContent>
-                            </Card>
-                            <WinterModeToggle />
+                                    <CardContent
+                                        noHeader
+                                        className="p-5 sm:p-6 lg:pr-10"
+                                    >
+                                        <Stack spacing={4}>
+                                            <Typography
+                                                level="h2"
+                                                component="h1"
+                                            >
+                                                Vrt po tvom 🌱
+                                            </Typography>
+                                            <Typography level="body1">
+                                                Dobiješ povrće iz svojih gredica
+                                                - nit oro, nit kopo!
+                                            </Typography>
+                                        </Stack>
+                                    </CardContent>
+                                </Card>
+                                <WinterModeToggle />
+                            </div>
                         </div>
-                    </div>
+                    ) : null}
                 </Container>
             </div>
             <Container>
@@ -290,6 +317,9 @@ export default function Home() {
                     componentsRegistry={sectionsComponentRegistry}
                 />
                 <StepsSection />
+                <Suspense fallback={null}>
+                    <OutletLandingSection />
+                </Suspense>
                 <Stack spacing={8}>
                     <Stack spacing={2}>
                         <Typography level="body1" semiBold tertiary>
@@ -309,6 +339,7 @@ export default function Home() {
                     </Suspense>
                     <PlantsShowcase />
                 </Stack>
+                <RelatedFaq placement="home" />
                 <Stack spacing={8} className="mt-20">
                     <Stack spacing={2}>
                         <Typography level="body1" semiBold tertiary>

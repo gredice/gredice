@@ -14,7 +14,7 @@ test('debug page select stays open while using search on mobile touch', async ({
     const trigger = page.getByRole('combobox', { name: 'Status' });
     await trigger.tap();
 
-    const search = page.getByRole('searchbox', { name: 'Pretraži opcije...' });
+    const search = page.getByRole('combobox', { name: 'Pretraži opcije...' });
     await expect(search).toBeVisible();
 
     await search.tap();

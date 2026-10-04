@@ -1,9 +1,13 @@
 import 'server-only';
 import { randomInt } from 'node:crypto';
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { signalAutomationEventWrite } from '../dueWork';
 import { accounts, accountUsers, events, raisedBeds, users } from '../schema';
 import { storage } from '../storage';
 import { knownEventTypes } from './events';
+import type { ScheduleTaskTransaction } from './scheduleTaskTransactionsRepo';
+import { userAchievementCount } from './userAchievementProgress';
 
 export const REFERRAL_REWARD_AMOUNT = 10000;
 
@@ -64,6 +68,7 @@ export type ReferralAccountSummary = {
     id: string;
     displayName: string;
     avatarUrl: string | null;
+    achievementCount?: number;
 };
 
 export type AccountReferralState = {
@@ -136,8 +141,7 @@ function isUsedCodeClearedEventData(data: unknown) {
 function referredAccountIdFromReferralEventData(data: unknown) {
     const record = referralEventData(data);
     if (
-        !record ||
-        record.action !== 'referred_account' ||
+        record?.action !== 'referred_account' ||
         typeof record.referredAccountId !== 'string'
     ) {
         return null;
@@ -148,8 +152,7 @@ function referredAccountIdFromReferralEventData(data: unknown) {
 function ownerAccountIdFromUsedCodeEventData(data: unknown) {
     const record = referralEventData(data);
     if (
-        !record ||
-        record.action !== 'used_code' ||
+        record?.action !== 'used_code' ||
         typeof record.ownerAccountId !== 'string'
     ) {
         return null;
@@ -323,6 +326,7 @@ async function getReferralAccountSummaries(accountIds: string[]) {
             displayName: users.displayName,
             userName: users.userName,
             avatarUrl: users.avatarUrl,
+            achievementCount: userAchievementCount(users.id),
         })
         .from(accountUsers)
         .innerJoin(users, eq(accountUsers.userId, users.id))
@@ -337,11 +341,12 @@ async function getReferralAccountSummaries(accountIds: string[]) {
         accountIdsWithUser.add(accountUser.accountId);
         summaries.set(accountUser.accountId, {
             id: accountUser.accountId,
-            displayName:
-                accountUser.displayName ??
-                accountUser.userName ??
+            displayName: safeUserDisplayName(
+                accountUser.displayName ?? accountUser.userName,
                 'Gredice račun',
+            ),
             avatarUrl: accountUser.avatarUrl ?? null,
+            achievementCount: accountUser.achievementCount,
         });
     }
 
@@ -392,12 +397,14 @@ export async function getOrCreateDefaultReferralCode(accountId: string) {
                 continue;
             }
 
-            await tx.insert(events).values({
-                type: REFERRAL_EVENT_TYPE,
-                version: 1,
-                aggregateId: accountId,
-                data: { action: 'code_set', code, source: 'generated' },
-            });
+            await signalAutomationEventWrite(
+                tx.insert(events).values({
+                    type: REFERRAL_EVENT_TYPE,
+                    version: 1,
+                    aggregateId: accountId,
+                    data: { action: 'code_set', code, source: 'generated' },
+                }),
+            );
             return code;
         }
 
@@ -510,50 +517,52 @@ async function processReferralRewardsForAccountInTransaction(
     }
 
     const rewardedAt = new Date().toISOString();
-    await tx.insert(events).values([
-        {
-            type: knownEventTypes.accounts.earnSunflowers,
-            version: 1,
-            aggregateId: accountId,
-            data: {
-                amount: REFERRAL_REWARD_AMOUNT,
-                reason: `referral:used:${usedReferral.ownerAccountId}`,
+    await signalAutomationEventWrite(
+        tx.insert(events).values([
+            {
+                type: knownEventTypes.accounts.earnSunflowers,
+                version: 1,
+                aggregateId: accountId,
+                data: {
+                    amount: REFERRAL_REWARD_AMOUNT,
+                    reason: `referral:used:${usedReferral.ownerAccountId}`,
+                },
             },
-        },
-        {
-            type: knownEventTypes.accounts.earnSunflowers,
-            version: 1,
-            aggregateId: usedReferral.ownerAccountId,
-            data: {
-                amount: REFERRAL_REWARD_AMOUNT,
-                reason: `referral:referred:${accountId}`,
+            {
+                type: knownEventTypes.accounts.earnSunflowers,
+                version: 1,
+                aggregateId: usedReferral.ownerAccountId,
+                data: {
+                    amount: REFERRAL_REWARD_AMOUNT,
+                    reason: `referral:referred:${accountId}`,
+                },
             },
-        },
-        {
-            type: REFERRAL_EVENT_TYPE,
-            version: 1,
-            aggregateId: usedReferral.ownerAccountId,
-            data: {
-                action: 'referred_account',
-                referredAccountId: accountId,
-                code: usedReferral.code,
-                rewarded: true,
-                rewardedAt,
+            {
+                type: REFERRAL_EVENT_TYPE,
+                version: 1,
+                aggregateId: usedReferral.ownerAccountId,
+                data: {
+                    action: 'referred_account',
+                    referredAccountId: accountId,
+                    code: usedReferral.code,
+                    rewarded: true,
+                    rewardedAt,
+                },
             },
-        },
-        {
-            type: REFERRAL_EVENT_TYPE,
-            version: 1,
-            aggregateId: accountId,
-            data: {
-                action: 'reward_granted',
-                code: usedReferral.code,
-                ownerAccountId: usedReferral.ownerAccountId,
-                amount: REFERRAL_REWARD_AMOUNT,
-                rewardedAt,
+            {
+                type: REFERRAL_EVENT_TYPE,
+                version: 1,
+                aggregateId: accountId,
+                data: {
+                    action: 'reward_granted',
+                    code: usedReferral.code,
+                    ownerAccountId: usedReferral.ownerAccountId,
+                    amount: REFERRAL_REWARD_AMOUNT,
+                    rewardedAt,
+                },
             },
-        },
-    ]);
+        ]),
+    );
 
     return {
         rewarded: true,
@@ -563,7 +572,17 @@ async function processReferralRewardsForAccountInTransaction(
     };
 }
 
-export async function processReferralRewardsForAccount(accountId: string) {
+export async function processReferralRewardsForAccount(
+    accountId: string,
+    transaction?: ScheduleTaskTransaction,
+) {
+    if (transaction) {
+        return await processReferralRewardsForAccountInTransaction(
+            accountId,
+            transaction,
+        );
+    }
+
     return await storage().transaction((tx) =>
         processReferralRewardsForAccountInTransaction(accountId, tx),
     );
@@ -597,16 +616,18 @@ export async function setReferralCodeForAccount(
             throw new ReferralCodeAlreadyExistsError();
         }
 
-        await tx.insert(events).values({
-            type: REFERRAL_EVENT_TYPE,
-            version: 1,
-            aggregateId: accountId,
-            data: {
-                action: 'code_set',
-                code,
-                source: options.source ?? 'user',
-            },
-        });
+        await signalAutomationEventWrite(
+            tx.insert(events).values({
+                type: REFERRAL_EVENT_TYPE,
+                version: 1,
+                aggregateId: accountId,
+                data: {
+                    action: 'code_set',
+                    code,
+                    source: options.source ?? 'user',
+                },
+            }),
+        );
 
         return code;
     });
@@ -663,32 +684,34 @@ export async function redeemReferralCodeForAccount(
             existingUsedReferral.ownerAccountId !== ownerAccountId;
 
         if (usedReferralChanged) {
-            await tx.insert(events).values([
-                {
-                    type: REFERRAL_EVENT_TYPE,
-                    version: 1,
-                    aggregateId: accountId,
-                    data: {
-                        action: 'used_code',
-                        code,
-                        ownerAccountId,
-                        previousCode: existingUsedReferral?.code,
-                        previousOwnerAccountId:
-                            existingUsedReferral?.ownerAccountId,
+            await signalAutomationEventWrite(
+                tx.insert(events).values([
+                    {
+                        type: REFERRAL_EVENT_TYPE,
+                        version: 1,
+                        aggregateId: accountId,
+                        data: {
+                            action: 'used_code',
+                            code,
+                            ownerAccountId,
+                            previousCode: existingUsedReferral?.code,
+                            previousOwnerAccountId:
+                                existingUsedReferral?.ownerAccountId,
+                        },
                     },
-                },
-                {
-                    type: REFERRAL_EVENT_TYPE,
-                    version: 1,
-                    aggregateId: ownerAccountId,
-                    data: {
-                        action: 'referred_account',
-                        referredAccountId: accountId,
-                        code,
-                        rewarded: false,
+                    {
+                        type: REFERRAL_EVENT_TYPE,
+                        version: 1,
+                        aggregateId: ownerAccountId,
+                        data: {
+                            action: 'referred_account',
+                            referredAccountId: accountId,
+                            code,
+                            rewarded: false,
+                        },
                     },
-                },
-            ]);
+                ]),
+            );
         }
 
         rewardResult = await processReferralRewardsForAccountInTransaction(
@@ -732,17 +755,19 @@ export async function clearUsedReferralCodeForAccount(
             return null;
         }
 
-        await tx.insert(events).values({
-            type: REFERRAL_EVENT_TYPE,
-            version: 1,
-            aggregateId: accountId,
-            data: {
-                action: 'used_code_cleared',
-                code: usedReferral.code,
-                ownerAccountId: usedReferral.ownerAccountId,
-                source: options.source ?? 'admin',
-            },
-        });
+        await signalAutomationEventWrite(
+            tx.insert(events).values({
+                type: REFERRAL_EVENT_TYPE,
+                version: 1,
+                aggregateId: accountId,
+                data: {
+                    action: 'used_code_cleared',
+                    code: usedReferral.code,
+                    ownerAccountId: usedReferral.ownerAccountId,
+                    source: options.source ?? 'admin',
+                },
+            }),
+        );
 
         return usedReferral;
     });

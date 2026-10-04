@@ -1,7 +1,7 @@
 import { Check, Close } from '@gredice/ui/icons';
+import { Progress } from '@gredice/ui/Progress';
 import { cx } from '@gredice/ui/utils';
 import { Fragment, type HTMLAttributes, type ReactNode } from 'react';
-import { Progress } from './Progress';
 
 export type SegmentedProgressProps = {
     segments: {
@@ -42,6 +42,11 @@ export function SegmentedProgress({
                                 index === segments.length - 1 &&
                                     'rounded-l-none',
                             )}
+                            trackClassName={cx(
+                                'bg-green-500',
+                                segment.indeterminate &&
+                                    'origin-left animate-progress bg-green-300',
+                            )}
                         />
                         <CircleComponent
                             onClick={segment.onClick}
@@ -79,7 +84,7 @@ export function SegmentedProgress({
                                 )}
                             </div>
                             {(segment.label || segment.icon) && (
-                                <div className="select-none text-xs text-center absolute left-1/2 top-full transform -translate-x-1/2 pt-1">
+                                <div className="absolute top-full left-1/2 min-w-max -translate-x-1/2 transform select-none pt-1 text-center text-xs whitespace-nowrap">
                                     {segment.icon ?? segment.label}
                                 </div>
                             )}

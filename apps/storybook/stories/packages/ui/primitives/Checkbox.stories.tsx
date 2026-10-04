@@ -9,7 +9,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Checkbox wraps the Radix checkbox primitive with Signalco-compatible label, readOnly, and icon behavior.',
+                    'Checkbox uses Base UI while preserving Gredice labels, read-only behavior, native form values, and indeterminate state.',
             },
         },
     },
@@ -44,6 +44,32 @@ export const ReadOnly: Story = {
         label: 'Zakljucana postavka',
         readOnly: true,
     },
+};
+
+export const Indeterminate: Story = {
+    args: {
+        checked: 'indeterminate',
+        label: 'Djelomično odabrane gredice',
+    },
+};
+
+export const NativeFormValue: Story = {
+    render: () => (
+        <form className="space-y-3">
+            <Checkbox
+                defaultChecked
+                label="Uključi u izvještaj"
+                name="report"
+                value="included"
+            />
+            <button
+                className="rounded-md border border-border px-3 py-1.5 text-sm"
+                type="submit"
+            >
+                Pošalji
+            </button>
+        </form>
+    ),
 };
 
 export const Circle: Story = {

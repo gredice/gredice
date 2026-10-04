@@ -6,6 +6,7 @@ import type { components } from './v1';
 export interface DirectoryEntityDataMap {
     block: components['schemas']['entity-block'];
     brand: components['schemas']['entity-brand'];
+    environmentAnimal: components['schemas']['entity-environmentAnimal'];
     faq: components['schemas']['entity-faq'];
     'faq-category': components['schemas']['entity-faq-category'];
     farmSupply: components['schemas']['entity-farmSupply'];
@@ -15,9 +16,12 @@ export interface DirectoryEntityDataMap {
     operation: components['schemas']['entity-operation'];
     operationFrequency: components['schemas']['entity-operationFrequency'];
     plant: components['schemas']['entity-plant'];
+    plantDisease: components['schemas']['entity-plantDisease'];
+    plantPest: components['schemas']['entity-plantPest'];
     plantSort: components['schemas']['entity-plantSort'];
     plantStage: components['schemas']['entity-plantStage'];
     seed: components['schemas']['entity-seed'];
+    sunflowerPackage: components['schemas']['entity-sunflowerPackage'];
 }
 
 export type DirectoryEntityTypeName = keyof DirectoryEntityDataMap;
@@ -27,6 +31,7 @@ export type DirectoryEntityData<
 
 export type BlockData = DirectoryEntityDataMap['block'];
 export type BrandData = DirectoryEntityDataMap['brand'];
+export type EnvironmentAnimalData = DirectoryEntityDataMap['environmentAnimal'];
 export type FaqData = DirectoryEntityDataMap['faq'];
 export type FaqCategoryData = DirectoryEntityDataMap['faq-category'];
 export type FarmSupplyData = DirectoryEntityDataMap['farmSupply'];
@@ -38,6 +43,9 @@ export type OperationData = DirectoryEntityDataMap['operation'];
 export type OperationFrequencyData =
     DirectoryEntityDataMap['operationFrequency'];
 export type PlantData = DirectoryEntityDataMap['plant'];
+export type PlantDiseaseData = DirectoryEntityDataMap['plantDisease'];
+export type PlantPestData = DirectoryEntityDataMap['plantPest'];
 export type PlantSortData = DirectoryEntityDataMap['plantSort'];
 export type PlantStageData = DirectoryEntityDataMap['plantStage'];
 export type SeedData = DirectoryEntityDataMap['seed'];
+export type SunflowerPackageData = DirectoryEntityDataMap['sunflowerPackage'];

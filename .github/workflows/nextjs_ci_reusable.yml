@@ -13,40 +13,51 @@ on:
         required: true
         type: string
         description: "Path to the package or application to analzye"
-      vercelProjectIdSecretName:
-        required: true
+      nextBuildCache:
+        required: false
+        type: boolean
+        description: "Persist the experimental Turbopack build cache"
+        default: false
+      testShardMatrix:
+        required: false
         type: string
-        description: "Name of the secret containing the Vercel project ID"
-
-env:
-  VERCEL_PROJECT_ID: ${{ secrets[format(inputs.vercelProjectIdSecretName)] }}
-  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-  TURBO_TEAM: gredice
+        description: "JSON matrix of Playwright test shards or named args to run"
+        default: '[{"index":1,"total":1}]'
+      testShardPrepareScript:
+        required: false
+        type: string
+        description: "Package script to run after build and before sharded tests"
+        default: ""
+      testShardRunScript:
+        required: false
+        type: string
+        description: "Package script that runs Playwright tests for a shard"
+        default: "test:run"
 
 jobs:
   lint:
     timeout-minutes: 10
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 2
 
-      - uses: pnpm/action-setup@v6.0.4
+      - uses: pnpm/action-setup@v6.1.0
         name: ✨ Install pnpm
 
       - name: ✨ Setup Node
-        uses: actions/setup-node@v6.4.0
+        uses: actions/setup-node@v7.0.0
         with:
-          node-version: "24.15.0"
+          node-version: "24.21.0"
 
       - name: ✨ Get pnpm store directory
         shell: bash
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - uses: actions/cache@v5.0.5
+      - uses: actions/cache@v6.1.0
         name: ✨ Setup pnpm cache
         with:
           path: ${{ env.STORE_PATH }}
@@ -55,33 +66,38 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: 📦️ Install dependencies
-        run: pnpm install --frozen-lockfile --filter ${{ inputs.name }}... --filter .
+        run: pnpm install --frozen-lockfile --filter ${{ inputs.name }}... --filter @gredice/storage... --filter .
 
       - name: 🔎 Lint app
         run: pnpm lint --filter=${{ inputs.name }}
   test:
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request'
+    name: "test${{ matrix.shard.name && format(' ({0})', matrix.shard.name) || (matrix.shard.total != 1 && format(' ({0}/{1})', matrix.shard.index, matrix.shard.total) || '') }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(inputs.testShardMatrix) }}
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 2
 
-      - uses: pnpm/action-setup@v6.0.4
+      - uses: pnpm/action-setup@v6.1.0
         name: ✨ Install pnpm
 
       - name: ✨ Setup Node
-        uses: actions/setup-node@v6.4.0
+        uses: actions/setup-node@v7.0.0
         with:
-          node-version: "24.15.0"
+          node-version: "24.21.0"
 
       - name: ✨ Get pnpm store directory
         shell: bash
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - uses: actions/cache@v5.0.5
+      - uses: actions/cache@v6.1.0
         name: ✨ Setup pnpm cache
         with:
           path: ${{ env.STORE_PATH }}
@@ -89,15 +105,25 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
+      - uses: actions/cache@v6.1.0
+        if: inputs.nextBuildCache
+        name: ✨ Setup Next.js build cache
+        with:
+          path: ${{ inputs.path }}/.next/cache
+          key: ${{ runner.os }}-isolated-nextjs-${{ inputs.name }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-isolated-nextjs-${{ inputs.name }}-${{ hashFiles('pnpm-lock.yaml') }}-
+
       - name: 📦️ Install dependencies
-        run: pnpm install --frozen-lockfile --filter ${{ inputs.name }}... --filter .
+        run: pnpm install --frozen-lockfile --filter ${{ inputs.name }}... --filter @gredice/storage... --filter .
 
-      - name: ✨ Setup Vercel CLI
-        run: npm i --global vercel@latest
+      - name: 📦 Prepare offline package manager
+        run: |
+          echo "COREPACK_HOME=$RUNNER_TEMP/gredice-corepack" >> "$GITHUB_ENV"
+          COREPACK_HOME="$RUNNER_TEMP/gredice-corepack" pnpm exec corepack pnpm --version
 
-      - name: ⚙️ Pull Vercel Environment Information
-        run: vercel env pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
-        working-directory: ${{ inputs.path }}/
+      - name: 🔎 Verify installed Playwright versions
+        run: node scripts/check-playwright-versions.mjs '${{ inputs.path }}'
 
       - name: 🔎 Check Playwright dependency
         id: playwright
@@ -114,24 +140,41 @@ jobs:
           };
           const hasPlaywright =
             '@playwright/test' in dependencies || 'playwright' in dependencies;
+          const playwrightVersion =
+            dependencies['@playwright/test'] ?? dependencies.playwright ?? 'none';
 
           fs.appendFileSync(process.env.GITHUB_OUTPUT, `enabled=${hasPlaywright}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${playwrightVersion}\n`);
           NODE
 
       - name: ✨ Cache Playwright browsers
         if: steps.playwright.outputs.enabled == 'true'
-        uses: actions/cache@v5.0.5
+        uses: actions/cache@v6.1.0
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-playwright-${{ steps.playwright.outputs.version }}
           restore-keys: |
             ${{ runner.os }}-playwright-
 
       - name: 📦️ Install playwright browsers
         if: steps.playwright.outputs.enabled == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
-        run: pnpm exec playwright install --with-deps chromium
+        run: |
+          mapfile -t microsoft_sources < <(grep -rl 'packages.microsoft.com' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null || true)
+          if [ "${#microsoft_sources[@]}" -gt 0 ]; then
+            sudo rm -f "${microsoft_sources[@]}"
+          fi
+          pnpm exec playwright install --with-deps chromium
         working-directory: ${{ inputs.path }}/
 
       - name: ⚒️ Test app
-        run: pnpm test --filter=${{ inputs.name }}
+        run: |
+          database_args=(--database)
+          if [ "${{ inputs.name }}" = "garden" ]; then database_args=(); fi
+          bash scripts/ci-isolated-tests.sh "${database_args[@]}" bash scripts/ci-test-app.sh
+        env:
+          TEST_ARGS: ${{ matrix.shard.args || (matrix.shard.total != 1 && format('--shard={0}/{1}', matrix.shard.index, matrix.shard.total)) || '' }}
+          CI_APP_NAME: ${{ inputs.name }}
+          CI_APP_PATH: ${{ inputs.path }}
+          CI_PREPARE_SCRIPT: ${{ inputs.testShardPrepareScript }}
+          CI_RUN_SCRIPT: ${{ inputs.testShardRunScript }}

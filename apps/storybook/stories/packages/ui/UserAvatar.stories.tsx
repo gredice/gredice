@@ -1,5 +1,11 @@
-import { UserAvatar } from '@gredice/ui/UserAvatar';
+import { AVATAR_OPTIONS } from '@gredice/ui/AvatarSelectionMenu';
+import {
+    UserAchievementProgress,
+    UserAvatar,
+    UserLevelBadge,
+} from '@gredice/ui/UserAvatar';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { FarmerAvatarsPreview } from './FarmerAvatarsPreview';
 
 const meta = {
     title: 'packages/ui/Data Display/UserAvatar',
@@ -9,7 +15,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'UserAvatar displays either a user image or generated initials with configurable sizing and optional entry animation.',
+                    'UserAvatar displays a user image or initials with optional level badges. Small and medium avatars use compact number-only badges; large avatars include the level icon.',
             },
         },
     },
@@ -23,6 +29,70 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Initials: Story = {};
+
+export const Farmers: Story = {
+    render: () => <FarmerAvatarsPreview />,
+};
+
+export const FarmersDark: Story = {
+    render: () => (
+        <div className="dark rounded-lg bg-background p-6 text-foreground">
+            <FarmerAvatarsPreview />
+        </div>
+    ),
+};
+
+export const Levels: Story = {
+    render: () => (
+        <div className="flex flex-wrap gap-8 p-4">
+            {[0, 1, 3, 10, 21, 34].map((count) => (
+                <div key={count} className="space-y-3">
+                    <UserAvatar
+                        displayName="Ana Kovač"
+                        achievementCount={count}
+                        size="lg"
+                    />
+                    <UserAchievementProgress achievementCount={count} />
+                </div>
+            ))}
+        </div>
+    ),
+};
+
+export const CompactLevels: Story = {
+    render: () => (
+        <div className="flex flex-wrap items-center gap-8 p-4">
+            <UserAvatar
+                displayName="Ana Kovač"
+                achievementCount={0}
+                size="sm"
+            />
+            <UserAvatar
+                displayName="Marko Marić"
+                achievementCount={10}
+                size="md"
+            />
+            <UserAvatar
+                displayName="Veseli vrtlar"
+                avatarUrl="https://cdn.gredice.com/avatars/farmer-female.png"
+                achievementCount={21}
+                size="lg"
+            />
+            <UserLevelBadge level={12} />
+            <UserAvatar
+                displayName="Farmer"
+                avatarUrl="https://cdn.gredice.com/avatars/farmer-male.png"
+                achievementCount={66}
+                size="sm"
+            />
+            <UserAvatar
+                displayName="Farmerka"
+                avatarUrl="https://cdn.gredice.com/avatars/farmer-female.png"
+                achievementCount={66}
+            />
+        </div>
+    ),
+};
 
 export const WithAvatar: Story = {
     args: {
@@ -51,6 +121,26 @@ export const InitialsInColoredParent: Story = {
         <div className="inline-flex items-center gap-2 rounded-full bg-green-800 px-3 py-2 text-white">
             <UserAvatar displayName="Ana Kovač" size="sm" />
             <span className="text-sm font-medium">Moj vrt</span>
+        </div>
+    ),
+};
+
+export const Collection: Story = {
+    render: () => (
+        <FarmerAvatarsPreview
+            options={AVATAR_OPTIONS}
+            heading="Avatari za igru"
+        />
+    ),
+};
+
+export const CollectionDark: Story = {
+    render: () => (
+        <div className="dark rounded-lg bg-background p-6 text-foreground">
+            <FarmerAvatarsPreview
+                options={AVATAR_OPTIONS}
+                heading="Avatari za igru"
+            />
         </div>
     ),
 };

@@ -2,13 +2,15 @@
 
 import type { BlockData } from '@gredice/client';
 import { orderBy } from '@gredice/js/arrays';
-import { BlockImage } from '@gredice/ui/BlockImage';
 import { Gallery } from '@gredice/ui/Gallery';
+import { GameBlocksIcon, GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { Row } from '@gredice/ui/Row';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import { ItemCard } from '../../components/shared/ItemCard';
-import { useClientSearchParam } from '../../hooks/useClientSearchParam';
+import { PublicBlockImage as BlockImage } from '../../components/shared/PublicBlockImage';
+import { PublicEmptyState } from '../../components/shared/placeholders/PublicEmptyState';
+import { getBlockRouteAlias } from '../../lib/blocks/blockRoute';
 import { normalizeSearchText } from '../../lib/search/normalizeSearchText';
 import { KnownPages } from '../../src/KnownPages';
 
@@ -31,27 +33,32 @@ function BlockGalleryItem(
                                 level="body2"
                                 className="flex flex-row gap-2"
                             >
-                                <span>🌻</span>
+                                <GameSunflowerIcon className="size-5 shrink-0" />
                                 <span>{entity.prices.sunflowers}</span>
                             </Typography>
                         )}
                 </Row>
             }
-            href={KnownPages.Block(entity.information.label)}
+            href={KnownPages.Block(getBlockRouteAlias(entity))}
         >
             <BlockImage
                 blockName={entity.information.name}
                 fill
-                preload
-                sizes="(max-width: 768px) 50vw, (min-width: 768px) 33vw, (min-width: 1200px) 9vw"
+                sizes="(min-width: 1280px) 16vw, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
             />
         </ItemCard>
     );
 }
 
-export function BlockGallery({ blocks }: { blocks: BlockData[] | undefined }) {
-    const [search] = useClientSearchParam('pretraga');
-    const normalizedSearch = normalizeSearchText(search);
+export function BlockGallery({
+    blocks,
+    hasOtherResults,
+    normalizedSearch,
+}: {
+    blocks: BlockData[] | undefined;
+    hasOtherResults: boolean;
+    normalizedSearch: string;
+}) {
     const filteredBlocks = orderBy(blocks ?? [], (a, b) =>
         a.information.name.localeCompare(b.information.label),
     )
@@ -66,9 +73,11 @@ export function BlockGallery({ blocks }: { blocks: BlockData[] | undefined }) {
 
     return (
         <>
-            {filteredBlocks.length === 0 && (
-                <Typography level="body2">Nema rezultata pretrage.</Typography>
-            )}
+            {filteredBlocks.length === 0 && !hasOtherResults ? (
+                <PublicEmptyState icon={GameBlocksIcon}>
+                    Nema rezultata pretrage.
+                </PublicEmptyState>
+            ) : null}
             <Gallery
                 gridHeader={''}
                 items={filteredBlocks}

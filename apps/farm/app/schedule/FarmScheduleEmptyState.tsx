@@ -7,9 +7,15 @@ interface FarmScheduleEmptyStateProps {
 export async function FarmScheduleEmptyState({
     dayDataPromise,
 }: FarmScheduleEmptyStateProps) {
-    const { scheduledFields, scheduledOperations } = await dayDataPromise;
+    const { scheduledFields, scheduledOperations, scheduledSelectedPlantings } =
+        await dayDataPromise;
 
-    if (scheduledFields.length + scheduledOperations.length > 0) {
+    if (
+        scheduledFields.length +
+            scheduledSelectedPlantings.length +
+            scheduledOperations.length >
+        0
+    ) {
         return null;
     }
 

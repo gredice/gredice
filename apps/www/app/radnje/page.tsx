@@ -1,15 +1,21 @@
+import { PLANT_STAGES } from '@gredice/js/plants';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { CommunityEntitySuggestionButton } from '../../components/community-edits/CommunityEntitySuggestionButton';
+import { RelatedFaq } from '../../components/faq/RelatedFaq';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { PageFilterInput } from '../../components/shared/PageFilterInput';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
+import { getOperationPriceAvailability } from '../../lib/operationPricing';
 import { getOperationsData } from '../../lib/plants/getOperationsData';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 import { merchantReturnPolicy } from '../../src/merchantReturnPolicy';
+import { OperationStagesNav } from './OperationStagesNav';
 import { OperationsList } from './OperationsList';
 import {
     getAvailableOperationStages,
@@ -17,11 +23,13 @@ import {
 } from './operationFilters';
 
 const pageDescription = `Sve što trebaš znati o radnjama koje možeš obavljati u svojim gredicama.`;
-export const revalidate = 3600; // 1 hour
-export const metadata: Metadata = {
+export const revalidate = 43200; // 12 hours
+export const metadata: Metadata = createPublicMetadata({
     title: 'Radnje',
     description: pageDescription,
-};
+    path: KnownPages.Operations,
+    category: 'Vrtlarske radnje',
+});
 
 export default async function OperationsPage({
     searchParams,
@@ -38,6 +46,21 @@ export default async function OperationsPage({
         (operation) => operation.attributes.internal !== true,
     );
     const availableStages = getAvailableOperationStages(publicOperations);
+    const suggestionStages = PLANT_STAGES.flatMap((stageDefinition) => {
+        const stage = operationsData.find(
+            (operation) =>
+                operation.attributes.stage?.information?.name ===
+                stageDefinition.name,
+        )?.attributes.stage;
+        return stage
+            ? [
+                  {
+                      id: stage.id,
+                      label: stage.information.label,
+                  },
+              ]
+            : [];
+    });
     const orderedOperations = availableStages.flatMap((stage) =>
         publicOperations
             .filter(
@@ -49,6 +72,18 @@ export default async function OperationsPage({
                 left.information.label.localeCompare(right.information.label),
             ),
     );
+    const stageNavOperations = operationsData
+        .filter((operation) => operation.attributes.internal !== true)
+        .map((operation) => ({
+            information: { label: operation.information.label },
+            attributes: {
+                stage: {
+                    information: {
+                        name: operation.attributes.stage?.information?.name,
+                    },
+                },
+            },
+        }));
 
     return (
         <Stack spacing={8}>
@@ -62,38 +97,61 @@ export default async function OperationsPage({
                             '@type': 'ListItem',
                             position: index + 1,
                             item: {
-                                '@type': 'Product',
+                                '@type': 'Service',
                                 name: operation.information.label,
+                                category: 'Vrtlarska radnja',
                                 url: `https://www.gredice.com${KnownPages.Operation(operation.information.label)}`,
                                 image: operation.image?.cover?.url,
-                                offers: {
-                                    '@type': 'Offer',
-                                    price: operation.prices.perOperation.toFixed(
-                                        2,
-                                    ),
-                                    priceCurrency: 'EUR',
-                                    hasMerchantReturnPolicy:
-                                        merchantReturnPolicy,
+                                provider: {
+                                    '@type': 'Organization',
+                                    name: 'Gredice',
                                 },
+                                ...(getOperationPriceAvailability(operation) ===
+                                'available'
+                                    ? {
+                                          offers: {
+                                              '@type': 'Offer',
+                                              price: operation.prices.perOperation.toFixed(
+                                                  2,
+                                              ),
+                                              priceCurrency: 'EUR',
+                                              hasMerchantReturnPolicy:
+                                                  merchantReturnPolicy,
+                                          },
+                                      }
+                                    : {}),
                             },
                         }),
                     ),
                 }}
             />
-            <PageHeader header="Radnje" subHeader={pageDescription} padded>
-                <Suspense>
-                    <PageFilterInput
-                        searchParamName="pretraga"
-                        fieldName="operation-search"
-                        initialValue={search}
-                        className="lg:flex items-start justify-end w-full"
+            <OperationStagesNav
+                operations={stageNavOperations}
+                initialSearch={search}
+                className="mt-8 md:mt-12"
+            />
+            <PageHeader header="Radnje" subHeader={pageDescription}>
+                <div className="flex w-full flex-col items-start gap-3 md:items-end">
+                    <CommunityEntitySuggestionButton
+                        kind="operation"
+                        publicPath={KnownPages.Operations}
+                        stages={suggestionStages}
                     />
-                </Suspense>
+                    <Suspense>
+                        <PageFilterInput
+                            searchParamName="pretraga"
+                            fieldName="operation-search"
+                            initialValue={search}
+                            className="lg:flex items-start justify-end w-full"
+                        />
+                    </Suspense>
+                </div>
             </PageHeader>
             <OperationsList
                 operationsData={operationsData}
                 initialSearch={search}
             />
+            <RelatedFaq placement="operations" />
             <Row spacing={4}>
                 <Typography level="body1">
                     Jesu li ti informacije o radnjama korisne?

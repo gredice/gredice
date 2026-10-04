@@ -1,7 +1,8 @@
 import 'server-only';
 
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { storage } from '..';
+import { signalDueWork } from '../dueWork';
 import {
     type EmailLogAttachment,
     type EmailLogRecipients,
@@ -61,6 +62,7 @@ export async function createEmailMessageLog(
         throw new Error('Failed to create email log entry');
     }
 
+    await signalQueuedOutbox(created);
     return created;
 }
 
@@ -88,7 +90,25 @@ export async function updateEmailMessageLog(
         .where(eq(emailMessages.id, id))
         .returning();
 
+    if (updated && update.status === 'queued')
+        await signalQueuedOutbox(updated);
     return updated ?? null;
+}
+
+async function signalQueuedOutbox(message: SelectEmailMessage) {
+    if (message.status !== 'queued') return;
+    const kind = message.metadata.outboxKind;
+    if (kind !== 'order_confirmation' && kind !== 'checkout_notification')
+        return;
+    const value = message.metadata.nextAttemptAt;
+    const dueAt =
+        typeof value === 'string' ? new Date(value) : message.queuedAt;
+    await signalDueWork(
+        kind === 'order_confirmation'
+            ? 'order-confirmation-emails'
+            : 'checkout-notifications',
+        Number.isNaN(dueAt.getTime()) ? new Date() : dueAt,
+    );
 }
 
 export function getEmailMessages({
@@ -121,5 +141,28 @@ export function getEmailMessageByProviderId(
 ): Promise<SelectEmailMessage | undefined> {
     return storage().query.emailMessages.findFirst({
         where: eq(emailMessages.providerMessageId, providerMessageId),
+    });
+}
+
+export function getEmailMessageByTemplateAndMetadata({
+    metadataKey,
+    metadataValue,
+    statuses,
+    templateName,
+}: {
+    metadataKey: string;
+    metadataValue: string;
+    statuses?: EmailStatus[];
+    templateName: string;
+}): Promise<SelectEmailMessage | undefined> {
+    return storage().query.emailMessages.findFirst({
+        where: and(
+            eq(emailMessages.templateName, templateName),
+            sql<boolean>`${emailMessages.metadata}->>${metadataKey} = ${metadataValue}`,
+            statuses && statuses.length > 0
+                ? inArray(emailMessages.status, statuses)
+                : undefined,
+        ),
+        orderBy: desc(emailMessages.createdAt),
     });
 }

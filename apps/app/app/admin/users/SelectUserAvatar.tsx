@@ -7,10 +7,12 @@ import { updateUserAvatar } from '../../(actions)/userActions';
 
 export function SelectUserAvatar({
     userId,
+    achievementCount,
     avatarUrl,
     displayName,
 }: {
     userId: string;
+    achievementCount: number;
     avatarUrl: string | null;
     displayName: string | null;
 }) {
@@ -25,14 +27,17 @@ export function SelectUserAvatar({
     return (
         <AvatarSelectionMenu
             displayName={displayName}
+            avatarUrl={avatarUrl}
             onChange={handleAvatarChange}
         >
             <button
                 type="button"
+                aria-label="Promijeni avatar"
                 className="cursor-pointer rounded-full disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isPending}
             >
                 <UserAvatar
+                    achievementCount={achievementCount}
                     avatarUrl={avatarUrl}
                     displayName={displayName ?? 'User'}
                     size="lg"

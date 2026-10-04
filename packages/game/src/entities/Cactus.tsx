@@ -1,7 +1,7 @@
-import { animated } from '@react-spring/three';
 import type { GameAssetName } from '../data/models';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
+import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
@@ -9,9 +9,12 @@ import { useGameGLTF } from '../utils/useGameGLTF';
 import { GardenFlowerModel } from './helpers/GardenFlowerModel';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
-type CactusNodeName = Extract<keyof GLTFResult['nodes'], `Cactus_${string}`>;
+export type CactusNodeName = Extract<
+    keyof GLTFResult['nodes'],
+    `Cactus_${string}`
+>;
 
-type CactusFlowerPlacement = {
+export type CactusFlowerPlacement = {
     color: string;
     id: string;
     position: [number, number, number];
@@ -19,7 +22,7 @@ type CactusFlowerPlacement = {
     scale: number;
 };
 
-type CactusVariantConfig = {
+export type CactusVariantConfig = {
     assetName: GameAssetName;
     bodyNode: CactusNodeName;
     flowers: CactusFlowerPlacement[];
@@ -52,14 +55,14 @@ const cactusVariants = {
             {
                 color: '#ff9f43',
                 id: 'tall-column',
-                position: [0.12, 1.07, -0.04],
+                position: [0.027, 1.12, 0.029],
                 rotation: [0.12, 1.1, 0.18],
                 scale: 2.35,
             },
             {
                 color: '#e66dff',
                 id: 'side-column',
-                position: [-0.21, 0.73, 0.14],
+                position: [0.233, 0.93, -0.15],
                 rotation: [0.05, -0.7, -0.2],
                 scale: 1.95,
             },
@@ -75,14 +78,14 @@ const cactusVariants = {
             {
                 color: '#ff5f8f',
                 id: 'top-pad',
-                position: [0.13, 1.01, 0.02],
+                position: [0.029, 1.045, 0.056],
                 rotation: [0.16, 0.15, -0.24],
                 scale: 2.15,
             },
             {
                 color: '#ffd166',
                 id: 'side-pad',
-                position: [-0.22, 0.64, -0.03],
+                position: [0.204, 0.855, -0.14],
                 rotation: [0.2, -0.55, 0.16],
                 scale: 1.85,
             },
@@ -96,6 +99,10 @@ const cactusVariants = {
 const cactusVariantByName = new Map<string, CactusVariantConfig>(
     Object.entries(cactusVariants),
 );
+
+export function getCactusVariantConfig(blockName: string) {
+    return cactusVariantByName.get(blockName) ?? null;
+}
 
 const cactusBodyMaterial = {
     color: '#4a6411',
@@ -163,7 +170,7 @@ function CactusEntity({
 }
 
 export function Cactus(props: EntityInstanceProps) {
-    const config = cactusVariantByName.get(props.block.name);
+    const config = getCactusVariantConfig(props.block.name);
     if (!config) {
         console.error(`Unknown cactus variant: ${props.block.name}`);
         return null;

@@ -5,11 +5,12 @@ import { ListItem } from '@gredice/ui/ListItem';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 
-const apis = [
+const apiReferences = [
     { label: '/api/mcp', href: '/test' },
     { label: '/api/auth', href: '/docs/auth' },
     { label: '/api/accounts', href: '/docs/accounts' },
     { label: '/api/users', href: '/docs/users' },
+    { label: '/api/favorites', href: '/docs/favorites' },
     { label: '/api/directories', href: '/docs/directories' },
     { label: '/api/data', href: '/docs/data' },
     { label: '/api/gardens', href: '/docs/gardens' },
@@ -28,7 +29,7 @@ export default function Home() {
             <Card>
                 <CardOverflow>
                     <List variant="outlined">
-                        {apis.map(({ label, href }) => (
+                        {apiReferences.map(({ label, href }) => (
                             <ListItem
                                 key={label}
                                 variant="outlined"

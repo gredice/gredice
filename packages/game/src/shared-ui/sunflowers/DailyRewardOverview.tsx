@@ -1,4 +1,5 @@
 import { Button } from '@gredice/ui/Button';
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { Approved, Empty } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -46,7 +47,8 @@ export function DailyRewardOverview() {
                             )}
                             <Typography level="body3">{`Dan ${col.dayLabel}`}</Typography>
                             <Typography level="body2">
-                                +{col.amount} 🌻
+                                +{col.amount}{' '}
+                                <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
                             </Typography>
                             {col.isNext && (
                                 <Button

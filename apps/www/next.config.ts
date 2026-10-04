@@ -6,9 +6,14 @@ import {
     getAppDevPort,
     localAppHostnameUrl,
 } from '../../scripts/app-registry.ts';
+import { getBlockImageAssetVersion } from '../../scripts/block-image-version.ts';
 
 const app = getAppByName('www');
 const apiApp = getAppByName('api');
+const newsApp = getAppByName('news');
+const blockImageAssetVersion = getBlockImageAssetVersion([
+    new URL('./public/assets/blocks/', import.meta.url),
+]);
 // Use the Vercel deployment ID (or git commit SHA) as a cache-busting tag.
 // Assets are not truly immutable – they change when game models or sprites are updated.
 // CDN (s-maxage) is purged automatically by Vercel on each deployment.
@@ -30,15 +35,30 @@ const assetCacheHeaders = [
     },
 ];
 
+const nonIndexableFrameworkAssetHeaders = [
+    {
+        // Crawlers may fetch these files to render pages, but should not index them.
+        key: 'X-Robots-Tag',
+        value: 'noindex',
+    },
+];
+
 const nextConfig: NextConfig = {
     reactStrictMode: true,
     typedRoutes: true,
     reactCompiler: true,
+    env: {
+        NEXT_PUBLIC_BLOCK_IMAGE_VERSION: blockImageAssetVersion,
+    },
     logging: {
         browserToTerminal: true,
     },
     async headers() {
         return [
+            {
+                source: '/_next/static/:path*',
+                headers: nonIndexableFrameworkAssetHeaders,
+            },
             {
                 source: '/assets/models/:path*',
                 headers: assetCacheHeaders,
@@ -55,6 +75,32 @@ const nextConfig: NextConfig = {
                 source: '/assets/textures/:path*',
                 headers: assetCacheHeaders,
             },
+            {
+                source: '/assets/blocks/:path*',
+                headers: assetCacheHeaders,
+            },
+        ];
+    },
+    async redirects() {
+        return [
+            {
+                source: '/.well-known/llms.txt',
+                destination: '/llms.txt',
+                permanent: true,
+            },
+            {
+                source: '/blokovi/kamene-polustube',
+                destination: '/blokovi/kutne-kamene-stube',
+                permanent: true,
+            },
+            {
+                // The previous generator published a sitemap index plus
+                // `/sitemap-0.xml`. Search Console still knows that URL, so
+                // point it at the single canonical sitemap instead of a 404.
+                source: '/sitemap-0.xml',
+                destination: '/sitemap.xml',
+                permanent: true,
+            },
         ];
     },
     async rewrites() {
@@ -70,8 +116,25 @@ const nextConfig: NextConfig = {
                       getAppDevPort(apiApp),
                   )
                 : 'https://api.gredice.com');
+        const newsHost =
+            process.env.GREDICE_NEWS_HOST ??
+            (isDev
+                ? localAppHostnameUrl(
+                      newsApp,
+                      'localhost',
+                      getAppDevPort(newsApp),
+                  )
+                : 'https://novosti.gredice.com');
 
         return [
+            {
+                source: '/novosti',
+                destination: `${newsHost}/novosti`,
+            },
+            {
+                source: '/novosti/:path*',
+                destination: `${newsHost}/novosti/:path*`,
+            },
             {
                 source: '/api/gredice/:path*',
                 destination: `${apiHost}/:path*`,
@@ -79,11 +142,26 @@ const nextConfig: NextConfig = {
         ];
     },
     experimental: {
-        turbopackFileSystemCacheForDev: true,
+        turbopackRustReactCompiler: true,
         typedEnv: true,
+        useTypeScriptCli: true,
     },
-    expireTime: 10800, // CDN ISR expiration time: 3 hour in seconds
+    // Preserve a 3-hour stale-while-revalidate window after the longest
+    // 12-hour catalogue revalidation interval.
+    expireTime: 54000,
     images: {
+        localPatterns: [
+            {
+                pathname: '**',
+                search: '',
+            },
+            {
+                // Block thumbnails carry a content hash so optimized images can
+                // be cached without serving a stale asset after a replacement.
+                pathname: '/assets/blocks/**',
+                search: `?v=${blockImageAssetVersion}`,
+            },
+        ],
         remotePatterns: [
             {
                 protocol: 'https',
@@ -96,6 +174,12 @@ const nextConfig: NextConfig = {
                 hostname: 'cdn.gredice.com',
                 port: '',
                 pathname: '/**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'vrt.gredice.com',
+                port: '',
+                pathname: '/assets/**',
             },
             {
                 protocol: 'https',

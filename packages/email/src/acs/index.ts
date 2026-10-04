@@ -1,5 +1,6 @@
 import {
     EmailClient,
+    type EmailClientOptions,
     type EmailMessage,
     type EmailSendResponse,
     KnownEmailSendStatus,
@@ -11,18 +12,34 @@ import {
     type EmailLogRecipient,
     type EmailLogRecipients,
     type EmailStatus,
+    getEmailMessage,
     updateEmailMessageLog,
 } from '@gredice/storage';
 import type { ReactElement } from 'react';
 import { render } from 'react-email';
 
-function emailClient() {
+export function createAtMostOnceEmailClient(
+    connectionString: string,
+    options: EmailClientOptions = {},
+) {
+    return new EmailClient(connectionString, {
+        ...options,
+        retryOptions: {
+            ...options.retryOptions,
+            maxRetries: 0,
+        },
+    });
+}
+
+function emailClient(atMostOnce: boolean) {
     const connectionString = process.env.ACS_CONNECTION_STRING;
     if (!connectionString) {
         throw new Error('ACS_CONNECTION_STRING is not set');
     }
 
-    return new EmailClient(connectionString);
+    return atMostOnce
+        ? createAtMostOnceEmailClient(connectionString)
+        : new EmailClient(connectionString);
 }
 
 export type EmailRecipientInput =
@@ -170,7 +187,228 @@ export type SendEmailParams = {
     templateName?: string | null;
     messageType?: string | null;
     metadata?: Record<string, unknown>;
+    operationId?: string;
+    existingEmailLogId?: number;
+    beforeProviderSubmission?: () => Promise<void>;
+    abortSignal?: AbortSignal;
 };
+
+const providerOperationIdPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
+export class EmailProviderSubmissionUncertainError extends Error {
+    readonly code = 'email_provider_submission_uncertain';
+    readonly operationId: string;
+
+    constructor(operationId: string, cause: unknown) {
+        super('Email provider submission status is uncertain.', { cause });
+        this.name = 'EmailProviderSubmissionUncertainError';
+        this.operationId = operationId;
+    }
+}
+
+const retryableEmailProviderRejectionStatuses = new Set([429]);
+
+type EmailProviderSubmissionFailureClassification =
+    | { kind: 'definite-failure' }
+    | { kind: 'rejected'; retryable: boolean; statusCode: number }
+    | { kind: 'uncertain' };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function boundedProviderRejectionStatus(value: unknown) {
+    return typeof value === 'number' &&
+        Number.isSafeInteger(value) &&
+        value >= 400 &&
+        value <= 599
+        ? value
+        : null;
+}
+
+function explicitProviderResponseStatus(error: unknown) {
+    if (!isRecord(error)) return null;
+    return (
+        (isRecord(error.response)
+            ? boundedProviderRejectionStatus(error.response.status)
+            : null) ?? boundedProviderRejectionStatus(error.statusCode)
+    );
+}
+
+function providerRejectionIsRetryable(statusCode: number) {
+    return retryableEmailProviderRejectionStatuses.has(statusCode);
+}
+
+function providerResponseProvesRejection(statusCode: number) {
+    return statusCode >= 400 && statusCode < 500 && statusCode !== 408;
+}
+
+export class EmailProviderSubmissionRejectedError extends Error {
+    readonly code = 'email_provider_submission_rejected';
+    readonly retryable: boolean;
+    readonly statusCode: number;
+
+    constructor(statusCode: number, cause?: unknown) {
+        const boundedStatusCode = boundedProviderRejectionStatus(statusCode);
+        if (boundedStatusCode === null) {
+            throw new Error(
+                'Email provider rejection requires a bounded HTTP status.',
+            );
+        }
+        super(
+            `Email provider rejected submission with HTTP status ${boundedStatusCode}.`,
+            cause === undefined ? undefined : { cause },
+        );
+        this.name = 'EmailProviderSubmissionRejectedError';
+        this.retryable = providerRejectionIsRetryable(boundedStatusCode);
+        this.statusCode = boundedStatusCode;
+    }
+}
+
+export type EmailProviderTerminalStatus = 'Canceled' | 'Failed';
+
+export class EmailProviderTerminalFailureError extends Error {
+    readonly code = 'email_provider_terminal_failure';
+    readonly providerStatus: EmailProviderTerminalStatus;
+
+    constructor(providerStatus: EmailProviderTerminalStatus) {
+        super(
+            `Email provider completed submission with terminal status ${providerStatus}.`,
+        );
+        this.name = 'EmailProviderTerminalFailureError';
+        this.providerStatus = providerStatus;
+    }
+}
+
+export function isEmailProviderSubmissionUncertainError(
+    error: unknown,
+): error is EmailProviderSubmissionUncertainError {
+    return (
+        error instanceof EmailProviderSubmissionUncertainError ||
+        (typeof error === 'object' &&
+            error !== null &&
+            'code' in error &&
+            error.code === 'email_provider_submission_uncertain')
+    );
+}
+
+export function isEmailProviderTerminalFailureError(
+    error: unknown,
+): error is EmailProviderTerminalFailureError {
+    return (
+        error instanceof EmailProviderTerminalFailureError ||
+        (isRecord(error) &&
+            error.code === 'email_provider_terminal_failure' &&
+            (error.providerStatus === KnownEmailSendStatus.Failed ||
+                error.providerStatus === KnownEmailSendStatus.Canceled))
+    );
+}
+
+export function isEmailProviderSubmissionRejectedError(
+    error: unknown,
+): error is EmailProviderSubmissionRejectedError {
+    if (error instanceof EmailProviderSubmissionRejectedError) return true;
+    if (
+        !isRecord(error) ||
+        error.code !== 'email_provider_submission_rejected'
+    ) {
+        return false;
+    }
+    const statusCode = boundedProviderRejectionStatus(error.statusCode);
+    return (
+        statusCode !== null &&
+        typeof error.retryable === 'boolean' &&
+        error.retryable === providerRejectionIsRetryable(statusCode)
+    );
+}
+
+export function classifyEmailProviderSubmissionFailure({
+    error,
+    operationId,
+    providerSubmissionAccepted = false,
+    providerSubmissionStarted,
+    terminalProviderStatus,
+}: {
+    error: unknown;
+    operationId?: string;
+    providerSubmissionAccepted?: boolean;
+    providerSubmissionStarted: boolean;
+    terminalProviderStatus?: string;
+}): EmailProviderSubmissionFailureClassification {
+    if (
+        terminalProviderStatus === KnownEmailSendStatus.Failed ||
+        terminalProviderStatus === KnownEmailSendStatus.Canceled
+    ) {
+        return { kind: 'definite-failure' };
+    }
+    if (providerSubmissionStarted && !providerSubmissionAccepted) {
+        const statusCode = explicitProviderResponseStatus(error);
+        if (
+            statusCode !== null &&
+            providerResponseProvesRejection(statusCode)
+        ) {
+            return {
+                kind: 'rejected',
+                retryable: providerRejectionIsRetryable(statusCode),
+                statusCode,
+            };
+        }
+    }
+    return providerSubmissionStarted && operationId !== undefined
+        ? { kind: 'uncertain' }
+        : { kind: 'definite-failure' };
+}
+
+export function emailProviderSubmissionIsUncertain({
+    error,
+    operationId,
+    providerSubmissionAccepted,
+    providerSubmissionStarted,
+    terminalProviderStatus,
+}: {
+    error?: unknown;
+    operationId?: string;
+    providerSubmissionAccepted?: boolean;
+    providerSubmissionStarted: boolean;
+    terminalProviderStatus?: string;
+}) {
+    return (
+        classifyEmailProviderSubmissionFailure({
+            error,
+            operationId,
+            providerSubmissionAccepted,
+            providerSubmissionStarted,
+            terminalProviderStatus,
+        }).kind === 'uncertain'
+    );
+}
+
+export function assertEmailProviderSendSucceeded(
+    response: Pick<EmailSendResponse, 'error' | 'status'>,
+) {
+    if (response.status === KnownEmailSendStatus.Succeeded) {
+        return;
+    }
+    if (
+        response.status === KnownEmailSendStatus.Failed ||
+        response.status === KnownEmailSendStatus.Canceled
+    ) {
+        throw new EmailProviderTerminalFailureError(response.status);
+    }
+    throw new Error(response.error?.message ?? 'Failed to send email');
+}
+
+function normalizedProviderOperationId(value?: string) {
+    if (value === undefined) return undefined;
+    const normalized = value.trim().toLowerCase();
+    if (!providerOperationIdPattern.test(normalized)) {
+        throw new Error(
+            'Email provider operation ID must be a canonical UUID.',
+        );
+    }
+    return normalized;
+}
 
 export async function sendEmail({
     from,
@@ -184,7 +422,18 @@ export async function sendEmail({
     templateName,
     messageType,
     metadata,
+    operationId,
+    existingEmailLogId,
+    beforeProviderSubmission,
+    abortSignal,
 }: SendEmailParams) {
+    const providerOperationId = normalizedProviderOperationId(operationId);
+    if (
+        existingEmailLogId !== undefined &&
+        (!Number.isSafeInteger(existingEmailLogId) || existingEmailLogId < 1)
+    ) {
+        throw new Error('Existing email log ID must be a positive integer.');
+    }
     const toRecipients = normalizeRecipients(to);
     if (toRecipients.length === 0) {
         throw new Error(
@@ -199,25 +448,56 @@ export async function sendEmail({
     const emailHtml = await render(template);
     const emailPlaintext = await render(template, { plainText: true });
 
-    const emailLog = await createEmailMessageLog({
-        fromAddress: from,
-        subject,
-        templateName: templateName ?? null,
-        messageType: messageType ?? null,
-        recipients: toLogRecipients({
-            to: toRecipients,
-            cc: ccRecipients,
-            bcc: bccRecipients,
-            replyTo: replyToRecipients,
-        }),
-        attachments: buildAttachmentMetadata(attachments),
-        metadata: metadata ?? {},
-        htmlBody: emailHtml,
-        textBody: emailPlaintext,
-        status: 'queued',
-    });
+    const emailLog =
+        existingEmailLogId !== undefined
+            ? await (async () => {
+                  const existing = await getEmailMessage(existingEmailLogId);
+                  if (!existing) {
+                      throw new Error(
+                          'Existing email log entry was not found.',
+                      );
+                  }
+                  const updated = await updateEmailMessageLog(
+                      existingEmailLogId,
+                      {
+                          attachments: buildAttachmentMetadata(attachments),
+                          htmlBody: emailHtml,
+                          messageType: messageType ?? null,
+                          providerMessageId:
+                              existing.providerMessageId ??
+                              providerOperationId ??
+                              null,
+                          templateName: templateName ?? null,
+                          textBody: emailPlaintext,
+                      },
+                  );
+                  if (!updated) {
+                      throw new Error(
+                          'Existing email log entry was not updated.',
+                      );
+                  }
+                  return updated;
+              })()
+            : await createEmailMessageLog({
+                  fromAddress: from,
+                  providerMessageId: providerOperationId ?? null,
+                  subject,
+                  templateName: templateName ?? null,
+                  messageType: messageType ?? null,
+                  recipients: toLogRecipients({
+                      to: toRecipients,
+                      cc: ccRecipients,
+                      bcc: bccRecipients,
+                      replyTo: replyToRecipients,
+                  }),
+                  attachments: buildAttachmentMetadata(attachments),
+                  metadata: metadata ?? {},
+                  htmlBody: emailHtml,
+                  textBody: emailPlaintext,
+                  status: 'queued',
+              });
 
-    const client = emailClient();
+    const client = emailClient(providerOperationId !== undefined);
 
     const azureMessage: EmailMessage = {
         senderAddress: from,
@@ -251,44 +531,96 @@ export async function sendEmail({
         azureMessage.replyTo = toAzureRecipients(replyToRecipients);
     }
 
+    let providerSubmissionAccepted = false;
+    let providerSubmissionStarted = false;
+    let terminalProviderStatus: string | undefined;
     try {
-        const poller = await client.beginSend(azureMessage);
+        abortSignal?.throwIfAborted();
+        await beforeProviderSubmission?.();
+        // ACS Operation-Id identifies the long-running operation, but it is not
+        // a repeatability guarantee. Disable the SDK's internal POST retries for
+        // this durable at-most-once path, and fence any response that does not
+        // prove the provider rejected the submission.
+        providerSubmissionStarted = true;
+        const poller = await client.beginSend(
+            azureMessage,
+            providerOperationId || abortSignal
+                ? { abortSignal, operationId: providerOperationId }
+                : undefined,
+        );
+        providerSubmissionAccepted = true;
         const operationState = poller.getOperationState();
         const operationStateId = getOperationStateId(operationState);
 
-        await updateEmailMessageLog(emailLog.id, {
-            status: 'sending',
-            providerMessageId: operationStateId,
-            providerStatus: operationState.status ?? null,
-            lastAttemptAt: new Date(),
-        });
+        if (existingEmailLogId === undefined) {
+            await updateEmailMessageLog(emailLog.id, {
+                status: 'sending',
+                providerMessageId:
+                    operationStateId ?? providerOperationId ?? null,
+                providerStatus: operationState.status ?? null,
+                lastAttemptAt: new Date(),
+            });
+        }
 
         const response = await poller.pollUntilDone();
+        terminalProviderStatus = response.status;
         const finalStatus = mapProviderStatus(response.status);
 
-        await updateEmailMessageLog(emailLog.id, {
-            status: finalStatus,
-            providerStatus: response.status,
-            providerMessageId: response.id ?? operationStateId ?? null,
-            sentAt: finalStatus === 'sent' ? new Date() : null,
-            completedAt: new Date(),
-            errorCode: response.error?.code ?? null,
-            errorMessage: response.error?.message ?? null,
-        });
-
-        if (response.status !== KnownEmailSendStatus.Succeeded) {
-            throw new Error(response.error?.message ?? 'Failed to send email');
+        if (existingEmailLogId === undefined) {
+            await updateEmailMessageLog(emailLog.id, {
+                status: finalStatus,
+                providerStatus: response.status,
+                providerMessageId: response.id ?? operationStateId ?? null,
+                sentAt: finalStatus === 'sent' ? new Date() : null,
+                completedAt: new Date(),
+                errorCode: response.error?.code ?? null,
+                errorMessage: response.error?.message ?? null,
+            });
         }
+
+        assertEmailProviderSendSucceeded(response);
 
         return response;
     } catch (error) {
-        const errorMessage =
-            error instanceof Error ? error.message : 'Failed to send email';
-        await updateEmailMessageLog(emailLog.id, {
-            status: 'failed',
-            errorMessage,
-            completedAt: new Date(),
+        const failure = classifyEmailProviderSubmissionFailure({
+            error,
+            operationId: providerOperationId,
+            providerSubmissionAccepted,
+            providerSubmissionStarted,
+            terminalProviderStatus,
         });
+        const submissionIsUncertain = failure.kind === 'uncertain';
+        const errorMessage = submissionIsUncertain
+            ? 'Email provider submission status is uncertain.'
+            : failure.kind === 'rejected'
+              ? `Email provider rejected submission with HTTP status ${failure.statusCode}.`
+              : error instanceof Error
+                ? error.message
+                : 'Failed to send email';
+        if (existingEmailLogId === undefined) {
+            try {
+                await updateEmailMessageLog(emailLog.id, {
+                    status: submissionIsUncertain ? 'sending' : 'failed',
+                    errorMessage,
+                    completedAt: submissionIsUncertain ? null : new Date(),
+                });
+            } catch {
+                // Preserve the provider result classification when audit-log
+                // storage is unavailable after the provider boundary.
+            }
+        }
+        if (submissionIsUncertain && providerOperationId) {
+            throw new EmailProviderSubmissionUncertainError(
+                providerOperationId,
+                error,
+            );
+        }
+        if (failure.kind === 'rejected') {
+            throw new EmailProviderSubmissionRejectedError(
+                failure.statusCode,
+                error,
+            );
+        }
         throw error;
     }
 }

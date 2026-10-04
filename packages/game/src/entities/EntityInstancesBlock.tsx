@@ -1,16 +1,119 @@
-import { Instance, Instances } from '@react-three/drei';
-import type { ReactNode } from 'react';
-import type { Material } from 'three';
-import type { BufferGeometry } from 'three/src/Three.Core.js';
-import { useBlockData } from '../hooks/useBlockData';
-import { RainWetOverlay } from '../rain/RainWetOverlay';
-import { type SnowMaterialOptions, SnowOverlay } from '../snow/SnowOverlay';
+import {
+    cloneElement,
+    isValidElement,
+    memo,
+    type ReactNode,
+    useEffect,
+    useId,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+} from 'react';
+import type { BufferGeometry, InstancedMesh, Material } from 'three';
+import {
+    type ActiveDragPreviewTarget,
+    activeDragPreviewTargetMatches,
+    createActiveDragPreviewTarget,
+    getActiveDragPreviewTargetPositionOffset,
+} from '../dragPreviewIdentity';
+import { useGameFlags } from '../GameFlagsContext';
+import {
+    RainWetOverlay,
+    useRainWetOverlayMaterial,
+    useRainWetOverlayVisible,
+} from '../rain/RainWetOverlay';
+import { registerCloudShadowAttenuationMaterialCandidate } from '../scene/cloudShadowAttenuation';
+import { meshGeometryLayoutSignature } from '../scene/compiler/meshBuffers';
+import {
+    useStaticRenderPacketContributions,
+    useStaticRenderPacketOwnerId,
+    useStaticRenderPacketRegistry,
+} from '../scene/compiler/StaticRenderPacketBatch';
+import type {
+    StaticRenderPacketContribution,
+    StaticRenderPacketFallbackReason,
+} from '../scene/compiler/staticRenderPackets';
+import { supportsStaticPacketVisibility } from '../scene/compiler/staticRenderPacketVisibility';
+import { useCompiledChunk } from '../scene/compiler/useCompiledChunk';
+import { useStaticGardenMaterialNode } from '../scene/gardenMaterialNodes';
+import {
+    classifyGardenMaterial,
+    getGardenMaterialSignature,
+    useSharedGardenMaterial,
+} from '../scene/gardenMaterials';
+import {
+    getGardenPacketMaterialSignature,
+    useGardenPacketSource,
+} from '../scene/gardenPacketMaterials';
+import { useSceneBlockData } from '../scene/SceneBlockDataContext';
+import {
+    StaticOpaqueSceneCacheBoundary,
+    type StaticOpaqueSceneCacheGroup,
+} from '../scene/StaticOpaqueSceneCache';
+import {
+    useFrostIntensityUniform,
+    useRainSurfacePuddleStrengthUniform,
+    useRainSurfaceWetnessActive,
+    useRainSurfaceWetnessUniform,
+    useSnowSurfaceIntegrationState,
+} from '../scene/WeatherSurfaceUniformProvider';
+import {
+    countGeometryTriangles,
+    createWeatherSurfaceGeometry,
+    getWeatherSurfaceGeometryMetadata,
+} from '../scene/weatherSurfaceGeometry';
+import {
+    createIntegratedWeatherSurfaceMaterial,
+    getWeatherSurfacePluginVariantKey,
+    resolveWeatherSurfacePluginMode,
+    supportsIntegratedWeatherSurfaceMaterial,
+} from '../scene/weatherSurfaceMaterial';
+import {
+    registerWeatherSurfaceRenderEntry,
+    type WeatherSurfaceMode,
+} from '../scene/weatherSurfaceRenderRegistry';
+import { createSnowOverlayGeometry } from '../snow/createSnowOverlayGeometry';
+import {
+    type SnowMaterialOptions,
+    SnowOverlay,
+    useSnowMaterial,
+    useSnowOverlayVisible,
+} from '../snow/SnowOverlay';
+import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
-import { useGameState } from '../useGameState';
+import { type ActiveDragPreview, useGameState } from '../useGameState';
 import { getStackHeight } from '../utils/getStackHeight';
+import {
+    type MeshInstanceChunk,
+    type MeshInstanceLocalTransform,
+    writeMeshInstanceMatrices,
+} from './chunkedMeshGeometry';
+import {
+    getIndexedEntityBlocks,
+    useEntityBlockInstanceIndex,
+} from './entityBlockInstanceIndex';
+import { blockPickupOutlineStyle } from './helpers/blockPickupOutlineStyle';
+import { HoverOutline } from './helpers/HoverOutline';
+import { QueuedPlacementDropAnimation } from './helpers/PlacementDropAnimation';
+import {
+    addressPlacementAnimationChunks,
+    createPlacementAnimationChunkCache,
+    createPlacementDropAnimationRenderIdsSelector,
+    localizePlacementDropAnimationChunks,
+} from './placementAnimationChunks';
+import {
+    placementAnimationProfileNow,
+    recordPlacementAnimationChunkRebuild,
+    recordPlacementAnimationChunkUpdate,
+    shouldRecordPlacementAnimationChunkRebuild,
+} from './placementAnimationProfileMetrics';
 
 const defaultLocalPosition: [number, number, number] = [0, 0, 0];
 const defaultLocalRotation: [number, number, number] = [0, 0, 0];
+const fallbackWeatherSurfaceBounds = {
+    max: [0.5, 0.5, 0.5] as const,
+    min: [-0.5, -0.5, -0.5] as const,
+};
 
 export type EntityInstancesBlockBaseProps = {
     stacks: Stack[] | undefined;
@@ -21,10 +124,18 @@ export type EntityInstancesBlockBaseProps = {
     yOffset?: number;
     snowLift?: number;
     snowOverlayMinCoverage?: number;
-    scale?: [number, number, number];
+    scale?: number | [number, number, number];
     geometry: BufferGeometry;
     snow?: SnowMaterialOptions;
     renderRainWetOverlay?: boolean;
+    renderStableChunksAsMergedGeometry?: boolean;
+    /** Known immutable geometry/PBR sources may join heterogeneous stable packets. */
+    batchStaticMaterial?: boolean;
+    staticOpaqueCacheGroup?: StaticOpaqueSceneCacheGroup;
+    weatherSurface?: 'base-ground';
+    castShadow?: boolean;
+    receiveShadow?: boolean;
+    renderOrder?: number;
 };
 
 export type EntityInstancesBlockMaterialProps =
@@ -36,6 +147,283 @@ export type EntityInstancesBlockMaterialProps =
           material?: never;
           materialNode: ReactNode;
       };
+
+export type EntityBlockInstance = {
+    block: Block;
+    blockIndex: number;
+    id: string;
+    pickupOutlineVisible: boolean;
+    position: [number, number, number];
+    rotation: number;
+    stack: Stack;
+    stackHeight: number;
+};
+
+function numbersEqual(left: number, right: number) {
+    return Math.abs(left - right) <= 0.0001;
+}
+
+function tuplesEqual(
+    left: [number, number, number],
+    right: [number, number, number],
+) {
+    return (
+        numbersEqual(left[0], right[0]) &&
+        numbersEqual(left[1], right[1]) &&
+        numbersEqual(left[2], right[2])
+    );
+}
+
+function scalesEqual(
+    left: EntityInstancesBlockBaseProps['scale'],
+    right: EntityInstancesBlockBaseProps['scale'],
+) {
+    if (left === right) {
+        return true;
+    }
+    if (Array.isArray(left) && Array.isArray(right)) {
+        return tuplesEqual(left, right);
+    }
+    return false;
+}
+
+function entityBlockInstancesEqual(
+    left: EntityBlockInstance[] | undefined,
+    right: EntityBlockInstance[] | undefined,
+) {
+    if (left === right) {
+        return true;
+    }
+    if (!left || !right || left.length !== right.length) {
+        return false;
+    }
+
+    return left.every((leftInstance, index) => {
+        const rightInstance = right[index];
+        return (
+            Boolean(rightInstance) &&
+            leftInstance.block === rightInstance.block &&
+            leftInstance.blockIndex === rightInstance.blockIndex &&
+            leftInstance.id === rightInstance.id &&
+            leftInstance.pickupOutlineVisible ===
+                rightInstance.pickupOutlineVisible &&
+            tuplesEqual(leftInstance.position, rightInstance.position) &&
+            numbersEqual(leftInstance.rotation, rightInstance.rotation) &&
+            leftInstance.stack === rightInstance.stack &&
+            numbersEqual(leftInstance.stackHeight, rightInstance.stackHeight)
+        );
+    });
+}
+
+function useStableEntityBlockInstances(
+    instances: EntityBlockInstance[] | undefined,
+) {
+    const previous = useRef<EntityBlockInstance[] | undefined>(undefined);
+    if (entityBlockInstancesEqual(previous.current, instances))
+        return previous.current;
+    const oldById = new Map<string, EntityBlockInstance[]>();
+    for (const instance of previous.current ?? []) {
+        const group = oldById.get(instance.id);
+        if (group) group.push(instance);
+        else oldById.set(instance.id, [instance]);
+    }
+    const occurrence = new Map<string, number>();
+    previous.current = instances?.map((instance) => {
+        const index = occurrence.get(instance.id) ?? 0;
+        occurrence.set(instance.id, index + 1);
+        const old = oldById.get(instance.id)?.[index];
+        return old && entityBlockInstancesEqual([old], [instance])
+            ? old
+            : instance;
+    });
+    return previous.current;
+}
+
+function useStableTuple(tuple: [number, number, number]) {
+    const previous = useRef(tuple);
+
+    if (!tuplesEqual(previous.current, tuple)) {
+        previous.current = tuple;
+    }
+
+    return previous.current;
+}
+
+function useStableScale(scale: EntityInstancesBlockBaseProps['scale']) {
+    const previous = useRef(scale);
+
+    if (!scalesEqual(previous.current, scale)) {
+        previous.current = scale;
+    }
+
+    return previous.current;
+}
+
+function cloneMaterialNode(materialNode: ReactNode) {
+    return isValidElement(materialNode)
+        ? cloneElement(materialNode)
+        : materialNode;
+}
+
+function blockNameMatches(
+    blockName: string,
+    name: string | undefined,
+    names: readonly string[] | undefined,
+) {
+    return blockName === name || (names?.includes(blockName) ?? false);
+}
+
+function activeDragTargetKey(target: ActiveDragPreviewTarget) {
+    return `${target.stackPosition.x}|${target.stackPosition.z}|${target.blockId}|${target.blockIndex}`;
+}
+
+function activeDragTargetTouchesBlockNames(
+    target: ActiveDragPreviewTarget | null | undefined,
+    blockNameByActiveDragTargetKey: ReadonlyMap<string, string>,
+    name: string | undefined,
+    names: readonly string[] | undefined,
+) {
+    if (!target) {
+        return false;
+    }
+
+    const blockName = blockNameByActiveDragTargetKey.get(
+        activeDragTargetKey(target),
+    );
+
+    return blockName ? blockNameMatches(blockName, name, names) : false;
+}
+
+function activeDragPreviewTouchesBlockNames(
+    preview: ActiveDragPreview | null,
+    blockNameByActiveDragTargetKey: ReadonlyMap<string, string>,
+    name: string | undefined,
+    names: readonly string[] | undefined,
+) {
+    if (!preview) {
+        return false;
+    }
+
+    return (
+        activeDragTargetTouchesBlockNames(
+            preview.source,
+            blockNameByActiveDragTargetKey,
+            name,
+            names,
+        ) ||
+        preview.targets.some((target) =>
+            activeDragTargetTouchesBlockNames(
+                target,
+                blockNameByActiveDragTargetKey,
+                name,
+                names,
+            ),
+        )
+    );
+}
+
+export function useEntityBlockInstances({
+    name,
+    names,
+    stacks,
+    yOffset,
+}: {
+    name?: string;
+    names?: readonly string[];
+    stacks: Stack[] | undefined;
+    yOffset?: number;
+}) {
+    const blockData = useSceneBlockData();
+    const entityBlockInstanceIndex = useEntityBlockInstanceIndex(stacks);
+    const { blockNameByActiveDragTargetKey } = entityBlockInstanceIndex;
+    const activeDragPreview = useGameState((state) =>
+        activeDragPreviewTouchesBlockNames(
+            state.activeDragPreview,
+            blockNameByActiveDragTargetKey,
+            name,
+            names,
+        )
+            ? state.activeDragPreview
+            : null,
+    );
+    const stationaryPickupOutlineTarget = useGameState((state) =>
+        activeDragTargetTouchesBlockNames(
+            state.stationaryPickupOutlineTarget,
+            blockNameByActiveDragTargetKey,
+            name,
+            names,
+        )
+            ? state.stationaryPickupOutlineTarget
+            : null,
+    );
+
+    const indexedBlocks = getIndexedEntityBlocks(
+        entityBlockInstanceIndex,
+        name,
+        names,
+    );
+    const hasStacks = Boolean(stacks);
+    const instances = useMemo(
+        () =>
+            hasStacks
+                ? indexedBlocks.map(
+                      ({ block, blockIndex, stack }): EntityBlockInstance => {
+                          const stackHeight = getStackHeight(
+                              blockData,
+                              stack,
+                              block,
+                          );
+                          const target = createActiveDragPreviewTarget({
+                              blockId: block.id,
+                              blockIndex,
+                              stackPosition: stack.position,
+                          });
+                          const dragPreviewOffset =
+                              getActiveDragPreviewTargetPositionOffset(
+                                  target,
+                                  activeDragPreview,
+                              );
+                          const stationaryPickupOutlineVisible =
+                              activeDragPreviewTargetMatches(
+                                  stationaryPickupOutlineTarget,
+                                  target,
+                              );
+
+                          return {
+                              block,
+                              blockIndex,
+                              id: `${stack.position.x}|${stack.position.z}|${block.id}|${blockIndex}`,
+                              pickupOutlineVisible:
+                                  Boolean(dragPreviewOffset) ||
+                                  stationaryPickupOutlineVisible,
+                              position: [
+                                  stack.position.x +
+                                      (dragPreviewOffset?.x ?? 0),
+                                  stackHeight +
+                                      (yOffset ?? 0) +
+                                      (dragPreviewOffset?.y ?? 0),
+                                  stack.position.z +
+                                      (dragPreviewOffset?.z ?? 0),
+                              ],
+                              rotation: block.rotation || 0,
+                              stack,
+                              stackHeight,
+                          };
+                      },
+                  )
+                : undefined,
+        [
+            hasStacks,
+            indexedBlocks,
+            blockData,
+            activeDragPreview,
+            stationaryPickupOutlineTarget,
+            yOffset,
+        ],
+    );
+
+    return useStableEntityBlockInstances(instances);
+}
 
 export function EntityInstancesBlock(
     props: EntityInstancesBlockBaseProps & EntityInstancesBlockMaterialProps,
@@ -53,115 +441,1287 @@ export function EntityInstancesBlock(
         geometry,
         snow,
         renderRainWetOverlay = false,
+        renderStableChunksAsMergedGeometry,
+        batchStaticMaterial,
+        staticOpaqueCacheGroup,
+        weatherSurface,
+        castShadow = true,
+        receiveShadow = true,
+        renderOrder,
     } = props;
-    const { data: blockData } = useBlockData();
-    const pickupBlock = useGameState((state) => state.pickupBlock);
+    const blockInstances = useEntityBlockInstances({
+        name,
+        stacks,
+        yOffset,
+    });
 
-    const blockInstances = stacks
-        ?.filter(
-            (stack) =>
-                (!pickupBlock || !stack.blocks.includes(pickupBlock)) &&
-                stack.blocks.some((b) => b.name === name),
-        )
-        .flatMap((stack) =>
-            stack.blocks
-                ?.filter((block) => block.name === name)
-                .map((block) => {
-                    const y = getStackHeight(blockData, stack, block);
-                    return {
-                        id: block.id,
-                        position: [
-                            stack.position.x,
-                            y + (yOffset ?? 0),
-                            stack.position.z,
-                        ] as const,
-                        rotation: block.rotation || 0,
-                    };
-                }),
-        );
-
-    const limit = Math.max((blockInstances?.length ?? 0) + 10, 100);
-
-    const localTransform = {
-        position: localPosition ?? defaultLocalPosition,
-        rotation: localRotation ?? defaultLocalRotation,
+    const commonProps = {
+        castShadow,
+        geometry,
+        instanceKey: name,
+        instances: blockInstances,
+        localPosition,
+        localRotation,
+        receiveShadow,
+        renderOrder,
+        renderRainWetOverlay,
+        renderStableChunksAsMergedGeometry,
+        batchStaticMaterial,
+        renderSnow,
+        scale,
+        snow,
+        snowLift,
+        snowOverlayMinCoverage,
+        staticOpaqueCacheGroup,
+        weatherSurface,
     };
 
-    const renderInstances = (suffix: string) =>
-        (blockInstances ?? []).map((data) => (
-            <group
-                key={`block-${name}-${suffix}-${data.id}`}
+    if ('material' in props && props.material !== undefined) {
+        return (
+            <EntityInstancesGeometry
+                {...commonProps}
+                material={props.material}
+            />
+        );
+    }
+
+    return (
+        <EntityInstancesGeometry
+            {...commonProps}
+            materialNode={props.materialNode}
+        />
+    );
+}
+
+type EntityInstancesGeometryProps = Omit<
+    EntityInstancesBlockBaseProps,
+    'name' | 'stacks' | 'yOffset'
+> &
+    EntityInstancesBlockMaterialProps & {
+        instanceKey: string;
+        instances: EntityBlockInstance[] | undefined;
+    };
+
+type IntegratedStableWeather = {
+    geometry: BufferGeometry;
+    integratesRain: boolean;
+    integratesSnow: boolean;
+    material: Material;
+    pluginVariantKey: string;
+};
+
+export function EntityInstancesGeometry(props: EntityInstancesGeometryProps) {
+    const flags = useGameFlags();
+    const weatherSurfaceMode: WeatherSurfaceMode =
+        flags.enableIntegratedWeatherSurfacesFlag === false
+            ? 'legacy'
+            : 'integrated';
+    const material = 'material' in props ? props.material : undefined;
+    const integrationEligible =
+        weatherSurfaceMode === 'integrated' &&
+        props.weatherSurface === 'base-ground' &&
+        props.snow !== undefined &&
+        !Array.isArray(material) &&
+        material !== undefined &&
+        supportsIntegratedWeatherSurfaceMaterial(material);
+
+    if (integrationEligible) {
+        return (
+            <IntegratedWeatherEntityInstancesGeometry
+                {...props}
+                sourceMaterial={material}
+                weatherSurfaceMode={weatherSurfaceMode}
+            />
+        );
+    }
+
+    return (
+        <EntityInstancesGeometryRenderer
+            {...props}
+            weatherSurfaceMode={weatherSurfaceMode}
+        />
+    );
+}
+
+function IntegratedWeatherEntityInstancesGeometry({
+    sourceMaterial,
+    ...props
+}: {
+    sourceMaterial: Parameters<
+        typeof createIntegratedWeatherSurfaceMaterial
+    >[0];
+    weatherSurfaceMode: WeatherSurfaceMode;
+} & EntityInstancesGeometryProps) {
+    const {
+        geometry,
+        renderRainWetOverlay = false,
+        renderSnow = true,
+        snow,
+        snowLift = 0,
+        snowOverlayMinCoverage,
+    } = props;
+    const wetnessUniform = useRainSurfaceWetnessUniform({
+        drySpeed: 1.8,
+        intensityMultiplier: 1,
+        wetSpeed: 5,
+    });
+    const frostIntensityUniform = useFrostIntensityUniform();
+    const frostActive = useGameState((state) => state.frostIntensity > 0);
+    const puddleStrengthUniform = useRainSurfacePuddleStrengthUniform();
+    const rainOverlayVisible = useRainWetOverlayVisible();
+    const rainSurfaceActive =
+        renderRainWetOverlay && Boolean(rainOverlayVisible);
+    const snowOverlayVisible = useSnowOverlayVisible({
+        coverageMultiplier: snow?.coverageMultiplier,
+        minCoverage: snowOverlayMinCoverage,
+        overrideSnow: snow?.overrideSnow,
+    });
+    const snowSurfaceActive = Boolean(snow && renderSnow && snowOverlayVisible);
+    const snowNoiseInfluence = snow?.noiseInfluence ?? 0.15;
+    const { amountUniform: snowAmountUniform, ready: snowIntegrationReady } =
+        useSnowSurfaceIntegrationState({
+            coverageMultiplier: snow?.coverageMultiplier ?? 1,
+            noiseInfluence: snowNoiseInfluence,
+            overrideSnow: snow?.overrideSnow,
+        });
+    const integratesSnow = snowSurfaceActive && snowIntegrationReady;
+    const integratesRain = rainSurfaceActive || frostActive;
+    const hasIntegratedWeather = integratesRain || integratesSnow;
+    const pluginVariantKey = hasIntegratedWeather
+        ? getWeatherSurfacePluginVariantKey(
+              resolveWeatherSurfacePluginMode({
+                  rainEnabled: integratesRain,
+                  snowEnabled: integratesSnow,
+              }),
+          )
+        : undefined;
+    const rainBounds = useMemo(() => {
+        if (!geometry.boundingBox) {
+            geometry.computeBoundingBox();
+        }
+        const bounds = geometry.boundingBox;
+        if (!bounds) {
+            return fallbackWeatherSurfaceBounds;
+        }
+        return {
+            max: [bounds.max.x, bounds.max.y, bounds.max.z] as const,
+            min: [bounds.min.x, bounds.min.y, bounds.min.z] as const,
+        };
+    }, [geometry]);
+    const preparedGeometry = useMemo(
+        () =>
+            integratesSnow
+                ? createWeatherSurfaceGeometry(geometry, {
+                      includeSnowSkirts: true,
+                  })
+                : geometry,
+        [geometry, integratesSnow],
+    );
+    const integratedMaterial = useMemo(() => {
+        if (!hasIntegratedWeather) {
+            return undefined;
+        }
+        return createIntegratedWeatherSurfaceMaterial(sourceMaterial, {
+            frostIntensityUniform,
+            rain: {
+                bounds: rainBounds,
+                darkness: 1,
+                enabled: integratesRain,
+                glossiness: 0.7,
+                puddleStrengthUniform,
+                topSurfaceBias: 1.8,
+                wetnessUniform: renderRainWetOverlay
+                    ? wetnessUniform
+                    : { value: 0 },
+            },
+            snow: {
+                amountUniform: snowAmountUniform,
+                color: snow?.color ?? '#f7f7ff',
+                enabled: integratesSnow,
+                lift: snowLift || 0.003,
+                maxThickness: snow?.maxThickness ?? 0.18,
+                noiseAmplitude: snow?.noiseAmplitude ?? 0.35,
+                noiseInfluence: snowNoiseInfluence,
+                noiseScale: snow?.noiseScale ?? 2.5,
+                slopeExponent: snow?.slopeExponent ?? 2.4,
+            },
+        });
+    }, [
+        frostIntensityUniform,
+        hasIntegratedWeather,
+        puddleStrengthUniform,
+        rainBounds,
+        renderRainWetOverlay,
+        integratesRain,
+        integratesSnow,
+        snow,
+        snowAmountUniform,
+        snowLift,
+        snowNoiseInfluence,
+        sourceMaterial,
+        wetnessUniform,
+    ]);
+    const integratedStableWeather = useMemo(
+        () =>
+            integratedMaterial && pluginVariantKey
+                ? {
+                      geometry: preparedGeometry,
+                      integratesRain,
+                      integratesSnow,
+                      material: integratedMaterial,
+                      pluginVariantKey,
+                  }
+                : undefined,
+        [
+            integratedMaterial,
+            integratesRain,
+            integratesSnow,
+            pluginVariantKey,
+            preparedGeometry,
+        ],
+    );
+
+    useLayoutEffect(() => {
+        if (!integratedMaterial) {
+            return;
+        }
+        return registerCloudShadowAttenuationMaterialCandidate(
+            integratedMaterial,
+        );
+    }, [integratedMaterial]);
+    useEffect(() => {
+        if (!integratedMaterial) {
+            return;
+        }
+        return () => integratedMaterial.dispose();
+    }, [integratedMaterial]);
+
+    return (
+        <EntityInstancesGeometryRenderer
+            {...props}
+            integratedStableWeather={integratedStableWeather}
+            weatherIntegrated
+        />
+    );
+}
+
+function EntityInstancesGeometryRenderer(
+    props: EntityInstancesGeometryProps & {
+        integratedStableWeather?: IntegratedStableWeather;
+        /** Weather-integrated surfaces retain their original material lifetime. */
+        weatherIntegrated?: boolean;
+        weatherSurfaceMode: WeatherSurfaceMode;
+    },
+) {
+    const {
+        instanceKey,
+        instances: incomingInstances,
+        renderSnow = true,
+        localPosition,
+        localRotation,
+        scale,
+        geometry,
+        snow,
+        snowLift = 0,
+        snowOverlayMinCoverage,
+        renderRainWetOverlay = false,
+        renderStableChunksAsMergedGeometry = false,
+        batchStaticMaterial = false,
+        staticOpaqueCacheGroup,
+        integratedStableWeather,
+        weatherIntegrated = false,
+        weatherSurfaceMode,
+        castShadow = true,
+        receiveShadow = true,
+        renderOrder,
+    } = props;
+    const instances = useStableEntityBlockInstances(incomingInstances);
+    const stableLocalPosition = useStableTuple(
+        localPosition ?? defaultLocalPosition,
+    );
+    const stableLocalRotation = useStableTuple(
+        localRotation ?? defaultLocalRotation,
+    );
+    const stableScale = useStableScale(scale);
+    const localTransform = useMemo(
+        () => ({
+            position: stableLocalPosition,
+            rotation: stableLocalRotation,
+        }),
+        [stableLocalPosition, stableLocalRotation],
+    );
+    const previousAddressedChunks = useRef<
+        | ReturnType<
+              typeof addressPlacementAnimationChunks<EntityBlockInstance>
+          >
+        | undefined
+    >(undefined);
+    const addressedChunks = useMemo(
+        () =>
+            addressPlacementAnimationChunks(
+                instances ?? [],
+                previousAddressedChunks.current,
+            ),
+        [instances],
+    );
+    useLayoutEffect(() => {
+        previousAddressedChunks.current = addressedChunks;
+    }, [addressedChunks]);
+    const selectAnimatedRenderIds = useMemo(
+        () =>
+            createPlacementDropAnimationRenderIdsSelector([
+                ...addressedChunks.addressByBlockId.keys(),
+            ]),
+        [addressedChunks.addressByBlockId],
+    );
+    const animatedRenderIds = useGameState(selectAnimatedRenderIds);
+    const placementAnimationChunkCache = useMemo(
+        () => createPlacementAnimationChunkCache<EntityBlockInstance>(),
+        [],
+    );
+    useLayoutEffect(() => {
+        const liveChunks = new Map(
+            addressedChunks.chunks.map((chunk) => [chunk.key, chunk]),
+        );
+        for (const [key, cached] of placementAnimationChunkCache) {
+            if (liveChunks.get(key) !== cached.sourceChunk)
+                placementAnimationChunkCache.delete(key);
+        }
+    }, [addressedChunks, placementAnimationChunkCache]);
+    const localizedChunks = useMemo(
+        () =>
+            localizePlacementDropAnimationChunks(
+                addressedChunks,
+                animatedRenderIds,
+                placementAnimationChunkCache,
+            ),
+        [addressedChunks, animatedRenderIds, placementAnimationChunkCache],
+    );
+    const {
+        animatedInstances,
+        chunks: stableChunks,
+        placementSignatureByChunkKey,
+    } = localizedChunks;
+    const previousPlacementProjection = useRef<
+        | {
+              addressedChunks: typeof addressedChunks;
+              placementSignatureByChunkKey: ReadonlyMap<string, string>;
+          }
+        | undefined
+    >(undefined);
+
+    useEffect(() => {
+        const previousProjection = previousPlacementProjection.current;
+        previousPlacementProjection.current = {
+            addressedChunks,
+            placementSignatureByChunkKey,
+        };
+        if (
+            !previousProjection ||
+            previousProjection.addressedChunks !== addressedChunks
+        ) {
+            return;
+        }
+
+        const candidateChunkKeys = new Set([
+            ...previousProjection.placementSignatureByChunkKey.keys(),
+            ...placementSignatureByChunkKey.keys(),
+        ]);
+        let touchedChunkCount = 0;
+        for (const chunkKey of candidateChunkKeys) {
+            if (
+                previousProjection.placementSignatureByChunkKey.get(
+                    chunkKey,
+                ) !== placementSignatureByChunkKey.get(chunkKey)
+            ) {
+                touchedChunkCount += 1;
+            }
+        }
+        if (touchedChunkCount > 0) {
+            recordPlacementAnimationChunkUpdate({ touchedChunkCount });
+        }
+    }, [addressedChunks, placementSignatureByChunkKey]);
+
+    const material = 'material' in props ? props.material : undefined;
+    const materialNode =
+        'materialNode' in props ? props.materialNode : undefined;
+    const packetRegistry = useStaticRenderPacketRegistry();
+    const stableGeometry = integratedStableWeather?.geometry ?? geometry;
+    const concreteMaterialNode = useStaticGardenMaterialNode(
+        materialNode,
+        Boolean(packetRegistry) &&
+            !renderStableChunksAsMergedGeometry &&
+            (batchStaticMaterial || staticOpaqueCacheGroup !== undefined) &&
+            material === undefined &&
+            integratedStableWeather === undefined,
+    );
+    const stableMaterial =
+        integratedStableWeather?.material ?? material ?? concreteMaterialNode;
+    const integratesStableRain =
+        integratedStableWeather?.integratesRain === true;
+    const integratesStableSnow =
+        integratedStableWeather?.integratesSnow === true;
+    const stableMaterialNode =
+        integratedStableWeather || concreteMaterialNode
+            ? undefined
+            : materialNode;
+    const staticOpaqueCacheContentKey = useMemo(
+        () => ({
+            castShadow,
+            localTransform,
+            placementSignatureByChunkKey,
+            receiveShadow,
+            renderOrder,
+            renderStableChunksAsMergedGeometry,
+            stableChunks,
+            stableGeometry,
+            stableMaterial,
+            stableMaterialNode,
+            stableScale,
+        }),
+        [
+            castShadow,
+            localTransform,
+            placementSignatureByChunkKey,
+            receiveShadow,
+            renderOrder,
+            renderStableChunksAsMergedGeometry,
+            stableChunks,
+            stableGeometry,
+            stableMaterial,
+            stableMaterialNode,
+            stableScale,
+        ],
+    );
+    const packetOwnerId = useStaticRenderPacketOwnerId();
+    const stableMaterialClass = classifyGardenMaterial(stableMaterial);
+    const stockGeometrySupported =
+        supportsStaticPacketVisibility(stableGeometry);
+    // Stable instances exclude active drop animation. Known stock
+    // materials batch newly admitted props. Existing merged sources retain
+    // their original material, weather, and JSX presentation ownership.
+    const stockCompatible =
+        !renderStableChunksAsMergedGeometry &&
+        (batchStaticMaterial || staticOpaqueCacheGroup !== undefined) &&
+        stockGeometrySupported &&
+        Boolean(
+            stableMaterial &&
+                !Array.isArray(stableMaterial) &&
+                getGardenPacketMaterialSignature(stableMaterial) !== undefined,
+        );
+    const packetRequested =
+        renderStableChunksAsMergedGeometry || stockCompatible;
+    let packetFallbackReason: StaticRenderPacketFallbackReason | undefined;
+    if (packetRegistry && packetRequested) {
+        if (renderStableChunksAsMergedGeometry && weatherIntegrated)
+            packetFallbackReason = 'weather-integrated';
+        else if (
+            stableMaterialNode !== undefined &&
+            stableMaterialNode !== null
+        )
+            packetFallbackReason = 'material-node';
+        else if (!stableMaterialClass.batchable)
+            packetFallbackReason = stableMaterialClass.reason;
+    }
+    const packetEnabled =
+        Boolean(packetRegistry) && packetRequested && !packetFallbackReason;
+    const packetFamily = stableMaterialClass.batchable
+        ? stableMaterialClass.family
+        : undefined;
+    const originalVisibilityMode = renderStableChunksAsMergedGeometry
+        ? 'compiled'
+        : 'instanced';
+    // Before stock admission, plain merged sources with equal materials
+    // already shared a packet. Preserve that original culling group; weather
+    // and JSX-node merged sources previously compiled on their own.
+    const originalPacketGroup =
+        renderStableChunksAsMergedGeometry &&
+        integratedStableWeather === undefined &&
+        materialNode == null &&
+        stableMaterial &&
+        !Array.isArray(stableMaterial) &&
+        stableMaterialClass.batchable
+            ? `${getGardenMaterialSignature(stableMaterial) ?? stableMaterial.uuid}|${meshGeometryLayoutSignature(stableGeometry)}`
+            : undefined;
+    const stockPacketSource = useGardenPacketSource(
+        stableGeometry,
+        stableMaterial,
+        packetEnabled &&
+            !renderStableChunksAsMergedGeometry &&
+            stockGeometrySupported,
+    );
+    const packetGeometry = stockPacketSource.geometry;
+    const stableLayoutSignature = useMemo(
+        () => meshGeometryLayoutSignature(packetGeometry),
+        [packetGeometry],
+    );
+    const sharedPacketMaterial = useSharedGardenMaterial(
+        stableMaterial,
+        packetEnabled && !stockPacketSource.stock,
+    );
+    const preparedPacketMaterial = stockPacketSource.stock
+        ? stockPacketSource.material
+        : sharedPacketMaterial;
+    const packetMaterial =
+        packetEnabled &&
+        preparedPacketMaterial &&
+        !Array.isArray(preparedPacketMaterial)
+            ? preparedPacketMaterial
+            : undefined;
+    const stableSourceTriangleCount = useMemo(
+        () => countGeometryTriangles(stableGeometry),
+        [stableGeometry],
+    );
+    const packetContributionCache = useRef(
+        new Map<string, StaticRenderPacketContribution>(),
+    );
+    const packetContributions = useMemo(() => {
+        if (!packetMaterial || !packetFamily) return undefined;
+        const previous = packetContributionCache.current;
+        const next = new Map<string, StaticRenderPacketContribution>();
+        const contributions = stableChunks.map((chunk) => {
+            const placementSignature =
+                placementSignatureByChunkKey.get(chunk.key) ?? '';
+            const old = previous.get(chunk.key);
+            const contribution: StaticRenderPacketContribution =
+                old &&
+                old.instances === chunk.instances &&
+                old.geometry === packetGeometry &&
+                old.material === packetMaterial &&
+                old.fallbackGeometry === stableGeometry &&
+                old.fallbackMaterial === stableMaterial &&
+                old.localTransform === localTransform &&
+                old.scale === stableScale &&
+                old.castShadow === castShadow &&
+                old.receiveShadow === receiveShadow &&
+                old.renderOrder === renderOrder &&
+                old.cacheGroup === staticOpaqueCacheGroup &&
+                old.layoutSignature === stableLayoutSignature &&
+                old.family === packetFamily &&
+                old.originalVisibilityMode === originalVisibilityMode &&
+                old.originalVisibilityGroup === originalPacketGroup &&
+                old.sourceBoundsCulling === stockPacketSource.stock &&
+                old.placementSignature === placementSignature
+                    ? old
+                    : {
+                          cacheGroup: staticOpaqueCacheGroup,
+                          castShadow,
+                          chunkKey: chunk.key,
+                          family: packetFamily,
+                          fallbackGeometry: stableGeometry,
+                          fallbackMaterial:
+                              stableMaterial && !Array.isArray(stableMaterial)
+                                  ? stableMaterial
+                                  : undefined,
+                          geometry: packetGeometry,
+                          id: `${packetOwnerId}:${instanceKey}:${chunk.key}`,
+                          instances: chunk.instances,
+                          layoutSignature: stableLayoutSignature,
+                          localTransform,
+                          material: packetMaterial,
+                          originalVisibilityMode,
+                          originalVisibilityGroup: originalPacketGroup,
+                          sourceBoundsCulling: stockPacketSource.stock,
+                          placementSignature,
+                          receiveShadow,
+                          renderOrder,
+                          scale: stableScale,
+                          triangleCount: stableSourceTriangleCount,
+                      };
+            next.set(chunk.key, contribution);
+            return contribution;
+        });
+        packetContributionCache.current = next;
+        return contributions;
+    }, [
+        castShadow,
+        instanceKey,
+        localTransform,
+        originalPacketGroup,
+        originalVisibilityMode,
+        packetFamily,
+        packetGeometry,
+        packetMaterial,
+        packetOwnerId,
+        placementSignatureByChunkKey,
+        receiveShadow,
+        renderOrder,
+        stableChunks,
+        stockPacketSource.stock,
+        stableGeometry,
+        stableLayoutSignature,
+        stableMaterial,
+        stableScale,
+        stableSourceTriangleCount,
+        staticOpaqueCacheGroup,
+    ]);
+    useStaticRenderPacketContributions(
+        packetOwnerId,
+        packetContributions,
+        packetFallbackReason,
+    );
+    const weatherRegistryId = useId();
+    const rainOverlayVisible = useRainWetOverlayVisible();
+    const rainOverlayEnabled = renderRainWetOverlay;
+    const rainWetnessActive = useRainSurfaceWetnessActive({
+        drySpeed: 1.8,
+        enabled: rainOverlayEnabled,
+        intensityMultiplier: 1,
+        minimumWetness: 0.01,
+        wetSpeed: 5,
+    });
+    const snowOverlayVisible = useSnowOverlayVisible({
+        coverageMultiplier: snow?.coverageMultiplier,
+        minCoverage: snowOverlayMinCoverage,
+        overrideSnow: snow?.overrideSnow,
+    });
+    const sourceTriangleCount = useMemo(
+        () => countGeometryTriangles(geometry),
+        [geometry],
+    );
+    const activeRainOverlay = rainOverlayEnabled && rainOverlayVisible;
+    const activeAnimatedRainOverlay =
+        rainOverlayEnabled && (rainOverlayVisible || rainWetnessActive);
+    const activeSnowOverlay = Boolean(snow) && renderSnow && snowOverlayVisible;
+    const snowOverlayTriangleCount = useMemo(() => {
+        if (!activeSnowOverlay) {
+            return 0;
+        }
+        if (integratesStableSnow && integratedStableWeather) {
+            const metadata = getWeatherSurfaceGeometryMetadata(
+                integratedStableWeather.geometry,
+            );
+            if (!metadata?.includesSnowSkirts) {
+                throw new Error(
+                    'Integrated snow surface is missing its prepared boundary skirts.',
+                );
+            }
+            return metadata.preparedTriangleCount;
+        }
+        return countGeometryTriangles(createSnowOverlayGeometry(geometry));
+    }, [
+        activeSnowOverlay,
+        geometry,
+        integratedStableWeather,
+        integratesStableSnow,
+    ]);
+    const stableInstanceCount = useMemo(
+        () =>
+            stableChunks.reduce(
+                (total, chunk) => total + chunk.instances.length,
+                0,
+            ),
+        [stableChunks],
+    );
+    const stableTriangleCount = useMemo(
+        () => stableInstanceCount * countGeometryTriangles(stableGeometry),
+        [stableGeometry, stableInstanceCount],
+    );
+    const stableRainOverlaySubmissionCount = activeRainOverlay
+        ? stableChunks.length
+        : 0;
+    const stableSnowOverlaySubmissionCount = activeSnowOverlay
+        ? stableChunks.length
+        : 0;
+    const stableRainOverlayTriangleCount = activeRainOverlay
+        ? stableInstanceCount * sourceTriangleCount
+        : 0;
+    const stableSnowOverlayTriangleCount = activeSnowOverlay
+        ? stableInstanceCount * snowOverlayTriangleCount
+        : 0;
+    const animatedOverlaySubmissionCount =
+        (activeAnimatedRainOverlay ? animatedInstances.length : 0) +
+        (activeSnowOverlay ? animatedInstances.length : 0);
+    const animatedOverlayTriangleCount =
+        (activeAnimatedRainOverlay
+            ? animatedInstances.length * sourceTriangleCount
+            : 0) +
+        (activeSnowOverlay
+            ? animatedInstances.length * snowOverlayTriangleCount
+            : 0);
+    const hasWeatherSurface =
+        renderRainWetOverlay || Boolean(snow && renderSnow);
+
+    useEffect(() => {
+        if (!hasWeatherSurface) {
+            return;
+        }
+
+        const integrated = integratedStableWeather !== undefined;
+        const avoidedOverlaySubmissionCount =
+            (integratesStableRain ? stableRainOverlaySubmissionCount : 0) +
+            (integratesStableSnow ? stableSnowOverlaySubmissionCount : 0);
+        const avoidedOverlayTriangleCount =
+            (integratesStableRain ? stableRainOverlayTriangleCount : 0) +
+            (integratesStableSnow ? stableSnowOverlayTriangleCount : 0);
+        const fallbackStableOverlaySubmissionCount =
+            (integratesStableRain ? 0 : stableRainOverlaySubmissionCount) +
+            (integratesStableSnow ? 0 : stableSnowOverlaySubmissionCount);
+        const fallbackStableOverlayTriangleCount =
+            (integratesStableRain ? 0 : stableRainOverlayTriangleCount) +
+            (integratesStableSnow ? 0 : stableSnowOverlayTriangleCount);
+        return registerWeatherSurfaceRenderEntry(
+            `${weatherRegistryId}:${instanceKey}`,
+            {
+                avoidedOverlaySubmissionCount,
+                avoidedOverlayTriangleCount,
+                fallbackOverlaySubmissionCount:
+                    animatedOverlaySubmissionCount +
+                    fallbackStableOverlaySubmissionCount,
+                fallbackOverlayTriangleCount:
+                    animatedOverlayTriangleCount +
+                    fallbackStableOverlayTriangleCount,
+                integratedInstanceCount: integrated ? stableInstanceCount : 0,
+                integratedMaterialCount: integrated ? 1 : 0,
+                mode: weatherSurfaceMode,
+                pluginVariantKeys: integrated
+                    ? [integratedStableWeather.pluginVariantKey]
+                    : [],
+            },
+        );
+    }, [
+        animatedOverlaySubmissionCount,
+        animatedOverlayTriangleCount,
+        hasWeatherSurface,
+        instanceKey,
+        integratedStableWeather,
+        integratesStableRain,
+        integratesStableSnow,
+        stableInstanceCount,
+        stableRainOverlaySubmissionCount,
+        stableRainOverlayTriangleCount,
+        stableSnowOverlaySubmissionCount,
+        stableSnowOverlayTriangleCount,
+        weatherRegistryId,
+        weatherSurfaceMode,
+    ]);
+
+    if (!instances?.length) {
+        return null;
+    }
+
+    const renderAnimatedInstances = (suffix: string) =>
+        animatedInstances.map(({ instance: data, renderId, partIndex }) => (
+            <QueuedPlacementDropAnimation
+                key={`block-${instanceKey}-${suffix}-placement:${renderId}:${partIndex}`}
+                animationRenderId={renderId}
+                block={data.block}
+                particlePosition={[
+                    data.position[0],
+                    data.stackHeight,
+                    data.position[2],
+                ]}
                 position={data.position}
-                rotation={[0, data.rotation * (Math.PI / 2), 0]}
             >
-                <Instance
-                    position={localTransform.position}
-                    rotation={localTransform.rotation}
-                    scale={scale}
-                />
-            </group>
+                <group rotation={[0, data.rotation * (Math.PI / 2), 0]}>
+                    <mesh
+                        geometry={geometry}
+                        material={material}
+                        position={localTransform.position}
+                        rotation={localTransform.rotation}
+                        scale={stableScale}
+                        receiveShadow={receiveShadow}
+                        castShadow={false}
+                        renderOrder={renderOrder}
+                    >
+                        {cloneMaterialNode(materialNode)}
+                    </mesh>
+                </group>
+            </QueuedPlacementDropAnimation>
         ));
 
-    const renderSnowOverlays = () =>
+    const renderAnimatedSnowOverlays = () =>
         !snow || !renderSnow
             ? null
-            : (blockInstances ?? []).map((data) => (
-                  <group
-                      key={`block-${name}-snow-${data.id}`}
-                      position={[
-                          data.position[0],
-                          data.position[1] + (snowLift || 0.003),
-                          data.position[2],
-                      ]}
-                      rotation={[0, data.rotation * (Math.PI / 2), 0]}
-                  >
-                      <group
-                          position={localTransform.position}
-                          rotation={localTransform.rotation}
-                          scale={scale}
+            : animatedInstances.map(
+                  ({ instance: data, renderId, partIndex }) => (
+                      <QueuedPlacementDropAnimation
+                          key={`block-${instanceKey}-snow-placement:${renderId}:${partIndex}`}
+                          animationRenderId={renderId}
+                          block={data.block}
+                          particlePosition={[
+                              data.position[0],
+                              data.stackHeight,
+                              data.position[2],
+                          ]}
+                          position={[
+                              data.position[0],
+                              data.position[1] + (snowLift || 0.003),
+                              data.position[2],
+                          ]}
                       >
-                          <SnowOverlay
-                              geometry={geometry}
-                              minCoverage={snowOverlayMinCoverage}
-                              {...snow}
-                          />
-                      </group>
-                  </group>
-              ));
+                          <group
+                              rotation={[0, data.rotation * (Math.PI / 2), 0]}
+                          >
+                              <group
+                                  position={localTransform.position}
+                                  rotation={localTransform.rotation}
+                                  scale={stableScale}
+                              >
+                                  <SnowOverlay
+                                      geometry={geometry}
+                                      minCoverage={snowOverlayMinCoverage}
+                                      {...snow}
+                                  />
+                              </group>
+                          </group>
+                      </QueuedPlacementDropAnimation>
+                  ),
+              );
 
-    const renderRainOverlays = () =>
+    const renderAnimatedRainOverlays = () =>
         !renderRainWetOverlay
             ? null
-            : (blockInstances ?? []).map((data) => (
-                  <group
-                      key={`block-${name}-rain-${data.id}`}
-                      position={data.position}
-                      rotation={[0, data.rotation * (Math.PI / 2), 0]}
-                  >
-                      <group
-                          position={localTransform.position}
-                          rotation={localTransform.rotation}
-                          scale={scale}
+            : animatedInstances.map(
+                  ({ instance: data, renderId, partIndex }) => (
+                      <QueuedPlacementDropAnimation
+                          key={`block-${instanceKey}-rain-placement:${renderId}:${partIndex}`}
+                          animationRenderId={renderId}
+                          block={data.block}
+                          particlePosition={[
+                              data.position[0],
+                              data.stackHeight,
+                              data.position[2],
+                          ]}
+                          position={data.position}
                       >
-                          <RainWetOverlay geometry={geometry} />
-                      </group>
-                  </group>
-              ));
+                          <group
+                              rotation={[0, data.rotation * (Math.PI / 2), 0]}
+                          >
+                              <group
+                                  position={localTransform.position}
+                                  rotation={localTransform.rotation}
+                                  scale={stableScale}
+                              >
+                                  <RainWetOverlay geometry={geometry} />
+                              </group>
+                          </group>
+                      </QueuedPlacementDropAnimation>
+                  ),
+              );
 
     return (
         <>
-            <Instances
-                limit={limit}
-                geometry={geometry}
-                receiveShadow
-                castShadow
-                material={'material' in props ? props.material : undefined}
-            >
-                {'materialNode' in props ? props.materialNode : null}
-                {renderInstances('base')}
-            </Instances>
-            {renderRainOverlays()}
-            {renderSnowOverlays()}
+            {/* Batched chunks render through the shared packet provider. */}
+            {!packetContributions && (
+                <StaticOpaqueSceneCacheBoundary
+                    contentKey={staticOpaqueCacheContentKey}
+                    group={staticOpaqueCacheGroup}
+                    instanceCount={stableInstanceCount}
+                    submissionCount={stableChunks.length}
+                    triangleCount={stableTriangleCount}
+                >
+                    {stableChunks.map((chunk) => {
+                        const placementSignature =
+                            placementSignatureByChunkKey.get(chunk.key) ?? '';
+
+                        return renderStableChunksAsMergedGeometry ? (
+                            <ChunkedMergedMesh
+                                key={`${instanceKey}:${chunk.key}`}
+                                castShadow={castShadow}
+                                chunk={chunk}
+                                debugName={`MergedBlockChunk:${instanceKey}:chunk:${chunk.key}:count:${chunk.instances.length}`}
+                                geometry={stableGeometry}
+                                localTransform={localTransform}
+                                material={stableMaterial}
+                                materialNode={stableMaterialNode}
+                                placementSignature={placementSignature}
+                                receiveShadow={receiveShadow}
+                                renderOrder={renderOrder}
+                                scale={stableScale}
+                            />
+                        ) : (
+                            <ChunkedInstancedMesh
+                                key={`${instanceKey}:${chunk.key}`}
+                                castShadow={castShadow}
+                                chunk={chunk}
+                                debugName={`BlockInstances:${instanceKey}:chunk:${chunk.key}:count:${chunk.instances.length}`}
+                                geometry={stableGeometry}
+                                localTransform={localTransform}
+                                material={stableMaterial}
+                                materialNode={stableMaterialNode}
+                                placementSignature={placementSignature}
+                                receiveShadow={receiveShadow}
+                                renderOrder={renderOrder}
+                                scale={stableScale}
+                            />
+                        );
+                    })}
+                </StaticOpaqueSceneCacheBoundary>
+            )}
+            {renderAnimatedInstances('base')}
+            {(instances ?? []).map((data) =>
+                data.pickupOutlineVisible ? (
+                    <HoverOutline
+                        key={`block-${instanceKey}-pickup-outline-${data.id}`}
+                        {...blockPickupOutlineStyle}
+                        hovered
+                    >
+                        <group
+                            position={data.position}
+                            rotation={[0, data.rotation * (Math.PI / 2), 0]}
+                        >
+                            <mesh
+                                geometry={geometry}
+                                position={localTransform.position}
+                                rotation={localTransform.rotation}
+                                scale={stableScale}
+                                raycast={() => null}
+                            >
+                                <meshBasicMaterial visible={false} />
+                            </mesh>
+                        </group>
+                    </HoverOutline>
+                ) : null,
+            )}
+            {!integratesStableRain && renderRainWetOverlay && (
+                <InstancedRainWetOverlays
+                    chunks={stableChunks}
+                    geometry={geometry}
+                    localTransform={localTransform}
+                    placementSignatureByChunkKey={placementSignatureByChunkKey}
+                    scale={stableScale}
+                />
+            )}
+            {!integratesStableSnow && snow && renderSnow && (
+                <InstancedSnowOverlays
+                    chunks={stableChunks}
+                    geometry={geometry}
+                    localTransform={localTransform}
+                    placementSignatureByChunkKey={placementSignatureByChunkKey}
+                    scale={stableScale}
+                    snow={snow}
+                    snowLift={snowLift}
+                    snowOverlayMinCoverage={snowOverlayMinCoverage}
+                />
+            )}
+            {renderAnimatedRainOverlays()}
+            {renderAnimatedSnowOverlays()}
         </>
     );
+}
+
+export const ChunkedInstancedMesh = memo(function ChunkedInstancedMesh({
+    castShadow,
+    chunk,
+    debugName,
+    geometry,
+    localTransform,
+    material,
+    materialNode,
+    placementSignature,
+    receiveShadow,
+    renderOrder,
+    scale,
+}: {
+    castShadow: boolean;
+    chunk: MeshInstanceChunk<EntityBlockInstance>;
+    debugName: string;
+    geometry: BufferGeometry;
+    localTransform: MeshInstanceLocalTransform;
+    material: Material | Material[] | undefined;
+    materialNode: ReactNode;
+    placementSignature: string;
+    receiveShadow: boolean;
+    renderOrder?: number;
+    scale: EntityInstancesBlockBaseProps['scale'];
+}) {
+    const meshRef = useRef<InstancedMesh | null>(null);
+    const previousChunkInstances = useRef<EntityBlockInstance[] | undefined>(
+        undefined,
+    );
+    const previousPlacementSignature = useRef<string | undefined>(undefined);
+
+    useLayoutEffect(() => {
+        const startedAt = placementAnimationProfileNow();
+        const mesh = meshRef.current;
+        const meshUsesCurrentConstructorArguments =
+            mesh?.geometry === geometry &&
+            (material === undefined || mesh.material === material);
+        if (mesh && meshUsesCurrentConstructorArguments) {
+            writeMeshInstanceMatrices(
+                chunk.instances,
+                localTransform,
+                scale,
+                (matrix, index) => mesh.setMatrixAt(index, matrix),
+            );
+            mesh.count = chunk.instances.length;
+            mesh.instanceMatrix.needsUpdate = true;
+            mesh.computeBoundingBox();
+            mesh.computeBoundingSphere();
+        }
+
+        const previousInstances = previousChunkInstances.current;
+        const previousSignature = previousPlacementSignature.current;
+        previousChunkInstances.current = chunk.instances;
+        previousPlacementSignature.current = placementSignature;
+        if (
+            shouldRecordPlacementAnimationChunkRebuild({
+                currentInstances: chunk.instances,
+                currentPlacementSignature: placementSignature,
+                previousInstances,
+                previousPlacementSignature: previousSignature,
+            })
+        ) {
+            recordPlacementAnimationChunkRebuild({
+                durationMs: placementAnimationProfileNow() - startedAt,
+                transformedInstanceCount: chunk.instances.length,
+            });
+        }
+    }, [
+        chunk.instances,
+        geometry,
+        localTransform,
+        material,
+        placementSignature,
+        scale,
+    ]);
+
+    if (chunk.instances.length === 0) {
+        return null;
+    }
+
+    return (
+        <instancedMesh
+            ref={meshRef}
+            name={debugName}
+            args={[geometry, material, chunk.instances.length]}
+            castShadow={castShadow}
+            receiveShadow={receiveShadow}
+            renderOrder={renderOrder}
+        >
+            {cloneMaterialNode(materialNode)}
+        </instancedMesh>
+    );
+});
+
+const ChunkedMergedMesh = memo(function ChunkedMergedMesh({
+    castShadow,
+    chunk,
+    debugName,
+    geometry,
+    localTransform,
+    material,
+    materialNode,
+    placementSignature,
+    receiveShadow,
+    renderOrder,
+    scale,
+}: {
+    castShadow: boolean;
+    chunk: MeshInstanceChunk<EntityBlockInstance>;
+    debugName: string;
+    geometry: BufferGeometry;
+    localTransform: MeshInstanceLocalTransform;
+    material: Material | Material[] | undefined;
+    materialNode: ReactNode;
+    placementSignature: string;
+    receiveShadow: boolean;
+    renderOrder?: number;
+    scale: EntityInstancesBlockBaseProps['scale'];
+}) {
+    const build = useCompiledChunk(
+        geometry,
+        chunk.instances,
+        localTransform,
+        scale,
+    );
+    const previous = useRef<
+        { instances: EntityBlockInstance[]; signature: string } | undefined
+    >(undefined);
+    useEffect(() => {
+        if (!build) return;
+        if (
+            shouldRecordPlacementAnimationChunkRebuild({
+                currentInstances: chunk.instances,
+                currentPlacementSignature: placementSignature,
+                previousInstances: previous.current?.instances,
+                previousPlacementSignature: previous.current?.signature,
+            })
+        )
+            recordPlacementAnimationChunkRebuild({
+                durationMs: build.durationMs,
+                transformedInstanceCount: chunk.instances.length,
+            });
+        previous.current = {
+            instances: chunk.instances,
+            signature: placementSignature,
+        };
+    }, [build, chunk.instances, placementSignature]);
+    const mergedGeometry = build?.geometry;
+    if (!mergedGeometry) {
+        return (
+            <ChunkedInstancedMesh
+                castShadow={castShadow}
+                chunk={chunk}
+                debugName={debugName}
+                geometry={geometry}
+                localTransform={localTransform}
+                material={material}
+                materialNode={materialNode}
+                placementSignature={placementSignature}
+                receiveShadow={receiveShadow}
+                renderOrder={renderOrder}
+                scale={scale}
+            />
+        );
+    }
+    if (!mergedGeometry.getAttribute('position')) return null;
+
+    return (
+        <mesh
+            name={debugName}
+            castShadow={castShadow}
+            receiveShadow={receiveShadow}
+            renderOrder={renderOrder}
+            geometry={mergedGeometry}
+            material={material}
+        >
+            {cloneMaterialNode(materialNode)}
+        </mesh>
+    );
+});
+
+function InstancedSnowOverlays({
+    chunks,
+    geometry,
+    localTransform,
+    placementSignatureByChunkKey,
+    scale,
+    snow,
+    snowLift,
+    snowOverlayMinCoverage,
+}: {
+    chunks: MeshInstanceChunk<EntityBlockInstance>[];
+    geometry: BufferGeometry;
+    localTransform: MeshInstanceLocalTransform;
+    placementSignatureByChunkKey: ReadonlyMap<string, string>;
+    scale: EntityInstancesBlockBaseProps['scale'];
+    snow: SnowMaterialOptions;
+    snowLift: number;
+    snowOverlayMinCoverage?: number;
+}) {
+    const visible = useSnowOverlayVisible({
+        coverageMultiplier: snow.coverageMultiplier,
+        minCoverage: snowOverlayMinCoverage,
+        overrideSnow: snow.overrideSnow,
+    });
+    const overlayGeometry = useMemo(
+        () => createSnowOverlayGeometry(geometry),
+        [geometry],
+    );
+    const bounds = useMemo(() => {
+        if (!overlayGeometry.boundingBox) {
+            overlayGeometry.computeBoundingBox();
+        }
+        const box = overlayGeometry.boundingBox;
+        if (!box) {
+            return snow.bounds;
+        }
+        return {
+            min: [box.min.x, box.min.y, box.min.z] as [number, number, number],
+            max: [box.max.x, box.max.y, box.max.z] as [number, number, number],
+        };
+    }, [overlayGeometry, snow.bounds]);
+    const material = useSnowMaterial({
+        ...snow,
+        bounds: snow.bounds ?? bounds,
+    });
+    const liftedTransform = useMemo(
+        () => ({
+            ...localTransform,
+            position: [
+                localTransform.position[0],
+                localTransform.position[1] + (snowLift || 0.003),
+                localTransform.position[2],
+            ] as [number, number, number],
+        }),
+        [localTransform, snowLift],
+    );
+
+    if (!visible) {
+        return null;
+    }
+
+    return chunks.map((chunk) => (
+        <ChunkedInstancedMesh
+            key={`snow:${chunk.key}`}
+            castShadow={false}
+            chunk={chunk}
+            debugName={`SnowOverlay:${chunk.key}:count:${chunk.instances.length}`}
+            geometry={overlayGeometry}
+            localTransform={liftedTransform}
+            material={material}
+            materialNode={null}
+            placementSignature={
+                placementSignatureByChunkKey.get(chunk.key) ?? ''
+            }
+            receiveShadow={false}
+            scale={scale}
+        />
+    ));
+}
+
+function InstancedRainWetOverlays({
+    chunks,
+    geometry,
+    localTransform,
+    placementSignatureByChunkKey,
+    scale,
+}: {
+    chunks: MeshInstanceChunk<EntityBlockInstance>[];
+    geometry: BufferGeometry;
+    localTransform: MeshInstanceLocalTransform;
+    placementSignatureByChunkKey: ReadonlyMap<string, string>;
+    scale: EntityInstancesBlockBaseProps['scale'];
+}) {
+    const visible = useRainWetOverlayVisible();
+
+    if (!visible) {
+        return null;
+    }
+
+    return (
+        <VisibleInstancedRainWetOverlays
+            chunks={chunks}
+            geometry={geometry}
+            localTransform={localTransform}
+            placementSignatureByChunkKey={placementSignatureByChunkKey}
+            scale={scale}
+        />
+    );
+}
+
+function VisibleInstancedRainWetOverlays({
+    chunks,
+    geometry,
+    localTransform,
+    placementSignatureByChunkKey,
+    scale,
+}: {
+    chunks: MeshInstanceChunk<EntityBlockInstance>[];
+    geometry: BufferGeometry;
+    localTransform: MeshInstanceLocalTransform;
+    placementSignatureByChunkKey: ReadonlyMap<string, string>;
+    scale: EntityInstancesBlockBaseProps['scale'];
+}) {
+    const material = useRainWetOverlayMaterial({ geometry });
+
+    return chunks.map((chunk) => (
+        <ChunkedInstancedMesh
+            key={`rain:${chunk.key}`}
+            castShadow={false}
+            chunk={chunk}
+            debugName={`RainWetOverlay:${chunk.key}:count:${chunk.instances.length}`}
+            geometry={geometry}
+            localTransform={localTransform}
+            material={material}
+            materialNode={null}
+            placementSignature={
+                placementSignatureByChunkKey.get(chunk.key) ?? ''
+            }
+            receiveShadow={false}
+            scale={scale}
+        />
+    ));
 }

@@ -10,11 +10,28 @@ test('redirects root to admin login page', async ({ request }) => {
 test('shows login on admin page when signed out', async ({ page, request }) => {
     const response = await request.get('/admin', { maxRedirects: 0 });
 
-    expect(response.status()).toBe(200);
+    expect(response.status()).toBe(401);
     expect(response.headers().location).toBeUndefined();
 
     await page.goto('/admin');
     await expect(
+        page.getByRole('button', { name: 'Nastavi sa Google' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Nastavi sa Facebook' }),
+    ).toBeVisible();
+
+    await page.getByRole('button', { name: 'Nastavi s emailom' }).click();
+
+    await expect(
         page.getByRole('button', { name: 'Prijavi se' }),
     ).toBeVisible();
+    await expect(page.getByLabel('Email')).toBeVisible();
+});
+
+test('renders logout outside the admin shell', async ({ request }) => {
+    const response = await request.get('/logout', { maxRedirects: 0 });
+
+    expect(response.status()).toBe(200);
+    expect(response.headers().location).toBeUndefined();
 });

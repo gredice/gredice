@@ -7,15 +7,17 @@ import {
     useQueryStates,
 } from 'nuqs';
 
-// Game mode parameter (Croatian: "uredivanje" = editing)
-// true = edit mode, false/undefined = normal mode
-export function useGameModeParam() {
-    return useQueryState('uredivanje', parseAsBoolean.withDefault(false));
-}
-
 // Shopping cart modal parameter (Croatian: "kosarica" = cart)
 export function useShoppingCartOpenParam() {
     return useQueryState('kosarica', parseAsBoolean.withDefault(false));
+}
+
+export function usePaymentStatusParam() {
+    return useQueryState('placanje', parseAsString);
+}
+
+export function useOutletOfferSelectionParam() {
+    return useQueryState('outlet-ponuda', parseAsInteger);
 }
 
 // Backpack/Inventory modal parameter (Croatian: "ruksak" = backpack)
@@ -53,9 +55,42 @@ export function useRaisedBedCloseupParam() {
     return useQueryState('gredica', parseAsString);
 }
 
+const raisedBedCloseupParamParsers = {
+    gredica: parseAsString,
+    polje: parseAsInteger,
+    'polje-kartica': parseAsString,
+};
+
+export function useRaisedBedCloseupParams() {
+    return useQueryStates(raisedBedCloseupParamParsers);
+}
+
+// Raised bed field details parameter (Croatian: "polje" = field)
+export function useRaisedBedFieldDetailsParam() {
+    return useQueryState('polje', parseAsInteger);
+}
+
+export const raisedBedFieldTabValues = [
+    'lifecycle',
+    'diary',
+    'operations',
+] as const;
+export type RaisedBedFieldTabValue = (typeof raisedBedFieldTabValues)[number];
+
+export function normalizeRaisedBedFieldTab(
+    value: string | null | undefined,
+): RaisedBedFieldTabValue {
+    return raisedBedFieldTabValues.find((tab) => tab === value) ?? 'lifecycle';
+}
+
 // Gift box modal parameter (Croatian: "poklon-kutija" = gift box)
 export function useGiftBoxParam() {
     return useQueryState('poklon-kutija', parseAsString);
+}
+
+// Editable wooden sign parameter (Croatian: "natpis" = inscription)
+export function useWoodenSignParam() {
+    return useQueryState('natpis', parseAsString);
 }
 
 // Current garden ID parameter (Croatian: "vrt" = garden)
@@ -63,13 +98,22 @@ export function useCurrentGardenIdParam() {
     return useQueryState('vrt', parseAsInteger);
 }
 
+export function useOverviewSectionParam() {
+    return useQueryState('pregled', parseAsString);
+}
+
 // Serializer for building URLs with query params
 export const urlStateSerializer = createSerializer({
-    uredivanje: parseAsBoolean,
     kosarica: parseAsBoolean,
+    placanje: parseAsString,
+    'outlet-ponuda': parseAsInteger,
     ruksak: parseAsBoolean,
     'ruksak-kartica': parseAsString,
     gredica: parseAsString,
+    polje: parseAsInteger,
+    'polje-kartica': parseAsString,
     'poklon-kutija': parseAsString,
+    natpis: parseAsString,
     vrt: parseAsInteger,
+    pregled: parseAsString,
 });

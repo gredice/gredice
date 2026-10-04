@@ -1,5 +1,23 @@
 import { Slider } from '@gredice/ui/Slider';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { useState } from 'react';
+
+function ControlledSliderStory() {
+    const [value, setValue] = useState([173]);
+
+    return (
+        <div className="w-72">
+            <Slider
+                aria-label="Dan u godini"
+                label={`Dan u godini: ${value[0]}`}
+                max={366}
+                min={1}
+                onValueChange={setValue}
+                value={value}
+            />
+        </div>
+    );
+}
 
 const meta = {
     title: 'packages/ui/Inputs/Slider',
@@ -9,7 +27,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Slider wraps the Radix slider primitive for numeric settings used in game and operations controls.',
+                    'Slider uses Base UI while retaining the array-valued Gredice contract for numeric game and operations settings.',
             },
         },
     },
@@ -33,6 +51,10 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+export const ControlledSingleThumb: Story = {
+    render: () => <ControlledSliderStory />,
+};
+
 export const FineStep: Story = {
     args: {
         defaultValue: [12],
@@ -48,6 +70,37 @@ export const Disabled: Story = {
         disabled: true,
         label: 'Zakljucana vrijednost',
     },
+};
+
+export const Range: Story = {
+    args: {
+        'aria-label': 'Raspon vlažnosti',
+        defaultValue: [25, 75],
+        label: 'Prihvatljiva vlažnost',
+    },
+};
+
+export const Inverted: Story = {
+    args: {
+        'aria-label': 'Obrnuta vrijednost',
+        defaultValue: [30],
+        inverted: true,
+        label: 'Obrnuti smjer',
+    },
+};
+
+export const Vertical: Story = {
+    args: {
+        'aria-label': 'Visina prikaza',
+        defaultValue: [60],
+        label: 'Visina',
+        orientation: 'vertical',
+    },
+    render: (args) => (
+        <div className="h-56">
+            <Slider {...args} />
+        </div>
+    ),
 };
 
 export const CustomTrack: Story = {

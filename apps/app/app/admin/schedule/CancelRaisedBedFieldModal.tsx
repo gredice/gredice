@@ -7,6 +7,9 @@ interface CancelRaisedBedFieldModalProps {
     field: {
         raisedBedId: number;
         positionIndex: number;
+        expectedPlantCycleEventId: number;
+        expectedPlantCycleVersionEventId: number;
+        expectedPlantSortId: number;
     };
     fieldLabel: string;
     trigger: React.ReactElement;
@@ -35,6 +38,21 @@ export function CancelRaisedBedFieldModal({
                         type="hidden"
                         name="positionIndex"
                         value={field.positionIndex}
+                    />
+                    <input
+                        type="hidden"
+                        name="expectedPlantCycleEventId"
+                        value={field.expectedPlantCycleEventId}
+                    />
+                    <input
+                        type="hidden"
+                        name="expectedPlantCycleVersionEventId"
+                        value={field.expectedPlantCycleVersionEventId}
+                    />
+                    <input
+                        type="hidden"
+                        name="expectedPlantSortId"
+                        value={field.expectedPlantSortId}
                     />
                 </>
             }

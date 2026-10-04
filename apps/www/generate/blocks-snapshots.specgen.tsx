@@ -1,17 +1,73 @@
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import type { BlockData } from '@gredice/client';
-import { EntityViewer } from '@gredice/game';
-import { test } from '@playwright/experimental-ct-react';
+import { getGardenBlockSpan } from '@gredice/js/gardenBlocks';
+import { expect, test } from '@playwright/experimental-ct-react';
+import sharp from 'sharp';
 import { allGameAssetNames } from '../../../packages/game/src/data/models';
+import { gameQualityProfiles } from '../../../packages/game/src/scene/gameQuality';
+import {
+    getOrthographicSnapshotCamera,
+    getStandardBlockSnapshotBaseRotation,
+    parseBlockSnapshotCameraView,
+} from './blockSnapshotCamera';
+// Load EntityViewer through a lazy wrapper (not the @gredice/game barrel) so the
+// component-test bundle does not pull in GameSceneDynamic -> next/dynamic, and
+// resolves three.js deps through a dynamic chunk that Rollup can build.
+import { EntitySnapshotViewer } from './EntitySnapshotViewer';
+
+// Snapshots render at 640x640 (double the previous 320x320). A device scale
+// factor of 4 over the 160px CSS canvas produces a 640px capture, and the
+// matching dpr=4 quality override makes the WebGL buffer render natively at
+// that resolution instead of being upscaled, so the result stays crisp.
+const SNAPSHOT_DEVICE_SCALE_FACTOR = 4;
+const SNAPSHOT_SIZE = 640;
+const SNAPSHOT_CONTENT_SIZE = 576;
+
+// Keep the low-tier look (no shadows/ground decoration) to match the previous
+// snapshots, but force a high dpr so the higher-resolution capture is sharp.
+const snapshotQuality = {
+    ...gameQualityProfiles.low,
+    dpr: SNAPSHOT_DEVICE_SCALE_FACTOR,
+};
+
+// Playwright can only screenshot to PNG/JPEG, so capture the PNG buffer and
+// re-encode to lossy WebP (with alpha) at 90% quality for small, fast assets.
+async function saveWebp(buffer: Buffer, path: string) {
+    const transparent = { alpha: 0, b: 0, g: 0, r: 0 };
+    const subject = await sharp(buffer)
+        .trim({ background: transparent })
+        .resize(SNAPSHOT_CONTENT_SIZE, SNAPSHOT_CONTENT_SIZE, {
+            fit: 'inside',
+            withoutEnlargement: true,
+        })
+        .png()
+        .toBuffer();
+    const webp = await sharp({
+        create: {
+            background: transparent,
+            channels: 4,
+            height: SNAPSHOT_SIZE,
+            width: SNAPSHOT_SIZE,
+        },
+    })
+        .composite([{ input: subject, gravity: 'centre' }])
+        .webp({ quality: 90 })
+        .toBuffer();
+    await writeFile(path, webp);
+}
 
 test.use({
-    deviceScaleFactor: 2,
+    deviceScaleFactor: SNAPSHOT_DEVICE_SCALE_FACTOR,
     viewport: { width: 320 / 2, height: 320 },
 });
 
 test.beforeEach(async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.addStyleTag({
+        content: 'html, body, #root { background: transparent !important; }',
+    });
 
     for (const assetName of allGameAssetNames) {
         await page.route(
@@ -31,50 +87,218 @@ test.beforeEach(async ({ page }) => {
             },
         );
     }
+
+    await page.route(
+        '**/assets/sprites/decorations/ground-cover-v2.atlas.*',
+        async (route) => {
+            const assetName = new URL(route.request().url()).pathname
+                .split('/')
+                .at(-1);
+            if (!assetName) {
+                await route.abort();
+                return;
+            }
+            await route.fulfill({
+                path: resolve(
+                    `../garden/public/assets/sprites/decorations/${assetName}`,
+                ),
+            });
+        },
+    );
 });
+
+function shouldRenderSnapshotDetails(entityName: string) {
+    return (
+        entityName === 'Block_Swamp_Ground' ||
+        entityName === 'Block_Swamp_Ground_Angle'
+    );
+}
 
 type SnapshotView = 'normal' | 'far' | 'closeup';
 
 const CLOSEUP_ENTITIES = new Set<string>([
     // Flowers and other small props look better when zoomed in
     'FireflyJar',
+    'LiquidPreparationBottlePestControl',
+    'LiquidPreparationBottleAphidControl',
+    'LiquidPreparationBottleSlugControl',
+    'LiquidPreparationBottleTomatoEggplantResistance',
+    'LiquidPreparationBottleFertilizer',
+    'LiquidPreparationBottleDiseaseControl',
+    'LiquidPreparationBottleWeevilControl',
+    'LiquidPreparationBottleVoleControl',
+    'LiquidPreparationBottleBeetleControl',
     'Tulip',
+    'SummerHat',
+    'BeachBall',
+    'SandcastleSmallA',
+    'WhiteFence',
+    'StoneFence',
+    'PolishedStoneFence',
+    'SmallWoodenBridge',
+    'WoodenWalkway',
+    'StoneWalkway',
+    'RoofTileLantern',
+    'WickerGardenLantern',
+    'WoodenHandLantern',
+    'MoonRainBarrel',
+    'Sheep',
 ]);
+const CLOSEUP_ENTITY_ZOOM = new Map<string, number>([
+    ['SummerHat', 105],
+    ['BeachBall', 175],
+    ['SandcastleSmallA', 145],
+    ['WhiteFence', 135],
+    ['StoneFence', 135],
+    ['PolishedStoneFence', 135],
+    ['SmallWoodenBridge', 125],
+    ['WoodenWalkway', 125],
+    ['StoneWalkway', 125],
+    ['RoofTileLantern', 145],
+    ['WickerGardenLantern', 130],
+    ['WoodenHandLantern', 145],
+    ['MoonRainBarrel', 120],
+    ['Sheep', 128],
+]);
+const NORMAL_ENTITY_ZOOM = new Map<string, number>([
+    ['CowShelter', 56],
+    ['FishingBoat', 58],
+    // Fit the complete 1 x 2 bed before trimming and padding the snapshot.
+    ['Raised_Bed', 60],
+    ['SheepFold', 56],
+]);
+const FAR_ENTITY_ZOOM = new Map<string, number>([['HorseStable', 52]]);
+const FAR_ENTITIES = new Set<string>(['PalmTree']);
 const gameAssetBaseUrl =
     process.env.GAME_ASSET_BASE_URL ?? 'https://vrt.gredice.com';
+const defaultSnapshotOutputDirectory = resolve('./public/assets/blocks');
+const configuredSnapshotOutputDirectory =
+    process.env.BLOCK_SNAPSHOT_OUTPUT_DIRECTORY;
+const snapshotCameraView = parseBlockSnapshotCameraView(
+    process.env.BLOCK_SNAPSHOT_CAMERA_VIEW,
+);
+if (
+    configuredSnapshotOutputDirectory !== undefined &&
+    configuredSnapshotOutputDirectory.trim() === ''
+) {
+    throw new Error('BLOCK_SNAPSHOT_OUTPUT_DIRECTORY must not be empty.');
+}
+const snapshotOutputDirectory = resolve(
+    configuredSnapshotOutputDirectory ?? defaultSnapshotOutputDirectory,
+);
+const snapshotFreezeTime = process.env.BLOCK_SNAPSHOT_FREEZE_TIME
+    ? new Date(process.env.BLOCK_SNAPSHOT_FREEZE_TIME)
+    : undefined;
+
+if (snapshotFreezeTime && Number.isNaN(snapshotFreezeTime.getTime())) {
+    throw new Error('BLOCK_SNAPSHOT_FREEZE_TIME must be a valid date.');
+}
+
+if (
+    snapshotCameraView === 'orthographic' &&
+    (configuredSnapshotOutputDirectory === undefined ||
+        snapshotOutputDirectory === defaultSnapshotOutputDirectory)
+) {
+    throw new Error(
+        'BLOCK_SNAPSHOT_CAMERA_VIEW=orthographic requires a dedicated BLOCK_SNAPSHOT_OUTPUT_DIRECTORY.',
+    );
+}
+
+test.beforeAll(async () => {
+    await mkdir(snapshotOutputDirectory, { recursive: true });
+});
 
 function getSnapshotView(entity: BlockData): SnapshotView {
     if (CLOSEUP_ENTITIES.has(entity.information.name)) {
         return 'closeup';
     }
 
-    if (entity.attributes.height > 1.5) {
+    if (
+        FAR_ENTITIES.has(entity.information.name) ||
+        entity.attributes.height > 1.5
+    ) {
         return 'far';
     }
 
     return 'normal';
 }
 
-function getViewOptions(view: SnapshotView): {
+type SnapshotViewOptions = {
     zoom?: number;
     itemPosition?: [number, number, number];
+    cameraPosition?: [number, number, number];
+    cameraTarget?: [number, number, number];
+    cameraUp?: [number, number, number];
     label: string;
-} {
+};
+function getViewOptions(
+    entity: BlockData,
+    rotation: number,
+    view: SnapshotView,
+): SnapshotViewOptions {
+    const span = getGardenBlockSpan(entity, rotation);
+    const hasMultiBlockFootprint = span.width > 1 || span.depth > 1;
+    const target: [number, number, number] = hasMultiBlockFootprint
+        ? [1.25, entity.attributes.height * 0.45, 1.25]
+        : [1.25, 0, 1.25];
+    const centeredItemPosition: [number, number, number] = [
+        target[0] - (span.width - 1) / 2,
+        0,
+        target[2] - (span.depth - 1) / 2,
+    ];
+
+    let options: SnapshotViewOptions;
     switch (view) {
         case 'far':
-            return {
-                zoom: 60,
-                itemPosition: [1.25, 0, 1.25],
+            options = {
+                zoom:
+                    FAR_ENTITY_ZOOM.get(entity.information.name) ??
+                    (hasMultiBlockFootprint ? 38 : 60),
+                itemPosition: hasMultiBlockFootprint
+                    ? centeredItemPosition
+                    : target,
+                cameraTarget: hasMultiBlockFootprint ? target : undefined,
                 label: 'zoomed out',
             };
+            break;
         case 'closeup':
-            return {
-                zoom: 130,
+            options = {
+                zoom: CLOSEUP_ENTITY_ZOOM.get(entity.information.name) ?? 130,
+                itemPosition: hasMultiBlockFootprint
+                    ? centeredItemPosition
+                    : undefined,
+                cameraTarget: hasMultiBlockFootprint ? target : undefined,
                 label: 'zoomed in',
             };
+            break;
         default:
-            return { label: 'normal' };
+            options = hasMultiBlockFootprint
+                ? {
+                      zoom: NORMAL_ENTITY_ZOOM.get(entity.information.name),
+                      itemPosition: centeredItemPosition,
+                      cameraTarget: target,
+                      label: 'normal',
+                  }
+                : { label: 'normal' };
     }
+
+    if (snapshotCameraView !== 'orthographic') {
+        return options;
+    }
+
+    const orthographicCamera = getOrthographicSnapshotCamera({
+        frontRotation:
+            entity.information.name === 'HazelLightArch' ? 1 : undefined,
+        height: entity.attributes.height,
+        itemPosition: options.itemPosition,
+        rotation,
+        span,
+    });
+    return {
+        ...options,
+        ...orthographicCamera,
+        label: `${options.label}, orthographic ${orthographicCamera.label}`,
+    };
 }
 
 test.describe('block screenshots', async () => {
@@ -85,9 +309,20 @@ test.describe('block screenshots', async () => {
         for (let rotation = 0; rotation < 4; rotation += 1) {
             test(`${entity.information.name} rotation ${rotation + 1}`, async ({
                 mount,
+                page,
             }) => {
+                page.on('pageerror', (error) => {
+                    console.error('Browser page error:', error.message);
+                });
                 const view = getSnapshotView(entity);
-                const { itemPosition, label, zoom } = getViewOptions(view);
+                const {
+                    cameraPosition,
+                    cameraTarget,
+                    cameraUp,
+                    itemPosition,
+                    label,
+                    zoom,
+                } = getViewOptions(entity, rotation, view);
                 console.info(
                     'Taking screenshot of',
                     entity.information.name,
@@ -96,40 +331,87 @@ test.describe('block screenshots', async () => {
                 );
                 const component = await mount(
                     <div style={{ width: 160, height: 160 }}>
-                        <EntityViewer
+                        <EntitySnapshotViewer
                             style={{ width: 160, height: 160 }}
                             zoom={zoom}
+                            cameraPosition={cameraPosition}
+                            cameraTarget={cameraTarget}
+                            cameraUp={cameraUp}
                             itemPosition={itemPosition}
                             entityName={entity.information.name}
+                            appearanceVariant={
+                                entity.information.name === 'Horse'
+                                    ? 0
+                                    : undefined
+                            }
+                            message={
+                                entity.information.name === 'WoodenSign'
+                                    ? 'MOJ\nVRT'
+                                    : undefined
+                            }
                             appBaseUrl={gameAssetBaseUrl}
+                            freezeTime={snapshotFreezeTime}
+                            quality={snapshotQuality}
                             noControl
                             rotation={rotation}
+                            variant={
+                                entity.information.name === 'Rabbit'
+                                    ? 0
+                                    : undefined
+                            }
+                            renderDetails={shouldRenderSnapshotDetails(
+                                entity.information.name,
+                            )}
                             staticEnvironment
                         />
                     </div>,
                 );
 
-                // Wait for possible animations to finish
-                await new Promise((resolve) => setTimeout(resolve, 1000));
+                // EntitySnapshotViewer mounts the canvas lazily, so wait for it
+                // first, then let the model load and any animations settle.
                 const canvas = component.locator('canvas').first();
                 await canvas.waitFor({ state: 'visible' });
+                await expect(canvas).toHaveAttribute(
+                    'width',
+                    `${SNAPSHOT_SIZE}`,
+                );
+                await expect(canvas).toHaveAttribute(
+                    'height',
+                    `${SNAPSHOT_SIZE}`,
+                );
+                await new Promise((resolve) => setTimeout(resolve, 1000));
 
                 console.debug('Taking screenshot now...');
 
-                // Save rotation-specific version
-                await canvas.screenshot({
+                const buffer = await canvas.screenshot({
                     omitBackground: true,
-                    path: `./public/assets/blocks/${entity.information.name}_${rotation + 1}.png`,
                     animations: 'disabled',
                 });
 
-                // Save base version (unsuffixed) for the first rotation to maintain backward compatibility
-                if (rotation === 0) {
-                    await canvas.screenshot({
-                        omitBackground: true,
-                        path: `./public/assets/blocks/${entity.information.name}.png`,
-                        animations: 'disabled',
-                    });
+                // Save rotation-specific version
+                await saveWebp(
+                    buffer,
+                    join(
+                        snapshotOutputDirectory,
+                        `${entity.information.name}_${rotation + 1}.webp`,
+                    ),
+                );
+
+                // The base card may use an authored front while suffixed files
+                // preserve their directional rotation contract.
+                if (
+                    rotation ===
+                    getStandardBlockSnapshotBaseRotation(
+                        entity.information.name,
+                    )
+                ) {
+                    await saveWebp(
+                        buffer,
+                        join(
+                            snapshotOutputDirectory,
+                            `${entity.information.name}.webp`,
+                        ),
+                    );
                 }
             });
         }
@@ -139,29 +421,47 @@ test.describe('block screenshots', async () => {
 test.describe('icons', () => {
     test('block ground over grass', async ({ mount }) => {
         const component = await mount(
-            <div style={{ position: 'relative' }}>
+            <div
+                style={{
+                    height: 160,
+                    overflow: 'hidden',
+                    position: 'relative',
+                    width: 160,
+                }}
+            >
                 {/** biome-ignore lint/performance/noImgElement: Not part of NextJS app */}
                 <img
-                    src="https://www.gredice.com/assets/blocks/Block_Grass.png"
+                    src="/assets/blocks/Block_Grass.webp"
                     alt="Block_Grass"
-                    width={320 / 2}
-                    height={320 / 2}
-                    style={{ marginLeft: -8 }}
+                    width={128}
+                    height={128}
+                    style={{ left: 16, position: 'absolute', top: 20 }}
                 />
                 {/** biome-ignore lint/performance/noImgElement: Not part of NextJS app */}
                 <img
-                    src="https://www.gredice.com/assets/blocks/Block_Ground.png"
+                    src="/assets/blocks/Block_Sand.webp"
+                    alt="Block_Sand"
+                    width={128}
+                    height={128}
+                    style={{ left: 16, position: 'absolute', top: -10 }}
+                />
+                {/** biome-ignore lint/performance/noImgElement: Not part of NextJS app */}
+                <img
+                    src="/assets/blocks/Block_Ground.webp"
                     alt="Block_Ground"
-                    width={320 / 2}
-                    height={320 / 2}
-                    style={{ position: 'fixed', top: -40, left: 0 }}
+                    width={128}
+                    height={128}
+                    style={{ left: 16, position: 'absolute', top: -40 }}
                 />
             </div>,
         );
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-        await component.screenshot({
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const buffer = await component.screenshot({
             omitBackground: true,
-            path: `./public/assets/blocks/Block_Icon_GroundOverGrass.png`,
         });
+        await saveWebp(
+            buffer,
+            join(snapshotOutputDirectory, 'Block_Icon_GroundOverGrass.webp'),
+        );
     });
 });

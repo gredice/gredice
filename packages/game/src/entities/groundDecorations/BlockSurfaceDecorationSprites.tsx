@@ -1,17 +1,18 @@
 'use client';
 
-import { Suspense, useMemo } from 'react';
+import { useMemo } from 'react';
+import { useGameSceneDetails } from '../../GameSceneDetailContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
 import { SpriteAtlasBillboard } from '../../sprites/SpriteAtlasBillboard';
 import type { Block } from '../../types/Block';
 import { useGameState } from '../../useGameState';
-import { GardenFlowerModel } from '../helpers/GardenFlowerModel';
 import type { BlockSurfaceDecorationPlacement } from './getBlockSurfaceDecorations';
 import { getBlockSurfaceDecorations } from './getBlockSurfaceDecorations';
 import {
     type GroundDecorationSurface,
     groundDecorationAtlasBasePath,
+    swampGroundDecorationTint,
 } from './groundDecorationConfig';
 
 const compassToDirection: Record<string, number> = {
@@ -50,7 +51,10 @@ function ResolvedBlockSurfaceDecorationSprites({
 }: DirectBlockSurfaceDecorationSpritesProps) {
     const { data: garden } = useCurrentGarden();
     const gameWeather = useGameState((state) => state.weather);
-    const { data: weatherNow } = useWeatherNow();
+    const { data: weatherNow } = useWeatherNow(
+        gameWeather == null,
+        garden?.farmId,
+    );
     const placements = useMemo(
         () =>
             getBlockSurfaceDecorations({
@@ -97,17 +101,19 @@ export function PrecomputedBlockSurfaceDecorationSprites({
 
         if (placement.kind === 'flower') {
             return (
-                <Suspense
-                    key={`${blockId}:${surface}:flower:${positionKey}`}
-                    fallback={null}
-                >
-                    <GardenFlowerModel
-                        petalColor={placement.color}
-                        position={placement.position}
-                        rotation={[0, placement.rotation, 0]}
-                        scale={placement.scale}
-                    />
-                </Suspense>
+                <SpriteAtlasBillboard
+                    key={`${blockId}:${surface}:${placement.spriteName}:${placement.color}:${placement.scale.toFixed(3)}:${positionKey}`}
+                    alphaTest={0.05}
+                    atlasBasePath={groundDecorationAtlasBasePath}
+                    height={placement.scale}
+                    opacity={0.95}
+                    position={placement.position}
+                    renderOrder={21}
+                    rotationZ={placement.rotation}
+                    spriteName={placement.spriteName}
+                    windDirection={windDirection}
+                    windSpeed={windSpeed}
+                />
             );
         }
 
@@ -121,6 +127,9 @@ export function PrecomputedBlockSurfaceDecorationSprites({
                 position={placement.position}
                 renderOrder={20}
                 spriteName={placement.spriteName}
+                tint={
+                    surface === 'swamp' ? swampGroundDecorationTint : undefined
+                }
                 windDirection={windDirection}
                 windSpeed={windSpeed}
             />
@@ -131,6 +140,12 @@ export function PrecomputedBlockSurfaceDecorationSprites({
 export function BlockSurfaceDecorationSprites(
     props: BlockSurfaceDecorationSpritesProps,
 ) {
+    const { renderDetails } = useGameSceneDetails();
+
+    if (!renderDetails) {
+        return null;
+    }
+
     if ('placements' in props) {
         return <PrecomputedBlockSurfaceDecorationSprites {...props} />;
     }

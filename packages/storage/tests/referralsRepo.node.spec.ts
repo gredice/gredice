@@ -65,6 +65,7 @@ function expectedReferredAccount(
     account: {
         displayName?: string;
         avatarUrl?: string | null;
+        achievementCount?: number;
     } = {},
 ) {
     return {
@@ -73,6 +74,9 @@ function expectedReferredAccount(
             id: accountId,
             displayName: account.displayName ?? 'Gredice račun',
             avatarUrl: account.avatarUrl ?? null,
+            ...(account.achievementCount === undefined
+                ? {}
+                : { achievementCount: account.achievementCount }),
         },
         rewarded,
     };
@@ -115,6 +119,7 @@ test('account referral state respects cleared used codes', async () => {
         expectedReferredAccount(referredAccountId, false, {
             displayName: referredDisplayName,
             avatarUrl: referredAvatarUrl,
+            achievementCount: 1,
         }),
     ]);
 

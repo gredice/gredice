@@ -4,22 +4,32 @@ import { handle } from 'hono/vercel';
 import { openAPIRouteHandler } from 'hono-openapi';
 import { sessionCookieName } from '../../../lib/auth/sessionConfig';
 import { openApiDocs } from '../../../lib/docs/openApiDocs';
+import { resolveCorsOrigin } from '../../../lib/http/corsOrigins';
 import accountsRoutes from './accountsRoutes';
+import aiOperationNotesRoutes from './aiOperationNotesRoutes';
+import aiSuncokretRoutes from './aiSuncokretRoutes';
 import authRoutes from './authRoutes';
 import checkoutRoutes from './checkoutRoutes';
 import dataRoutes from './data';
 import deliveryRoutes from './deliveryRoutes';
 import directoriesRoutes from './directoriesRoutes';
+import favoritesRoutes from './favoritesRoutes';
 import feedbackRoutes from './feedbackRoutes';
 import gardensRoutes from './gardensRoutes';
 import inventoryRoutes from './inventoryRoutes';
 import newsletterRoutes from './newsletterRoutes';
+import newsRoutes from './newsRoutes';
 import notificationsRoutes from './notificationsRoutes';
 import occasionsRoutes from './occasionsRoutes';
+import outletRoutes from './outletRoutes';
+import pricingRoutes from './pricingRoutes';
 import shoppingCartRoutes from './shoppingCartRoutes';
+import surveysRoutes from './surveysRoutes';
 import usersRoutes from './usersRoutes';
+import wallpaperRoutes from './wallpaperRoutes';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 function docs<E extends Env, S extends Schema, P extends string>(
     routes: Hono<E, S, P>,
@@ -70,16 +80,19 @@ const app = new Hono()
     .use(
         '*',
         cors({
-            origin: '*',
+            origin: resolveCorsOrigin,
             allowHeaders: ['Origin', 'Content-Type', 'Authorization'],
             allowMethods: ['OPTIONS', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
             credentials: true,
         }),
     )
     .route('/auth', authRoutes)
+    .route('/ai/suncokret', aiSuncokretRoutes)
+    .route('/ai/operation-notes', aiOperationNotesRoutes)
     .route('/directories', directoriesRoutes)
     .route('/accounts', accountsRoutes)
     .route('/users', usersRoutes)
+    .route('/favorites', favoritesRoutes)
     .route('/gardens', gardensRoutes)
     .route('/feedback', feedbackRoutes)
     .route('/occasions', occasionsRoutes)
@@ -89,11 +102,29 @@ const app = new Hono()
     .route('/delivery', deliveryRoutes)
     .route('/data', dataRoutes)
     .route('/notifications', notificationsRoutes)
-    .route('/newsletter', newsletterRoutes);
+    .route('/surveys', surveysRoutes)
+    .route('/newsletter', newsletterRoutes)
+    .route('/news', newsRoutes)
+    .route('/outlet', outletRoutes)
+    .route('/pricing', pricingRoutes)
+    .route('/wallpapers', wallpaperRoutes);
 
 app.get('/docs/auth', docs(authRoutes, 'Auth API', 'auth'))
+    .get(
+        '/docs/ai-operation-notes',
+        docs(
+            aiOperationNotesRoutes,
+            'Operation notes AI API',
+            'ai/operation-notes',
+        ),
+    )
+    .get(
+        '/docs/ai-suncokret',
+        docs(aiSuncokretRoutes, 'Suncokret AI API', 'ai/suncokret'),
+    )
     .get('/docs/accounts', docs(accountsRoutes, 'Accounts API', 'accounts'))
     .get('/docs/users', docs(usersRoutes, 'Users API', 'users'))
+    .get('/docs/favorites', docs(favoritesRoutes, 'Favorites API', 'favorites'))
     .get('/docs/gardens', docs(gardensRoutes, 'Gardens API', 'gardens'))
     .get('/docs/directories', async (context) =>
         context.json(await openApiDocs()),
@@ -112,9 +143,17 @@ app.get('/docs/auth', docs(authRoutes, 'Auth API', 'auth'))
         '/docs/notifications',
         docs(notificationsRoutes, 'Notifications API', 'notifications'),
     )
+    .get('/docs/surveys', docs(surveysRoutes, 'Surveys API', 'surveys'))
     .get(
         '/docs/newsletter',
         docs(newsletterRoutes, 'Newsletter API', 'newsletter'),
+    )
+    .get('/docs/news', docs(newsRoutes, 'News API', 'news'))
+    .get('/docs/outlet', docs(outletRoutes, 'Outlet API', 'outlet'))
+    .get('/docs/pricing', docs(pricingRoutes, 'Pricing API', 'pricing'))
+    .get(
+        '/docs/wallpapers',
+        docs(wallpaperRoutes, 'Wallpapers API', 'wallpapers'),
     );
 
 export const GET = handle(app);
@@ -124,4 +163,5 @@ export const DELETE = handle(app);
 export const PATCH = handle(app);
 export const OPTIONS = handle(app);
 
+export { app };
 export type AppType = typeof app;

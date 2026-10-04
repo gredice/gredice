@@ -1,0 +1,1 @@
+Pilot za ogledne stanice i otvaranje zadane navigacije u sustavu Android Auto.

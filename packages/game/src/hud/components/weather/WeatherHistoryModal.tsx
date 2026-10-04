@@ -1,0 +1,88 @@
+'use client';
+
+import {
+    getDefaultWeatherRange,
+    getWeatherDataBounds,
+    type WeatherMetricKey,
+} from '@gredice/js/weather';
+import {
+    WeatherCharts,
+    type WeatherChartsRange,
+} from '@gredice/ui/WeatherCharts';
+import { useState } from 'react';
+import { useWeatherForecast } from '../../../hooks/useWeatherForecast';
+import {
+    useWeatherHistory,
+    useWeatherHistoryRange,
+} from '../../../hooks/useWeatherHistory';
+import { GameModal } from '../../../shared-ui/game-modal';
+
+export function WeatherHistoryPanel({
+    className,
+    enabled = true,
+}: {
+    className?: string;
+    enabled?: boolean;
+}) {
+    const [range, setRange] = useState<WeatherChartsRange>(() =>
+        getDefaultWeatherRange(),
+    );
+    const [metric, setMetric] = useState<WeatherMetricKey>('temperature');
+
+    const { data: history, isLoading: historyLoading } = useWeatherHistory(
+        range.from,
+        range.to,
+        enabled,
+    );
+    const { data: forecast, isLoading: forecastLoading } =
+        useWeatherForecast(enabled);
+    const { data: historyRange } = useWeatherHistoryRange(enabled);
+
+    const bounds = getWeatherDataBounds(historyRange?.from, forecast);
+
+    return (
+        <div className={className}>
+            <WeatherCharts
+                history={history}
+                forecast={forecast}
+                range={range}
+                bounds={bounds}
+                onRangeChange={setRange}
+                metric={metric}
+                onMetricChange={setMetric}
+                isLoading={historyLoading || forecastLoading}
+                compact
+            />
+        </div>
+    );
+}
+
+export function WeatherHistoryModal({
+    trigger,
+    open,
+    onOpenChange,
+}: {
+    trigger?: React.ReactNode;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+}) {
+    const [internalOpen, setInternalOpen] = useState(false);
+    const isOpen = open ?? internalOpen;
+
+    function handleOpenChange(nextOpen: boolean) {
+        setInternalOpen(nextOpen);
+        onOpenChange?.(nextOpen);
+    }
+
+    return (
+        <GameModal
+            trigger={trigger}
+            open={isOpen}
+            onOpenChange={handleOpenChange}
+            title="Vremenske prilike"
+            className="w-full max-w-3xl"
+        >
+            <WeatherHistoryPanel className="pt-2" enabled={isOpen} />
+        </GameModal>
+    );
+}

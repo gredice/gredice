@@ -24,3 +24,7 @@ export function useGardenAccountGroups(disabled?: boolean) {
         staleTime: 1000 * 60 * 5,
     });
 }
+
+export type GardenAccountGroups = NonNullable<
+    ReturnType<typeof useGardenAccountGroups>['data']
+>;

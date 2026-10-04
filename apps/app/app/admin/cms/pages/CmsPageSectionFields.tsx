@@ -14,6 +14,7 @@ import type {
     CmsPageFeatureData,
     CmsPageSectionData,
 } from './CmsPageFormTypes';
+import { CmsPageMarkdownEditor } from './CmsPageMarkdownEditor';
 
 type CmsPageSectionFieldsProps = {
     section?: CmsPageEditableSection;
@@ -529,7 +530,7 @@ export function CmsPageSectionFields({
                                                         ''
                                                     }
                                                     rows={3}
-                                                    className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                                    className="block w-full rounded-md border border-input bg-field px-3 py-2 text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                                     onChange={(event) =>
                                                         updateField(
                                                             field.key,
@@ -601,6 +602,26 @@ export function CmsPageSectionFields({
                 }
 
                 if (field.type === 'textarea') {
+                    if (
+                        section.data.component === 'MarkdownBlock' &&
+                        field.key === 'markdown'
+                    ) {
+                        return (
+                            <CmsPageMarkdownEditor
+                                key={`${section.id}-${field.key}`}
+                                value={textValue(section.data[field.key])}
+                                label={field.label}
+                                required={field.required}
+                                helperText={field.helperText}
+                                placeholder={field.placeholder}
+                                error={error}
+                                onChange={(value) =>
+                                    updateField(field.key, value)
+                                }
+                            />
+                        );
+                    }
+
                     return (
                         <label className="space-y-1" key={field.key}>
                             <span className="block text-sm font-medium">
@@ -613,7 +634,7 @@ export function CmsPageSectionFields({
                                 value={textValue(section.data[field.key])}
                                 rows={field.rows ?? 4}
                                 placeholder={field.placeholder}
-                                className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                className="block w-full rounded-md border border-input bg-field px-3 py-2 text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 onChange={(event) =>
                                     updateField(field.key, event.target.value)
                                 }

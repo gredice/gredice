@@ -1,4 +1,4 @@
-FROM caddy:2.11.2
+FROM caddy:2.11.4
 
 # Install certificate management tools
 RUN apk add --no-cache \

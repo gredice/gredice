@@ -9,7 +9,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Tabs switch between sibling views with Gredice control styling, a sliding active indicator, and Radix keyboard behavior.',
+                    'Tabs use Base UI automatic activation and its native sliding indicator while preserving Gredice styling and panel behavior.',
             },
         },
     },
@@ -97,6 +97,12 @@ export const Disabled: Story = {
             </TabsContent>
         </Tabs>
     ),
+};
+
+export const ManualActivation: Story = {
+    args: {
+        activationMode: 'manual',
+    },
 };
 
 export const LongLabels: Story = {

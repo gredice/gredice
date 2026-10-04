@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import {
     defineConfig,
     devices,
@@ -9,8 +10,12 @@ import {
     getPlaywrightBaseUrl,
     shouldReusePlaywrightServer,
 } from '../../scripts/app-registry.ts';
+import { blobGuardLaunchArgs } from '../../scripts/blob-test-fixtures.mjs';
 
 const app = getAppByName('farm');
+const scheduleActionsMockPath = fileURLToPath(
+    new URL('./playwright/scheduleActionsMock.ts', import.meta.url),
+);
 const reporter: PlaywrightTestConfig['reporter'] = [
     ['list'],
     ['html', { open: 'never' }],
@@ -26,9 +31,57 @@ export const config: PlaywrightTestConfig = {
     workers: process.env.CI ? 1 : undefined,
     reporter,
     use: {
+        launchOptions: { args: blobGuardLaunchArgs() },
         baseURL: getPlaywrightBaseUrl(app),
         trace: 'on-first-retry',
         ctPort: getComponentTestPort(app),
+        ctViteConfig: {
+            // Playwright CT 1.62 bundles Vite 8, whose CJS interop turns default imports
+            // of Next's CJS entry points (e.g. next/image) into module objects.
+            legacy: { inconsistentCjsInterop: true },
+            plugins: [
+                {
+                    name: 'farm-component-test-schedule-actions',
+                    enforce: 'pre',
+                    resolveId(source, importer) {
+                        if (
+                            source === '../profileActions' &&
+                            importer?.includes('/app/settings/_components/')
+                        ) {
+                            return fileURLToPath(
+                                new URL(
+                                    './playwright/profileActionsMock.ts',
+                                    import.meta.url,
+                                ),
+                            );
+                        }
+                        if (
+                            source === './actions' &&
+                            importer?.includes(
+                                '/app/raised-beds/[raisedBedId]/',
+                            )
+                        ) {
+                            return fileURLToPath(
+                                new URL(
+                                    './playwright/plantStateActionsMock.ts',
+                                    import.meta.url,
+                                ),
+                            );
+                        }
+                        if (
+                            (source === './actions' &&
+                                importer?.includes('/app/schedule/')) ||
+                            (source === '../../app/schedule/actions' &&
+                                importer?.includes(
+                                    '/lib/offline/operationCompletionQueueSync',
+                                ))
+                        ) {
+                            return scheduleActionsMockPath;
+                        }
+                    },
+                },
+            ],
+        },
     },
     projects: [
         {

@@ -1,18 +1,15 @@
 'use client';
 
-import { ArrowDown } from '@gredice/ui/icons';
-import { type ButtonHTMLAttributes, forwardRef, type ReactNode } from 'react';
+import { Down } from '@gredice/ui/icons';
+import { type ButtonHTMLAttributes, forwardRef } from 'react';
 import { adminBreadcrumbSelectorTriggerClassName } from './adminBreadcrumbStyles';
 
 export const AdminBreadcrumbSelectorTrigger = forwardRef<
     HTMLButtonElement,
     ButtonHTMLAttributes<HTMLButtonElement> & {
-        children: ReactNode;
+        'aria-label': string;
     }
->(function AdminBreadcrumbSelectorTrigger(
-    { children, className, type, ...props },
-    ref,
-) {
+>(function AdminBreadcrumbSelectorTrigger({ className, type, ...props }, ref) {
     return (
         <button
             ref={ref}
@@ -22,8 +19,7 @@ export const AdminBreadcrumbSelectorTrigger = forwardRef<
                 .join(' ')}
             {...props}
         >
-            <span className="min-w-0 truncate">{children}</span>
-            <ArrowDown className="size-3 shrink-0" aria-hidden />
+            <Down className="size-3.5" aria-hidden />
         </button>
     );
 });

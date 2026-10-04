@@ -100,6 +100,13 @@ export function CreateTimeSlotForm({ locations }: CreateTimeSlotFormProps) {
                     required
                 />
 
+                <Input
+                    type="datetime-local"
+                    name="closesAt"
+                    label="Zatvara se"
+                    helperText="Prazno koristi zadano automatsko zatvaranje"
+                />
+
                 <SubmitButton />
 
                 {state?.message && (

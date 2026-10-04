@@ -1,3 +1,4 @@
+import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import { useCallback, useEffect, useState } from 'react';
 
 type Point = {
@@ -71,6 +72,21 @@ function getElementCenter(element: HTMLElement): Point {
     };
 }
 
+function getFallbackHudTarget(): Point {
+    if (typeof window === 'undefined') {
+        return { x: 0, y: 0 };
+    }
+
+    const isMobile = window.innerWidth < 768;
+    const horizontalOffset = isMobile ? 80 : 120;
+    const verticalOffset = isMobile ? 110 : 80;
+
+    return {
+        x: Math.max(window.innerWidth - horizontalOffset, 0),
+        y: Math.max(verticalOffset, 0),
+    };
+}
+
 function getParticleCount(amount: number) {
     if (!Number.isFinite(amount) || amount <= 0) {
         return 3;
@@ -111,10 +127,22 @@ function createParticle({
 }) {
     const particle = document.createElement('span');
     particle.setAttribute('data-sunflower-transfer-particle', 'true');
-    particle.textContent =
-        index === 0 && amount > 0
-            ? `${formatSunflowersCompact(amount)} 🌻`
-            : '🌻';
+    if (index === 0 && amount > 0) {
+        particle.append(
+            document.createTextNode(formatSunflowersCompact(amount)),
+        );
+    }
+    const mascot = document.createElement('img');
+    mascot.src =
+        typeof sunflowerMascotArtwork === 'string'
+            ? sunflowerMascotArtwork
+            : sunflowerMascotArtwork.src;
+    mascot.alt = '';
+    mascot.width = 24;
+    mascot.height = 24;
+    mascot.style.flexShrink = '0';
+    particle.style.gap = '0.25rem';
+    particle.append(mascot);
     particle.style.position = 'absolute';
     particle.style.left = `${from.x}px`;
     particle.style.top = `${from.y}px`;
@@ -247,6 +275,49 @@ function startSunflowerTransfer({
     void Promise.allSettled(
         animations.map((animation) => animation.finished),
     ).then(cleanup);
+}
+
+export function animateSunflowerHudToPoint({
+    amount = 0,
+    to,
+}: {
+    amount?: number;
+    to: Point;
+}) {
+    if (getPrefersReducedMotion() || typeof document === 'undefined') {
+        return;
+    }
+
+    const hudElement = document.querySelector<HTMLElement>(HUD_TARGET_SELECTOR);
+    if (!hudElement) {
+        return;
+    }
+
+    startSunflowerTransfer({
+        amount,
+        from: getElementCenter(hudElement),
+        to,
+    });
+}
+
+export function animateSunflowerPointToHud({
+    amount = 0,
+    from,
+}: {
+    amount?: number;
+    from: Point;
+}) {
+    if (getPrefersReducedMotion() || typeof document === 'undefined') {
+        return;
+    }
+
+    const hudElement = document.querySelector<HTMLElement>(HUD_TARGET_SELECTOR);
+
+    startSunflowerTransfer({
+        amount,
+        from,
+        to: hudElement ? getElementCenter(hudElement) : getFallbackHudTarget(),
+    });
 }
 
 export function useSunflowerTransferAnimation() {

@@ -1,13 +1,10 @@
-export type PlantStageName =
-    | 'sowing'
-    | 'soilPreparation'
-    | 'planting'
-    | 'growth'
-    | 'maintenance'
-    | 'watering'
-    | 'flowering'
-    | 'harvest'
-    | 'storage';
+import {
+    PLANT_STAGE_LABELS,
+    PLANT_STAGES,
+    type PlantStageName,
+} from '@gredice/js/plants';
+
+export { PLANT_STAGE_LABELS, PLANT_STAGES, type PlantStageName };
 
 export type PlantFieldStatus =
     | 'new'
@@ -23,105 +20,6 @@ export type PlantFieldStatus =
     | 'died'
     | 'removed';
 
-/**
- * Plant stage configuration - Single source of truth for all plant stages.
- *
- * This constant defines the canonical order, labels, and icon identifiers for all plant stages.
- * It serves as the central definition used across the entire application for:
- * - Operations page stage grouping and ordering
- * - Plant information sections ordering
- * - Stage selection and filtering throughout the UI
- * - Any other plant lifecycle stage representations
- *
- * **Order matters**: The array order defines the logical workflow sequence from
- * soil preparation through to storage. This order is preserved when displaying
- * stages throughout the application.
- *
- * **Properties**:
- * - `name`: Internal identifier (PlantStageName) used in the database and API
- * - `label`: User-facing Croatian label displayed in the UI
- * - `icon`: Icon identifier (currently matches name, reserved for future icon mapping)
- *
- * **Usage Examples**:
- * ```typescript
- * // Get all available stages
- * const stages = PLANT_STAGES;
- *
- * // Filter to only stages present in data
- * const activeStages = PLANT_STAGES.filter(stage =>
- *   myData.some(item => item.stageName === stage.name)
- * );
- *
- * // Map to display labels
- * const labels = PLANT_STAGES.map(stage => stage.label);
- * ```
- *
- * @since 1.0.0
- */
-export const PLANT_STAGES = [
-    {
-        name: 'soilPreparation' as const,
-        label: 'Priprema tla',
-        icon: 'soilPreparation',
-    },
-    {
-        name: 'sowing' as const,
-        label: 'Sijanje',
-        icon: 'sowing',
-    },
-    {
-        name: 'planting' as const,
-        label: 'Sadnja',
-        icon: 'planting',
-    },
-    {
-        name: 'growth' as const,
-        label: 'Rast',
-        icon: 'growth',
-    },
-    {
-        name: 'maintenance' as const,
-        label: 'Održavanje',
-        icon: 'maintenance',
-    },
-    {
-        name: 'watering' as const,
-        label: 'Zalijevanje',
-        icon: 'watering',
-    },
-    {
-        name: 'flowering' as const,
-        label: 'Cvjetanje',
-        icon: 'flowering',
-    },
-    {
-        name: 'harvest' as const,
-        label: 'Berba',
-        icon: 'harvest',
-    },
-    {
-        name: 'storage' as const,
-        label: 'Skladištenje',
-        icon: 'storage',
-    },
-] as const;
-
-/**
- * @deprecated Use PLANT_STAGES array instead. This will be removed in a future version.
- * Legacy map for backwards compatibility.
- */
-export const PLANT_STAGE_LABELS: Record<PlantStageName, string> = {
-    soilPreparation: 'Priprema tla',
-    sowing: 'Sijanje',
-    planting: 'Sadnja',
-    growth: 'Rast',
-    maintenance: 'Održavanje',
-    watering: 'Zalijevanje',
-    flowering: 'Cvjetanje',
-    harvest: 'Berba',
-    storage: 'Skladištenje',
-} as const;
-
 export const PLANT_STATUS_STAGE_SEQUENCE: Record<
     PlantFieldStatus,
     PlantStageName[]
@@ -136,9 +34,31 @@ export const PLANT_STATUS_STAGE_SEQUENCE: Record<
     notSprouted: ['sowing', 'maintenance'],
     ready: ['harvest', 'storage'],
     harvested: ['storage'],
-    died: ['maintenance', 'soilPreparation'],
+    died: ['storage'],
     removed: ['maintenance', 'maintenance'],
 } as const;
+
+export function isPlantFieldStatus(
+    status: string | null | undefined,
+): status is PlantFieldStatus {
+    return typeof status === 'string' && status in PLANT_STATUS_STAGE_SEQUENCE;
+}
+
+export function shouldShowPlantOperationRecommendations(
+    plantStatus: PlantFieldStatus | undefined,
+) {
+    return plantStatus !== 'notSprouted';
+}
+
+export function getPlantOperationRecommendationStages(
+    plantStatus: PlantFieldStatus | undefined,
+) {
+    if (!plantStatus || !shouldShowPlantOperationRecommendations(plantStatus)) {
+        return undefined;
+    }
+
+    return PLANT_STATUS_STAGE_SEQUENCE[plantStatus];
+}
 
 export const FEATURED_OPERATIONS_BY_STAGE: Partial<
     Record<PlantStageName, string[]>

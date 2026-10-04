@@ -1,10 +1,10 @@
 import { plantFieldStatusLabel } from '@gredice/js/plants';
-import { Modal } from '@gredice/ui/Modal';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { type ReactElement, useMemo, useState } from 'react';
 import { useSorts } from '../../hooks/usePlantSorts';
+import { GameModal } from '../../shared-ui/game-modal';
 import type { RaisedBedFieldPlantHistoryEntry } from '../../utils/raisedBedFields';
 import { RaisedBedFieldItemPlanted } from './RaisedBedFieldItemPlanted';
 
@@ -52,11 +52,11 @@ export function RaisedBedFieldPlantHistoryModal({
 
     return (
         <>
-            <Modal
+            <GameModal
                 title="Povijest polja"
                 trigger={trigger}
                 modal={false}
-                className="md:border-tertiary md:border-b-4 max-w-xl"
+                className="max-w-xl"
             >
                 <Stack spacing={4}>
                     <Typography level="body2" className="text-muted-foreground">
@@ -127,7 +127,7 @@ export function RaisedBedFieldPlantHistoryModal({
                         );
                     })}
                 </Stack>
-            </Modal>
+            </GameModal>
             {selectedEntry && (
                 <RaisedBedFieldItemPlanted
                     key={selectedEntryKey}

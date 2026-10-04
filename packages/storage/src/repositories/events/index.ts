@@ -2,46 +2,83 @@
 
 export { buildRaisedBedFieldPlantUpdatePayload } from './buildRaisedBedFieldPlantUpdatePayload';
 export { knownEvents } from './knownEvents';
-
 // Constants
 export { knownEventTypes } from './knownEventTypes';
+export type {
+    AiAnalyticsOperation,
+    AiAnalyticsOperationData,
+    AiAnalyticsOperationType,
+} from './queries';
 // Query functions
 export {
+    aiAnalyticsOperationTypes,
     countAiRequestEventsSince,
     countEventsSince,
+    createDeliveryLifecycleNotificationDecisionOnce,
     createEvent,
     deleteEventById,
     getAiAnalysisEvents,
     getAiAnalysisTotals,
+    getAllEvents,
+    getEventAggregateIdsByAggregateIdPrefix,
+    getEventById,
     getEvents,
     getLastBirthdayRewardEvent,
     getLatestEvents,
+    getLatestEventsByAggregateIdPrefix,
     getPlantPlaceEventsCount,
     getPlantUpdateEvents,
     getSunflowersDailyTotals,
+    updateEventCreatedAt,
 } from './queries';
+export type {
+    ScheduleTaskBlockDetails,
+    ScheduleTaskBlockPayload,
+    ScheduleTaskBlockReasonCode,
+    ScheduleTaskBlockReasonLabel,
+} from './scheduleTaskBlock';
+export {
+    getScheduleTaskBlockReason,
+    isScheduleTaskBlockReasonCode,
+    scheduleTaskBlockDetailsFromEvent,
+    scheduleTaskBlockReasons,
+} from './scheduleTaskBlock';
 export type {
     // Account
     AccountAiRequestPayload,
     AccountAssignUserPayload,
+    AccountSunflowerDropEarnPayload,
+    AccountSunflowerDropSpawnPayload,
     AccountSunflowersPayload,
     AdventAward,
     AdventCalendarOpenPayload,
     AdventGiftAward,
     AiRequestKind,
+    // Checkout
+    CheckoutOperationCreatedPayload,
     // Delivery
     DeliveryRequestAddressChangedPayload,
     DeliveryRequestCancelledPayload,
     DeliveryRequestCreatePayload,
     DeliveryRequestEventsAnyPayload,
     DeliveryRequestEventsPayload,
+    DeliveryRequestExceptionRecordedPayload,
+    DeliveryRequestExceptionRecoveredPayload,
     DeliveryRequestFulfilledPayload,
+    DeliveryRequestFulfilledPayloadV1,
+    DeliveryRequestFulfilledPayloadV2,
+    DeliveryRequestHandoffVerificationPayload,
+    DeliveryRequestLifecycleNotificationDecisionPayload,
+    DeliveryRequestRouteProgressPayload,
     DeliveryRequestSlotChangedPayload,
     DeliveryRequestStatusPayload,
     DeliveryRequestSurveySentPayload,
+    DeliveryRunAbandonedPayload,
+    DeliveryRunReassignedPayload,
     // Generic
     Event,
     GardenBlockPlacePayload,
+    GardenBlockPlacePayloadV2,
     GardenBlockRemovePayload,
     // Garden
     GardenCreatePayload,
@@ -51,9 +88,12 @@ export type {
     InvoiceCreatePayload,
     InvoicePaidPayload,
     InvoiceUpdatePayload,
+    OperationAcceptancePayload,
     OperationAssignPayload,
+    OperationBlockPayload,
     OperationCancelPayload,
     OperationCompletePayload,
+    OperationEntityChangePayload,
     OperationEventsAnyPayload,
     OperationEventsPayload,
     OperationFailPayload,
@@ -66,13 +106,28 @@ export type {
     RaisedBedFieldAiAnalysisPayload,
     // Raised bed field
     RaisedBedFieldCreatePayload,
+    RaisedBedFieldPlantBlockPayload,
     RaisedBedFieldPlantEventsAnyPayload,
     RaisedBedFieldPlantEventsPayload,
     RaisedBedFieldPlantPlacePayload,
+    RaisedBedFieldPlantPurchase,
     RaisedBedFieldPlantReplaceSortPayload,
     RaisedBedFieldPlantSchedulePayload,
     RaisedBedFieldPlantUpdatePayload,
     RaisedBedFieldSowingLocation,
+    RaisedBedPlantingEventsPayload,
+    RaisedBedPlantingLifecycleStartedPayload,
+    RaisedBedPlantingLifecycleStatus,
+    RaisedBedPlantingLifecycleStatusChangedPayload,
+    RaisedBedPlantingTaskAssignedPayload,
+    RaisedBedPlantingTaskBlockedPayload,
+    RaisedBedPlantingTaskCancelledPayload,
+    RaisedBedPlantingTaskCompletedPayload,
+    RaisedBedPlantingTaskScheduledPayload,
+    RaisedBedPlantingTaskVerifiedPayload,
+    RaisedBedWeedStateLevel,
+    RaisedBedWeedStateSetPayload,
+    RaisedBedWeedStateSource,
     // Receipt
     ReceiptCreatePayload,
     ReceiptFiscalizePayload,
@@ -82,3 +137,4 @@ export type {
     // User
     UserBirthdayRewardPayload,
 } from './types';
+export { raisedBedPlantingLifecycleStatuses } from './types';

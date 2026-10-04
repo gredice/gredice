@@ -1,6 +1,7 @@
 'use client';
 
 import type { PlantSortData } from '@gredice/client';
+import { GamePlantStatusIcon } from '@gredice/ui/GameIcons';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Timer } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
@@ -10,6 +11,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { MoveRaisedBedFieldPlantModal } from './MoveRaisedBedFieldPlantModal';
+import { raisedBedFieldCardButtonClassName } from './RaisedBedFieldCard';
 
 export type RemovedFieldDetails = {
     id: number;
@@ -17,13 +19,15 @@ export type RemovedFieldDetails = {
     plantPlaceEventId: number;
     plantLabel: string;
     plantStatusLabel: string | null;
-    plantStatusIcon: string | null;
+    plantStatus: string | null;
     sortData?: PlantSortData;
     imageUrl?: string | null;
     createdAt?: string | null;
     plantScheduledDate?: string | null;
     plantSowDate?: string | null;
     plantGrowthDate?: string | null;
+    plantFirstFlowersDate?: string | null;
+    plantFirstFruitSetDate?: string | null;
     plantReadyDate?: string | null;
     plantHarvestedDate?: string | null;
     plantDeadDate?: string | null;
@@ -47,6 +51,8 @@ const dateEntries: {
     { key: 'plantScheduledDate', label: 'Planirano' },
     { key: 'plantSowDate', label: 'Sijano' },
     { key: 'plantGrowthDate', label: 'Proklijalo' },
+    { key: 'plantFirstFlowersDate', label: 'Prvi cvjetovi' },
+    { key: 'plantFirstFruitSetDate', label: 'Prvi plodovi' },
     { key: 'plantReadyDate', label: 'Spremno' },
     { key: 'plantHarvestedDate', label: 'Ubrano' },
     { key: 'plantDeadDate', label: 'Uginulo' },
@@ -70,6 +76,7 @@ export function RaisedBedRemovedFieldsModal({
                     variant="plain"
                     size="sm"
                     title={`Povijest (${fields.length})`}
+                    className={raisedBedFieldCardButtonClassName}
                 >
                     <Timer className="size-4 shrink-0" />
                 </IconButton>
@@ -117,11 +124,13 @@ export function RaisedBedRemovedFieldsModal({
                                     {field.plantStatusLabel && (
                                         <Typography
                                             level="body2"
-                                            className="text-muted-foreground"
+                                            className="flex items-center gap-1 text-muted-foreground"
                                         >
-                                            {field.plantStatusIcon
-                                                ? `${field.plantStatusIcon} `
-                                                : ''}
+                                            <GamePlantStatusIcon
+                                                status={field.plantStatus}
+                                                className="size-5 shrink-0"
+                                                aria-hidden
+                                            />
                                             {field.plantStatusLabel}
                                         </Typography>
                                     )}

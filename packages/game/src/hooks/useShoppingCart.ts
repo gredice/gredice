@@ -1,14 +1,30 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
+import { isDeterministicEmptyMockGardenProfile } from '../mockGardenProfilePolicy';
+import { useOptionalGameState } from '../useGameState';
 import { useCurrentUser } from './useCurrentUser';
 
 export const useShoppingCartQueryKey = ['shopping-cart'];
 
 export function useShoppingCart(enabled = true) {
-    const { data: currentUser } = useCurrentUser();
+    const isMock = useOptionalGameState((state) => state.isMock, false);
+    const mockGardenProfile = useOptionalGameState(
+        (state) => state.mockGardenProfile,
+        'default',
+    );
+    const isDeterministicEmptyMock =
+        isMock && isDeterministicEmptyMockGardenProfile(mockGardenProfile);
+    const { data: currentUser } = useCurrentUser(
+        enabled && !isDeterministicEmptyMock,
+    );
     return useQuery({
-        queryKey: useShoppingCartQueryKey,
+        queryKey: isDeterministicEmptyMock
+            ? [...useShoppingCartQueryKey, mockGardenProfile]
+            : useShoppingCartQueryKey,
         queryFn: async () => {
+            if (isDeterministicEmptyMock) {
+                return null;
+            }
             const response =
                 await clientAuthenticated().api['shopping-cart'].$get();
             if (response.status === 401) {
@@ -21,7 +37,7 @@ export function useShoppingCart(enabled = true) {
         },
         retry: false,
         staleTime: 1000 * 60 * 5, // 5 minutes
-        enabled: enabled && !!currentUser,
+        enabled: enabled && (isDeterministicEmptyMock || !!currentUser),
     });
 }
 

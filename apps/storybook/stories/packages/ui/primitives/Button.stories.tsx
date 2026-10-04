@@ -87,7 +87,50 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+export const LinkWithoutPrefetch: Story = {
+    args: {
+        children: 'Otvori povezanu radnju',
+        href: '/admin/operations/1',
+        prefetch: false,
+        size: 'sm',
+        type: undefined,
+        variant: 'plain',
+        endDecorator: <Navigate className="size-4" />,
+    },
+    parameters: {
+        docs: {
+            description: {
+                story: 'Link buttons accept Next Link prefetch options. Admin record actions use prefetch=false to fetch private details when selected; the default for other links is unchanged.',
+            },
+        },
+    },
+};
+
+export const DocumentNavigation: Story = {
+    args: {
+        children: 'Novosti',
+        href: '/novosti',
+        navigation: 'document',
+        type: undefined,
+        variant: 'plain',
+    },
+    parameters: {
+        docs: {
+            description: {
+                story: 'Use navigation="document" for links between Next.js apps, including WWW to News on the same domain. This renders a native anchor with no RSC prefetch and preserves the button styles, loading and disabled behavior. Links within the same app keep the default client navigation.',
+            },
+        },
+    },
+};
+
 export const Variants: Story = {
+    parameters: {
+        docs: {
+            description: {
+                story: 'Press and hold each native button to see the shared 150 ms press feedback. The link keeps its navigation treatment without scaling.',
+            },
+        },
+    },
     render: () => (
         <Row className="flex-wrap" spacing={3}>
             <Button>Solid</Button>
@@ -163,6 +206,13 @@ export const Decorators: Story = {
 };
 
 export const LoadingAndDisabled: Story = {
+    parameters: {
+        docs: {
+            description: {
+                story: 'Loading and disabled buttons remain visually stable and do not respond to pointer presses.',
+            },
+        },
+    },
     render: () => (
         <Row className="flex-wrap" spacing={3}>
             <Button loading>Sinkronizacija</Button>
@@ -175,6 +225,29 @@ export const LoadingAndDisabled: Story = {
                 variant="plain"
             >
                 Zakljucano
+            </Button>
+        </Row>
+    ),
+};
+
+export const ReducedMotion: Story = {
+    parameters: {
+        docs: {
+            description: {
+                story: 'This deterministic preview pins the same 0.995 scale and 100 ms duration used when reduced motion is enabled at the operating-system or browser level. Press and hold either action to inspect it.',
+            },
+        },
+    },
+    render: () => (
+        <Row className="flex-wrap" spacing={3}>
+            <Button className="duration-100 active:scale-[0.995]">
+                Potvrdi narudzbu
+            </Button>
+            <Button
+                className="duration-100 active:scale-[0.995]"
+                variant="outlined"
+            >
+                Uredi podatke
             </Button>
         </Row>
     ),

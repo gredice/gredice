@@ -4,6 +4,7 @@ import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Stack } from '@gredice/ui/Stack';
+import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { usePlantSort } from '../../hooks/usePlantSorts';
@@ -43,7 +44,7 @@ function SmallAwardImage({ award }: { award: AdventAward }) {
             return (
                 <div className="relative flex items-center gap-2">
                     <Image
-                        src="https://cdn.gredice.com/sunflower-large.svg"
+                        src={sunflowerMascotArtwork}
                         alt="Suncokret"
                         width={40}
                         height={40}

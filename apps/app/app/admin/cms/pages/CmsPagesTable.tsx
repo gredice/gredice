@@ -1,68 +1,132 @@
-import { cmsPagePublicPath, type SelectCmsPage } from '@gredice/storage';
+import type { SelectCmsPage } from '@gredice/storage';
+import { cmsImageObjectPosition } from '@gredice/ui/cms';
+import { List, ListItem } from '@gredice/ui/List';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
-import Link from 'next/link';
+import Image from 'next/image';
 import { NoDataPlaceholder } from '../../../../components/shared/placeholders/NoDataPlaceholder';
 import { KnownPages } from '../../../../src/KnownPages';
 import { CmsPageStateChip } from './CmsPageStateChip';
 
+function publishedAtTime(page: SelectCmsPage) {
+    if (!page.publishedAt) {
+        return null;
+    }
+
+    const time = new Date(page.publishedAt).getTime();
+    return Number.isNaN(time) ? null : time;
+}
+
+function comparePagesByPublishDate(a: SelectCmsPage, b: SelectCmsPage) {
+    const aPublishedAt = publishedAtTime(a);
+    const bPublishedAt = publishedAtTime(b);
+
+    if (aPublishedAt !== null && bPublishedAt !== null) {
+        const publishDateDifference = bPublishedAt - aPublishedAt;
+
+        if (publishDateDifference !== 0) {
+            return publishDateDifference;
+        }
+    }
+
+    if (aPublishedAt !== null) {
+        return -1;
+    }
+
+    if (bPublishedAt !== null) {
+        return 1;
+    }
+
+    return b.id - a.id;
+}
+
+function contentKindLabel(page: SelectCmsPage) {
+    switch (page.contentKind) {
+        case 'blog':
+            return 'Blog';
+        case 'changelog':
+            return 'Changelog';
+        default:
+            return 'Stranica';
+    }
+}
+
 export function CmsPagesTable({ pages }: { pages: SelectCmsPage[] }) {
+    const sortedPages = [...pages].sort(comparePagesByPublishDate);
+
+    if (pages.length === 0) {
+        return (
+            <div className="p-4">
+                <NoDataPlaceholder />
+            </div>
+        );
+    }
+
     return (
-        <Table>
-            <Table.Header>
-                <Table.Row>
-                    <Table.Head>Naslov</Table.Head>
-                    <Table.Head>Putanja</Table.Head>
-                    <Table.Head>Status</Table.Head>
-                    <Table.Head>Objavljeno</Table.Head>
-                    <Table.Head>Izmjene</Table.Head>
-                </Table.Row>
-            </Table.Header>
-            <Table.Body>
-                {pages.length === 0 && (
-                    <Table.Row>
-                        <Table.Cell colSpan={5}>
-                            <NoDataPlaceholder />
-                        </Table.Cell>
-                    </Table.Row>
-                )}
-                {pages.map((page) => (
-                    <Table.Row key={page.id}>
-                        <Table.Cell>
-                            <Link href={KnownPages.CmsPageEdit(page.id)}>
-                                <Typography>{page.title}</Typography>
-                            </Link>
-                        </Table.Cell>
-                        <Table.Cell>
-                            <Typography secondary>
-                                {cmsPagePublicPath(page)}
+        <List className="divide-y" spacing={0}>
+            {sortedPages.map((page) => (
+                <ListItem
+                    key={page.id}
+                    href={KnownPages.CmsPageEdit(page.id)}
+                    className="rounded-none px-3 py-3 hover:bg-muted/40 sm:px-4"
+                    startDecorator={
+                        page.metaImageUrl ? (
+                            <span className="h-10 w-16 shrink-0 overflow-hidden rounded-md border bg-muted">
+                                <Image
+                                    alt=""
+                                    className="size-full object-cover"
+                                    decoding="async"
+                                    height={40}
+                                    loading="lazy"
+                                    src={page.metaImageUrl}
+                                    style={{
+                                        objectPosition: cmsImageObjectPosition(
+                                            page.metaImagePoiX,
+                                            page.metaImagePoiY,
+                                        ),
+                                    }}
+                                    width={64}
+                                />
+                            </span>
+                        ) : undefined
+                    }
+                    label={
+                        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <Typography
+                                component="span"
+                                className="min-w-0 truncate"
+                                semiBold
+                            >
+                                {page.title}
                             </Typography>
-                        </Table.Cell>
-                        <Table.Cell>
-                            <CmsPageStateChip state={page.state} />
-                        </Table.Cell>
-                        <Table.Cell>
-                            <Typography secondary>
-                                {page.publishedAt ? (
-                                    <LocalDateTime time={false}>
-                                        {page.publishedAt}
-                                    </LocalDateTime>
-                                ) : (
-                                    '-'
-                                )}
-                            </Typography>
-                        </Table.Cell>
-                        <Table.Cell>
-                            <Typography secondary>
-                                <LocalDateTime time={false}>
-                                    {page.updatedAt}
-                                </LocalDateTime>
-                            </Typography>
-                        </Table.Cell>
-                    </Table.Row>
-                ))}
-            </Table.Body>
-        </Table>
+                            <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
+                                <Typography
+                                    level="body3"
+                                    component="span"
+                                    className="whitespace-nowrap text-muted-foreground"
+                                >
+                                    {contentKindLabel(page)}
+                                </Typography>
+                                <CmsPageStateChip state={page.state} />
+                                <Typography
+                                    level="body3"
+                                    component="span"
+                                    className="whitespace-nowrap text-muted-foreground"
+                                >
+                                    Objavljeno:{' '}
+                                    {page.publishedAt ? (
+                                        <LocalDateTime time={false}>
+                                            {page.publishedAt}
+                                        </LocalDateTime>
+                                    ) : (
+                                        '-'
+                                    )}
+                                </Typography>
+                            </div>
+                        </div>
+                    }
+                />
+            ))}
+        </List>
     );
 }

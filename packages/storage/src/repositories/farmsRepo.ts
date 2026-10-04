@@ -1,3 +1,7 @@
+import {
+    userAchievementCount,
+    userAchievementExtras,
+} from './userAchievementProgress';
 import 'server-only';
 
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
@@ -15,6 +19,7 @@ export type FarmAssignableFarmUser = {
     userName: string;
     displayName: string | null;
     avatarUrl: string | null;
+    achievementCount?: number;
     farmId: number;
 };
 
@@ -23,10 +28,27 @@ export type UniqueFarmAssignableFarmUser = Omit<
     'farmId'
 >;
 
-export async function getFarms() {
-    return storage().query.farms.findMany({
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
+
+export async function getFarms(db: DatabaseClient = storage()) {
+    return db.query.farms.findMany({
         orderBy: desc(farms.createdAt),
     });
+}
+
+export async function getFarmsForUser(userId: string) {
+    const rows = await storage()
+        .select({ farm: farms })
+        .from(farmUsers)
+        .innerJoin(farms, eq(farmUsers.farmId, farms.id))
+        .where(and(eq(farmUsers.userId, userId), eq(farms.isDeleted, false)))
+        .orderBy(desc(farms.createdAt));
+
+    return rows.map((row) => row.farm);
 }
 
 export async function getFarm(farmId: number) {
@@ -41,7 +63,7 @@ export async function getFarmUsers(farmId: number) {
     return storage().query.farmUsers.findMany({
         where: eq(farmUsers.farmId, farmId),
         with: {
-            user: true,
+            user: { extras: userAchievementExtras },
         },
         orderBy: desc(farmUsers.createdAt),
     });
@@ -65,6 +87,7 @@ export async function getAssignableFarmUsersByFarmIds(farmIds: number[]) {
             userName: users.userName,
             displayName: users.displayName,
             avatarUrl: users.avatarUrl,
+            achievementCount: userAchievementCount(users.id),
         })
         .from(farmUsers)
         .innerJoin(users, eq(farmUsers.userId, users.id))
@@ -82,6 +105,7 @@ export async function getAssignableFarmUsersByFarmIds(farmIds: number[]) {
             userName: row.userName,
             displayName: row.displayName,
             avatarUrl: row.avatarUrl,
+            achievementCount: row.achievementCount,
             farmId: row.farmId,
         });
         assignableFarmUsersByFarmId[row.farmId] = existingUsers;
@@ -105,6 +129,7 @@ export async function getUniqueAssignableFarmUsersByFarmIds(farmIds: number[]) {
                         userName: row.userName,
                         displayName: row.displayName,
                         avatarUrl: row.avatarUrl,
+                        achievementCount: row.achievementCount,
                     },
                 ]),
         ).values(),

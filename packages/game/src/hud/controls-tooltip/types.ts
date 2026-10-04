@@ -2,6 +2,7 @@ export type DeviceType = 'desktop' | 'tablet' | 'mobile';
 
 export type CubeOptions = {
     translateX?: number;
+    translateY?: number;
     scale?: number;
     rotateY?: number;
     size?: number;

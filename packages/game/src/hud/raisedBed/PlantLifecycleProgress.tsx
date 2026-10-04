@@ -6,6 +6,7 @@ import { Typography } from '@gredice/ui/Typography';
 import type { ReactNode } from 'react';
 import type { RaisedBedFieldPlantHistoryEntry } from '../../utils/raisedBedFields';
 import { PlantStageSection } from './PlantStageSection';
+import { plantLifecycleMilestones } from './plantLifecycleMilestones';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
@@ -63,6 +64,7 @@ export function getPlantLifecycleProgressData({
         return result;
     }
 
+    const milestones = plantLifecycleMilestones(field);
     const targetDateNow = (
         field.stoppedDate ? new Date(field.stoppedDate) : now
     ).getTime();
@@ -90,7 +92,7 @@ export function getPlantLifecycleProgressData({
 
     const germinationWindowMs =
         (plantAttributes?.germinationWindowMax ?? 0) * MS_PER_DAY;
-    result.germinationValue = field.plantGrowthDate
+    result.germinationValue = milestones.sprouted
         ? 100
         : field.plantSowDate
           ? Math.min(
@@ -113,7 +115,7 @@ export function getPlantLifecycleProgressData({
     result.growthPercentage =
         100 - result.germinationPercentage - result.harvestPercentage;
     const growthWindowMs = (plantAttributes?.growthWindowMax ?? 0) * MS_PER_DAY;
-    result.growthValue = field.plantReadyDate
+    result.growthValue = milestones.ready
         ? 100
         : field.plantGrowthDate
           ? Math.min(
@@ -138,9 +140,11 @@ export function getPlantLifecycleProgressData({
     const harvestElapsedMs = field.plantReadyDate
         ? Math.abs(targetDateNow - new Date(field.plantReadyDate).getTime())
         : 0;
-    result.harvestValue = field.plantReadyDate
-        ? Math.min(100, (harvestElapsedMs / (harvestWindowMs || 1)) * 100)
-        : 0;
+    result.harvestValue = milestones.harvested
+        ? 100
+        : field.plantReadyDate
+          ? Math.min(100, (harvestElapsedMs / (harvestWindowMs || 1)) * 100)
+          : 0;
     result.readyDays = Math.round(harvestElapsedMs / MS_PER_DAY);
 
     return result;
@@ -159,6 +163,7 @@ export function PlantLifecycleProgress({
     plantDetailsUrl?: string;
     statusTrigger: ReactNode;
 }) {
+    const milestones = plantLifecycleMilestones(field);
     const plantScheduledDate = field.plantScheduledDate
         ? new Date(field.plantScheduledDate)
         : null;
@@ -192,7 +197,7 @@ export function PlantLifecycleProgress({
                       percentage: lifecycleData.germinationPercentage,
                       color: 'stroke-yellow-500',
                       trackColor: 'stroke-yellow-200 dark:stroke-yellow-50',
-                      pulse: !field.plantGrowthDate,
+                      pulse: !milestones.sprouted,
                       borderColor: 'stroke-yellow-500',
                   },
                   {
@@ -200,7 +205,7 @@ export function PlantLifecycleProgress({
                       percentage: lifecycleData.growthPercentage,
                       color: 'stroke-green-500',
                       trackColor: 'stroke-green-200 dark:stroke-green-50',
-                      pulse: !field.plantReadyDate,
+                      pulse: !milestones.ready,
                       borderColor: 'stroke-green-500',
                   },
                   {
@@ -240,10 +245,9 @@ export function PlantLifecycleProgress({
                         legendColorClass="bg-yellow-500"
                         legendBorderColorClass="border-yellow-500"
                         legendPulse={
-                            Boolean(field.plantSowDate) &&
-                            !field.plantGrowthDate
+                            Boolean(field.plantSowDate) && !milestones.sprouted
                         }
-                        legendFilled={Boolean(field.plantGrowthDate)}
+                        legendFilled={milestones.sprouted}
                         windowMin={plantAttributes?.germinationWindowMin}
                         windowMax={plantAttributes?.germinationWindowMax}
                         startDate={
@@ -258,9 +262,17 @@ export function PlantLifecycleProgress({
                                   ? new Date(field.stoppedDate)
                                   : null
                         }
-                        daysCount={lifecycleData.germinatingDays}
+                        daysCount={
+                            milestones.sprouted && !field.plantGrowthDate
+                                ? undefined
+                                : lifecycleData.germinatingDays
+                        }
                         dayPlural={germinatingDaysDayPlural}
-                        fallbackText="Nije posijano"
+                        fallbackText={
+                            milestones.sowed
+                                ? 'Datum nije zabilježen'
+                                : 'Nije posijano'
+                        }
                         stageDescription={plantStageDescriptions.germination}
                         plantDetailsUrl={plantDetailsUrl}
                     />
@@ -269,10 +281,9 @@ export function PlantLifecycleProgress({
                         legendColorClass="bg-green-500"
                         legendBorderColorClass="border-green-500"
                         legendPulse={
-                            Boolean(field.plantGrowthDate) &&
-                            !field.plantReadyDate
+                            Boolean(field.plantGrowthDate) && !milestones.ready
                         }
-                        legendFilled={Boolean(field.plantReadyDate)}
+                        legendFilled={milestones.ready}
                         windowMin={plantAttributes?.growthWindowMin}
                         windowMax={plantAttributes?.growthWindowMax}
                         startDate={
@@ -287,9 +298,17 @@ export function PlantLifecycleProgress({
                                   ? new Date(field.stoppedDate)
                                   : null
                         }
-                        daysCount={lifecycleData.growingDays}
+                        daysCount={
+                            milestones.ready && !field.plantReadyDate
+                                ? undefined
+                                : lifecycleData.growingDays
+                        }
                         dayPlural={growingDaysDayPlural}
-                        fallbackText="Nije u fazi rasta"
+                        fallbackText={
+                            milestones.sprouted
+                                ? 'Datum nije zabilježen'
+                                : 'Nije u fazi rasta'
+                        }
                         stageDescription={plantStageDescriptions.growth}
                         plantDetailsUrl={plantDetailsUrl}
                     />
@@ -315,7 +334,11 @@ export function PlantLifecycleProgress({
                         }
                         daysCount={lifecycleData.readyDays}
                         dayPlural={readyDaysDayPlural}
-                        fallbackText="Nije u fazi berbe"
+                        fallbackText={
+                            milestones.ready
+                                ? 'Datum nije zabilježen'
+                                : 'Nije u fazi berbe'
+                        }
                         stageDescription={plantStageDescriptions.harvest}
                         plantDetailsUrl={plantDetailsUrl}
                         variant="single"

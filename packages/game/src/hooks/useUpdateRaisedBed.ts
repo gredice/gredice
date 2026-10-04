@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGameState } from '../useGameState';
 import { currentGardenKeys } from './useCurrentGarden';
 import { useCurrentUser } from './useCurrentUser';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 export function useUpdateRaisedBed(gardenId: number, raisedBedId: number) {
     const queryClient = useQueryClient();
@@ -33,6 +34,7 @@ export function useUpdateRaisedBed(gardenId: number, raisedBedId: number) {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: gardenQueryKey });
+            queryClient.invalidateQueries({ queryKey: tutorialChecklistKeys });
         },
     });
 }

@@ -7,8 +7,10 @@ import type { DashboardQuickActionOption } from '../../../src/dashboardQuickActi
 export type NavContextType = Awaited<
     ReturnType<typeof getEntityTypesOrganizedByCategories>
 > & {
+    pendingCmsPagesReviewCount: number;
     pendingAchievementsCount: number;
     pendingApprovalTasksCount: number;
+    pendingCommunityEditRequestsCount: number;
     quickActions: DashboardQuickActionOption[];
 };
 

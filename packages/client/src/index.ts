@@ -1,8 +1,28 @@
 export * from './directories-api';
-export type { ClientMode, ClientOptions, GardenResponse } from './hono';
+export * from './favorites';
+export * from './garden-likes';
+export * from './harvest-traces';
+export type {
+    ClientMode,
+    ClientOptions,
+    GardenResponse,
+    PublicGardenResponse,
+    PublicGardensResponse,
+} from './hono';
 export { client, clientAuthenticated, clientPublic } from './hono';
 export {
     type GrediceAppOrigin,
     getBrowserGrediceAppOrigin,
+    getGrediceAppOrigin,
 } from './origins';
+export {
+    type BrowserPushManager,
+    type BrowserPushSubscription,
+    type BrowserPushSubscriptionJson,
+    type PushDeviceMetadata,
+    type PushDeviceRegistrationPayload,
+    pushSubscriptionPayload,
+    subscribePushDevice,
+    urlBase64ToUint8Array,
+} from './push';
 export { getServerGrediceApiOrigin } from './shared';

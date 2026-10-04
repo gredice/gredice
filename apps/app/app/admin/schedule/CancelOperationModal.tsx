@@ -8,6 +8,7 @@ interface CancelOperationModalProps {
     operation: {
         id: number;
         entityId: number;
+        taskVersionEventId: number;
         scheduledDate?: Date;
         status: string;
     };
@@ -22,17 +23,41 @@ export function CancelOperationModal({
     trigger,
     onSubmit,
 }: CancelOperationModalProps) {
+    const hasCompletionState =
+        operation.status === 'completed' ||
+        operation.status === 'pendingVerification';
+
     return (
         <CancelRequestModal
             label={operationLabel}
             trigger={trigger}
             onSubmit={onSubmit ?? cancelOperationAction}
             hiddenFields={
-                <input type="hidden" name="operationId" value={operation.id} />
+                <>
+                    <input
+                        type="hidden"
+                        name="operationId"
+                        value={operation.id}
+                    />
+                    <input
+                        type="hidden"
+                        name="expectedEntityId"
+                        value={operation.entityId}
+                    />
+                    <input
+                        type="hidden"
+                        name="expectedTaskVersionEventId"
+                        value={operation.taskVersionEventId}
+                    />
+                </>
             }
-            description={`Operacija će biti otkazana. Koristi opcije ispod za povrat suncokreta i slanje obavijesti korisniku.${
+            description={`Operacija će biti otkazana. Koristi opcije ispod za povrat suncokreta te slanje obavijesti korisniku i farmi u Slacku.${
                 operation.status === 'planned'
                     ? ' Ako je operacija plaćena suncokretima, preporučujemo da ih vratiš.'
+                    : ''
+            }${
+                hasCompletionState
+                    ? ' Radnja ima zapis završetka; otkazivanje će postaviti najnoviji status na otkazano, ali neće obrisati povijest završetka.'
                     : ''
             }`}
             additionalFields={
@@ -57,7 +82,7 @@ export function CancelOperationModal({
                         defaultChecked
                         label={
                             <Typography level="body2">
-                                Pošalji obavijest korisniku
+                                Pošalji korisniku i farmi (Slack)
                             </Typography>
                         }
                     />

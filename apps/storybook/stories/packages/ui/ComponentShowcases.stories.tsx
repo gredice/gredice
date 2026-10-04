@@ -1,8 +1,12 @@
 import { Accordion } from '@gredice/ui/Accordion';
 import { Alert } from '@gredice/ui/Alert';
+import { AnchorPrice } from '@gredice/ui/AnchorPrice';
 import { ArchiveIcon } from '@gredice/ui/ArchiveIcon';
-import { Avatar } from '@gredice/ui/Avatar';
-import { AvatarSelectionMenu } from '@gredice/ui/AvatarSelectionMenu';
+import { Avatar, resolveAvatarSource } from '@gredice/ui/Avatar';
+import {
+    AVATAR_OPTIONS,
+    AvatarSelectionMenu,
+} from '@gredice/ui/AvatarSelectionMenu';
 import {
     AuthProvider,
     FacebookLoginButton,
@@ -11,11 +15,12 @@ import {
     SignUpButton,
     UserButton,
 } from '@gredice/ui/auth';
-import { BackpackIcon } from '@gredice/ui/BackpackIcon';
+import { BarcodeValue } from '@gredice/ui/Barcode';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { BlurText } from '@gredice/ui/BlurText';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Button } from '@gredice/ui/Button';
+import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
 import {
     Card,
     CardActions,
@@ -25,6 +30,12 @@ import {
     CardOverflow,
     CardTitle,
 } from '@gredice/ui/Card';
+import {
+    ChatBubble,
+    ChatMarker,
+    ChatMessage,
+    ChatMessageScroller,
+} from '@gredice/ui/Chat';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { Chip } from '@gredice/ui/Chip';
 import { Collapse } from '@gredice/ui/Collapse';
@@ -49,9 +60,25 @@ import { Divider } from '@gredice/ui/Divider';
 import { DotIndicator } from '@gredice/ui/DotIndicator';
 import { EditableInput } from '@gredice/ui/EditableInput';
 import { ErrorFallback } from '@gredice/ui/ErrorFallback';
+import {
+    EventCalendar,
+    type EventCalendarEntry,
+} from '@gredice/ui/EventCalendar';
 import { ExpandableSearchInput } from '@gredice/ui/ExpandableSearchInput';
 import { FilterInput } from '@gredice/ui/FilterInput';
 import { Gallery } from '@gredice/ui/Gallery';
+import {
+    GameBackpackIcon as BackpackIcon,
+    GameCameraIcon,
+    GameHistoryIcon,
+    GameInformationIcon,
+    GameJournalIcon,
+    GameMailboxIcon,
+    GameRaisedBedIcon,
+    GameSeedPacketIcon,
+    GameTasksIcon,
+    GameToolsIcon,
+} from '@gredice/ui/GameIcons';
 import { GentleSlide } from '@gredice/ui/GentleSlide';
 import {
     Grid1Icon,
@@ -66,6 +93,8 @@ import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
 import { Input } from '@gredice/ui/Input';
 import {
+    Add,
+    AI,
     Approved,
     Calendar,
     Check,
@@ -86,6 +115,7 @@ import {
     Settings,
     Sprout,
     Store,
+    Sun,
     Truck,
     Upload,
     User,
@@ -104,6 +134,7 @@ import {
     DropdownMenuItemFragment,
     DropdownMenuLabel,
     DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
     DropdownMenuSeparator,
     DropdownMenuShortcut,
     DropdownMenuSub,
@@ -124,29 +155,44 @@ import {
     OperationCategoryIcon,
     OperationImage,
 } from '@gredice/ui/OperationImage';
+import { OperationRequestNote } from '@gredice/ui/OperationRequestNote';
 import { PageHeader, PageHeaderSection } from '@gredice/ui/PageHeader';
+import { PaperNote } from '@gredice/ui/PaperNote';
 import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { Popper } from '@gredice/ui/Popper';
 import { Progress } from '@gredice/ui/Progress';
+import {
+    Logotype,
+    PublicFooterLandscape,
+    PublicFooterOrigin,
+} from '@gredice/ui/PublicChrome';
 import {
     PlantOrSortImage,
     PlantYieldTooltip,
     SeedTimeInformationBadge,
 } from '@gredice/ui/plants';
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { RaisedBedIdentifierIcon } from '@gredice/ui/RaisedBedIdentifierIcon';
 import { RaisedBedSimpleIcon } from '@gredice/ui/RaisedBedSimpleIcon';
 import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
+import { ScrollArea } from '@gredice/ui/ScrollArea';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { ShovelIcon } from '@gredice/ui/ShovelIcon';
 import { Skeleton } from '@gredice/ui/Skeleton';
 import { Slider } from '@gredice/ui/Slider';
 import { Spinner } from '@gredice/ui/Spinner';
+import { SplitButton } from '@gredice/ui/SplitButton';
 import { SplitView } from '@gredice/ui/SplitView';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
+import { sunflowerSadMascotArtwork } from '@gredice/ui/SunflowerVisuals';
+import {
+    type SurveyAnswerState,
+    type SurveyAnswerValue,
+    SurveyQuestionnaire,
+} from '@gredice/ui/SurveyQuestionnaire';
+import { Switch } from '@gredice/ui/Switch';
 import { Table } from '@gredice/ui/Table';
 import {
     type FilterOption,
@@ -154,24 +200,45 @@ import {
     TIME_FILTER_OPTIONS,
 } from '@gredice/ui/TableFilter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
+import { Timeline, TimelineEntry, TimelineGroup } from '@gredice/ui/Timeline';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@gredice/ui/Tooltip';
 import { Typography } from '@gredice/ui/Typography';
-import { UserAvatar } from '@gredice/ui/UserAvatar';
+import { UserAvatar, UserAvatarLink } from '@gredice/ui/UserAvatar';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import Image from 'next/image';
 import { useMemo, useState } from 'react';
+import { AchievementCollectionShowcase } from '../../../../../packages/game/src/shared-ui/achievements/AchievementCollection.fixture';
+import { RaisedBedFieldsGridFixture } from '../../../../../packages/ui/src/raisedBeds/RaisedBedFieldsGrid.fixture';
+import { PublicAttributeExamples } from '../../apps/www/PublicAttributeExamples';
+import { PublicCatalogVisualExamples } from '../../apps/www/PublicCatalogVisualExamples';
+import { PublicVisualExamples } from '../../apps/www/PublicVisualExamples';
+import { StyledPlantTabsExample } from '../../apps/www/StyledPlantTabsExample';
+import { SunflowerMascotExpressions } from '../game/hud/SunflowerMascotExpressions';
+import { SunflowerPackageExamples } from '../game/hud/SunflowerPackageExamples';
+import { OverviewNavigationPreview } from '../game/settings/OverviewNavigationPreview';
+import { FarmerAvatarsPreview } from './FarmerAvatarsPreview';
+import { GameAccountMenuPreview } from './GameAccountMenuPreview';
+import { PlantCareHudPreview } from './PlantCareHudPreview';
+import { PublicEnvironmentPreview } from './PublicEnvironmentPreview';
 
 const sampleImages = [
     {
-        src: 'https://cdn.gredice.com/sunflower-sad-500x500.png',
+        src:
+            typeof sunflowerSadMascotArtwork === 'string'
+                ? sunflowerSadMascotArtwork
+                : sunflowerSadMascotArtwork.src,
         alt: 'Suncokret',
     },
     {
-        src: 'https://cdn.gredice.com/avatars/farmer-male.png',
+        src: resolveAvatarSource(
+            'https://cdn.gredice.com/avatars/farmer-male.png',
+        ),
         alt: 'Farmer',
     },
     {
-        src: 'https://cdn.gredice.com/avatars/farmer-female.png',
+        src: resolveAvatarSource(
+            'https://cdn.gredice.com/avatars/farmer-female.png',
+        ),
         alt: 'Farmerka',
     },
 ];
@@ -194,6 +261,7 @@ const tableFilters: FilterOption[] = [
     {
         key: 'status',
         label: 'Status',
+        activeLabel: null,
         icon: <Filter className="size-4" />,
         options: [
             { value: '', label: 'Svi statusi' },
@@ -239,6 +307,33 @@ const operationRows = [
     },
 ];
 
+const gardenCalendarEntries: EventCalendarEntry[] = [
+    {
+        id: 'garden-watering-completed',
+        date: '2026-06-18T08:00:00.000Z',
+        label: 'Površinsko zalijevanje',
+        meta: 'Obavljeno · 20 min',
+        tone: 'completed',
+        weight: 20,
+    },
+    {
+        id: 'garden-watering-scheduled',
+        date: '2026-06-20T08:00:00.000Z',
+        label: 'Zalijevanje gredice',
+        meta: 'Zakazano · 50 min',
+        tone: 'scheduled',
+        weight: 50,
+    },
+    {
+        id: 'garden-cart',
+        date: '2026-06-21T08:00:00.000Z',
+        label: 'Sustav navodnjavanja',
+        meta: 'U košari',
+        tone: 'cart',
+        weight: 90,
+    },
+];
+
 type GalleryPlant = {
     id: string;
     name: string;
@@ -251,19 +346,62 @@ const galleryPlants: GalleryPlant[] = [
         id: 'tomato',
         name: 'Rajcica',
         state: 'Sjetva',
-        imageUrl: 'https://cdn.gredice.com/sunflower-sad-500x500.png',
+        imageUrl:
+            typeof sunflowerSadMascotArtwork === 'string'
+                ? sunflowerSadMascotArtwork
+                : sunflowerSadMascotArtwork.src,
     },
     {
         id: 'basil',
         name: 'Bosiljak',
         state: 'Bilje',
-        imageUrl: 'https://cdn.gredice.com/avatars/farmer-female.png',
+        imageUrl: resolveAvatarSource(
+            'https://cdn.gredice.com/avatars/farmer-female.png',
+        ),
     },
     {
         id: 'pepper',
         name: 'Paprika',
         state: 'Presadnica',
-        imageUrl: 'https://cdn.gredice.com/avatars/farmer-male.png',
+        imageUrl: resolveAvatarSource(
+            'https://cdn.gredice.com/avatars/farmer-male.png',
+        ),
+    },
+];
+
+const publicReleaseTimelineGroups = [
+    {
+        id: '2026-06',
+        label: 'lipanj 2026.',
+        entries: [
+            {
+                id: 'delivery-slots',
+                date: '12. lipnja 2026.',
+                title: 'Jasniji status dostave',
+                description:
+                    'Korisnici vide sto je pripremljeno, sto je na putu i koji je sljedeci korak.',
+            },
+            {
+                id: 'harvest-traces',
+                date: '5. lipnja 2026.',
+                title: 'QR trag berbe',
+                description:
+                    'Javna vremenska crta povezuje radnje, fotografije i status biljke.',
+            },
+        ],
+    },
+    {
+        id: '2026-05',
+        label: 'svibanj 2026.',
+        entries: [
+            {
+                id: 'garden-summary',
+                date: '24. svibnja 2026.',
+                title: 'Tjedni pregled vrta',
+                description:
+                    'Vlasnici vrta imaju mirniji pregled nedavnih promjena i nadolazecih zadataka.',
+            },
+        ],
     },
 ];
 
@@ -370,6 +508,7 @@ function AvatarMenuDemo() {
     return (
         <AvatarSelectionMenu
             displayName="Gredice Storybook"
+            avatarUrl={avatarUrl}
             onChange={setAvatarUrl}
             title="Avatar za demo profil"
         >
@@ -491,8 +630,12 @@ function StatusMenu() {
                     <DropdownMenuSubContent>
                         <DropdownMenuRadioGroup value="ready">
                             <DropdownMenuItemFragment>
-                                <DropdownMenuItem>Spremno</DropdownMenuItem>
-                                <DropdownMenuItem>U tijeku</DropdownMenuItem>
+                                <DropdownMenuRadioItem value="ready">
+                                    Spremno
+                                </DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="active">
+                                    U tijeku
+                                </DropdownMenuRadioItem>
                             </DropdownMenuItemFragment>
                         </DropdownMenuRadioGroup>
                     </DropdownMenuSubContent>
@@ -621,6 +764,29 @@ function OperationsDashboardShowcase() {
                                     </Typography>
                                 </Stack>
                                 <Row className="flex-wrap" spacing={2}>
+                                    <SplitButton
+                                        dropdownLabel="Odaberi vrstu nove radnje"
+                                        href="/"
+                                        menuContent={
+                                            <>
+                                                <DropdownMenuItem>
+                                                    Berba
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem>
+                                                    Sadnja
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem>
+                                                    Zalijevanje
+                                                </DropdownMenuItem>
+                                            </>
+                                        }
+                                        size="sm"
+                                        startDecorator={
+                                            <Add className="size-4 shrink-0" />
+                                        }
+                                    >
+                                        Nova radnja
+                                    </SplitButton>
                                     <ExpandableSearchDemo />
                                     <ControlledTableFilter />
                                     <StatusMenu />
@@ -750,6 +916,10 @@ function OperationsDashboardShowcase() {
                                         checked="indeterminate"
                                         label="Djelomicno odabrane zone"
                                     />
+                                    <Switch
+                                        defaultChecked
+                                        label="Obavijesti o promjenama"
+                                    />
                                     <ControlledSlider />
                                 </Stack>
                             </CardContent>
@@ -797,6 +967,58 @@ function OperationsDashboardShowcase() {
     );
 }
 
+function PublicReleaseTimeline() {
+    let entryIndex = 0;
+    const totalEntries = publicReleaseTimelineGroups.reduce(
+        (total, group) => total + group.entries.length,
+        0,
+    );
+
+    return (
+        <section className="rounded-lg bg-background py-5 sm:py-7">
+            <Timeline>
+                {publicReleaseTimelineGroups.map((group, groupIndex) => (
+                    <TimelineGroup
+                        isFirst={groupIndex === 0}
+                        key={group.id}
+                        label={group.label}
+                    >
+                        {group.entries.map((entry) => {
+                            const currentEntryIndex = entryIndex;
+                            entryIndex += 1;
+
+                            return (
+                                <TimelineEntry
+                                    index={currentEntryIndex}
+                                    isLast={
+                                        currentEntryIndex === totalEntries - 1
+                                    }
+                                    key={entry.id}
+                                    label={entry.date}
+                                >
+                                    <Card className="p-5">
+                                        <Stack spacing={2}>
+                                            <Typography
+                                                level="h3"
+                                                className="text-xl"
+                                            >
+                                                {entry.title}
+                                            </Typography>
+                                            <Typography className="text-muted-foreground">
+                                                {entry.description}
+                                            </Typography>
+                                        </Stack>
+                                    </Card>
+                                </TimelineEntry>
+                            );
+                        })}
+                    </TimelineGroup>
+                ))}
+            </Timeline>
+        </section>
+    );
+}
+
 function PublicContentShowcase() {
     return (
         <div className="min-h-screen">
@@ -810,8 +1032,23 @@ function PublicContentShowcase() {
                     { href: '/', text: 'Biljke' },
                     { href: '/', text: 'Dostava' },
                     { href: '/', text: 'Recepti' },
+                    <Button
+                        key="news"
+                        href="/novosti"
+                        navigation="document"
+                        size="lg"
+                        variant="plain"
+                    >
+                        Novosti
+                    </Button>,
                 ]}
             >
+                <UserAvatarLink
+                    href="/korisnici/u_demo"
+                    achievementCount={10}
+                    displayName="Ana Kovač"
+                    size="sm"
+                />
                 <IconButton aria-label="Pretraga">
                     <Search className="size-5" />
                 </IconButton>
@@ -823,6 +1060,22 @@ function PublicContentShowcase() {
                         header="Vodic kroz proljetnu sadnju"
                         description="Public content composition with CMS sections, media, text rendering, and navigation controls."
                     />
+
+                    <div className="rounded-lg border p-4">
+                        <Typography level="body1" semiBold>
+                            Cjenik · Uzgoj rajčice · 5,00 €
+                        </Typography>
+                        <AnchorPrice
+                            showUnchanged
+                            currentPrice={5}
+                            anchor={{ price: 5, date: '2026-09-10' }}
+                        />
+                    </div>
+                    <PublicReleaseTimeline />
+                    <PublicVisualExamples />
+                    <PublicCatalogVisualExamples />
+                    <PublicAttributeExamples />
+                    <StyledPlantTabsExample />
 
                     <Heading1
                         tagline="Sezonski vodic"
@@ -901,7 +1154,7 @@ function PublicContentShowcase() {
                         ]}
                     />
 
-                    <MarkdownBlock markdown="## Markdown CMS section\n\nMarkdownBlock renders author-provided Markdown with the shared Markdown and StyledHtml primitives.\n\n- Supports lists\n- Supports **emphasis**\n- Supports [links](/)" />
+                    <MarkdownBlock markdown="## Markdown CMS section\n\nMarkdownBlock renders author-provided Markdown with the shared Markdown and StyledHtml primitives.\n\n- Supports lists\n- Supports **emphasis**\n- Supports [links](/)\n\n| Pitanje | Gredice |\n| --- | --- |\n| Što biraš? | Biljke za svoju gredicu |\n| Što pratiš? | Stanje, fotografije i radnje u svojoj gredici |" />
 
                     <HtmlBlock html="<h2>HTML CMS section</h2><p>HtmlBlock renders trusted author-provided HTML with the shared StyledHtml primitive.</p><ul><li>Styled lists</li><li>Styled text</li></ul>" />
 
@@ -1003,6 +1256,7 @@ function PublicContentShowcase() {
                                             previewHeight={140}
                                             previewWidth={260}
                                         />
+                                        <BarcodeValue value="3858890410952" />
                                     </Stack>
                                 </CardContent>
                             </Card>
@@ -1123,10 +1377,9 @@ function PublicContentShowcase() {
 
                     <Footer1
                         tagline="Gredice"
+                        description={<PublicFooterOrigin />}
                         asset={
-                            <Typography level="h6" semiBold>
-                                Gredice
-                            </Typography>
+                            <Logotype className="h-auto w-[210px] max-w-full" />
                         }
                         ctas={[
                             {
@@ -1152,6 +1405,14 @@ function PublicContentShowcase() {
                         ]}
                         features={[
                             {
+                                tagline: 'FooterUtility',
+                                asset: (
+                                    <div className="rounded-full border px-3 py-1.5 text-xs text-muted-foreground">
+                                        Footer utility
+                                    </div>
+                                ),
+                            },
+                            {
                                 header: 'Sadrzaj',
                                 ctas: [
                                     { label: 'Biljke', href: '/' },
@@ -1169,12 +1430,14 @@ function PublicContentShowcase() {
                     />
                 </Stack>
             </Container>
+            <PublicFooterLandscape />
         </div>
     );
 }
 
 function GardenWorkspaceShowcase() {
     const [collapsed, setCollapsed] = useState(false);
+    const [scheduledDate, setScheduledDate] = useState('2026-06-20');
 
     return (
         <Container className="py-8" maxWidth="xl">
@@ -1184,9 +1447,9 @@ function GardenWorkspaceShowcase() {
                     subHeader="A responsive workbench for garden state, field selection, and HUD-style controls."
                     visual={
                         <div className="grid size-full place-items-center bg-lime-100 text-lime-900">
-                            <RaisedBedIcon
+                            <GameRaisedBedIcon
                                 physicalId="A12"
-                                className="size-24"
+                                className="size-12"
                             />
                         </div>
                     }
@@ -1205,10 +1468,75 @@ function GardenWorkspaceShowcase() {
                                     totalPlants={9}
                                     className="size-6"
                                 />
+                                <PlantGridIcon
+                                    totalPlants={25}
+                                    className="size-6"
+                                />
+                                <PlantGridIcon
+                                    totalPlants={36}
+                                    className="size-6"
+                                />
                             </Row>
                         </CardContent>
                     </Card>
                 </PageHeader>
+
+                <GameAccountMenuPreview />
+                <SunflowerMascotExpressions />
+                <SunflowerPackageExamples />
+                <OverviewNavigationPreview />
+                <FarmerAvatarsPreview
+                    heading="Avatari za igru"
+                    options={AVATAR_OPTIONS.filter((option) =>
+                        [
+                            'bearded-farmer',
+                            'young-farmer-girl',
+                            'garden-robot',
+                            'butterfly',
+                            'rabbit',
+                            'garden-gnome',
+                        ].includes(option.id),
+                    )}
+                />
+                <PlantCareHudPreview />
+                <AchievementCollectionShowcase state="starter" />
+                <Row spacing={3} className="flex-wrap">
+                    <IconButton aria-label="Obavijesti" variant="outlined">
+                        <GameMailboxIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Vrtni zadaci" variant="outlined">
+                        <GameTasksIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Sijanje" variant="outlined">
+                        <GameSeedPacketIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Vrtne radnje" variant="outlined">
+                        <GameToolsIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Dnevnik" variant="outlined">
+                        <GameJournalIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Informacije" variant="outlined">
+                        <GameInformationIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Fotografije" variant="outlined">
+                        <GameCameraIcon className="size-8" />
+                    </IconButton>
+                    <IconButton aria-label="Povijest" variant="outlined">
+                        <GameHistoryIcon className="size-8" />
+                    </IconButton>
+                </Row>
+
+                <Stack spacing={2}>
+                    <Typography level="h3">
+                        Bilješka iz pregleda gredice
+                    </Typography>
+                    <OperationRequestNote note="Molim provjerite listove prije zalijevanja." />
+                    <PaperNote noteKey="garden-inspection-42">
+                        Tlo je rahlo i dovoljno vlažno. Uklonjen je korov oko
+                        rajčice.
+                    </PaperNote>
+                </Stack>
 
                 <div className="h-[44rem] overflow-hidden rounded-lg border bg-card">
                     <SplitView
@@ -1219,7 +1547,14 @@ function GardenWorkspaceShowcase() {
                         collapsed={collapsed}
                         onCollapsedChanged={setCollapsed}
                     >
-                        <Stack className="h-full overflow-auto p-4" spacing={4}>
+                        <ScrollArea
+                            className="h-full"
+                            viewportClassName="h-full"
+                            contentClassName="flex flex-col gap-4 p-4"
+                            viewportProps={{
+                                'aria-label': 'Detalji gredice A12',
+                            }}
+                        >
                             <Row justifyContent="space-between">
                                 <Typography level="h5">Gredica A12</Typography>
                                 <IconButton
@@ -1342,7 +1677,23 @@ function GardenWorkspaceShowcase() {
                                     </Row>
                                 </CardContent>
                             </Card>
-                        </Stack>
+
+                            <CalendarDatePicker
+                                fullWidth
+                                helperText="Kalendar zadržava datum kao lokalnu vrijednost bez vremenskog pomaka."
+                                label="Datum sljedeće radnje"
+                                min="2026-06-19"
+                                onValueChange={setScheduledDate}
+                                value={scheduledDate}
+                            />
+
+                            <EventCalendar
+                                entries={gardenCalendarEntries}
+                                referenceDate={
+                                    new Date('2026-06-18T12:00:00.000Z')
+                                }
+                            />
+                        </ScrollArea>
 
                         <div className="relative h-full overflow-hidden bg-emerald-50 p-6 dark:bg-emerald-950/20">
                             <LoadingIndicator className="absolute inset-x-0 top-0" />
@@ -1410,6 +1761,71 @@ function GardenWorkspaceShowcase() {
                                     </Stack>
                                 </GentleSlide>
                             </div>
+                            <div className="absolute right-4 bottom-4 hidden h-72 w-80 flex-col overflow-hidden rounded-2xl border border-amber-200/80 border-b-4 border-b-emerald-700 bg-background shadow-xl xl:flex dark:border-amber-900/80">
+                                <Row className="border-b border-amber-200/70 bg-amber-50/90 px-3 py-2 dark:border-amber-900/70 dark:bg-amber-950/40">
+                                    <span className="grid size-8 place-items-center rounded-full bg-background">
+                                        <Sun className="size-4 text-amber-500" />
+                                    </span>
+                                    <Stack spacing={0}>
+                                        <Typography level="body3" semiBold>
+                                            Suncokret
+                                        </Typography>
+                                        <Typography
+                                            level="body3"
+                                            className="text-muted-foreground"
+                                        >
+                                            Gredica A12
+                                        </Typography>
+                                    </Stack>
+                                </Row>
+                                <ChatMessageScroller
+                                    className="flex-1"
+                                    contentClassName="gap-3 px-3 py-3"
+                                    items={[
+                                        {
+                                            id: 'showcase-question',
+                                            scrollAnchor: true,
+                                            content: (
+                                                <ChatMessage align="end">
+                                                    <ChatBubble
+                                                        align="end"
+                                                        variant="sunflower"
+                                                    >
+                                                        Što prvo trebam
+                                                        napraviti?
+                                                    </ChatBubble>
+                                                </ChatMessage>
+                                            ),
+                                        },
+                                        {
+                                            id: 'showcase-status',
+                                            content: (
+                                                <ChatMarker icon={<AI />}>
+                                                    Provjereno stanje gredice
+                                                </ChatMarker>
+                                            ),
+                                        },
+                                        {
+                                            id: 'showcase-answer',
+                                            content: (
+                                                <ChatMessage
+                                                    avatar={
+                                                        <Sun className="size-4 text-amber-500" />
+                                                    }
+                                                    header="Suncokret"
+                                                >
+                                                    <ChatBubble variant="ghost">
+                                                        Kreni sa zalijevanjem
+                                                        rajčice, zatim provjeri
+                                                        mlade listove.
+                                                    </ChatBubble>
+                                                </ChatMessage>
+                                            ),
+                                        },
+                                    ]}
+                                    scrollButtonLabel="Najnovije"
+                                />
+                            </div>
                         </div>
                     </SplitView>
                 </div>
@@ -1419,6 +1835,8 @@ function GardenWorkspaceShowcase() {
 }
 
 function AccountAndStatesShowcase() {
+    const [collapseOpen, setCollapseOpen] = useState(false);
+
     return (
         <Container className="py-8" maxWidth="xl">
             <Stack spacing={8}>
@@ -1557,13 +1975,30 @@ function AccountAndStatesShowcase() {
                             <div className="grid gap-4 lg:grid-cols-2">
                                 <Card variant="secondary">
                                     <CardHeader>
-                                        <CardTitle>Collapsed state</CardTitle>
+                                        <CardTitle>
+                                            Collapse transition
+                                        </CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                        <Collapse appear={false}>
+                                        <Button
+                                            aria-expanded={collapseOpen}
+                                            className="mb-3"
+                                            onClick={() =>
+                                                setCollapseOpen(
+                                                    (current) => !current,
+                                                )
+                                            }
+                                            size="sm"
+                                            variant="outlined"
+                                        >
+                                            {collapseOpen
+                                                ? 'Sakrij detalje'
+                                                : 'Prikaži detalje'}
+                                        </Button>
+                                        <Collapse appear={collapseOpen}>
                                             <Typography>
-                                                Hidden content remains in the
-                                                flow only when expanded.
+                                                Skriveni sadržaj ostaje miran i
+                                                dostupan tek kada je proširen.
                                             </Typography>
                                         </Collapse>
                                         <NoDataPlaceholder />
@@ -1621,6 +2056,76 @@ function ShowcaseSurface() {
     return <OperationsDashboardShowcase />;
 }
 
+function SurveyQuestionnaireShowcase() {
+    const [answers, setAnswers] = useState<SurveyAnswerState>({});
+
+    function setAnswer(questionId: string, value: SurveyAnswerValue) {
+        setAnswers((current) => ({ ...current, [questionId]: value }));
+    }
+
+    return (
+        <Container maxWidth="md" className="py-8">
+            <SurveyQuestionnaire
+                answers={answers}
+                introDescription="Odgovori na nekoliko kratkih pitanja."
+                introTitle="Anketa zadovoljstva"
+                questions={[
+                    {
+                        id: 'recommendation',
+                        key: 'recommendation',
+                        title: 'Koliko bi preporučio Gredice?',
+                        description: null,
+                        required: true,
+                        sortOrder: 1,
+                        type: 'opinion_scale',
+                        settings: {
+                            type: 'opinion_scale',
+                            min: 0,
+                            max: 10,
+                            step: 1,
+                            minLabel: 'Nikako',
+                            maxLabel: 'Svakako',
+                        },
+                    },
+                    {
+                        id: 'comment',
+                        key: 'comment',
+                        title: 'Što možemo poboljšati?',
+                        description: null,
+                        required: false,
+                        sortOrder: 2,
+                        type: 'long_text',
+                        settings: {
+                            type: 'long_text',
+                            maxLength: 500,
+                            placeholder: 'Napiši komentar',
+                        },
+                    },
+                    {
+                        id: 'contact',
+                        key: 'contact',
+                        title: 'Kontakt',
+                        description: 'Ostavi podatke ako želiš odgovor.',
+                        required: false,
+                        sortOrder: 3,
+                        type: 'contact_info',
+                        settings: {
+                            type: 'contact_info',
+                            fields: ['first_name', 'email'],
+                            phoneDefaultCountry: 'HR',
+                        },
+                    },
+                ]}
+                submitDisabled
+                submitLabel="Pregled — slanje isključeno"
+                surveyKey="storybook"
+                title="Anketa zadovoljstva"
+                onAnswerChange={setAnswer}
+            />
+        </Container>
+    );
+}
+
 const meta = {
     title: 'packages/ui/Showcases/ComponentShowcases',
     component: ShowcaseSurface,
@@ -1654,4 +2159,16 @@ export const GardenWorkspace: Story = {
 
 export const AccountAndStates: Story = {
     render: () => <AccountAndStatesShowcase />,
+};
+
+export const SurveyForm: Story = {
+    render: () => <SurveyQuestionnaireShowcase />,
+};
+
+export const RaisedBedPlantings: Story = {
+    render: () => <RaisedBedFieldsGridFixture compact />,
+};
+
+export const AmbientPublicContent: Story = {
+    render: () => <PublicEnvironmentPreview hour={6.5} weatherKind="clear" />,
 };

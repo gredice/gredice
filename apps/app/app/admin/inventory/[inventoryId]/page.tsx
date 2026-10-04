@@ -1,12 +1,12 @@
 import {
     computeInventoryItemsSummary,
-    getEntitiesRaw,
     getInventoryConfig,
     getInventoryItemsByConfig,
 } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Card, CardOverflow } from '@gredice/ui/Card';
-import { Add, Edit } from '@gredice/ui/icons';
+import { IconButton } from '@gredice/ui/IconButton';
+import { Add, Edit, Printer } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import Link from 'next/link';
@@ -25,20 +25,36 @@ import { AdminBreadcrumbLevelSelector } from '../../../../components/admin/navig
 import { AdminPageTitle } from '../../../../components/admin/navigation/AdminPageTitle';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
+import { InventoryFilters } from './InventoryFilters';
 import { InventoryItemsTable } from './InventoryItemsTable';
 import { InventoryStatusProgress } from './InventoryStatusProgress';
+import { getInventoryEntityLabels } from './inventoryEntityLabels';
+import {
+    isInventoryItemOrphaned,
+    normalizeInventoryLinkFilter,
+    normalizeInventoryStateFilter,
+} from './inventoryStatus';
 
 export const dynamic = 'force-dynamic';
 
 export default async function InventoryConfigPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ inventoryId: string }>;
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
     await auth(['admin']);
 
     const { inventoryId } = await params;
+    const urlParams = await searchParams;
     const id = parseInt(inventoryId, 10);
+    const stateFilter = normalizeInventoryStateFilter(
+        typeof urlParams.state === 'string' ? urlParams.state : '',
+    );
+    const linkFilter = normalizeInventoryLinkFilter(
+        typeof urlParams.link === 'string' ? urlParams.link : '',
+    );
 
     const config = await getInventoryConfig(id);
 
@@ -46,15 +62,14 @@ export default async function InventoryConfigPage({
         notFound();
     }
 
-    const [items, entities] = await Promise.all([
-        getInventoryItemsByConfig(id),
-        getEntitiesRaw(config.entityTypeName),
-    ]);
+    const items = await getInventoryItemsByConfig(id);
+    const entityLabels = await getInventoryEntityLabels(
+        config.entityTypeName,
+        items.map((item) => item.entityId),
+    );
 
     const summary = computeInventoryItemsSummary(items);
-    const entityLabels = new Map(
-        entities.map((entity) => [entity.id, entityDisplayName(entity)]),
-    );
+    const orphanedItemsCount = items.filter(isInventoryItemOrphaned).length;
     const tracksSerialNumbers =
         config.defaultTrackingType === 'serialNumber' ||
         items.some((item) => item.trackingType === 'serialNumber');
@@ -70,6 +85,7 @@ export default async function InventoryConfigPage({
             item.lowCountThreshold ?? config.lowCountThreshold ?? null,
         notes: item.notes,
         createdAt: item.createdAt.toISOString(),
+        isOrphaned: isInventoryItemOrphaned(item),
     }));
     const summaryItems: EntityDetailsPropertyListItem[] = [
         {
@@ -91,6 +107,11 @@ export default async function InventoryConfigPage({
             id: 'serial-number',
             label: 'Praćeno serijski',
             value: summary.byTrackingType.serialNumber,
+        },
+        {
+            id: 'orphaned',
+            label: 'Bez dostupnog entiteta',
+            value: orphanedItemsCount,
         },
     ];
     const propertiesPanel = (
@@ -126,15 +147,23 @@ export default async function InventoryConfigPage({
                     }
                     actions={
                         <Row spacing={2}>
-                            <Link href={KnownPages.InventoryItemCreate(id)}>
+                            <Link href={KnownPages.InventoryPrintout(id)}>
                                 <Row
                                     spacing={2}
-                                    className="text-sm font-medium px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                                    className="text-sm font-medium px-3 py-2 rounded-md border hover:bg-accent transition-colors"
                                 >
-                                    <Add className="size-4" />
-                                    <span>Dodaj stavku</span>
+                                    <Printer className="size-4" />
+                                    <span>Preuzmi PDF</span>
                                 </Row>
                             </Link>
+                            <IconButton
+                                aria-label="Dodaj stavku"
+                                href={KnownPages.InventoryItemCreate(id)}
+                                title="Dodaj stavku"
+                                variant="solid"
+                            >
+                                <Add className="size-5" />
+                            </IconButton>
                             <Link href={KnownPages.InventoryConfigEdit(id)}>
                                 <Row
                                     spacing={2}
@@ -151,40 +180,23 @@ export default async function InventoryConfigPage({
                 />
 
                 <EntityDetailsPropertiesLayout properties={propertiesPanel}>
-                    <Card>
-                        <CardOverflow>
-                            <InventoryItemsTable
-                                inventoryConfigId={id}
-                                entityTypeName={config.entityTypeName}
-                                items={tableItems}
-                                tracksSerialNumbers={tracksSerialNumbers}
-                            />
-                        </CardOverflow>
-                    </Card>
+                    <Stack spacing={3}>
+                        <InventoryFilters />
+                        <Card>
+                            <CardOverflow>
+                                <InventoryItemsTable
+                                    inventoryConfigId={id}
+                                    entityTypeName={config.entityTypeName}
+                                    items={tableItems}
+                                    tracksSerialNumbers={tracksSerialNumbers}
+                                    stateFilter={stateFilter}
+                                    linkFilter={linkFilter}
+                                />
+                            </CardOverflow>
+                        </Card>
+                    </Stack>
                 </EntityDetailsPropertiesLayout>
             </Stack>
         </EntityDetailsPropertiesProvider>
     );
-}
-
-type InventoryEntity = Awaited<ReturnType<typeof getEntitiesRaw>>[number];
-
-function entityDisplayName(entity: InventoryEntity) {
-    return (
-        entityAttributeValue(entity, 'information', 'label') ??
-        entityAttributeValue(entity, 'information', 'name') ??
-        `${entity.entityType.label} ${entity.id}`
-    );
-}
-
-function entityAttributeValue(
-    entity: InventoryEntity,
-    categoryName: string,
-    attributeName: string,
-) {
-    return entity.attributes.find(
-        (attribute) =>
-            attribute.attributeDefinition.category === categoryName &&
-            attribute.attributeDefinition.name === attributeName,
-    )?.value;
 }

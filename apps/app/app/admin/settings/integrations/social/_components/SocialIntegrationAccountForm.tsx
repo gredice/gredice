@@ -183,7 +183,7 @@ export function SocialIntegrationAccountForm({
                     placeholder={
                         definition?.destinationPlaceholder ?? 'gredice'
                     }
-                    className="w-full rounded border border-muted bg-card p-2"
+                    className="w-full rounded border border-muted bg-field p-2"
                 />
                 {fieldHelp?.allowedDestinations ? (
                     <p className="text-xs text-muted-foreground">

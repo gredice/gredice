@@ -7,8 +7,13 @@ export const KnownPages = {
     Settings: '/admin/settings',
     Directories: '/admin/directories',
     DirectoriesActivity: '/admin/directories/activity',
+    CommunityEdits: '/admin/community-edits',
+    CommunityEdit: (requestId: number) =>
+        `/admin/community-edits/${requestId}` as Route,
     CmsPages: '/admin/cms/pages',
     CmsPageCreate: '/admin/cms/pages/create',
+    CmsPageCreateTemplate: (template: 'blog' | 'changelog') =>
+        `/admin/cms/pages/create?template=${template}` as Route,
     CmsPageEdit: (pageId: number) => `/admin/cms/pages/${pageId}/edit` as Route,
     CmsPagePreview: (pageId: number) =>
         `/admin/cms/pages/${pageId}/preview` as Route,
@@ -44,11 +49,21 @@ export const KnownPages = {
     User: (userId: string) => `/admin/users/${userId}` as Route,
     Schedule: '/admin/schedule',
     Approvals: '/admin/approvals',
+    Automations: '/admin/automations',
+    AutomationCreate: '/admin/automations/create',
+    Automation: (automationId: number) =>
+        `/admin/automations/${automationId}` as Route,
     SowingStatistics: '/admin/statistics/sowing',
+    DeliveryRequestStatistics: '/admin/statistics/delivery-requests',
+    UsersStatistics: '/admin/statistics/users',
+    OperationsStatistics: '/admin/statistics/operations',
+    RecordsStatistics: '/admin/statistics/records',
+    SunflowersStatistics: '/admin/statistics/sunflowers',
     Accounts: '/admin/accounts',
     Account: (accountId: string) => `/admin/accounts/${accountId}` as Route,
     Farms: '/admin/farms',
     Farm: (farmId: number) => `/admin/farms/${farmId}` as Route,
+    Weather: '/admin/weather',
     Achievements: '/admin/achievements',
     Gardens: '/admin/gardens',
     Garden: (gardenId: number) => `/admin/gardens/${gardenId}` as Route,
@@ -59,14 +74,47 @@ export const KnownPages = {
     CommunicationSlack: '/admin/communication/slack',
     Feedback: '/admin/feedback',
     Notifications: '/admin/communication/notifications',
-    Logout: '/admin/logout',
+    Surveys: '/admin/surveys',
+    SurveyCreate: '/admin/surveys/create',
+    Survey: (surveyId: string) => `/admin/surveys/${surveyId}` as Route,
+    SurveyDesign: (surveyId: string) =>
+        `/admin/surveys/${surveyId}/design` as Route,
+    SurveyDesignCopy: (surveyId: string, sourceVersionId: string) =>
+        `/admin/surveys/${surveyId}/design?sourceVersionId=${encodeURIComponent(sourceVersionId)}` as Route,
+    SurveyDesignEdit: (surveyId: string, versionId: string) =>
+        `/admin/surveys/${surveyId}/design?editVersionId=${encodeURIComponent(versionId)}` as Route,
+    SurveyDesignPreview: (surveyId: string, versionId: string) =>
+        `/admin/surveys/${surveyId}/design?previewVersionId=${encodeURIComponent(versionId)}` as Route,
+    SurveySends: (surveyId: string) =>
+        `/admin/surveys/${surveyId}/sends` as Route,
+    SurveyResponses: (surveyId: string) =>
+        `/admin/surveys/${surveyId}/responses` as Route,
+    SurveyResponsesExport: (surveyId: string) =>
+        `/admin/surveys/${surveyId}/responses/export` as Route,
+    SurveyStatistics: (surveyId: string) =>
+        `/admin/surveys/${surveyId}/statistics` as Route,
+    SurveyResponse: (surveyId: string, responseId: string) =>
+        `/admin/surveys/${surveyId}/responses/${responseId}` as Route,
+    SurveyResponsesForMonth: (surveyId: string, monthKey: string) =>
+        `/admin/surveys/${surveyId}/responses?monthKey=${encodeURIComponent(monthKey)}` as Route,
+    Logout: '/logout',
     RaisedBeds: '/admin/raised-beds',
     RaisedBed: (raisedBedId: number) =>
         `/admin/raised-beds/${raisedBedId}` as Route,
+    Greenhouse: '/admin/greenhouse',
+    HarvestTraces: '/admin/harvest-traces',
+    HarvestTrace: (traceId: number) =>
+        `/admin/harvest-traces/${traceId}` as Route,
     Transactions: '/admin/transactions',
     Transaction: (transactionId: number) =>
         `/admin/transactions/${transactionId}` as Route,
     Sunflowers: '/admin/sunflowers',
+    BillingReconciliation: '/admin/billing/reconciliation',
+    BillingPreviews: '/admin/billing/previews',
+    BillingPreviewInvoice: (invoiceId: number) =>
+        `/admin/billing/previews?source=invoice&invoiceId=${invoiceId}` as Route,
+    BillingPreviewReceipt: (receiptId: number) =>
+        `/admin/billing/previews?source=receipt&receiptId=${receiptId}` as Route,
     Invoices: '/admin/invoices',
     CreateInvoice: '/admin/invoices/create',
     Invoice: (invoiceId: number) => `/admin/invoices/${invoiceId}` as Route,
@@ -75,9 +123,16 @@ export const KnownPages = {
     ShoppingCarts: '/admin/shopping-carts',
     ShoppingCart: (cartId: number) =>
         `/admin/shopping-carts/${cartId}` as Route,
+    Outlet: '/admin/outlet',
+    OutletCreate: '/admin/outlet/create',
+    OutletOffer: (offerId: number) => `/admin/outlet/${offerId}` as Route,
+    OutletOfferEdit: (offerId: number) =>
+        `/admin/outlet/${offerId}/edit` as Route,
     Operations: '/admin/operations',
     Operation: (operationId: number) =>
         `/admin/operations/${operationId}` as Route,
+    SowingTask: (raisedBedFieldId: number, plantCycleEventId: number) =>
+        `/admin/operations/sowing/${raisedBedFieldId}/${plantCycleEventId}` as Route,
     Sensors: '/admin/sensors',
     Cache: '/admin/cache',
     Occasions: '/admin/occasions',
@@ -87,6 +142,8 @@ export const KnownPages = {
     InventoryCreate: '/admin/inventory/create',
     InventoryConfig: (inventoryId: number) =>
         `/admin/inventory/${inventoryId}` as Route,
+    InventoryPrintout: (inventoryId: number) =>
+        `/admin/inventory/${inventoryId}/printout` as Route,
     InventoryConfigEdit: (inventoryId: number) =>
         `/admin/inventory/${inventoryId}/edit` as Route,
     InventoryItemCreate: (inventoryId: number) =>
@@ -105,9 +162,18 @@ export const KnownPages = {
     ) =>
         `/admin/settings/integrations/social/${provider}/${accountId}` as Route,
 
+    // Farmer payouts
+    FarmerPayouts: '/admin/farmers/payouts',
+    FarmerPayout: (id: number) => `/admin/farmers/payouts/${id}` as Route,
+    FarmerPrices: '/admin/farmers/prices',
+    FarmerDocumentation: '/admin/farmers/documentation',
+    FarmerDocumentationPrintout: '/admin/farmers/documentation/printout',
+
     // Delivery management
     DeliverySlots: '/admin/delivery/slots',
     DeliveryRequests: '/admin/delivery/requests',
+    DeliveryOperations: '/admin/delivery/operations',
+    DeliveryNotifications: '/admin/delivery/notifications',
 
     // External links
     StripePayment: (paymentId: string) =>
@@ -117,4 +183,6 @@ export const KnownPages = {
         `https://www.gredice.com/radnje/${slugify(operationAlias)}`,
     GrediceUser: (publicId: string) =>
         `https://www.gredice.com/korisnici/${publicId}`,
+    GredicePublicGarden: (gardenId: number) =>
+        `https://www.gredice.com/vrtovi/${gardenId.toString()}`,
 } as const;

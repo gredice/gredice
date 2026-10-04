@@ -1,29 +1,31 @@
 'use client';
 
+import { authCurrentUserQueryKeys } from '@gredice/ui/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import {
+    resolveGardenOAuthCallbackQuery,
+    resolveGardenOAuthFragment,
+} from '../../lib/auth/gardenAuthContinuation';
 
 export function UrlAuthForward() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const queryClient = useQueryClient();
+    const hasStartedRef = useRef(false);
+    const { failureReturnTo, hasServerError, returnTo } =
+        resolveGardenOAuthCallbackQuery(searchParams.toString());
 
     useEffect(() => {
-        const handleGoogleCallback = async () => {
-            const error = searchParams.get('error');
-            if (error) {
-                // TODO: Display notification
-                console.error('Authentication error:', error);
-                router.replace('/');
-                return;
-            }
+        if (hasStartedRef.current) {
+            return;
+        }
+        hasStartedRef.current = true;
 
-            // Read tokens from URL fragment (hash) to avoid server logs/referrer leakage
-            const hash = window.location.hash.substring(1);
-            const params = new URLSearchParams(hash);
-            const token = params.get('token');
-            const refreshToken = params.get('refreshToken');
+        const handleOAuthCallback = async () => {
+            const hash = window.location.hash;
+            const oauthFragment = resolveGardenOAuthFragment(hash);
 
             // Clear tokens from URL immediately to minimize exposure
             if (hash) {
@@ -34,41 +36,46 @@ export function UrlAuthForward() {
                 );
             }
 
-            if (token) {
-                // Exchange tokens for httpOnly cookies via local route handler
-                try {
-                    const response = await fetch('/api/oauth-callback', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ token, refreshToken }),
-                    });
-
-                    if (!response.ok) {
-                        // TODO: Display notification
-                        console.error(
-                            'Authentication callback failed with status:',
-                            response.status,
-                        );
-                        router.replace('/');
-                        return;
-                    }
-                } catch (err) {
-                    // TODO: Display notification
-                    console.error(
-                        'Network error during authentication callback:',
-                        err,
-                    );
-                    router.replace('/');
-                    return;
-                }
+            if (hasServerError || !oauthFragment) {
+                console.error('OAuth callback could not be completed', {
+                    reason: hasServerError
+                        ? 'provider_or_callback_error'
+                        : 'missing_or_invalid_fragment',
+                });
+                router.replace(failureReturnTo);
+                return;
             }
 
-            await queryClient.invalidateQueries();
-            router.replace('/');
+            try {
+                const response = await fetch('/api/oauth-callback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(oauthFragment),
+                });
+
+                if (!response.ok) {
+                    console.error('OAuth cookie exchange was rejected', {
+                        status: response.status,
+                    });
+                    router.replace(failureReturnTo);
+                    return;
+                }
+            } catch {
+                console.error('OAuth cookie exchange request failed');
+                router.replace(failureReturnTo);
+                return;
+            }
+
+            await queryClient
+                .invalidateQueries({
+                    queryKey: authCurrentUserQueryKeys,
+                })
+                .catch(() => undefined);
+            router.replace(returnTo);
         };
 
-        handleGoogleCallback();
-    }, [router, searchParams, queryClient]);
+        void handleOAuthCallback();
+    }, [failureReturnTo, hasServerError, queryClient, returnTo, router]);
 
     return null;
 }

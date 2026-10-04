@@ -65,6 +65,20 @@ pnpm --filter desktop dist:garden -- --all-platforms
 Artifacts are written to `apps/desktop/dist/<app>`. Local unpacked builds can be
 created with `pnpm --filter desktop pack:garden`, `pack:farm`, or `pack:app`.
 
+## Release Workflows
+
+GitHub release workflows publish macOS arm64 DMGs only. Push one of these tags
+to release the matching desktop app:
+
+```bash
+git tag desktop-garden-v1.2.3
+git tag desktop-farm-v1.2.3
+git tag desktop-app-v1.2.3
+```
+
+The same workflows can also be run manually with a `version` input; without one,
+they create a timestamped version.
+
 ## Local QA
 
 Launch the Electron shell and the local services it needs:
@@ -94,10 +108,30 @@ cookies automatically; HTTPS and packaged app sessions keep secure cookies.
 
 ## Signing
 
-Electron Builder reads standard signing and notarization environment variables
-from CI. Configure macOS and Windows signing secrets in the release environment;
-do not commit certificates, app-specific passwords, provisioning profiles, or
-private keys.
+GitHub release workflows can publish without Apple Developer Program
+credentials. Without a Developer ID certificate, Electron Builder falls back to
+ad-hoc macOS signing and the app is not notarized. This keeps releases possible
+for internal or manual distribution, but macOS Gatekeeper can still show
+unidentified-developer warnings for downloaded artifacts.
+
+For public releases that should open normally after download, configure these
+GitHub secrets for Developer ID signing:
+
+- `CSC_LINK`: base64-encoded `.p12` Developer ID Application certificate or a
+  secure URL supported by Electron Builder.
+- `CSC_KEY_PASSWORD`: certificate password, when the `.p12` is encrypted.
+
+For notarization, prefer App Store Connect API key secrets:
+
+- `APPLE_API_KEY`: contents of the downloaded `AuthKey_<key-id>.p8` file.
+- `APPLE_API_KEY_ID`: App Store Connect API key ID.
+- `APPLE_API_ISSUER`: App Store Connect issuer UUID.
+
+When `CSC_LINK` is configured, the workflows also support Apple ID
+notarization via `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and
+`APPLE_TEAM_ID`, or an existing notarytool keychain profile via
+`APPLE_KEYCHAIN_PROFILE` and optional `APPLE_KEYCHAIN`. Do not commit
+certificates, app-specific passwords, provisioning profiles, or private keys.
 
 Use `GREDICE_DESKTOP_VERSION=<semver>` to override the package version stamped
 into desktop artifacts. Without it, the source app package version is used.

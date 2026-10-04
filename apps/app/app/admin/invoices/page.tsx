@@ -1,5 +1,5 @@
-import { Button } from '@gredice/ui/Button';
 import { Card, CardOverflow } from '@gredice/ui/Card';
+import { IconButton } from '@gredice/ui/IconButton';
 import { Add } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
 import { AdminPageHeader } from '../../../components/admin/navigation';
@@ -16,13 +16,14 @@ export default async function InvoicesPage() {
         <Stack spacing={4}>
             <AdminPageHeader
                 actions={
-                    <Button
-                        variant="solid"
-                        startDecorator={<Add className="size-5 shrink-0" />}
+                    <IconButton
+                        aria-label="Nova ponuda"
                         href={KnownPages.CreateInvoice}
+                        title="Nova ponuda"
+                        variant="solid"
                     >
-                        Nova ponuda
-                    </Button>
+                        <Add className="size-5" />
+                    </IconButton>
                 }
             />
             <Card>

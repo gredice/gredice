@@ -15,8 +15,14 @@ import {
     getUserRegistrationsByWeekday,
     redisCached,
 } from '@gredice/storage';
+import { cache } from 'react';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
-import { sumAiAnalysisCostUsd } from '../../../src/ai/aiAnalyticsCost';
+import { sumAiAnalysisCostEur } from '../../../src/ai/aiAnalyticsCost';
+import {
+    analyticsDateKey,
+    analyticsTimeZone,
+    createAnalyticsDateRange,
+} from './analyticsDateRange';
 
 type OperationsDurationPoint = {
     date: string;
@@ -28,6 +34,7 @@ type OperationsDurationPoint = {
         userId: string;
         userName: string;
         userAvatarUrl: string | null;
+        achievementCount?: number;
         operationsMinutes: number;
         plannedMinutes: number;
     }[];
@@ -42,6 +49,7 @@ type OperationsDurationData = {
         userId: string;
         userName: string;
         userAvatarUrl: string | null;
+        achievementCount?: number;
         operationsMinutes: number;
         plannedMinutes: number;
         operationsCount: number;
@@ -54,6 +62,7 @@ type OperationUserStats = {
     userId: string;
     userName: string;
     userAvatarUrl: string | null;
+    achievementCount?: number;
     operationsMinutes: number;
     plannedMinutes: number;
     operationsCount: number;
@@ -64,13 +73,9 @@ type DailyOperationUserStats = {
     userId: string;
     userName: string;
     userAvatarUrl: string | null;
+    achievementCount?: number;
     operationsMinutes: number;
     plannedMinutes: number;
-};
-
-type DateRange = {
-    startDate: Date;
-    endDate: Date;
 };
 
 type SunflowersDailyTotalsPoint = {
@@ -79,7 +84,6 @@ type SunflowersDailyTotalsPoint = {
     earned: number;
 };
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const WEEKDAY_LABELS = [
     'Nedjelja',
     'Ponedjeljak',
@@ -94,14 +98,8 @@ const UNASSIGNED_USER = {
     userId: 'unassigned',
     userName: 'Nedodijeljeno',
     userAvatarUrl: null,
+    achievementCount: undefined,
 };
-
-function toDateKey(date: Date) {
-    const year = date.getFullYear();
-    const month = `${date.getMonth() + 1}`.padStart(2, '0');
-    const day = `${date.getDate()}`.padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
 
 function cacheKeyPart(value: string | number | undefined) {
     if (typeof value === 'undefined' || value === '') {
@@ -116,7 +114,11 @@ function analyticsCacheKey(
     from?: string,
     to?: string,
 ) {
-    return `dashboard:admin:analytics:days:${cacheKeyPart(days)}:from:${cacheKeyPart(from)}:to:${cacheKeyPart(to)}:v2`;
+    return `dashboard:admin:analytics:days:${cacheKeyPart(days)}:from:${cacheKeyPart(from)}:to:${cacheKeyPart(to)}:v3`;
+}
+
+function weeklyStatisticsCacheKey(from: string, to: string) {
+    return `dashboard:admin:weekly-statistics:from:${cacheKeyPart(from)}:to:${cacheKeyPart(to)}:v1`;
 }
 
 function parseDuration(value: unknown) {
@@ -132,46 +134,13 @@ function parseDuration(value: unknown) {
     return 0;
 }
 
-function parseAssignedUserIds(value: unknown) {
-    if (!value || typeof value !== 'object') {
-        return [];
-    }
-
-    const payload = value as {
-        assignedUserId?: unknown;
-        assignedUserIds?: unknown;
-    };
-    const assignedUserIds = new Set<string>();
-
-    if (typeof payload.assignedUserId === 'string') {
-        const assignedUserId = payload.assignedUserId.trim();
-        if (assignedUserId.length > 0) {
-            assignedUserIds.add(assignedUserId);
-        }
-    }
-
-    if (Array.isArray(payload.assignedUserIds)) {
-        for (const item of payload.assignedUserIds) {
-            if (typeof item !== 'string') {
-                continue;
-            }
-
-            const assignedUserId = item.trim();
-            if (assignedUserId.length > 0) {
-                assignedUserIds.add(assignedUserId);
-            }
-        }
-    }
-
-    return Array.from(assignedUserIds);
-}
-
 function addDurationToUsers({
     date,
     durationMinutes,
     userId,
     userName,
     userAvatarUrl,
+    achievementCount,
     operationsByUser,
     dailyOperationsByUser,
     includeInDailyTotals = true,
@@ -182,6 +151,7 @@ function addDurationToUsers({
     userId: string;
     userName: string;
     userAvatarUrl: string | null;
+    achievementCount?: number;
     operationsByUser: Map<string, OperationUserStats>;
     dailyOperationsByUser: Map<string, Map<string, DailyOperationUserStats>>;
     includeInDailyTotals?: boolean;
@@ -195,6 +165,7 @@ function addDurationToUsers({
                 userId,
                 userName,
                 userAvatarUrl,
+                achievementCount,
                 operationsMinutes: kind === 'completed' ? durationMinutes : 0,
                 plannedMinutes: kind === 'planned' ? durationMinutes : 0,
             });
@@ -214,6 +185,7 @@ function addDurationToUsers({
             userId,
             userName,
             userAvatarUrl,
+            achievementCount,
             operationsMinutes: kind === 'completed' ? durationMinutes : 0,
             plannedMinutes: kind === 'planned' ? durationMinutes : 0,
             operationsCount: kind === 'completed' ? 1 : 0,
@@ -231,19 +203,14 @@ function addDurationToUsers({
     }
 }
 
-function createDurationBuckets(startDate: Date, days: number) {
-    const dateKeys: string[] = [];
+function createDurationBuckets(dateKeys: string[]) {
     const operationsTotals = new Map<string, number>();
     const plannedTotals = new Map<string, number>();
     const sowingTotals = new Map<string, number>();
-    for (let i = 0; i < days; i += 1) {
-        const current = new Date(startDate);
-        current.setDate(startDate.getDate() + i);
-        const key = toDateKey(current);
-        dateKeys.push(key);
-        operationsTotals.set(key, 0);
-        plannedTotals.set(key, 0);
-        sowingTotals.set(key, 0);
+    for (const date of dateKeys) {
+        operationsTotals.set(date, 0);
+        plannedTotals.set(date, 0);
+        sowingTotals.set(date, 0);
     }
 
     return {
@@ -301,6 +268,7 @@ function getOperationUser(operation: {
         userName: string;
         displayName: string | null;
         avatarUrl: string | null;
+        achievementCount?: number;
     } | null;
 }) {
     if (!operation.assignedUser) {
@@ -313,142 +281,46 @@ function getOperationUser(operation: {
             operation.assignedUser.displayName ??
             operation.assignedUser.userName,
         userAvatarUrl: operation.assignedUser.avatarUrl,
+        achievementCount: operation.assignedUser.achievementCount,
     };
 }
 
-function parseDateInput(value?: string) {
-    if (!value) {
-        return null;
-    }
-
-    const parts = value.split('-').map((part) => Number.parseInt(part, 10));
-    if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) {
-        return null;
-    }
-
-    const [year, month, day] = parts;
-    const date = new Date(year, month - 1, day);
-    if (Number.isNaN(date.getTime())) {
-        return null;
-    }
-
-    if (
-        date.getFullYear() !== year ||
-        date.getMonth() !== month - 1 ||
-        date.getDate() !== day
-    ) {
-        return null;
-    }
-
-    return date;
-}
-
-function createDateRange(days: number, from?: string, to?: string): DateRange {
-    const now = new Date();
-    const defaultDays = Number.isFinite(days) && days > 0 ? days : 1;
-    const defaultStartDate = new Date(now);
-    defaultStartDate.setHours(0, 0, 0, 0);
-    defaultStartDate.setDate(defaultStartDate.getDate() - (defaultDays - 1));
-    const defaultEndDate = new Date(now);
-    defaultEndDate.setHours(23, 59, 59, 999);
-
-    const parsedFrom = parseDateInput(from);
-    const parsedTo = parseDateInput(to);
-
-    if (!parsedFrom || !parsedTo) {
-        return { startDate: defaultStartDate, endDate: defaultEndDate };
-    }
-
-    const customStartDate = new Date(parsedFrom);
-    customStartDate.setHours(0, 0, 0, 0);
-    const customEndDate = new Date(parsedTo);
-    customEndDate.setHours(23, 59, 59, 999);
-
-    if (customStartDate > customEndDate) {
-        return { startDate: defaultStartDate, endDate: defaultEndDate };
-    }
-
-    return { startDate: customStartDate, endDate: customEndDate };
-}
-
-function getRangeDays(startDate: Date, endDate: Date) {
-    const timeDiff = Math.abs(endDate.getTime() - startDate.getTime());
-    return Math.floor(timeDiff / ONE_DAY_MS) + 1;
-}
-
-export async function getAnalyticsData(
-    days: number | undefined,
-    from?: string,
-    to?: string,
-) {
-    return redisCached(
-        analyticsCacheKey(days, from, to),
-        () => getAnalyticsDataUncached(days, from, to),
-        {
-            ttl: 60,
-            maxPayloadBytes: 2 * 1024 * 1024,
-        },
-    );
-}
-
-async function getAnalyticsDataUncached(
-    days: number | undefined,
-    from?: string,
-    to?: string,
-) {
-    const { startDate, endDate } = createDateRange(days, from, to);
-    const rangeDays = getRangeDays(startDate, endDate);
-
-    const [
-        analyticsResult,
-        entityTypes,
-        operationsList,
-        plannedOperationsList,
-        operationsData,
-        weekdayRegistrationsRaw,
-        aiTotals,
-        aiEvents,
-        sunflowersDailyTotalsRaw,
-    ] = await Promise.all([
-        getAnalyticsTotals(rangeDays),
-        getEntityTypes(),
-        getAllOperations({
-            completedFrom: startDate,
-            completedTo: endDate,
-        }),
+const getOperationAnalyticsReferenceData = cache(async () => {
+    const [plannedOperationsList, operationsData] = await Promise.all([
         getAllOperations({
             status: 'planned',
         }),
         getEntitiesFormatted<EntityStandardized>('operation'),
-        getUserRegistrationsByWeekday(startDate, endDate),
-        getAiAnalysisTotals({ from: startDate, to: endDate }),
-        getAiAnalysisEvents({ from: startDate, to: endDate }),
-        getSunflowersDailyTotals({ from: startDate, to: endDate }),
     ]);
 
-    const entitiesCounts = await Promise.all(
-        entityTypes.map(async (entityType) => {
-            const entities = await getEntitiesRaw(entityType.name);
-            const definitions = await getAttributeDefinitions(entityType.name);
-            const incompleteCounts = getIncompleteEntityCountsByState(
-                entities,
-                definitions,
-            );
-            return {
-                entityTypeName: entityType.name,
-                label: entityType.label,
-                count: entities.length,
-                incompleteDraftCount: incompleteCounts.draft,
-                incompletePublishedCount: incompleteCounts.published,
-            };
-        }),
-    );
+    return {
+        plannedOperationsList,
+        operationsData,
+    };
+});
 
-    const { dateKeys, operationsTotals, plannedTotals, sowingTotals } =
-        createDurationBuckets(startDate, rangeDays);
+function buildOperationsDurationData({
+    startDate,
+    endDate,
+    dateKeys,
+    operationsList,
+    plannedOperationsList,
+    operationsData,
+    sowingEvents,
+}: {
+    startDate: Date;
+    endDate: Date;
+    dateKeys: string[];
+    operationsList: Awaited<ReturnType<typeof getAllOperations>>;
+    plannedOperationsList: Awaited<ReturnType<typeof getAllOperations>>;
+    operationsData: EntityStandardized[];
+    sowingEvents: Awaited<ReturnType<typeof getPlantUpdateEvents>>;
+}) {
+    const { operationsTotals, plannedTotals, sowingTotals } =
+        createDurationBuckets(dateKeys);
 
     const operationDurations = new Map<number, number>();
-    for (const operation of operationsData ?? []) {
+    for (const operation of operationsData) {
         const duration = parseDuration(
             (operation.attributes as { duration?: unknown } | undefined)
                 ?.duration,
@@ -467,7 +339,7 @@ async function getAnalyticsDataUncached(
             continue;
         }
 
-        const key = toDateKey(operation.completedAt);
+        const key = analyticsDateKey(operation.completedAt);
         if (!operationsTotals.has(key)) {
             continue;
         }
@@ -486,6 +358,7 @@ async function getAnalyticsDataUncached(
             userId: user.userId,
             userName: user.userName,
             userAvatarUrl: user.userAvatarUrl,
+            achievementCount: user.achievementCount,
             operationsByUser,
             dailyOperationsByUser,
         });
@@ -503,7 +376,7 @@ async function getAnalyticsDataUncached(
             continue;
         }
 
-        const key = toDateKey(operation.scheduledDate);
+        const key = analyticsDateKey(operation.scheduledDate);
         if (!plannedTotals.has(key)) {
             continue;
         }
@@ -518,20 +391,15 @@ async function getAnalyticsDataUncached(
             userId: user.userId,
             userName: user.userName,
             userAvatarUrl: user.userAvatarUrl,
+            achievementCount: user.achievementCount,
             operationsByUser,
             dailyOperationsByUser,
             kind: 'planned',
         });
     }
 
-    const sowingEvents = await getPlantUpdateEvents({
-        from: startDate,
-        to: endDate,
-        status: 'sowed',
-    });
-
     for (const event of sowingEvents) {
-        const key = toDateKey(event.createdAt);
+        const key = analyticsDateKey(event.createdAt);
         if (!sowingTotals.has(key)) {
             continue;
         }
@@ -540,25 +408,6 @@ async function getAnalyticsDataUncached(
             key,
             (sowingTotals.get(key) ?? 0) + PLANT_SOWING_DURATION_MINUTES,
         );
-
-        const assignedUserIds = parseAssignedUserIds(event.data);
-        if (!assignedUserIds.length) {
-            continue;
-        }
-
-        for (const userId of assignedUserIds) {
-            const existingUser = operationsByUser.get(userId);
-            addDurationToUsers({
-                date: key,
-                durationMinutes: PLANT_SOWING_DURATION_MINUTES,
-                userId,
-                userName: existingUser?.userName ?? userId,
-                userAvatarUrl: existingUser?.userAvatarUrl ?? null,
-                operationsByUser,
-                dailyOperationsByUser,
-                includeInDailyTotals: false,
-            });
-        }
     }
 
     const operationsDuration = formatOperationsDurationData(
@@ -588,29 +437,203 @@ async function getAnalyticsDataUncached(
             ),
     }));
 
-    const weekdayRegistrations = WEEKDAY_LABELS.map((label, index) => ({
-        label,
-        count: weekdayRegistrationsRaw[index] ?? 0,
-    }));
+    return operationsDuration;
+}
 
-    const sunflowersByDate = new Map<string, SunflowersDailyTotalsPoint>();
-    for (const day of sunflowersDailyTotalsRaw) {
-        sunflowersByDate.set(day.date, day);
+function formatWeekdayRegistrations(counts: number[]) {
+    return WEEKDAY_LABELS.map((label, index) => ({
+        label,
+        count: counts[index] ?? 0,
+    }));
+}
+
+function formatSunflowersDailyTotals(
+    dateKeys: string[],
+    totals: SunflowersDailyTotalsPoint[],
+) {
+    const totalsByDate = new Map<string, SunflowersDailyTotalsPoint>();
+    for (const day of totals) {
+        totalsByDate.set(day.date, day);
     }
-    const sunflowersDailyTotals = dateKeys.map((date) => {
-        const day = sunflowersByDate.get(date);
+
+    return dateKeys.map((date) => {
+        const day = totalsByDate.get(date);
         return {
             date,
             spent: day?.spent ?? 0,
             earned: day?.earned ?? 0,
         };
     });
+}
+
+export async function getAnalyticsData(
+    days: number | undefined,
+    from?: string,
+    to?: string,
+) {
+    return redisCached(
+        analyticsCacheKey(days, from, to),
+        () => getAnalyticsDataUncached(days, from, to),
+        {
+            ttl: 60,
+            maxPayloadBytes: 2 * 1024 * 1024,
+        },
+    );
+}
+
+export async function getDashboardWeeklyStatisticsData(
+    from: string,
+    to: string,
+) {
+    return redisCached(
+        weeklyStatisticsCacheKey(from, to),
+        () => getDashboardWeeklyStatisticsDataUncached(from, to),
+        {
+            ttl: 60,
+            maxPayloadBytes: 512 * 1024,
+        },
+    );
+}
+
+async function getDashboardWeeklyStatisticsDataUncached(
+    from: string,
+    to: string,
+) {
+    const { startDate, endDate, dateKeys } = createAnalyticsDateRange(
+        undefined,
+        from,
+        to,
+    );
+    const [
+        operationsList,
+        operationReferenceData,
+        weekdayRegistrationsRaw,
+        sunflowersDailyTotalsRaw,
+        sowingEvents,
+    ] = await Promise.all([
+        getAllOperations({
+            completedFrom: startDate,
+            completedTo: endDate,
+        }),
+        getOperationAnalyticsReferenceData(),
+        getUserRegistrationsByWeekday(startDate, endDate, analyticsTimeZone),
+        getSunflowersDailyTotals({
+            from: startDate,
+            to: endDate,
+            timeZone: analyticsTimeZone,
+        }),
+        getPlantUpdateEvents({
+            from: startDate,
+            to: endDate,
+            status: 'sowed',
+        }),
+    ]);
+
+    return {
+        operationsDuration: buildOperationsDurationData({
+            startDate,
+            endDate,
+            dateKeys,
+            operationsList,
+            plannedOperationsList: operationReferenceData.plannedOperationsList,
+            operationsData: operationReferenceData.operationsData,
+            sowingEvents,
+        }),
+        weekdayRegistrations: formatWeekdayRegistrations(
+            weekdayRegistrationsRaw,
+        ),
+        sunflowers: formatSunflowersDailyTotals(
+            dateKeys,
+            sunflowersDailyTotalsRaw,
+        ),
+    };
+}
+
+async function getAnalyticsDataUncached(
+    days: number | undefined,
+    from?: string,
+    to?: string,
+) {
+    const { startDate, endDate, dateKeys } = createAnalyticsDateRange(
+        days,
+        from,
+        to,
+    );
+    const rangeDays = dateKeys.length;
+
+    const [
+        analyticsResult,
+        entityTypes,
+        operationsList,
+        operationReferenceData,
+        weekdayRegistrationsRaw,
+        aiTotals,
+        aiEvents,
+        sunflowersDailyTotalsRaw,
+        sowingEvents,
+    ] = await Promise.all([
+        getAnalyticsTotals(rangeDays),
+        getEntityTypes(),
+        getAllOperations({
+            completedFrom: startDate,
+            completedTo: endDate,
+        }),
+        getOperationAnalyticsReferenceData(),
+        getUserRegistrationsByWeekday(startDate, endDate, analyticsTimeZone),
+        getAiAnalysisTotals({ from: startDate, to: endDate }),
+        getAiAnalysisEvents({ from: startDate, to: endDate }),
+        getSunflowersDailyTotals({
+            from: startDate,
+            to: endDate,
+            timeZone: analyticsTimeZone,
+        }),
+        getPlantUpdateEvents({
+            from: startDate,
+            to: endDate,
+            status: 'sowed',
+        }),
+    ]);
+
+    const entitiesCounts = await Promise.all(
+        entityTypes.map(async (entityType) => {
+            const entities = await getEntitiesRaw(entityType.name);
+            const definitions = await getAttributeDefinitions(entityType.name);
+            const incompleteCounts = getIncompleteEntityCountsByState(
+                entities,
+                definitions,
+            );
+            return {
+                entityTypeName: entityType.name,
+                label: entityType.label,
+                count: entities.length,
+                incompleteDraftCount: incompleteCounts.draft,
+                incompletePublishedCount: incompleteCounts.published,
+            };
+        }),
+    );
+
+    const operationsDuration = buildOperationsDurationData({
+        startDate,
+        endDate,
+        dateKeys,
+        operationsList,
+        plannedOperationsList: operationReferenceData.plannedOperationsList,
+        operationsData: operationReferenceData.operationsData,
+        sowingEvents,
+    });
+    const weekdayRegistrations = formatWeekdayRegistrations(
+        weekdayRegistrationsRaw,
+    );
+    const sunflowersDailyTotals = formatSunflowersDailyTotals(
+        dateKeys,
+        sunflowersDailyTotalsRaw,
+    );
 
     const aiTotalTokens = aiEvents.reduce(
         (sum, e) => sum + (e.data?.totalTokens ?? 0),
         0,
     );
-    const aiTotalCostUsd = sumAiAnalysisCostUsd(aiEvents);
+    const aiTotalCostEur = sumAiAnalysisCostEur(aiEvents);
 
     return {
         analytics: analyticsResult,
@@ -620,7 +643,7 @@ async function getAnalyticsDataUncached(
         ai: {
             count: aiTotals.count,
             totalTokens: aiTotalTokens,
-            totalCostUsd: aiTotalCostUsd,
+            totalCostEur: aiTotalCostEur,
         },
         sunflowers: sunflowersDailyTotals,
     };

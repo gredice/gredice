@@ -2,10 +2,14 @@ import { clientAuthenticated } from '@gredice/client';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardActions, CardContent } from '@gredice/ui/Card';
+import {
+    GameGiftIcon,
+    GameHistoryIcon,
+    GameSunflowerIcon,
+} from '@gredice/ui/GameIcons';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
 import { Check, Copy, Edit, ExternalLink, Info } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
@@ -14,7 +18,9 @@ import { useEffect, useState } from 'react';
 import Confetti from 'react-confetti-boom';
 import { currentAccountKeys } from '../../hooks/useCurrentAccount';
 import { useReferrals } from '../../hooks/useReferrals';
+import { tutorialChecklistKeys } from '../../hooks/useTutorialChecklist';
 import { KnownPages } from '../../knownPages';
+import { GameModal } from '../../shared-ui/game-modal';
 
 async function errorMessageFromResponse(response: Response, fallback: string) {
     const payload: unknown = await response.json().catch(() => null);
@@ -162,6 +168,9 @@ export function ReferralsTab() {
                 setUseCode('');
             }
             await refetch();
+            await queryClient.invalidateQueries({
+                queryKey: tutorialChecklistKeys,
+            });
         } finally {
             setIsUsingCode(false);
         }
@@ -174,8 +183,12 @@ export function ReferralsTab() {
                     <Confetti mode="fall" particleCount={80} />
                 </div>
             ) : null}
-            <Typography level="h4" className="hidden md:block">
-                💮 Preporuke
+            <Typography
+                level="h4"
+                className="hidden md:flex items-center gap-2"
+            >
+                <GameGiftIcon aria-hidden className="size-8 shrink-0" />
+                Preporuke
             </Typography>
             <Stack spacing={2}>
                 <Alert
@@ -184,10 +197,13 @@ export function ReferralsTab() {
                 >
                     <Typography level="body2">
                         Podijeli svoj kod i zaradi{' '}
-                        <strong>{data?.rewardAmount ?? 10000} 🌻</strong> kada
-                        novi račun ispuni uvjet aktivne gredice. Kod se može
-                        iskoristiti jednom po računu, a isti kod može
-                        iskoristiti više različitih računa.{' '}
+                        <strong className="inline-flex items-center gap-1">
+                            {data?.rewardAmount ?? 10000}
+                            <GameSunflowerIcon className="size-4 shrink-0" />
+                        </strong>{' '}
+                        kada pozvani račun posadi svoje prvo povrće u gredici.
+                        Kod se može iskoristiti jednom po računu, a isti kod
+                        može iskoristiti više različitih računa.{' '}
                         <Button
                             className="inline-flex text-blue-950 dark:text-blue-100"
                             endDecorator={
@@ -291,7 +307,7 @@ export function ReferralsTab() {
                         />
                     </CardContent>
                 </Card>
-                <Modal
+                <GameModal
                     onOpenChange={setChangeCodeOpen}
                     open={changeCodeOpen}
                     title="Promijeni kod preporuke"
@@ -334,7 +350,7 @@ export function ReferralsTab() {
                             </div>
                         </Stack>
                     </form>
-                </Modal>
+                </GameModal>
                 <Card>
                     <CardContent noHeader>
                         {usedReferral ? (
@@ -366,6 +382,10 @@ export function ReferralsTab() {
                                 </Stack>
                                 <div className="flex items-center gap-3 rounded-md border bg-muted/40 p-3">
                                     <UserAvatar
+                                        achievementCount={
+                                            usedReferral.account
+                                                ?.achievementCount
+                                        }
                                         avatarUrl={
                                             usedReferral.account?.avatarUrl
                                         }
@@ -496,6 +516,9 @@ export function ReferralsTab() {
                                     >
                                         <UserAvatar
                                             avatarUrl={u.account?.avatarUrl}
+                                            achievementCount={
+                                                u.account?.achievementCount
+                                            }
                                             displayName={
                                                 u.account?.displayName ??
                                                 'Nepoznat račun'
@@ -518,20 +541,20 @@ export function ReferralsTab() {
                                             >
                                                 {u.rewarded
                                                     ? 'Nagrada dodijeljena'
-                                                    : 'Čeka aktivnu gredicu'}
+                                                    : 'Čeka prvu sadnju'}
                                             </Typography>
                                         </div>
-                                        <span
-                                            aria-label={
-                                                u.rewarded
-                                                    ? 'Nagrada dodijeljena'
-                                                    : 'Čeka aktivnu gredicu'
-                                            }
-                                            className="text-base"
-                                            role="img"
-                                        >
-                                            {u.rewarded ? '✅' : '⏳'}
-                                        </span>
+                                        {u.rewarded ? (
+                                            <GameGiftIcon
+                                                aria-hidden
+                                                className="size-6 shrink-0"
+                                            />
+                                        ) : (
+                                            <GameHistoryIcon
+                                                aria-hidden
+                                                className="size-6 shrink-0"
+                                            />
+                                        )}
                                     </li>
                                 ))}
                             </ul>

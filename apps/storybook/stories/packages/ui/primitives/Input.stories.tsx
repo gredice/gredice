@@ -30,11 +30,11 @@ export const Default: Story = {};
 
 export const Variants: Story = {
     render: () => (
-        <Stack spacing={4}>
+        <div className="grid gap-4 rounded-lg bg-card p-4">
             <Input label="Outlined" placeholder="Zadani stil" />
             <Input label="Soft" placeholder="Tiha povrsina" variant="soft" />
             <Input label="Plain" placeholder="Bez okvira" variant="plain" />
-        </Stack>
+        </div>
     ),
 };
 

@@ -1,35 +1,56 @@
-import { getEntityTypes, getSetting, SettingsKeys } from '@gredice/storage';
+import { getEntityTypes } from '@gredice/storage';
+import { resolveCurrentWeekStatisticsPeriod } from '../../../app/admin/statistics/statisticsPeriod';
 import { auth } from '../../../lib/auth/auth';
+import {
+    getAdminCmsReviewCount,
+    getAdminDashboardQuickActionsSetting,
+    getAdminPendingAchievementsCount,
+} from '../../../src/adminNavigationData';
+import { getPendingAdminApprovalTaskCount } from '../../../src/approvalTasks';
 import {
     buildDashboardQuickActionOptions,
     getDashboardQuickActionsFromConfig,
     getDefaultDashboardQuickActions,
 } from '../../../src/dashboardQuickActions';
 import { AdminDashboardClient } from './AdminDashboardClient';
-import { getAnalyticsData } from './actions';
+import { getAnalyticsData, getDashboardWeeklyStatisticsData } from './actions';
 
 type AdminDashboardProps = {
     searchParams?: Promise<{ period?: string; from?: string; to?: string }>;
 };
 
 export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
-    auth(['admin']);
+    await auth(['admin']);
     const params = await searchParams;
     const selectedPeriod = params?.period || '7';
-
-    const [data, entityTypes, dashboardQuickActionsSetting] = await Promise.all(
-        [
-            getAnalyticsData(
-                selectedPeriod === 'custom'
-                    ? undefined
-                    : Number(selectedPeriod),
-                params?.from,
-                params?.to,
-            ),
-            getEntityTypes(),
-            getSetting(SettingsKeys.DashboardQuickActions),
-        ],
+    const selectedDataPromise = getAnalyticsData(
+        selectedPeriod === 'custom' ? undefined : Number(selectedPeriod),
+        params?.from,
+        params?.to,
     );
+    const currentWeek = resolveCurrentWeekStatisticsPeriod();
+    const weeklyDataPromise = getDashboardWeeklyStatisticsData(
+        currentWeek.pickerFrom,
+        currentWeek.pickerTo,
+    );
+
+    const [
+        data,
+        weeklyData,
+        entityTypes,
+        dashboardQuickActionsSetting,
+        pendingCmsPagesReviewCount,
+        pendingAchievementsCount,
+        pendingApprovalTasksCount,
+    ] = await Promise.all([
+        selectedDataPromise,
+        weeklyDataPromise,
+        getEntityTypes(),
+        getAdminDashboardQuickActionsSetting(),
+        getAdminCmsReviewCount(),
+        getAdminPendingAchievementsCount(),
+        getPendingAdminApprovalTaskCount(),
+    ]);
 
     const quickActionOptions = buildDashboardQuickActionOptions(
         entityTypes.map((entityType) => ({
@@ -53,11 +74,16 @@ export async function AdminDashboard({ searchParams }: AdminDashboardProps) {
         <AdminDashboardClient
             initialAnalyticsData={data.analytics}
             initialEntitiesData={data.entities}
-            initialOperationsDurationData={data.operationsDuration}
-            initialWeekdayRegistrations={data.weekdayRegistrations}
+            initialOperationsDurationData={weeklyData.operationsDuration}
+            initialWeekdayRegistrations={weeklyData.weekdayRegistrations}
             initialAiData={data.ai}
-            initialSunflowersData={data.sunflowers}
+            initialSunflowersData={weeklyData.sunflowers}
             initialQuickActions={quickActions}
+            initialQuickActionBadgeCounts={{
+                pendingCmsPagesReviewCount,
+                pendingAchievementsCount,
+                pendingApprovalTasksCount,
+            }}
             initialPeriod={selectedPeriod}
             initialFrom={params?.from}
             initialTo={params?.to}

@@ -7,6 +7,7 @@ import {
     type GardenOperationItem,
     gardenOperationsQueryKey,
 } from '../../../packages/game/src/hooks/useGardenOperations';
+import { operationDefinitionsQueryKey } from '../../../packages/game/src/hooks/useOperations';
 import type { ShoppingCartItemData } from '../../../packages/game/src/hooks/useShoppingCart';
 import { GardenOperationsHud } from '../../../packages/game/src/hud/GardenOperationsHud';
 import {
@@ -60,7 +61,36 @@ export const cartOperation = {
     updatedAt: now,
 } satisfies OperationData;
 
-function buildGarden() {
+const internalOperation = {
+    ...cartOperation,
+    id: 999_002,
+    slug: 'mock-raised-bed-detailed-inspection',
+    attributes: {
+        ...cartOperation.attributes,
+        application: 'raisedBedFull',
+        internal: true,
+    },
+    information: {
+        ...cartOperation.information,
+        name: 'raised-bed-detailed-inspection',
+        label: 'Detaljan pregled gredice',
+        shortDescription: 'Interna radnja za detaljan pregled gredice.',
+    },
+} satisfies OperationData;
+
+const longLabelOperation = {
+    ...cartOperation,
+    id: 999_003,
+    slug: 'mock-surface-raised-bed-watering',
+    information: {
+        ...cartOperation.information,
+        name: 'surface-raised-bed-watering',
+        label: 'Površinsko zalijevanje gredice',
+        shortDescription: 'Dugačak naziv radnje za provjeru prikaza.',
+    },
+} satisfies OperationData;
+
+function buildGarden(raisedBedName = 'Raised Bed 1') {
     return {
         id: TEST_GARDEN_ID,
         name: 'Test garden',
@@ -69,7 +99,7 @@ function buildGarden() {
         raisedBeds: [
             {
                 id: TEST_RAISED_BED_ID,
-                name: 'Raised Bed 1',
+                name: raisedBedName,
                 blockId: 'raised-bed-1',
                 physicalId: '1',
                 fields: [
@@ -78,6 +108,7 @@ function buildGarden() {
                             positionIndex: 2,
                             plantSortId: testSorts.tomato.id,
                             plantStatus: 'sprouted',
+                            plantScheduledDate: '2026-05-10T00:00:00.000Z',
                             plantSowDate: now,
                             plantGrowthDate: now,
                         },
@@ -91,6 +122,37 @@ function buildGarden() {
                             plantScheduledDate: '2026-05-23T00:00:00.000Z',
                         },
                         2,
+                    ),
+                    buildField(
+                        {
+                            positionIndex: 6,
+                            plantStatus: 'deleted',
+                            active: false,
+                            toBeRemoved: true,
+                            stoppedDate: '2026-05-24T08:00:00.000Z',
+                            plantCycles: [
+                                {
+                                    aggregateId: `${TEST_RAISED_BED_ID}|6`,
+                                    positionIndex: 6,
+                                    plantPlaceEventId: 301,
+                                    eventIds: [301, 302],
+                                    startedAt: '2026-05-24T00:00:00.000Z',
+                                    endedAt: '2026-05-24T08:00:00.000Z',
+                                    endedEventId: 302,
+                                    active: false,
+                                    plantSortId: testSorts.lettuce.id,
+                                    plantStatus: 'deleted',
+                                    plantScheduledDate:
+                                        '2026-05-24T00:00:00.000Z',
+                                    stoppedDate: '2026-05-24T08:00:00.000Z',
+                                    cancellationReason:
+                                        'Korisnik je otkazao sijanje.',
+                                    statusChanges: [],
+                                    toBeRemoved: true,
+                                },
+                            ],
+                        },
+                        3,
                     ),
                 ],
                 appliedOperations: [],
@@ -134,6 +196,7 @@ function buildOperationCartItem({
         updatedAt: now,
         usesInventory: false,
         inventoryAvailable: 0,
+        outlet: undefined,
         shopData: {
             name: cartOperation.information.label,
             description: cartOperation.information.shortDescription,
@@ -147,31 +210,48 @@ function buildOperationCartItem({
 }
 
 function buildHudOperationItem({
+    cancellationReason,
+    entityId = cartOperation.id,
     id,
+    raisedBedFieldId = 1,
     status,
 }: {
+    cancellationReason?: string;
+    entityId?: number;
     id: number;
+    raisedBedFieldId?: number | null;
     status: GardenOperationItem['status'];
 }): GardenOperationItem {
     const day = String(Math.max(1, 30 - (id % 20))).padStart(2, '0');
+    const terminalChangedAt = `2026-05-${day}T08:00:00.000Z`;
+    const terminalHistoryStatus =
+        status === 'completed' || status === 'failed' || status === 'canceled'
+            ? status
+            : 'confirmed';
 
     return {
         id,
-        entityId: cartOperation.id,
+        entityId,
+        taskVersionEventId: id,
         entityTypeName: 'operation',
         raisedBedId: TEST_RAISED_BED_ID,
-        raisedBedFieldId: 1,
+        raisedBedFieldId,
         status,
         createdAt: `2026-05-${day}T00:00:00.000Z`,
         scheduledDate: `2026-05-${day}T00:00:00.000Z`,
         scheduledAt: `2026-05-${day}T00:00:00.000Z`,
-        completedAt:
-            status === 'confirmed' || status === 'completed'
-                ? `2026-05-${day}T08:00:00.000Z`
-                : null,
+        completedAt: status === 'completed' ? terminalChangedAt : null,
         verifiedAt:
             status === 'completed' ? `2026-05-${day}T09:00:00.000Z` : null,
-        canceledAt: null,
+        canceledAt: status === 'canceled' ? terminalChangedAt : null,
+        cancellationReason:
+            status === 'canceled'
+                ? (cancellationReason ?? 'Korisnik je otkazao radnju.')
+                : null,
+        blockedAt: null,
+        blockReasonLabel: null,
+        blockNote: null,
+        blockImageUrls: [],
         imageUrls: [],
         completionNotes: `Zapis radnje ${id.toString()}.`,
         targetLabel: 'Raised Bed 1 › Polje 3',
@@ -180,12 +260,19 @@ function buildHudOperationItem({
             { status: 'planned', changedAt: `2026-05-${day}T01:00:00.000Z` },
             { status: 'assigned', changedAt: `2026-05-${day}T02:00:00.000Z` },
             {
-                status: status === 'completed' ? 'completed' : 'confirmed',
-                changedAt: `2026-05-${day}T08:00:00.000Z`,
+                status: terminalHistoryStatus,
+                changedAt: terminalChangedAt,
             },
         ],
     };
 }
+
+const denseHistoryStatuses: GardenOperationItem['status'][] = [
+    'completed',
+    'confirmed',
+    'failed',
+    'canceled',
+];
 
 function createQueryClient({
     denseOperations = false,
@@ -197,11 +284,17 @@ function createQueryClient({
             queries: { retry: false, staleTime: Infinity },
         },
     });
-    const garden = buildGarden();
+    const garden = buildGarden(
+        denseOperations
+            ? 'Sunčana gredica s dugim imenom uz ogradu'
+            : undefined,
+    );
     const pendingOperationItems = denseOperations
         ? Array.from({ length: 14 }, (_, index) =>
               buildHudOperationItem({
                   id: 700 + index,
+                  entityId:
+                      index === 0 ? longLabelOperation.id : cartOperation.id,
                   status: index % 2 === 0 ? 'confirmed' : 'assigned',
               }),
           )
@@ -209,6 +302,7 @@ function createQueryClient({
               {
                   id: 601,
                   entityId: 999_001,
+                  taskVersionEventId: 601,
                   entityTypeName: 'operation',
                   raisedBedId: TEST_RAISED_BED_ID,
                   raisedBedFieldId: 1,
@@ -219,6 +313,11 @@ function createQueryClient({
                   completedAt: null,
                   verifiedAt: null,
                   canceledAt: null,
+                  cancellationReason: null,
+                  blockedAt: null,
+                  blockReasonLabel: null,
+                  blockNote: null,
+                  blockImageUrls: [],
                   imageUrls: [],
                   completionNotes: null,
                   targetLabel: 'Raised Bed 1 › Polje 3',
@@ -231,13 +330,27 @@ function createQueryClient({
               } satisfies GardenOperationItem,
           ];
     const historyOperationItems = denseOperations
-        ? Array.from({ length: 18 }, (_, index) =>
-              buildHudOperationItem({
+        ? Array.from({ length: 20 }, (_, index) => {
+              return buildHudOperationItem({
                   id: 800 + index,
-                  status: index % 3 === 0 ? 'completed' : 'confirmed',
+                  status:
+                      denseHistoryStatuses[
+                          index % denseHistoryStatuses.length
+                      ] ?? 'completed',
+              });
+          })
+        : [
+              buildHudOperationItem({
+                  id: 610,
+                  status: 'confirmed',
               }),
-          )
-        : [];
+              buildHudOperationItem({
+                  entityId: internalOperation.id,
+                  id: 611,
+                  raisedBedFieldId: null,
+                  status: 'confirmed',
+              }),
+          ];
     const pendingOperationPage = {
         pages: [
             {
@@ -267,6 +380,11 @@ function createQueryClient({
     );
     queryClient.setQueryData(['sorts'], allSorts);
     queryClient.setQueryData(['operations'], [cartOperation]);
+    queryClient.setQueryData(operationDefinitionsQueryKey.all, [
+        cartOperation,
+        internalOperation,
+        longLabelOperation,
+    ]);
     queryClient.setQueryData(['shopping-cart'], {
         id: 1,
         items: [
@@ -351,6 +469,18 @@ export function DenseGardenOperationsHudStory() {
     return (
         <Providers denseOperations>
             <GardenOperationsHud />
+        </Providers>
+    );
+}
+
+export function OpenGardenOperationsHudStory({
+    denseOperations = false,
+}: {
+    denseOperations?: boolean;
+}) {
+    return (
+        <Providers denseOperations={denseOperations}>
+            <GardenOperationsHud defaultOpen />
         </Providers>
     );
 }

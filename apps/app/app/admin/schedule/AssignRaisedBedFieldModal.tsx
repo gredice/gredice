@@ -17,11 +17,14 @@ const missingAssignedUserLabel = 'Trenutno dodijeljeni korisnik';
 
 type AssignableUser = Pick<
     RaisedBedFieldAssignableFarmUser,
-    'id' | 'userName' | 'displayName' | 'avatarUrl'
+    'id' | 'userName' | 'displayName' | 'avatarUrl' | 'achievementCount'
 >;
 
 interface AssignRaisedBedFieldModalProps {
     raisedBedFieldId: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     label: string;
     farmUsers: AssignableUser[];
     assignedUserIds?: string[];
@@ -37,6 +40,9 @@ function getUserLabel(user: AssignableUser) {
 
 export function AssignRaisedBedFieldModal({
     raisedBedFieldId,
+    expectedPlantCycleEventId,
+    expectedPlantCycleVersionEventId,
+    expectedPlantSortId,
     label,
     farmUsers,
     assignedUserIds,
@@ -122,6 +128,9 @@ export function AssignRaisedBedFieldModal({
             } else {
                 await assignRaisedBedFieldUserAction(
                     raisedBedFieldId,
+                    expectedPlantCycleEventId,
+                    expectedPlantSortId,
+                    expectedPlantCycleVersionEventId,
                     selectedUserIds,
                 );
             }
@@ -138,7 +147,7 @@ export function AssignRaisedBedFieldModal({
         selectedUsers.length > 0 ? (
             <button
                 type="button"
-                className="rounded-full transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-7 min-w-7 items-center justify-center rounded-full transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
                 title={`Dodijeljeno korisnika: ${selectedUsers.length}`}
                 aria-label={`Dodijeljeno korisnika: ${selectedUsers.length}`}
                 disabled={!canOpen}
@@ -146,13 +155,14 @@ export function AssignRaisedBedFieldModal({
                 <Row spacing={-2}>
                     {selectedUsers.slice(0, 2).map((selectedUser) => (
                         <UserAvatar
+                            achievementCount={selectedUser.achievementCount}
                             key={selectedUser.id}
                             avatarUrl={selectedUser.avatarUrl}
                             displayName={
                                 selectedUser.displayName ??
                                 selectedUser.userName
                             }
-                            className="size-7 ring-2 ring-background"
+                            className="size-6 ring-1 ring-background"
                         />
                     ))}
                     {selectedUsers.length > 2 && (
@@ -164,7 +174,9 @@ export function AssignRaisedBedFieldModal({
             </button>
         ) : (
             <IconButton
-                variant="plain"
+                variant="soft"
+                color="warning"
+                size="xs"
                 title={
                     canOpen
                         ? 'Dodijeli korisnika'

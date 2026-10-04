@@ -1,4 +1,3 @@
-import { getAccount } from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
@@ -9,14 +8,9 @@ import {
 import {
     ADVENT_CALENDAR_2025_ID,
     ADVENT_TOTAL_DAYS,
-    AdventCalendarDayAlreadyOpenedError,
-    AdventCalendarDayNotYetAvailableError,
     getAdventCalendar2025Status,
     getAdventOccasionOverview,
-    openAdventCalendar2025Day,
 } from '../../../lib/occasions/advent2025';
-
-const DEFAULT_TIMEZONE = 'Europe/Paris';
 
 const app = new Hono<{ Variables: AuthVariables }>()
     .get(
@@ -51,62 +45,22 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .post(
         `/advent/${ADVENT_CALENDAR_2025_ID}/open`,
         describeRoute({
-            description: 'Otvori današnji prozorčić',
+            description:
+                'Historical Advent 2025 award mutation. The campaign is closed and this endpoint no longer performs writes.',
         }),
         authValidator(['user', 'admin']),
         zValidator(
             'json',
             z.object({ day: z.number().int().min(1).max(ADVENT_TOTAL_DAYS) }),
         ),
-        async (context) => {
-            const { day } = context.req.valid('json');
-            const { accountId, userId } = context.get('authContext');
-
-            // Get user's timezone from their account settings
-            const account = await getAccount(accountId);
-            const timeZone = account?.timeZone ?? DEFAULT_TIMEZONE;
-
-            try {
-                const result = await openAdventCalendar2025Day({
-                    accountId,
-                    userId,
-                    day,
-                    timeZone,
-                });
-                return context.json({
-                    message: `Dan ${day} je otvoren!`,
-                    awards: result.payload.awards,
-                    awardDescriptions: result.awardDescriptions,
-                });
-            } catch (error) {
-                if (error instanceof AdventCalendarDayAlreadyOpenedError) {
-                    return context.json(
-                        {
-                            message:
-                                'Taj dan adventskog kalendara je već otvoren.',
-                        },
-                        409,
-                    );
-                }
-                if (error instanceof AdventCalendarDayNotYetAvailableError) {
-                    return context.json(
-                        {
-                            message: `Dan ${day} još nije dostupan. Dostupan od ${error.availableAt.toISOString()}.`,
-                            availableAt: error.availableAt.toISOString(),
-                        },
-                        400,
-                    );
-                }
-                console.error('Pogreška pri otvaranju adventskog dana:', error);
-                return context.json(
-                    {
-                        message:
-                            'Došlo je do pogreške pri otvaranju prozorčića.',
-                    },
-                    500,
-                );
-            }
-        },
+        (context) =>
+            context.json(
+                {
+                    code: 'ADVENT_CALENDAR_CLOSED',
+                    message: 'Adventski kalendar 2025 je zatvoren.',
+                },
+                410,
+            ),
     );
 
 export default app;

@@ -28,7 +28,7 @@ export const SegmentedCircularProgress: React.FC<
     let offset = 0;
     return (
         <div
-            className="relative -rotate-[80deg]"
+            className="relative shrink-0 -rotate-[80deg]"
             style={{ width: size, height: size }}
         >
             {segments.map((segment, i) => {

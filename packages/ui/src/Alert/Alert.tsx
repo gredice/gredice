@@ -38,9 +38,9 @@ export function Alert({
 }: AlertProps) {
     return (
         <Row
-            alignItems="start"
+            alignItems="center"
             className={cx(
-                'relative w-full rounded-lg border p-4 text-sm',
+                'relative w-full rounded-lg border px-3 py-2 text-sm',
                 colorClassNames[color],
                 className,
             )}
@@ -49,11 +49,11 @@ export function Alert({
             {...rest}
         >
             {startDecorator ? (
-                <span className="mt-0.5 shrink-0">{startDecorator}</span>
+                <span className="shrink-0">{startDecorator}</span>
             ) : null}
             <div className="min-w-0 grow [&_p]:leading-relaxed">{children}</div>
             {endDecorator ? (
-                <span className="mt-0.5 shrink-0">{endDecorator}</span>
+                <span className="shrink-0">{endDecorator}</span>
             ) : null}
         </Row>
     );

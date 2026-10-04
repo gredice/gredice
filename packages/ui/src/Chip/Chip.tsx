@@ -1,9 +1,11 @@
 import NextLink from 'next/link';
-import type {
-    ComponentProps,
-    MouseEventHandler,
-    PropsWithChildren,
-    ReactNode,
+import {
+    type ComponentProps,
+    forwardRef,
+    type HTMLAttributes,
+    type MouseEventHandler,
+    type ReactNode,
+    type Ref,
 } from 'react';
 import { cx } from '../utils';
 
@@ -16,7 +18,10 @@ export type ColorPaletteProp =
     | 'success'
     | 'neutral';
 
-export type ChipProps = PropsWithChildren<{
+export type ChipProps = Omit<
+    HTMLAttributes<HTMLElement>,
+    'color' | 'onClick'
+> & {
     disabled?: boolean;
     color?: ColorPaletteProp;
     variant?: 'plain' | 'outlined' | 'soft' | 'solid';
@@ -24,9 +29,7 @@ export type ChipProps = PropsWithChildren<{
     onClick?: MouseEventHandler<HTMLButtonElement>;
     href?: string | undefined;
     startDecorator?: ReactNode;
-    className?: string;
-    title?: string;
-}>;
+};
 
 const sizeClassNames = {
     sm: 'min-h-6 px-1.5 py-0.5 text-xs',
@@ -89,18 +92,22 @@ const variantColorClassNames = {
     },
 };
 
-export function Chip({
-    children,
-    className,
-    color = 'neutral',
-    disabled,
-    href,
-    onClick,
-    size = 'md',
-    startDecorator,
-    title,
-    variant = 'solid',
-}: ChipProps) {
+export const Chip = forwardRef<HTMLElement, ChipProps>(function Chip(
+    {
+        children,
+        className,
+        color = 'neutral',
+        disabled,
+        href,
+        onClick,
+        size = 'md',
+        startDecorator,
+        title,
+        variant = 'solid',
+        ...rest
+    },
+    ref,
+) {
     const content = (
         <>
             {startDecorator ? (
@@ -117,7 +124,7 @@ export function Chip({
         </>
     );
     const mergedClassName = cx(
-        'm-0 inline-flex min-w-0 shrink-0 items-center gap-1 rounded-full border font-medium whitespace-nowrap transition-colors',
+        'm-0 inline-flex w-fit max-w-full min-w-0 shrink-0 items-center gap-1 rounded-full border font-medium whitespace-nowrap transition-colors',
         variantColorClassNames[variant][color],
         sizeClassNames[size],
         disabled && 'pointer-events-none opacity-50',
@@ -131,8 +138,10 @@ export function Chip({
                 aria-disabled={disabled}
                 className={mergedClassName}
                 href={href as ComponentProps<typeof NextLink>['href']}
+                ref={ref as Ref<HTMLAnchorElement>}
                 tabIndex={disabled ? -1 : undefined}
                 title={title}
+                {...rest}
             >
                 {content}
             </NextLink>
@@ -145,8 +154,10 @@ export function Chip({
                 className={mergedClassName}
                 disabled={disabled}
                 onClick={onClick}
+                ref={ref as Ref<HTMLButtonElement>}
                 title={title}
                 type="button"
+                {...rest}
             >
                 {content}
             </button>
@@ -154,8 +165,13 @@ export function Chip({
     }
 
     return (
-        <span className={mergedClassName} title={title}>
+        <span
+            className={mergedClassName}
+            ref={ref as Ref<HTMLSpanElement>}
+            title={title}
+            {...rest}
+        >
             {content}
         </span>
     );
-}
+});

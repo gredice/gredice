@@ -1,6 +1,6 @@
 ---
 name: gredice-game-entity-creation
-description: Add or update Gredice garden game entities from model assets, including Blender source cleanup, assets/game-assets.json, generated GLBs and model types, packages/game entity components, ItemsHud placement, public block PNG snapshots, and live database block/shop rows with sunflower pricing. Use when a task mentions creating a game entity, decoration, tool, placeable item, purchasable block, Linear model attachment, Blender/GLB asset, block thumbnails, or adding an item for users to buy.
+description: Use for adding/updating Gredice game entities from Blender/GLB assets through runtime registration, shop rows, snapshots, and validation.
 ---
 
 # Gredice Game Entity Creation
@@ -69,20 +69,4 @@ pnpm --dir apps/www exec playwright test --config playwright-generate.config.ts 
 
 ## Validation
 
-For `@gredice/game` entity work, validate the package and both consuming apps:
-
-```bash
-pnpm lint --filter @gredice/game
-pnpm --filter @gredice/game typecheck
-pnpm test --filter @gredice/game
-pnpm lint --filter garden
-pnpm test --filter garden
-pnpm build --filter garden
-pnpm lint --filter www
-pnpm build --filter www
-git diff --check
-```
-
-Run the focused snapshot generator for the entity and visually inspect the PNGs.
-Run `pnpm test --filter www` when public route behavior changed or the task has
-time for the broad route suite.
+For `@gredice/game` entity work, validate the package plus `garden` and `www` typechecks. Run the focused snapshot generator and inspect the PNGs. Add app lint/build/Playwright or `www` tests only when the changed app surface, routing, static assets, production behavior, visual behavior, or public routes require them. Docs-only changes need `git diff --check`.

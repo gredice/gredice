@@ -23,6 +23,21 @@
                 "peerDependencies"
             ],
             "rangeStrategy": "auto"
+        },
+        {
+            "description": "Experimental component testing ended at 1.62.1; keep its runner aligned until the suites migrate to stories.",
+            "matchFileNames": [
+                "apps/app/package.json",
+                "apps/delivery/package.json",
+                "apps/farm/package.json",
+                "apps/garden/package.json",
+                "apps/www/package.json"
+            ],
+            "matchPackageNames": [
+                "@playwright/test",
+                "@playwright/experimental-ct-react"
+            ],
+            "allowedVersions": "1.62.1"
         }
     ],
     "dependencyDashboard": true,
@@ -31,6 +46,13 @@
     ],
     "minimumReleaseAge": "5 days",
     "prHourlyLimit": 6,
+    "env": {
+        "PNPM_MAX_WORKERS": "1",
+        "PNPM_WORKERS": "1"
+    },
+    "toolSettings": {
+        "nodeMaxMemory": 1536
+    },
     "platformAutomerge": true,
     "platformCommit": "enabled"
 }

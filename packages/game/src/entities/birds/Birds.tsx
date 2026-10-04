@@ -1,17 +1,38 @@
 import type { BlockData } from '@gredice/client';
-import { useAnimations } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
+import { type ThreeEvent, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group, Material, Object3D } from 'three';
-import { MathUtils, Mesh, MeshStandardMaterial, Vector3 } from 'three';
-import { useGameFlags } from '../../GameFlagsContext';
+import { MathUtils, type Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { useBlockData } from '../../hooks/useBlockData';
-import { useIsEditMode } from '../../hooks/useIsEditMode';
+import {
+    sceneFrameRates,
+    useSceneTimeInvalidation,
+} from '../../scene/SceneTime';
 import type { Block } from '../../types/Block';
 import type { Stack } from '../../types/Stack';
-import { type AnimalDebugEntry, useGameState } from '../../useGameState';
+import {
+    type AnimalDebugEntry,
+    type AnimalDisturbance,
+    useGameState,
+} from '../../useGameState';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
+import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
+import {
+    ActorSpeechBubble,
+    useActorHoverSpeech,
+} from '../animals/ActorSpeechBubble';
+import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
+import { configureActorMeshShadows } from '../animals/actorMeshShadows';
+import { birdSpeechMessages } from '../animals/actorSpeechMessages';
+import { isAnimalGroundBlockName } from '../animals/animalMovementTerrain';
+import {
+    useFaunaFrame,
+    useFaunaRenderFrame,
+} from '../animals/FaunaRuntimeProvider';
+import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
+import { useFaunaAnimations } from '../animals/useFaunaAnimations';
+import { isWaterBlockName } from '../waterBlockNames';
 import {
     type BirdBehavior,
     getBirdActivityRange,
@@ -23,8 +44,10 @@ import {
 type BirdTarget = {
     id: string;
     behavior: BirdBehavior;
+    blockId?: string;
     circle?: BirdCircleMotion;
     facingYaw?: number;
+    groundY: number;
     position: Vector3;
 };
 
@@ -37,6 +60,7 @@ type BirdCircleMotion = {
 };
 
 type BirdCircleAnchor = {
+    groundY: number;
     id: string;
     position: Vector3;
 };
@@ -114,6 +138,7 @@ type GroundForageState = {
 };
 
 type BirdRigNode = {
+    basePositionY: number;
     baseRotationX: number;
     baseRotationZ: number;
     object: Object3D | null;
@@ -128,9 +153,21 @@ type BirdRigParts = {
     footRight: BirdRigNode;
     legPivotLeft: BirdRigNode;
     legPivotRight: BirdRigNode;
+    walkPhase: number;
+    walkPoseAmount: number;
 };
 
+const birdDebugBehaviors = [
+    'home',
+    'air',
+    'circle',
+    'tree',
+    'entity',
+    'ground',
+] satisfies BirdBehavior[];
+
 const birdScale = 0.28;
+const birdSpeechBubbleOffsetY = 0.56;
 const birdGroundLift = 0.02;
 const birdHousePerchYOffset = 1.3;
 const birdHouseEntranceYawOffset = Math.PI;
@@ -142,6 +179,9 @@ const birdFlightLookAheadProgress = 0.045;
 const birdWalkSpeedBlocksPerSecond = 0.24;
 const birdCircleSpeedBlocksPerSecond = 1.35;
 const birdFlightLegTuckDamping = 10;
+const birdWalkPoseDamping = 14;
+const birdWalkCycleSpeed = Math.PI * 4;
+const birdWalkFootLift = 0.075;
 const airMinHeight = 1.45;
 const airHeightVariance = 1.05;
 const airArcMaxHeight = 1;
@@ -155,18 +195,7 @@ const groundPeckDamping = 18;
 const fullTurn = Math.PI * 2;
 const birdBeakColor = '#d76516';
 const birdLegColor = '#c65f17';
-
-const groundBlockNames = new Set([
-    'Block_Ground',
-    'Block_Ground_Angle',
-    'Block_Grass',
-    'Block_Grass_Angle',
-    'Block_Sand',
-    'Block_Sand_Angle',
-    'Block_Snow',
-    'Block_Snow_Angle',
-    'Block_Snow_Falling',
-]);
+const animalDisturbanceReactionWindowMs = 2500;
 
 const treeBlockNames = new Set(['Tree', 'Pine', 'PineAdvent']);
 
@@ -177,11 +206,11 @@ const visualPerchYOffsets: Record<string, number> = {
     PineAdvent: 1.32,
     Bush: 0.55,
     Bucket: 0.6,
-    Composter: 1.1,
+    Composter: 0.65,
     GardenBox: 0.75,
     Raised_Bed: 1.05,
-    Shade: 1.25,
-    ShovelSmall: 0.18,
+    Shade: 1.1,
+    ShovelSmall: 0.95,
     Snowman: 0.95,
     StoneLarge: 0.5,
     StoneMedium: 0.35,
@@ -189,20 +218,20 @@ const visualPerchYOffsets: Record<string, number> = {
     DesertStoneLarge: 0.5,
     DesertStoneMedium: 0.35,
     DesertStoneSmall: 0.22,
-    Stool: 0.52,
+    Stool: 0.42,
     Tulip: 0.5,
     WaterWell: 1.05,
     BaleHey: 0.5,
-    PotLowBowl: 0.56,
-    PotRoundedBowl: 0.66,
-    PotBulbousNeck: 0.78,
-    PotTallTapered: 0.82,
-    PotHourglass: 0.78,
-    PotStraightShortTub: 0.66,
-    PotNarrowFootBowl: 0.7,
-    PotSquatRidged: 0.66,
-    PotTallSlenderCone: 0.86,
-    PotWideLippedCup: 0.7,
+    PotLowBowl: 0.26,
+    PotRoundedBowl: 0.43,
+    PotBulbousNeck: 0.51,
+    PotTallTapered: 0.54,
+    PotHourglass: 0.47,
+    PotStraightShortTub: 0.4,
+    PotNarrowFootBowl: 0.39,
+    PotSquatRidged: 0.42,
+    PotTallSlenderCone: 0.62,
+    PotWideLippedCup: 0.49,
 };
 
 function hashString(value: string) {
@@ -226,7 +255,7 @@ function createRandom(seed: number) {
 }
 
 function isGroundBlockName(name: string) {
-    return groundBlockNames.has(name);
+    return isAnimalGroundBlockName(name);
 }
 
 function isTreeBlockName(name: string) {
@@ -259,8 +288,10 @@ function isCircleAnchorBlock(
     blockName: string,
 ) {
     return (
-        isTreeBlockName(blockName) ||
-        getVisualPerchYOffset(blockData, blockName) >= circleTallBlockMinPerchY
+        !isWaterBlockName(blockName) &&
+        (isTreeBlockName(blockName) ||
+            getVisualPerchYOffset(blockData, blockName) >=
+                circleTallBlockMinPerchY)
     );
 }
 
@@ -275,11 +306,12 @@ function targetForBlock({
     blockData: BlockData[] | null | undefined;
     stack: Stack;
 }) {
-    const y =
-        getStackHeight(blockData, stack, block) +
-        getVisualPerchYOffset(blockData, block.name);
+    const groundY = getStackHeight(blockData, stack, block);
+    const y = groundY + getVisualPerchYOffset(blockData, block.name);
     return {
         behavior,
+        blockId: block.id,
+        groundY,
         id: `${behavior}-${block.id}`,
         position: new Vector3(stack.position.x, y, stack.position.z),
     } satisfies BirdTarget;
@@ -294,10 +326,10 @@ function circleAnchorForBlock({
     blockData: BlockData[] | null | undefined;
     stack: Stack;
 }) {
-    const y =
-        getStackHeight(blockData, stack, block) +
-        getVisualPerchYOffset(blockData, block.name);
+    const groundY = getStackHeight(blockData, stack, block);
+    const y = groundY + getVisualPerchYOffset(blockData, block.name);
     return {
+        groundY,
         id: `circle-${block.id}`,
         position: new Vector3(stack.position.x, y, stack.position.z),
     } satisfies BirdCircleAnchor;
@@ -310,6 +342,7 @@ function targetForGroundStack(
     const topY = getStackHeight(blockData, stack) + birdGroundLift;
     return {
         behavior: 'ground',
+        groundY: topY - birdGroundLift,
         id: `ground-${stack.position.x}-${stack.position.z}`,
         position: new Vector3(stack.position.x, topY, stack.position.z),
     } satisfies BirdTarget;
@@ -317,6 +350,46 @@ function targetForGroundStack(
 
 function horizontalDistance(left: Vector3, right: Vector3) {
     return Math.hypot(left.x - right.x, left.z - right.z);
+}
+
+function distanceToDisturbance(
+    position: Vector3,
+    disturbance: AnimalDisturbance,
+) {
+    return Math.hypot(
+        position.x - disturbance.position.x,
+        position.y - disturbance.position.y,
+        position.z - disturbance.position.z,
+    );
+}
+
+function isBirdTargetDisturbed(
+    target: BirdTarget,
+    disturbance: AnimalDisturbance,
+) {
+    return (
+        target.blockId === disturbance.sourceBlockId ||
+        distanceToDisturbance(target.position, disturbance) <=
+            disturbance.radius
+    );
+}
+
+function isBirdDisturbanceRelevant({
+    disturbance,
+    group,
+    habitat,
+    runtime,
+}: {
+    disturbance: AnimalDisturbance;
+    group: Group;
+    habitat: BirdHabitat;
+    runtime: BirdRuntimeState;
+}) {
+    return (
+        habitat.home.blockId === disturbance.sourceBlockId ||
+        isBirdTargetDisturbed(runtime.target, disturbance) ||
+        distanceToDisturbance(group.position, disturbance) <= disturbance.radius
+    );
 }
 
 function candidatesInRange<T extends { position: Vector3 }>(
@@ -359,6 +432,7 @@ function createAirTarget({
     const jitterAngle = random() * fullTurn;
     return {
         behavior: 'air',
+        groundY: home.groundY,
         id: `air-${home.id}-${index}`,
         position: new Vector3(
             anchor.x + Math.cos(jitterAngle) * jitterRadius,
@@ -395,6 +469,7 @@ function createCircleTarget({
             radius,
             startAngle,
         },
+        groundY: anchor.groundY,
         id: `circle-${home.id}-${anchor.id}`,
         position: new Vector3(
             center.x + Math.cos(startAngle) * radius,
@@ -434,6 +509,10 @@ function createBirdHabitats(
 
         const topBlock = stack.blocks.at(-1);
         if (!topBlock) {
+            continue;
+        }
+
+        if (isWaterBlockName(topBlock.name)) {
             continue;
         }
 
@@ -751,6 +830,152 @@ function chooseNextTarget({
     }
 
     return habitat.home;
+}
+
+function chooseManualNextTarget({
+    currentTarget,
+    habitat,
+    random,
+    timeOfDay,
+}: {
+    currentTarget: BirdTarget;
+    habitat: BirdHabitat;
+    random: () => number;
+    timeOfDay: number;
+}) {
+    const target = chooseNextTarget({
+        currentTarget,
+        habitat,
+        random,
+        timeOfDay,
+    });
+
+    if (
+        target.id !== currentTarget.id ||
+        target.behavior !== currentTarget.behavior
+    ) {
+        return target;
+    }
+
+    const range = getBirdActivityRange(timeOfDay);
+    const airAnchors = getAirAnchorsInRange(habitat, range);
+    const circleAnchors = candidatesInRange(
+        habitat.circleAnchors,
+        habitat.home,
+        range,
+    );
+    const trees = candidatesInRange(habitat.trees, habitat.home, range);
+    const entities = candidatesInRange(habitat.entities, habitat.home, range);
+    const grounds = candidatesInRange(habitat.grounds, habitat.home, range);
+    const alternatives: BirdTarget[] = [];
+
+    if (currentTarget.behavior !== 'air') {
+        alternatives.push(
+            createAirTarget({
+                anchors: airAnchors,
+                home: habitat.home,
+                index: 0,
+                random,
+            }),
+        );
+    }
+
+    if (currentTarget.behavior !== 'circle') {
+        const circleAnchor = pickCandidate(circleAnchors, random);
+        if (circleAnchor) {
+            alternatives.push(
+                createCircleTarget({
+                    anchor: circleAnchor,
+                    home: habitat.home,
+                    random,
+                }),
+            );
+        }
+    }
+
+    if (currentTarget.behavior !== 'tree') {
+        alternatives.push(...trees);
+    }
+
+    if (currentTarget.behavior !== 'entity') {
+        alternatives.push(...entities);
+    }
+
+    if (currentTarget.behavior !== 'ground') {
+        alternatives.push(...grounds);
+    }
+
+    if (currentTarget.behavior !== 'home') {
+        alternatives.push(habitat.home);
+    }
+
+    return pickCandidate(alternatives, random) ?? target;
+}
+
+function chooseDebugTarget({
+    behavior,
+    habitat,
+    random,
+    timeOfDay,
+}: {
+    behavior: string;
+    habitat: BirdHabitat;
+    random: () => number;
+    timeOfDay: number;
+}) {
+    const range = getBirdActivityRange(timeOfDay);
+
+    if (behavior === 'home') {
+        return habitat.home;
+    }
+
+    if (behavior === 'air') {
+        return createAirTarget({
+            anchors: getAirAnchorsInRange(habitat, range),
+            home: habitat.home,
+            index: 0,
+            random,
+        });
+    }
+
+    if (behavior === 'circle') {
+        const anchor = pickCandidate(
+            candidatesInRange(habitat.circleAnchors, habitat.home, range),
+            random,
+        );
+        return anchor
+            ? createCircleTarget({ anchor, home: habitat.home, random })
+            : habitat.home;
+    }
+
+    if (behavior === 'tree') {
+        return (
+            pickCandidate(
+                candidatesInRange(habitat.trees, habitat.home, range),
+                random,
+            ) ?? habitat.home
+        );
+    }
+
+    if (behavior === 'entity') {
+        return (
+            pickCandidate(
+                candidatesInRange(habitat.entities, habitat.home, range),
+                random,
+            ) ?? habitat.home
+        );
+    }
+
+    if (behavior === 'ground') {
+        return (
+            pickCandidate(
+                candidatesInRange(habitat.grounds, habitat.home, range),
+                random,
+            ) ?? habitat.home
+        );
+    }
+
+    return null;
 }
 
 function makeMovingState({
@@ -1116,64 +1341,98 @@ function tintBirdPartMaterial(object: Mesh) {
         : cloneBirdPartMaterial(object.material, tintColor);
 }
 
-function isMesh(object: Object3D): object is Mesh {
-    return object instanceof Mesh;
-}
-
 function getBirdRigNode(scene: Object3D, name: string): BirdRigNode {
     const object = scene.getObjectByName(name) ?? null;
     return {
+        basePositionY: object?.position.y ?? 0,
         baseRotationX: object?.rotation.x ?? 0,
         baseRotationZ: object?.rotation.z ?? 0,
         object,
     };
 }
 
-function updateFlightLegPose({
+function updateBirdLegPose({
     delta,
     flying,
     now,
     rig,
     seed,
+    walking,
+    walkElapsed,
 }: {
     delta: number;
     flying: boolean;
     now: number;
     rig: BirdRigParts;
     seed: number;
+    walking: boolean;
+    walkElapsed: number;
 }) {
-    const targetAmount = flying ? 1 : 0;
+    const flightTargetAmount = flying ? 1 : 0;
     rig.flightLegPoseAmount = MathUtils.damp(
         rig.flightLegPoseAmount,
-        targetAmount,
+        flightTargetAmount,
         birdFlightLegTuckDamping,
         delta,
     );
+    rig.walkPoseAmount = MathUtils.damp(
+        rig.walkPoseAmount,
+        walking && !flying ? 1 : 0,
+        birdWalkPoseDamping,
+        delta,
+    );
 
-    const amount = rig.flightLegPoseAmount;
-    const pulse = Math.sin(now * 13.5 + seed) * 0.045 * amount;
-    const legRotationX = (1.08 + pulse) * amount;
-    const footRotationX = -0.42 * amount;
+    const flightAmount = rig.flightLegPoseAmount;
+    const walkAmount = rig.walkPoseAmount;
+    const pulse = Math.sin(now * 13.5 + seed) * 0.045 * flightAmount;
+    const flightLegRotationX = (1.08 + pulse) * flightAmount;
+    const flightFootRotationX = -0.42 * flightAmount;
+    if (walking) {
+        rig.walkPhase = walkElapsed * birdWalkCycleSpeed;
+    }
+
+    const stepPhase = rig.walkPhase;
+    const walkSwing = Math.sin(stepPhase) * 0.32 * walkAmount;
+    const leftStep = Math.max(0, Math.sin(stepPhase)) * walkAmount;
+    const rightStep = Math.max(0, -Math.sin(stepPhase)) * walkAmount;
+    const liftedFootRotationX = 0.28;
+    const plantedFootRotationX = -0.08;
 
     if (rig.legPivotLeft.object) {
         rig.legPivotLeft.object.rotation.x =
-            rig.legPivotLeft.baseRotationX + legRotationX;
+            rig.legPivotLeft.baseRotationX +
+            flightLegRotationX +
+            walkSwing -
+            leftStep * 0.12;
         rig.legPivotLeft.object.rotation.z =
-            rig.legPivotLeft.baseRotationZ + 0.08 * amount;
+            rig.legPivotLeft.baseRotationZ + 0.08 * flightAmount;
     }
     if (rig.legPivotRight.object) {
         rig.legPivotRight.object.rotation.x =
-            rig.legPivotRight.baseRotationX + legRotationX;
+            rig.legPivotRight.baseRotationX +
+            flightLegRotationX -
+            walkSwing -
+            rightStep * 0.12;
         rig.legPivotRight.object.rotation.z =
-            rig.legPivotRight.baseRotationZ - 0.08 * amount;
+            rig.legPivotRight.baseRotationZ - 0.08 * flightAmount;
     }
     if (rig.footLeft.object) {
+        rig.footLeft.object.position.y =
+            rig.footLeft.basePositionY + leftStep * birdWalkFootLift;
         rig.footLeft.object.rotation.x =
-            rig.footLeft.baseRotationX + footRotationX;
+            rig.footLeft.baseRotationX +
+            flightFootRotationX +
+            leftStep * liftedFootRotationX -
+            rightStep * plantedFootRotationX;
     }
     if (rig.footRight.object) {
+        rig.footRight.object.position.y =
+            rig.footRight.basePositionY + rightStep * birdWalkFootLift;
         rig.footRight.object.rotation.x =
-            rig.footRight.baseRotationX + footRotationX;
+            rig.footRight.baseRotationX +
+            flightFootRotationX +
+            rightStep * liftedFootRotationX -
+            leftStep * plantedFootRotationX;
     }
 }
 
@@ -1246,6 +1505,7 @@ function createBirdDebugEntry({
         behavior: runtime.target.behavior,
         activity: getBirdDebugActivity(runtime),
         targetId: runtime.target.id,
+        debugBehaviors: birdDebugBehaviors,
         position: {
             x: roundBirdDebugCoordinate(group.position.x),
             y: roundBirdDebugCoordinate(group.position.y),
@@ -1255,33 +1515,49 @@ function createBirdDebugEntry({
     };
 }
 
+function getBirdShadowReceiverY(runtime: BirdRuntimeState) {
+    if (runtime.phase === 'settled' && runtime.target.behavior !== 'ground') {
+        return runtime.target.position.y;
+    }
+
+    return runtime.target.groundY;
+}
+
 function Bird({ habitat }: { habitat: BirdHabitat }) {
     const gltf = useGameGLTF('BirdSmall');
-    const { enableDebugHudFlag = false } = useGameFlags();
+    const clock = useThree((state) => state.clock);
     const groupRef = useRef<Group>(null);
+    const targetDebugRef = useRef<Group>(null);
     const randomRef = useRef(createRandom(habitat.seed));
     const runtimeRef = useRef<BirdRuntimeState | null>(null);
     const flappingRef = useRef(false);
     const lastAnimalDebugUpdateRef = useRef(0);
+    const lastDebugCommandSequenceRef = useRef(0);
+    const lastDisturbanceSequenceRef = useRef(0);
     const [isFlapping, setIsFlapping] = useState(false);
+    const { message: speechMessage, showMessage: showSpeechMessage } =
+        useActorHoverSpeech(birdSpeechMessages);
     const timeOfDay = useGameState((state) => state.timeOfDay);
-    const setAnimalDebugEntry = useGameState(
-        (state) => state.setAnimalDebugEntry,
+    const animalTargetsDebugVisible = useGameState(
+        (state) => state.animalTargetsDebugVisible,
     );
-    const removeAnimalDebugEntry = useGameState(
-        (state) => state.removeAnimalDebugEntry,
+    const animalDebugCommand = useGameState(
+        (state) => state.animalDebugCommand,
     );
+    const animalDisturbance = useGameState((state) => state.animalDisturbance);
+    const faunaWorld = useGameState((state) => state.faunaWorld);
 
     const birdModel = useMemo(() => {
         const clone = gltf.scene.clone(true);
-        clone.traverse((object) => {
-            if (isMesh(object)) {
-                object.castShadow = true;
+        const { primaryCasterCount } = configureActorMeshShadows(
+            clone,
+            (object) => {
                 object.receiveShadow = true;
                 tintBirdPartMaterial(object);
-            }
-        });
+            },
+        );
         return {
+            primaryCasterCount,
             rig: {
                 flightLegPoseAmount: 0,
                 footLeft: getBirdRigNode(clone, 'BirdSmall_Foot_L'),
@@ -1291,11 +1567,19 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
                 headPivot: getBirdRigNode(clone, 'BirdSmall_HeadPivot'),
                 legPivotLeft: getBirdRigNode(clone, 'BirdSmall_LegPivot_L'),
                 legPivotRight: getBirdRigNode(clone, 'BirdSmall_LegPivot_R'),
+                walkPhase: 0,
+                walkPoseAmount: 0,
             } satisfies BirdRigParts,
             scene: clone,
         };
     }, [gltf.scene]);
-    const { actions } = useAnimations(gltf.animations, birdModel.scene);
+    const shouldPoseBird = useFaunaActorCulling(birdModel.scene);
+    const { actions } = useFaunaAnimations(gltf.animations, birdModel.scene);
+    const updateGroundingShadow = useActorGroundingShadow({
+        id: `bird:${habitat.id}`,
+        primaryCasterCount: birdModel.primaryCasterCount,
+        species: 'bird',
+    });
 
     useEffect(() => {
         const idleAction = actions.BirdSmall_Idle;
@@ -1315,24 +1599,76 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
     }, [actions, isFlapping]);
 
     useEffect(() => {
-        runtimeRef.current = null;
-        if (groupRef.current) {
-            groupRef.current.position.copy(habitat.home.position);
-            if (habitat.home.facingYaw !== undefined) {
-                groupRef.current.rotation.y = habitat.home.facingYaw;
-            }
+        if (runtimeRef.current || !groupRef.current) {
+            return;
+        }
+
+        groupRef.current.position.copy(habitat.home.position);
+        if (habitat.home.facingYaw !== undefined) {
+            groupRef.current.rotation.y = habitat.home.facingYaw;
         }
     }, [habitat.home.facingYaw, habitat.home.position]);
 
     useEffect(() => {
-        if (!enableDebugHudFlag) {
-            removeAnimalDebugEntry(habitat.id);
+        return () => faunaWorld.removeDebug(habitat.id);
+    }, [habitat.id, faunaWorld]);
+
+    useEffect(() => {
+        if (!animalTargetsDebugVisible && targetDebugRef.current) {
+            targetDebugRef.current.visible = false;
+        }
+    }, [animalTargetsDebugVisible]);
+
+    const syncDebugTarget = (runtime: BirdRuntimeState | null) => {
+        const targetDebug = targetDebugRef.current;
+        if (!targetDebug) {
+            return;
         }
 
-        return () => removeAnimalDebugEntry(habitat.id);
-    }, [enableDebugHudFlag, habitat.id, removeAnimalDebugEntry]);
+        targetDebug.visible = animalTargetsDebugVisible && runtime !== null;
+        if (targetDebug.visible && runtime) {
+            targetDebug.position.copy(runtime.target.position);
+        }
+    };
 
-    useFrame(({ clock }, delta) => {
+    function handlePointerDown(event: ThreeEvent<PointerEvent>) {
+        event.stopPropagation();
+    }
+
+    function handlePointerOver(event: ThreeEvent<PointerEvent>) {
+        event.stopPropagation();
+        showSpeechMessage();
+    }
+
+    function handleClick(event: ThreeEvent<MouseEvent>) {
+        event.stopPropagation();
+
+        const group = groupRef.current;
+        const runtime = runtimeRef.current;
+        if (!group || !runtime) {
+            return;
+        }
+
+        const random = randomRef.current;
+        const now = clock.getElapsedTime();
+        const target = chooseManualNextTarget({
+            currentTarget: runtime.target,
+            habitat,
+            random,
+            timeOfDay,
+        });
+
+        runtimeRef.current = makeMovingState({
+            from: group.position.clone(),
+            now,
+            random,
+            takeoffLead: false,
+            target,
+            timeOfDay,
+        });
+    }
+
+    useFaunaFrame(({ clock }, delta) => {
         const group = groupRef.current;
         if (!group) {
             return;
@@ -1363,6 +1699,95 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
                 group.rotation.y = habitat.home.facingYaw;
             }
         }
+
+        if (
+            animalDebugCommand &&
+            animalDebugCommand.sequence !==
+                lastDebugCommandSequenceRef.current &&
+            animalDebugCommand.species === 'Bird'
+        ) {
+            lastDebugCommandSequenceRef.current = animalDebugCommand.sequence;
+
+            if (
+                !animalDebugCommand.targetId ||
+                animalDebugCommand.targetId === habitat.id
+            ) {
+                const target = chooseDebugTarget({
+                    behavior: animalDebugCommand.behavior,
+                    habitat,
+                    random,
+                    timeOfDay,
+                });
+
+                if (target) {
+                    runtime =
+                        target.behavior !== 'air' &&
+                        target.behavior !== 'circle' &&
+                        group.position.distanceTo(target.position) < 0.08
+                            ? makeSettledState({
+                                  now,
+                                  random,
+                                  target,
+                                  timeOfDay,
+                              })
+                            : makeMovingState({
+                                  from: group.position.clone(),
+                                  now,
+                                  random,
+                                  takeoffLead: false,
+                                  target,
+                                  timeOfDay,
+                              });
+                    runtimeRef.current = runtime;
+                }
+            }
+        }
+
+        if (
+            animalDisturbance &&
+            animalDisturbance.sequence !== lastDisturbanceSequenceRef.current
+        ) {
+            lastDisturbanceSequenceRef.current = animalDisturbance.sequence;
+
+            if (
+                Date.now() - animalDisturbance.createdAt <=
+                    animalDisturbanceReactionWindowMs &&
+                isBirdDisturbanceRelevant({
+                    disturbance: animalDisturbance,
+                    group,
+                    habitat,
+                    runtime,
+                })
+            ) {
+                const target = createAirTarget({
+                    anchors: getAirAnchorsInRange(
+                        habitat,
+                        Math.max(
+                            getBirdActivityRange(timeOfDay),
+                            animalDisturbance.radius + 2,
+                        ),
+                    ),
+                    home: habitat.home,
+                    index: animalDisturbance.sequence,
+                    random,
+                });
+                target.position.y = Math.max(
+                    target.position.y,
+                    animalDisturbance.position.y + 1.3,
+                );
+                runtime = makeMovingState({
+                    from: group.position.clone(),
+                    now,
+                    random,
+                    takeoffLead: false,
+                    target,
+                    timeOfDay,
+                });
+                runtimeRef.current = runtime;
+            }
+        }
+
+        syncDebugTarget(runtime);
 
         if (runtime.phase === 'circling') {
             const progress = MathUtils.clamp(
@@ -1423,10 +1848,11 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
 
             if (runtime.motion === 'walk') {
                 nextPosition.y +=
-                    Math.max(
-                        0,
-                        Math.sin((now - runtime.startedAt) * Math.PI * 4),
-                    ) * 0.025;
+                    Math.abs(
+                        Math.sin(
+                            (now - runtime.startedAt) * birdWalkCycleSpeed,
+                        ),
+                    ) * 0.022;
             }
 
             group.position.copy(nextPosition);
@@ -1598,52 +2024,85 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
             target,
             timeOfDay,
         });
-    });
+    }, groupRef);
 
-    useFrame(({ clock }, delta) => {
+    useFaunaRenderFrame(({ clock }, delta) => {
         const runtime = runtimeRef.current;
         const group = groupRef.current;
         const now = clock.elapsedTime;
-        updateFlightLegPose({
-            delta,
-            flying:
-                runtime?.phase === 'circling' ||
-                (runtime?.phase === 'moving' && runtime.motion === 'fly'),
-            now,
-            rig: birdModel.rig,
-            seed: habitat.seed,
-        });
-        updateGroundPeckPose({ delta, rig: birdModel.rig });
+        const walking =
+            runtime?.phase === 'moving' && runtime.motion === 'walk';
+        if (shouldPoseBird()) {
+            updateBirdLegPose({
+                delta,
+                flying:
+                    runtime?.phase === 'circling' ||
+                    (runtime?.phase === 'moving' && runtime.motion === 'fly'),
+                now,
+                rig: birdModel.rig,
+                seed: habitat.seed,
+                walking,
+                walkElapsed: walking ? Math.max(0, now - runtime.startedAt) : 0,
+            });
+            updateGroundPeckPose({ delta, rig: birdModel.rig });
+        }
 
-        if (
-            enableDebugHudFlag &&
-            runtime &&
-            group &&
-            now - lastAnimalDebugUpdateRef.current >= 0.5
-        ) {
+        if (runtime && group && updateGroundingShadow) {
+            updateGroundingShadow({
+                actorY: group.position.y,
+                receiverY: getBirdShadowReceiverY(runtime),
+                visible: true,
+                x: group.position.x,
+                yaw: group.rotation.y,
+                z: group.position.z,
+            });
+        }
+
+        if (runtime && group && now - lastAnimalDebugUpdateRef.current >= 0.5) {
             lastAnimalDebugUpdateRef.current = now;
-            setAnimalDebugEntry(
+            faunaWorld.reportDebug(
                 createBirdDebugEntry({ group, habitat, now, runtime }),
             );
         }
     });
 
     return (
-        <group ref={groupRef} scale={birdScale}>
-            <primitive object={birdModel.scene} />
-        </group>
+        <>
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: Three.js element is interactive */}
+            <group
+                ref={groupRef}
+                scale={birdScale}
+                onPointerDown={handlePointerDown}
+                onClick={handleClick}
+                onPointerOver={handlePointerOver}
+            >
+                <primitive object={birdModel.scene} />
+            </group>
+            {speechMessage ? (
+                <ActorSpeechBubble
+                    actorRef={groupRef}
+                    message={speechMessage}
+                    offsetY={birdSpeechBubbleOffsetY}
+                />
+            ) : null}
+            <AnimalTargetDebugMarker ref={targetDebugRef} color="#fb7185" />
+        </>
     );
 }
 
 export function Birds({ stacks }: { stacks: Stack[] | undefined }) {
     const { data: blockData } = useBlockData();
-    const isEditMode = useIsEditMode();
     const habitats = useMemo(
         () => createBirdHabitats(stacks, blockData),
         [blockData, stacks],
     );
+    useSceneTimeInvalidation(
+        'fauna:birds',
+        habitats.length > 0,
+        sceneFrameRates.ambient,
+    );
 
-    if (isEditMode || habitats.length <= 0) {
+    if (habitats.length <= 0) {
         return null;
     }
 

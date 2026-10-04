@@ -10,7 +10,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'PageNav provides the floating public-site navigation shell with glass treatment, mobile menu state, links, and children props.',
+                    'PageNav provides the floating public-site navigation shell with glass treatment, mobile menu state, links, and children props. It keeps navigation controls inside device safe-area insets when a consuming app enables an edge-to-edge viewport.',
             },
         },
     },

@@ -1,6 +1,7 @@
 import { Avatar } from '@gredice/ui/Avatar';
 import { AvatarSelectionMenu } from '@gredice/ui/AvatarSelectionMenu';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { AvatarSelectionPreview } from './AvatarSelectionPreview';
 
 const meta = {
     title: 'packages/ui/Inputs/AvatarSelectionMenu',
@@ -10,11 +11,12 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'AvatarSelectionMenu opens an avatar picker from a custom trigger and reports the selected avatar through its change handler.',
+                    'A responsive avatar gallery with 29 gardeners, animals and fantasy characters. Shows the saved selection, preserves stable profile values and can restore initials.',
             },
         },
     },
     args: {
+        avatarUrl: null,
         displayName: 'Ana Kovač',
         title: 'Odaberi avatar',
         emptyLabel: 'Prazno',
@@ -22,6 +24,7 @@ const meta = {
         children: (
             <button
                 type="button"
+                aria-label="Promijeni avatar"
                 className="rounded-full ring-2 ring-primary ring-offset-2 cursor-pointer"
             >
                 <Avatar size="lg">AK</Avatar>
@@ -40,3 +43,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const Gallery: Story = {
+    render: () => <AvatarSelectionPreview />,
+};

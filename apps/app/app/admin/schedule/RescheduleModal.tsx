@@ -8,6 +8,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
+import { getOperationScheduleActionFailureMessage } from './operationScheduleActionResult';
 
 function formatLocalDate(date: Date): string {
     const year = date.getFullYear();
@@ -33,6 +34,7 @@ export function RescheduleModal({
 }: RescheduleModalProps) {
     const [open, setOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string>();
 
     const isRescheduling = !!scheduledDate;
 
@@ -41,14 +43,28 @@ export function RescheduleModal({
         const formData = new FormData(event.currentTarget);
 
         setIsLoading(true);
+        setErrorMessage(undefined);
         try {
-            await onSubmit(formData);
+            const result = await onSubmit(formData);
+            const actionFailureMessage =
+                getOperationScheduleActionFailureMessage(result);
+            if (actionFailureMessage) {
+                setErrorMessage(actionFailureMessage);
+                return;
+            }
             setOpen(false);
         } catch (error) {
             console.error('Error rescheduling item:', error);
             alert('Zakazivanje zadatka nije uspjelo. Pokušajte ponovno.');
         } finally {
             setIsLoading(false);
+        }
+    }
+
+    function handleOpenChange(nextOpen: boolean) {
+        setOpen(nextOpen);
+        if (nextOpen) {
+            setErrorMessage(undefined);
         }
     }
 
@@ -71,7 +87,7 @@ export function RescheduleModal({
             trigger={trigger}
             title={`${isRescheduling ? 'Prerasporedi' : 'Zakaži'}: ${label}`}
             open={open}
-            onOpenChange={setOpen}
+            onOpenChange={handleOpenChange}
         >
             <form onSubmit={handleSubmit}>
                 <Stack spacing={4}>
@@ -85,6 +101,11 @@ export function RescheduleModal({
                         {isRescheduling ? 'preraspoređen' : 'zakazan'} na
                         odabrani datum.
                     </Typography>
+                    {errorMessage ? (
+                        <Typography level="body2" className="text-red-600">
+                            {errorMessage}
+                        </Typography>
+                    ) : null}
 
                     {hiddenFields}
 

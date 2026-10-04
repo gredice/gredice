@@ -1,15 +1,26 @@
 import { Button } from '@gredice/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Container } from '@gredice/ui/Container';
+import {
+    GameGiftIcon,
+    GameLightningIcon,
+    GameReceiptIcon,
+    GameSunflowerIcon,
+} from '@gredice/ui/GameIcons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
+import { SunflowerMascot3D, SunflowerText } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
-import Image from 'next/image';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '../../components/shared/Card';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { formatPrice } from '../../lib/formatPrice';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 
 const referralReward = 10000;
@@ -24,9 +35,11 @@ const formattedCombinedReferralReward = new Intl.NumberFormat('hr-HR').format(
 );
 const referralMetadataDescription = `Program preporuka za Gredice: podijeli ili iskoristi kod i saznaj kako jedna preporuka donosi ukupno ${formattedCombinedReferralReward} 🌻 nagrade.`;
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Preporuke',
     description: referralMetadataDescription,
+    path: KnownPages.Referrals,
+    eyebrow: 'Program preporuka',
     keywords: [
         'Gredice',
         'program preporuka',
@@ -34,12 +47,7 @@ export const metadata: Metadata = {
         'nagrade',
         'vrt aplikacija',
     ],
-    openGraph: {
-        title: 'Preporuke',
-        description: referralMetadataDescription,
-        url: KnownPages.Referrals,
-    },
-};
+});
 
 const referralFlows = [
     {
@@ -86,15 +94,15 @@ export default function ReferralsLandingPage() {
             <Stack spacing={10}>
                 <PageHeader
                     header="Preporuke"
-                    subHeader={`Podijeli svoj kod, pozovi nekoga u Gredice i zajedno ostvarite ukupno ${formattedCombinedReferralReward} 🌻 kada pozvani račun posadi svoje prvo povrće u gredici.`}
+                    subHeader={`Podijeli svoj kod, pozovi nekoga u Gredice i zajedno ostvarite ukupno ${formattedCombinedReferralReward} suncokreta kada pozvani račun posadi svoje prvo povrće u gredici.`}
                     padded
                     visual={
-                        <Image
-                            src="https://cdn.gredice.com/sunflower-gift-sunflowers.webp"
-                            alt="Poklon sa suncokretima"
+                        <SunflowerMascot3D
+                            expression="gift"
+                            aria-label="Poklon sa suncokretima"
+                            className="size-48 shrink-0"
                             width={192}
                             height={192}
-                            priority
                         />
                     }
                 />
@@ -117,11 +125,18 @@ export default function ReferralsLandingPage() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <Card>
                         <CardHeader>
-                            <CardTitle>🎁 Nagrada</CardTitle>
+                            <CardTitle>
+                                <GameGiftIcon
+                                    aria-hidden
+                                    className="mr-2 inline-block size-7 align-text-bottom"
+                                />{' '}
+                                Nagrada
+                            </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <Typography level="h3" component="p">
-                                {formattedReferralReward} 🌻
+                                {formattedReferralReward}
+                                <GameSunflowerIcon className="ml-2 inline-block size-8 align-text-bottom" />
                             </Typography>
                             <Typography level="body2" secondary>
                                 Toliko dobiva račun koji je podijelio kod, a još
@@ -131,22 +146,39 @@ export default function ReferralsLandingPage() {
                     </Card>
                     <Card>
                         <CardHeader>
-                            <CardTitle>💶 Vrijednost</CardTitle>
+                            <CardTitle>
+                                <GameReceiptIcon
+                                    aria-hidden
+                                    className="mr-2 inline-block size-7 align-text-bottom"
+                                />{' '}
+                                Vrijednost
+                            </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <Typography level="h3" component="p">
                                 {formatPrice(combinedRewardValue)}
                             </Typography>
                             <Typography level="body2" secondary>
-                                Svaki račun dobiva {formattedReferralReward} 🌻.
-                                Zajedno je to {formattedCombinedReferralReward}{' '}
-                                🌻 prema pravilu 1.000 🌻 = 1 €.
+                                Svaki račun dobiva {formattedReferralReward}{' '}
+                                <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
+                                . Zajedno je to{' '}
+                                {formattedCombinedReferralReward}{' '}
+                                <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />{' '}
+                                prema pravilu 1.000{' '}
+                                <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />{' '}
+                                = 1 €.
                             </Typography>
                         </CardContent>
                     </Card>
                     <Card className="flex h-full flex-col">
                         <CardHeader>
-                            <CardTitle>⚡ Brzi pristup</CardTitle>
+                            <CardTitle>
+                                <GameLightningIcon
+                                    aria-hidden
+                                    className="mr-2 inline-block size-7 align-text-bottom"
+                                />{' '}
+                                Brzi pristup
+                            </CardTitle>
                         </CardHeader>
                         <CardContent className="flex flex-1 flex-col gap-4">
                             <Typography level="body2" secondary>
@@ -211,7 +243,9 @@ export default function ReferralsLandingPage() {
                                                         level="body3"
                                                         secondary
                                                     >
-                                                        {step.rule}
+                                                        <SunflowerText>
+                                                            {step.rule}
+                                                        </SunflowerText>
                                                     </Typography>
                                                 </Stack>
                                             </Row>
@@ -244,8 +278,14 @@ export default function ReferralsLandingPage() {
                         iskoristiti drugi kod na istom računu.
                     </p>
                     <p>
-                        Više o vrijednosti i korištenju 🌻 pročitaj na{' '}
-                        <a href={KnownPages.Sunflowers}>stranici o 🌻</a>.
+                        Više o vrijednosti i korištenju{' '}
+                        <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />{' '}
+                        pročitaj na{' '}
+                        <a href={KnownPages.Sunflowers}>
+                            stranici o{' '}
+                            <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
+                        </a>
+                        .
                     </p>
                 </StyledHtml>
 

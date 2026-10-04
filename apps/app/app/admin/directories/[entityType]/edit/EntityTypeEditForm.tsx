@@ -22,11 +22,16 @@ interface EntityTypeEditFormProps {
         category: SelectEntityTypeCategory | null;
     };
     categories: SelectEntityTypeCategory[];
+    inventorySourceAttributeOptions: {
+        value: string;
+        label: string;
+    }[];
 }
 
 export function EntityTypeEditForm({
     entityType,
     categories,
+    inventorySourceAttributeOptions,
 }: EntityTypeEditFormProps) {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [selectedIcon, setSelectedIcon] = useState(entityType.icon ?? '');
@@ -113,6 +118,22 @@ export function EntityTypeEditForm({
                                 defaultValue={
                                     entityType.isRoot ? 'true' : 'false'
                                 }
+                            />
+                            <SelectItems
+                                name="inventorySourceAttributeDefinitionId"
+                                label="Izvor zalihe povezanih zapisa"
+                                items={[
+                                    {
+                                        value: 'none',
+                                        label: '- Nije odabrano -',
+                                    },
+                                    ...inventorySourceAttributeOptions,
+                                ]}
+                                defaultValue={
+                                    entityType.inventorySourceAttributeDefinitionId?.toString() ??
+                                    'none'
+                                }
+                                helperText="Prikaži zalihu iz povezanog tipa zapisa koji referencira ovaj tip"
                             />
                         </Stack>
 

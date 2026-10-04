@@ -8,6 +8,8 @@ import type { AttributeInputProps } from '../AttributeInputProps';
 import { getRefEntities } from '../actions/entitiesActions';
 
 export function SelectEntity({
+    blockedValues = [],
+    entityId,
     value,
     onChange,
     attributeDefinition,
@@ -30,15 +32,53 @@ export function SelectEntity({
             });
     }, [entityTypeName]);
 
+    const blocksDuplicateReferences = Boolean(
+        attributeDefinition?.multiple &&
+            attributeDefinition.dataType.startsWith('ref:'),
+    );
+    const blocksSelfReference = Boolean(
+        entityTypeName &&
+            attributeDefinition?.entityTypeName &&
+            entityTypeName === attributeDefinition.entityTypeName,
+    );
+    const blockedValueSet = useMemo(
+        () => new Set(blockedValues),
+        [blockedValues],
+    );
+    const selectableEntities = useMemo(() => {
+        if (!entities) {
+            return [];
+        }
+
+        if (!blocksDuplicateReferences) {
+            return entities;
+        }
+
+        return entities.filter((entity) => {
+            const entityValue = entity.id.toString();
+            if (blocksSelfReference && entity.id === entityId) {
+                return false;
+            }
+            return entityValue === value || !blockedValueSet.has(entityValue);
+        });
+    }, [
+        blockedValueSet,
+        blocksDuplicateReferences,
+        blocksSelfReference,
+        entities,
+        entityId,
+        value,
+    ]);
+
     const items = [
         { value: '-', label: '-' },
-        ...(entities?.map((entity) => ({
+        ...selectableEntities.map((entity) => ({
             value: entity.id.toString(),
             label:
                 entity.state === 'draft'
                     ? `${entity.label} (Draft)`
                     : entity.label,
-        })) ?? []),
+        })),
     ];
 
     const selectedEntity = useMemo(() => {
@@ -66,9 +106,7 @@ export function SelectEntity({
                 />
             </div>
             {selectedEntity?.state === 'draft' ? (
-                <Chip color="neutral" className="w-fit">
-                    Draft
-                </Chip>
+                <Chip color="neutral">Draft</Chip>
             ) : null}
             {entityTypeName && selectedEntity && (
                 <Link

@@ -1,9 +1,12 @@
 import { Card, CardContent } from '@gredice/ui/Card';
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { Stack } from '@gredice/ui/Stack';
+import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useCurrentAccount } from '../../hooks/useCurrentAccount';
 import { DailyRewardOverview } from '../../shared-ui/sunflowers/DailyRewardOverview';
+import { SunflowerPackagesPanel } from '../../shared-ui/sunflowers/SunflowerPackagesPanel';
 import { SunflowersList } from '../../shared-ui/sunflowers/SunflowersList';
 
 export function SunflowersTab() {
@@ -11,14 +14,21 @@ export function SunflowersTab() {
 
     return (
         <Stack spacing={8}>
-            <Typography level="h4" className="hidden md:block">
-                🌻 Suncokreti
+            <Typography
+                level="h4"
+                className="hidden md:flex items-center gap-2"
+            >
+                <GameSunflowerIcon aria-hidden className="size-8 shrink-0" />
+                Suncokreti
             </Typography>
-            <Stack spacing={2} className="max-h-[calc(100dvh-12rem)]">
+            <Stack
+                spacing={3}
+                className="max-h-[calc(100dvh-12rem)] overflow-y-auto pr-1"
+            >
                 <div className="relative md:mt-0">
                     <span className="absolute text-5xl -top-12 right-6 hidden md:block">
                         <Image
-                            src="https://cdn.gredice.com/sunflower-large.svg"
+                            src={sunflowerMascotArtwork}
                             alt="Suncokret"
                             className="size-12"
                             width={48}
@@ -42,7 +52,8 @@ export function SunflowersTab() {
                         <DailyRewardOverview />
                     </CardContent>
                 </Card>
-                <div className="overflow-y-auto max-h-[calc(100dvh-20rem)] md:max-h-[calc(100dvh-24rem)] rounded-lg text-card-foreground bg-card border shadow-xs p-4">
+                <SunflowerPackagesPanel />
+                <div className="rounded-lg text-card-foreground bg-card border shadow-xs p-4">
                     <SunflowersList />
                 </div>
             </Stack>

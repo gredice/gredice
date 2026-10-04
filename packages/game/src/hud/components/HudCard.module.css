@@ -1,0 +1,55 @@
+.glow {
+    --hud-card-glow-angle: 0turn;
+
+    position: relative;
+    isolation: isolate;
+}
+
+.glow::before {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    content: "";
+    border-radius: inherit;
+    padding: 3px 3px 5px;
+    -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+    animation: hud-card-glow 2.4s linear infinite;
+    background: conic-gradient(
+        from var(--hud-card-glow-angle),
+        rgb(34 197 94 / 0) 0deg,
+        rgb(34 197 94 / 0) 220deg,
+        rgb(34 197 94 / 0.12) 244deg,
+        rgb(34 197 94 / 0.28) 268deg,
+        rgb(74 222 128 / 0.62) 292deg,
+        rgb(187 247 208 / 0.98) 306deg,
+        rgb(22 163 74 / 0.62) 322deg,
+        rgb(34 197 94 / 0.2) 340deg,
+        rgb(34 197 94 / 0) 360deg
+    );
+}
+
+@keyframes hud-card-glow {
+    to {
+        --hud-card-glow-angle: 1turn;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .glow::before {
+        animation: none;
+    }
+}
+
+@property --hud-card-glow-angle {
+    syntax: "<angle>";
+    inherits: false;
+    initial-value: 0turn;
+}

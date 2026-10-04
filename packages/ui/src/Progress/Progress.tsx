@@ -1,41 +1,57 @@
+import { Progress as ProgressPrimitive } from '@base-ui/react/progress';
 import type { HTMLAttributes } from 'react';
 import { cx } from '../utils';
 
 export type ProgressProps = HTMLAttributes<HTMLDivElement> & {
-    value: number | undefined;
+    indeterminate?: boolean;
+    max?: number;
+    min?: number;
     trackClassName?: string;
+    value?: number | null | undefined;
 };
 
 export function Progress({
     className,
+    indeterminate = false,
+    max = 100,
+    min = 0,
     trackClassName,
     value,
     ...rest
 }: ProgressProps) {
-    const safeValue =
-        typeof value === 'number' && Number.isFinite(value)
-            ? Math.min(Math.max(value, 0), 100)
-            : 0;
+    const safeMax = max > min ? max : min + 100;
+    const safeValue = (() => {
+        if (indeterminate || value === null || value === undefined) {
+            return null;
+        }
+
+        if (!Number.isFinite(value)) {
+            return min;
+        }
+
+        return Math.min(Math.max(value, min), safeMax);
+    })();
+    const percentage =
+        safeValue === null ? 100 : ((safeValue - min) / (safeMax - min)) * 100;
 
     return (
-        <div
-            aria-valuemax={100}
-            aria-valuemin={0}
-            aria-valuenow={safeValue}
+        <ProgressPrimitive.Root
             className={cx(
                 'h-2 w-full overflow-hidden rounded-full bg-muted',
                 className,
             )}
-            role="progressbar"
+            max={safeMax}
+            min={min}
+            value={safeValue}
             {...rest}
         >
-            <div
+            <ProgressPrimitive.Indicator
                 className={cx(
-                    'h-full rounded-full bg-primary transition-all',
+                    'h-full rounded-full bg-primary transition-all data-[indeterminate]:animate-pulse',
                     trackClassName,
                 )}
-                style={{ width: `${safeValue}%` }}
+                style={{ width: `${percentage}%` }}
             />
-        </div>
+        </ProgressPrimitive.Root>
     );
 }

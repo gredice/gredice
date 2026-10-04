@@ -1,3 +1,4 @@
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import { getLastBirthdayRewardEvent, getUser } from '@gredice/storage';
 
 import { withAuth } from '../../../../lib/auth/auth';
@@ -19,7 +20,9 @@ export async function GET() {
         return Response.json({
             id: dbUser.id,
             userName: dbUser.userName,
-            displayName: dbUser.displayName ?? dbUser.userName,
+            displayName: safeUserDisplayName(
+                dbUser.displayName ?? dbUser.userName,
+            ),
             avatarUrl: dbUser.avatarUrl,
             role: dbUser.role,
             birthday:

@@ -1,11 +1,13 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { shoppingCartPositionUpdatePayload } from './shoppingCartPositionPayload';
 import {
     type ShoppingCartData,
     type ShoppingCartItemData,
     useShoppingCart,
     useShoppingCartQueryKey,
 } from './useShoppingCart';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 export function useSwapShoppingCartPositions() {
     const queryClient = useQueryClient();
@@ -28,16 +30,11 @@ export function useSwapShoppingCartPositions() {
             // Update item A to the target position
             await clientAuthenticated().api['shopping-cart'].$post({
                 json: {
-                    id: itemA.id,
+                    ...shoppingCartPositionUpdatePayload(
+                        itemA,
+                        targetPositionIndex,
+                    ),
                     cartId: cart.id,
-                    entityTypeName: itemA.entityTypeName,
-                    entityId: itemA.entityId,
-                    amount: itemA.amount,
-                    gardenId: itemA.gardenId ?? undefined,
-                    raisedBedId: itemA.raisedBedId ?? undefined,
-                    positionIndex: targetPositionIndex,
-                    additionalData: itemA.additionalData,
-                    currency: itemA.currency,
                 },
             });
 
@@ -45,16 +42,11 @@ export function useSwapShoppingCartPositions() {
             if (itemB) {
                 await clientAuthenticated().api['shopping-cart'].$post({
                     json: {
-                        id: itemB.id,
+                        ...shoppingCartPositionUpdatePayload(
+                            itemB,
+                            itemA.positionIndex ?? undefined,
+                        ),
                         cartId: cart.id,
-                        entityTypeName: itemB.entityTypeName,
-                        entityId: itemB.entityId,
-                        amount: itemB.amount,
-                        gardenId: itemB.gardenId ?? undefined,
-                        raisedBedId: itemB.raisedBedId ?? undefined,
-                        positionIndex: itemA.positionIndex ?? undefined,
-                        additionalData: itemB.additionalData,
-                        currency: itemB.currency,
                     },
                 });
             }
@@ -110,6 +102,7 @@ export function useSwapShoppingCartPositions() {
             queryClient.invalidateQueries({
                 queryKey: useShoppingCartQueryKey,
             });
+            queryClient.invalidateQueries({ queryKey: tutorialChecklistKeys });
         },
         scope: {
             id: 'swapShoppingCartPositions',

@@ -96,6 +96,10 @@ Recommended component shape:
 Then register the component in:
 
 - `packages/game/src/entities/entityNameMap.ts`
+- `blockAssetRequirements` in
+  `packages/game/src/scene/resources/gardenSceneManifest.ts`, listing the GLBs
+  the component loads, so garden scene manifests fetch them (see
+  [game-scene-resources.md](./game-scene-resources.md))
 - `packages/game/src/hud/ItemsHud.tsx`
 - `apps/garden/tests/ItemsHudStory.tsx`
 
@@ -104,8 +108,8 @@ database `information.name` attribute must match exactly.
 
 ## Public Block Images
 
-Public block cards use PNGs in `apps/www/public/assets/blocks`. Generate all
-four rotations plus the unsuffixed base image.
+Public block cards use 640x640 WebP images in `apps/www/public/assets/blocks`.
+Generate all four rotations plus the unsuffixed base image.
 
 For an entity that is not available from the production directories API yet,
 create a temporary ignored `apps/www/generate/test-cases.json` with just that
@@ -155,6 +159,11 @@ explicitly. Some repository helpers import `server-only`, so standalone scripts
 may need to run through an app/runtime path or use lower-level `storage` and
 schema imports with deliberate cache/search handling.
 
+When a new block is also added to `upsertBlockHitboxAttributes.ts`, create and
+publish the block first (for farm animals, apply
+`upsertFarmAnimalHomeBlockEntities.ts`), then run the hitbox upsert. The hitbox
+helper intentionally fails when a named published block does not exist.
+
 For a purchasable decoration/tool block, create a published `block` entity with
 these attributes:
 
@@ -177,22 +186,22 @@ the directories API or a direct DB query that the row appears in
 
 ## Validation
 
-Use the narrowest reliable checks, then include consuming apps because
+Use the narrowest reliable checks, then include consumer typechecks because
 `@gredice/game` is shared by `garden` and `www`:
 
 ```bash
 pnpm lint --filter @gredice/game
-pnpm --filter @gredice/game typecheck
-pnpm test --filter @gredice/game
-pnpm lint --filter garden
-pnpm test --filter garden
-pnpm build --filter garden
-pnpm lint --filter www
-pnpm build --filter www
+pnpm typecheck --filter @gredice/game
+pnpm run test --filter @gredice/game
+pnpm typecheck --filter garden
+pnpm typecheck --filter www
 git diff --check
 ```
 
-Run `pnpm test --filter www` when public route behavior changed or when there
-is time for the broader suite. It may depend on local API services and can emit
-proxy noise if `api` is not running; record the exact failure if it does not
-pass.
+Run app lint when app files changed. Run `pnpm build --filter garden`,
+`pnpm build --filter www`, or the app Playwright suites only when routing,
+static assets, bundling, production-only code paths, visual behavior, or user
+flows changed. Run `pnpm run test --filter www` when public route behavior changed
+or when there is time for the broader suite. It may depend on local API services
+and can emit proxy noise if `api` is not running; record the exact failure if it
+does not pass.

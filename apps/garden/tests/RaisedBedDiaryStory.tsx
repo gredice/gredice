@@ -1,8 +1,13 @@
 import * as ReactQuery from '@tanstack/react-query';
 import { type PropsWithChildren, useMemo } from 'react';
-import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
 import { RaisedBedDiary } from '../../../packages/game/src/hud/raisedBed/RaisedBedDiary';
-import { Card, CardOverflow } from '../../../packages/ui/src/Card';
+import {
+    createGameState,
+    GameStateContext,
+} from '../../../packages/game/src/useGameState';
+import { Card } from '../../../packages/ui/src/Card';
+import { ScrollArea } from '../../../packages/ui/src/ScrollArea';
+import { buildOperation } from './raisedBedFieldHudScenarios';
 
 const TEST_GARDEN_ID = 1;
 const TEST_RAISED_BED_ID = 101;
@@ -15,6 +20,13 @@ type DiaryEntry = {
     timestamp: Date;
     imageUrls?: string[] | null;
     isMarkdown?: boolean;
+    rescheduleTarget?: {
+        type: 'operation';
+        operationId: number;
+        raisedBedId: number;
+        raisedBedFieldId: number | null;
+        scheduledDate: string;
+    };
 };
 
 const singleImageUrls = ['/web-app-manifest-192x192.png'];
@@ -28,20 +40,74 @@ const imageUrls = [
 const longWord =
     'SuperdugacakNazivDnevnickogUnosaBezRazmakaKojiMoraOstatiUnutarListe';
 
+const baseRaisedBedOperation = buildOperation({
+    id: 77,
+    name: 'raised-bed-mulching',
+    label: 'Malčiranje gredice',
+    stageName: 'growth',
+    stageLabel: 'Rast',
+});
+
+const raisedBedOperation = {
+    ...baseRaisedBedOperation,
+    attributes: {
+        ...baseRaisedBedOperation.attributes,
+        application: 'raisedBedFull',
+    },
+};
+
+const plantFieldOperation = buildOperation({
+    id: 88,
+    name: 'plant-watering',
+    label: 'Zalijevanje biljke',
+    stageName: 'growth',
+    stageLabel: 'Rast',
+});
+
+function todayUtcIso() {
+    const today = new Date();
+    return new Date(
+        Date.UTC(
+            today.getUTCFullYear(),
+            today.getUTCMonth(),
+            today.getUTCDate(),
+        ),
+    ).toISOString();
+}
+
+function futureLocalDateInput(daysFromToday: number) {
+    const today = new Date();
+    const date = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() + daysFromToday,
+    );
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${date.getFullYear()}-${month}-${day}`;
+}
+
 const diaryEntries: DiaryEntry[] = [
     {
         id: 1,
         name: `${longWord} 1`,
         description: `${longWord} with a long description and enough words to wrap inside a narrow mobile raised bed diary card.`,
         status: 'Planirano',
-        timestamp: new Date('2026-05-13T12:00:00.000Z'),
+        timestamp: new Date('2040-01-05T00:00:00.000Z'),
         imageUrls: singleImageUrls,
+        rescheduleTarget: {
+            type: 'operation',
+            operationId: 1,
+            raisedBedId: TEST_RAISED_BED_ID,
+            raisedBedFieldId: null,
+            scheduledDate: '2040-01-05T00:00:00.000Z',
+        },
     },
     {
         id: 2,
-        name: 'AI analysis with several images',
-        description:
-            '## Analysis\n\nThe gallery and text should stay constrained inside the diary row.',
+        name: 'AI analysis with operation links',
+        description: `## Analysis\n\nSchedule [Malčiranje gredice](https://www.gredice.com/radnje/mock-raised-bed-mulching#raisedBedId=101&scheduledDate=${futureLocalDateInput(2)}) for the full bed and [Zalijevanje biljke](https://www.gredice.com/radnje/mock-plant-watering#raisedBedId=101&positionIndex=5&scheduledDate=${futureLocalDateInput(3)}) for the stressed plant.`,
         status: null,
         timestamp: new Date('2026-05-12T12:00:00.000Z'),
         imageUrls,
@@ -52,8 +118,15 @@ const diaryEntries: DiaryEntry[] = [
         name: 'Watering and checkup',
         description:
             'Shorter entry without images keeps the same row constraints.',
-        status: 'Novo',
-        timestamp: new Date('2026-05-11T12:00:00.000Z'),
+        status: 'Planirano',
+        timestamp: new Date(todayUtcIso()),
+        rescheduleTarget: {
+            type: 'operation',
+            operationId: 3,
+            raisedBedId: TEST_RAISED_BED_ID,
+            raisedBedFieldId: null,
+            scheduledDate: todayUtcIso(),
+        },
     },
 ];
 
@@ -68,18 +141,41 @@ function createRaisedBedDiaryQueryClient() {
         ['raisedBeds', TEST_RAISED_BED_ID, 'diary'],
         diaryEntries,
     );
+    queryClient.setQueryData(['currentUser'], { id: 'test-user' });
+    queryClient.setQueryData(
+        ['operations'],
+        [raisedBedOperation, plantFieldOperation],
+    );
+    queryClient.setQueryData(['shopping-cart'], {
+        id: 1,
+        items: [],
+        total: 0,
+        totalSunflowers: 0,
+        allowPurchase: true,
+        notes: [],
+    });
 
     return queryClient;
 }
 
 function RaisedBedDiaryTestProviders({ children }: PropsWithChildren) {
     const queryClient = useMemo(() => createRaisedBedDiaryQueryClient(), []);
+    const gameStore = useMemo(
+        () =>
+            createGameState({
+                appBaseUrl: 'http://localhost',
+                freezeTime: null,
+                isMock: false,
+                winterMode: 'summer',
+            }),
+        [],
+    );
 
     return (
         <ReactQuery.QueryClientProvider client={queryClient}>
-            <GameFlagsContext.Provider value={{ raisedBedImageAI: false }}>
+            <GameStateContext.Provider value={gameStore}>
                 {children}
-            </GameFlagsContext.Provider>
+            </GameStateContext.Provider>
         </ReactQuery.QueryClientProvider>
     );
 }
@@ -92,12 +188,12 @@ export function RaisedBedDiaryOverflowStory() {
                     data-testid="diary-shell"
                     className="w-[360px] max-w-full"
                 >
-                    <CardOverflow className="max-h-96 overflow-y-auto overflow-x-hidden">
+                    <ScrollArea className="-m-2" viewportClassName="max-h-96">
                         <RaisedBedDiary
                             gardenId={TEST_GARDEN_ID}
                             raisedBedId={TEST_RAISED_BED_ID}
                         />
-                    </CardOverflow>
+                    </ScrollArea>
                 </Card>
             </div>
         </RaisedBedDiaryTestProviders>

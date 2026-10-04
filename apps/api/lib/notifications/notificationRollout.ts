@@ -22,3 +22,21 @@ export function readNotificationRolloutFlags() {
 }
 
 export const notificationRolloutFlags = readNotificationRolloutFlags();
+const deliveryPreferenceChannels = new Set(['in_app', 'email', 'push']);
+
+export function notificationPreferencesWritable({
+    preferences,
+    premiumControlsEnabled = notificationRolloutFlags.premiumControlsEnabled,
+}: {
+    preferences: ReadonlyArray<{ category: string; channel: string }>;
+    premiumControlsEnabled?: boolean;
+}) {
+    return (
+        premiumControlsEnabled ||
+        preferences.every(
+            (preference) =>
+                preference.category === 'delivery_updates' &&
+                deliveryPreferenceChannels.has(preference.channel),
+        )
+    );
+}

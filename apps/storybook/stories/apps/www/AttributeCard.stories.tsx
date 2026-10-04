@@ -1,5 +1,9 @@
 import { AttributeCard } from '@apps/www/components/attributes/DetailCard';
-import { Droplet, Leaf, Sprout } from '@gredice/ui/icons';
+import {
+    GameLeafIcon,
+    GameSeedlingIcon,
+    GameWaterIcon,
+} from '@gredice/ui/GameIcons';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
 const meta = {
@@ -15,7 +19,7 @@ const meta = {
         },
     },
     args: {
-        icon: <Leaf className="size-5 text-primary" />,
+        icon: <GameLeafIcon aria-hidden className="size-6" />,
         header: 'Tip biljke',
         value: 'Povrtnica',
     },
@@ -36,7 +40,7 @@ export const WithSubheader: Story = {
     args: {
         header: 'Sezona sjetve',
         subheader: 'na otvorenom',
-        icon: <Sprout className="size-5 text-primary" />,
+        icon: <GameSeedlingIcon aria-hidden className="size-6" />,
         value: 'ožujak – travanj',
     },
 };
@@ -44,7 +48,7 @@ export const WithSubheader: Story = {
 export const WithDescription: Story = {
     args: {
         header: 'Zalijevanje',
-        icon: <Droplet className="size-5 text-primary" />,
+        icon: <GameWaterIcon aria-hidden className="size-6" />,
         value: '2× tjedno',
         description:
             'Rajčica preferira duboko ali manje učestalo zalijevanje. Izbjegavajte vlaženje lišća.',
@@ -54,7 +58,7 @@ export const WithDescription: Story = {
 export const WithNavigation: Story = {
     args: {
         header: 'Sorta',
-        icon: <Leaf className="size-5 text-primary" />,
+        icon: <GameLeafIcon aria-hidden className="size-6" />,
         value: 'Cherry',
         navigateLabel: 'Više o sorti',
         navigateHref: '/sorte/cherry',
@@ -64,7 +68,7 @@ export const WithNavigation: Story = {
 export const EmptyValue: Story = {
     args: {
         header: 'Prinos',
-        icon: <Leaf className="size-5 text-primary" />,
+        icon: <GameLeafIcon aria-hidden className="size-6" />,
         value: undefined,
     },
 };

@@ -1,12 +1,13 @@
 import { slug } from '@gredice/js/slug';
-import { Card } from '@gredice/ui/Card';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { Suspense } from 'react';
+import { Card } from '../../../components/shared/Card';
 import { getPlantSortsData } from '../../../lib/plants/getPlantSortsData';
 import { KnownPages } from '../../../src/KnownPages';
+import { PlantSortSuggestionCard } from './PlantSortSuggestionCard';
 
 async function PlantSortsListContent({
     basePlantName,
@@ -21,23 +22,16 @@ async function PlantSortsListContent({
             (sort) => sort.information.plant?.id === basePlantId,
         ) ?? []
     ).sort((a, b) => a.information.name.localeCompare(b.information.name));
-    if (!sorts.length) {
-        return (
-            <Stack spacing={4}>
-                <Typography level="h2" className="text-2xl" id={slug('Sorte')}>
-                    Sorte
-                </Typography>
-                <Typography level="body2" className="text-gray-500 italic">
-                    Nema dostupnih sorti
-                </Typography>
-            </Stack>
-        );
-    }
     return (
         <Stack spacing={4}>
             <Typography level="h2" className="text-2xl" id={slug('Sorte')}>
                 Sorte
             </Typography>
+            {!sorts.length && (
+                <Typography level="body2" className="text-muted-foreground italic">
+                    Nema dostupnih sorti
+                </Typography>
+            )}
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
                 {sorts.map((sort) => {
                     const isAvailable =
@@ -72,7 +66,7 @@ async function PlantSortsListContent({
                                     {!isAvailable && (
                                         <Typography
                                             level="body2"
-                                            className="text-amber-600 font-medium"
+                                            className="text-amber-700 dark:text-amber-300 font-medium"
                                         >
                                             Trenutno nije dostupna u trgovini
                                         </Typography>
@@ -82,6 +76,10 @@ async function PlantSortsListContent({
                         </Card>
                     );
                 })}
+                <PlantSortSuggestionCard
+                    basePlantId={basePlantId}
+                    basePlantName={basePlantName}
+                />
             </div>
         </Stack>
     );

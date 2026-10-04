@@ -1,3 +1,5 @@
+import { users } from '../schema/usersSchema';
+import { userAchievementExtras } from './userAchievementProgress';
 import 'server-only';
 import { slugify } from '@gredice/js/slug';
 import { and, count, desc, eq, inArray } from 'drizzle-orm';
@@ -6,6 +8,7 @@ import {
     attributeValues,
     entities,
     entityRevisions,
+    entityTypes,
     type SelectAttributeDefinition,
     type SelectAttributeValue,
     type SelectEntity,
@@ -20,7 +23,27 @@ import {
     cacheKeys,
     directoriesCached,
 } from '../cache/directoriesCached';
+import { bustEntityReadModelsForMutatedTypes } from '../cache/entityReadModelInvalidation';
 import { getEntityCompleteness } from '../helpers/entityCompleteness';
+import {
+    attributeDefinitionPath,
+    generatedImageAttributeValue,
+    parseGeneratedImageUrlDefaultValue,
+} from '../helpers/generatedAttributeValues';
+import {
+    buildPlantHealthReadModels,
+    isPlantHealthAffectedPlantAttributeDefinition,
+    isPlantHealthIssueEntityTypeName,
+    type PlantHealthReadModel,
+    parsePlantHealthReferenceTargetId,
+    plantHealthAffectedPlantIdsForEntity,
+    plantHealthOperationIntentForAttributeDefinition,
+    sanitizePlantHealthIssueFormattedEntity,
+} from '../helpers/plantHealth';
+import {
+    buildPlantRelationshipReadModels,
+    isPlantRelationshipAttributeDefinition,
+} from '../helpers/plantRelationships';
 
 const entityCacheTtl = 60 * 60; // 1 hour
 
@@ -38,6 +61,11 @@ async function refreshEntitySearchDocumentAfterMutation(entityId: number) {
     }
 }
 
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
 type EntityAttribute = SelectAttributeValue & {
     attributeDefinition: SelectAttributeDefinition;
 };
@@ -105,6 +133,7 @@ function parseEntityRefId(value: string | null | undefined) {
 async function buildEffectiveEntity(
     entity: EntityWithAttributesAndDefinitions,
     visited = new Set<number>(),
+    db: DatabaseClient = storage(),
 ): Promise<EntityWithAttributesAndDefinitions> {
     if (visited.has(entity.id)) {
         throw new Error('Cycle detected in entity hierarchy.');
@@ -115,7 +144,7 @@ async function buildEffectiveEntity(
         return populateMissingAttributes(entity);
     }
 
-    const parent = await storage().query.entities.findFirst({
+    const parent = await db.query.entities.findFirst({
         where: and(
             eq(entities.id, entity.parentId),
             eq(entities.isDeleted, false),
@@ -141,7 +170,7 @@ async function buildEffectiveEntity(
         return populateMissingAttributes(entity);
     }
 
-    const parentEffective = await buildEffectiveEntity(parent, visited);
+    const parentEffective = await buildEffectiveEntity(parent, visited, db);
     const childByDefinitionId = new Map(
         entity.attributes.map((attribute) => [
             attribute.attributeDefinitionId,
@@ -168,17 +197,14 @@ function populateMissingAttributes(
             (a) => a.attributeDefinition.id === definition.id && !a.isDeleted,
         );
         // If attribute is missing and we have default defined, create a default one
-        if (
-            !hasAtleastOneAttributeValue &&
-            typeof definition.defaultValue !== 'undefined' &&
-            definition.defaultValue !== null
-        ) {
+        const defaultValue = resolveAttributeDefaultValue(entity, definition);
+        if (!hasAtleastOneAttributeValue && defaultValue !== null) {
             entity.attributes.push({
                 entityId: entity.id,
                 entityTypeName: entity.entityType.name,
                 attributeDefinitionId: definition.id,
                 attributeDefinition: definition,
-                value: definition.defaultValue ?? null,
+                value: defaultValue,
                 order: definition.order,
                 createdAt: new Date(),
                 updatedAt: new Date(),
@@ -198,8 +224,45 @@ function populateMissingAttributes(
     return entity;
 }
 
-export async function getEntitiesRaw(entityTypeName: string, state?: string) {
-    const rawEntities = await storage().query.entities.findMany({
+function resolveAttributeDefaultValue(
+    entity: EntityWithAttributesAndDefinitions,
+    definition: SelectAttributeDefinition,
+) {
+    if (
+        typeof definition.defaultValue === 'undefined' ||
+        definition.defaultValue === null
+    ) {
+        return null;
+    }
+
+    const generatedImageConfig = parseGeneratedImageUrlDefaultValue(
+        definition.defaultValue,
+    );
+    if (!generatedImageConfig) {
+        return definition.defaultValue;
+    }
+
+    if (definition.dataType !== 'image') {
+        return null;
+    }
+
+    const sourceValue =
+        entity.attributes.find(
+            (attribute) =>
+                !attribute.isDeleted &&
+                attributeDefinitionPath(attribute.attributeDefinition) ===
+                    generatedImageConfig.source,
+        )?.value ?? null;
+
+    return generatedImageAttributeValue(generatedImageConfig, sourceValue);
+}
+
+export async function getEntitiesRaw(
+    entityTypeName: string,
+    state?: string,
+    db: DatabaseClient = storage(),
+) {
+    const entityRows = await db.query.entities.findMany({
         where: state
             ? and(
                   eq(entities.entityTypeName, entityTypeName),
@@ -211,26 +274,207 @@ export async function getEntitiesRaw(entityTypeName: string, state?: string) {
                   eq(entities.isDeleted, false),
               ),
         orderBy: desc(entities.updatedAt),
-        with: {
-            attributes: {
-                where: eq(attributeValues.isDeleted, false),
-                with: {
-                    attributeDefinition: true,
-                },
-            },
-            entityType: {
-                with: {
-                    attributeDefinitions: {
-                        where: eq(attributeDefinitions.isDeleted, false),
-                    },
-                },
-            },
-        },
     });
 
-    return Promise.all(
-        rawEntities.map((entity) => buildEffectiveEntity(entity)),
+    if (entityRows.length === 0) {
+        return [];
+    }
+
+    const [rawAttributes, entityType] = await Promise.all([
+        db.query.attributeValues.findMany({
+            where: and(
+                inArray(
+                    attributeValues.entityId,
+                    entityRows.map((entity) => entity.id),
+                ),
+                eq(attributeValues.isDeleted, false),
+            ),
+        }),
+        db.query.entityTypes.findFirst({
+            where: eq(entityTypes.name, entityTypeName),
+            with: {
+                attributeDefinitions: true,
+            },
+        }),
+    ]);
+
+    if (!entityType) {
+        throw new Error(`Entity type ${entityTypeName} was not found.`);
+    }
+
+    const referencedDefinitionIds = [
+        ...new Set(
+            rawAttributes.map((attribute) => attribute.attributeDefinitionId),
+        ),
+    ];
+    const referencedAttributeDefinitions =
+        referencedDefinitionIds.length === 0
+            ? []
+            : await db.query.attributeDefinitions.findMany({
+                  where: inArray(
+                      attributeDefinitions.id,
+                      referencedDefinitionIds,
+                  ),
+              });
+    const attributeDefinitionsById = new Map(
+        referencedAttributeDefinitions.map((definition) => [
+            definition.id,
+            definition,
+        ]),
     );
+    const attributesByEntityId = new Map<number, EntityAttribute[]>();
+    for (const attribute of rawAttributes) {
+        const attributeDefinition = attributeDefinitionsById.get(
+            attribute.attributeDefinitionId,
+        );
+        if (!attributeDefinition) {
+            throw new Error(
+                `Attribute definition ${attribute.attributeDefinitionId} was not found.`,
+            );
+        }
+
+        const entityAttributes =
+            attributesByEntityId.get(attribute.entityId) ?? [];
+        entityAttributes.push({
+            ...attribute,
+            attributeDefinition,
+        });
+        attributesByEntityId.set(attribute.entityId, entityAttributes);
+    }
+
+    const activeAttributeDefinitions = entityType.attributeDefinitions.filter(
+        (definition) => !definition.isDeleted,
+    );
+    const rawEntities: EntityWithAttributesAndDefinitions[] = entityRows.map(
+        (entity) => ({
+            ...entity,
+            attributes: attributesByEntityId.get(entity.id) ?? [],
+            entityType: {
+                ...entityType,
+                attributeDefinitions: activeAttributeDefinitions,
+            },
+        }),
+    );
+
+    return Promise.all(
+        rawEntities.map((entity) =>
+            buildEffectiveEntity(entity, new Set<number>(), db),
+        ),
+    );
+}
+
+export type EntityDisplayLabel = {
+    id: number;
+    entityTypeName: string;
+    label: string;
+    isDeleted: boolean;
+};
+
+/**
+ * Resolves display labels for entities by id, including soft-deleted ones.
+ *
+ * Use where a reference can outlive the entity it points at (inventory items,
+ * for example) and the last known name still helps whoever reads the record.
+ * Everything that should only ever see live entities keeps using
+ * {@link getEntitiesRaw}.
+ */
+export async function getEntityDisplayLabels(
+    entityIds: number[],
+): Promise<EntityDisplayLabel[]> {
+    const uniqueEntityIds = [...new Set(entityIds)];
+    if (uniqueEntityIds.length === 0) {
+        return [];
+    }
+
+    const entityRows = await storage().query.entities.findMany({
+        columns: {
+            id: true,
+            entityTypeName: true,
+            isDeleted: true,
+        },
+        where: inArray(entities.id, uniqueEntityIds),
+    });
+
+    if (entityRows.length === 0) {
+        return [];
+    }
+
+    const [labelAttributes, entityTypeRows] = await Promise.all([
+        storage()
+            .select({
+                entityId: attributeValues.entityId,
+                name: attributeDefinitions.name,
+                value: attributeValues.value,
+            })
+            .from(attributeValues)
+            .innerJoin(
+                attributeDefinitions,
+                eq(
+                    attributeDefinitions.id,
+                    attributeValues.attributeDefinitionId,
+                ),
+            )
+            .where(
+                and(
+                    inArray(
+                        attributeValues.entityId,
+                        entityRows.map((entity) => entity.id),
+                    ),
+                    eq(attributeValues.isDeleted, false),
+                    eq(attributeDefinitions.category, 'information'),
+                    inArray(attributeDefinitions.name, ['label', 'name']),
+                ),
+            ),
+        storage().query.entityTypes.findMany({
+            columns: {
+                name: true,
+                label: true,
+            },
+            where: inArray(entityTypes.name, [
+                ...new Set(entityRows.map((entity) => entity.entityTypeName)),
+            ]),
+        }),
+    ]);
+
+    const namedAttributesByEntityId = new Map<
+        number,
+        { label?: string; name?: string }
+    >();
+    for (const attribute of labelAttributes) {
+        if (!attribute.value) {
+            continue;
+        }
+
+        const entityAttributes =
+            namedAttributesByEntityId.get(attribute.entityId) ?? {};
+        if (attribute.name === 'label') {
+            entityAttributes.label ??= attribute.value;
+        } else {
+            entityAttributes.name ??= attribute.value;
+        }
+        namedAttributesByEntityId.set(attribute.entityId, entityAttributes);
+    }
+
+    const entityTypeLabels = new Map(
+        entityTypeRows.map((entityType) => [entityType.name, entityType.label]),
+    );
+
+    return entityRows.map((entity) => {
+        const namedAttributes = namedAttributesByEntityId.get(entity.id);
+        const entityTypeLabel =
+            entityTypeLabels.get(entity.entityTypeName) ??
+            entity.entityTypeName;
+
+        return {
+            id: entity.id,
+            entityTypeName: entity.entityTypeName,
+            label:
+                namedAttributes?.label ??
+                namedAttributes?.name ??
+                `${entityTypeLabel} ${entity.id}`,
+            isDeleted: entity.isDeleted,
+        };
+    });
 }
 
 export async function getEntitiesCount(entityTypeName: string, state?: string) {
@@ -318,6 +562,14 @@ async function expandEntityAttributes<T extends Record<string, unknown>>(
     const expandedEntity = { ...entity };
     // Prepare all attribute expansion promises
     const attributePromises = attributes.map(async (attribute) => {
+        if (
+            isPlantRelationshipAttributeDefinition(
+                attribute.attributeDefinition,
+            )
+        ) {
+            return;
+        }
+
         // Create category object if it doesn't exist
         if (
             expandedEntity[attribute.attributeDefinition.category] === undefined
@@ -374,7 +626,10 @@ async function expandValue(
         return await resolveRef(value, attributeDefinition, cache);
     }
     if (attributeDefinition.dataType === 'number') {
-        return parseFloat(value);
+        const trimmed = value.trim();
+        return /^-?\d+(?:\.\d+)?$/u.test(trimmed)
+            ? Number(trimmed)
+            : Number.NaN;
     } else if (
         attributeDefinition.dataType === 'range' ||
         attributeDefinition.dataType.startsWith('range|')
@@ -443,6 +698,226 @@ async function resolveRef(
     );
 }
 
+function applyPlantRelationshipReadModel<T>(
+    entities: T[],
+    rawEntities: EntityWithAttributesAndType[],
+) {
+    const relationshipsByEntityId =
+        buildPlantRelationshipReadModels(rawEntities);
+    return entities.map((entity) => {
+        if (
+            !entity ||
+            typeof entity !== 'object' ||
+            !('id' in entity) ||
+            typeof entity.id !== 'number'
+        ) {
+            return entity;
+        }
+
+        const relationships = relationshipsByEntityId.get(entity.id);
+        if (!relationships) {
+            return entity;
+        }
+
+        return {
+            ...entity,
+            relationships,
+        };
+    }) as T[];
+}
+
+async function applyEntityRelationshipReadModels<T>(
+    entityTypeName: string,
+    formattedEntities: T[],
+    rawEntities: EntityWithAttributesAndType[],
+) {
+    if (entityTypeName === 'plant') {
+        return applyPlantRelationshipReadModel(formattedEntities, rawEntities);
+    }
+
+    if (entityTypeName !== 'plantSort') {
+        return formattedEntities;
+    }
+
+    const plantEntities = (await getEntitiesRaw(
+        'plant',
+        'published',
+    )) as EntityWithAttributesAndType[];
+    return applyPlantRelationshipReadModel(formattedEntities, [
+        ...rawEntities,
+        ...plantEntities,
+    ]);
+}
+
+function applyPlantHealthReadModel<T>(
+    entities: T[],
+    rawEntities: EntityWithAttributesAndType[],
+    healthByPlantId: Map<number, PlantHealthReadModel>,
+) {
+    return entities.map((entity) => {
+        if (
+            !entity ||
+            typeof entity !== 'object' ||
+            !('id' in entity) ||
+            typeof entity.id !== 'number'
+        ) {
+            return entity;
+        }
+
+        const rawEntity = rawEntities.find(
+            (candidate) => candidate.id === entity.id,
+        );
+        if (!rawEntity) {
+            return entity;
+        }
+
+        const health = healthByPlantId.get(rawEntity.id);
+        if (!health) {
+            return entity;
+        }
+
+        return {
+            ...entity,
+            health,
+        };
+    }) as T[];
+}
+
+async function buildPlantHealthReadModelForPublishedPlants(
+    plantEntities: EntityWithAttributesAndType[],
+) {
+    const [diseases, pests, operations] = await Promise.all([
+        getEntitiesRaw('plantDisease', 'published') as Promise<
+            EntityWithAttributesAndType[]
+        >,
+        getEntitiesRaw('plantPest', 'published') as Promise<
+            EntityWithAttributesAndType[]
+        >,
+        getEntitiesRaw('operation', 'published') as Promise<
+            EntityWithAttributesAndType[]
+        >,
+    ]);
+
+    return buildPlantHealthReadModels({
+        plants: plantEntities,
+        diseases,
+        pests,
+        operations,
+    });
+}
+
+function applyPlantHealthIssueFormatting<T>(entityTypeName: string, entity: T) {
+    if (!isPlantHealthIssueEntityTypeName(entityTypeName)) {
+        return entity;
+    }
+
+    return sanitizePlantHealthIssueFormattedEntity(entity);
+}
+
+async function assertPlantHealthIssueReferencesCanPublish(entity: {
+    entityTypeName: string;
+    attributes: {
+        attributeDefinitionId: number;
+        value: string | null;
+    }[];
+    entityType: {
+        attributeDefinitions: SelectAttributeDefinition[];
+    };
+}) {
+    if (!isPlantHealthIssueEntityTypeName(entity.entityTypeName)) {
+        return;
+    }
+
+    const definitionById = new Map(
+        entity.entityType.attributeDefinitions.map((definition) => [
+            definition.id,
+            definition,
+        ]),
+    );
+    const targetIdsByType = new Map<string, Set<number>>();
+    const duplicateKeys = new Set<string>();
+    const seenKeys = new Set<string>();
+    const invalidLabels: string[] = [];
+
+    for (const attribute of entity.attributes) {
+        const definition = definitionById.get(attribute.attributeDefinitionId);
+        if (!definition) {
+            continue;
+        }
+
+        let targetType: 'plant' | 'operation' | null = null;
+        if (isPlantHealthAffectedPlantAttributeDefinition(definition)) {
+            targetType = 'plant';
+        } else if (
+            plantHealthOperationIntentForAttributeDefinition(definition)
+        ) {
+            targetType = 'operation';
+        }
+        if (!targetType) {
+            continue;
+        }
+
+        const targetId = parsePlantHealthReferenceTargetId(attribute.value);
+        if (!targetId) {
+            invalidLabels.push(definition.label);
+            continue;
+        }
+
+        const duplicateKey = `${definition.id}:${targetId}`;
+        if (seenKeys.has(duplicateKey)) {
+            duplicateKeys.add(duplicateKey);
+        }
+        seenKeys.add(duplicateKey);
+
+        const targetIds = targetIdsByType.get(targetType) ?? new Set<number>();
+        targetIds.add(targetId);
+        targetIdsByType.set(targetType, targetIds);
+    }
+
+    const missingTargets: string[] = [];
+    for (const [targetType, targetIds] of targetIdsByType) {
+        const ids = Array.from(targetIds);
+        if (ids.length === 0) {
+            continue;
+        }
+
+        const publishedTargets = await storage().query.entities.findMany({
+            where: and(
+                inArray(entities.id, ids),
+                eq(entities.entityTypeName, targetType),
+                eq(entities.state, 'published'),
+                eq(entities.isDeleted, false),
+            ),
+        });
+        const publishedTargetIds = new Set(
+            publishedTargets.map((target) => target.id),
+        );
+        for (const targetId of ids) {
+            if (!publishedTargetIds.has(targetId)) {
+                missingTargets.push(`${targetType}#${targetId}`);
+            }
+        }
+    }
+
+    const errors = [
+        duplicateKeys.size > 0
+            ? 'Remove duplicate affected plant or operation references.'
+            : null,
+        invalidLabels.length > 0
+            ? `Fix invalid references in: ${Array.from(new Set(invalidLabels)).join(', ')}.`
+            : null,
+        missingTargets.length > 0
+            ? `Publish or remove missing references: ${missingTargets.join(', ')}.`
+            : null,
+    ].filter((message): message is string => Boolean(message));
+
+    if (errors.length > 0) {
+        throw new Error(
+            `Plant health issue is not ready for publishing. ${errors.join(' ')}`,
+        );
+    }
+}
+
 export async function getEntitiesFormatted<T>(entityTypeName: string) {
     return directoriesCached(
         cacheKeys.entityTypeName(entityTypeName),
@@ -452,9 +927,32 @@ export async function getEntitiesFormatted<T>(entityTypeName: string) {
                 entityTypeName,
                 'published',
             )) as EntityWithAttributesAndType[];
-            return (await Promise.all(
+            const formattedEntities = (await Promise.all(
                 entities.map((e) => expandEntity(e, cache)),
             )) as T[];
+            if (entityTypeName === 'plant') {
+                const withRelationships = applyPlantRelationshipReadModel(
+                    formattedEntities,
+                    entities,
+                );
+                const plantHealthReadModel =
+                    await buildPlantHealthReadModelForPublishedPlants(entities);
+                return applyPlantHealthReadModel(
+                    withRelationships,
+                    entities,
+                    plantHealthReadModel,
+                );
+            }
+            if (entityTypeName === 'plantSort') {
+                return await applyEntityRelationshipReadModels(
+                    entityTypeName,
+                    formattedEntities,
+                    entities,
+                );
+            }
+            return formattedEntities.map((entity) =>
+                applyPlantHealthIssueFormatting(entityTypeName, entity),
+            );
         },
         entityCacheTtl,
     );
@@ -468,14 +966,48 @@ export async function getEntityFormatted<T>(id: number) {
             const entity = (await getEntityRaw(id)) as
                 | EntityWithAttributesAndType
                 | undefined;
-            return (await expandEntity(entity, cache)) as T;
+            const formattedEntity = (await expandEntity(entity, cache)) as T;
+            if (entity?.entityTypeName !== 'plant') {
+                if (entity?.entityTypeName === 'plantSort') {
+                    const plantEntities = (await getEntitiesRaw(
+                        'plant',
+                        'published',
+                    )) as EntityWithAttributesAndType[];
+                    return applyPlantRelationshipReadModel(
+                        [formattedEntity],
+                        [entity, ...plantEntities],
+                    )[0];
+                }
+                return applyPlantHealthIssueFormatting(
+                    entity?.entityTypeName ?? '',
+                    formattedEntity,
+                );
+            }
+
+            const plantEntities = (await getEntitiesRaw(
+                'plant',
+                'published',
+            )) as EntityWithAttributesAndType[];
+            const withRelationships = applyPlantRelationshipReadModel(
+                [formattedEntity],
+                plantEntities,
+            );
+            const plantHealthReadModel =
+                await buildPlantHealthReadModelForPublishedPlants(
+                    plantEntities,
+                );
+            return applyPlantHealthReadModel(
+                withRelationships,
+                plantEntities,
+                plantHealthReadModel,
+            )[0];
         },
         entityCacheTtl,
     );
 }
 
-export async function getEntityRaw(id: number) {
-    const entity = await storage().query.entities.findFirst({
+export async function getEntityRaw(id: number, db: DatabaseClient = storage()) {
+    const entity = await db.query.entities.findFirst({
         where: and(eq(entities.id, id), eq(entities.isDeleted, false)),
         with: {
             attributes: {
@@ -648,22 +1180,22 @@ export async function createEntity(
     entityTypeName: string,
     actor?: { id?: string; name?: string },
 ) {
-    const [result] = await Promise.all([
-        storage()
-            .insert(entities)
-            .values({ entityTypeName })
-            .returning({ id: entities.id }),
-        bustCached(cacheKeys.entityTypeName(entityTypeName)),
+    const result = await storage()
+        .insert(entities)
+        .values({ entityTypeName })
+        .returning({ id: entities.id });
+    const entityId = result[0].id;
+    await Promise.all([
+        storage().insert(entityRevisions).values({
+            entityId,
+            entityTypeName,
+            action: 'entity.created',
+            actorId: actor?.id,
+            actorName: actor?.name,
+        }),
+        bustEntityReadModelsForMutatedTypes([entityTypeName]),
         bustCachedByPrefixes(['dashboard:admin:']),
     ]);
-    const entityId = result[0].id;
-    await storage().insert(entityRevisions).values({
-        entityId,
-        entityTypeName,
-        action: 'entity.created',
-        actorId: actor?.id,
-        actorName: actor?.name,
-    });
     return entityId;
 }
 
@@ -682,9 +1214,9 @@ export async function duplicateEntity(id: number) {
         order: attr.order,
     }));
 
+    await storage().insert(attributeValues).values(newAttributes);
     await Promise.all([
-        storage().insert(attributeValues).values(newAttributes),
-        bustCached(cacheKeys.entityTypeName(entity.entityTypeName)),
+        bustEntityReadModelsForMutatedTypes([entity.entityTypeName]),
         bustCached(cacheKeys.entity(newEntityId)),
         bustCachedByPrefixes(['dashboard:admin:']),
     ]);
@@ -795,58 +1327,52 @@ export async function updateEntity(
             );
         }
 
+        await assertPlantHealthIssueReferencesCanPublish(entityForValidation);
+
         updateData.publishedAt = new Date();
     }
 
+    const previousPlantHealthTargetIds = isPlantHealthIssueEntityTypeName(
+        previousEntity.entityTypeName,
+    )
+        ? plantHealthAffectedPlantIdsForEntity(await getEntityRaw(entity.id))
+        : [];
+
     await Promise.all([
-        previousEntity
-            ? storage()
-                  .insert(entityRevisions)
-                  .values({
-                      entityId: entity.id,
-                      entityTypeName:
-                          entity.entityTypeName ??
-                          previousEntity.entityTypeName,
-                      action:
-                          previousEntity.state !== updateData.state
-                              ? 'entity.state_changed'
-                              : 'entity.updated',
-                      actorId: actor?.id,
-                      actorName: actor?.name,
-                      previousState: previousEntity.state,
-                      nextState: updateData.state ?? previousEntity.state,
-                  })
-            : undefined,
+        storage()
+            .insert(entityRevisions)
+            .values({
+                entityId: entity.id,
+                entityTypeName: nextEntityTypeName,
+                action:
+                    previousEntity.state !== updateData.state
+                        ? 'entity.state_changed'
+                        : 'entity.updated',
+                actorId: actor?.id,
+                actorName: actor?.name,
+                previousState: previousEntity.state,
+                nextState: updateData.state ?? previousEntity.state,
+            }),
         storage()
             .update(entities)
             .set(updateData)
             .where(eq(entities.id, entity.id)),
+    ]);
+
+    await Promise.all([
         bustCached(cacheKeys.entity(entity.id)),
-        entity.id
-            ? storage()
-                  .select()
-                  .from(entities)
-                  .where(eq(entities.id, entity.id))
-                  .then((entityToUpdate) => {
-                      return Promise.all([
-                          entityToUpdate?.[0].id
-                              ? bustCached(
-                                    cacheKeys.entity(entityToUpdate?.[0]?.id),
-                                )
-                              : undefined,
-                          entityToUpdate?.[0].entityTypeName
-                              ? bustCached(
-                                    cacheKeys.entityTypeName(
-                                        entityToUpdate?.[0].entityTypeName,
-                                    ),
-                                )
-                              : undefined,
-                      ]);
-                  })
+        bustEntityReadModelsForMutatedTypes([
+            previousEntity.entityTypeName,
+            nextEntityTypeName,
+        ]),
+        isPlantHealthIssueEntityTypeName(previousEntity.entityTypeName) ||
+        isPlantHealthIssueEntityTypeName(nextEntityTypeName)
+            ? Promise.all(
+                  previousPlantHealthTargetIds.map((plantId) =>
+                      bustCached(cacheKeys.entity(plantId)),
+                  ),
+              )
             : undefined,
-        entity.entityTypeName
-            ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName))
-            : null,
         bustCachedByPrefixes(['dashboard:admin:']),
     ]);
 
@@ -862,6 +1388,12 @@ export async function deleteEntity(
         throw new Error(`Entity with id ${id} not found`);
     }
 
+    const plantHealthTargetIds = isPlantHealthIssueEntityTypeName(
+        entity.entityTypeName,
+    )
+        ? plantHealthAffectedPlantIdsForEntity(entity)
+        : [];
+
     await Promise.all([
         storage().insert(entityRevisions).values({
             entityId: id,
@@ -876,10 +1408,18 @@ export async function deleteEntity(
             .update(entities)
             .set({ isDeleted: true })
             .where(eq(entities.id, id)),
+    ]);
+
+    await Promise.all([
         bustCached(cacheKeys.entity(id)),
-        entity.entityTypeName
-            ? bustCached(cacheKeys.entityTypeName(entity.entityTypeName))
-            : null,
+        bustEntityReadModelsForMutatedTypes([entity.entityTypeName]),
+        isPlantHealthIssueEntityTypeName(entity.entityTypeName)
+            ? Promise.all(
+                  plantHealthTargetIds.map((plantId) =>
+                      bustCached(cacheKeys.entity(plantId)),
+                  ),
+              )
+            : undefined,
         bustCachedByPrefixes(['dashboard:admin:']),
     ]);
 
@@ -887,13 +1427,36 @@ export async function deleteEntity(
 }
 
 export async function getEntityRevisions(entityId: number) {
-    return storage().query.entityRevisions.findMany({
+    const revisions = await storage().query.entityRevisions.findMany({
         where: eq(entityRevisions.entityId, entityId),
         orderBy: (revisions, { desc }) => [
             desc(revisions.createdAt),
             desc(revisions.id),
         ],
     });
+    const actorIds = [
+        ...new Set(
+            revisions.flatMap((revision) =>
+                revision.actorId ? [revision.actorId] : [],
+            ),
+        ),
+    ];
+    const actors = actorIds.length
+        ? await storage().query.users.findMany({
+              columns: { id: true },
+              extras: userAchievementExtras,
+              where: inArray(users.id, actorIds),
+          })
+        : [];
+    const counts = new Map(
+        actors.map((actor) => [actor.id, actor.achievementCount]),
+    );
+    return revisions.map((revision) => ({
+        ...revision,
+        actorAchievementCount: revision.actorId
+            ? counts.get(revision.actorId)
+            : undefined,
+    }));
 }
 
 export async function getLatestEntityRevisions(

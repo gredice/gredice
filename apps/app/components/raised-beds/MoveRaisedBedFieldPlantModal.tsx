@@ -8,8 +8,10 @@ import { Row } from '@gredice/ui/Row';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { useEffect, useState, useTransition } from 'react';
 import { moveRaisedBedFieldPlantAction } from '../../app/(actions)/raisedBedFieldsActions';
+import { raisedBedFieldCardButtonClassName } from './RaisedBedFieldCard';
 
 type MoveRaisedBedFieldPlantOption = {
     value: string;
@@ -22,7 +24,7 @@ type MoveRaisedBedFieldPlantModalProps = {
     sourcePlantPlaceEventId: number;
     sourcePlantLabel: string;
     targetOptions: MoveRaisedBedFieldPlantOption[];
-    triggerVariant?: 'button' | 'icon';
+    triggerVariant?: 'button' | 'icon' | 'fieldIndex';
 };
 
 export function MoveRaisedBedFieldPlantModal({
@@ -74,7 +76,19 @@ export function MoveRaisedBedFieldPlantModal({
         <Modal
             title={`Premjesti biljku: ${sourcePlantLabel}`}
             trigger={
-                triggerVariant === 'icon' ? (
+                triggerVariant === 'fieldIndex' ? (
+                    <button
+                        type="button"
+                        title="Premjesti biljku"
+                        disabled={targetOptions.length === 0}
+                        className={cx(
+                            'inline-flex min-w-0 shrink-0 items-center rounded-full px-2 py-1 text-xs font-semibold transition-opacity hover:opacity-80 disabled:pointer-events-none disabled:opacity-50',
+                            raisedBedFieldCardButtonClassName,
+                        )}
+                    >
+                        {sourcePositionIndex + 1}
+                    </button>
+                ) : triggerVariant === 'icon' ? (
                     <IconButton
                         variant="outlined"
                         size="sm"

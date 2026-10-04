@@ -1,7 +1,13 @@
 import { slugify } from '@gredice/js/slug';
-import { createElement, type ExoticComponent, type ReactNode } from 'react';
+import {
+    type CSSProperties,
+    createElement,
+    type ExoticComponent,
+    type ReactNode,
+} from 'react';
 import { Accordion } from '../Accordion';
 import { Button } from '../Button';
+import { Card } from '../Card';
 import { Container, type ContainerProps } from '../Container';
 import { Divider } from '../Divider';
 import {
@@ -10,8 +16,16 @@ import {
     CompanyGitHub,
     CompanyReddit,
     CompanyX,
+    Droplets,
     Globe,
+    Leaf,
+    Link,
     Mail,
+    MapPin,
+    Security,
+    Sprout,
+    Success,
+    Warning,
 } from '../icons';
 import { Markdown } from '../Markdown';
 import { Stack } from '../Stack';
@@ -73,7 +87,10 @@ export type SectionData = {
     assetUrl?: string;
     assetDarkUrl?: string;
     assetAlt?: string;
+    iconName?: string;
     features?: SectionData[];
+    /** Ordered published FAQ slugs, separated by spaces, commas or newlines. */
+    faqSlugs?: string;
     ctas?: {
         label: string;
         href: string;
@@ -260,10 +277,10 @@ function AssetBlock({
     }
 
     return (
-        <div className="overflow-hidden rounded-lg border bg-muted/20">
+        <div className="flex max-w-full justify-center overflow-hidden rounded-lg border bg-muted/20">
             <CmsMediaImage
                 alt={assetAlt ?? ''}
-                className="h-auto w-full object-cover"
+                className="h-auto w-full object-contain"
                 darkSrc={assetDarkUrl}
                 src={assetUrl}
             />
@@ -276,16 +293,23 @@ export function CmsMediaImage({
     className,
     darkSrc,
     src,
+    style,
 }: {
     alt?: string;
     className?: string;
     darkSrc?: string;
     src: string;
+    style?: CSSProperties;
 }) {
     if (!darkSrc) {
         return (
             // biome-ignore lint/performance/noImgElement: CMS image URLs are remote and not known at build time.
-            <img alt={alt ?? ''} className={cx('block', className)} src={src} />
+            <img
+                alt={alt ?? ''}
+                className={cx('block', className)}
+                src={src}
+                style={style}
+            />
         );
     }
 
@@ -296,18 +320,26 @@ export function CmsMediaImage({
                 alt={alt ?? ''}
                 className={cx('image--light block', className)}
                 src={src}
+                style={style}
             />
             {/** biome-ignore lint/performance/noImgElement: CMS image URLs are remote and not known at build time. */}
             <img
                 alt={alt ?? ''}
                 className={cx('image--dark block', className)}
                 src={darkSrc}
+                style={style}
             />
         </>
     );
 }
 
-function IconName({ name }: { name: string }) {
+function IconName({
+    className = 'size-4',
+    name,
+}: {
+    className?: string;
+    name: string;
+}) {
     const normalized = name.trim().toLowerCase();
 
     if (!normalized) {
@@ -315,21 +347,43 @@ function IconName({ name }: { name: string }) {
     }
 
     switch (normalized) {
+        case 'deviation':
+        case 'warning':
+            return <Warning className={className} />;
+        case 'harvest':
+        case 'sort':
+            return <Success className={className} />;
+        case 'hygiene':
+        case 'security':
+            return <Security className={className} />;
+        case 'inputs':
+        case 'sprout':
+            return <Sprout className={className} />;
+        case 'leaf':
+            return <Leaf className={className} />;
+        case 'location':
+        case 'map-pin':
+            return <MapPin className={className} />;
+        case 'trace':
+        case 'traceability':
+            return <Link className={className} />;
+        case 'water':
+            return <Droplets className={className} />;
         case 'facebook':
-            return <CompanyFacebook className="size-4" />;
+            return <CompanyFacebook className={className} />;
         case 'github':
-            return <CompanyGitHub className="size-4" />;
+            return <CompanyGitHub className={className} />;
         case 'instagram':
         case 'link':
-            return <Globe className="size-4" />;
+            return <Globe className={className} />;
         case 'mail':
-            return <Mail className="size-4" />;
+            return <Mail className={className} />;
         case 'reddit':
-            return <CompanyReddit className="size-4" />;
+            return <CompanyReddit className={className} />;
         case 'whatsapp':
-            return <Comment className="size-4" />;
+            return <Comment className={className} />;
         case 'x':
-            return <CompanyX className="size-4" />;
+            return <CompanyX className={className} />;
         default:
             break;
     }
@@ -382,8 +436,9 @@ function FeatureItem({
     assetUrl,
     description,
     header,
+    iconName,
 }: SectionData) {
-    return (
+    const content = (
         <Stack spacing={4}>
             <AssetBlock
                 asset={asset}
@@ -402,6 +457,19 @@ function FeatureItem({
                 description
             )}
         </Stack>
+    );
+
+    if (!iconName) {
+        return content;
+    }
+
+    return (
+        <div className="flex gap-4">
+            <span className="mt-1 flex size-10 shrink-0 items-center justify-center rounded-md border bg-card text-primary">
+                <IconName className="size-5" name={iconName} />
+            </span>
+            <div className="min-w-0">{content}</div>
+        </div>
     );
 }
 
@@ -861,7 +929,10 @@ export function StepList(props: SectionData) {
                                 {features.map((feature, index) => (
                                     <div
                                         className="rounded-lg border bg-card p-5"
-                                        key={sectionKey(feature) || `step-${index}`}
+                                        key={
+                                            sectionKey(feature) ||
+                                            `step-${index}`
+                                        }
                                     >
                                         <Stack spacing={4}>
                                             <span className="inline-flex size-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
@@ -1054,7 +1125,7 @@ export function CalloutBlock(props: SectionData) {
         <CmsSectionContainer>
             <section className="py-8">
                 <CmsSectionContent section={props}>
-                    <div className="rounded-lg border border-primary/20 bg-muted/30 p-5 @[48rem]/cms:p-6">
+                    <Card className="border-primary/20 bg-card p-5 shadow-sm @[48rem]/cms:p-6">
                         <Stack spacing={5}>
                             <DescriptionBlock
                                 description={description}
@@ -1063,7 +1134,7 @@ export function CalloutBlock(props: SectionData) {
                             />
                             <Ctas ctas={ctas} />
                         </Stack>
-                    </div>
+                    </Card>
                 </CmsSectionContent>
             </section>
         </CmsSectionContainer>
@@ -1122,7 +1193,7 @@ export function CtaBand(props: SectionData) {
         <CmsSectionContainer>
             <section className="py-12">
                 <CmsSectionContent section={props}>
-                    <div className="rounded-lg border bg-muted/20 p-6 @[48rem]/cms:p-10">
+                    <Card className="bg-card p-6 shadow-sm @[48rem]/cms:p-10">
                         <div className="grid gap-6 @[64rem]/cms:grid-cols-[minmax(0,1fr)_auto] @[64rem]/cms:items-end">
                             <DescriptionBlock
                                 className="max-w-3xl"
@@ -1132,7 +1203,7 @@ export function CtaBand(props: SectionData) {
                             />
                             <Ctas ctas={ctas} />
                         </div>
-                    </div>
+                    </Card>
                 </CmsSectionContent>
             </section>
         </CmsSectionContainer>
@@ -1141,6 +1212,12 @@ export function CtaBand(props: SectionData) {
 
 export function Faq1(props: SectionData) {
     const { ctas, description, features, header, tagline } = props;
+    if (
+        typeof props.faqSlugs === 'string' &&
+        props.faqSlugs.trim() &&
+        !features?.length
+    )
+        return null;
 
     return (
         <CmsSectionContainer>
@@ -1168,9 +1245,9 @@ export function Faq1(props: SectionData) {
                                         </Typography>
                                         {typeof feature.description ===
                                         'string' ? (
-                                            <Typography component="p">
+                                            <Markdown>
                                                 {feature.description}
-                                            </Typography>
+                                            </Markdown>
                                         ) : (
                                             feature.description
                                         )}
@@ -1209,9 +1286,15 @@ function FooterSocialLinks({ ctas }: { ctas: SectionData['ctas'] }) {
 }
 
 export function Footer1(props: SectionData) {
-    const { asset, ctas, features, tagline } = props;
+    const { asset, ctas, description, features, tagline } = props;
     const linkGroups = features?.filter(
-        (feature) => feature.ctas?.length && feature.tagline !== 'SystemStatus',
+        (feature) =>
+            feature.ctas?.length &&
+            feature.tagline !== 'FooterUtility' &&
+            feature.tagline !== 'SystemStatus',
+    );
+    const footerUtility = features?.find(
+        (feature) => feature.tagline === 'FooterUtility',
     );
     const systemStatus = features?.find(
         (feature) => feature.tagline === 'SystemStatus',
@@ -1220,7 +1303,7 @@ export function Footer1(props: SectionData) {
     return (
         <CmsSectionContainer>
             <footer className="self-stretch">
-                <CmsSectionContent className="pb-8 pt-16" section={props}>
+                <CmsSectionContent className="pb-3 pt-16" section={props}>
                     <Stack spacing={8}>
                         {linkGroups?.length ? (
                             <div
@@ -1260,22 +1343,37 @@ export function Footer1(props: SectionData) {
                                 ))}
                             </div>
                         ) : null}
-                        <div className="flex flex-col items-center gap-4 @[48rem]/cms:flex-row @[48rem]/cms:justify-between">
-                            <Stack
-                                alignItems="center"
-                                className="@[48rem]/cms:items-start"
-                            >
-                                {asset}
-                            </Stack>
-                            <FooterSocialLinks ctas={ctas} />
-                        </div>
-                        <Divider />
-                        <div className="flex flex-col items-center gap-8 text-center @[48rem]/cms:flex-row @[48rem]/cms:justify-between">
-                            <div>{systemStatus?.asset}</div>
-                            <Typography level="body3">
-                                {`Copyright © ${new Date().getFullYear()} ${tagline}. All rights reserved.`}
-                            </Typography>
-                        </div>
+                        <Stack
+                            spacing={5}
+                            className={cx(
+                                linkGroups?.length && 'border-t pt-6',
+                            )}
+                        >
+                            <div className="flex flex-col items-center gap-4 @[48rem]/cms:flex-row @[48rem]/cms:justify-between">
+                                <Stack
+                                    alignItems="center"
+                                    className="max-w-full @[48rem]/cms:items-start"
+                                >
+                                    {asset}
+                                </Stack>
+                                <div className="flex w-full flex-col items-center gap-3 @[48rem]/cms:w-auto @[48rem]/cms:items-end">
+                                    {footerUtility?.asset}
+                                    <FooterSocialLinks ctas={ctas} />
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-center gap-3 text-center @[48rem]/cms:flex-row @[48rem]/cms:justify-between">
+                                <div className="flex flex-col items-center gap-3 @[48rem]/cms:flex-row">
+                                    {systemStatus?.asset}
+                                    {description}
+                                </div>
+                                <Typography
+                                    className="text-foreground/70"
+                                    level="body3"
+                                >
+                                    {`© ${new Date().getFullYear()} ${tagline}.`}
+                                </Typography>
+                            </div>
+                        </Stack>
                     </Stack>
                 </CmsSectionContent>
             </footer>

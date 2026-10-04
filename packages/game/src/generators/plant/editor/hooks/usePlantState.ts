@@ -2,18 +2,19 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-    defaultThornDefinition,
     type PlantDefinition,
     plantTypeNames,
     plantTypes,
 } from '../../lib/plant-definitions';
 import type {
+    PlantDefinitionChange,
     PlantGeneratorState,
     VisibilityState,
 } from '../@types/plant-generator';
 
 const STORAGE_KEY = 'plant-generator-definitions';
 const CUSTOM_PLANTS_KEY = 'plant-generator-custom-plants';
+const STORAGE_SCHEMA_VERSION = 2;
 const HISTORY_LIMIT = 100;
 
 const defaultPlantType = plantTypeNames[0];
@@ -37,6 +38,11 @@ interface PlantEditorStore {
         past: PlantHistorySnapshot[];
         future: PlantHistorySnapshot[];
     };
+}
+
+interface StoredPlantDefinitions {
+    definitions: Record<string, PlantDefinition>;
+    version: number;
 }
 
 const initialState: PlantGeneratorState = {
@@ -74,7 +80,26 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isPlantDefinitionRecord(
     value: unknown,
 ): value is Record<string, PlantDefinition> {
-    return isRecord(value);
+    return (
+        isRecord(value) &&
+        Object.values(value).every(
+            (definition) =>
+                isRecord(definition) &&
+                typeof definition.key === 'string' &&
+                typeof definition.name === 'string' &&
+                typeof definition.height === 'number' &&
+                isRecord(definition.development) &&
+                typeof definition.development.architecture === 'string' &&
+                isRecord(definition.development.axes) &&
+                isRecord(definition.development.foliage) &&
+                isRecord(definition.development.phenology) &&
+                isRecord(definition.development.reproduction) &&
+                isRecord(definition.stem) &&
+                isRecord(definition.leaf) &&
+                isRecord(definition.flower) &&
+                isRecord(definition.vegetable),
+        )
+    );
 }
 
 function parseStoredPlantDefinitions(
@@ -85,33 +110,25 @@ function parseStoredPlantDefinitions(
     }
 
     const parsedValue: unknown = JSON.parse(rawValue);
-    return isPlantDefinitionRecord(parsedValue) ? parsedValue : {};
-}
-
-function mergePlantDefinition(
-    baseDefinition: PlantDefinition,
-    savedDefinition?: PlantDefinition,
-) {
-    if (!savedDefinition) {
-        return cloneData(baseDefinition);
+    if (
+        !isRecord(parsedValue) ||
+        parsedValue.version !== STORAGE_SCHEMA_VERSION ||
+        !isPlantDefinitionRecord(parsedValue.definitions)
+    ) {
+        return {};
     }
 
-    return {
-        ...cloneData(baseDefinition),
-        ...savedDefinition,
-        stem: { ...baseDefinition.stem, ...savedDefinition.stem },
-        leaf: { ...baseDefinition.leaf, ...savedDefinition.leaf },
-        flower: { ...baseDefinition.flower, ...savedDefinition.flower },
-        vegetable: {
-            ...baseDefinition.vegetable,
-            ...savedDefinition.vegetable,
-        },
-        thorn: {
-            ...defaultThornDefinition,
-            ...baseDefinition.thorn,
-            ...savedDefinition.thorn,
-        },
+    return parsedValue.definitions;
+}
+
+function serializeStoredPlantDefinitions(
+    definitions: Record<string, PlantDefinition>,
+) {
+    const storedValue: StoredPlantDefinitions = {
+        definitions,
+        version: STORAGE_SCHEMA_VERSION,
     };
+    return JSON.stringify(storedValue);
 }
 
 function loadStoredDefinitions() {
@@ -149,7 +166,7 @@ function resolvePlantDefinition(
 ) {
     const fallbackPlant = availablePlants[defaultPlantType];
     const baseDefinition = availablePlants[plantType] ?? fallbackPlant;
-    return mergePlantDefinition(baseDefinition, savedDefinitions[plantType]);
+    return cloneData(savedDefinitions[plantType] ?? baseDefinition);
 }
 
 function createSnapshot(
@@ -267,7 +284,7 @@ export function usePlantState(initialPlantType?: string) {
         try {
             localStorage.setItem(
                 CUSTOM_PLANTS_KEY,
-                JSON.stringify(editor.state.customPlants),
+                serializeStoredPlantDefinitions(editor.state.customPlants),
             );
         } catch (e) {
             console.warn('Failed to save custom plants to localStorage:', e);
@@ -290,7 +307,7 @@ export function usePlantState(initialPlantType?: string) {
                     }
                     localStorage.setItem(
                         STORAGE_KEY,
-                        JSON.stringify(existingDefs),
+                        serializeStoredPlantDefinitions(existingDefs),
                     );
                 } catch (e) {
                     console.warn(
@@ -326,6 +343,7 @@ export function usePlantState(initialPlantType?: string) {
     const createCustomPlant = useCallback((name: string) => {
         setEditor((current) => {
             const nextDefinition = cloneData(current.state.definition);
+            nextDefinition.key = `custom:${name}`;
             nextDefinition.name = name;
 
             const nextCustomPlants = {
@@ -380,7 +398,10 @@ export function usePlantState(initialPlantType?: string) {
             try {
                 const existingDefs = loadStoredDefinitions();
                 delete existingDefs[name];
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(existingDefs));
+                localStorage.setItem(
+                    STORAGE_KEY,
+                    serializeStoredPlantDefinitions(existingDefs),
+                );
             } catch (e) {
                 console.warn(
                     'Failed to remove custom plant from saved definitions:',
@@ -445,53 +466,79 @@ export function usePlantState(initialPlantType?: string) {
         [],
     );
 
-    const updateDefinition = useCallback((path: string, value: unknown) => {
-        setEditor((current) => {
-            const nextDefinition = cloneData(current.state.definition);
-            const keys = path.split('.');
-            let pointer: unknown = nextDefinition;
+    const updateDefinitionChanges = useCallback(
+        (changes: readonly PlantDefinitionChange[]) => {
+            if (changes.length === 0) {
+                return;
+            }
 
-            for (let i = 0; i < keys.length - 1; i++) {
-                if (!isRecord(pointer)) {
+            setEditor((current) => {
+                const nextDefinition = cloneData(current.state.definition);
+                let hasChanges = false;
+
+                for (const change of changes) {
+                    const keys = change.path.split('.');
+                    if (keys.some((key) => key.length === 0)) {
+                        return current;
+                    }
+
+                    let pointer: unknown = nextDefinition;
+                    for (let i = 0; i < keys.length - 1; i++) {
+                        if (!isRecord(pointer)) {
+                            return current;
+                        }
+
+                        const next = pointer[keys[i]];
+                        if (!isRecord(next)) {
+                            return current;
+                        }
+                        pointer = next;
+                    }
+
+                    if (!isRecord(pointer)) {
+                        return current;
+                    }
+
+                    const key = keys[keys.length - 1];
+                    if (Object.is(pointer[key], change.value)) {
+                        continue;
+                    }
+
+                    pointer[key] = cloneData(change.value);
+                    hasChanges = true;
+                }
+
+                if (!hasChanges) {
                     return current;
                 }
 
-                const next = pointer[keys[i]];
-                if (!isRecord(next)) {
-                    return current;
-                }
-                pointer = next;
-            }
+                const nextCustomPlants = plantTypeNames.includes(
+                    current.state.plantType,
+                )
+                    ? current.state.customPlants
+                    : {
+                          ...current.state.customPlants,
+                          [current.state.plantType]: cloneData(nextDefinition),
+                      };
 
-            if (!isRecord(pointer)) {
-                return current;
-            }
+                const nextState = {
+                    ...current.state,
+                    definition: nextDefinition,
+                    customPlants: nextCustomPlants,
+                };
 
-            const key = keys[keys.length - 1];
-            if (pointer[key] === value) {
-                return current;
-            }
+                return withHistory(current, nextState, current.visibility);
+            });
+        },
+        [],
+    );
 
-            pointer[key] = value;
-
-            const nextCustomPlants = plantTypeNames.includes(
-                current.state.plantType,
-            )
-                ? current.state.customPlants
-                : {
-                      ...current.state.customPlants,
-                      [current.state.plantType]: cloneData(nextDefinition),
-                  };
-
-            const nextState = {
-                ...current.state,
-                definition: nextDefinition,
-                customPlants: nextCustomPlants,
-            };
-
-            return withHistory(current, nextState, current.visibility);
-        });
-    }, []);
+    const updateDefinition = useCallback(
+        (path: string, value: unknown) => {
+            updateDefinitionChanges([{ path, value }]);
+        },
+        [updateDefinitionChanges],
+    );
 
     const selectPlantType = useCallback((plantType: string) => {
         setEditor((current) => {
@@ -577,6 +624,7 @@ export function usePlantState(initialPlantType?: string) {
         updateState,
         updateVisibility,
         updateDefinition,
+        updateDefinitionChanges,
         selectPlantType,
         randomizeSeed,
         undo,

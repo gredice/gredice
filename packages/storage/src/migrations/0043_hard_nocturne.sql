@@ -1,0 +1,1 @@
+ALTER TABLE "automation_definitions" ADD COLUMN "max_concurrent_runs" integer DEFAULT 1 NOT NULL;

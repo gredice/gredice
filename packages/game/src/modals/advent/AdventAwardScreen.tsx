@@ -5,6 +5,7 @@ import { Button } from '@gredice/ui/Button';
 import { Navigate } from '@gredice/ui/icons';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Stack } from '@gredice/ui/Stack';
+import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import Confetti from 'react-confetti-boom';
@@ -52,7 +53,7 @@ function AwardImage({ award }: { award: AdventAward }) {
                 <div className="relative">
                     <SantaCapIcon className="absolute -top-4 left-1/2 -translate-x-1/2 w-16 h-12 z-10 -rotate-12" />
                     <Image
-                        src="https://cdn.gredice.com/sunflower-large.svg"
+                        src={sunflowerMascotArtwork}
                         alt="Suncokret"
                         width={120}
                         height={120}

@@ -1,0 +1,74 @@
+'use client';
+
+import { GameGardenIcon } from '@gredice/ui/GameIcons';
+import { usePublicEnvironment } from '@gredice/ui/PublicChrome';
+import { cx } from '@gredice/ui/utils';
+import Image from 'next/image';
+import { useState } from 'react';
+
+export function PublicGardenPreviewImage({
+    dayPreviewImageUrl,
+    gardenName,
+    nightPreviewImageUrl,
+    priority = false,
+    className,
+    sizes = '(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw',
+}: {
+    dayPreviewImageUrl?: string | null;
+    gardenName: string;
+    nightPreviewImageUrl?: string | null;
+    priority?: boolean;
+    className?: string;
+    sizes?: string;
+}) {
+    const { snapshot } = usePublicEnvironment();
+    const [failedImageUrls, setFailedImageUrls] = useState<string[]>([]);
+    const preferredImageUrl = snapshot.dark
+        ? nightPreviewImageUrl
+        : dayPreviewImageUrl;
+    const fallbackImageUrl = snapshot.dark
+        ? dayPreviewImageUrl
+        : nightPreviewImageUrl;
+    const visibleImageUrl = [preferredImageUrl, fallbackImageUrl].find(
+        (imageUrl) => imageUrl && !failedImageUrls.includes(imageUrl),
+    );
+
+    return (
+        <div
+            className={cx(
+                'relative aspect-[1200/630] w-full overflow-hidden bg-muted',
+                className,
+            )}
+        >
+            <div
+                aria-hidden={Boolean(visibleImageUrl)}
+                aria-label={`Pregled vrta ${gardenName} još nije dostupan`}
+                className="absolute inset-0 grid place-items-center overflow-hidden bg-[radial-gradient(circle_at_1px_1px,color-mix(in_oklab,var(--color-border)_55%,transparent)_1px,transparent_0)] bg-[size:18px_18px]"
+                role="img"
+            >
+                <div className="flex max-w-[80%] items-center gap-2 rounded-full border bg-background/85 px-4 py-2 text-muted-foreground shadow-sm backdrop-blur-sm">
+                    <GameGardenIcon aria-hidden className="size-6 shrink-0" />
+                    <span className="truncate text-sm font-medium">
+                        Pregled se priprema
+                    </span>
+                </div>
+            </div>
+            {visibleImageUrl ? (
+                <Image
+                    src={visibleImageUrl}
+                    alt={`Prikaz vrta ${gardenName}`}
+                    fill
+                    sizes={sizes}
+                    priority={priority}
+                    className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                    onError={() =>
+                        setFailedImageUrls((current) => [
+                            ...current,
+                            visibleImageUrl,
+                        ])
+                    }
+                />
+            ) : null}
+        </div>
+    );
+}

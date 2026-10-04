@@ -28,7 +28,7 @@ type PlantLike =
 /**
  * Minimal type for plant sort data accepted by PlantOrSortImage.
  */
-type PlantSortLike =
+export type PlantSortLike =
     | {
           image?: ImageLike;
           images?: ImageLike;

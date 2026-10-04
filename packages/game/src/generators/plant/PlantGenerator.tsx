@@ -1,32 +1,27 @@
 'use client';
 
 import { useMemo, useRef } from 'react';
-import * as THREE from 'three';
-import CSM from 'three-custom-shader-material';
+import type * as THREE from 'three';
+import { buildDevelopmentalPlantRenderData } from './developmental/buildDevelopmentalPlantRenderData';
+import {
+    buildDevelopmentalPlantGraph,
+    type DevelopmentalPlantGraph,
+} from './developmental/developmentalPlantGraph';
 import { usePlantLod } from './hooks/usePlantLod';
-import { usePlantSway } from './hooks/usePlantSway';
-import {
-    buildPlantRenderData,
-    getApproximatePlantHeight,
-} from './lib/buildPlantRenderData';
-import type { LSystemSymbol } from './lib/l-system';
 import type { PlantDefinition } from './lib/plant-definitions';
-import {
-    createStemSurfaceUniforms,
-    stemSurfaceFragmentShader,
-    stemSurfaceVertexShader,
-} from './lib/plant-stem-material';
+import { getApproximatePlantHeight } from './lib/plantRenderData';
 import { Flowers } from './parts/flowers';
 import { Leaves } from './parts/leaves';
 import { PlantBillboard } from './parts/PlantBillboard';
+import { Stems } from './parts/stems';
 import { Thorns } from './parts/thorns';
 import { Vegetables } from './parts/vegetables';
 
 interface PlantGeneratorProps {
     plantDefinition: PlantDefinition;
-    lSystemSymbols: LSystemSymbol[];
     generation: number;
     seed: string;
+    graph?: DevelopmentalPlantGraph;
     flowerGrowth: number;
     fruitGrowth: number;
     animate?: boolean;
@@ -37,9 +32,9 @@ interface PlantGeneratorProps {
 
 export function PlantGenerator({
     plantDefinition,
-    lSystemSymbols,
     generation,
     seed,
+    graph: suppliedGraph,
     flowerGrowth,
     fruitGrowth,
     animate = true,
@@ -47,29 +42,25 @@ export function PlantGenerator({
     showFlowers = true,
     showProduce = true,
 }: PlantGeneratorProps) {
-    const stemSwayUniforms = usePlantSway(seed, {
-        amplitude: 0.055,
-        enabled: animate,
-        speed: 1.1,
-    });
-    const stemSurfaceUniforms = useMemo(
-        () => createStemSurfaceUniforms(plantDefinition.stem),
-        [plantDefinition.stem],
-    );
     const groupRef = useRef<THREE.Group | null>(null);
     const lodLevel = usePlantLod(
         groupRef,
-        getApproximatePlantHeight(plantDefinition, generation),
+        getApproximatePlantHeight(plantDefinition),
     );
     const renderData = useMemo(() => {
-        return buildPlantRenderData({
+        const graph =
+            suppliedGraph ??
+            buildDevelopmentalPlantGraph({
+                generation,
+                plantDefinition,
+                seed,
+            });
+        return buildDevelopmentalPlantRenderData({
             flowerGrowth,
             fruitGrowth,
-            generation,
-            lSystemSymbols,
+            graph,
             plantDefinition,
             renderDetailedGeometry: lodLevel === 'near',
-            seed,
             showFlowers,
             showLeaves,
             showProduce,
@@ -78,33 +69,26 @@ export function PlantGenerator({
         flowerGrowth,
         fruitGrowth,
         generation,
-        lSystemSymbols,
         lodLevel,
         plantDefinition,
         seed,
         showFlowers,
         showLeaves,
         showProduce,
+        suppliedGraph,
     ]);
 
     return (
         <group ref={groupRef}>
             {lodLevel === 'near' ? (
-                <group>
-                    <mesh geometry={renderData.stemGeometry} castShadow>
-                        <CSM
-                            baseMaterial={THREE.MeshStandardMaterial}
-                            vertexShader={stemSurfaceVertexShader}
-                            fragmentShader={stemSurfaceFragmentShader}
-                            uniforms={{
-                                ...stemSwayUniforms,
-                                ...stemSurfaceUniforms,
-                            }}
-                            color={plantDefinition.stem.color}
-                            roughness={0.8}
-                            metalness={0.2}
-                        />
-                    </mesh>
+                <group name={`PlantGenerator:${plantDefinition.name}:near`}>
+                    <Stems
+                        seed={seed}
+                        segments={renderData.stemSegments}
+                        stem={plantDefinition.stem}
+                        animate={animate}
+                        debugName={`PlantStems:${plantDefinition.name}:${seed}:segments:${renderData.stemSegments.length}`}
+                    />
                     {showLeaves && (
                         <Leaves
                             seed={seed}
@@ -112,6 +96,7 @@ export function PlantGenerator({
                             colors={renderData.leafColors}
                             type={plantDefinition.leaf.type}
                             animate={animate}
+                            debugName={`PlantLeaves:${plantDefinition.name}:${seed}:count:${renderData.leaves.length}`}
                         />
                     )}
                     {showFlowers && plantDefinition.flower.enabled && (
@@ -119,6 +104,7 @@ export function PlantGenerator({
                             seed={seed}
                             matrices={renderData.flowers}
                             color={plantDefinition.flower.color}
+                            form={plantDefinition.development.reproduction.form}
                             animate={animate}
                         />
                     )}
@@ -140,7 +126,9 @@ export function PlantGenerator({
                 </group>
             ) : (
                 <PlantBillboard
+                    animate={animate}
                     level={lodLevel}
+                    seed={seed}
                     summary={renderData.lodSummary}
                 />
             )}

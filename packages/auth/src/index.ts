@@ -179,8 +179,9 @@ export async function createJwt<TUser extends UserBase>(
     config: AuthConfigInitialized<TUser>['jwt'],
     userId: string,
     expirationTime?: string | number | Date,
+    claims: Omit<JWTPayload, 'aud' | 'exp' | 'iat' | 'iss' | 'sub'> = {},
 ): Promise<string> {
-    return new SignJWT()
+    return new SignJWT(claims)
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setIssuer(issuer(config))
@@ -222,6 +223,12 @@ export type initAuthResult<TUser extends UserBase> = {
     ) => Promise<Response>;
     createJwt: (
         userId: string,
+        expirationTime?: string | number | Date,
+        overrideConfig?: Partial<AuthConfig<TUser>['jwt']>,
+    ) => Promise<string>;
+    createJwtWithClaims: (
+        userId: string,
+        claims: Omit<JWTPayload, 'aud' | 'exp' | 'iat' | 'iss' | 'sub'>,
         expirationTime?: string | number | Date,
         overrideConfig?: Partial<AuthConfig<TUser>['jwt']>,
     ) => Promise<string>;
@@ -292,6 +299,16 @@ export function initAuth<TUser extends UserBase>(
                 },
                 userId,
                 expirationTime,
+            ),
+        createJwtWithClaims: (userId, claims, expirationTime, overrideConfig) =>
+            createJwt(
+                {
+                    ...initializedConfig.jwt,
+                    ...overrideConfig,
+                },
+                userId,
+                expirationTime,
+                claims,
             ),
         setCookie: (cookieValue, expiry, overrideConfig) =>
             setCookie(

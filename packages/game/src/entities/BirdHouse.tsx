@@ -1,15 +1,16 @@
-import { animated } from '@react-spring/three';
 import { DoubleSide } from 'three';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
+import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
+import { defaultGameWoodColor } from './woodPalette';
 
 const birdHouseWoodMaterial = {
-    color: '#956247',
-    metalness: 0.5,
+    color: defaultGameWoodColor,
+    metalness: 0,
     roughness: 0.9,
     side: DoubleSide,
 };

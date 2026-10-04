@@ -52,7 +52,11 @@ float noise(vec3 p) {
 void main() {
     vec3 transformed = position;
     vec3 normalDir = normalize(normal);
-    mat3 modelRot = mat3(modelMatrix);
+    mat4 snowObjectMatrix = modelMatrix;
+    #ifdef USE_INSTANCING
+        snowObjectMatrix = modelMatrix * instanceMatrix;
+    #endif
+    mat3 modelRot = mat3(snowObjectMatrix);
     vec3 worldUp = vec3(0.0, 1.0, 0.0);
     vec3 up = normalize(transpose(modelRot) * worldUp);
     vec3 worldNormal = normalize(modelRot * normalDir);
@@ -65,8 +69,8 @@ void main() {
 
     vec3 boundsCenter = 0.5 * (uBoundsMax + uBoundsMin);
     vec3 boundsHalfSize = 0.5 * (uBoundsMax - uBoundsMin);
-    vec3 worldCenter = (modelMatrix * vec4(boundsCenter, 1.0)).xyz;
-    vec3 worldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+    vec3 worldCenter = (snowObjectMatrix * vec4(boundsCenter, 1.0)).xyz;
+    vec3 worldPos = (snowObjectMatrix * vec4(position, 1.0)).xyz;
     float worldCenterHeight = dot(worldUp, worldCenter);
     vec3 axisX = modelRot[0];
     vec3 axisY = modelRot[1];
@@ -93,12 +97,20 @@ void main() {
 
     vCoverage = coverage;
     vNoise = n;
-    vNormal = normalize(normalMatrix * normalDir);
+    vec3 transformedNormal = normalDir;
+    #ifdef USE_INSTANCING
+        transformedNormal = normalize(mat3(instanceMatrix) * transformedNormal);
+    #endif
+    vNormal = normalize(normalMatrix * transformedNormal);
     vThickness = thickness;
     vSideDepth = distanceForSide;
     vSideFactor = sideFactor;
 
-    vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);
+    vec4 transformedPosition = vec4(transformed, 1.0);
+    #ifdef USE_INSTANCING
+        transformedPosition = instanceMatrix * transformedPosition;
+    #endif
+    vec4 mvPosition = modelViewMatrix * transformedPosition;
     gl_Position = projectionMatrix * mvPosition;
 
     #include <fog_vertex>

@@ -22,7 +22,7 @@ export type ButtonColor =
     | 'neutral';
 
 const buttonClassNames = cva(
-    'relative inline-flex min-w-0 items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50',
+    'relative inline-flex min-w-0 items-center justify-center gap-2 rounded-md text-sm font-medium transition-[color,background-color,border-color,text-decoration-color,fill,stroke,transform,translate,scale,rotate] duration-150 ease-out focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50',
     {
         variants: {
             variant: {
@@ -52,6 +52,9 @@ const buttonClassNames = cva(
     },
 );
 
+const buttonPressClassNames =
+    'active:scale-[0.98] motion-reduce:active:scale-[0.995] motion-reduce:duration-100';
+
 type ButtonOwnProps = VariantProps<typeof buttonClassNames> & {
     variant?: VariantKeys | 'link';
     color?: ButtonColor;
@@ -74,6 +77,9 @@ export type ButtonLinkProps = ButtonOwnProps &
         keyof ButtonOwnProps | 'href'
     > & {
         href: string;
+        /** Use document navigation when the destination belongs to another app. */
+        navigation?: 'client' | 'document';
+        prefetch?: ComponentProps<typeof NextLink>['prefetch'];
     };
 
 export type ButtonProps = ButtonButtonProps | ButtonLinkProps;
@@ -98,8 +104,7 @@ const buttonColorClassNames = {
     },
     outlined: {
         primary: 'text-primary hover:bg-primary/10',
-        secondary:
-            'text-secondary-foreground hover:bg-secondary/40',
+        secondary: 'text-secondary-foreground hover:bg-secondary/40',
         danger: 'border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950',
         error: 'border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950',
         warning:
@@ -185,7 +190,9 @@ export function Button(props: ButtonProps) {
             fullWidth,
             href,
             loading,
+            navigation,
             onClick,
+            prefetch,
             size,
             startDecorator,
             variant,
@@ -203,25 +210,36 @@ export function Button(props: ButtonProps) {
         const handleLinkClick =
             disabled || loading || onClick ? handleClick : undefined;
 
+        const linkProps = {
+            'aria-disabled': disabled || loading,
+            className: cx(
+                buttonClassNames({ fullWidth, size, variant }),
+                buttonColorClassName(variant, color),
+                className,
+            ),
+            href,
+            onClick: handleLinkClick,
+            tabIndex: disabled || loading ? -1 : rest.tabIndex,
+            ...rest,
+        };
+        const content = buttonContent({
+            children,
+            endDecorator,
+            loading,
+            startDecorator,
+        });
+
+        if (navigation === 'document') {
+            return <a {...linkProps}>{content}</a>;
+        }
+
         return (
             <NextLink
-                aria-disabled={disabled || loading}
-                className={cx(
-                    buttonClassNames({ fullWidth, size, variant }),
-                    buttonColorClassName(variant, color),
-                    className,
-                )}
+                {...linkProps}
                 href={href as ComponentProps<typeof NextLink>['href']}
-                onClick={handleLinkClick}
-                tabIndex={disabled || loading ? -1 : rest.tabIndex}
-                {...rest}
+                prefetch={prefetch}
             >
-                {buttonContent({
-                    children,
-                    endDecorator,
-                    loading,
-                    startDecorator,
-                })}
+                {content}
             </NextLink>
         );
     }
@@ -239,12 +257,20 @@ export function Button(props: ButtonProps) {
         variant,
         ...rest
     } = props;
+    const ariaDisabled =
+        props['aria-disabled'] === true || props['aria-disabled'] === 'true';
+    const hasPressFeedback =
+        variant !== 'link' &&
+        disabled !== true &&
+        loading !== true &&
+        !ariaDisabled;
 
     return (
         <button
             className={cx(
                 buttonClassNames({ fullWidth, size, variant }),
                 buttonColorClassName(variant, color),
+                hasPressFeedback && buttonPressClassNames,
                 className,
             )}
             disabled={disabled || loading}

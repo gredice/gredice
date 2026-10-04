@@ -19,7 +19,7 @@ export async function buildDeliveryEmailDetails(
 ): Promise<DeliveryEmailDetails | null> {
     const request = await getDeliveryRequest(requestId);
 
-    if (!request || request.mode !== 'delivery' || !request.slot) {
+    if (request?.mode !== 'delivery' || !request.slot) {
         return null;
     }
 

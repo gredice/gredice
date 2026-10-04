@@ -100,11 +100,12 @@ export function PageHeader({
                         <Typography
                             level="body1"
                             secondary
-                            className={
+                            className={cx(
+                                'public-page-description',
                                 isContainerResponsive
                                     ? 'text-pretty @[40rem]/cms:text-balance'
-                                    : 'text-pretty sm:text-balance'
-                            }
+                                    : 'text-pretty sm:text-balance',
+                            )}
                         >
                             {subHeader}
                         </Typography>

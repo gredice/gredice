@@ -1,5 +1,36 @@
 {
-    "$schema": "https://turbo.build/schema.json",
+    "$schema": "https://v2-9-16.turborepo.dev/schema.json",
+    "concurrency": "12",
+    "globalEnv": [
+        "GREDICE_CI_BLOB_FIXTURES",
+        "GREDICE_CI_NETWORK_ISOLATION",
+        "TEST_ENV",
+        "NEXT_FONT_GOOGLE_MOCKED_RESPONSES",
+        "GREDICE_PLAYWRIGHT_FEATURED_GARDENS_FIXTURE",
+        "GREDICE_STORAGE_TEST_DB_ADMIN_URL",
+        "GREDICE_API_HOST",
+        "GREDICE_NEWS_HOST",
+        "NEXT_TELEMETRY_DISABLED",
+        "NEXT_PUBLIC_VERCEL_ENV",
+        "VERCEL_ENV",
+        "POSTGRES_URL"
+    ],
+    "globalPassThroughEnv": [
+        "NODE_OPTIONS",
+        "COREPACK_HOME",
+        "COREPACK_ENABLE_NETWORK"
+    ],
+    "globalDependencies": [
+        "scripts/blob-test-fixtures.mjs",
+        "scripts/ci-blob-network-guard.mjs",
+        "apps/www/public/assets/plants/placeholder.png",
+        "scripts/ci-isolated-tests.sh",
+        "scripts/ci-test-app.sh",
+        "scripts/ci-font-fixtures.cjs",
+        "packages/storage/scripts/seedCiCatalogue.ts",
+        "packages/storage/tests/fixtures/ci-catalogue.json",
+        "scripts/ci-api-fixtures.mjs"
+    ],
     "tasks": {
         "build": {
             "inputs": [
@@ -11,7 +42,9 @@
             ],
             "outputs": [
                 ".next/**",
-                "!.next/cache/**"
+                "!.next/cache/**",
+                "public/sitemap*.xml",
+                "public/robots.txt"
             ]
         },
         "clean": {
@@ -19,7 +52,9 @@
         },
         "lint": {},
         "typecheck": {
-            "dependsOn": ["^typecheck"],
+            "dependsOn": [
+                "^typecheck"
+            ],
             "outputs": []
         },
         "lint:migrate": {

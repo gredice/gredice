@@ -1,23 +1,33 @@
 import {
+    canRemovePlantWithoutOperation,
+    getActivePlantCycleStatusChanges,
+    getHarvestPlantRemovalDisclaimer,
     plantFieldStatusLabel,
     userAllowedPlantStatusTransitions,
 } from '@gredice/js/plants';
 import { Button } from '@gredice/ui/Button';
+import {
+    GamePlantStatusIcon,
+    GameShovelIcon as ShovelIcon,
+} from '@gredice/ui/GameIcons';
 import { Row } from '@gredice/ui/Row';
-import { ShovelIcon } from '@gredice/ui/ShovelIcon';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
+import { useLiveTime } from '../../hooks/useLiveTime';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { useRaisedBedFieldRemove } from '../../hooks/useRaisedBedFieldRemove';
 import { KnownPages } from '../../knownPages';
 import {
     findRaisedBedFieldWithPlant,
     findRaisedBedOccupiedField,
+    getRaisedBedFieldActivePlantIdentity,
     type RaisedBedFieldPlantHistoryEntry,
 } from '../../utils/raisedBedFields';
-import type { PlantFieldStatus } from './featuredOperations';
-import { plantFieldStatusEmoji } from './PlantFieldStatusEmoji';
+import {
+    isPlantFieldStatus,
+    shouldShowPlantOperationRecommendations,
+} from './featuredOperations';
 import {
     getPlantLifecycleProgressData,
     PlantLifecycleProgress,
@@ -33,6 +43,7 @@ export function useRaisedBedFieldLifecycleData(
     fieldOverride?: RaisedBedFieldPlantHistoryEntry,
 ) {
     const { data: garden } = useCurrentGarden();
+    const now = useLiveTime();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
     const field =
         fieldOverride ??
@@ -43,6 +54,7 @@ export function useRaisedBedFieldLifecycleData(
     const { data: plantSort } = usePlantSort(plantSortId);
     return getPlantLifecycleProgressData({
         field: raisedBed && field && plantSort ? field : null,
+        now,
         plantAttributes: plantSort?.information.plant.attributes,
     });
 }
@@ -53,12 +65,14 @@ export function RaisedBedFieldLifecycleTab({
     includeInactive = false,
     fieldOverride,
     onShowOperations,
+    disableFieldActions = false,
 }: {
     raisedBedId: number;
     positionIndex: number;
     includeInactive?: boolean;
     fieldOverride?: RaisedBedFieldPlantHistoryEntry;
     onShowOperations?: () => void;
+    disableFieldActions?: boolean;
 }) {
     const { data: garden } = useCurrentGarden();
     const lifecycleData = useRaisedBedFieldLifecycleData(
@@ -81,13 +95,29 @@ export function RaisedBedFieldLifecycleTab({
         return null;
     }
 
+    const currentPlantIdentity = disableFieldActions
+        ? undefined
+        : getRaisedBedFieldActivePlantIdentity(field);
+    const plantAttributes = plantSort.information.plant.attributes;
+    const canRemoveWithoutOperation = canRemovePlantWithoutOperation({
+        plantStatus: field.plantStatus,
+        statusChanges: getActivePlantCycleStatusChanges(field.plantCycles),
+        cleanHarvest: plantAttributes?.cleanHarvest,
+    });
+
     const handleRemovePlant = async () => {
-        if (!field.toBeRemoved) {
+        if (!canRemoveWithoutOperation || !currentPlantIdentity) {
             return;
         }
 
         try {
             await removeFieldMutation.mutateAsync({
+                cleanHarvest: plantAttributes?.cleanHarvest,
+                expectedPlantCycleEventId:
+                    currentPlantIdentity.plantPlaceEventId,
+                expectedPlantCycleVersionEventId:
+                    currentPlantIdentity.plantCycleVersionEventId,
+                expectedPlantSortId: currentPlantIdentity.plantSortId,
                 raisedBedId,
                 positionIndex,
             });
@@ -101,46 +131,59 @@ export function RaisedBedFieldLifecycleTab({
         field.plantStatus ?? undefined,
     );
     const canChangeStatus = Boolean(
-        field.plantStatus &&
+        currentPlantIdentity &&
+            field.plantStatus &&
             userAllowedPlantStatusTransitions[field.plantStatus]?.length,
     );
 
-    const plantAttributes = plantSort.information.plant.attributes;
     const plantDetailsUrl = KnownPages.GredicePlantSort(
         plantSort.information.plant.information?.name ??
             plantSort.information.name,
         plantSort.information.name,
     );
+    const plantStatus = isPlantFieldStatus(field.plantStatus)
+        ? field.plantStatus
+        : undefined;
+    const showPaidPlantRemovalHint =
+        !disableFieldActions &&
+        field.active &&
+        Boolean(field.toBeRemoved) &&
+        !canRemoveWithoutOperation;
+    const showPlantOperationRecommendations =
+        shouldShowPlantOperationRecommendations(plantStatus);
     const statusContent = (
         <>
-            <span className="text-2xl leading-none" aria-hidden="true">
-                {plantFieldStatusEmoji(field.plantStatus ?? undefined)}
-            </span>
+            <GamePlantStatusIcon
+                status={field.plantStatus ?? undefined}
+                className="size-7 shrink-0"
+                aria-hidden="true"
+            />
             <Typography level="body1" className="text-center" semiBold>
                 {localizedStatus.shortLabel}
             </Typography>
         </>
     );
-    const statusTrigger = field.active ? (
-        <button
-            type="button"
-            className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex flex-col gap-1 items-center justify-center pointer-events-auto transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
-            aria-label={
-                canChangeStatus
-                    ? `Promijeni stanje biljke: ${localizedStatus.shortLabel}`
-                    : `Stanje biljke: ${localizedStatus.shortLabel}`
-            }
-        >
-            {statusContent}
-        </button>
-    ) : (
-        <Stack
-            alignItems="center"
-            className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex items-center justify-center"
-        >
-            {statusContent}
-        </Stack>
-    );
+    const statusTrigger =
+        field.active && currentPlantIdentity ? (
+            <button
+                type="button"
+                className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex flex-col gap-1 items-center justify-center pointer-events-auto transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
+                aria-label={
+                    canChangeStatus
+                        ? `Promijeni stanje biljke: ${localizedStatus.shortLabel}`
+                        : `Stanje biljke: ${localizedStatus.shortLabel}`
+                }
+            >
+                {statusContent}
+            </button>
+        ) : (
+            <Stack
+                alignItems="center"
+                className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex items-center justify-center"
+            >
+                {statusContent}
+            </Stack>
+        );
 
     return (
         <Stack spacing={4}>
@@ -150,8 +193,17 @@ export function RaisedBedFieldLifecycleTab({
                 lifecycleData={lifecycleData}
                 plantDetailsUrl={plantDetailsUrl}
                 statusTrigger={
-                    field.active ? (
+                    field.active && currentPlantIdentity ? (
                         <RaisedBedFieldStatusChange
+                            expectedPlantCycleEventId={
+                                currentPlantIdentity.plantPlaceEventId
+                            }
+                            expectedPlantCycleVersionEventId={
+                                currentPlantIdentity.plantCycleVersionEventId
+                            }
+                            expectedPlantSortId={
+                                currentPlantIdentity.plantSortId
+                            }
                             raisedBedId={raisedBedId}
                             positionIndex={positionIndex}
                             currentStatus={field.plantStatus ?? undefined}
@@ -163,32 +215,45 @@ export function RaisedBedFieldLifecycleTab({
                 }
             />
 
-            {field.active && typeof field.plantSortId === 'number' && (
-                <RecommendationsCard
-                    onShowOperations={onShowOperations}
-                    gardenId={garden.id}
-                    raisedBedId={raisedBedId}
-                    positionIndex={positionIndex}
-                    plantStatus={field.plantStatus as PlantFieldStatus}
-                    plantSortId={field.plantSortId}
-                />
-            )}
+            {!disableFieldActions &&
+                field.active &&
+                typeof field.plantSortId === 'number' &&
+                showPlantOperationRecommendations && (
+                    <RecommendationsCard
+                        onShowOperations={onShowOperations}
+                        gardenId={garden.id}
+                        raisedBedId={raisedBedId}
+                        positionIndex={positionIndex}
+                        plantStatus={plantStatus}
+                        plantSortId={field.plantSortId}
+                    />
+                )}
 
-            {field.active && field.toBeRemoved && (
-                <Row>
-                    <Button
-                        variant="solid"
-                        fullWidth
-                        loading={removeFieldMutation.isPending}
-                        disabled={removeFieldMutation.isPending}
-                        onClick={handleRemovePlant}
-                        startDecorator={
-                            <ShovelIcon className="size-5 shrink-0" />
-                        }
-                    >
-                        Ukloni biljku
-                    </Button>
-                </Row>
+            {field.active &&
+                canRemoveWithoutOperation &&
+                currentPlantIdentity && (
+                    <Row>
+                        <Button
+                            variant="solid"
+                            fullWidth
+                            loading={removeFieldMutation.isPending}
+                            disabled={removeFieldMutation.isPending}
+                            onClick={handleRemovePlant}
+                            startDecorator={
+                                <ShovelIcon className="size-5 shrink-0" />
+                            }
+                        >
+                            Ukloni biljku
+                        </Button>
+                    </Row>
+                )}
+
+            {showPaidPlantRemovalHint && (
+                <Typography level="body2" secondary>
+                    {field.plantStatus === 'harvested'
+                        ? getHarvestPlantRemovalDisclaimer(false)
+                        : 'Uklanjanje ove biljke zasebna je radnja. Naruči je u kartici Radnje.'}
+                </Typography>
             )}
         </Stack>
     );

@@ -9,6 +9,8 @@ import {
     useRef,
     useState,
 } from 'react';
+import { getOperationScheduleActionFailureMessage } from './operationScheduleActionResult';
+import { createScheduleActionQueue } from './scheduleActionQueue';
 import type { Operation, RaisedBedField } from './types';
 
 export type OperationOptimisticPatch = Partial<
@@ -51,7 +53,7 @@ type PatchTarget<TPatch> = {
 type OptimisticScheduleAction = {
     operationPatches?: PatchTarget<OperationOptimisticPatch>[];
     fieldPatches?: PatchTarget<RaisedBedFieldOptimisticPatch>[];
-    action: () => Promise<unknown>;
+    action: Parameters<ReturnType<typeof createScheduleActionQueue>['run']>[1];
     errorLogMessage: string;
     errorAlertMessage: string;
 };
@@ -108,13 +110,15 @@ function mergePatchEntries<TPatch extends object>(
 }
 
 type OptimisticScheduleActionsContextValue = {
+    pendingCount: number;
+    runScheduleAction: ReturnType<typeof createScheduleActionQueue>['run'];
     getFieldPatch: (
         fieldId: number,
     ) => RaisedBedFieldOptimisticPatch | undefined;
     getOperationPatch: (
         operationId: number,
     ) => OperationOptimisticPatch | undefined;
-    runOptimisticAction: (action: OptimisticScheduleAction) => void;
+    runOptimisticAction: (action: OptimisticScheduleAction) => Promise<unknown>;
 };
 
 const OptimisticScheduleActionsContext =
@@ -122,6 +126,19 @@ const OptimisticScheduleActionsContext =
 
 function useOptimisticScheduleActionState(): OptimisticScheduleActionsContextValue {
     const tokenRef = useRef(0);
+    const [queue] = useState(createScheduleActionQueue);
+    const [pendingCount, setPendingCount] = useState(0);
+    const runScheduleAction = useCallback<
+        ReturnType<typeof createScheduleActionQueue>['run']
+    >(
+        (keys, action) => {
+            setPendingCount((count) => count + 1);
+            return queue.run(keys, action).finally(() => {
+                setPendingCount((count) => count - 1);
+            });
+        },
+        [queue],
+    );
     const [operationEntriesById, setOperationEntriesById] = useState<
         Map<number, PatchEntry<OperationOptimisticPatch>[]>
     >(() => new Map());
@@ -147,8 +164,28 @@ function useOptimisticScheduleActionState(): OptimisticScheduleActionsContextVal
                 addPatchEntries(currentEntriesById, fieldPatches, token),
             );
 
-            void Promise.resolve()
-                .then(action)
+            return runScheduleAction(
+                [
+                    ...operationPatches.map(({ id }) => `operation:${id}`),
+                    ...fieldPatches.map(({ id }) => `field:${id}`),
+                ],
+                action,
+            )
+                .then((result) => {
+                    const actionFailureMessage =
+                        getOperationScheduleActionFailureMessage(result);
+                    if (!actionFailureMessage) {
+                        return result;
+                    }
+
+                    setOperationEntriesById((currentEntriesById) =>
+                        removePatchToken(currentEntriesById, token),
+                    );
+                    setFieldEntriesById((currentEntriesById) =>
+                        removePatchToken(currentEntriesById, token),
+                    );
+                    return result;
+                })
                 .catch((error: unknown) => {
                     console.error(errorLogMessage, error);
                     setOperationEntriesById((currentEntriesById) =>
@@ -160,7 +197,7 @@ function useOptimisticScheduleActionState(): OptimisticScheduleActionsContextVal
                     alert(errorAlertMessage);
                 });
         },
-        [],
+        [runScheduleAction],
     );
 
     const getOperationPatch = useCallback(
@@ -175,6 +212,8 @@ function useOptimisticScheduleActionState(): OptimisticScheduleActionsContextVal
     );
 
     return {
+        pendingCount,
+        runScheduleAction,
         getFieldPatch,
         getOperationPatch,
         runOptimisticAction,

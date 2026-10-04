@@ -7,16 +7,20 @@ export function AdminClientProvider({
     categorizedTypes,
     uncategorizedTypes,
     shadowTypes,
+    pendingCmsPagesReviewCount,
     pendingAchievementsCount,
     pendingApprovalTasksCount,
+    pendingCommunityEditRequestsCount,
     quickActions,
     children,
 }: {
     categorizedTypes: NavContextType['categorizedTypes'];
     uncategorizedTypes: NavContextType['uncategorizedTypes'];
     shadowTypes: NavContextType['shadowTypes'];
+    pendingCmsPagesReviewCount: number;
     pendingAchievementsCount: number;
     pendingApprovalTasksCount: number;
+    pendingCommunityEditRequestsCount: number;
     quickActions: NavContextType['quickActions'];
     children: React.ReactNode;
 }) {
@@ -26,8 +30,10 @@ export function AdminClientProvider({
                 categorizedTypes,
                 uncategorizedTypes,
                 shadowTypes,
+                pendingCmsPagesReviewCount,
                 pendingAchievementsCount,
                 pendingApprovalTasksCount,
+                pendingCommunityEditRequestsCount,
                 quickActions,
             }}
         >

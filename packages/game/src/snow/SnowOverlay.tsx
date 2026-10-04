@@ -1,14 +1,13 @@
-import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
 import type { BufferGeometry, ColorRepresentation, Vector3Tuple } from 'three';
 import {
     Color,
-    MathUtils,
     ShaderMaterial,
     UniformsLib,
     UniformsUtils,
     Vector3,
 } from 'three';
+import { useSnowSurfaceAmountUniform } from '../scene/WeatherSurfaceUniformProvider';
 import { useGameState } from '../useGameState';
 import { createSnowOverlayGeometry } from './createSnowOverlayGeometry';
 import {
@@ -39,6 +38,7 @@ export type SnowMaterialOptions = {
 
 export type SnowOverlayProps = SnowMaterialOptions & {
     geometry: BufferGeometry;
+    debugName?: string;
     minCoverage?: number;
     renderOrder?: number;
     overrideSnow?: number;
@@ -54,6 +54,25 @@ function resolveSnowOverlayActive(options: {
     return (
         snowCoverage * (options.coverageMultiplier ?? 1) >= options.minCoverage
     );
+}
+
+export function useSnowOverlayVisible({
+    coverageMultiplier,
+    minCoverage = 0.02,
+    overrideSnow,
+}: {
+    coverageMultiplier?: number;
+    minCoverage?: number;
+    overrideSnow?: number;
+}) {
+    const gameSnowCoverage = useGameState((state) => state.snowCoverage);
+
+    return resolveSnowOverlayActive({
+        coverageMultiplier,
+        gameSnowCoverage,
+        minCoverage,
+        overrideSnow,
+    });
 }
 
 function resolveColorKey(
@@ -76,8 +95,10 @@ export function useSnowMaterial({
     bounds,
     overrideSnow,
 }: SnowMaterialOptions = {}) {
-    const gameSnowCoverage = useGameState((state) => state.snowCoverage);
-    const snowCoverage = overrideSnow ?? gameSnowCoverage;
+    const snowAmountUniform = useSnowSurfaceAmountUniform({
+        coverageMultiplier,
+        overrideSnow,
+    });
     const colorKey = resolveColorKey(color);
     const snowColor = useMemo(() => new Color(colorKey), [colorKey]);
     const resolvedBounds = bounds ?? fallbackBounds;
@@ -112,6 +133,7 @@ export function useSnowMaterial({
             vertexShader: snowOverlayVertexShader,
             fragmentShader: snowOverlayFragmentShader,
         });
+        mat.uniforms.uSnowAmount = snowAmountUniform;
         mat.polygonOffset = true;
         mat.polygonOffsetFactor = 1; // push towards camera
         mat.polygonOffsetUnits = 1;
@@ -123,6 +145,7 @@ export function useSnowMaterial({
         noiseScale,
         slopeExponent,
         snowColor,
+        snowAmountUniform,
         resolvedBounds.max,
         resolvedBounds.min,
     ]);
@@ -138,15 +161,6 @@ export function useSnowMaterial({
     }, [bounds, material]);
 
     useEffect(() => () => material.dispose(), [material]);
-
-    useFrame((_, delta) => {
-        material.uniforms.uSnowAmount.value = MathUtils.damp(
-            material.uniforms.uSnowAmount.value,
-            Math.min(1, Math.max(0, snowCoverage * coverageMultiplier)),
-            6,
-            delta,
-        );
-    });
 
     return material;
 }
@@ -166,10 +180,8 @@ export function SnowOverlay({
     overrideSnow,
     ...options
 }: SnowOverlayProps) {
-    const gameSnowCoverage = useGameState((state) => state.snowCoverage);
-    const isActive = resolveSnowOverlayActive({
+    const isActive = useSnowOverlayVisible({
         coverageMultiplier: options.coverageMultiplier,
-        gameSnowCoverage,
         minCoverage,
         overrideSnow,
     });
@@ -218,6 +230,7 @@ function SnowOverlayMesh({
     });
     return (
         <mesh
+            name={options.debugName ?? 'SnowOverlay'}
             geometry={overlayGeometry}
             material={material}
             renderOrder={renderOrder}

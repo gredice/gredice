@@ -1,5 +1,5 @@
 {
-    "$schema": "https://turbo.build/schema.json",
+    "$schema": "https://v2-9-16.turborepo.dev/schema.json",
     "extends": ["//"],
     "tasks": {
         "build": {
@@ -53,8 +53,15 @@
                 "POSTHOG_SERVER_HOST",
                 "SIGNALCO_API_KEY",
                 "SLACK_BOT_TOKEN",
+                "VERCEL",
                 "VERCEL_ENV",
-                "VERCEL_OIDC_TOKEN"
+                "VERCEL_GIT_COMMIT_SHA",
+                "VERCEL_OIDC_TOKEN",
+                "GREDICE_NEWS_REVALIDATE_SECRET",
+                "GREDICE_NEWS_REVALIDATE_REST_API_URL",
+                "GREDICE_NEWS_REVALIDATE_REST_API_TOKEN",
+                "GREDICE_NEWS_REVALIDATE_KEY",
+                "GREDICE_NEWS_REVALIDATE_URL"
             ]
         }
     }

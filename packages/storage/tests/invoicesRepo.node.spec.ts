@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     addInvoiceItem,
@@ -9,8 +10,14 @@ import {
     canEditInvoice,
     changeInvoiceStatus,
     createInvoice,
+    createReceiptFromInvoice,
     createTransaction,
     deleteInvoice,
+    ensureInvoiceForTransaction,
+    ensureReceiptForInvoice,
+    getAccountBillingInvoice,
+    getAccountBillingInvoices,
+    getAccountBillingReceipt,
     getAllInvoices,
     getInvoice,
     getInvoiceByNumber,
@@ -35,6 +42,8 @@ import {
 } from '@gredice/storage';
 import { createTestAccount } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 async function baseInvoice(transactionId?: number): Promise<InsertInvoice> {
     const accountId = await createTestAccount();
@@ -198,6 +207,295 @@ test('getInvoicesByTransaction', async () => {
     assert.strictEqual(invoices[0].id, invoiceId);
 });
 
+test('ensureInvoiceForTransaction creates a paid invoice from trusted transaction data', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const transactionId = await createTransaction({
+        accountId,
+        amount: 2500,
+        currency: 'eur',
+        status: 'completed',
+        stripePaymentId: randomUUID(),
+    });
+
+    const result = await ensureInvoiceForTransaction({
+        transactionId,
+        billingSnapshot: {
+            billToEmail: 'kupac@example.com',
+            billToName: 'Kupac Gredice',
+        },
+        items: [
+            {
+                description: 'Sadnja u vrtu',
+                quantity: 2,
+                unitPriceCents: 1250,
+                totalPriceCents: 2500,
+                entityId: '42',
+                entityTypeName: 'operation',
+            },
+        ],
+    });
+
+    assert.equal(result.status, 'created');
+    assert.ok('invoiceId' in result);
+    const invoice = await getInvoice(result.invoiceId);
+    assert.ok(invoice);
+    assert.equal(invoice.accountId, accountId);
+    assert.equal(invoice.transactionId, transactionId);
+    assert.equal(invoice.status, 'paid');
+    assert.equal(invoice.totalAmount, '25.00');
+    assert.equal(invoice.billToEmail, 'kupac@example.com');
+    assert.equal(invoice.invoiceItems.length, 1);
+    assert.equal(invoice.invoiceItems[0]?.description, 'Sadnja u vrtu');
+    assert.equal(Number(invoice.invoiceItems[0]?.quantity), 2);
+});
+
+test('ensureInvoiceForTransaction returns existing invoice on repeated calls', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const transactionId = await createTransaction({
+        accountId,
+        amount: 1500,
+        currency: 'eur',
+        status: 'completed',
+        stripePaymentId: randomUUID(),
+    });
+    const input = {
+        transactionId,
+        billingSnapshot: {
+            billToEmail: 'kupac@example.com',
+        },
+        items: [
+            {
+                description: 'Narudžba',
+                unitPriceCents: 1500,
+                totalPriceCents: 1500,
+            },
+        ],
+    };
+
+    const first = await ensureInvoiceForTransaction(input);
+    const second = await ensureInvoiceForTransaction(input);
+
+    assert.equal(first.status, 'created');
+    assert.equal(second.status, 'existing');
+    assert.ok('invoiceId' in first);
+    assert.ok('invoiceId' in second);
+    assert.equal(second.invoiceId, first.invoiceId);
+    assert.equal((await getAllInvoices({ transactionId })).length, 1);
+});
+
+test('ensureReceiptForInvoice creates one receipt for repeated paid invoice calls', async () => {
+    createTestDb();
+    const invoiceData = await baseInvoice();
+    invoiceData.status = 'paid';
+    invoiceData.paidDate = new Date('2026-07-05T10:00:00.000Z');
+    const invoiceId = await createInvoice(invoiceData);
+
+    const first = await ensureReceiptForInvoice(invoiceId, {
+        paymentMethod: 'card',
+        paymentReference: 'cs_test_123',
+        businessPin: '12345678901',
+        businessName: 'Gredice d.o.o.',
+        businessAddress: 'Zagreb',
+    });
+    const second = await ensureReceiptForInvoice(invoiceId, {
+        paymentMethod: 'card',
+        paymentReference: 'cs_test_123',
+    });
+
+    assert.equal(first.status, 'created');
+    assert.equal(second.status, 'existing');
+    assert.ok('receiptId' in first);
+    assert.ok('receiptId' in second);
+    assert.equal(second.receiptId, first.receiptId);
+    const receipt = await getReceipt(first.receiptId);
+    assert.ok(receipt);
+    assert.equal(receipt.paymentReference, 'cs_test_123');
+    assert.equal(receipt.customerName, invoiceData.billToName);
+    assert.equal(
+        receipt.issuedAt.toISOString(),
+        invoiceData.paidDate.toISOString(),
+    );
+});
+
+test('ensureReceiptForInvoice skips unpaid invoices', async () => {
+    createTestDb();
+    const invoiceData = await baseInvoice();
+    const invoiceId = await createInvoice(invoiceData);
+
+    const result = await ensureReceiptForInvoice(invoiceId, {
+        paymentMethod: 'card',
+    });
+
+    assert.equal(result.status, 'skipped');
+    assert.ok('reason' in result);
+    assert.equal(result.reason, 'invoice_not_paid');
+});
+
+test('ensureInvoiceForTransaction ignores deleted invoice and creates a new active invoice', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const transactionId = await createTransaction({
+        accountId,
+        amount: 900,
+        currency: 'eur',
+        status: 'completed',
+        stripePaymentId: randomUUID(),
+    });
+    const input = {
+        transactionId,
+        billingSnapshot: {
+            billToEmail: 'kupac@example.com',
+        },
+        items: [
+            {
+                description: 'Narudžba',
+                unitPriceCents: 900,
+                totalPriceCents: 900,
+            },
+        ],
+    };
+
+    const first = await ensureInvoiceForTransaction(input);
+    assert.ok('invoiceId' in first);
+    await deleteInvoice(first.invoiceId);
+
+    const second = await ensureInvoiceForTransaction(input);
+
+    assert.equal(second.status, 'created');
+    assert.ok('invoiceId' in second);
+    assert.notEqual(second.invoiceId, first.invoiceId);
+    const activeInvoices = await getAllInvoices({ transactionId });
+    assert.equal(activeInvoices.length, 1);
+    assert.equal(activeInvoices[0]?.id, second.invoiceId);
+});
+
+test('ensureInvoiceForTransaction skips missing and inconsistent source data', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const pendingTransactionId = await createTransaction({
+        accountId,
+        amount: 900,
+        currency: 'eur',
+        status: 'pending',
+        stripePaymentId: randomUUID(),
+    });
+    const completedTransactionId = await createTransaction({
+        accountId,
+        amount: 900,
+        currency: 'eur',
+        status: 'completed',
+        stripePaymentId: randomUUID(),
+    });
+
+    assert.deepEqual(
+        await ensureInvoiceForTransaction({
+            transactionId: pendingTransactionId,
+            billingSnapshot: { billToEmail: 'kupac@example.com' },
+            items: [
+                {
+                    description: 'Narudžba',
+                    unitPriceCents: 900,
+                    totalPriceCents: 900,
+                },
+            ],
+        }),
+        {
+            status: 'skipped',
+            reason: 'transaction_not_completed',
+            message: `Transaction ${pendingTransactionId} is not completed.`,
+        },
+    );
+    const missingItems = await ensureInvoiceForTransaction({
+        transactionId: completedTransactionId,
+        billingSnapshot: { billToEmail: 'kupac@example.com' },
+        items: [],
+    });
+    const amountMismatch = await ensureInvoiceForTransaction({
+        transactionId: completedTransactionId,
+        billingSnapshot: { billToEmail: 'kupac@example.com' },
+        items: [
+            {
+                description: 'Narudžba',
+                unitPriceCents: 800,
+                totalPriceCents: 800,
+            },
+        ],
+    });
+
+    assert.equal(missingItems.status, 'skipped');
+    assert.equal(missingItems.reason, 'missing_items');
+    assert.equal(amountMismatch.status, 'skipped');
+    assert.equal(amountMismatch.reason, 'amount_mismatch');
+});
+
+test('account billing reads enforce invoice and receipt ownership', async () => {
+    createTestDb();
+    const accountId = await createTestAccount();
+    const otherAccountId = await createTestAccount();
+    const transactionId = await createTransaction({
+        accountId,
+        amount: 2500,
+        currency: 'eur',
+        status: 'completed',
+        stripePaymentId: randomUUID(),
+    });
+    const otherTransactionId = await createTransaction({
+        accountId: otherAccountId,
+        amount: 1100,
+        currency: 'eur',
+        status: 'completed',
+        stripePaymentId: randomUUID(),
+    });
+
+    const invoiceResult = await ensureInvoiceForTransaction({
+        transactionId,
+        billingSnapshot: { billToEmail: 'kupac@example.com' },
+        items: [
+            {
+                description: 'Narudžba',
+                unitPriceCents: 2500,
+                totalPriceCents: 2500,
+            },
+        ],
+    });
+    const otherInvoiceResult = await ensureInvoiceForTransaction({
+        transactionId: otherTransactionId,
+        billingSnapshot: { billToEmail: 'drugi@example.com' },
+        items: [
+            {
+                description: 'Druga narudžba',
+                unitPriceCents: 1100,
+                totalPriceCents: 1100,
+            },
+        ],
+    });
+    assert.ok('invoiceId' in invoiceResult);
+    assert.ok('invoiceId' in otherInvoiceResult);
+    const receiptId = await createReceiptFromInvoice(invoiceResult.invoiceId, {
+        paymentMethod: 'card',
+        paymentReference: 'cs_test',
+    });
+
+    const accountInvoices = await getAccountBillingInvoices(accountId);
+    assert.equal(accountInvoices.length, 1);
+    assert.equal(accountInvoices[0]?.id, invoiceResult.invoiceId);
+    assert.equal(accountInvoices[0]?.receipt?.id, receiptId);
+    assert.ok(
+        await getAccountBillingInvoice(accountId, invoiceResult.invoiceId),
+    );
+    assert.equal(
+        await getAccountBillingInvoice(accountId, otherInvoiceResult.invoiceId),
+        undefined,
+    );
+    assert.ok(await getAccountBillingReceipt(accountId, receiptId));
+    assert.equal(
+        await getAccountBillingReceipt(otherAccountId, receiptId),
+        undefined,
+    );
+});
+
 test('getInvoicesByStatus', async () => {
     createTestDb();
     const invoiceData = await baseInvoice();
@@ -311,22 +609,37 @@ test('calculateInvoiceTotals', async () => {
     assert.strictEqual(totals.itemCount, 2);
 });
 
-test('getOverdueInvoices finds overdue invoices', async () => {
+test('getOverdueInvoices applies the 24-hour due-day boundary', async () => {
     createTestDb();
 
-    // Create an overdue invoice (due date in the past)
-    const invoiceData = await baseInvoice();
-    const pastDate = new Date();
-    pastDate.setDate(pastDate.getDate() - 5); // 5 days ago
+    const now = new Date();
+    const twoDaysAgo = new Date(now.getTime() - 2 * DAY_MS);
+    const dueTodayUtc = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
 
-    invoiceData.status = 'sent';
-    invoiceData.dueDate = pastDate;
+    const overdueInvoiceData = await baseInvoice();
+    overdueInvoiceData.status = 'sent';
+    overdueInvoiceData.dueDate = twoDaysAgo;
 
-    const invoiceId = await createInvoice(invoiceData);
+    const dueTodayInvoiceData = await baseInvoice();
+    dueTodayInvoiceData.status = 'sent';
+    dueTodayInvoiceData.dueDate = dueTodayUtc;
+
+    const paidInvoiceData = await baseInvoice();
+    paidInvoiceData.status = 'sent';
+    paidInvoiceData.dueDate = twoDaysAgo;
+    paidInvoiceData.paidDate = now;
+
+    const overdueInvoiceId = await createInvoice(overdueInvoiceData);
+    const dueTodayInvoiceId = await createInvoice(dueTodayInvoiceData);
+    const paidInvoiceId = await createInvoice(paidInvoiceData);
 
     const overdueInvoices = await getOverdueInvoices();
     assert.ok(Array.isArray(overdueInvoices));
-    assert.ok(overdueInvoices.some((inv) => inv.id === invoiceId));
+    assert.ok(overdueInvoices.some((inv) => inv.id === overdueInvoiceId));
+    assert.ok(!overdueInvoices.some((inv) => inv.id === dueTodayInvoiceId));
+    assert.ok(!overdueInvoices.some((inv) => inv.id === paidInvoiceId));
 });
 
 test('getReceiptByInvoice returns receipt for paid invoice', async () => {
@@ -502,14 +815,18 @@ test('canCancelInvoice returns correct permissions', async () => {
 });
 
 test('isOverdue correctly identifies overdue invoices', async () => {
-    const today = new Date();
-    const pastDate = new Date();
-    pastDate.setDate(today.getDate() - 5);
-    const futureDate = new Date();
-    futureDate.setDate(today.getDate() + 5);
+    const now = new Date();
+    const pastDate = new Date(now.getTime() - 2 * DAY_MS);
+    const dueTodayUtc = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+    const futureDate = new Date(now.getTime() + 5 * DAY_MS);
 
-    // Overdue invoice (sent and past due date)
+    // Overdue invoice (sent and due day fully passed)
     assert.ok(isOverdue({ status: 'sent', dueDate: pastDate }));
+
+    // Not overdue - due date is today
+    assert.ok(!isOverdue({ status: 'sent', dueDate: dueTodayUtc }));
 
     // Not overdue - future due date
     assert.ok(!isOverdue({ status: 'sent', dueDate: futureDate }));
