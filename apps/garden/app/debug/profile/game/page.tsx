@@ -409,6 +409,11 @@ export default async function GameProfilePage({
             }
         >
             <ProfileGameScene
+                cacheClearanceWitnessMode={
+                    firstValue(params.staticCacheWitness) === '1'
+                        ? mode
+                        : undefined
+                }
                 adaptiveHighQuality={adaptiveHigh}
                 authenticatedGardenQueriesEnabled={!staticIdleProfile}
                 key={mode}

@@ -2,6 +2,9 @@ import type { GameSceneProps } from '@gredice/game';
 
 export type GameProfileWeatherTransitionRequest =
     | 'clear-to-cloudy'
+    | 'clear-to-rain'
+    | 'clear-to-frost'
+    | 'frost-to-clear'
     | 'cloudy-to-clear'
     | 'rain-to-clear'
     | 'snow-integrated-to-sparse'
@@ -39,6 +42,30 @@ export const gameProfileSnowIntegratedWeather = {
     snowAccumulation: 24,
 } satisfies NonNullable<GameSceneProps['weather']>;
 
+/** Exact inputs committed to GameScene, separate from effect-policy diagnostics. */
+export function createGameProfileWeatherWitness(
+    weather: GameSceneProps['weather'],
+) {
+    return {
+        cloudy: weather?.cloudy ?? 0,
+        foggy: weather?.foggy ?? 0,
+        rainy: weather?.rainy ?? 0,
+        snowy: weather?.snowy ?? 0,
+        snowAccumulation: weather?.snowAccumulation ?? 0,
+        temperature: weather?.temperature ?? null,
+        source:
+            weather && 'source' in weather && typeof weather.source === 'string'
+                ? weather.source
+                : null,
+        isStale:
+            weather &&
+            'isStale' in weather &&
+            typeof weather.isStale === 'boolean'
+                ? weather.isStale
+                : null,
+    };
+}
+
 export function readGameProfileWeatherTransitionRequest(value: unknown) {
     if (typeof value !== 'object' || value === null) {
         return undefined;
@@ -47,6 +74,9 @@ export function readGameProfileWeatherTransitionRequest(value: unknown) {
     const request = Reflect.get(value, 'request');
     return request === 'clear-to-cloudy' ||
         request === 'cloudy-to-clear' ||
+        request === 'clear-to-rain' ||
+        request === 'clear-to-frost' ||
+        request === 'frost-to-clear' ||
         request === 'rain-to-clear' ||
         request === 'snow-integrated-to-sparse' ||
         request === 'snow-sparse-to-integrated'
@@ -59,6 +89,30 @@ export function resolveGameProfileWeatherTransition(
 ) {
     if (request === 'clear-to-cloudy') {
         return gameProfileCloudyWeather;
+    }
+    if (request === 'clear-to-rain') {
+        return {
+            ...gameProfileClearWeather,
+            rainy: 1,
+            source: 'profile',
+            isStale: false,
+        };
+    }
+    if (request === 'clear-to-frost') {
+        return {
+            ...gameProfileClearWeather,
+            temperature: -4,
+            source: 'profile',
+            isStale: false,
+        };
+    }
+    if (request === 'frost-to-clear') {
+        return {
+            ...gameProfileClearWeather,
+            temperature: 12,
+            source: 'profile',
+            isStale: false,
+        };
     }
     if (request === 'snow-sparse-to-integrated') {
         return gameProfileSnowIntegratedWeather;
