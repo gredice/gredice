@@ -230,6 +230,8 @@ export const blockAssetRequirements: {
     AutumnShrub: assets('AutumnShrub'),
     WoodlandMushrooms: assets('WoodlandMushrooms'),
     FallenLog: assets('FallenLog'),
+    AutumnLeafPileMound: assets('AutumnLeafPileMound'),
+    AutumnLeafPileCrescent: assets('AutumnLeafPileCrescent'),
     PotLowBowl: assets('PotLowBowl'),
     PotRoundedBowl: assets('PotRoundedBowl'),
     PotBulbousNeck: assets('PotBulbousNeck'),
