@@ -65,6 +65,7 @@ test('contract rejects invalid quantities, duplicate lines, price drift and unco
     for (const snapshot of [
         { ...valid, chargedSunflowers: 10 },
         { ...valid, previews: ['ftp://example.test/pack.webp'] },
+        { ...valid, previews: ['%%%'] },
         {
             ...valid,
             lines: valid.lines.map((line) => ({
