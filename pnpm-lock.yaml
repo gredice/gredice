@@ -167,7 +167,7 @@ overrides:
   '@types/react-dom': 19.2.7
   '@hono/node-server': 1.19.17
   '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0>typescript': '-'
-  '@xmldom/xmldom': 0.8.15
+  '@xmldom/xmldom': 0.9.12
   fast-uri: 3.1.8
   ip-address: 10.7.2
   minimatch@10>brace-expansion: 5.0.12
@@ -6588,9 +6588,9 @@ packages:
     resolution: {integrity: sha512-CJDxIgE5I0FH+ttq/Fxy6nRpxP70+e2O048EPe85J2use3XKdatVM7dDVvFNjQudd9B49NPoZ+8PG49zj4Er8Q==}
     engines: {node: '>= 16'}
 
-  '@xmldom/xmldom@0.8.15':
-    resolution: {integrity: sha512-/5NV/vDALVFDXgLmfsy9TRCBlKwO2LNBFzpzvb9iIj+jR+eSc6DLYYvVOdivT/jm7MtU6TebYuRmzEOI7w40UA==}
-    engines: {node: '>=10.0.0'}
+  '@xmldom/xmldom@0.9.12':
+    resolution: {integrity: sha512-5AXjrcMClTryPe9LgZrygpB1lj7s0S9E0+W+AHaVKAVyHanafK86iPSvG5xHVSp/jC+VH1UXu0TAEmY279xH7A==}
+    engines: {node: '>=14.6'}
 
   '@xyflow/react@12.11.6':
     resolution: {integrity: sha512-9XsEJNHjatKYndszKTF/bsU7FOP9dJ6V/EQwzy3oMdtqgBuUq7BjKSwkEo+C7s4qHstHQfwwoHA3E8QfpPxZZQ==}
@@ -10895,10 +10895,6 @@ packages:
     resolution: {integrity: sha512-sqMMuL1rc0FmMBOzCpd0yuy9trqF2yTTVe+E9ogwCSWQCdDEtQUwrZPT6AxqtsFGRNxycgncbP/xmOOSPw5ZUw==}
     engines: {node: '>= 6.0'}
 
-  xml-crypto@6.3.1:
-    resolution: {integrity: sha512-uSE509H/5pePltq6DEsdGRz0iJQG9Thgisq6jAxSnWaR6t4fPZWjSVRVywOoR8cEsDJtnEpepUhCbgyQr7Nwtg==}
-    engines: {node: '>=16'}
-
   xml-crypto@6.3.2:
     resolution: {integrity: sha512-XoUdpErePlpyFdNYVzG2Sfw5ghvqUCQMT3dQ0tAxs0JKzk9gLzwALFkvHZ/D0OyfD/OyxoXsCcYZzbDzgY18RA==}
     engines: {node: '>=16'}
@@ -14090,7 +14086,7 @@ snapshots:
       entities: 4.5.0
       html-to-text: 9.0.5
       html5parser: 3.0.0
-      prettier: 3.9.8
+      prettier: 3.9.9
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
 
@@ -15900,7 +15896,7 @@ snapshots:
 
   '@xmldom/is-dom-node@1.0.1': {}
 
-  '@xmldom/xmldom@0.8.15': {}
+  '@xmldom/xmldom@0.9.12': {}
 
   '@xyflow/react@12.11.6(@types/react-dom@19.2.7(@types/react@19.2.18))(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
@@ -19140,7 +19136,7 @@ snapshots:
 
   plist@3.1.0:
     dependencies:
-      '@xmldom/xmldom': 0.8.15
+      '@xmldom/xmldom': 0.9.12
       base64-js: 1.5.1
       xmlbuilder: 15.1.1
 
@@ -19218,7 +19214,8 @@ snapshots:
 
   preact@10.29.8: {}
 
-  prettier@3.9.8: {}
+  prettier@3.9.8:
+    optional: true
 
   prettier@3.9.9: {}
 
@@ -19978,7 +19975,7 @@ snapshots:
       formidable: 3.5.4
       sax: 1.6.1
       whatwg-mimetype: 5.0.0
-      xml-crypto: 6.3.1
+      xml-crypto: 6.3.2
     transitivePeerDependencies:
       - supports-color
 
@@ -20802,16 +20799,10 @@ snapshots:
     dependencies:
       os-paths: 4.4.0
 
-  xml-crypto@6.3.1:
-    dependencies:
-      '@xmldom/is-dom-node': 1.0.1
-      '@xmldom/xmldom': 0.8.15
-      xpath: 0.0.33
-
   xml-crypto@6.3.2:
     dependencies:
       '@xmldom/is-dom-node': 1.0.1
-      '@xmldom/xmldom': 0.8.15
+      '@xmldom/xmldom': 0.9.12
       xpath: 0.0.33
 
   xml2js@0.6.2:
