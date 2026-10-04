@@ -4,6 +4,10 @@
 
 A **collection / kolekcija** groups individually available decorations for browsing. A **pack / paket** is one account purchase granting exact finite quantities. A **layout / predložak** describes an arrangement and grants nothing. A purchased pack is separate from a garden box (six item-type stacks of ten); no box slot or appearance restriction applies to the pack entitlement.
 
+The separate [ownership-aware scene offer design](garden-complete-scene-offer.md)
+specifies a future opt-in additions purchase for #4993. It remains excluded from
+this simple pack flow; no possessions are automatically deducted from a purchase.
+
 Customers buy and place account-owned pieces in their own active, ordinary gardens. Sandbox gardens have no economy and cannot consume paid pack inventory. Account members act through the authenticated account; sharing/public viewing does not confer ownership. Admins configure products, and the server validates every item, variant, price and lifecycle policy. Ambient autumn effects remain available to everyone.
 
 ## Configuration and shared contract
@@ -12,23 +16,15 @@ Customers buy and place account-owned pieces in their own active, ordinary garde
 
 - `productId` identifies a reusable product; `productVersionId` identifies an immutable revision. A revision must never be reused with changed contents, price, visuals, translations, variants or policy. `contractVersion` identifies the snapshot format.
 - Each version has localized name/description, absolute preview URLs, publication state and optional UTC availability dates. The start is inclusive; the end is exclusive. All amounts are integer **sunflowers**, using the existing `sunflower` currency key. Final price is a configured decision; there is no new currency or assumed discount.
-- A stable `lineId` identifies each exact directory block `entityId`, `modelName`, quantity and nullable versioned appearance variant. `variant: null` means the default appearance; a selected variant snapshots its exact appearance properties and version. Numeric directory IDs are represented as strings. Example model names below must be reconciled to actual catalogue IDs before publishing.
+- A stable `lineId` identifies each exact directory block `entityId`, `modelName`, quantity and nullable versioned appearance variant. `variant: null` identifies a static model with no selectable appearance; a selected variant snapshots its exact appearance properties and version. Numeric directory IDs are represented as strings. Recipe model names must be reconciled to actual published catalogue IDs before publication.
 - Every unit has a one-based ordinal within its line. Two arrays record its exact paid and recycling values, including any integer rounding. Paid allocations sum **exactly** to the charged price; recycling values are configured nonnegative amounts no higher than their unit's paid value. No future catalogue price changes these values.
 - Required policy version: unused units refund their allocated paid value; placed units cannot be refunded as unused. A placed piece may recycle once for its configured recycling value. A refund terminates that unit; recycling terminates that placed unit. No operation both returns inventory and credits its value. Different future policies require a new contract version rather than silent reinterpretation.
 
-### Example: Jesenski kutak
+### Prepared autumn pilot recipes
 
-The proposed product `jesenski-kutak` contains these exact five lines (nine pieces). It stays a draft until actual directory IDs, variants, previews, product/policy revision IDs, charge and every per-unit allocation are configured.
+[Offline autumn starter-pack preparation](./autumn-starter-pack-preparation.md) defines the exact four-piece recipes for Jesenski kutak, Šumski kutak and Topla večer, reusing the reviewed arrangements. Their drafts derive all directory IDs and paid/recycling allocations from a validated published-directory export. The charge equals the sum of current individual prices, with no assumed discount; every unit recycles at its frozen paid value. All drafts keep sales disabled and require separate publication and deployment acceptance.
 
-| Stable line | Decoration | Quantity | Appearance |
-| --- | --- | ---: | --- |
-| pumpkins | Pumpkins | 3 | Explicit configured pumpkin variant |
-| hay-bales | Hay bales | 2 | Explicit configured hay variant |
-| scarecrow | Garden scarecrow | 1 | Explicit configured scarecrow variant |
-| lanterns | Lanterns | 2 | Explicit configured lantern variant |
-| sign | Sign | 1 | Explicit configured sign variant |
-
-Pricing remains a product decision. The contract intentionally provides no executable seeded product with invented entity IDs, allocations or price.
+The contract supports other future quantities and allocation policies within its validated limits. It intentionally provides no executable production seed with invented entity IDs or prices.
 
 ## Current integration boundaries
 
@@ -38,7 +34,7 @@ Pack purchase resolves a server-owned published revision, validates **ordinary i
 
 Prepaid placement (#4988) authorizes the active ordinary garden, validates the current model/variant and legal placement, consumes one specified available unit and creates a block with pack provenance in **one** transaction. A failed placement leaves the unit available. Replayed operations must return the same block without another debit/consume. Placement must follow the global economic lock order (wallet/account fence before garden locks) and pass the same transaction through repositories.
 
-`apps/api/lib/garden/gardenBlockMutationService.ts` (`recycleGardenBlockForAccount`), `gardenDeletionService.ts`, box storage and retrieval must preserve purchase/line/ordinal provenance and the original paid/recycling allocations. Existing block-paid refund paths must not also credit a pack piece. Storage in a box does not restore its entitlement or reset recycling; taking it back out retains its provenance. The #4988 interim guard rejects unsafe lifecycle actions until their explicit integration work lands.
+`apps/api/lib/garden/gardenBlockMutationService.ts` (`recycleGardenBlockForAccount`), `gardenDeletionService.ts`, box storage and retrieval must preserve purchase/line/ordinal provenance and the original paid/recycling allocations. Existing block-paid refund paths must not also credit a pack piece. Storage in a box does not restore its entitlement or reset recycling; taking it back out retains its provenance. The integrated lifecycle paths preserve exact unit identity and audit through storage, retrieval, recycling and deletion. Readiness and rollout guards fail closed when pack handling is unavailable or only partially deployed.
 
 ## Lifecycle and failures
 
@@ -144,3 +140,5 @@ Recycling through block deletion or the game's expected-source stack PATCH uses 
 Schema rollout requires both location/receipt tables, receipt JSON columns and all source-owned PostgreSQL guards in `gardenPackIntegrity.ts`. The placement readiness probe now includes this lifecycle readiness so a partial deployment returns unavailable before attempting placement. For an already installed pack schema, maintainers must review a replacement plan for changed existing functions/triggers, drop and recreate those guards in the correct order, add the new tables/columns and triggers, and backfill legacy placed locations before validating and enabling routes. The full fresh-schema `CREATE FUNCTION`/`CREATE TRIGGER` SQL cannot be appended unchanged to an existing installation. Maintainers must order the generated DDL and guard SQL together; generated migration artifacts are deliberately excluded from this shared PR. For any units placed before lifecycle rollout, backfill only an exact matching live block in its original owned active garden into the location table. Do not infer a box identity from coalesced inventory. If a historical placed unit has no unambiguous physical match, retain fail-closed mutation guards and resolve it administratively before enabling lifecycle; no automatic available-quantity restoration or current-price compensation is permitted.
 
 Lock order is wallet (when crediting), physical box inventory (when storing/retrieving), account deletion fence, purchase/unit, then garden placement. Catalogue preparation occurs outside transactions. Deferred guards enforce exact physical identity/fixed appearance, require a new linked store/retrieve receipt for each box transition, reject cross-kind operation reuse and preserve append-only receipts. Locations point to the exact last receipt; transaction timestamps never define operation order. Lifecycle repository/service regressions run automatically in normal API node tests in a separate process with a private PGlite directory. Run `pnpm --filter api exec node --import tsx --test --conditions=react-server lib/garden/gardenPackLifecycle.storage.node.spec.ts`; optionally set `GREDICE_PACK_TEST_ADMIN_URL=postgres://packtest@127.0.0.1:55496/postgres` for a unique database created and dropped on a disposable local cluster. Tests derive the schema and guards from source and never use a service database. Actual hook browser tests cover exact stored-unit retrieval, lost-response store/retrieve retry identity, definitive rejection, and account/garden switches before submission.
+
+Offline three-product preparation and remaining publication prerequisites are documented in [autumn starter-pack preparation](./autumn-starter-pack-preparation.md).

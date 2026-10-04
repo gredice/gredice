@@ -1,3 +1,4 @@
+import type { BlockData } from '@gredice/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { useEffect, useMemo } from 'react';
@@ -22,12 +23,14 @@ export function GardenPackStorefrontStory({
     rollout = true,
     sandbox = false,
     anonymous = false,
+    publishedBlocks,
 }: {
     preflightProbe?: boolean;
     balance?: number;
     rollout?: boolean;
     sandbox?: boolean;
     anonymous?: boolean;
+    publishedBlocks?: BlockData[];
 }) {
     const client = useMemo(() => {
         const queryClient = new QueryClient({
@@ -64,28 +67,29 @@ export function GardenPackStorefrontStory({
         const offer = createGardenPackOfferFixture();
         queryClient.setQueryData(
             ['blocks'],
-            getLocalSandboxBlockData().map((block) => {
-                const line = offer.lines.find(
-                    (line) => line.modelName === block.information.name,
-                );
-                return line
-                    ? {
-                          ...block,
-                          id: Number(line.entityId),
-                          information: {
-                              ...block.information,
-                              label: line.label,
-                          },
-                          prices: { ...block.prices, sunflowers: 5 },
-                      }
-                    : block;
-            }),
+            publishedBlocks ??
+                getLocalSandboxBlockData().map((block) => {
+                    const line = offer.lines.find(
+                        (line) => line.modelName === block.information.name,
+                    );
+                    return line
+                        ? {
+                              ...block,
+                              id: Number(line.entityId),
+                              information: {
+                                  ...block.information,
+                                  label: line.label,
+                              },
+                              prices: { ...block.prices, sunflowers: 5 },
+                          }
+                        : block;
+                }),
         );
         queryClient.setQueryData(['inventory'], { items: [], gardenBoxes: [] });
         queryClient.setQueryData(['operations'], []);
         queryClient.setQueryData(['sorts'], []);
         return queryClient;
-    }, [balance, anonymous, sandbox]);
+    }, [balance, anonymous, sandbox, publishedBlocks]);
     useEffect(() => {
         const switchAccount = () => {
             client.setQueryData(currentAccountKeys, {
