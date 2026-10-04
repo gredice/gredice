@@ -858,8 +858,8 @@ importers:
         specifier: 1.62.1
         version: 1.62.1
       '@react-three/fiber':
-        specifier: 9.7.0
-        version: 9.7.0(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1)
+        specifier: 9.8.1
+        version: 9.8.1(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1)
       '@tailwindcss/postcss':
         specifier: 4.3.3
         version: 4.3.3
@@ -1483,16 +1483,16 @@ importers:
         version: 10.1.2(react@19.2.8)
       '@react-spring/three':
         specifier: 10.1.2
-        version: 10.1.2(@react-three/fiber@9.7.0(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1))(react@19.2.8)(three@0.186.1)
+        version: 10.1.2(@react-three/fiber@9.8.1(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1))(react@19.2.8)(three@0.186.1)
       '@react-spring/web':
         specifier: 10.1.2
         version: 10.1.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@react-three/drei':
         specifier: 10.7.9
-        version: 10.7.9(@react-three/fiber@9.7.0(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1))(@types/react@19.2.18)(@types/three@0.186.0)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1)
+        version: 10.7.9(@react-three/fiber@9.8.1(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1))(@types/react@19.2.18)(@types/three@0.186.0)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1)
       '@react-three/fiber':
-        specifier: 9.7.0
-        version: 9.7.0(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1)
+        specifier: 9.8.1
+        version: 9.8.1(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1)
       '@tailwindcss/typography':
         specifier: 0.5.20
         version: 0.5.20(tailwindcss@4.3.3)
@@ -1555,7 +1555,7 @@ importers:
         version: 0.186.1
       three-custom-shader-material:
         specifier: 6.4.0
-        version: 6.4.0(@react-three/fiber@9.7.0(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1))(react@19.2.8)(three@0.186.1)
+        version: 6.4.0(@react-three/fiber@9.8.1(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1))(react@19.2.8)(three@0.186.1)
       three-stdlib:
         specifier: 2.36.1
         version: 2.36.1(three@0.186.1)
@@ -4945,8 +4945,8 @@ packages:
       react-dom:
         optional: true
 
-  '@react-three/fiber@9.7.0':
-    resolution: {integrity: sha512-EWm9FwcaOZQu/ExFW5rggoCMM1NJet5YbxVxKaOE+KSncrjU0Wx7017qSyGFvupviK89nMYGCWU3BIK4dI1clw==}
+  '@react-three/fiber@9.8.1':
+    resolution: {integrity: sha512-GbNP4r6F/gpclFKkLGHzXcuwFWAzLyKsmrQGcDuwK3wQnwLH6F1TfGtEYjHy8OQoGsajwT19B9jtVLLjjfH09w==}
     peerDependencies:
       expo: '>=43.0'
       expo-asset: '>=8.4'
@@ -8354,8 +8354,8 @@ packages:
   isomorphic.js@0.2.5:
     resolution: {integrity: sha512-PIeMbHqMt4DnUP3MA/Flc0HElYjMXArsw1qwJZcm9sqR8mq3l8NYizFMty0pWwE/tzIGH3EKK5+jes5mAr85yw==}
 
-  its-fine@2.0.0:
-    resolution: {integrity: sha512-KLViCmWx94zOvpLwSlsx6yOCeMhZYaxrJV87Po5k/FoZzcPSahvK5qJ7fYhS61sZi5ikmh2S3Hz55A2l3U69ng==}
+  its-fine@2.1.1:
+    resolution: {integrity: sha512-C5ZoVkeqSt0Aje0tzESO+iT/EQpNFNL39GkP7mCACtoZUFD6GcyerFCr6kp0ZtiII4W9HoYkY48Soy5xE/uHKw==}
     peerDependencies:
       react: 19.2.8
 
@@ -9936,6 +9936,9 @@ packages:
   scheduler@0.27.0:
     resolution: {integrity: sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==}
 
+  scheduler@0.28.0:
+    resolution: {integrity: sha512-juorfCmIkIw8tT+p5BXSm6PJjQF/ycEYmKyzURCIt/RaZIhL+PulbQ9Yu2z1HdOJDdqDTlxA1+xKBmHXJsczAw==}
+
   selderee@0.11.0:
     resolution: {integrity: sha512-5TF+l7p4+OsnP8BCCvSyZiSPc4x4//p5uPwK8TCnVPJYRmU2aYKMpOXvw8zM5a5JvuuCGN1jmsMwuU2W02ukfA==}
 
@@ -11006,24 +11009,6 @@ packages:
       immer:
         optional: true
       react:
-        optional: true
-
-  zustand@5.0.14:
-    resolution: {integrity: sha512-/8tAspM5LMPr28b3fwLYrtdj77ECpfZviaP75CMTnwO8ISyaE4GDIG/9rDDYq/cH9D2Xw2A2RXglLInmVBQB/g==}
-    engines: {node: '>=12.20.0'}
-    peerDependencies:
-      '@types/react': 19.2.18
-      immer: '>=9.0.6'
-      react: 19.2.8
-      use-sync-external-store: '>=1.2.0'
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
-      immer:
-        optional: true
-      react:
-        optional: true
-      use-sync-external-store:
         optional: true
 
   zustand@5.0.15:
@@ -14130,13 +14115,13 @@ snapshots:
       '@react-spring/types': 10.1.2
       react: 19.2.8
 
-  '@react-spring/three@10.1.2(@react-three/fiber@9.7.0(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1))(react@19.2.8)(three@0.186.1)':
+  '@react-spring/three@10.1.2(@react-three/fiber@9.8.1(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1))(react@19.2.8)(three@0.186.1)':
     dependencies:
       '@react-spring/animated': 10.1.2(react@19.2.8)
       '@react-spring/core': 10.1.2(react@19.2.8)
       '@react-spring/shared': 10.1.2(react@19.2.8)
       '@react-spring/types': 10.1.2
-      '@react-three/fiber': 9.7.0(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1)
+      '@react-three/fiber': 9.8.1(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1)
       react: 19.2.8
       three: 0.186.1
 
@@ -14152,12 +14137,12 @@ snapshots:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
 
-  '@react-three/drei@10.7.9(@react-three/fiber@9.7.0(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1))(@types/react@19.2.18)(@types/three@0.186.0)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1)':
+  '@react-three/drei@10.7.9(@react-three/fiber@9.8.1(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1))(@types/react@19.2.18)(@types/three@0.186.0)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1)':
     dependencies:
       '@babel/runtime': 7.29.7
       '@mediapipe/tasks-vision': 0.10.17
       '@monogrid/gainmap-js': 3.4.0(three@0.186.1)
-      '@react-three/fiber': 9.7.0(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1)
+      '@react-three/fiber': 9.8.1(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1)
       '@use-gesture/react': 10.3.1(react@19.2.8)
       camera-controls: 3.1.2(three@0.186.1)
       cross-env: 7.0.3
@@ -14185,20 +14170,20 @@ snapshots:
       - '@types/three'
       - immer
 
-  '@react-three/fiber@9.7.0(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1)':
+  '@react-three/fiber@9.8.1(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1)':
     dependencies:
       '@babel/runtime': 7.29.7
       '@types/webxr': 0.5.24
       base64-js: 1.5.1
       buffer: 6.0.3
-      its-fine: 2.0.0(@types/react@19.2.18)(react@19.2.8)
+      its-fine: 2.1.1(@types/react@19.2.18)(react@19.2.8)
       react: 19.2.8
       react-use-measure: 2.1.7(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      scheduler: 0.27.0
+      scheduler: 0.28.0
       suspend-react: 0.1.3(react@19.2.8)
       three: 0.186.1
       use-sync-external-store: 1.7.0(react@19.2.8)
-      zustand: 5.0.14(@types/react@19.2.18)(immer@11.1.18)(react@19.2.8)(use-sync-external-store@1.7.0(react@19.2.8))
+      zustand: 5.0.15(@types/react@19.2.18)(immer@11.1.18)(react@19.2.8)(use-sync-external-store@1.7.0(react@19.2.8))
     optionalDependencies:
       react-dom: 19.2.8(react@19.2.8)
     transitivePeerDependencies:
@@ -17857,7 +17842,7 @@ snapshots:
 
   isomorphic.js@0.2.5: {}
 
-  its-fine@2.0.0(@types/react@19.2.18)(react@19.2.8):
+  its-fine@2.1.1(@types/react@19.2.18)(react@19.2.8):
     dependencies:
       '@types/react-reconciler': 0.28.9(@types/react@19.2.18)
       react: 19.2.8
@@ -19807,6 +19792,8 @@ snapshots:
 
   scheduler@0.27.0: {}
 
+  scheduler@0.28.0: {}
+
   selderee@0.11.0:
     dependencies:
       parseley: 0.12.1
@@ -20259,11 +20246,11 @@ snapshots:
     transitivePeerDependencies:
       - react-native-b4a
 
-  three-custom-shader-material@6.4.0(@react-three/fiber@9.7.0(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1))(react@19.2.8)(three@0.186.1):
+  three-custom-shader-material@6.4.0(@react-three/fiber@9.8.1(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1))(react@19.2.8)(three@0.186.1):
     dependencies:
       three: 0.186.1
     optionalDependencies:
-      '@react-three/fiber': 9.7.0(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1)
+      '@react-three/fiber': 9.8.1(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1)
       react: 19.2.8
 
   three-mesh-bvh@0.8.3(three@0.186.1):
@@ -20899,13 +20886,6 @@ snapshots:
       '@types/react': 19.2.18
       immer: 11.1.18
       react: 19.2.8
-
-  zustand@5.0.14(@types/react@19.2.18)(immer@11.1.18)(react@19.2.8)(use-sync-external-store@1.7.0(react@19.2.8)):
-    optionalDependencies:
-      '@types/react': 19.2.18
-      immer: 11.1.18
-      react: 19.2.8
-      use-sync-external-store: 1.7.0(react@19.2.8)
 
   zustand@5.0.15(@types/react@19.2.18)(immer@11.1.18)(react@19.2.8)(use-sync-external-store@1.7.0(react@19.2.8)):
     optionalDependencies:
