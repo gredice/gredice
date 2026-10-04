@@ -54,7 +54,7 @@
         "test:image-variants": "node --import tsx --test ./lib/images/generatedBlockImageLoader.node.spec.ts"
     },
     "dependencies": {
-        "@flags-sdk/vercel": "1.4.9",
+        "@flags-sdk/vercel": "1.4.10",
         "@googlemaps/js-api-loader": "2.1.3",
         "@mdxeditor/editor": "4.2.5",
         "@opentelemetry/api-logs": "0.222.0",
