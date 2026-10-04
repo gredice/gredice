@@ -183,3 +183,48 @@ were local and all privacy assertions passed. No live data, campaign config,
 model/Blender/GLB sources or renderer behavior changed in this evidence work.
 Physical devices, deployed asset/catalogue verification and publication remain
 separate release gates.
+
+## Functional CI lifetime correction (2026-10-04)
+
+The ordinary WebGL project inherited a ten-second test lifetime, while the
+existing dedicated Kestenijada suite allowed 120 seconds. A local run on clean
+`22e48526d2b5f7e03386cb6540733386296c92db` reproduced the last photo regression
+failing after 10.6 seconds: the third fresh capture still showed “Pripremamo
+fotografiju…” when the test deadline aborted its wait for the PNG link. The
+injected encoding failure and held-encoder cancellation had already completed.
+The 60-second expectation timeout could not extend the shorter test lifetime.
+
+Clean source `6d27794cc6f5c50a95e74916d6c9b5ff5959eff3` (tree
+`be3c21454a61edc2659fb1c6fae0882eb513d266`) sets the spec's functional lifetime
+to the existing 120-second dedicated value. Every scene, privacy, photo and
+late-result assertion remains unchanged, as do snapshots and performance
+budgets. All six cases pass in the ordinary project in 29.2 seconds, with the
+last photo case taking 10.7 seconds. A separate dedicated run passes all six
+cases in 29.0 seconds and produces four fresh captures stamped with that actual
+clean source identity. Both runs use one worker and zero retries.
+
+All four fresh PNGs, world/screen bounds and viewports match the previously
+approved packet exactly. `pre-functional-ci-lifetime/` preserves its nine files
+byte-for-byte; the existing activity-stack report and older archives retain
+their original provenance. Current `evidence.json` links the archived packet
+and records the fresh functional-CI capture. The existing recorder regenerated
+all 68 selected pins; only the test and four capture JSON source stamps changed.
+[Before/after and parity record](kestenijada-2026/functional-ci-recapture.json)
+contains actual source identities, durations and local log checksums. No new
+visual review is claimed for unchanged images.
+
+The separate ignore correction declares Vercel 62.2.0's literal `.env*` pattern
+and preserves `.env.example`, preventing environment pulling from changing the
+tracked Garden ignore file before the strict capture-source check. The CI log
+recorded that rewrite followed by four immediate capture failures, but job
+cancellation prevented an exact error summary or Garden report artifact. The
+local before/after result above establishes the last photo deadline failure;
+it does not establish a fresh Ubuntu CI pass. This follow-up performs no new
+route, live, deployed-asset, purchase or physical-device acceptance.
+
+The strict existing repository reader independently verifies 68 unique current
+path/hash/size pins, four matching clean source records and the archived-proof
+hash link. Scoped Biome and diff checks pass. Garden’s normal incremental
+typecheck retained the parent’s stale typed-route diagnostic;
+`pnpm --filter garden exec tsc --noEmit --incremental false` passes without
+source changes. Both logs are retained in the before/after record.
