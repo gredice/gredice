@@ -3,24 +3,30 @@
 import { IconButton } from '@gredice/ui/IconButton';
 import { Megaphone } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { GardenViewMode } from './gardenViewMode';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useCurrentUser } from './hooks/useCurrentUser';
+import { useGardenPackUnitPlace } from './hooks/useGardenPackUnitPlace';
 import { useMarkTutorialChecklistTaskReady } from './hooks/useTutorialChecklist';
 import { AccountHud } from './hud/AccountHud';
 import { AdventHud } from './hud/AdventHud';
 import { AudioHud } from './hud/AudioHud';
+import { AutumnActivityHud } from './hud/AutumnActivityHud';
+import { AutumnPhotoHud } from './hud/AutumnPhotoHud';
 import { CameraHud } from './hud/CameraHud';
 import { ControlsTooltipHud } from './hud/ControlsTooltipHud';
 import { HudListItemPresence } from './hud/components/HudListItemPresence';
 import { DebugHudDynamic } from './hud/DebugHudDynamic';
 import { GardenActionHud } from './hud/GardenActionHud';
 import { GardenAvatarHud } from './hud/GardenAvatarHud';
+import { GardenPackStorefrontHud } from './hud/GardenPackStorefrontHud';
 import { GardenTargetHighlightHud } from './hud/GardenTargetHighlightHud';
 import { InventoryHud } from './hud/InventoryHud';
 import { ItemsHud } from './hud/ItemsHud';
+import { LeafRakingHud } from './hud/LeafRakingHud';
 import { OutletHud } from './hud/OutletHud';
+import { PackLayoutPreviewHud } from './hud/PackLayoutPreviewHud';
 import { PaymentSuccessfulMessage } from './hud/PaymentSuccessfulMessage';
 import { RaisedBedFieldHud } from './hud/RaisedBedFieldHud';
 import { RaisedBedOnboardingModal } from './hud/RaisedBedOnboardingModal';
@@ -83,8 +89,31 @@ export function GameHud({
         confirmed: boolean;
         gardenId: number | null;
     }>({ confirmed: false, gardenId: null });
+    const packLayoutActive = useGameState(
+        (state) =>
+            state.packLayoutPreview !== null || state.packLayoutPreviewLocked,
+    );
     const isCloseup = useGameState((state) => state.view) === 'closeup';
     const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
+    const cancelPackPreview = useGameState(
+        (state) => state.setPackLayoutPreview,
+    );
+    const packPreviewLocked = useGameState(
+        (state) => state.packLayoutPreviewLocked,
+    );
+    useEffect(() => {
+        if (
+            (viewMode !== '3d' || gardenAvatarView !== 'overview') &&
+            !packPreviewLocked
+        )
+            cancelPackPreview(null);
+    }, [viewMode, gardenAvatarView, packPreviewLocked, cancelPackPreview]);
+    const packPlacementMutation = useGardenPackUnitPlace();
+    const packPlacement = {
+        place: packPlacementMutation.mutateAsync,
+        isPending: packPlacementMutation.isPending,
+        error: packPlacementMutation.error,
+    };
     const { data: currentGarden } = useCurrentGarden();
     const { data: currentUser } = useCurrentUser();
     const markTutorialChecklistTaskReady = useMarkTutorialChecklistTaskReady();
@@ -128,8 +157,15 @@ export function GameHud({
                     <TemporaryAccountAuthHud />
                 ) : null}
                 <GardenAvatarHud />
-                {showAccountEconomy && <InventoryHud hideTrigger />}
+                {showAccountEconomy && (
+                    <InventoryHud
+                        hideTrigger
+                        packPlacement={packPlacement}
+                        previewLayouts={false}
+                    />
+                )}
                 <WoodenSignModal />
+                <PackLayoutPreviewHud />
                 {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
             </>
         );
@@ -145,6 +181,7 @@ export function GameHud({
             ) : null}
             <div
                 data-game-hud-top-left
+                inert={packLayoutActive ? true : undefined}
                 className={cx(
                     'absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] left-[calc(var(--game-safe-area-left,0px)+0.5rem)] flex flex-col items-start gap-2',
                     gameHudEntranceClassName,
@@ -187,7 +224,26 @@ export function GameHud({
                         className={closeupHiddenHudClassName}
                         visible={showLoadedAccountEconomy}
                     >
-                        <InventoryHud />
+                        <InventoryHud
+                            packPlacement={packPlacement}
+                            previewLayouts={viewMode === '3d'}
+                        />
+                    </HudListItemPresence>
+                )}
+                {!isLocalSandbox && (
+                    <HudListItemPresence
+                        className={closeupHiddenHudClassName}
+                        visible={showLoadedAccountEconomy}
+                    >
+                        <GardenPackStorefrontHud />
+                    </HudListItemPresence>
+                )}
+                {!isLocalSandbox && (
+                    <HudListItemPresence
+                        className={closeupHiddenHudClassName}
+                        visible={showLoadedAccountEconomy}
+                    >
+                        <AutumnActivityHud />
                     </HudListItemPresence>
                 )}
                 {!isLocalSandbox && (
@@ -229,8 +285,8 @@ export function GameHud({
             <div className={gameHudBottomBarClassName}>
                 <div
                     data-game-hud-bottom-controls
-                    aria-hidden={isCloseup}
-                    inert={isCloseup ? true : undefined}
+                    aria-hidden={isCloseup || packLayoutActive}
+                    inert={isCloseup || packLayoutActive ? true : undefined}
                     className={cx(
                         gameHudBottomControlsClassName,
                         getGameHudBottomCloseupClassName(isCloseup),
@@ -238,6 +294,8 @@ export function GameHud({
                 >
                     <CameraHud />
                     {viewMode === '3d' ? <AudioHud /> : null}
+                    {viewMode === '3d' ? <AutumnPhotoHud /> : null}
+                    {viewMode === '3d' ? <LeafRakingHud /> : null}
                     {viewMode === '3d' ? (
                         <ControlsTooltipHud isCloseup={isCloseup} />
                     ) : null}
@@ -258,8 +316,8 @@ export function GameHud({
                 </div>
                 <div
                     data-game-hud-bottom-items
-                    aria-hidden={isCloseup}
-                    inert={isCloseup ? true : undefined}
+                    aria-hidden={isCloseup || packLayoutActive}
+                    inert={isCloseup || packLayoutActive ? true : undefined}
                     className={cx(
                         gameHudBottomItemsClassName,
                         getGameHudBottomCloseupClassName(isCloseup),
@@ -293,6 +351,7 @@ export function GameHud({
                 </>
             )}
             {!isLocalSandbox && <PaymentSuccessfulMessage />}
+            <PackLayoutPreviewHud />
             {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
         </SuncokretChatProvider>
     );

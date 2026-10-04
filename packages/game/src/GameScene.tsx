@@ -15,6 +15,7 @@ import { BlockInteractionLayer } from './controls/BlockInteractionLayer';
 import { BlockInteractionRegistryProvider } from './controls/BlockInteractionRegistry';
 import { GameCameraRig } from './controls/GameCameraRig';
 import { HudPlacementDragPreview } from './controls/HudPlacementDragPreview';
+import { CosmeticLeafRaking } from './cosmeticLeafRaking/CosmeticLeafRaking';
 import { DetailedInspectionFarmer } from './entities/avatar/DetailedInspectionFarmer';
 import { findDetailedInspectionFarmerTransform } from './entities/avatar/detailedInspectionFarmerPosition';
 import { GardenAvatar } from './entities/avatar/GardenAvatar';
@@ -86,6 +87,7 @@ import { RaisedBedNotificationBubbles } from './hud/RaisedBedNotificationBubbles
 import { GardenLoadingIndicator } from './indicators/GardenLoadingIndicator';
 import { PlacementGrid } from './indicators/PlacementGrid';
 import { isOperationVisualRewardDebugProfile } from './operationVisualRewardDebugProfile';
+import { PackLayoutPreviewScene } from './packLayouts/PackLayoutPreviewScene';
 import { ParticleSystemProvider } from './particles/ParticleSystem';
 import {
     type AdaptiveHighQualityLevelProfile,
@@ -149,6 +151,10 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     // Development purposes
     adaptiveHighQuality?: boolean;
     authenticatedGardenQueriesEnabled?: boolean;
+    /** Owned pack inventory rollout, disabled until the server is configured. */
+    gardenPacksEnabled?: boolean;
+    /** Optional private autumn activity UI. Server configuration is authoritative. */
+    autumnActivityEnabled?: boolean;
     continuousRenderLeasesEnabled?: boolean;
     enableGameProfileController?: boolean;
     enableStaticOpaqueSceneCacheOcclusionFixture?: boolean;
@@ -487,6 +493,10 @@ export function GameScene({
             setGardenAvatarView('overview');
         }
     }, [gardenAvatarEnabled, gardenAvatarView, setGardenAvatarView]);
+    const packLayoutPreviewActive = useGameState(
+        (state) =>
+            state.packLayoutPreview !== null || state.packLayoutPreviewLocked,
+    );
     const isLoading = gardenLoading && transitionedGardenData === undefined;
     const interactWithAvatarBlock = useCallback(
         (block: Block): GardenAvatarInteractionResult => {
@@ -610,6 +620,8 @@ export function GameScene({
                     <ParticleSystemProvider>
                         <BlockInteractionRegistryProvider>
                             <PlacementGrid />
+                            <CosmeticLeafRaking noSound={noSound} />
+                            <PackLayoutPreviewScene />
                             {!hideHud ? <HudPlacementDragPreview /> : null}
                             <Environment
                                 cloudShadowUpdateMs={
@@ -634,7 +646,9 @@ export function GameScene({
                                 <RetainedEntityChunks
                                     scene={retainedScene}
                                     farmId={garden?.farmId}
-                                    noControl={noControls}
+                                    noControl={
+                                        noControls || packLayoutPreviewActive
+                                    }
                                     weather={weather}
                                     weatherDisabled={weatherDisabled}
                                 />
@@ -683,7 +697,9 @@ export function GameScene({
                                 <BlockInteractionLayer
                                     scene={retainedScene}
                                     controlsEnabled={
-                                        !noControls && !gardenAvatarActive
+                                        !noControls &&
+                                        !gardenAvatarActive &&
+                                        !packLayoutPreviewActive
                                     }
                                     sharedControllerEnabled
                                     stacks={retainedScene.stacks}
@@ -874,8 +890,13 @@ export function GameScene({
                                 )}
                             </group>
                             <GameCameraRig
+                                minZoom={
+                                    packLayoutPreviewActive ? 1 : undefined
+                                }
                                 controlsEnabled={
-                                    !noControls && !gardenAvatarActive
+                                    !noControls &&
+                                    !gardenAvatarActive &&
+                                    !packLayoutPreviewActive
                                 }
                                 initialPosition={sceneCameraPosition}
                                 initialSnapshot={gardenHomeCamera}

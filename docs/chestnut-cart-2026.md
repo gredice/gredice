@@ -20,9 +20,11 @@ Two baked vertex-colour material roles separate wood/paper (roughness 0.90) from
 
 The complete handle, wheels and sign remain inside the two-cell clearance envelope in all rotations. Reserve an approach beside the serving edge rather than filling the neighbouring path with another prop. The 4×4 review uses a 2×3 corner containing this cart and existing table/stool furniture, leaving a connected one-cell approach to a real planted bed. The raised-only fixture brings the serving table onto the free rear support cell so the elevated cart does not occlude its centre ray. Raised supports exercise the same two-cell contract without implying a realistic cart-on-table interaction in the product.
 
-## Future effect anchors
+## Authored effect anchors
 
-Saved Blender empties survive export and match the shared Y-up metadata. Runtime named groups `ChestnutRoastingCart:<effect>:<blockId>` inherit stack height, rotation and the two-cell offset. They currently have no active effects.
+Saved Blender empties survive export and match the shared Y-up metadata. Runtime named groups `ChestnutRoastingCart:<effect>:<blockId>` inherit stack height, rotation and the two-cell offset. Steam registers with the shared localized pool; the fire and sound anchors
+register with the existing warm-prop layer. The original asset captures below
+explicitly isolate steam sources to retain their effects-disabled appearance.
 
 | Effect | Local Y-up position | Radius | Boundary |
 | --- | --- | --- | --- |
@@ -30,7 +32,7 @@ Saved Blender empties survive export and match the shared Y-up metadata. Runtime
 | Fire | −0.275, 0.60, 0 | 0.18 | Inside the closed firebox; any later flame geometry must remain contained below the pan. |
 | Sound | −0.275, 0.72, 0 | 0 | Origin only; no mixer registration here. |
 
-#4972/#4980 own effects, culling, reduced motion, audio/weather disablement and disposal. The firebox currently has a closed door: do not let future particles pass through solid wood/metal to make fire visible. The static model is the intended effects-disabled appearance. Shared rain/snow overlays respect global and per-entity disablement.
+#4972/#4980 own effects, culling, reduced motion, audio/weather disablement and disposal. See [chestnut steam validation](chestnut-steam-2026.md) for exact pan clearance and mixed tea/cart caps. The firebox currently has a closed door: do not let future particles pass through solid wood/metal to make fire visible. The static model is the intended effects-disabled appearance. Shared rain/snow overlays respect global and per-entity disablement.
 
 ## Review and reproduction
 

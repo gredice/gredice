@@ -11,6 +11,7 @@ import type {
     GameCameraRigApi,
     GameCameraSnapshot,
 } from './controls/GameCameraRigApi';
+import { createLeafRakingController } from './cosmeticLeafRaking/leafRaking';
 import {
     type ActiveDragPreviewTarget,
     type ActiveDragPreviewTargetOffset,
@@ -24,6 +25,7 @@ import {
     defaultGardenAvatarCameraZoom,
     scaleGardenAvatarCameraZoom,
 } from './entities/avatar/gardenAvatarCameraZoom';
+import type { PackLayoutPreviewSelection } from './packLayouts/packLayoutPreviewState';
 import { type AutumnState, getAutumnState } from './scene/autumnState';
 import {
     getGameBackgroundPaletteIndexByKey,
@@ -401,6 +403,8 @@ type BackgroundPaletteCycle = {
 export type GameState = {
     // General
     authenticatedGardenQueriesEnabled: boolean;
+    gardenPacksEnabled: boolean;
+    autumnActivityEnabled: boolean;
     isMock: boolean;
     mockGardenProfile: MockGardenProfile;
     setMockGardenProfile: (mockGardenProfile: MockGardenProfile) => void;
@@ -463,6 +467,34 @@ export type GameState = {
      */
     seasonState: SeasonState;
     autumnState: AutumnState;
+
+    cosmeticLeafRaking: ReturnType<typeof createLeafRakingController>;
+    packLayoutPreview: PackLayoutPreviewSelection | null;
+    setPackLayoutPreview: (
+        selection: PackLayoutPreviewSelection | null,
+    ) => void;
+    packLayoutPreviewFramed: boolean;
+    setPackLayoutPreviewFramed: (framed: boolean) => void;
+    packLayoutPreviewHudRect: {
+        top: number;
+        left: number;
+        right: number;
+        bottom: number;
+    } | null;
+    setPackLayoutPreviewHudRect: (
+        rect: {
+            top: number;
+            left: number;
+            right: number;
+            bottom: number;
+        } | null,
+    ) => void;
+    packLayoutPreviewUnavailable: boolean;
+    setPackLayoutPreviewUnavailable: (unavailable: boolean) => void;
+    packLayoutPreviewReady: boolean;
+    setPackLayoutPreviewReady: (ready: boolean) => void;
+    packLayoutPreviewLocked: boolean;
+    setPackLayoutPreviewLocked: (locked: boolean) => void;
 
     // Pickup system
     pickupBlock: Block | null;
@@ -614,6 +646,8 @@ export type GameState = {
 export function createGameState({
     appBaseUrl,
     authenticatedGardenQueriesEnabled = true,
+    gardenPacksEnabled = false,
+    autumnActivityEnabled = false,
     spriteBaseUrl,
     dayNightCycleDisabled: initialDayNightCycleDisabled,
     freezeTime,
@@ -629,6 +663,8 @@ export function createGameState({
 }: {
     appBaseUrl: string;
     authenticatedGardenQueriesEnabled?: boolean;
+    gardenPacksEnabled?: boolean;
+    autumnActivityEnabled?: boolean;
     spriteBaseUrl?: string;
     dayNightCycleDisabled?: boolean;
     freezeTime: Date | null;
@@ -665,6 +701,8 @@ export function createGameState({
     let nextBlockPlacementDropAnimationRenderId = 0;
     return createStore<GameState>((set, get) => ({
         authenticatedGardenQueriesEnabled,
+        gardenPacksEnabled,
+        autumnActivityEnabled,
         isMock: isMock,
         mockGardenProfile: mockGardenProfile ?? 'default',
         setMockGardenProfile: (mockGardenProfile) =>
@@ -828,6 +866,25 @@ export function createGameState({
         sunsetTime: sunset,
         seasonState,
         autumnState: getAutumnState(seasonState),
+
+        cosmeticLeafRaking: createLeafRakingController(),
+        packLayoutPreview: null,
+        setPackLayoutPreview: (packLayoutPreview) => set({ packLayoutPreview }),
+        packLayoutPreviewFramed: false,
+        setPackLayoutPreviewFramed: (packLayoutPreviewFramed) =>
+            set({ packLayoutPreviewFramed }),
+        packLayoutPreviewHudRect: null,
+        setPackLayoutPreviewHudRect: (packLayoutPreviewHudRect) =>
+            set({ packLayoutPreviewHudRect }),
+        packLayoutPreviewUnavailable: false,
+        setPackLayoutPreviewUnavailable: (packLayoutPreviewUnavailable) =>
+            set({ packLayoutPreviewUnavailable }),
+        packLayoutPreviewReady: false,
+        setPackLayoutPreviewReady: (packLayoutPreviewReady) =>
+            set({ packLayoutPreviewReady }),
+        packLayoutPreviewLocked: false,
+        setPackLayoutPreviewLocked: (packLayoutPreviewLocked) =>
+            set({ packLayoutPreviewLocked }),
 
         // Pickup system
         pickupBlock: null,
@@ -1386,6 +1443,7 @@ export function useDisposeGameStateStore(store: GameStateStore | null) {
                 }
 
                 pendingStoreDisposals.delete(store);
+                store.getState().cosmeticLeafRaking.reset();
                 store.getState().audio.dispose();
                 store.getState().faunaWorld.dispose();
             }, 0);

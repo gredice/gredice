@@ -17,7 +17,10 @@
         "./outlet-garden-browser": "./src/viewers/OutletGardenOfferBrowser.tsx",
         "./outlet-garden-commerce": "./src/viewers/OutletGardenCommerce.tsx",
         "./outlet-garden-list": "./src/viewers/OutletGardenBrowserViewer.tsx",
-        "./theme": "./src/hooks/useThemeManager.ts"
+        "./theme": "./src/hooks/useThemeManager.ts",
+        "./autumn-arrangements": "./src/arrangements/autumnArrangements.ts",
+        "./kestenijada": "./src/kestenijada/KestenijadaViewer.tsx",
+        "./pumpkin-trail": "./src/pumpkinTrail/PumpkinTrailViewer.tsx"
     },
     "scripts": {
         "benchmark:chunks": "tsx scripts/benchmark-chunks.ts",

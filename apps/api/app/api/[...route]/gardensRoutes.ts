@@ -246,6 +246,7 @@ const analyzeImageBodySchema = z
 type AnalyzeImageBody = z.infer<typeof analyzeImageBodySchema>;
 
 const storeBlockInGardenBoxBodySchema = z.object({
+    operationId: z.string().min(1).max(96).optional(),
     gardenBoxBlockId: z.string().trim().min(1).max(128),
     entityId: z.string().trim().min(1).max(100).optional(),
     sourcePosition: z.object({
@@ -2528,8 +2529,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, blockId } = context.req.valid('param');
-            const { blockIndex, entityId, gardenBoxBlockId, sourcePosition } =
-                context.req.valid('json');
+            const {
+                blockIndex,
+                entityId,
+                gardenBoxBlockId,
+                sourcePosition,
+                operationId,
+            } = context.req.valid('json');
             const gardenIdNumber = parseInt(gardenId, 10);
             if (Number.isNaN(gardenIdNumber) || gardenIdNumber <= 0) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
@@ -2545,6 +2551,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     gardenBoxBlockId,
                     gardenId: gardenIdNumber,
                     sourcePosition,
+                    operationId,
                 });
                 if (!result.ok) {
                     return context.json(
