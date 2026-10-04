@@ -13,7 +13,7 @@
         "typecheck": "tsc --noEmit --pretty false"
     },
     "devDependencies": {
-        "@types/node": "24.13.6",
+        "@types/node": "24.19.0",
         "server-only": "0.0.1",
         "typescript": "7.0.2"
     }
