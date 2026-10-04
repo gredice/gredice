@@ -294,6 +294,7 @@ jobs:
       app_api: ${{ steps.filter.outputs.app_api }}
       app_storybook: ${{ steps.filter.outputs.app_storybook }}
       app_status: ${{ steps.filter.outputs.app_status }}
+      app_desktop: ${{ steps.filter.outputs.app_desktop }}
       packages_storage: ${{ steps.filter.outputs.packages_storage }}
       packages_email: ${{ steps.filter.outputs.packages_email }}
       packages_game: ${{ steps.filter.outputs.packages_game }}
@@ -352,6 +353,8 @@ jobs:
           {"name":"chromium 2/2","args":"--project=chromium --shard=2/2"},
           {"name":"webgl components 1/2","args":"--project=chromium-webgl --shard=1/2"},
           {"name":"webgl components 2/2","args":"--project=chromium-webgl --shard=2/2"},
+          {"name":"kestenijada route","args":"--config=playwright.kestenijada-route.config.ts"},
+          {"name":"pumpkin trail route","args":"--config=playwright.pumpkin-trail-route.config.ts"},
           {"name":"outlet layout","args":"--project=chromium-webgl-outlet --grep @outlet-layout"},
           {"name":"outlet reconcile","args":"--project=chromium-webgl-outlet --grep @outlet-reconcile"},
           {"name":"outlet lifecycle","args":"--project=chromium-webgl-outlet --grep @outlet-lifecycle"},
@@ -427,6 +430,15 @@ jobs:
     with:
       name: "status"
       path: "apps/status"
+
+  ci_desktop:
+    name: "CI - desktop"
+    needs: changes
+    if: success() && needs.changes.outputs.app_desktop == 'true'
+    uses: ./.github/workflows/nextjs_ci_reusable.yml
+    with:
+      name: "desktop"
+      path: "apps/desktop"
 
   test_packages:
     name: "CI - test @gredice/storage"
@@ -593,6 +605,7 @@ jobs:
         ci_app,
         ci_api,
         ci_status,
+        ci_desktop,
         test_packages,
         test_game_package,
         test_email_package,

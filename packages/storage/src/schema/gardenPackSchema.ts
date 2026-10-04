@@ -115,6 +115,10 @@ export const gardenPackUnitEvents = pgTable(
         lineId: text('line_id').notNull(),
         unitOrdinal: integer('unit_ordinal').notNull(),
         operationId: text('operation_id').notNull(),
+        placementPayload:
+            jsonb('placement_payload').$type<Record<string, unknown>>(),
+        placementResponse:
+            jsonb('placement_response').$type<Record<string, unknown>>(),
         kind: text('kind', {
             enum: ['placed', 'refunded', 'recycled'],
         }).notNull(),
@@ -145,6 +149,70 @@ export const gardenPackUnitEvents = pgTable(
         check(
             'garden_pack_unit_event_value_check',
             sql`${table.creditedSunflowers} >= 0 AND length(${table.operationId}) BETWEEN 1 AND 128 AND ${table.kind} IN ('placed', 'refunded', 'recycled') AND ((${table.kind} = 'refunded' AND ${table.gardenId} IS NULL AND ${table.blockId} IS NULL) OR (${table.kind} IN ('placed', 'recycled') AND ${table.gardenId} IS NOT NULL AND ${table.blockId} IS NOT NULL AND ${table.gardenId} > 0 AND length(${table.blockId}) BETWEEN 1 AND 128)) AND (${table.kind} <> 'placed' OR ${table.creditedSunflowers} = 0)`,
+        ),
+    ],
+);
+
+/** Mutable physical location; the original unit provenance remains immutable. */
+export const gardenPackUnitLocations = pgTable(
+    'garden_pack_unit_locations',
+    {
+        purchaseId: text('purchase_id').notNull(),
+        lineId: text('line_id').notNull(),
+        unitOrdinal: integer('unit_ordinal').notNull(),
+        gardenId: integer('garden_id').notNull(),
+        blockId: text('block_id').notNull(),
+        gardenBoxBlockId: text('garden_box_block_id'),
+        lastOperationId: text('last_operation_id'),
+    },
+    (table) => [
+        primaryKey({
+            columns: [table.purchaseId, table.lineId, table.unitOrdinal],
+        }),
+        foreignKey({
+            columns: [table.purchaseId, table.lineId, table.unitOrdinal],
+            foreignColumns: [
+                gardenPackUnits.purchaseId,
+                gardenPackUnits.lineId,
+                gardenPackUnits.unitOrdinal,
+            ],
+        }),
+        uniqueIndex('garden_pack_location_block_unique').on(table.blockId),
+        index('garden_pack_location_box_idx').on(
+            table.gardenId,
+            table.gardenBoxBlockId,
+        ),
+        check(
+            'garden_pack_location_valid',
+            sql`${table.gardenId} > 0 AND length(${table.blockId}) BETWEEN 1 AND 128 AND (${table.gardenBoxBlockId} IS NULL OR (length(${table.gardenBoxBlockId}) BETWEEN 1 AND 128 AND ${table.gardenBoxBlockId} <> ${table.blockId}))`,
+        ),
+    ],
+);
+
+export const gardenPackLifecycleReceipts = pgTable(
+    'garden_pack_lifecycle_receipts',
+    {
+        id: text('id').primaryKey(),
+        accountId: text('account_id').references(() => accounts.id, {
+            onDelete: 'set null',
+        }),
+        operationId: text('operation_id').notNull(),
+        previousOperationId: text('previous_operation_id'),
+        kind: text('kind', {
+            enum: ['store', 'retrieve', 'refund', 'recycle', 'garden-delete'],
+        }).notNull(),
+        payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
+        response: jsonb('response').$type<Record<string, unknown>>().notNull(),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+    },
+    (table) => [
+        uniqueIndex('garden_pack_lifecycle_operation_unique').on(
+            table.accountId,
+            table.operationId,
+        ),
+        check(
+            'garden_pack_lifecycle_receipt_valid',
+            sql`length(${table.operationId}) BETWEEN 1 AND 128 AND ${table.kind} IN ('store','retrieve','refund','recycle','garden-delete') AND jsonb_typeof(${table.payload}) = 'object' AND jsonb_typeof(${table.response}) = 'object'`,
         ),
     ],
 );

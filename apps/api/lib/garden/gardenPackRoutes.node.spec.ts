@@ -12,11 +12,11 @@ function deps(
     return {
         authValidator: () => async (context, next) => {
             context.set('authContext', {
-                accountId: 'account-owner',
+                accountId: '00000000-0000-4000-8000-000000000010',
                 userId: 'test-user',
                 user: {
                     id: 'test-user',
-                    accountIds: ['account-owner'],
+                    accountIds: ['00000000-0000-4000-8000-000000000010'],
                     isTemporary: false,
                     role: 'user',
                 },
@@ -110,9 +110,15 @@ test('route owner derives from session, foreign detail is 404, pagination valida
     );
     const list = await app.request('/?accountId=foreign');
     assert.equal(list.status, 200);
-    assert.equal((await list.json()).accountId, 'account-owner');
+    assert.equal(
+        (await list.json()).accountId,
+        '00000000-0000-4000-8000-000000000010',
+    );
     assert.equal((await app.request(`/${randomUUID()}`)).status, 404);
-    assert.deepEqual(owners, ['account-owner', 'account-owner']);
+    assert.deepEqual(owners, [
+        '00000000-0000-4000-8000-000000000010',
+        '00000000-0000-4000-8000-000000000010',
+    ]);
     assert.equal((await app.request('/?limit=51')).status, 400);
     assert.equal((await app.request('/not-a-uuid')).status, 400);
 });
@@ -121,6 +127,7 @@ test('purchase validator rejects owner and money overrides, matches authenticate
     const purchaseId = randomUUID();
     const command = {
         operationId: randomUUID(),
+        expectedAccountId: '00000000-0000-4000-8000-000000000010',
         productId: 'test-pack',
         quote: {
             productVersionId: 'test:v1',
@@ -131,7 +138,7 @@ test('purchase validator rejects owner and money overrides, matches authenticate
     const app = createGardenPacksRoutes(
         deps({
             purchase: async (accountId, body) => {
-                assert.equal(accountId, 'account-owner');
+                assert.equal(accountId, '00000000-0000-4000-8000-000000000010');
                 assert.deepEqual(body, command);
                 return {
                     ok: true,
@@ -183,4 +190,63 @@ test('purchase validator rejects owner and money overrides, matches authenticate
         ).status,
         503,
     );
+});
+
+test('required expected owner fences a shared account-cookie switch before purchase or replay storage access', async () => {
+    const ownerA = '00000000-0000-4000-8000-000000000010';
+    const ownerB = '00000000-0000-4000-8000-000000000020';
+    let authenticatedOwner = ownerB;
+    const owners: string[] = [];
+    const command = {
+        operationId: randomUUID(),
+        expectedAccountId: ownerA,
+        productId: 'test-pack',
+        quote: {
+            productVersionId: 'test:v1',
+            chargedSunflowers: 11,
+            currency: 'sunflower',
+        },
+    };
+    const app = createGardenPacksRoutes(
+        deps({
+            authValidator: () => async (context, next) => {
+                context.set('authContext', {
+                    accountId: authenticatedOwner,
+                    userId: 'test-user',
+                    user: {
+                        id: 'test-user',
+                        accountIds: [ownerA, ownerB],
+                        isTemporary: false,
+                        role: 'user',
+                    },
+                });
+                await next();
+            },
+            purchase: async (accountId) => {
+                owners.push(accountId);
+                return {
+                    ok: false,
+                    code: 'PACKS_DISABLED',
+                    error: 'Unavailable',
+                    status: 503,
+                };
+            },
+        }),
+    );
+    const request = (body: unknown) =>
+        app.request('/purchase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+    const mismatch = await request(command);
+    assert.equal(mismatch.status, 409);
+    assert.equal((await mismatch.json()).code, 'EXPECTED_ACCOUNT_MISMATCH');
+    assert.deepEqual(owners, []);
+    const { expectedAccountId: _expected, ...missingOwner } = command;
+    assert.equal((await request(missingOwner)).status, 400);
+    assert.deepEqual(owners, []);
+    authenticatedOwner = ownerA;
+    assert.equal((await request(command)).status, 503);
+    assert.deepEqual(owners, [ownerA]);
 });
