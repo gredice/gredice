@@ -33,6 +33,19 @@ for (const appPath of process.argv.slice(2)) {
         `${appPath}: runner/core mismatch`,
     );
 
+    if (dependencies['@axe-core/playwright']) {
+        const axeEntry = appRequire.resolve('@axe-core/playwright');
+        const axeCorePath = createRequire(axeEntry).resolve(
+            'playwright-core/package.json',
+        );
+        const axeCore = JSON.parse(readFileSync(axeCorePath, 'utf8'));
+        assert.equal(
+            axeCore.version,
+            runner.version,
+            `${appPath}: accessibility/core mismatch`,
+        );
+    }
+
     if (dependencies['@playwright/experimental-ct-react']) {
         const componentPath = appRequire.resolve(
             '@playwright/experimental-ct-react/package.json',

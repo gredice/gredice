@@ -25,10 +25,14 @@ packageExtensions:
     dependencies:
       '@typescript/typescript6': '6.0.2'
 overrides:
+  # The accessibility suites use the legacy CT runner; align Axe's broad core peer with it.
+  '@axe-core/playwright>playwright-core': '1.62.1'
   '@types/react': 19.2.18
   '@types/react-dom': 19.2.7
   '@hono/node-server': '1.19.17'
   '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0>typescript': '-'
+  # Next's unused experimental test-mode peer splits nominal NextRequest types when test runners differ.
+  'next>@playwright/test': '-'
   '@xmldom/xmldom': '0.9.12'
   'fast-uri': '3.1.8'
   'ip-address': '10.7.2'
