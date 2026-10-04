@@ -138,6 +138,12 @@ export function createGardenPackPurchaseService<Transaction>(
                     'Neispravan zahtjev za kupnju paketa.',
                 );
             const command = parsed.data;
+            if (command.expectedAccountId !== accountId)
+                fail(
+                    'EXPECTED_ACCOUNT_MISMATCH',
+                    409,
+                    'Račun se promijenio. Vrati se na račun za ovu kupnju.',
+                );
             // Must return before any pack query when the migration has not rolled out.
             if (!dependencies.isStorageEnabled())
                 fail('PACKS_DISABLED', 503, 'Paketi trenutačno nisu dostupni.');

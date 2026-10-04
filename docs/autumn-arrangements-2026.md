@@ -5,7 +5,7 @@ following the [autumn art direction](autumn-art-direction-2026.md). These compos
 reuse original Gredice models. They do not define purchasable packs, grant inventory,
 automatically place objects, publish draft catalogue items, or change customer dates.
 
-The single source is [`autumnArrangements`](../packages/game/src/arrangements/autumnArrangements.ts),
+The renderer-free shared source is [`autumnArrangements`](../packages/js/src/autumnArrangements/index.ts),
 exported as `@gredice/game/autumn-arrangements`. Collection IDs match the autumn picker:
 `harvest`, `woodland`, and `evening`. A reference can be shown only when every pictured
 identity resolves in the published directory, every included decoration is for sale,

@@ -28,6 +28,7 @@ const eligibleModels = new Set([
     'SeasonalMaple',
     'WoodlandMushrooms',
     'FallenLog',
+    'StoneMedium',
     'AutumnBlanketBench',
     'ChestnutRoastingCart',
     'LeafRake',
