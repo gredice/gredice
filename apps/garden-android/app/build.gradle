@@ -104,5 +104,5 @@ android {
 }
 
 dependencies {
-    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.2'
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.3'
 }
