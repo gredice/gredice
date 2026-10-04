@@ -63,3 +63,5 @@ Physical-mobile usability, thermal observations, listening/audio mixing, 2D
 fallback, interaction/cleanup and the bundle economy matrix remain separate
 #4999 acceptance work. This tooling and a headless production run do not close
 those gates or authorize campaign/catalogue publication.
+
+The [2026-10-04 local production readback](./autumn-release-2026/2026-10-04-launch-profile/README.md) archives a corrected 18-case pass plus the rejected sky-only first run. It retains the standard-camera visible-subset limitation and physical-device gates.

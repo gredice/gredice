@@ -1,0 +1,94 @@
+$ GAME_PROFILE_SCENARIO_SET=autumn-launch GAME_PROFILE_BUILD=1 GAME_PROFILE_START_SERVER=1 GAME_PROFILE_FAIL_ON_BUDGET=1 GAME_PROFILE_SCREENSHOTS=1 node scripts/profile-game-scene.mjs
+$ next build
+▲ Next.js 16.3.5 (Turbopack)
+✓ Running next.config.ts took 317ms
+- Cache Components enabled
+- Partial Prefetching enabled
+- Experiments (use with caution):
+  · optimizePackageImports
+  ✓ turbopackRustReactCompiler
+  ✓ typedEnv
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 9.3s
+  Running TypeScript ...
+  Finished TypeScript in 3.2s ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/41) ...
+  Generating static pages using 11 workers (10/41) 
+  Generating static pages using 11 workers (20/41) 
+  Generating static pages using 11 workers (30/41) 
+✓ Generating static pages using 11 workers (41/41) in 489ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ◐ /
+├ ○ /_not-found
+├ ○ /.well-known/security.txt
+├ ƒ /.well-known/vercel/flags
+├   /ankete/[assignmentId]
+│ └ ◐ /ankete/[assignmentId]
+├ ƒ /api/oauth-callback
+├ ○ /apple-icon.png
+├ ○ /debug
+├ ○ /debug/animals
+├ ◐ /debug/entities
+├   /debug/entities/[entityName]
+│ └ ◐ /debug/entities/[entityName]
+├ ◐ /debug/plants
+├ ◐ /debug/profile/game
+├ ◐ /debug/sandbox
+├ ○ /icon.png
+├ ○ /icon.svg
+├ ◐ /kestenijada
+├ ○ /manifest.json
+├ ○ /odjava
+├ ○ /outlet
+├ ○ /pozivnica
+├ ◐ /pregled-vrta
+├ ○ /prijava
+├ ○ /prijava/facebook-prijava
+├ ○ /prijava/facebook-prijava/povratak
+├ ○ /prijava/google-prijava
+├ ○ /prijava/google-prijava/povratak
+├ ○ /prijava/potvrda-emaila
+├ ○ /prijava/potvrda-emaila/posalji
+├ ○ /prijava/potvrda-emaila/poslano
+├ ○ /prijava/promjena-zaporke
+├ ○ /prijava/promjena-zaporke/uspijeh
+├ ◐ /prijava/registracija-uspijesna
+├ ○ /prijava/zaboravljena-zaporka
+├ ○ /prijava/zaboravljena-zaporka/poslano
+├ ○ /racun/brisanje
+├ ○ /racun/naplata
+├ ○ /robots.txt
+└ ○ /staza-bundeva
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)             prerendered as static content
+◐  (Partial Prerender)  prerendered as static HTML with dynamic server-streamed content
+ƒ  (Dynamic)            server-rendered on demand
+
+Profiling game-autumn-launch-small-early-sun-low...
+Profiling game-autumn-launch-small-early-sun-constrained...
+Profiling game-autumn-launch-small-early-sun-high...
+Profiling game-autumn-launch-medium-mid-cloud-low...
+Profiling game-autumn-launch-medium-mid-cloud-constrained...
+Profiling game-autumn-launch-medium-mid-cloud-high...
+Profiling game-autumn-launch-dense-late-wind-low...
+Profiling game-autumn-launch-dense-late-wind-constrained...
+Profiling game-autumn-launch-dense-late-wind-high...
+Profiling game-autumn-launch-medium-mid-rain-low...
+Profiling game-autumn-launch-medium-mid-rain-constrained...
+Profiling game-autumn-launch-medium-mid-rain-high...
+Profiling game-autumn-launch-dense-winter-snow-low...
+Profiling game-autumn-launch-dense-winter-snow-constrained...
+Profiling game-autumn-launch-dense-winter-snow-high...
+Profiling game-autumn-launch-small-mid-night-low...
+Profiling game-autumn-launch-small-mid-night-high...
+Profiling game-autumn-launch-dense-late-wind-constrained-reduced-motion...
+Wrote /tmp/gredice-autumn-launch-9facdce16/latest.md
+Budget status: pass
+Comparability status: pass
