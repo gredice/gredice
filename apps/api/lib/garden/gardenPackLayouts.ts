@@ -40,12 +40,16 @@ export function getOwnedGardenPackLayouts(
         )
     )
         return [];
-    const placements = included.map((entry) => {
+    const resolved = included.map((entry) => {
         const line = pack.snapshot.lines.find(
             (line) => line.modelName === entry.entityName,
         );
         if (!line) throw new Error('Reviewed layout line missing');
-        resolveGardenPackLineVariant(line);
+        try {
+            resolveGardenPackLineVariant(line);
+        } catch {
+            return null;
+        }
         return {
             slotId: entry.id,
             lineId: line.lineId,
@@ -64,6 +68,8 @@ export function getOwnedGardenPackLayouts(
             },
         };
     });
+    if (resolved.some((placement) => placement === null)) return [];
+    const placements = resolved.filter((placement) => placement !== null);
     const versionId = `layout:${createHash('sha256')
         .update(
             canonicalGardenPackJson({

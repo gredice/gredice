@@ -975,11 +975,13 @@ function SeedPublicGardenQueryCache({
     children,
     client,
     garden,
+    winterMode = 'summer',
 }: {
     cacheKey: string;
     children: (gardenCacheReady: boolean) => ReactNode;
     client: QueryClient;
     garden?: ReturnType<typeof publicGardenForGameState>;
+    winterMode?: PublicGardenCapture['winterMode'];
 }) {
     const [seededCacheKey, setSeededCacheKey] = useState<string | null>(
         garden ? null : cacheKey,
@@ -1000,11 +1002,11 @@ function SeedPublicGardenQueryCache({
             },
         ]);
         client.setQueryData(
-            currentGardenKeys('summer', garden.id, undefined, undefined),
+            currentGardenKeys(winterMode, garden.id, undefined, undefined),
             garden,
         );
         setSeededCacheKey(cacheKey);
-    }, [cacheKey, client, garden]);
+    }, [cacheKey, client, garden, winterMode]);
 
     return children(seededCacheKey === cacheKey);
 }
@@ -1276,6 +1278,7 @@ export function PublicGardenViewer({
                     }}
                 >
                     <SeedPublicGardenQueryCache
+                        winterMode={capture?.winterMode}
                         cacheKey={cacheKey}
                         client={clientRef.current}
                         garden={gameGarden}
