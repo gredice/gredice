@@ -18,7 +18,7 @@
         "@gredice/ui": "workspace:*",
         "@react-email/ui": "6.9.5",
         "@tailwindcss/postcss": "4.3.3",
-        "@types/node": "24.13.6",
+        "@types/node": "24.19.0",
         "@types/react": "19.2.18",
         "tailwindcss": "4.3.3",
         "tsx": "4.23.15",
