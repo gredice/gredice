@@ -57,7 +57,7 @@
         "react": "19.2.8",
         "react-dom": "19.2.8",
         "server-only": "0.0.1",
-        "sharp": "0.35.4"
+        "sharp": "0.35.5"
     },
     "devDependencies": {
         "@biomejs/biome": "2.5.14",

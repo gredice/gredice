@@ -45,7 +45,7 @@
         "react-email": "6.9.5",
         "recharts": "3.10.1",
         "server-only": "0.0.1",
-        "sharp": "0.35.4"
+        "sharp": "0.35.5"
     },
     "devDependencies": {
         "@biomejs/biome": "2.5.14",
