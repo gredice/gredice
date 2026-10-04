@@ -23,6 +23,21 @@
                 "peerDependencies"
             ],
             "rangeStrategy": "auto"
+        },
+        {
+            "description": "Experimental component testing ended at 1.62.1; keep its runner aligned until the suites migrate to stories.",
+            "matchFileNames": [
+                "apps/app/package.json",
+                "apps/delivery/package.json",
+                "apps/farm/package.json",
+                "apps/garden/package.json",
+                "apps/www/package.json"
+            ],
+            "matchPackageNames": [
+                "@playwright/test",
+                "@playwright/experimental-ct-react"
+            ],
+            "allowedVersions": "1.62.1"
         }
     ],
     "dependencyDashboard": true,
