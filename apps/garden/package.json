@@ -49,7 +49,7 @@
         "@opentelemetry/resources": "2.11.0",
         "@opentelemetry/sdk-logs": "0.222.0",
         "@posthog/next": "0.9.0",
-        "@vercel/functions": "3.9.8",
+        "@vercel/functions": "3.9.9",
         "@vercel/toolbar": "0.2.7",
         "flags": "4.3.1",
         "next": "16.3.5",
