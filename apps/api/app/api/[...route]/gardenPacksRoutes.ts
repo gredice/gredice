@@ -18,6 +18,8 @@ import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
+import { gardenPackGroupPlacementRoutes } from './gardenPackGroupPlacementRoutes';
+import { gardenPackLifecycleRoutes } from './gardenPackLifecycleRoutes';
 import { gardenPackPlacementRoutes } from './gardenPackPlacementRoutes';
 
 export type GardenPacksRouteDependencies = {
@@ -143,7 +145,7 @@ export function createGardenPacksRoutes(
             '/purchase',
             describeRoute({
                 description:
-                    'Buy an exact server-owned published pack quote using sunflowers. Wallet debit and finite quantities commit atomically without requiring a garden or box. The UUID request ID replays the immutable receipt; changed input/quote returns 409. Insufficient balance or invalid request returns 400; missing product/account returns 404; unavailable rollout/catalogue returns 503.',
+                    'Buy an exact server-owned published pack quote using sunflowers. The required expectedAccountId is a precondition checked against the authenticated account, never ownership authority. Wallet debit and finite quantities commit atomically without requiring a garden or box. The UUID request ID replays the immutable receipt; changed input/quote returns 409. Insufficient balance or invalid request returns 400; missing product/account returns 404; unavailable rollout/catalogue returns 503.',
                 security: authSecurity,
                 tags: ['Garden packs'],
                 responses: {
@@ -159,7 +161,7 @@ export function createGardenPacksRoutes(
                     404: { description: 'Product or account not found.' },
                     409: {
                         description:
-                            'Operation, quote, availability or account deletion conflict.',
+                            'Operation, quote, availability, expected current account or account deletion conflict.',
                     },
                     503: {
                         description:
@@ -171,10 +173,17 @@ export function createGardenPacksRoutes(
             zValidator('json', gardenPackPurchaseBodySchema),
             async (context) => {
                 context.header('Cache-Control', 'private, no-store');
-                const result = await dependencies.purchase(
-                    context.get('authContext').accountId,
-                    context.req.valid('json'),
-                );
+                const accountId = context.get('authContext').accountId;
+                const command = context.req.valid('json');
+                if (command.expectedAccountId !== accountId)
+                    return context.json(
+                        {
+                            error: 'Račun se promijenio. Vrati se na račun za ovu kupnju.',
+                            code: 'EXPECTED_ACCOUNT_MISMATCH',
+                        },
+                        409,
+                    );
+                const result = await dependencies.purchase(accountId, command);
                 if (!result.ok)
                     return context.json(
                         { error: result.error, code: result.code },
@@ -187,4 +196,7 @@ export function createGardenPacksRoutes(
             },
         );
 }
-export default createGardenPacksRoutes().route('/', gardenPackPlacementRoutes);
+export default createGardenPacksRoutes()
+    .route('/', gardenPackGroupPlacementRoutes)
+    .route('/', gardenPackPlacementRoutes)
+    .route('/', gardenPackLifecycleRoutes);

@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { after, before, test } from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
-import { generateDrizzleJson, generateMigration } from 'drizzle-kit/api';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/pglite';
 import { gardenPackProductSnapshotSchema } from '../src/gardenPackContract';
@@ -17,11 +16,11 @@ import {
     getPurchasedGardenPackAudit,
     listPurchasedGardenPacks,
     recordPurchasedGardenPack,
-    transitionPurchasedGardenPackUnit,
+    transitionPurchasedGardenPackUnit as transitionUnit,
 } from '../src/repositories/gardenPacksRepo';
 import * as schema from '../src/schema';
 import { gardenPackIntegritySql } from '../src/schema/gardenPackIntegrity';
-import * as packSchema from '../src/schema/gardenPackSchema';
+import { getGardenPackTestDdl } from './helpers/gardenPackTestSchema';
 
 function databaseFailure(expected: RegExp) {
     return (error: unknown) => {
@@ -37,20 +36,64 @@ const client = new PGlite();
 const db = drizzle(client, { schema });
 // Generate DDL from source: shared PRs deliberately exclude deployment migrations.
 before(async () => {
-    const statements = await generateMigration(
-        generateDrizzleJson({}),
-        generateDrizzleJson({
-            accounts: schema.accounts,
-            events: schema.events,
-            farms: schema.farms,
-            gardens: schema.gardens,
-            ...packSchema,
-        }),
-    );
+    const statements = await getGardenPackTestDdl();
     await client.exec(statements.join('\n'));
     await client.exec(gardenPackIntegritySql);
 });
 after(() => client.close());
+
+// The primitive's caller owns the physical lifecycle in the same transaction.
+async function transitionPurchasedGardenPackUnit(
+    accountId: string,
+    input: Parameters<typeof transitionUnit>[1],
+    tx: Parameters<typeof transitionUnit>[2],
+) {
+    if (input.kind === 'placed')
+        await tx
+            .insert(schema.gardenBlocks)
+            .values({
+                id: input.blockId,
+                gardenId: input.gardenId,
+                name: 'TestPumpkin',
+                variant: null,
+            })
+            .onConflictDoNothing();
+    const result = await transitionUnit(accountId, input, tx);
+    if (input.kind === 'placed')
+        await tx
+            .insert(schema.gardenPackUnitLocations)
+            .values({
+                purchaseId: input.purchaseId,
+                lineId: input.lineId,
+                unitOrdinal: input.unitOrdinal,
+                gardenId: input.gardenId,
+                blockId: input.blockId,
+            })
+            .onConflictDoNothing();
+    if (input.kind === 'recycled') {
+        await tx
+            .delete(schema.gardenPackUnitLocations)
+            .where(
+                and(
+                    eq(
+                        schema.gardenPackUnitLocations.purchaseId,
+                        input.purchaseId,
+                    ),
+                    eq(schema.gardenPackUnitLocations.lineId, input.lineId),
+                    eq(
+                        schema.gardenPackUnitLocations.unitOrdinal,
+                        input.unitOrdinal,
+                    ),
+                ),
+            );
+        if (result.event.blockId)
+            await tx
+                .update(schema.gardenBlocks)
+                .set({ isDeleted: true })
+                .where(eq(schema.gardenBlocks.id, result.event.blockId));
+    }
+    return result;
+}
 
 function snapshot() {
     return gardenPackProductSnapshotSchema.parse({

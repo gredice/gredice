@@ -7,6 +7,7 @@ const productId = z
     .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/);
 export const gardenPackPurchaseBodySchema = z.strictObject({
     operationId: z.string().uuid(),
+    expectedAccountId: z.string().uuid(),
     productId,
     quote: z.strictObject({
         productVersionId: productId,
