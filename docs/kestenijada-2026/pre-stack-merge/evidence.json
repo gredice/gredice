@@ -4,25 +4,13 @@
   "originalEvidencePath": "docs/kestenijada-2026/original-d0fee5e13/evidence.json",
   "originalEvidenceSha256": "62f52280e2ee04b7360bd871f3573185b88970a3a6d7aa5ec59d295f37654d42",
   "previousEvidence": {
-    "path": "docs/kestenijada-2026/pre-stack-merge/evidence.json",
-    "sha256": "b8cec1a7ccecdbda7d704305fea30db90b67a13fefce229cc97e6c30e349225c",
+    "path": "docs/kestenijada-2026/pre-functional-ci-lifetime/evidence.json",
+    "sha256": "449d9e967abfad5a9b721584d30c84bd5ad4790e9de7e4d13ad215a6a8e121a5",
     "captureSource": {
-      "commit": "6d27794cc6f5c50a95e74916d6c9b5ff5959eff3",
-      "tree": "be3c21454a61edc2659fb1c6fae0882eb513d266",
+      "commit": "6f7d5700a5426282d78b417908da9ce2ce6b0e00",
+      "tree": "b783e17be5439ee9ebe7dc10dccf87b7653a568d",
       "status": ""
     }
-  },
-  "functionalCiCapture": {
-    "source": {
-      "commit": "ecde3becaa4710fb47583ab731db6430c5afc986",
-      "tree": "d5c0d517fca4566196d926a6c67e4a1605ef1f2e",
-      "status": ""
-    },
-    "command": "GREDICE_GARDEN_CT_PORT=5498 pnpm --filter garden exec playwright test --config playwright.kestenijada.config.ts",
-    "captureTests": 4,
-    "sceneCaptures": 4,
-    "suiteTests": 6,
-    "scope": "Fresh clean-source recapture after main integration and stack review fixes. All six functional cases passed and all four PNGs remain byte-identical to the previous authored captures. Route and physical-device acceptance are outside this check."
   },
   "sourceIdentity": "Exact current-source SHA256 records; verification needs no historic Git objects or network.",
   "scope": "Bounded selected runtime identity evidence, not a complete renderer dependency graph or reproducible full-engine/performance proof.",
@@ -70,8 +58,8 @@
   "files": [
     {
       "path": ".github/workflows/ci.yml",
-      "bytes": 21537,
-      "sha256": "a8daf33916d6651e599eb97c12c002a9498a7d545f539bb71f5b04edcf6c8726"
+      "bytes": 18816,
+      "sha256": "50a2e3a80e2b0b5cef9639ac54319bf1d8eaa4bc66fc91e1eefff8297031c765"
     },
     {
       "path": "apps/garden/app/kestenijada/KestenijadaDiscoveryEntry.tsx",
@@ -95,8 +83,8 @@
     },
     {
       "path": "apps/garden/playwright.config.ts",
-      "bytes": 6126,
-      "sha256": "a247112913a304cf78a2231cb8d43309e3ffcbd8cd4f2d2ab57197c4916fe6c6"
+      "bytes": 5562,
+      "sha256": "2195be03c5b7fec26371d6d83eb6bd232587113aa4436f2de14d56f421fee61c"
     },
     {
       "path": "apps/garden/playwright.kestenijada-route.config.ts",
@@ -155,8 +143,8 @@
     },
     {
       "path": "docs/kestenijada-2026/day.json",
-      "bytes": 2547,
-      "sha256": "5e1d11d7c13b5bb51a728991cc87b7237559fce4bf7ec1e346186fc128fbf86e"
+      "bytes": 2552,
+      "sha256": "8f676827ed7d8d533e108c899fe8353ffd799a510f9f1e32bc6e18a4db39d127"
     },
     {
       "path": "docs/kestenijada-2026/day.png",
@@ -166,7 +154,7 @@
     {
       "path": "docs/kestenijada-2026/dusk.json",
       "bytes": 2552,
-      "sha256": "c8f18f1a14a4aec4655f6146deb30369491590bec19384f588e82a12a494684a"
+      "sha256": "8f676827ed7d8d533e108c899fe8353ffd799a510f9f1e32bc6e18a4db39d127"
     },
     {
       "path": "docs/kestenijada-2026/dusk.png",
@@ -176,7 +164,7 @@
     {
       "path": "docs/kestenijada-2026/mobile-low.json",
       "bytes": 2552,
-      "sha256": "7442a2a7b4c0a09e456eb62e901b71cc6ef4312de6c1a11d3fb17498d6dcb53c"
+      "sha256": "593b718d6e8c274da5250cbd4d496e20d429fb9376daad7c4482310e009f5cb2"
     },
     {
       "path": "docs/kestenijada-2026/mobile-low.png",
@@ -186,7 +174,7 @@
     {
       "path": "docs/kestenijada-2026/night.json",
       "bytes": 2552,
-      "sha256": "c8f18f1a14a4aec4655f6146deb30369491590bec19384f588e82a12a494684a"
+      "sha256": "8f676827ed7d8d533e108c899fe8353ffd799a510f9f1e32bc6e18a4db39d127"
     },
     {
       "path": "docs/kestenijada-2026/night.png",
@@ -195,13 +183,13 @@
     },
     {
       "path": "packages/game/scripts/record-kestenijada-evidence.mjs",
-      "bytes": 7243,
-      "sha256": "6a0bbe0d996f451518a9cb8fa4c790c2650722a2fa1bdae79049ac524d36d53d"
+      "bytes": 7565,
+      "sha256": "55c169a54654b8fc76da8255a2336ef9ab139d5631f22d25325193b504445726"
     },
     {
       "path": "packages/game/src/controls/GameCameraRig.tsx",
-      "bytes": 45143,
-      "sha256": "c8b4ccd27215e952b9429a9eb4241fa615b29c50d87692e23611beb8cad1eff5"
+      "bytes": 44835,
+      "sha256": "da85565c1621aed7a4525fa8cacb582dfe4da2cbc5c1ed20fbf40aa0ca1ca0cd"
     },
     {
       "path": "packages/game/src/controls/orthographicCameraFit.ts",
@@ -235,8 +223,8 @@
     },
     {
       "path": "packages/game/src/entities/EntityInstances.tsx",
-      "bytes": 31162,
-      "sha256": "5bd8d386e95da5bad2d207b4cdd2bfe54a468c231eb305634cf24ecbd6cc19d4"
+      "bytes": 28350,
+      "sha256": "8d415c62669a07f2dbcedf0f6dffd48ceec48839ceb91cc59b9d61b94a9bb817"
     },
     {
       "path": "packages/game/src/entities/GardenTeaTable.tsx",
@@ -290,8 +278,8 @@
     },
     {
       "path": "packages/game/src/entities/helpers/groundPatchMaterial.ts",
-      "bytes": 19731,
-      "sha256": "b9dbb491d91941ea1f5e07fa49c46ff6066c1c9ba0cfab5bb02155b19bb97fa2"
+      "bytes": 18894,
+      "sha256": "ef3d108f0332510424c510bfffc2931a389fddf5c3bf0c8dfe9b56697580383f"
     },
     {
       "path": "packages/game/src/entities/helpers/nightGardenLight.ts",
@@ -305,8 +293,8 @@
     },
     {
       "path": "packages/game/src/kestenijada/KestenijadaViewer.tsx",
-      "bytes": 17408,
-      "sha256": "39e11a21a2fa03e0ce0701f9deba0a20d540b9d2c7a011f3cf44198396a1e582"
+      "bytes": 17272,
+      "sha256": "4a9f984030f477c7fc6d8bf724a25bcd743891445777b81e3136f51ddb81340f"
     },
     {
       "path": "packages/game/src/kestenijada/kestenijadaCollection.ts",
@@ -325,8 +313,8 @@
     },
     {
       "path": "packages/game/src/scene/Environment.tsx",
-      "bytes": 43587,
-      "sha256": "e45f224b836ba55dad371255bae7bc67f8bf38df2148b861de927f084318e6ec"
+      "bytes": 43269,
+      "sha256": "c33fe3cfe2492025d4a712d9e26d53f90aea6c9e29f9065606ce3985cdf2966f"
     },
     {
       "path": "packages/game/src/scene/GardenLightProvider.tsx",
@@ -335,8 +323,8 @@
     },
     {
       "path": "packages/game/src/scene/Scene.tsx",
-      "bytes": 15818,
-      "sha256": "dd303a06cdb5a4cc7ee0910ce3940efed10eea422f6d2ac7af933b84fabc0dac"
+      "bytes": 15291,
+      "sha256": "fc4519167920321aacb864a2a3a8777e1dfa3105f39dc2ed14b32c06038a6167"
     },
     {
       "path": "packages/game/src/scene/gameQuality.ts",
@@ -345,8 +333,8 @@
     },
     {
       "path": "packages/game/src/useGameState.ts",
-      "bytes": 52459,
-      "sha256": "2197a8ef0ea7fda327faba5be442b9c5cb52614ba11fcc2114cbbc0af6ecbed4"
+      "bytes": 54230,
+      "sha256": "3902a31eb255dbc853ef9839fc4dc07132c5984ed0c3dab9738b7027b4e9c289"
     },
     {
       "path": "packages/game/src/utils/configureGameGLTFMaterials.ts",
@@ -365,8 +353,8 @@
     },
     {
       "path": "packages/game/src/utils/useGameGLTF.ts",
-      "bytes": 1628,
-      "sha256": "0a950d810e5af14de7f6ad6dd005b793eab52690b348e36245911067fe8be57a"
+      "bytes": 1092,
+      "sha256": "cecb0cda7acb92a2c8bb41e8c7ef84e25843d04c1fc1d8c27d48d84642afa0b0"
     },
     {
       "path": "packages/game/src/viewers/PublicGardenCaptureProbe.tsx",
@@ -375,8 +363,8 @@
     },
     {
       "path": "packages/game/src/viewers/PublicGardenViewer.tsx",
-      "bytes": 55654,
-      "sha256": "6902111c2141030386ab8f52002b329d9afbb1ebf5fa59c45150d93fbe744b5d"
+      "bytes": 55504,
+      "sha256": "7a0cf17ceae8ce261fd5da748caf98593cd444ff1d5e2f6996f3369c2ea8a918"
     },
     {
       "path": "packages/game/tests/KestenijadaFixture.tsx",
@@ -408,5 +396,17 @@
       "bytes": 8870,
       "sha256": "da25197fe2a113f5883284d6e27080ffc0a83256db4399bf903b71bac7846ad4"
     }
-  ]
+  ],
+  "functionalCiCapture": {
+    "source": {
+      "commit": "6d27794cc6f5c50a95e74916d6c9b5ff5959eff3",
+      "tree": "be3c21454a61edc2659fb1c6fae0882eb513d266",
+      "status": ""
+    },
+    "command": "pnpm --dir apps/garden exec playwright test --config=playwright.kestenijada.config.ts --workers=1 --retries=0 --output=/tmp/gredice-keste-ci-recapture-results",
+    "captureTests": 4,
+    "sceneCaptures": 4,
+    "suiteTests": 6,
+    "scope": "Fresh clean-source recapture after matching the ordinary Kestenijada functional test lifetime to the existing dedicated suite. No runtime, geometry, model, snapshot or performance budget change. Route verification was not repeated in this follow-up."
+  }
 }

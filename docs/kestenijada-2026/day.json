@@ -102,14 +102,14 @@
     }
   ],
   "renderer": {
-    "calls": 36,
-    "triangles": 10382
+    "calls": 3,
+    "triangles": 6
   },
   "width": 778,
   "height": 598,
   "source": {
-    "commit": "6d27794cc6f5c50a95e74916d6c9b5ff5959eff3",
-    "tree": "be3c21454a61edc2659fb1c6fae0882eb513d266",
+    "commit": "ecde3becaa4710fb47583ab731db6430c5afc986",
+    "tree": "d5c0d517fca4566196d926a6c67e4a1605ef1f2e",
     "status": ""
   }
 }
