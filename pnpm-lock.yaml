@@ -694,8 +694,8 @@ importers:
         specifier: 0.9.0
         version: 0.9.0(@types/react@19.2.18)(@vercel/functions@3.9.8(@aws-sdk/credential-provider-web-identity@3.972.77)(ws@8.21.3))(next@16.3.5(@babel/core@7.29.7(supports-color@10.2.2))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.6)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.104.1))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@posthog/react':
-        specifier: 1.11.1
-        version: 1.11.1(@types/react@19.2.18)(posthog-js@1.434.5(@types/react@19.2.18)(react@19.2.8))(react@19.2.8)
+        specifier: 1.11.2
+        version: 1.11.2(@types/react@19.2.18)(posthog-js@1.434.5(@types/react@19.2.18)(react@19.2.8))(react@19.2.8)
       '@vercel/blob':
         specifier: 2.8.0
         version: 2.8.0
@@ -4393,6 +4393,16 @@ packages:
 
   '@posthog/react@1.11.1':
     resolution: {integrity: sha512-mHpef0Vp7e0103ePGOWbFDC7v/E0jpMI8OeTCkTCsL2DSV4PP2oIcBSiuxELQPo5MV6yBpGx/hwkWNcbDp65Aw==}
+    peerDependencies:
+      '@types/react': 19.2.18
+      posthog-js: '>=1.257.2'
+      react: 19.2.8
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+
+  '@posthog/react@1.11.2':
+    resolution: {integrity: sha512-6iO+dbmm9x31lhnmxBWKJlI5iWaCRx9fsUfVyrYz2zRhG9QcUmQr22jj2DKK2zaWNTp1gO1GCE7VxiqBqYwTxA==}
     peerDependencies:
       '@types/react': 19.2.18
       posthog-js: '>=1.257.2'
@@ -13435,6 +13445,13 @@ snapshots:
       - rxjs
 
   '@posthog/react@1.11.1(@types/react@19.2.18)(posthog-js@1.434.5(@types/react@19.2.18)(react@19.2.8))(react@19.2.8)':
+    dependencies:
+      posthog-js: 1.434.5(@types/react@19.2.18)(react@19.2.8)
+      react: 19.2.8
+    optionalDependencies:
+      '@types/react': 19.2.18
+
+  '@posthog/react@1.11.2(@types/react@19.2.18)(posthog-js@1.434.5(@types/react@19.2.18)(react@19.2.8))(react@19.2.8)':
     dependencies:
       posthog-js: 1.434.5(@types/react@19.2.18)(react@19.2.8)
       react: 19.2.8

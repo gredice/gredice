@@ -22,7 +22,7 @@
         "@opentelemetry/resources": "2.11.0",
         "@opentelemetry/sdk-logs": "0.222.0",
         "@posthog/next": "0.9.0",
-        "@posthog/react": "1.11.1",
+        "@posthog/react": "1.11.2",
         "@vercel/blob": "2.8.0",
         "@vercel/functions": "3.9.8",
         "@vercel/toolbar": "0.2.7",
