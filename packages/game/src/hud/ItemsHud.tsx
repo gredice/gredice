@@ -1253,7 +1253,7 @@ type EntityItemProps = HudItemEntity & {
     onHudDragStart?: () => void;
 };
 
-function EntityItem({
+export function EntityItem({
     footprintLabel,
     name,
     onHudDragEnd,

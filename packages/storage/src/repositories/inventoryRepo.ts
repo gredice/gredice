@@ -8,6 +8,7 @@ import {
     knownEvents,
     knownEventTypes,
 } from './events';
+import { assertGardenBoxCombinedCapacity } from './gardenPackLifecycleRepo';
 
 type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = Parameters<
@@ -606,6 +607,13 @@ export async function addGardenBoxInventoryItem(
         db,
     );
     validateGardenBoxInventoryItems([...currentInventory, payload]);
+    await assertGardenBoxCombinedCapacity(
+        accountId,
+        gardenId,
+        blockId,
+        [payload],
+        db,
+    );
 
     await createEvent(knownEvents.inventory.addedV1(aggregateId, payload), db);
 }

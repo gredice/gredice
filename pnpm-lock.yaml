@@ -167,7 +167,7 @@ overrides:
   '@types/react-dom': 19.2.7
   '@hono/node-server': 1.19.17
   '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0>typescript': '-'
-  '@xmldom/xmldom': 0.8.15
+  '@xmldom/xmldom': 0.9.12
   fast-uri: 3.1.8
   ip-address: 10.7.2
   minimatch@10>brace-expansion: 5.0.12
@@ -187,9 +187,11 @@ packageExtensionsChecksum: sha256-y2BYGjR2uQ+NBok9HqAy+T4U7Di94KBF/DmMKB9VtBc=
 patchedDependencies:
   '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0': 9c0494be68fc5d63ae2b8e9a96397680c82ea5ac7260f4b46b4f8814cb3c561f
   openapi-typescript@7.13.0: fab737196e4bf943943c70c0e6955e385055ef06f3d8ad61ffb53c4b41c6d419
+  plist@3.1.0: de821f6f9078ce712eb4ef1dc955ccd63e682bf2dfc6a7d135dc82b69466395e
   react-docgen-typescript@2.4.0: c6a1bb9c2e242a146914bb8e4de55736df0f5fbcd6edcc210eb92b44a18db846
   tsconfck@3.1.6: 8e77e2162331e3bd628516d51ccbf2a0ce9c5a31d9bad8e22cc42458370bec37
   web-push@3.6.7: 4554572bbbd76721b65fb3004602f11f77b665c8e48f33a4e318a2c47b34a172
+  xml-crypto@6.3.2: f18cfd914b70a4b6262319dcc65acb114e594f8449f44c484544ca941ca931a8
 
 importers:
 
@@ -326,6 +328,9 @@ importers:
       '@biomejs/biome':
         specifier: 2.5.14
         version: 2.5.14
+      '@electric-sql/pglite':
+        specifier: 0.5.8
+        version: 0.5.8
       '@gredice/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -675,6 +680,9 @@ importers:
       electron-builder:
         specifier: 26.15.3
         version: 26.15.3(electron-builder-squirrel-windows@26.15.3)(supports-color@10.2.2)
+      plist:
+        specifier: 3.1.0
+        version: 3.1.0(patch_hash=de821f6f9078ce712eb4ef1dc955ccd63e682bf2dfc6a7d135dc82b69466395e)
       rimraf:
         specifier: 6.1.3
         version: 6.1.3
@@ -1293,6 +1301,9 @@ importers:
       '@gredice/directory-types':
         specifier: workspace:*
         version: link:../directory-types
+      '@gredice/storage':
+        specifier: workspace:*
+        version: link:../storage
       openapi-fetch:
         specifier: 0.17.0
         version: 0.17.0
@@ -1394,7 +1405,7 @@ importers:
         version: 8.10.2
       xml-crypto:
         specifier: 6.3.2
-        version: 6.3.2
+        version: 6.3.2(patch_hash=f18cfd914b70a4b6262319dcc65acb114e594f8449f44c484544ca941ca931a8)
       xml2js:
         specifier: 0.6.2
         version: 0.6.2
@@ -1417,6 +1428,9 @@ importers:
       '@types/xml2js':
         specifier: 0.4.14
         version: 0.4.14
+      '@xmldom/xmldom':
+        specifier: 0.9.12
+        version: 0.9.12
       tsx:
         specifier: 4.23.15
         version: 4.23.15
@@ -2003,10 +2017,6 @@ packages:
     resolution: {integrity: sha512-OC9AcGMFOsBc95YSPWH3O7DE6RUTy7jqeOpVvzO2Dv3rw3w4vQRK+YdLXIbO2yXfmx3N59Y55yAJdDRJFMQK3Q==}
     engines: {node: '>=20.0.0'}
 
-  '@aws-sdk/core@3.978.0':
-    resolution: {integrity: sha512-2yX9LUmxPklVjSGTb8dfnWRJSiFQ3TeH2nn7G1mdKHTfnabzF0+gfrS8rYfLWmZrQ8A3mEcxMJjRc51dL5KWaA==}
-    engines: {node: '>=20.0.0'}
-
   '@aws-sdk/core@3.978.1':
     resolution: {integrity: sha512-LbY9aGsEiznDWmUc30Nwv3aIX/+dbwTx8KfS0yOC3NPYMO+O91e6jkT1azf34FwjOndq8/Q+RcVVZz5xnerwdg==}
     engines: {node: '>=20.0.0'}
@@ -2051,16 +2061,8 @@ packages:
     resolution: {integrity: sha512-E7W2UOeUoc+lg3uIfR/dM7ZwusHwhBQrKMnlkRv4EXRR+C0YtV1pg25xC7GdZIhXH+NAMgZPCbE7o5to2cjFiw==}
     engines: {node: '>=20.0.0'}
 
-  '@aws-sdk/nested-clients@3.997.45':
-    resolution: {integrity: sha512-mooq9Q+jLa18VoM7HouczmslZU60iiB0aKc/Ztnq/luIL1ud0z4DnYprLR/ZO1gp331S9tJctM1HZr7u6YKBXQ==}
-    engines: {node: '>=20.0.0'}
-
   '@aws-sdk/nested-clients@3.997.46':
     resolution: {integrity: sha512-oRxtBcka/JGHGs9l9p9IVajGoTP8vTPmoAzdHGy4Qcy9P5vPnDf6nhIeM/COQNY9k/OahImTRaLkHftoXvfcmQ==}
-    engines: {node: '>=20.0.0'}
-
-  '@aws-sdk/signature-v4-multi-region@3.996.46':
-    resolution: {integrity: sha512-L+2xZTye/2T96f3lwCws0Zw6GG2JHZW9e8FpVgGBeeExSKyeoZ6CWRpBml/7DNiK/O26jrgPM9F+Ay8VkgzUWQ==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/signature-v4-multi-region@3.996.47':
@@ -2071,16 +2073,8 @@ packages:
     resolution: {integrity: sha512-GpyAr0DD63YOEmYFM6Df+gJuIgC92MMTiBK4FTKfxii5MJ9ge20epR7LyroulscYlG89J+ZB2ivFDPjvfQhzdw==}
     engines: {node: '>=20.0.0'}
 
-  '@aws-sdk/types@3.974.5':
-    resolution: {integrity: sha512-LkwLL2BLbC6wNNm4JaH9mbEqBMdOZCct6VAYqhdN4U1xrWM+fUJQEfbHwQgDypapOWTRtlk25akb5afM0P8CIQ==}
-    engines: {node: '>=20.0.0'}
-
   '@aws-sdk/types@3.974.6':
     resolution: {integrity: sha512-v/clNZzZnDxGyvpHMOGpJKVXFAExJzUNAAjaWGdcx8QAcXLGwTaOkw33p5SHAi0YAioK32xB3hWwOekRVfmfKg==}
-    engines: {node: '>=20.0.0'}
-
-  '@aws-sdk/xml-builder@3.972.40':
-    resolution: {integrity: sha512-wlFmCIGUlwF4zx/kncw+bmxTQh1HeSJq4mYV/V5cZUSJadDP3kXvGW8Rn21cimj/7y9ju+47oYWXi97vF7czaA==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/xml-builder@3.972.41':
@@ -6627,9 +6621,9 @@ packages:
     resolution: {integrity: sha512-CJDxIgE5I0FH+ttq/Fxy6nRpxP70+e2O048EPe85J2use3XKdatVM7dDVvFNjQudd9B49NPoZ+8PG49zj4Er8Q==}
     engines: {node: '>= 16'}
 
-  '@xmldom/xmldom@0.8.15':
-    resolution: {integrity: sha512-/5NV/vDALVFDXgLmfsy9TRCBlKwO2LNBFzpzvb9iIj+jR+eSc6DLYYvVOdivT/jm7MtU6TebYuRmzEOI7w40UA==}
-    engines: {node: '>=10.0.0'}
+  '@xmldom/xmldom@0.9.12':
+    resolution: {integrity: sha512-5AXjrcMClTryPe9LgZrygpB1lj7s0S9E0+W+AHaVKAVyHanafK86iPSvG5xHVSp/jC+VH1UXu0TAEmY279xH7A==}
+    engines: {node: '>=14.6'}
 
   '@xyflow/react@12.11.6':
     resolution: {integrity: sha512-9XsEJNHjatKYndszKTF/bsU7FOP9dJ6V/EQwzy3oMdtqgBuUq7BjKSwkEo+C7s4qHstHQfwwoHA3E8QfpPxZZQ==}
@@ -10946,10 +10940,6 @@ packages:
     resolution: {integrity: sha512-sqMMuL1rc0FmMBOzCpd0yuy9trqF2yTTVe+E9ogwCSWQCdDEtQUwrZPT6AxqtsFGRNxycgncbP/xmOOSPw5ZUw==}
     engines: {node: '>= 6.0'}
 
-  xml-crypto@6.3.1:
-    resolution: {integrity: sha512-uSE509H/5pePltq6DEsdGRz0iJQG9Thgisq6jAxSnWaR6t4fPZWjSVRVywOoR8cEsDJtnEpepUhCbgyQr7Nwtg==}
-    engines: {node: '>=16'}
-
   xml-crypto@6.3.2:
     resolution: {integrity: sha512-XoUdpErePlpyFdNYVzG2Sfw5ghvqUCQMT3dQ0tAxs0JKzk9gLzwALFkvHZ/D0OyfD/OyxoXsCcYZzbDzgY18RA==}
     engines: {node: '>=16'}
@@ -11176,18 +11166,6 @@ snapshots:
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
-  '@aws-sdk/core@3.978.0':
-    dependencies:
-      '@aws-sdk/types': 3.974.5
-      '@aws-sdk/xml-builder': 3.972.40
-      '@aws/lambda-invoke-store': 0.3.0
-      '@smithy/core': 3.34.1
-      '@smithy/signature-v4': 5.7.3
-      '@smithy/types': 4.18.0
-      bowser: 2.14.1
-      tslib: 2.8.1
-    optional: true
-
   '@aws-sdk/core@3.978.1':
     dependencies:
       '@aws-sdk/types': 3.974.6
@@ -11276,11 +11254,11 @@ snapshots:
 
   '@aws-sdk/credential-provider-web-identity@3.972.77':
     dependencies:
-      '@aws-sdk/core': 3.978.0
-      '@aws-sdk/nested-clients': 3.997.45
-      '@aws-sdk/types': 3.974.5
-      '@smithy/core': 3.34.1
-      '@smithy/types': 4.18.0
+      '@aws-sdk/core': 3.978.1
+      '@aws-sdk/nested-clients': 3.997.46
+      '@aws-sdk/types': 3.974.6
+      '@smithy/core': 3.35.1
+      '@smithy/types': 4.19.0
       tslib: 2.8.1
     optional: true
 
@@ -11302,18 +11280,6 @@ snapshots:
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
-  '@aws-sdk/nested-clients@3.997.45':
-    dependencies:
-      '@aws-sdk/core': 3.978.0
-      '@aws-sdk/signature-v4-multi-region': 3.996.46
-      '@aws-sdk/types': 3.974.5
-      '@smithy/core': 3.34.1
-      '@smithy/fetch-http-handler': 5.8.0
-      '@smithy/node-http-handler': 4.12.1
-      '@smithy/types': 4.18.0
-      tslib: 2.8.1
-    optional: true
-
   '@aws-sdk/nested-clients@3.997.46':
     dependencies:
       '@aws-sdk/core': 3.978.1
@@ -11324,14 +11290,6 @@ snapshots:
       '@smithy/node-http-handler': 4.12.1
       '@smithy/types': 4.19.0
       tslib: 2.8.1
-
-  '@aws-sdk/signature-v4-multi-region@3.996.46':
-    dependencies:
-      '@aws-sdk/types': 3.974.5
-      '@smithy/signature-v4': 5.7.3
-      '@smithy/types': 4.18.0
-      tslib: 2.8.1
-    optional: true
 
   '@aws-sdk/signature-v4-multi-region@3.996.47':
     dependencies:
@@ -11349,22 +11307,10 @@ snapshots:
       '@smithy/types': 4.19.0
       tslib: 2.8.1
 
-  '@aws-sdk/types@3.974.5':
-    dependencies:
-      '@smithy/types': 4.18.0
-      tslib: 2.8.1
-    optional: true
-
   '@aws-sdk/types@3.974.6':
     dependencies:
       '@smithy/types': 4.19.0
       tslib: 2.8.1
-
-  '@aws-sdk/xml-builder@3.972.40':
-    dependencies:
-      '@smithy/types': 4.18.0
-      tslib: 2.8.1
-    optional: true
 
   '@aws-sdk/xml-builder@3.972.41':
     dependencies:
@@ -12054,7 +12000,7 @@ snapshots:
       fs-extra: 10.1.0
       isbinaryfile: 4.0.10
       minimist: 1.2.8
-      plist: 3.1.0
+      plist: 3.1.0(patch_hash=de821f6f9078ce712eb4ef1dc955ccd63e682bf2dfc6a7d135dc82b69466395e)
     transitivePeerDependencies:
       - supports-color
 
@@ -12077,7 +12023,7 @@ snapshots:
       dir-compare: 4.2.0
       fs-extra: 11.4.0
       minimatch: 9.0.9
-      plist: 3.1.0
+      plist: 3.1.0(patch_hash=de821f6f9078ce712eb4ef1dc955ccd63e682bf2dfc6a7d135dc82b69466395e)
     transitivePeerDependencies:
       - supports-color
 
@@ -14245,7 +14191,7 @@ snapshots:
       entities: 4.5.0
       html-to-text: 9.0.5
       html5parser: 3.0.0
-      prettier: 3.9.8
+      prettier: 3.9.9
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
 
@@ -16138,7 +16084,7 @@ snapshots:
 
   '@xmldom/is-dom-node@1.0.1': {}
 
-  '@xmldom/xmldom@0.8.15': {}
+  '@xmldom/xmldom@0.9.12': {}
 
   '@xyflow/react@12.11.6(@types/react-dom@19.2.7(@types/react@19.2.18))(@types/react@19.2.18)(immer@11.1.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
@@ -16295,7 +16241,7 @@ snapshots:
       lazy-val: 1.0.5
       minimatch: 10.2.6
       pkijs: 3.4.0
-      plist: 3.1.0
+      plist: 3.1.0(patch_hash=de821f6f9078ce712eb4ef1dc955ccd63e682bf2dfc6a7d135dc82b69466395e)
       proper-lockfile: 4.1.2
       resedit: 1.7.2
       semver: 7.7.4
@@ -19478,9 +19424,9 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.2
 
-  plist@3.1.0:
+  plist@3.1.0(patch_hash=de821f6f9078ce712eb4ef1dc955ccd63e682bf2dfc6a7d135dc82b69466395e):
     dependencies:
-      '@xmldom/xmldom': 0.8.15
+      '@xmldom/xmldom': 0.9.12
       base64-js: 1.5.1
       xmlbuilder: 15.1.1
 
@@ -19558,7 +19504,8 @@ snapshots:
 
   preact@10.29.8: {}
 
-  prettier@3.9.8: {}
+  prettier@3.9.8:
+    optional: true
 
   prettier@3.9.9: {}
 
@@ -20363,7 +20310,7 @@ snapshots:
       formidable: 3.5.4
       sax: 1.6.1
       whatwg-mimetype: 5.0.0
-      xml-crypto: 6.3.1
+      xml-crypto: 6.3.2(patch_hash=f18cfd914b70a4b6262319dcc65acb114e594f8449f44c484544ca941ca931a8)
     transitivePeerDependencies:
       - supports-color
 
@@ -21221,16 +21168,10 @@ snapshots:
     dependencies:
       os-paths: 4.4.0
 
-  xml-crypto@6.3.1:
+  xml-crypto@6.3.2(patch_hash=f18cfd914b70a4b6262319dcc65acb114e594f8449f44c484544ca941ca931a8):
     dependencies:
       '@xmldom/is-dom-node': 1.0.1
-      '@xmldom/xmldom': 0.8.15
-      xpath: 0.0.33
-
-  xml-crypto@6.3.2:
-    dependencies:
-      '@xmldom/is-dom-node': 1.0.1
-      '@xmldom/xmldom': 0.8.15
+      '@xmldom/xmldom': 0.9.12
       xpath: 0.0.33
 
   xml2js@0.6.2:
