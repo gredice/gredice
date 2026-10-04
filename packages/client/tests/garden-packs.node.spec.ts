@@ -23,7 +23,7 @@ test('pack purchases preserve server errors and tolerate non-JSON failures', asy
                     quote: {
                         productVersionId: 'test-pack:v1',
                         chargedSunflowers: 10,
-                        policyVersionId: 'policy:v1',
+                        currency: 'sunflower',
                     },
                 }),
                 (error: unknown) =>
