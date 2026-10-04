@@ -22,7 +22,7 @@
         "@types/node": "24.13.6",
         "@types/react": "19.2.18",
         "@types/react-dom": "19.2.4",
-        "@types/sanitize-html": "2.16.1",
+        "@types/sanitize-html": "2.16.2",
         "@types/suncalc": "1.9.2",
         "tailwindcss": "4.3.3",
         "tailwindcss-animate": "1.0.7",
