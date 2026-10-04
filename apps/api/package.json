@@ -29,7 +29,7 @@
         "@gredice/ui": "workspace:*",
         "@hono/mcp": "0.3.2",
         "@hono/standard-validator": "0.4.0",
-        "@modelcontextprotocol/sdk": "1.30.0",
+        "@modelcontextprotocol/sdk": "1.31.0",
         "@opentelemetry/api-logs": "0.222.0",
         "@opentelemetry/resources": "2.11.0",
         "@opentelemetry/sdk-logs": "0.222.0",
