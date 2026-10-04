@@ -632,8 +632,8 @@ importers:
         specifier: 5.103.2
         version: 5.103.2(react@19.2.8)
       '@types/google.maps':
-        specifier: 3.66.3
-        version: 3.66.3
+        specifier: 3.66.4
+        version: 3.66.4
       '@types/node':
         specifier: 24.13.6
         version: 24.13.6
@@ -1197,8 +1197,8 @@ importers:
         specifier: 5.103.2
         version: 5.103.2(react@19.2.8)
       '@types/google.maps':
-        specifier: 3.66.3
-        version: 3.66.3
+        specifier: 3.66.4
+        version: 3.66.4
       '@types/node':
         specifier: 24.13.6
         version: 24.13.6
@@ -5912,8 +5912,8 @@ packages:
   '@types/fs-extra@9.0.13':
     resolution: {integrity: sha512-nEnwB++1u5lVDM2UI4c1+5R+FYaKfaAzS4OococimjVm3nQw3TuzH5UNsocrcTBbhnerblyHj4A49qXbIiZdpA==}
 
-  '@types/google.maps@3.66.3':
-    resolution: {integrity: sha512-IH8Pg3eIxDQapkiwZbpMZNTNth4v6bQvyatML9PFnDrOvrttsO/hUgrJSgQgoWmJSYRQq2X9cDZekTQRVGJT6A==}
+  '@types/google.maps@3.66.4':
+    resolution: {integrity: sha512-t01LM0VeIsUOZWno7ABUv4XL82RalnhRGaTzWykPUtQ+hHT39vsIekeU+roqEaibwebpYIjS7dslx51HwG95nw==}
 
   '@types/har-format@1.2.16':
     resolution: {integrity: sha512-fluxdy7ryD3MV6h8pTfTYpy/xQzCFC7m89nOH9y94cNqJ1mDIDPut7MnRHI3F6qRmh/cT2fUjG1MLdCNb4hE9A==}
@@ -12257,7 +12257,7 @@ snapshots:
 
   '@googlemaps/js-api-loader@2.1.1':
     dependencies:
-      '@types/google.maps': 3.66.3
+      '@types/google.maps': 3.66.4
 
   '@headlessui/tailwindcss@0.2.2(tailwindcss@4.3.3)':
     dependencies:
@@ -15040,7 +15040,7 @@ snapshots:
     dependencies:
       '@types/node': 24.13.6
 
-  '@types/google.maps@3.66.3': {}
+  '@types/google.maps@3.66.4': {}
 
   '@types/har-format@1.2.16': {}
 
