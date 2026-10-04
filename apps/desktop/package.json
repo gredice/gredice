@@ -23,7 +23,7 @@
     },
     "devDependencies": {
         "@biomejs/biome": "2.5.14",
-        "electron": "44.4.3",
+        "electron": "44.4.5",
         "electron-builder": "26.15.3",
         "rimraf": "6.1.3"
     }
