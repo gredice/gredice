@@ -19,7 +19,7 @@ Small, medium and dense fixtures repeat the full set 1, 3 and 9 times:
 Pilot counts overlap first-wave/legacy counts; they must not be added together.
 Every fixture records exact per-name counts, IDs, quarter-turns and null/static
 appearance. Existing local sandbox metadata and scene rendering resolve the
-models. Before sampling, the profiler requires the mounted scene's stack and
+models. Before sampling, the profiler requires the scene's runtime garden-data stack and
 per-name block census to match the fixture, so a missing/wrong dataset cannot
 silently pass as a lighter scene. Multi-cell wheelbarrow ground support is
 included; the original log/bench supports and rotations stay authored.
@@ -29,8 +29,8 @@ early clear sun, mid-autumn cloud/rain, late wind, winter snow, two night cases,
 and constrained dense reduced motion. Constrained auto uses synthetic four-core,
 4-GB navigator metrics and a touch/mobile viewport; it is not a real phone.
 A populated central repeat is shared by all density cases. The ordinary normal
-camera and frustum remain active, so mounted population is distinct from visible
-geometry; the screenshots do not claim every identity is simultaneously in frame.
+camera and frustum remain active, so fixture/runtime-data population is distinct
+from mounted or visible geometry; the screenshots do not claim every identity is simultaneously in frame.
 A launch-only lower scene-geometry witness rejects sky-only views even when the
 generic nonblank image/upper performance budgets pass. Each scenario pins the
 Europe/Zagreb browser timezone. Sound, avatar, HUD and
