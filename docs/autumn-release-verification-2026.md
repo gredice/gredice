@@ -26,6 +26,75 @@ weather effects and moving visitors; the UI discloses this. The four browser cas
 include anonymous sandbox participation and authenticated current-owner privacy.
 They establish local software-WebGL behavior rather than physical-device acceptance.
 
+## Prepared stack continuation (2026-10-04)
+
+The [dated source/CI checkpoint](autumn-release-2026/prepared-stack-checkpoint.json)
+records candidate `53d041ee15af81901342343a03fd6e0fd46a0dcd`, the head of
+[public pumpkin trail #5151](https://github.com/gredice/gredice/pull/5151).
+Its observed UTC time is recorded in JSON. It supersedes neither the original
+October 2 measurements nor their capture identities. The separate
+[release preflight](autumn-release-preflight.md) consolidates current selected
+source/asset inputs and reports unresolved release requirements.
+
+The final activity wave is ordered as follows:
+
+| PR | Prepared behavior | Local validation |
+| --- | --- | --- |
+| [#5144](https://github.com/gredice/gredice/pull/5144) | Dedicated Kestenijada route CI with a stable private guest bootstrap fixture | Built public route passed at both the dedicated fixture origin and ordinary CI origin. |
+| [#5145](https://github.com/gredice/gredice/pull/5145) | Private six-motif album and at-most-once zero-value cosmetic grants | Eleven integration cases each in isolated PGlite and disposable PostgreSQL; strict campaign, route and client checks. |
+| [#5146](https://github.com/gredice/gredice/pull/5146) | Owned-garden album UI, exact uncertain-command recovery and configured preview retry | Nine album browser cases and 21 inventory/placement regressions. |
+| [#5151](https://github.com/gredice/gredice/pull/5151) | Public optional five-lantern trail with real mouse/touch picking and DOM controls | Three software-WebGL cases and two built-route cases; fixed camera, reset, reload and public privacy. |
+
+At the recorded trail runtime source, all 2,103 Game and 191 JS unit cases passed
+with no skips. A fresh shared-renderer capture from clean support commit
+`6f7d5700a5426282d78b417908da9ce2ce6b0e00` preserved all 39 starter-pack
+PNGs and four Kestenijada PNGs byte for byte. Each recapture retains its actual
+source/tree identity and archives the preceding proofs. Original mobile/static
+captures remain dated original evidence.
+
+The JSON lists exact current-candidate CI conclusions. Both ordinary Chromium,
+API/storage, public-route and Outlet jobs passed. Both broad WebGL component
+jobs were cancelled and the full CI gate remains incomplete. The normal-garden fresh-renderer Outlet test failed on #5146 and the
+preceding #5144, including timeout/closed-renderer symptoms. Repetition before
+album changes does not establish its cause. The current candidate's Outlet-rest
+job passed; the cancelled WebGL checks remain unresolved. The October 2 WebGL
+cancellation below is historical evidence, not a statement of the latest
+candidate's result.
+
+The cancelled WebGL jobs include observed tree/steam/hedgehog and Kestenijada
+attempts. Investigation found Vercel 62 environment setup rewriting the tracked
+Garden ignore file before the new strict clean-source capture check. The
+preflight continuation predeclares the CLI's exact `.env*` line while keeping
+`.env.example` visible; the provenance assertion is retained. The two Kestenijada
+photo lifecycle failures do not call that source checker and remain separate
+investigation. A fix and a local pass do not stand in for a subsequent CI result.
+
+Prepared source includes optional C activities and Later layout/design work.
+They do not automatically become A/B pilot launch requirements. The first-wave
+A/B asset families contain 24 item identities backed by 16 GLBs; the three
+starter packs select twelve exact models, including two existing catalogue
+models. Family and pack coverage are distinct. No products, campaign dates,
+rollout flags or catalogue publications are activated by this continuation.
+
+The [selected-launch production profile](autumn-launch-profiling.md) now records
+18 corrected cases on clean `22e48526d2b5f7e03386cb6540733386296c92db` using
+native Metal on Apple M4 Pro. Existing budgets and comparability pass. The initial
+run whose medium-mobile view showed mostly sky is retained as rejected evidence;
+corrected views enforce visible geometry and received representative Astra review.
+The normal camera shows a central subset: density increases total/offscreen runtime
+data, not nine full sets simultaneously submitted. This does not establish worst-case
+on-screen density, all 24 rendered identities, or physical mobile/audio/thermal readiness.
+Garden compilation passes with `tsc --noEmit --incremental false`; the earlier
+incremental typed-route diagnostic is recorded as local cache state.
+
+The [consolidated preflight output](autumn-release-2026/2026-10-04-preflight/report.json)
+is source-ready and release-blocked. The fresh public observation still lacks all
+24 new family rows and ten recipe ingredients. Exact published products, deployment
+bytes, storage rollout, combined QA acceptance, physical devices and authorized
+live commerce remain open. The two ordinary Kestenijada photo cases are being
+handled in a separate bounded functional-test follow-up; no performance budget
+or strict source assertion is relaxed by this tooling.
+
 ## Release scope
 
 The A/B pilot consists of the Jesen picker, the twelve first-wave prop families,
@@ -51,10 +120,10 @@ permanent purchased ownership.
 | --- | --- | --- |
 | Small example gardens, early/mid/late autumn, day/overcast/dusk/night | 72 headless captures recorded | Six committed [arrangement JSON records](autumn-arrangements-2026.md#capture-matrix-and-reproduction), each with 12 scenes and input commit `c48974bd2e21316ae5c3034b9d305350aa479cd4`; high 780×600 and reduced-motion low 390×440, DPR 1. These use fixture directory rows and software WebGL. |
 | Exact pictured objects, spans, supports and scenery | Local manifest/probe coverage | Four decoration objects per composition; occupied cells 4/5/5 inside a 2×3 reserved corner. The three local public preview PNGs match the approved source screenshots byte for byte. Catalogue availability is a separate check. |
-| Pack economy, ownership and concurrency | API: 807 passed, zero failures, 14 existing skips | [Current-head API CI passes](https://github.com/gredice/gredice/actions/runs/37024405052/job/110896115908). Private PGlite exercises the default pack integration paths. Disposable PostgreSQL runs separately passed 11 purchase and 18 placement/lifecycle cases with zero skips. This covers fixtures, not live balances. |
+| Pack economy, ownership and concurrency | API: 807 passed, zero failures, 14 existing skips | [October 2 API CI passes](https://github.com/gredice/gredice/actions/runs/37024405052/job/110896115908). Private PGlite exercises the default pack integration paths. Disposable PostgreSQL runs separately passed 11 purchase and 18 placement/lifecycle cases with zero skips. This covers fixtures, not live balances. |
 | Storefront and recovery | 16 local browser cases passed | Exact contents, repeated purchases, lost responses, remounts, account/cookie changes, stale quotes and insufficient funds; [browser fixture and tests](../apps/garden/tests/garden-pack-storefront.spec.tsx). |
 | Owned inventory, prepaid placement, store/retrieve | 21 local browser cases passed | Actual client hooks and inventory HUD, exact unit identity and retry commands; [inventory suite](../apps/garden/tests/garden-pack-inventory.spec.tsx). No live purchase is claimed. |
-| Game/JS regression and import boundaries | 2,072 game + 177 JS cases passed | [Current-head game/JS CI passes](https://github.com/gredice/gredice/actions/runs/37024405052/job/110896115633). React-only/Outlet entry checks remain intact. |
+| Game/JS regression and import boundaries | 2,072 game + 177 JS cases passed | [October 2 game/JS CI passes](https://github.com/gredice/gredice/actions/runs/37024405052/job/110896115633). React-only/Outlet entry checks remain intact. |
 | Consumer compilation | Local API/Game/Garden/WWW/Storybook checks passed | Storage compilation retains the same 42 baseline diagnostics; it is not a clean storage typecheck. |
 | Dense autumn, steam, quality and suspension | Earlier scoped software-WebGL evidence available | [Steam record](localized-steam-2026/validation.json): 225 ground tiles, 25 trees, 50 props and four tea tables. Steam adds 0/1/1 calls and 0/48/96 triangles at low/medium/high. p95 timings rose on medium/high. This is an earlier scoped fixture and does not clear final-head production or device budgets. |
 | Winter handoff, rain/snow, constrained tier, picking, lids/gates, 2D fallback and audio | Scoped fixtures exist; combined release matrix incomplete | Run the final selected launch scope together. Earlier prop/effect tests and snapshots do not establish the cross-product matrix or real-device listening. |
@@ -65,9 +134,9 @@ The fourteen API skips are pre-existing opt-in ordinary purchase/box/stack and
 Advent storage integration cases. The pack purchase/placement/lifecycle cases
 run by default in isolated databases; they are not hidden behind those skips.
 
-## Unresolved release failures
+## Unresolved release failures at the October 2 checkpoint
 
-The [current WebGL components 2/2 job](https://github.com/gredice/gredice/actions/runs/37024405052/job/110896116165)
+The [October 2 WebGL components 2/2 job](https://github.com/gredice/gredice/actions/runs/37024405052/job/110896116165)
 was cancelled after approximately fifteen minutes. Its failed attempts include
 hedgehog walk/sniff/idle close-ups and dense low-quality localized steam. Those
 same tests fail before the timeout on the

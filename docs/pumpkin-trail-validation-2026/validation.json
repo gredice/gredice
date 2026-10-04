@@ -1,0 +1,151 @@
+{
+  "recordedAtUtc": "2026-10-03T15:04:18.535999+00:00",
+  "productionSourceCommit": "9d2e437c12aee7bf84422b2ead4aeec860181c3b",
+  "sourceNote": "The actual-route spec additionally waits for the completed Kestenijada URL and visible heading before the next link click. This test-only synchronization repair is committed with this readback; production and WebGL fixture source match the declared commit.",
+  "parentCommit": "bab20ee90dd23f7cb4d30ffbcf7fce43ac301b61",
+  "runtime": {
+    "node": "24.15.0",
+    "pnpm": "12.5.1",
+    "playwright": "1.62.1",
+    "renderer": "Chromium headless SwiftShader",
+    "workers": 1,
+    "port": 5491
+  },
+  "validation": {
+    "webgl": "3/3 passed (36.5s)",
+    "realRoute": "2/2 passed (7.4s)",
+    "pureTrail": "3/3",
+    "sharedLightingBudgetRegistry": "16/16",
+    "types": [
+      "Game",
+      "Garden",
+      "WWW"
+    ],
+    "gardenProductionBuild": "passed",
+    "scopedBiomeFiles": 25,
+    "ciFilterCheck": "passed",
+    "diffCheck": "passed",
+    "retries": 0
+  },
+  "ciDiscovery": {
+    "ordinaryChromiumTrailRouteTests": 0,
+    "webglTrailCases": 3,
+    "dedicatedTrailRouteCases": 2,
+    "dedicatedMatrixRows": 1
+  },
+  "cacheProof": {
+    "before": "Removing only the four empty-operation seeding lines caused the keyboard/reset fixture privacy assertion to fail with two operation-directory reads. The file was restored in finally.",
+    "after": "The complete restored WebGL fixture performs zero auth/account/garden/presence/directory/weather requests. Production route verifies zero trail API reads/writes and normal auth on garden navigation."
+  },
+  "mobileCompleted": {
+    "lanterns": [
+      {
+        "id": "pumpkin-trail-stop-1",
+        "emissive": 0.24,
+        "light": 1,
+        "screen": {
+          "x": 177.999999999997,
+          "y": 258.9034209925489
+        }
+      },
+      {
+        "id": "pumpkin-trail-stop-2",
+        "emissive": 0.24,
+        "light": 1,
+        "screen": {
+          "x": 240.65571478556683,
+          "y": 222.9454482967307
+        }
+      },
+      {
+        "id": "pumpkin-trail-stop-3",
+        "emissive": 0.24,
+        "light": 0,
+        "screen": {
+          "x": 240.6557147855668,
+          "y": 151.02950290509438
+        }
+      },
+      {
+        "id": "pumpkin-trail-stop-4",
+        "emissive": 0.24,
+        "light": 1,
+        "screen": {
+          "x": 115.34428521442703,
+          "y": 151.0295029050944
+        }
+      },
+      {
+        "id": "pumpkin-trail-stop-5",
+        "emissive": 0.24,
+        "light": 1,
+        "screen": {
+          "x": 52.688570428857176,
+          "y": 186.98747560091255
+        }
+      }
+    ],
+    "camera": {
+      "position": [
+        -100,
+        100,
+        -100
+      ],
+      "rotation": [
+        0.11514671174360039,
+        0.8810650621339619,
+        0.27798875315406535,
+        -0.36494909806898057
+      ],
+      "zoom": 44.304280804966695
+    },
+    "pixels": 318,
+    "width": 356,
+    "height": 358,
+    "markers": 5,
+    "bounds": {
+      "minX": 13.06825307048394,
+      "maxX": 334.6392869639216,
+      "minY": 37.400743031235834,
+      "maxY": 301.29473167752144
+    }
+  },
+  "sourceHashes": {
+    "packages/game/src/entities/PumpkinLantern.tsx": "e46b98f8a2c95ea7a4777997c416aaff8d8c6e6b8287924049e63db5f16d71b6",
+    "packages/game/src/entities/helpers/PumpkinLightOverrideContext.ts": "8058e8355f022f42a18f68856ee5b78db947e4b2c26b027222d0dfd329ba2f0f",
+    "packages/game/src/entities/helpers/GardenNightLight.tsx": "9295ed5f3d020de021902d48956517d865bb009f69f3e4956ed483c0f7a7fc9a",
+    "packages/game/src/entities/helpers/nightGardenLight.ts": "8810a4076baee9dc07d6c3db70aefd9a235be0578d1dfad890d0a5ce758edd8f",
+    "packages/game/src/scene/GardenLightProvider.tsx": "ccadf96a8a911d490e59f9a40e6ba8fdd6f931c70a752b515a0b6c35a3fef2d3",
+    "packages/game/src/viewers/PublicGardenViewer.tsx": "7a0cf17ceae8ce261fd5da748caf98593cd444ff1d5e2f6996f3369c2ea8a918",
+    "packages/game/src/pumpkinTrail/PumpkinTrailViewer.tsx": "9fedd5d9f3df95edc87a6af5cf2eac917c84c2105ce41d1805b35c04e0fdd414",
+    "packages/game/src/pumpkinTrail/PumpkinTrailMarker.tsx": "f2effce5425a368c918e2318bfa9024e642315f8d2a66761718e0a9b3ba65106",
+    "packages/game/tests/PumpkinTrailProbe.tsx": "48e348d14171ae5a8c70d8ea5f68fd1ce5504a14be51312ea1dc654f864a70cd",
+    "packages/game/tests/PumpkinTrailFixture.tsx": "3a97bee6d831f90e2e178b40bc91b20c8b3e98f7ff5f948b700d077ed1709f61",
+    "apps/garden/tests/pumpkin-trail.spec.tsx": "1b0961ab36aec57f683a63da9847358345ec28935b6bde6d2ffa7a70e1793fb5",
+    "apps/garden/tests/pumpkin-trail-route.spec.ts": "300e0e4848a2f559230bce37a7778dd8be11cce98369c03f61b3917921955179",
+    "apps/garden/playwright.config.ts": "2195be03c5b7fec26371d6d83eb6bd232587113aa4436f2de14d56f421fee61c",
+    ".github/workflows/ci.yml": "50a2e3a80e2b0b5cef9639ac54319bf1d8eaa4bc66fc91e1eefff8297031c765"
+  },
+  "captureHashes": {
+    "/tmp/gredice-pumpkin-trail-partial.png": "d0629533d58c4de8f2d74c7c2b67c2e9d853055ae0b772ca2c8455ecff21406f",
+    "/tmp/gredice-pumpkin-trail-completed.png": "1348a9c64a87904c66dc0bdc1b1c09145cfca96c5a2233c902d06e6fffd690e4",
+    "/tmp/gredice-pumpkin-trail-mobile.png": "ee4e7a4abbb239b91857d842c2149f00fa63394b67aaf9b0866f48a0f436f3da",
+    "/tmp/gredice-pumpkin-trail-mobile-page.png": "9fb9f439895957ccbd8140e1b2ee9c1e95655dc51f727c53f3ee214ae97137ef"
+  },
+  "logHashes": {
+    "/tmp/gredice-pumpkin-browser.log": "a347a3210ca1dce80c04ddb9f6de3db1f3856c3fcfc933bea5f2f802eb30917c",
+    "/tmp/gredice-pumpkin-route.log": "14d79f33a178350cb2d7a32761ad28f10c7ac8298259184a2f7d259669bdab2d",
+    "/tmp/gredice-pumpkin-cache-before.log": "45589527b772aa7d950cc5c140c5b4c7b41e1d51366be1550c3bcf5be8f453c3",
+    "/tmp/gredice-pumpkin-build.log": "a20befc20e25cc335d5c3e63e4e145946eb8b440b0448161126fc32f5e51c7da",
+    "/tmp/gredice-pumpkin-types-game.log": "072d84b3aeca2c2388fda023ba92238e18e00efb6d1f62e7e4fbf59670d88821",
+    "/tmp/gredice-pumpkin-types-garden.log": "fd4d80d3a39dbe0aed66014190e7d8c462daa597b2529fb11946463015d42463",
+    "/tmp/gredice-pumpkin-types-www.log": "fd4d80d3a39dbe0aed66014190e7d8c462daa597b2529fb11946463015d42463",
+    "/tmp/gredice-pumpkin-unit-js.log": "6d218a3317076b9de56a072ae1ba752d0317886144f8e691408535786ec09350",
+    "/tmp/gredice-pumpkin-unit-game.log": "f29d705d1ab7ebb4d538ebb2358d79f7f2bdc1cbdfba8054dac2b14da2a1fe00",
+    "/tmp/gredice-pumpkin-ci-filters.log": "c6cc84de3511182a3d3edea8cc8cc1057cc6e010b82ee0e93a1c3a5e2e89c94b",
+    "/tmp/gredice-pumpkin-list-ordinary.log": "1645681a436e55138aa38c29bd206317e65e10d25a9a8a9e458fc72c96e2484c",
+    "/tmp/gredice-pumpkin-list-webgl.log": "eeb97516e405ce1267c13fe70a59735becd990ecf9f4ee46d6f2760d0dd7fdd0",
+    "/tmp/gredice-pumpkin-list-route.log": "b5dd112449b9b0a82d7e52d528b8185fa712ae48164e2d7cb0a5077e7fc26b0b"
+  },
+  "limits": "Local software-WebGL evidence, not deployed or physical-device acceptance. Starter/Kestenijada source evidence refresh is separate and retains prior capture provenance."
+}

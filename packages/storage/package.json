@@ -17,7 +17,8 @@
         "./cmsNewsRevalidation": "./src/cmsNewsRevalidation.ts",
         "./operationTaskAdministration": "./src/operationTaskAdministration.ts",
         "./testing/gardenPackTestSchema": "./tests/helpers/gardenPackTestSchema.ts",
-        "./gardenPackGroupPlacementContract": "./src/gardenPackGroupPlacementContract.ts"
+        "./gardenPackGroupPlacementContract": "./src/gardenPackGroupPlacementContract.ts",
+        "./autumnActivityContract": "./src/autumnActivityContract.ts"
     },
     "scripts": {
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",

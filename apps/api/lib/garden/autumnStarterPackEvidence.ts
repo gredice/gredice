@@ -19,12 +19,10 @@ export async function loadReviewedAutumnStarterPackEvidence(
         readFile(resolve(repositoryRoot, path)),
 ) {
     const manifest = JSON.parse(
-        await readFile(
-            new URL(
-                './autumnStarterPackEvidence.reviewed.json',
-                import.meta.url,
+        new TextDecoder().decode(
+            await readBytes(
+                'apps/api/lib/garden/autumnStarterPackEvidence.reviewed.json',
             ),
-            'utf8',
         ),
     );
     const evidence = reviewedAutumnStarterPackEvidenceSchema.parse(manifest);
