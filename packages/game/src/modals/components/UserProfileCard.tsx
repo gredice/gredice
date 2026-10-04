@@ -2,6 +2,7 @@ import { AvatarSelectionMenu } from '@gredice/ui/AvatarSelectionMenu';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardActions, CardContent } from '@gredice/ui/Card';
 import { Input } from '@gredice/ui/Input';
+import { Edit } from '@gredice/ui/icons';
 import { Link } from '@gredice/ui/Link';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -53,13 +54,19 @@ export function UserProfileCard() {
                                     <button
                                         type="button"
                                         aria-label="Promijeni avatar"
-                                        className="cursor-pointer rounded-full disabled:cursor-not-allowed disabled:opacity-60"
+                                        className="relative cursor-pointer rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60"
                                         disabled={updateUser.isPending}
                                     >
                                         <ProfileAvatar
                                             size="lg"
                                             className="[&_img]:size-auto hover:outline min-w-20 min-h-20 shrink-0"
                                         />
+                                        <span className="pointer-events-none absolute right-0 top-0 flex size-6 items-center justify-center rounded-full border bg-primary text-primary-foreground shadow-sm">
+                                            <Edit
+                                                aria-hidden
+                                                className="size-3.5"
+                                            />
+                                        </span>
                                     </button>
                                 </AvatarSelectionMenu>
                                 <Stack spacing={2}>
