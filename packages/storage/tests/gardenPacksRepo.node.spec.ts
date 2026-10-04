@@ -478,6 +478,35 @@ test('account deletion detaches ownership but retains immutable purchase and aud
     );
 });
 
+test('existing accounts cannot lose their paid inventory or audit owner', async () => {
+    const { accountId, purchaseId } = await fixture();
+    await db.transaction((tx) =>
+        transitionPurchasedGardenPackUnit(
+            accountId,
+            { ...unitCommand(purchaseId), kind: 'refunded' },
+            tx,
+        ),
+    );
+    for (const table of [
+        schema.gardenPackPurchases,
+        schema.gardenPackUnitEvents,
+    ]) {
+        await assert.rejects(
+            () => db.update(table).set({ accountId: null }),
+            databaseFailure(/Garden pack purchase snapshot is immutable/),
+        );
+    }
+    assert.equal(
+        (await getPurchasedGardenPack(accountId, purchaseId, db))
+            ?.remainingQuantity,
+        1,
+    );
+    assert.equal(
+        (await getPurchasedGardenPackAudit(accountId, purchaseId, db)).length,
+        1,
+    );
+});
+
 test('database rejects immutable changes, overdraw, invalid provenance, unaudited transitions and incorrect credits', async () => {
     const { accountId, purchaseId, product } = await fixture();
     const unitWhere = and(

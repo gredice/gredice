@@ -15,12 +15,14 @@ import {
 export function GardenPackInventoryPurchase({
     pack,
     blockData,
+    catalogueUnavailable = false,
     placement,
     onPlaced,
     previewLayouts = false,
 }: {
     pack: OwnedGardenPack;
     blockData: BlockData[] | null | undefined;
+    catalogueUnavailable?: boolean;
     placement?: GardenPackInventoryPlacement;
     onPlaced: () => void;
     previewLayouts?: boolean;
@@ -90,7 +92,7 @@ export function GardenPackInventoryPurchase({
                                 </p>
                                 {line.remainingQuantity > 0 && (
                                     <>
-                                        {!block && (
+                                        {!block && !catalogueUnavailable && (
                                             <p className="text-sm text-muted-foreground">
                                                 Predmet trenutačno nije dostupan
                                                 za prikaz. Ostaje u paketu.
