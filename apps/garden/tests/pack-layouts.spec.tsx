@@ -353,7 +353,9 @@ test('definitive rejection clears the old command; fresh review uses a new opera
             ),
         ),
     ).toEqual([]);
-    await expect(page.getByRole('button', { name: 'Potvrdi postavljanje' })).toHaveCount(0);
+    await expect(
+        page.getByRole('button', { name: 'Potvrdi postavljanje' }),
+    ).toHaveCount(0);
     await page.getByRole('button', { name: 'Zatvori', exact: true }).click();
     await page.getByRole('button', { name: 'Otvori paket' }).click();
     await start(page);

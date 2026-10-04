@@ -1,7 +1,7 @@
 {
     "harvest-corner": {
         "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
-        "captureSha256": "5f342081c539d52e6a14ce2f183cfddabc1997aeec28cf49c9e72f7d63306480",
+        "captureSha256": "fd5da939da6318cab25e83200dcb3a7aa66f5203e3b1f9443149078bce6a7f64",
         "included": [
             {
                 "entityName": "HarvestPumpkinGroupOrange",
@@ -638,7 +638,7 @@
             },
             {
                 "path": "packages/game/src/arrangements/autumnArrangements.ts",
-                "sha256": "e43767268e295afd799e4ec8c643ace3506c45695dadf3a90fa3e7b69022ff7e"
+                "sha256": "4b9f39411b0d36c90b01063975647761b87d91f77d20866417fb7aa9ac43c10a"
             },
             {
                 "path": "packages/game/src/data/gameAssetModels.generated.ts",
@@ -734,7 +734,7 @@
             },
             {
                 "path": "packages/game/src/scene/Environment.tsx",
-                "sha256": "c33fe3cfe2492025d4a712d9e26d53f90aea6c9e29f9065606ce3985cdf2966f"
+                "sha256": "e45f224b836ba55dad371255bae7bc67f8bf38df2148b861de927f084318e6ec"
             },
             {
                 "path": "packages/game/src/scene/GardenLightProvider.tsx",
@@ -742,7 +742,7 @@
             },
             {
                 "path": "packages/game/src/scene/Scene.tsx",
-                "sha256": "fc4519167920321aacb864a2a3a8777e1dfa3105f39dc2ed14b32c06038a6167"
+                "sha256": "dd303a06cdb5a4cc7ee0910ce3940efed10eea422f6d2ac7af933b84fabc0dac"
             },
             {
                 "path": "packages/game/src/scene/SteamEmitter.tsx",
@@ -782,7 +782,7 @@
             },
             {
                 "path": "packages/game/src/useGameState.ts",
-                "sha256": "3902a31eb255dbc853ef9839fc4dc07132c5984ed0c3dab9738b7027b4e9c289"
+                "sha256": "2197a8ef0ea7fda327faba5be442b9c5cb52614ba11fcc2114cbbc0af6ecbed4"
             },
             {
                 "path": "packages/game/src/utils/configureGameGLTFMaterials.ts",
@@ -794,7 +794,7 @@
             },
             {
                 "path": "packages/game/src/utils/useGameGLTF.ts",
-                "sha256": "cecb0cda7acb92a2c8bb41e8c7ef84e25843d04c1fc1d8c27d48d84642afa0b0"
+                "sha256": "0a950d810e5af14de7f6ad6dd005b793eab52690b348e36245911067fe8be57a"
             },
             {
                 "path": "packages/game/tests/AutumnArrangementFixture.tsx",
@@ -824,17 +824,17 @@
         "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
         "recapture": {
             "source": {
-                "commit": "6f7d5700a5426282d78b417908da9ce2ce6b0e00",
-                "tree": "b783e17be5439ee9ebe7dc10dccf87b7653a568d",
+                "commit": "c525984cb92f191a68d9b434db96b10619c92d83",
+                "tree": "87f32cb44dd0ced6abfe96126602a6c3bef5e007",
                 "status": ""
             },
-            "previousCaptureSha256": "d32f55ad5e618814061716bb4eb69482e9a5329a1876f3752680baf3f67e228d",
+            "previousCaptureSha256": "5f342081c539d52e6a14ce2f183cfddabc1997aeec28cf49c9e72f7d63306480",
             "previousPreviewSha256": "ed1b245678a3613a093026ecdfadd3a416a3332972f926ab9aa3a552bb95c2e2"
         }
     },
     "woodland-path": {
         "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
-        "captureSha256": "325531d479340a4c0f80ab45c1affecaad4649384b86f73024935e2fb4a5da2e",
+        "captureSha256": "45250e85d7ed1dedb8d7b25c0bb121c17924454fb116f7fa1ba42a2c1925ac50",
         "included": [
             {
                 "entityName": "WoodlandMushrooms",
@@ -1474,7 +1474,7 @@
             },
             {
                 "path": "packages/game/src/arrangements/autumnArrangements.ts",
-                "sha256": "e43767268e295afd799e4ec8c643ace3506c45695dadf3a90fa3e7b69022ff7e"
+                "sha256": "4b9f39411b0d36c90b01063975647761b87d91f77d20866417fb7aa9ac43c10a"
             },
             {
                 "path": "packages/game/src/data/gameAssetModels.generated.ts",
@@ -1574,7 +1574,7 @@
             },
             {
                 "path": "packages/game/src/scene/Environment.tsx",
-                "sha256": "c33fe3cfe2492025d4a712d9e26d53f90aea6c9e29f9065606ce3985cdf2966f"
+                "sha256": "e45f224b836ba55dad371255bae7bc67f8bf38df2148b861de927f084318e6ec"
             },
             {
                 "path": "packages/game/src/scene/GardenLightProvider.tsx",
@@ -1582,7 +1582,7 @@
             },
             {
                 "path": "packages/game/src/scene/Scene.tsx",
-                "sha256": "fc4519167920321aacb864a2a3a8777e1dfa3105f39dc2ed14b32c06038a6167"
+                "sha256": "dd303a06cdb5a4cc7ee0910ce3940efed10eea422f6d2ac7af933b84fabc0dac"
             },
             {
                 "path": "packages/game/src/scene/SteamEmitter.tsx",
@@ -1622,7 +1622,7 @@
             },
             {
                 "path": "packages/game/src/useGameState.ts",
-                "sha256": "3902a31eb255dbc853ef9839fc4dc07132c5984ed0c3dab9738b7027b4e9c289"
+                "sha256": "2197a8ef0ea7fda327faba5be442b9c5cb52614ba11fcc2114cbbc0af6ecbed4"
             },
             {
                 "path": "packages/game/src/utils/configureGameGLTFMaterials.ts",
@@ -1634,7 +1634,7 @@
             },
             {
                 "path": "packages/game/src/utils/useGameGLTF.ts",
-                "sha256": "cecb0cda7acb92a2c8bb41e8c7ef84e25843d04c1fc1d8c27d48d84642afa0b0"
+                "sha256": "0a950d810e5af14de7f6ad6dd005b793eab52690b348e36245911067fe8be57a"
             },
             {
                 "path": "packages/game/tests/AutumnArrangementFixture.tsx",
@@ -1664,17 +1664,17 @@
         "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
         "recapture": {
             "source": {
-                "commit": "6f7d5700a5426282d78b417908da9ce2ce6b0e00",
-                "tree": "b783e17be5439ee9ebe7dc10dccf87b7653a568d",
+                "commit": "c525984cb92f191a68d9b434db96b10619c92d83",
+                "tree": "87f32cb44dd0ced6abfe96126602a6c3bef5e007",
                 "status": ""
             },
-            "previousCaptureSha256": "ef392c712140d91aff3d972da0f9143318c72c639e506b81b0c5d0da09172c01",
+            "previousCaptureSha256": "325531d479340a4c0f80ab45c1affecaad4649384b86f73024935e2fb4a5da2e",
             "previousPreviewSha256": "2f21c98172611d2e3d37d71d4fd5c5c7685c044239f406a271a09d5e775c5e55"
         }
     },
     "evening-seat": {
         "sourceCommit": "c48974bd2e21316ae5c3034b9d305350aa479cd4",
-        "captureSha256": "7cdd43bab41e43e05bb334fd5952b09d9a8956ab84022bc1161aeb899c3a3992",
+        "captureSha256": "59de1448b3c9888297a565f3b6b3bb8c1a63a2207bd7a66beba446c56ade3ad4",
         "included": [
             {
                 "entityName": "AutumnBlanketBench",
@@ -2315,7 +2315,7 @@
             },
             {
                 "path": "packages/game/src/arrangements/autumnArrangements.ts",
-                "sha256": "e43767268e295afd799e4ec8c643ace3506c45695dadf3a90fa3e7b69022ff7e"
+                "sha256": "4b9f39411b0d36c90b01063975647761b87d91f77d20866417fb7aa9ac43c10a"
             },
             {
                 "path": "packages/game/src/data/gameAssetModels.generated.ts",
@@ -2415,7 +2415,7 @@
             },
             {
                 "path": "packages/game/src/scene/Environment.tsx",
-                "sha256": "c33fe3cfe2492025d4a712d9e26d53f90aea6c9e29f9065606ce3985cdf2966f"
+                "sha256": "e45f224b836ba55dad371255bae7bc67f8bf38df2148b861de927f084318e6ec"
             },
             {
                 "path": "packages/game/src/scene/GardenLightProvider.tsx",
@@ -2423,7 +2423,7 @@
             },
             {
                 "path": "packages/game/src/scene/Scene.tsx",
-                "sha256": "fc4519167920321aacb864a2a3a8777e1dfa3105f39dc2ed14b32c06038a6167"
+                "sha256": "dd303a06cdb5a4cc7ee0910ce3940efed10eea422f6d2ac7af933b84fabc0dac"
             },
             {
                 "path": "packages/game/src/scene/SteamEmitter.tsx",
@@ -2463,7 +2463,7 @@
             },
             {
                 "path": "packages/game/src/useGameState.ts",
-                "sha256": "3902a31eb255dbc853ef9839fc4dc07132c5984ed0c3dab9738b7027b4e9c289"
+                "sha256": "2197a8ef0ea7fda327faba5be442b9c5cb52614ba11fcc2114cbbc0af6ecbed4"
             },
             {
                 "path": "packages/game/src/utils/configureGameGLTFMaterials.ts",
@@ -2475,7 +2475,7 @@
             },
             {
                 "path": "packages/game/src/utils/useGameGLTF.ts",
-                "sha256": "cecb0cda7acb92a2c8bb41e8c7ef84e25843d04c1fc1d8c27d48d84642afa0b0"
+                "sha256": "0a950d810e5af14de7f6ad6dd005b793eab52690b348e36245911067fe8be57a"
             },
             {
                 "path": "packages/game/tests/AutumnArrangementFixture.tsx",
@@ -2509,11 +2509,11 @@
         "captureRecordCommit": "deca1575e69ddc52eb2f3ff89ca3333b714239fd",
         "recapture": {
             "source": {
-                "commit": "6f7d5700a5426282d78b417908da9ce2ce6b0e00",
-                "tree": "b783e17be5439ee9ebe7dc10dccf87b7653a568d",
+                "commit": "c525984cb92f191a68d9b434db96b10619c92d83",
+                "tree": "87f32cb44dd0ced6abfe96126602a6c3bef5e007",
                 "status": ""
             },
-            "previousCaptureSha256": "1e565534ceb1c40a255744cbadcb81963ece1c4503e5fef318ad1c43ce4667e8",
+            "previousCaptureSha256": "7cdd43bab41e43e05bb334fd5952b09d9a8956ab84022bc1161aeb899c3a3992",
             "previousPreviewSha256": "48325aa58a719dafebafa403c3b3f51565d3128d9bbbac9ce80d93e539d434d7"
         }
     }

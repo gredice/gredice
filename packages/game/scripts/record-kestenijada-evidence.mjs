@@ -81,8 +81,17 @@ for (const file of [...new Set(paths)].sort()) {
         sha256: createHash('sha256').update(bytes).digest('hex'),
     });
 }
-const previousEvidencePath =
-    'docs/kestenijada-2026/pre-activity-stack/evidence.json';
+const currentEvidence = JSON.parse(
+    await readFile(
+        path.join(root, 'docs/kestenijada-2026/evidence.json'),
+        'utf8',
+    ),
+);
+const captureKey = currentEvidence.functionalCiCapture
+    ? 'functionalCiCapture'
+    : 'activityStackCapture';
+const previousEvidencePath = currentEvidence.previousEvidence.path;
+const previousCaptureDirectory = path.dirname(previousEvidencePath);
 const previousEvidenceBytes = await readFile(
     path.join(root, previousEvidencePath),
 );
@@ -111,7 +120,7 @@ for (const view of ['day', 'dusk', 'night', 'mobile-low']) {
         throw new Error(`Missing clean source identity for ${view}`);
     captureSources.push(currentGeometry.source);
     const previousPng = await readFile(
-        path.join(root, `docs/kestenijada-2026/pre-activity-stack/${view}.png`),
+        path.join(root, previousCaptureDirectory, `${view}.png`),
     );
     captureParity.push({
         view,
@@ -140,33 +149,26 @@ const evidence = {
     originalEvidencePath: previousEvidence.originalEvidencePath,
     originalEvidenceSha256: previousEvidence.originalEvidenceSha256,
     previousEvidence: {
+        ...currentEvidence.previousEvidence,
         path: previousEvidencePath,
         sha256: createHash('sha256')
             .update(previousEvidenceBytes)
             .digest('hex'),
-        captureParentCommit: previousEvidence.captureParentCommit,
-        captureImplementationCommit:
-            previousEvidence.captureImplementationCommit,
-        integrationParentCommit: previousEvidence.integrationParentCommit,
-        rebasedImplementationCommit:
-            previousEvidence.rebasedImplementationCommit,
     },
-    activityStackCapture: {
+    [captureKey]: {
+        ...currentEvidence[captureKey],
         source: captureSources[0],
-        command:
-            'pnpm --filter garden exec playwright test --config playwright.kestenijada.config.ts --workers=1',
-        captureTests: 4,
-        sceneCaptures: 4,
-        suiteTests: 6,
-        scope: 'Fresh captures from the activity and trail stack, including public-scene private-request exclusion and local-photo lifecycle coverage. Route verification is recorded separately in the activity-stack report.',
     },
     sourceIdentity:
         'Exact current-source SHA256 records; verification needs no historic Git objects or network.',
     scope: 'Bounded selected runtime identity evidence, not a complete renderer dependency graph or reproducible full-engine/performance proof.',
     models,
     captureParity,
-    visualReview:
-        'Original authored scene approval and earlier integration evidence are retained in the archived records. Current image parity and any additional visual review are recorded in activity-stack-recapture.json.',
+    visualReview: captureParity.every(
+        (view) => view.pngByteIdentical && view.previousCapturePngByteIdentical,
+    )
+        ? currentEvidence.visualReview
+        : 'Current images differ from the archived captures and require visual review. Earlier authored approvals remain in the archive.',
     rendererCounters:
         'Incidental diagnostic samples, not cost or performance evidence.',
     files,

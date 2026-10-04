@@ -6,6 +6,9 @@ import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import { getLocalSandboxBlockData } from '../../../packages/game/src/localSandboxBlockData';
 import { KestenijadaFixture } from '../../../packages/game/tests/KestenijadaFixture';
 
+// Capture recovery exercises several warmup/encoding cycles in software WebGL.
+// Keep the ordinary project aligned with the dedicated functional suite.
+test.setTimeout(120000);
 const expect = baseExpect.configure({ timeout: 60000 });
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 function captureSource() {
