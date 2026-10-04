@@ -9,6 +9,11 @@ test('catalogue loading and HTTP failure preserve paid contents and retry the ca
 }) => {
     let attempts = 0;
     let release: (() => void) | undefined;
+    const blocks = getLocalSandboxBlockData().map((block) =>
+        block.information.name === 'HarvestPumpkinSquatOrange'
+            ? { ...block, id: 801 }
+            : block,
+    );
     await page.route('**/entities/block**', async (route) => {
         attempts++;
         if (attempts === 1)
@@ -17,10 +22,7 @@ test('catalogue loading and HTTP failure preserve paid contents and retry the ca
             });
         await route.fulfill({
             status: attempts === 1 ? 503 : 200,
-            json:
-                attempts === 1
-                    ? { error: 'unavailable' }
-                    : getLocalSandboxBlockData(),
+            json: attempts === 1 ? { error: 'unavailable' } : blocks,
         });
     });
     await mount(
