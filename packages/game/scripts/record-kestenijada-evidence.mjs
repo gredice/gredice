@@ -81,10 +81,15 @@ for (const file of [...new Set(paths)].sort()) {
         sha256: createHash('sha256').update(bytes).digest('hex'),
     });
 }
-const currentEvidence = JSON.parse(await readFile(
-    path.join(root, 'docs/kestenijada-2026/evidence.json'), 'utf8',
-));
-const captureKey = currentEvidence.functionalCiCapture ? 'functionalCiCapture' : 'activityStackCapture';
+const currentEvidence = JSON.parse(
+    await readFile(
+        path.join(root, 'docs/kestenijada-2026/evidence.json'),
+        'utf8',
+    ),
+);
+const captureKey = currentEvidence.functionalCiCapture
+    ? 'functionalCiCapture'
+    : 'activityStackCapture';
 const previousEvidencePath = currentEvidence.previousEvidence.path;
 const previousCaptureDirectory = path.dirname(previousEvidencePath);
 const previousEvidenceBytes = await readFile(
@@ -159,7 +164,9 @@ const evidence = {
     scope: 'Bounded selected runtime identity evidence, not a complete renderer dependency graph or reproducible full-engine/performance proof.',
     models,
     captureParity,
-    visualReview: captureParity.every((view) => view.pngByteIdentical && view.previousCapturePngByteIdentical)
+    visualReview: captureParity.every(
+        (view) => view.pngByteIdentical && view.previousCapturePngByteIdentical,
+    )
         ? currentEvidence.visualReview
         : 'Current images differ from the archived captures and require visual review. Earlier authored approvals remain in the archive.',
     rendererCounters:
