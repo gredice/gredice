@@ -1079,6 +1079,10 @@ export function PublicGardenViewer({
             clientRef.current.setQueryDefaults(['blocks'], { enabled: false });
             clientRef.current.setQueryData(['blocks'], renderOnlyBlockData);
             clientRef.current.setQueryData(['sorts'], []);
+            clientRef.current.setQueryDefaults(['operations'], {
+                enabled: false,
+            });
+            clientRef.current.setQueryData(['operations'], []);
         }
     }
     useEffect(() => {

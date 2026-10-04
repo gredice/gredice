@@ -136,7 +136,7 @@ test('inventory loading, failure retry and empty states use actual API query', a
     });
     await mount(<GardenPackInventoryStory seed={false} />);
     await expect(page.getByRole('status')).toHaveText(
-        'Učitavanje kupljenih paketa…',
+        'Učitavanje mojih paketa…',
     );
     release?.();
     await expect(page.getByRole('alert')).toContainText(
@@ -146,7 +146,7 @@ test('inventory loading, failure retry and empty states use actual API query', a
         .getByRole('button', { name: 'Pokušaj ponovno', exact: true })
         .focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByText('Još nema kupljenih paketa.')).toBeVisible();
+    await expect(page.getByText('Još nema preuzetih paketa.')).toBeVisible();
     expect(attempts).toBe(2);
 });
 

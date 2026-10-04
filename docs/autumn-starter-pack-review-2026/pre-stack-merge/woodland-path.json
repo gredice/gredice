@@ -1,0 +1,7259 @@
+{
+  "source": {
+    "commit": "6f7d5700a5426282d78b417908da9ce2ce6b0e00",
+    "tree": "b783e17be5439ee9ebe7dc10dccf87b7653a568d",
+    "status": ""
+  },
+  "browser": "151.0.7922.34",
+  "timezone": "Europe/Zagreb",
+  "camera": {
+    "position": [
+      -100,
+      100,
+      -100
+    ],
+    "target": [
+      -0.5,
+      0.8,
+      -0.5
+    ],
+    "zoom": 80
+  },
+  "viewport": {
+    "width": 780,
+    "height": 600,
+    "dpr": 1
+  },
+  "fixedTimeSeconds": 12,
+  "reducedMotion": false,
+  "quality": "high",
+  "included": [
+    {
+      "entityName": "WoodlandMushrooms",
+      "quantity": 1
+    },
+    {
+      "entityName": "StoneMedium",
+      "quantity": 1
+    },
+    {
+      "entityName": "AutumnLeafPileCrescent",
+      "quantity": 1
+    },
+    {
+      "entityName": "FallenLog",
+      "quantity": 1
+    }
+  ],
+  "scenery": [
+    {
+      "entityName": "Block_Grass",
+      "quantity": 16
+    },
+    {
+      "entityName": "Tree",
+      "quantity": 1
+    },
+    {
+      "entityName": "Pine",
+      "quantity": 1
+    },
+    {
+      "entityName": "StoneWalkway",
+      "quantity": 3
+    }
+  ],
+  "layout": {
+    "placements": [
+      {
+        "id": "WoodlandMushrooms",
+        "entityName": "WoodlandMushrooms",
+        "x": 0,
+        "z": 1,
+        "rotation": 0,
+        "role": "included",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 0,
+            "z": 1
+          }
+        ]
+      },
+      {
+        "id": "StoneMedium",
+        "entityName": "StoneMedium",
+        "x": 0,
+        "z": 2,
+        "rotation": 0,
+        "role": "included",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 0,
+            "z": 2
+          }
+        ]
+      },
+      {
+        "id": "AutumnLeafPileCrescent",
+        "entityName": "AutumnLeafPileCrescent",
+        "x": 1,
+        "z": 2,
+        "rotation": 0,
+        "role": "included",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 1,
+            "z": 2
+          }
+        ]
+      },
+      {
+        "id": "FallenLog",
+        "entityName": "FallenLog",
+        "x": 0,
+        "z": 3,
+        "rotation": 0,
+        "role": "included",
+        "width": 2,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 0,
+            "z": 3
+          },
+          {
+            "x": 1,
+            "z": 3
+          }
+        ]
+      },
+      {
+        "id": "ground:0",
+        "entityName": "Block_Grass",
+        "x": 0,
+        "z": 0,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 0,
+            "z": 0
+          }
+        ]
+      },
+      {
+        "id": "ground:1",
+        "entityName": "Block_Grass",
+        "x": 1,
+        "z": 0,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 1,
+            "z": 0
+          }
+        ]
+      },
+      {
+        "id": "ground:2",
+        "entityName": "Block_Grass",
+        "x": 2,
+        "z": 0,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 2,
+            "z": 0
+          }
+        ]
+      },
+      {
+        "id": "ground:3",
+        "entityName": "Block_Grass",
+        "x": 3,
+        "z": 0,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 3,
+            "z": 0
+          }
+        ]
+      },
+      {
+        "id": "ground:4",
+        "entityName": "Block_Grass",
+        "x": 0,
+        "z": 1,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 0,
+            "z": 1
+          }
+        ]
+      },
+      {
+        "id": "ground:5",
+        "entityName": "Block_Grass",
+        "x": 1,
+        "z": 1,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 1,
+            "z": 1
+          }
+        ]
+      },
+      {
+        "id": "ground:6",
+        "entityName": "Block_Grass",
+        "x": 2,
+        "z": 1,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 2,
+            "z": 1
+          }
+        ]
+      },
+      {
+        "id": "ground:7",
+        "entityName": "Block_Grass",
+        "x": 3,
+        "z": 1,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 3,
+            "z": 1
+          }
+        ]
+      },
+      {
+        "id": "ground:8",
+        "entityName": "Block_Grass",
+        "x": 0,
+        "z": 2,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 0,
+            "z": 2
+          }
+        ]
+      },
+      {
+        "id": "ground:9",
+        "entityName": "Block_Grass",
+        "x": 1,
+        "z": 2,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 1,
+            "z": 2
+          }
+        ]
+      },
+      {
+        "id": "ground:10",
+        "entityName": "Block_Grass",
+        "x": 2,
+        "z": 2,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 2,
+            "z": 2
+          }
+        ]
+      },
+      {
+        "id": "ground:11",
+        "entityName": "Block_Grass",
+        "x": 3,
+        "z": 2,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 3,
+            "z": 2
+          }
+        ]
+      },
+      {
+        "id": "ground:12",
+        "entityName": "Block_Grass",
+        "x": 0,
+        "z": 3,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 0,
+            "z": 3
+          }
+        ]
+      },
+      {
+        "id": "ground:13",
+        "entityName": "Block_Grass",
+        "x": 1,
+        "z": 3,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 1,
+            "z": 3
+          }
+        ]
+      },
+      {
+        "id": "ground:14",
+        "entityName": "Block_Grass",
+        "x": 2,
+        "z": 3,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 2,
+            "z": 3
+          }
+        ]
+      },
+      {
+        "id": "ground:15",
+        "entityName": "Block_Grass",
+        "x": 3,
+        "z": 3,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 3,
+            "z": 3
+          }
+        ]
+      },
+      {
+        "id": "tree",
+        "entityName": "Tree",
+        "x": 2,
+        "z": 3,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 2,
+            "z": 3
+          }
+        ]
+      },
+      {
+        "id": "pine",
+        "entityName": "Pine",
+        "x": 3,
+        "z": 3,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 3,
+            "z": 3
+          }
+        ]
+      },
+      {
+        "id": "path:0",
+        "entityName": "StoneWalkway",
+        "x": 2,
+        "z": 0,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 2,
+            "z": 0
+          }
+        ]
+      },
+      {
+        "id": "path:1",
+        "entityName": "StoneWalkway",
+        "x": 2,
+        "z": 1,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 2,
+            "z": 1
+          }
+        ]
+      },
+      {
+        "id": "path:2",
+        "entityName": "StoneWalkway",
+        "x": 2,
+        "z": 2,
+        "rotation": 0,
+        "role": "scenery",
+        "width": 1,
+        "depth": 1,
+        "cells": [
+          {
+            "x": 2,
+            "z": 2
+          }
+        ]
+      }
+    ],
+    "garden": {
+      "x": 0,
+      "z": 0,
+      "width": 4,
+      "depth": 4,
+      "occupiedCells": 16
+    },
+    "decoration": {
+      "x": 0,
+      "z": 1,
+      "width": 2,
+      "depth": 3,
+      "occupiedCells": 5
+    }
+  },
+  "records": [
+    {
+      "file": "woodland-path-earlyAutumn-day.png",
+      "stage": "earlyAutumn",
+      "light": "day",
+      "date": "2026-09-22T10:00:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.22338013062732048,
+        "leafRetention": 1,
+        "fallingLeafIntensity": 0,
+        "settledLeafAmount": 0
+      },
+      "objects": [
+        {
+          "id": "WoodlandMushrooms",
+          "entityName": "WoodlandMushrooms",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3852750062942505,
+            0.4,
+            -1.405000001192093
+          ],
+          "max": [
+            -1.646800011396408,
+            0.7799999952316284,
+            -0.6550000011920929
+          ],
+          "screen": {
+            "minX": 403.6782741525117,
+            "maxX": 487.87913515402175,
+            "minY": 343.738728726607,
+            "maxY": 417.10069765249074
+          }
+        },
+        {
+          "id": "StoneMedium",
+          "entityName": "StoneMedium",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3604909362792967,
+            0.4,
+            -0.2916891402006149
+          ],
+          "max": [
+            -1.7207217555046082,
+            0.7216320897340776,
+            0.31613454699516297
+          ],
+          "screen": {
+            "minX": 470.8382922254519,
+            "maxX": 541.4128023936031,
+            "minY": 318.31127764892926,
+            "maxY": 380.00549918162284
+          }
+        },
+        {
+          "id": "AutumnLeafPileCrescent",
+          "entityName": "AutumnLeafPileCrescent",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -1.2714017033576965,
+            0.4,
+            -0.373699814081192
+          ],
+          "max": [
+            -0.625,
+            0.5224285736680031,
+            0.373699814081192
+          ],
+          "screen": {
+            "minX": 404.2156852461262,
+            "maxX": 483.06099509770127,
+            "minY": 293.7459028404551,
+            "maxY": 347.1806635676495
+          }
+        },
+        {
+          "id": "FallenLog",
+          "entityName": "FallenLog",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.4210000038146973,
+            0.4,
+            0.7007499933242798
+          ],
+          "max": [
+            -0.5789999961853027,
+            0.8320000112056732,
+            1.407802253961563
+          ],
+          "screen": {
+            "minX": 462.393591664447,
+            "maxX": 606.5897632236724,
+            "minY": 238.29947392356794,
+            "maxY": 349.63006228526615
+          }
+        },
+        {
+          "id": "ground:0",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -1.5,
+            0.4471294456381357,
+            -1.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 388.26080575469473,
+            "maxY": 482.6847645921777
+          }
+        },
+        {
+          "id": "ground:1",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -0.5,
+            0.46435387901198205,
+            -1.5
+          ],
+          "screen": {
+            "minX": 276.8629150101483,
+            "maxX": 389.99999999999585,
+            "minY": 354.5404634935141,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:2",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.47096868225612737,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.5138358696299,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:3",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            1.5,
+            0.5486907326343673,
+            -1.5
+          ],
+          "screen": {
+            "minX": 163.7258300203006,
+            "maxX": 276.8629150101482,
+            "minY": 283.83783427589486,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:4",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -1.5,
+            0.5237113308970087,
+            -0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.13708498984346,
+            "minY": 350.659354284062,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:5",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -0.5,
+            0.47299788218049815,
+            -0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 321.38115587302985,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:6",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4586135139959068,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.7275669331646,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:7",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            1.5,
+            0.4522666778180857,
+            -0.5
+          ],
+          "screen": {
+            "minX": 220.29437251522438,
+            "maxX": 333.43145750507205,
+            "minY": 257.54844095452677,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:8",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -1.5,
+            0.4632812279653234,
+            0.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 322.0164829459073,
+            "maxY": 417.4965321165895
+          }
+        },
+        {
+          "id": "ground:9",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -0.5,
+            0.46512368074435495,
+            0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.1370849898434,
+            "minY": 289.3018972435119,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:10",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.46272304118181795,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.8647477220921,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:11",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 12,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            1.5,
+            0.5128718800784289,
+            0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.9999999999958,
+            "minY": 220.99163088194797,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:12",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -1.5,
+            0.4484493311643354,
+            1.5
+          ],
+          "screen": {
+            "minX": 503.1370849898434,
+            "maxX": 616.274169979691,
+            "minY": 290.3921558321385,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:13",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -0.5,
+            0.6306309325539552,
+            1.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 245.88602739551303,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:14",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            0.5,
+            0.5542107731993161,
+            1.5
+          ],
+          "screen": {
+            "minX": 389.9999999999958,
+            "maxX": 503.1370849898434,
+            "minY": 218.28867188177395,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:15",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            1.5,
+            0.4534488917558406,
+            1.5
+          ],
+          "screen": {
+            "minX": 333.431457505072,
+            "maxX": 446.5685424949196,
+            "minY": 192.28290897810666,
+            "maxY": 287.12006716541305
+          }
+        },
+        {
+          "id": "tree",
+          "entityName": "Tree",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.6861565709114075,
+            0.4,
+            0.28737545013427734
+          ],
+          "max": [
+            0.6777472496032715,
+            2.7774738311767577,
+            1.7126245498657227
+          ],
+          "screen": {
+            "minX": 367.9172362729142,
+            "maxX": 525.6955517666978,
+            "minY": 60.19596084365091,
+            "maxY": 306.55795168932246
+          }
+        },
+        {
+          "id": "pine",
+          "entityName": "Pine",
+          "role": "scenery",
+          "meshes": 1,
+          "min": [
+            0.43251117706298825,
+            0.3999999999999999,
+            0.45996532440185545
+          ],
+          "max": [
+            1.54395254611969,
+            3.163297200202942,
+            1.5712090253829956
+          ],
+          "screen": {
+            "minX": 328.68042278429607,
+            "maxX": 454.41447762156446,
+            "minY": 11.344873365596452,
+            "maxY": 264.47055065702995
+          }
+        },
+        {
+          "id": "path:0",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.96948556861713,
+            "maxY": 391.3423821986573
+          }
+        },
+        {
+          "id": "path:1",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.37536933082305,
+            "maxY": 358.7482659608632
+          }
+        },
+        {
+          "id": "path:2",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.7812530930289,
+            "maxY": 326.154149723069
+          }
+        }
+      ]
+    },
+    {
+      "file": "woodland-path-earlyAutumn-overcast.png",
+      "stage": "earlyAutumn",
+      "light": "overcast",
+      "date": "2026-09-22T10:00:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.22338013062732048,
+        "leafRetention": 1,
+        "fallingLeafIntensity": 0,
+        "settledLeafAmount": 0
+      },
+      "objects": [
+        {
+          "id": "WoodlandMushrooms",
+          "entityName": "WoodlandMushrooms",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3852750062942505,
+            0.4,
+            -1.405000001192093
+          ],
+          "max": [
+            -1.646800011396408,
+            0.7799999952316284,
+            -0.6550000011920929
+          ],
+          "screen": {
+            "minX": 403.6782741525117,
+            "maxX": 487.87913515402175,
+            "minY": 343.738728726607,
+            "maxY": 417.10069765249074
+          }
+        },
+        {
+          "id": "StoneMedium",
+          "entityName": "StoneMedium",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3604909362792967,
+            0.4,
+            -0.2916891402006149
+          ],
+          "max": [
+            -1.7207217555046082,
+            0.7216320897340776,
+            0.31613454699516297
+          ],
+          "screen": {
+            "minX": 470.8382922254519,
+            "maxX": 541.4128023936031,
+            "minY": 318.31127764892926,
+            "maxY": 380.00549918162284
+          }
+        },
+        {
+          "id": "AutumnLeafPileCrescent",
+          "entityName": "AutumnLeafPileCrescent",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -1.2714017033576965,
+            0.4,
+            -0.373699814081192
+          ],
+          "max": [
+            -0.625,
+            0.5224285736680031,
+            0.373699814081192
+          ],
+          "screen": {
+            "minX": 404.2156852461262,
+            "maxX": 483.06099509770127,
+            "minY": 293.7459028404551,
+            "maxY": 347.1806635676495
+          }
+        },
+        {
+          "id": "FallenLog",
+          "entityName": "FallenLog",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.4210000038146973,
+            0.4,
+            0.7007499933242798
+          ],
+          "max": [
+            -0.5789999961853027,
+            0.8320000112056732,
+            1.407802253961563
+          ],
+          "screen": {
+            "minX": 462.393591664447,
+            "maxX": 606.5897632236724,
+            "minY": 238.29947392356794,
+            "maxY": 349.63006228526615
+          }
+        },
+        {
+          "id": "ground:0",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -1.5,
+            0.4471294456381357,
+            -1.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 388.26080575469473,
+            "maxY": 482.6847645921777
+          }
+        },
+        {
+          "id": "ground:1",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -0.5,
+            0.46435387901198205,
+            -1.5
+          ],
+          "screen": {
+            "minX": 276.8629150101483,
+            "maxX": 389.99999999999585,
+            "minY": 354.5404634935141,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:2",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.47096868225612737,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.5138358696299,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:3",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            1.5,
+            0.5486907326343673,
+            -1.5
+          ],
+          "screen": {
+            "minX": 163.7258300203006,
+            "maxX": 276.8629150101482,
+            "minY": 283.83783427589486,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:4",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -1.5,
+            0.5237113308970087,
+            -0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.13708498984346,
+            "minY": 350.659354284062,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:5",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -0.5,
+            0.47299788218049815,
+            -0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 321.38115587302985,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:6",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4586135139959068,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.7275669331646,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:7",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            1.5,
+            0.4522666778180857,
+            -0.5
+          ],
+          "screen": {
+            "minX": 220.29437251522438,
+            "maxX": 333.43145750507205,
+            "minY": 257.54844095452677,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:8",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -1.5,
+            0.4632812279653234,
+            0.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 322.0164829459073,
+            "maxY": 417.4965321165895
+          }
+        },
+        {
+          "id": "ground:9",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -0.5,
+            0.46512368074435495,
+            0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.1370849898434,
+            "minY": 289.3018972435119,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:10",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.46272304118181795,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.8647477220921,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:11",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 12,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            1.5,
+            0.5128718800784289,
+            0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.9999999999958,
+            "minY": 220.99163088194797,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:12",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -1.5,
+            0.4484493311643354,
+            1.5
+          ],
+          "screen": {
+            "minX": 503.1370849898434,
+            "maxX": 616.274169979691,
+            "minY": 290.3921558321385,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:13",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -0.5,
+            0.6306309325539552,
+            1.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 245.88602739551303,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:14",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            0.5,
+            0.5542107731993161,
+            1.5
+          ],
+          "screen": {
+            "minX": 389.9999999999958,
+            "maxX": 503.1370849898434,
+            "minY": 218.28867188177395,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:15",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            1.5,
+            0.4534488917558406,
+            1.5
+          ],
+          "screen": {
+            "minX": 333.431457505072,
+            "maxX": 446.5685424949196,
+            "minY": 192.28290897810666,
+            "maxY": 287.12006716541305
+          }
+        },
+        {
+          "id": "tree",
+          "entityName": "Tree",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.6861565709114075,
+            0.4,
+            0.28737545013427734
+          ],
+          "max": [
+            0.6777472496032715,
+            2.7774738311767577,
+            1.7126245498657227
+          ],
+          "screen": {
+            "minX": 367.9172362729142,
+            "maxX": 525.6955517666978,
+            "minY": 60.19596084365091,
+            "maxY": 306.55795168932246
+          }
+        },
+        {
+          "id": "pine",
+          "entityName": "Pine",
+          "role": "scenery",
+          "meshes": 1,
+          "min": [
+            0.43251117706298825,
+            0.3999999999999999,
+            0.45996532440185545
+          ],
+          "max": [
+            1.54395254611969,
+            3.163297200202942,
+            1.5712090253829956
+          ],
+          "screen": {
+            "minX": 328.68042278429607,
+            "maxX": 454.41447762156446,
+            "minY": 11.344873365596452,
+            "maxY": 264.47055065702995
+          }
+        },
+        {
+          "id": "path:0",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.96948556861713,
+            "maxY": 391.3423821986573
+          }
+        },
+        {
+          "id": "path:1",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.37536933082305,
+            "maxY": 358.7482659608632
+          }
+        },
+        {
+          "id": "path:2",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.7812530930289,
+            "maxY": 326.154149723069
+          }
+        }
+      ]
+    },
+    {
+      "file": "woodland-path-earlyAutumn-dusk.png",
+      "stage": "earlyAutumn",
+      "light": "dusk",
+      "date": "2026-09-22T16:51:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.22691871541951822,
+        "leafRetention": 1,
+        "fallingLeafIntensity": 0,
+        "settledLeafAmount": 0
+      },
+      "objects": [
+        {
+          "id": "WoodlandMushrooms",
+          "entityName": "WoodlandMushrooms",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3852750062942505,
+            0.4,
+            -1.405000001192093
+          ],
+          "max": [
+            -1.646800011396408,
+            0.7799999952316284,
+            -0.6550000011920929
+          ],
+          "screen": {
+            "minX": 403.6782741525117,
+            "maxX": 487.87913515402175,
+            "minY": 343.738728726607,
+            "maxY": 417.10069765249074
+          }
+        },
+        {
+          "id": "StoneMedium",
+          "entityName": "StoneMedium",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3604909362792967,
+            0.4,
+            -0.2916891402006149
+          ],
+          "max": [
+            -1.7207217555046082,
+            0.7216320897340776,
+            0.31613454699516297
+          ],
+          "screen": {
+            "minX": 470.8382922254519,
+            "maxX": 541.4128023936031,
+            "minY": 318.31127764892926,
+            "maxY": 380.00549918162284
+          }
+        },
+        {
+          "id": "AutumnLeafPileCrescent",
+          "entityName": "AutumnLeafPileCrescent",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -1.2714017033576965,
+            0.4,
+            -0.373699814081192
+          ],
+          "max": [
+            -0.625,
+            0.5224285736680031,
+            0.373699814081192
+          ],
+          "screen": {
+            "minX": 404.2156852461262,
+            "maxX": 483.06099509770127,
+            "minY": 293.7459028404551,
+            "maxY": 347.1806635676495
+          }
+        },
+        {
+          "id": "FallenLog",
+          "entityName": "FallenLog",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.4210000038146973,
+            0.4,
+            0.7007499933242798
+          ],
+          "max": [
+            -0.5789999961853027,
+            0.8320000112056732,
+            1.407802253961563
+          ],
+          "screen": {
+            "minX": 462.393591664447,
+            "maxX": 606.5897632236724,
+            "minY": 238.29947392356794,
+            "maxY": 349.63006228526615
+          }
+        },
+        {
+          "id": "ground:0",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -1.5,
+            0.4471294456381357,
+            -1.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 388.26080575469473,
+            "maxY": 482.6847645921777
+          }
+        },
+        {
+          "id": "ground:1",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -0.5,
+            0.46435387901198205,
+            -1.5
+          ],
+          "screen": {
+            "minX": 276.8629150101483,
+            "maxX": 389.99999999999585,
+            "minY": 354.5404634935141,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:2",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.47096868225612737,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.5138358696299,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:3",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            1.5,
+            0.5486907326343673,
+            -1.5
+          ],
+          "screen": {
+            "minX": 163.7258300203006,
+            "maxX": 276.8629150101482,
+            "minY": 283.83783427589486,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:4",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -1.5,
+            0.5237113308970087,
+            -0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.13708498984346,
+            "minY": 350.659354284062,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:5",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -0.5,
+            0.47299788218049815,
+            -0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 321.38115587302985,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:6",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4586135139959068,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.7275669331646,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:7",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            1.5,
+            0.4522666778180857,
+            -0.5
+          ],
+          "screen": {
+            "minX": 220.29437251522438,
+            "maxX": 333.43145750507205,
+            "minY": 257.54844095452677,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:8",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -1.5,
+            0.4632812279653234,
+            0.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 322.0164829459073,
+            "maxY": 417.4965321165895
+          }
+        },
+        {
+          "id": "ground:9",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -0.5,
+            0.46512368074435495,
+            0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.1370849898434,
+            "minY": 289.3018972435119,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:10",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.46272304118181795,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.8647477220921,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:11",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 12,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            1.5,
+            0.5128718800784289,
+            0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.9999999999958,
+            "minY": 220.99163088194797,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:12",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -1.5,
+            0.4484493311643354,
+            1.5
+          ],
+          "screen": {
+            "minX": 503.1370849898434,
+            "maxX": 616.274169979691,
+            "minY": 290.3921558321385,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:13",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -0.5,
+            0.6306309325539552,
+            1.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 245.88602739551303,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:14",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            0.5,
+            0.5542107731993161,
+            1.5
+          ],
+          "screen": {
+            "minX": 389.9999999999958,
+            "maxX": 503.1370849898434,
+            "minY": 218.28867188177395,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:15",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            1.5,
+            0.4534488917558406,
+            1.5
+          ],
+          "screen": {
+            "minX": 333.431457505072,
+            "maxX": 446.5685424949196,
+            "minY": 192.28290897810666,
+            "maxY": 287.12006716541305
+          }
+        },
+        {
+          "id": "tree",
+          "entityName": "Tree",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.6861565709114075,
+            0.4,
+            0.28737545013427734
+          ],
+          "max": [
+            0.6777472496032715,
+            2.7774738311767577,
+            1.7126245498657227
+          ],
+          "screen": {
+            "minX": 367.9172362729142,
+            "maxX": 525.6955517666978,
+            "minY": 60.19596084365091,
+            "maxY": 306.55795168932246
+          }
+        },
+        {
+          "id": "pine",
+          "entityName": "Pine",
+          "role": "scenery",
+          "meshes": 1,
+          "min": [
+            0.43251117706298825,
+            0.3999999999999999,
+            0.45996532440185545
+          ],
+          "max": [
+            1.54395254611969,
+            3.163297200202942,
+            1.5712090253829956
+          ],
+          "screen": {
+            "minX": 328.68042278429607,
+            "maxX": 454.41447762156446,
+            "minY": 11.344873365596452,
+            "maxY": 264.47055065702995
+          }
+        },
+        {
+          "id": "path:0",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.96948556861713,
+            "maxY": 391.3423821986573
+          }
+        },
+        {
+          "id": "path:1",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.37536933082305,
+            "maxY": 358.7482659608632
+          }
+        },
+        {
+          "id": "path:2",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.7812530930289,
+            "maxY": 326.154149723069
+          }
+        }
+      ]
+    },
+    {
+      "file": "woodland-path-earlyAutumn-night.png",
+      "stage": "earlyAutumn",
+      "light": "night",
+      "date": "2026-09-22T20:30:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.22881145749993487,
+        "leafRetention": 1,
+        "fallingLeafIntensity": 0,
+        "settledLeafAmount": 0
+      },
+      "objects": [
+        {
+          "id": "WoodlandMushrooms",
+          "entityName": "WoodlandMushrooms",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3852750062942505,
+            0.4,
+            -1.405000001192093
+          ],
+          "max": [
+            -1.646800011396408,
+            0.7799999952316284,
+            -0.6550000011920929
+          ],
+          "screen": {
+            "minX": 403.6782741525117,
+            "maxX": 487.87913515402175,
+            "minY": 343.738728726607,
+            "maxY": 417.10069765249074
+          }
+        },
+        {
+          "id": "StoneMedium",
+          "entityName": "StoneMedium",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3604909362792967,
+            0.4,
+            -0.2916891402006149
+          ],
+          "max": [
+            -1.7207217555046082,
+            0.7216320897340776,
+            0.31613454699516297
+          ],
+          "screen": {
+            "minX": 470.8382922254519,
+            "maxX": 541.4128023936031,
+            "minY": 318.31127764892926,
+            "maxY": 380.00549918162284
+          }
+        },
+        {
+          "id": "AutumnLeafPileCrescent",
+          "entityName": "AutumnLeafPileCrescent",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -1.2714017033576965,
+            0.4,
+            -0.373699814081192
+          ],
+          "max": [
+            -0.625,
+            0.5224285736680031,
+            0.373699814081192
+          ],
+          "screen": {
+            "minX": 404.2156852461262,
+            "maxX": 483.06099509770127,
+            "minY": 293.7459028404551,
+            "maxY": 347.1806635676495
+          }
+        },
+        {
+          "id": "FallenLog",
+          "entityName": "FallenLog",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.4210000038146973,
+            0.4,
+            0.7007499933242798
+          ],
+          "max": [
+            -0.5789999961853027,
+            0.8320000112056732,
+            1.407802253961563
+          ],
+          "screen": {
+            "minX": 462.393591664447,
+            "maxX": 606.5897632236724,
+            "minY": 238.29947392356794,
+            "maxY": 349.63006228526615
+          }
+        },
+        {
+          "id": "ground:0",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -1.5,
+            0.4471294456381357,
+            -1.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 388.26080575469473,
+            "maxY": 482.6847645921777
+          }
+        },
+        {
+          "id": "ground:1",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -0.5,
+            0.46435387901198205,
+            -1.5
+          ],
+          "screen": {
+            "minX": 276.8629150101483,
+            "maxX": 389.99999999999585,
+            "minY": 354.5404634935141,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:2",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.47096868225612737,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.5138358696299,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:3",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            1.5,
+            0.5486907326343673,
+            -1.5
+          ],
+          "screen": {
+            "minX": 163.7258300203006,
+            "maxX": 276.8629150101482,
+            "minY": 283.83783427589486,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:4",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -1.5,
+            0.5237113308970087,
+            -0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.13708498984346,
+            "minY": 350.659354284062,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:5",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -0.5,
+            0.47299788218049815,
+            -0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 321.38115587302985,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:6",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4586135139959068,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.7275669331646,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:7",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            1.5,
+            0.4522666778180857,
+            -0.5
+          ],
+          "screen": {
+            "minX": 220.29437251522438,
+            "maxX": 333.43145750507205,
+            "minY": 257.54844095452677,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:8",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -1.5,
+            0.4632812279653234,
+            0.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 322.0164829459073,
+            "maxY": 417.4965321165895
+          }
+        },
+        {
+          "id": "ground:9",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -0.5,
+            0.46512368074435495,
+            0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.1370849898434,
+            "minY": 289.3018972435119,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:10",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.46272304118181795,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.8647477220921,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:11",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 12,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            1.5,
+            0.5128718800784289,
+            0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.9999999999958,
+            "minY": 220.99163088194797,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:12",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -1.5,
+            0.4484493311643354,
+            1.5
+          ],
+          "screen": {
+            "minX": 503.1370849898434,
+            "maxX": 616.274169979691,
+            "minY": 290.3921558321385,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:13",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -0.5,
+            0.6306309325539552,
+            1.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 245.88602739551303,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:14",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            0.5,
+            0.5542107731993161,
+            1.5
+          ],
+          "screen": {
+            "minX": 389.9999999999958,
+            "maxX": 503.1370849898434,
+            "minY": 218.28867188177395,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:15",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            1.5,
+            0.4534488917558406,
+            1.5
+          ],
+          "screen": {
+            "minX": 333.431457505072,
+            "maxX": 446.5685424949196,
+            "minY": 192.28290897810666,
+            "maxY": 287.12006716541305
+          }
+        },
+        {
+          "id": "tree",
+          "entityName": "Tree",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.6861565709114075,
+            0.4,
+            0.28737545013427734
+          ],
+          "max": [
+            0.6777472496032715,
+            2.7774738311767577,
+            1.7126245498657227
+          ],
+          "screen": {
+            "minX": 367.9172362729142,
+            "maxX": 525.6955517666978,
+            "minY": 60.19596084365091,
+            "maxY": 306.55795168932246
+          }
+        },
+        {
+          "id": "pine",
+          "entityName": "Pine",
+          "role": "scenery",
+          "meshes": 1,
+          "min": [
+            0.43251117706298825,
+            0.3999999999999999,
+            0.45996532440185545
+          ],
+          "max": [
+            1.54395254611969,
+            3.163297200202942,
+            1.5712090253829956
+          ],
+          "screen": {
+            "minX": 328.68042278429607,
+            "maxX": 454.41447762156446,
+            "minY": 11.344873365596452,
+            "maxY": 264.47055065702995
+          }
+        },
+        {
+          "id": "path:0",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.96948556861713,
+            "maxY": 391.3423821986573
+          }
+        },
+        {
+          "id": "path:1",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.37536933082305,
+            "maxY": 358.7482659608632
+          }
+        },
+        {
+          "id": "path:2",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.7812530930289,
+            "maxY": 326.154149723069
+          }
+        }
+      ]
+    },
+    {
+      "file": "woodland-path-midAutumn-day.png",
+      "stage": "midAutumn",
+      "light": "day",
+      "date": "2026-10-22T10:00:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.6438007846424587,
+        "leafRetention": 0.8014564127733399,
+        "fallingLeafIntensity": 0.995986384189402,
+        "settledLeafAmount": 0.20377233145353862
+      },
+      "objects": [
+        {
+          "id": "WoodlandMushrooms",
+          "entityName": "WoodlandMushrooms",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3852750062942505,
+            0.4,
+            -1.405000001192093
+          ],
+          "max": [
+            -1.646800011396408,
+            0.7799999952316284,
+            -0.6550000011920929
+          ],
+          "screen": {
+            "minX": 403.6782741525117,
+            "maxX": 487.87913515402175,
+            "minY": 343.738728726607,
+            "maxY": 417.10069765249074
+          }
+        },
+        {
+          "id": "StoneMedium",
+          "entityName": "StoneMedium",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3604909362792967,
+            0.4,
+            -0.2916891402006149
+          ],
+          "max": [
+            -1.7207217555046082,
+            0.7216320897340776,
+            0.31613454699516297
+          ],
+          "screen": {
+            "minX": 470.8382922254519,
+            "maxX": 541.4128023936031,
+            "minY": 318.31127764892926,
+            "maxY": 380.00549918162284
+          }
+        },
+        {
+          "id": "AutumnLeafPileCrescent",
+          "entityName": "AutumnLeafPileCrescent",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -1.2714017033576965,
+            0.4,
+            -0.373699814081192
+          ],
+          "max": [
+            -0.625,
+            0.5224285736680031,
+            0.373699814081192
+          ],
+          "screen": {
+            "minX": 404.2156852461262,
+            "maxX": 483.06099509770127,
+            "minY": 293.7459028404551,
+            "maxY": 347.1806635676495
+          }
+        },
+        {
+          "id": "FallenLog",
+          "entityName": "FallenLog",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.4210000038146973,
+            0.4,
+            0.7007499933242798
+          ],
+          "max": [
+            -0.5789999961853027,
+            0.8320000112056732,
+            1.407802253961563
+          ],
+          "screen": {
+            "minX": 462.393591664447,
+            "maxX": 606.5897632236724,
+            "minY": 238.29947392356794,
+            "maxY": 349.63006228526615
+          }
+        },
+        {
+          "id": "ground:0",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -1.5,
+            0.4471294456381357,
+            -1.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 388.26080575469473,
+            "maxY": 482.6847645921777
+          }
+        },
+        {
+          "id": "ground:1",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -0.5,
+            0.46435387901198205,
+            -1.5
+          ],
+          "screen": {
+            "minX": 276.8629150101483,
+            "maxX": 389.99999999999585,
+            "minY": 354.5404634935141,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:2",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.47096868225612737,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.5138358696299,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:3",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            1.5,
+            0.5486907326343673,
+            -1.5
+          ],
+          "screen": {
+            "minX": 163.7258300203006,
+            "maxX": 276.8629150101482,
+            "minY": 283.83783427589486,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:4",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -1.5,
+            0.5237113308970087,
+            -0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.13708498984346,
+            "minY": 350.659354284062,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:5",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -0.5,
+            0.47299788218049815,
+            -0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 321.38115587302985,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:6",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4586135139959068,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.7275669331646,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:7",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            1.5,
+            0.4522666778180857,
+            -0.5
+          ],
+          "screen": {
+            "minX": 220.29437251522438,
+            "maxX": 333.43145750507205,
+            "minY": 257.54844095452677,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:8",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -1.5,
+            0.4632812279653234,
+            0.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 322.0164829459073,
+            "maxY": 417.4965321165895
+          }
+        },
+        {
+          "id": "ground:9",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -0.5,
+            0.46512368074435495,
+            0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.1370849898434,
+            "minY": 289.3018972435119,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:10",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.46272304118181795,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.8647477220921,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:11",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 12,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            1.5,
+            0.5128718800784289,
+            0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.9999999999958,
+            "minY": 220.99163088194797,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:12",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -1.5,
+            0.4484493311643354,
+            1.5
+          ],
+          "screen": {
+            "minX": 503.1370849898434,
+            "maxX": 616.274169979691,
+            "minY": 290.3921558321385,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:13",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -0.5,
+            0.6306309325539552,
+            1.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 245.88602739551303,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:14",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            0.5,
+            0.5542107731993161,
+            1.5
+          ],
+          "screen": {
+            "minX": 389.9999999999958,
+            "maxX": 503.1370849898434,
+            "minY": 218.28867188177395,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:15",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            1.5,
+            0.4534488917558406,
+            1.5
+          ],
+          "screen": {
+            "minX": 333.431457505072,
+            "maxX": 446.5685424949196,
+            "minY": 192.28290897810666,
+            "maxY": 287.12006716541305
+          }
+        },
+        {
+          "id": "tree",
+          "entityName": "Tree",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.6861565709114075,
+            0.4,
+            0.28737545013427734
+          ],
+          "max": [
+            0.6777472496032715,
+            2.7774738311767577,
+            1.7126245498657227
+          ],
+          "screen": {
+            "minX": 367.9172362729142,
+            "maxX": 525.6955517666978,
+            "minY": 60.19596084365091,
+            "maxY": 306.55795168932246
+          }
+        },
+        {
+          "id": "pine",
+          "entityName": "Pine",
+          "role": "scenery",
+          "meshes": 1,
+          "min": [
+            0.43251117706298825,
+            0.3999999999999999,
+            0.45996532440185545
+          ],
+          "max": [
+            1.54395254611969,
+            3.163297200202942,
+            1.5712090253829956
+          ],
+          "screen": {
+            "minX": 328.68042278429607,
+            "maxX": 454.41447762156446,
+            "minY": 11.344873365596452,
+            "maxY": 264.47055065702995
+          }
+        },
+        {
+          "id": "path:0",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.96948556861713,
+            "maxY": 391.3423821986573
+          }
+        },
+        {
+          "id": "path:1",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.37536933082305,
+            "maxY": 358.7482659608632
+          }
+        },
+        {
+          "id": "path:2",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.7812530930289,
+            "maxY": 326.154149723069
+          }
+        }
+      ]
+    },
+    {
+      "file": "woodland-path-midAutumn-overcast.png",
+      "stage": "midAutumn",
+      "light": "overcast",
+      "date": "2026-10-22T10:00:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.6438007846424587,
+        "leafRetention": 0.8014564127733399,
+        "fallingLeafIntensity": 0.995986384189402,
+        "settledLeafAmount": 0.20377233145353862
+      },
+      "objects": [
+        {
+          "id": "WoodlandMushrooms",
+          "entityName": "WoodlandMushrooms",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3852750062942505,
+            0.4,
+            -1.405000001192093
+          ],
+          "max": [
+            -1.646800011396408,
+            0.7799999952316284,
+            -0.6550000011920929
+          ],
+          "screen": {
+            "minX": 403.6782741525117,
+            "maxX": 487.87913515402175,
+            "minY": 343.738728726607,
+            "maxY": 417.10069765249074
+          }
+        },
+        {
+          "id": "StoneMedium",
+          "entityName": "StoneMedium",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3604909362792967,
+            0.4,
+            -0.2916891402006149
+          ],
+          "max": [
+            -1.7207217555046082,
+            0.7216320897340776,
+            0.31613454699516297
+          ],
+          "screen": {
+            "minX": 470.8382922254519,
+            "maxX": 541.4128023936031,
+            "minY": 318.31127764892926,
+            "maxY": 380.00549918162284
+          }
+        },
+        {
+          "id": "AutumnLeafPileCrescent",
+          "entityName": "AutumnLeafPileCrescent",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -1.2714017033576965,
+            0.4,
+            -0.373699814081192
+          ],
+          "max": [
+            -0.625,
+            0.5224285736680031,
+            0.373699814081192
+          ],
+          "screen": {
+            "minX": 404.2156852461262,
+            "maxX": 483.06099509770127,
+            "minY": 293.7459028404551,
+            "maxY": 347.1806635676495
+          }
+        },
+        {
+          "id": "FallenLog",
+          "entityName": "FallenLog",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.4210000038146973,
+            0.4,
+            0.7007499933242798
+          ],
+          "max": [
+            -0.5789999961853027,
+            0.8320000112056732,
+            1.407802253961563
+          ],
+          "screen": {
+            "minX": 462.393591664447,
+            "maxX": 606.5897632236724,
+            "minY": 238.29947392356794,
+            "maxY": 349.63006228526615
+          }
+        },
+        {
+          "id": "ground:0",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -1.5,
+            0.4471294456381357,
+            -1.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 388.26080575469473,
+            "maxY": 482.6847645921777
+          }
+        },
+        {
+          "id": "ground:1",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -0.5,
+            0.46435387901198205,
+            -1.5
+          ],
+          "screen": {
+            "minX": 276.8629150101483,
+            "maxX": 389.99999999999585,
+            "minY": 354.5404634935141,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:2",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.47096868225612737,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.5138358696299,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:3",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            1.5,
+            0.5486907326343673,
+            -1.5
+          ],
+          "screen": {
+            "minX": 163.7258300203006,
+            "maxX": 276.8629150101482,
+            "minY": 283.83783427589486,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:4",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -1.5,
+            0.5237113308970087,
+            -0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.13708498984346,
+            "minY": 350.659354284062,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:5",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -0.5,
+            0.47299788218049815,
+            -0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 321.38115587302985,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:6",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4586135139959068,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.7275669331646,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:7",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            1.5,
+            0.4522666778180857,
+            -0.5
+          ],
+          "screen": {
+            "minX": 220.29437251522438,
+            "maxX": 333.43145750507205,
+            "minY": 257.54844095452677,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:8",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -1.5,
+            0.4632812279653234,
+            0.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 322.0164829459073,
+            "maxY": 417.4965321165895
+          }
+        },
+        {
+          "id": "ground:9",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -0.5,
+            0.46512368074435495,
+            0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.1370849898434,
+            "minY": 289.3018972435119,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:10",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.46272304118181795,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.8647477220921,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:11",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 12,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            1.5,
+            0.5128718800784289,
+            0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.9999999999958,
+            "minY": 220.99163088194797,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:12",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -1.5,
+            0.4484493311643354,
+            1.5
+          ],
+          "screen": {
+            "minX": 503.1370849898434,
+            "maxX": 616.274169979691,
+            "minY": 290.3921558321385,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:13",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -0.5,
+            0.6306309325539552,
+            1.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 245.88602739551303,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:14",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            0.5,
+            0.5542107731993161,
+            1.5
+          ],
+          "screen": {
+            "minX": 389.9999999999958,
+            "maxX": 503.1370849898434,
+            "minY": 218.28867188177395,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:15",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            1.5,
+            0.4534488917558406,
+            1.5
+          ],
+          "screen": {
+            "minX": 333.431457505072,
+            "maxX": 446.5685424949196,
+            "minY": 192.28290897810666,
+            "maxY": 287.12006716541305
+          }
+        },
+        {
+          "id": "tree",
+          "entityName": "Tree",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.6861565709114075,
+            0.4,
+            0.28737545013427734
+          ],
+          "max": [
+            0.6777472496032715,
+            2.7774738311767577,
+            1.7126245498657227
+          ],
+          "screen": {
+            "minX": 367.9172362729142,
+            "maxX": 525.6955517666978,
+            "minY": 60.19596084365091,
+            "maxY": 306.55795168932246
+          }
+        },
+        {
+          "id": "pine",
+          "entityName": "Pine",
+          "role": "scenery",
+          "meshes": 1,
+          "min": [
+            0.43251117706298825,
+            0.3999999999999999,
+            0.45996532440185545
+          ],
+          "max": [
+            1.54395254611969,
+            3.163297200202942,
+            1.5712090253829956
+          ],
+          "screen": {
+            "minX": 328.68042278429607,
+            "maxX": 454.41447762156446,
+            "minY": 11.344873365596452,
+            "maxY": 264.47055065702995
+          }
+        },
+        {
+          "id": "path:0",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.96948556861713,
+            "maxY": 391.3423821986573
+          }
+        },
+        {
+          "id": "path:1",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.37536933082305,
+            "maxY": 358.7482659608632
+          }
+        },
+        {
+          "id": "path:2",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.7812530930289,
+            "maxY": 326.154149723069
+          }
+        }
+      ]
+    },
+    {
+      "file": "woodland-path-midAutumn-dusk.png",
+      "stage": "midAutumn",
+      "light": "dusk",
+      "date": "2026-10-22T15:56:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.6472619786556989,
+        "leafRetention": 0.7970801837951003,
+        "fallingLeafIntensity": 0.9977113516620988,
+        "settledLeafAmount": 0.20783921354593074
+      },
+      "objects": [
+        {
+          "id": "WoodlandMushrooms",
+          "entityName": "WoodlandMushrooms",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3852750062942505,
+            0.4,
+            -1.405000001192093
+          ],
+          "max": [
+            -1.646800011396408,
+            0.7799999952316284,
+            -0.6550000011920929
+          ],
+          "screen": {
+            "minX": 403.6782741525117,
+            "maxX": 487.87913515402175,
+            "minY": 343.738728726607,
+            "maxY": 417.10069765249074
+          }
+        },
+        {
+          "id": "StoneMedium",
+          "entityName": "StoneMedium",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3604909362792967,
+            0.4,
+            -0.2916891402006149
+          ],
+          "max": [
+            -1.7207217555046082,
+            0.7216320897340776,
+            0.31613454699516297
+          ],
+          "screen": {
+            "minX": 470.8382922254519,
+            "maxX": 541.4128023936031,
+            "minY": 318.31127764892926,
+            "maxY": 380.00549918162284
+          }
+        },
+        {
+          "id": "AutumnLeafPileCrescent",
+          "entityName": "AutumnLeafPileCrescent",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -1.2714017033576965,
+            0.4,
+            -0.373699814081192
+          ],
+          "max": [
+            -0.625,
+            0.5224285736680031,
+            0.373699814081192
+          ],
+          "screen": {
+            "minX": 404.2156852461262,
+            "maxX": 483.06099509770127,
+            "minY": 293.7459028404551,
+            "maxY": 347.1806635676495
+          }
+        },
+        {
+          "id": "FallenLog",
+          "entityName": "FallenLog",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.4210000038146973,
+            0.4,
+            0.7007499933242798
+          ],
+          "max": [
+            -0.5789999961853027,
+            0.8320000112056732,
+            1.407802253961563
+          ],
+          "screen": {
+            "minX": 462.393591664447,
+            "maxX": 606.5897632236724,
+            "minY": 238.29947392356794,
+            "maxY": 349.63006228526615
+          }
+        },
+        {
+          "id": "ground:0",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -1.5,
+            0.4471294456381357,
+            -1.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 388.26080575469473,
+            "maxY": 482.6847645921777
+          }
+        },
+        {
+          "id": "ground:1",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -0.5,
+            0.46435387901198205,
+            -1.5
+          ],
+          "screen": {
+            "minX": 276.8629150101483,
+            "maxX": 389.99999999999585,
+            "minY": 354.5404634935141,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:2",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.47096868225612737,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.5138358696299,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:3",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            1.5,
+            0.5486907326343673,
+            -1.5
+          ],
+          "screen": {
+            "minX": 163.7258300203006,
+            "maxX": 276.8629150101482,
+            "minY": 283.83783427589486,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:4",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -1.5,
+            0.5237113308970087,
+            -0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.13708498984346,
+            "minY": 350.659354284062,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:5",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -0.5,
+            0.47299788218049815,
+            -0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 321.38115587302985,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:6",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4586135139959068,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.7275669331646,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:7",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            1.5,
+            0.4522666778180857,
+            -0.5
+          ],
+          "screen": {
+            "minX": 220.29437251522438,
+            "maxX": 333.43145750507205,
+            "minY": 257.54844095452677,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:8",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -1.5,
+            0.4632812279653234,
+            0.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 322.0164829459073,
+            "maxY": 417.4965321165895
+          }
+        },
+        {
+          "id": "ground:9",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -0.5,
+            0.46512368074435495,
+            0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.1370849898434,
+            "minY": 289.3018972435119,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:10",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.46272304118181795,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.8647477220921,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:11",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 12,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            1.5,
+            0.5128718800784289,
+            0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.9999999999958,
+            "minY": 220.99163088194797,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:12",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -1.5,
+            0.4484493311643354,
+            1.5
+          ],
+          "screen": {
+            "minX": 503.1370849898434,
+            "maxX": 616.274169979691,
+            "minY": 290.3921558321385,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:13",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -0.5,
+            0.6306309325539552,
+            1.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 245.88602739551303,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:14",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            0.5,
+            0.5542107731993161,
+            1.5
+          ],
+          "screen": {
+            "minX": 389.9999999999958,
+            "maxX": 503.1370849898434,
+            "minY": 218.28867188177395,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:15",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            1.5,
+            0.4534488917558406,
+            1.5
+          ],
+          "screen": {
+            "minX": 333.431457505072,
+            "maxX": 446.5685424949196,
+            "minY": 192.28290897810666,
+            "maxY": 287.12006716541305
+          }
+        },
+        {
+          "id": "tree",
+          "entityName": "Tree",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.6861565709114075,
+            0.4,
+            0.28737545013427734
+          ],
+          "max": [
+            0.6777472496032715,
+            2.7774738311767577,
+            1.7126245498657227
+          ],
+          "screen": {
+            "minX": 367.9172362729142,
+            "maxX": 525.6955517666978,
+            "minY": 60.19596084365091,
+            "maxY": 306.55795168932246
+          }
+        },
+        {
+          "id": "pine",
+          "entityName": "Pine",
+          "role": "scenery",
+          "meshes": 1,
+          "min": [
+            0.43251117706298825,
+            0.3999999999999999,
+            0.45996532440185545
+          ],
+          "max": [
+            1.54395254611969,
+            3.163297200202942,
+            1.5712090253829956
+          ],
+          "screen": {
+            "minX": 328.68042278429607,
+            "maxX": 454.41447762156446,
+            "minY": 11.344873365596452,
+            "maxY": 264.47055065702995
+          }
+        },
+        {
+          "id": "path:0",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.96948556861713,
+            "maxY": 391.3423821986573
+          }
+        },
+        {
+          "id": "path:1",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.37536933082305,
+            "maxY": 358.7482659608632
+          }
+        },
+        {
+          "id": "path:2",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.7812530930289,
+            "maxY": 326.154149723069
+          }
+        }
+      ]
+    },
+    {
+      "file": "woodland-path-midAutumn-night.png",
+      "stage": "midAutumn",
+      "light": "night",
+      "date": "2026-10-22T20:30:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.6499212560818313,
+        "leafRetention": 0.7936910248298917,
+        "fallingLeafIntensity": 0.9987160011574074,
+        "settledLeafAmount": 0.21098593750000003
+      },
+      "objects": [
+        {
+          "id": "WoodlandMushrooms",
+          "entityName": "WoodlandMushrooms",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3852750062942505,
+            0.4,
+            -1.405000001192093
+          ],
+          "max": [
+            -1.646800011396408,
+            0.7799999952316284,
+            -0.6550000011920929
+          ],
+          "screen": {
+            "minX": 403.6782741525117,
+            "maxX": 487.87913515402175,
+            "minY": 343.738728726607,
+            "maxY": 417.10069765249074
+          }
+        },
+        {
+          "id": "StoneMedium",
+          "entityName": "StoneMedium",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3604909362792967,
+            0.4,
+            -0.2916891402006149
+          ],
+          "max": [
+            -1.7207217555046082,
+            0.7216320897340776,
+            0.31613454699516297
+          ],
+          "screen": {
+            "minX": 470.8382922254519,
+            "maxX": 541.4128023936031,
+            "minY": 318.31127764892926,
+            "maxY": 380.00549918162284
+          }
+        },
+        {
+          "id": "AutumnLeafPileCrescent",
+          "entityName": "AutumnLeafPileCrescent",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -1.2714017033576965,
+            0.4,
+            -0.373699814081192
+          ],
+          "max": [
+            -0.625,
+            0.5224285736680031,
+            0.373699814081192
+          ],
+          "screen": {
+            "minX": 404.2156852461262,
+            "maxX": 483.06099509770127,
+            "minY": 293.7459028404551,
+            "maxY": 347.1806635676495
+          }
+        },
+        {
+          "id": "FallenLog",
+          "entityName": "FallenLog",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.4210000038146973,
+            0.4,
+            0.7007499933242798
+          ],
+          "max": [
+            -0.5789999961853027,
+            0.8320000112056732,
+            1.407802253961563
+          ],
+          "screen": {
+            "minX": 462.393591664447,
+            "maxX": 606.5897632236724,
+            "minY": 238.29947392356794,
+            "maxY": 349.63006228526615
+          }
+        },
+        {
+          "id": "ground:0",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -1.5,
+            0.4471294456381357,
+            -1.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 388.26080575469473,
+            "maxY": 482.6847645921777
+          }
+        },
+        {
+          "id": "ground:1",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -0.5,
+            0.46435387901198205,
+            -1.5
+          ],
+          "screen": {
+            "minX": 276.8629150101483,
+            "maxX": 389.99999999999585,
+            "minY": 354.5404634935141,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:2",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.47096868225612737,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.5138358696299,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:3",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            1.5,
+            0.5486907326343673,
+            -1.5
+          ],
+          "screen": {
+            "minX": 163.7258300203006,
+            "maxX": 276.8629150101482,
+            "minY": 283.83783427589486,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:4",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -1.5,
+            0.5237113308970087,
+            -0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.13708498984346,
+            "minY": 350.659354284062,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:5",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -0.5,
+            0.47299788218049815,
+            -0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 321.38115587302985,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:6",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4586135139959068,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.7275669331646,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:7",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            1.5,
+            0.4522666778180857,
+            -0.5
+          ],
+          "screen": {
+            "minX": 220.29437251522438,
+            "maxX": 333.43145750507205,
+            "minY": 257.54844095452677,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:8",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -1.5,
+            0.4632812279653234,
+            0.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 322.0164829459073,
+            "maxY": 417.4965321165895
+          }
+        },
+        {
+          "id": "ground:9",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -0.5,
+            0.46512368074435495,
+            0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.1370849898434,
+            "minY": 289.3018972435119,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:10",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.46272304118181795,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.8647477220921,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:11",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 12,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            1.5,
+            0.5128718800784289,
+            0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.9999999999958,
+            "minY": 220.99163088194797,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:12",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -1.5,
+            0.4484493311643354,
+            1.5
+          ],
+          "screen": {
+            "minX": 503.1370849898434,
+            "maxX": 616.274169979691,
+            "minY": 290.3921558321385,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:13",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -0.5,
+            0.6306309325539552,
+            1.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 245.88602739551303,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:14",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            0.5,
+            0.5542107731993161,
+            1.5
+          ],
+          "screen": {
+            "minX": 389.9999999999958,
+            "maxX": 503.1370849898434,
+            "minY": 218.28867188177395,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:15",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            1.5,
+            0.4534488917558406,
+            1.5
+          ],
+          "screen": {
+            "minX": 333.431457505072,
+            "maxX": 446.5685424949196,
+            "minY": 192.28290897810666,
+            "maxY": 287.12006716541305
+          }
+        },
+        {
+          "id": "tree",
+          "entityName": "Tree",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.6861565709114075,
+            0.4,
+            0.28737545013427734
+          ],
+          "max": [
+            0.6777472496032715,
+            2.7774738311767577,
+            1.7126245498657227
+          ],
+          "screen": {
+            "minX": 367.9172362729142,
+            "maxX": 525.6955517666978,
+            "minY": 60.19596084365091,
+            "maxY": 306.55795168932246
+          }
+        },
+        {
+          "id": "pine",
+          "entityName": "Pine",
+          "role": "scenery",
+          "meshes": 1,
+          "min": [
+            0.43251117706298825,
+            0.3999999999999999,
+            0.45996532440185545
+          ],
+          "max": [
+            1.54395254611969,
+            3.163297200202942,
+            1.5712090253829956
+          ],
+          "screen": {
+            "minX": 328.68042278429607,
+            "maxX": 454.41447762156446,
+            "minY": 11.344873365596452,
+            "maxY": 264.47055065702995
+          }
+        },
+        {
+          "id": "path:0",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.96948556861713,
+            "maxY": 391.3423821986573
+          }
+        },
+        {
+          "id": "path:1",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.37536933082305,
+            "maxY": 358.7482659608632
+          }
+        },
+        {
+          "id": "path:2",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.7812530930289,
+            "maxY": 326.154149723069
+          }
+        }
+      ]
+    },
+    {
+      "file": "woodland-path-lateAutumn-day.png",
+      "stage": "lateAutumn",
+      "light": "day",
+      "date": "2026-11-21T11:00:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.9653861394474559,
+        "leafRetention": 0.2171130391602598,
+        "fallingLeafIntensity": 0.8898327114502471,
+        "settledLeafAmount": 0.729365381293502
+      },
+      "objects": [
+        {
+          "id": "WoodlandMushrooms",
+          "entityName": "WoodlandMushrooms",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3852750062942505,
+            0.4,
+            -1.405000001192093
+          ],
+          "max": [
+            -1.646800011396408,
+            0.7799999952316284,
+            -0.6550000011920929
+          ],
+          "screen": {
+            "minX": 403.6782741525117,
+            "maxX": 487.87913515402175,
+            "minY": 343.738728726607,
+            "maxY": 417.10069765249074
+          }
+        },
+        {
+          "id": "StoneMedium",
+          "entityName": "StoneMedium",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3604909362792967,
+            0.4,
+            -0.2916891402006149
+          ],
+          "max": [
+            -1.7207217555046082,
+            0.7216320897340776,
+            0.31613454699516297
+          ],
+          "screen": {
+            "minX": 470.8382922254519,
+            "maxX": 541.4128023936031,
+            "minY": 318.31127764892926,
+            "maxY": 380.00549918162284
+          }
+        },
+        {
+          "id": "AutumnLeafPileCrescent",
+          "entityName": "AutumnLeafPileCrescent",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -1.2714017033576965,
+            0.4,
+            -0.373699814081192
+          ],
+          "max": [
+            -0.625,
+            0.5224285736680031,
+            0.373699814081192
+          ],
+          "screen": {
+            "minX": 404.2156852461262,
+            "maxX": 483.06099509770127,
+            "minY": 293.7459028404551,
+            "maxY": 347.1806635676495
+          }
+        },
+        {
+          "id": "FallenLog",
+          "entityName": "FallenLog",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.4210000038146973,
+            0.4,
+            0.7007499933242798
+          ],
+          "max": [
+            -0.5789999961853027,
+            0.8320000112056732,
+            1.407802253961563
+          ],
+          "screen": {
+            "minX": 462.393591664447,
+            "maxX": 606.5897632236724,
+            "minY": 238.29947392356794,
+            "maxY": 349.63006228526615
+          }
+        },
+        {
+          "id": "ground:0",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -1.5,
+            0.4471294456381357,
+            -1.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 388.26080575469473,
+            "maxY": 482.6847645921777
+          }
+        },
+        {
+          "id": "ground:1",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -0.5,
+            0.46435387901198205,
+            -1.5
+          ],
+          "screen": {
+            "minX": 276.8629150101483,
+            "maxX": 389.99999999999585,
+            "minY": 354.5404634935141,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:2",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.47096868225612737,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.5138358696299,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:3",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            1.5,
+            0.5486907326343673,
+            -1.5
+          ],
+          "screen": {
+            "minX": 163.7258300203006,
+            "maxX": 276.8629150101482,
+            "minY": 283.83783427589486,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:4",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -1.5,
+            0.5237113308970087,
+            -0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.13708498984346,
+            "minY": 350.659354284062,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:5",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -0.5,
+            0.47299788218049815,
+            -0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 321.38115587302985,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:6",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4586135139959068,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.7275669331646,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:7",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            1.5,
+            0.4522666778180857,
+            -0.5
+          ],
+          "screen": {
+            "minX": 220.29437251522438,
+            "maxX": 333.43145750507205,
+            "minY": 257.54844095452677,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:8",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -1.5,
+            0.4632812279653234,
+            0.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 322.0164829459073,
+            "maxY": 417.4965321165895
+          }
+        },
+        {
+          "id": "ground:9",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -0.5,
+            0.46512368074435495,
+            0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.1370849898434,
+            "minY": 289.3018972435119,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:10",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.46272304118181795,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.8647477220921,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:11",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 12,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            1.5,
+            0.5128718800784289,
+            0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.9999999999958,
+            "minY": 220.99163088194797,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:12",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -1.5,
+            0.4484493311643354,
+            1.5
+          ],
+          "screen": {
+            "minX": 503.1370849898434,
+            "maxX": 616.274169979691,
+            "minY": 290.3921558321385,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:13",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -0.5,
+            0.6306309325539552,
+            1.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 245.88602739551303,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:14",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            0.5,
+            0.5542107731993161,
+            1.5
+          ],
+          "screen": {
+            "minX": 389.9999999999958,
+            "maxX": 503.1370849898434,
+            "minY": 218.28867188177395,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:15",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            1.5,
+            0.4534488917558406,
+            1.5
+          ],
+          "screen": {
+            "minX": 333.431457505072,
+            "maxX": 446.5685424949196,
+            "minY": 192.28290897810666,
+            "maxY": 287.12006716541305
+          }
+        },
+        {
+          "id": "tree",
+          "entityName": "Tree",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.502565324306488,
+            0.4,
+            0.5461060106754303
+          ],
+          "max": [
+            0.4650653004646301,
+            2.625000023841858,
+            1.4163939952850342
+          ],
+          "screen": {
+            "minX": 394.58435485937423,
+            "maxX": 498.5527318163389,
+            "minY": 86.75307110945381,
+            "maxY": 292.14086329269225
+          }
+        },
+        {
+          "id": "pine",
+          "entityName": "Pine",
+          "role": "scenery",
+          "meshes": 1,
+          "min": [
+            0.43251117706298825,
+            0.3999999999999999,
+            0.45996532440185545
+          ],
+          "max": [
+            1.54395254611969,
+            3.163297200202942,
+            1.5712090253829956
+          ],
+          "screen": {
+            "minX": 328.68042278429607,
+            "maxX": 454.41447762156446,
+            "minY": 11.344873365596452,
+            "maxY": 264.47055065702995
+          }
+        },
+        {
+          "id": "path:0",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.96948556861713,
+            "maxY": 391.3423821986573
+          }
+        },
+        {
+          "id": "path:1",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.37536933082305,
+            "maxY": 358.7482659608632
+          }
+        },
+        {
+          "id": "path:2",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.7812530930289,
+            "maxY": 326.154149723069
+          }
+        }
+      ]
+    },
+    {
+      "file": "woodland-path-lateAutumn-overcast.png",
+      "stage": "lateAutumn",
+      "light": "overcast",
+      "date": "2026-11-21T11:00:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.9653861394474559,
+        "leafRetention": 0.2171130391602598,
+        "fallingLeafIntensity": 0.8898327114502471,
+        "settledLeafAmount": 0.729365381293502
+      },
+      "objects": [
+        {
+          "id": "WoodlandMushrooms",
+          "entityName": "WoodlandMushrooms",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3852750062942505,
+            0.4,
+            -1.405000001192093
+          ],
+          "max": [
+            -1.646800011396408,
+            0.7799999952316284,
+            -0.6550000011920929
+          ],
+          "screen": {
+            "minX": 403.6782741525117,
+            "maxX": 487.87913515402175,
+            "minY": 343.738728726607,
+            "maxY": 417.10069765249074
+          }
+        },
+        {
+          "id": "StoneMedium",
+          "entityName": "StoneMedium",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3604909362792967,
+            0.4,
+            -0.2916891402006149
+          ],
+          "max": [
+            -1.7207217555046082,
+            0.7216320897340776,
+            0.31613454699516297
+          ],
+          "screen": {
+            "minX": 470.8382922254519,
+            "maxX": 541.4128023936031,
+            "minY": 318.31127764892926,
+            "maxY": 380.00549918162284
+          }
+        },
+        {
+          "id": "AutumnLeafPileCrescent",
+          "entityName": "AutumnLeafPileCrescent",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -1.2714017033576965,
+            0.4,
+            -0.373699814081192
+          ],
+          "max": [
+            -0.625,
+            0.5224285736680031,
+            0.373699814081192
+          ],
+          "screen": {
+            "minX": 404.2156852461262,
+            "maxX": 483.06099509770127,
+            "minY": 293.7459028404551,
+            "maxY": 347.1806635676495
+          }
+        },
+        {
+          "id": "FallenLog",
+          "entityName": "FallenLog",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.4210000038146973,
+            0.4,
+            0.7007499933242798
+          ],
+          "max": [
+            -0.5789999961853027,
+            0.8320000112056732,
+            1.407802253961563
+          ],
+          "screen": {
+            "minX": 462.393591664447,
+            "maxX": 606.5897632236724,
+            "minY": 238.29947392356794,
+            "maxY": 349.63006228526615
+          }
+        },
+        {
+          "id": "ground:0",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -1.5,
+            0.4471294456381357,
+            -1.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 388.26080575469473,
+            "maxY": 482.6847645921777
+          }
+        },
+        {
+          "id": "ground:1",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -0.5,
+            0.46435387901198205,
+            -1.5
+          ],
+          "screen": {
+            "minX": 276.8629150101483,
+            "maxX": 389.99999999999585,
+            "minY": 354.5404634935141,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:2",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.47096868225612737,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.5138358696299,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:3",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            1.5,
+            0.5486907326343673,
+            -1.5
+          ],
+          "screen": {
+            "minX": 163.7258300203006,
+            "maxX": 276.8629150101482,
+            "minY": 283.83783427589486,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:4",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -1.5,
+            0.5237113308970087,
+            -0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.13708498984346,
+            "minY": 350.659354284062,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:5",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -0.5,
+            0.47299788218049815,
+            -0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 321.38115587302985,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:6",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4586135139959068,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.7275669331646,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:7",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            1.5,
+            0.4522666778180857,
+            -0.5
+          ],
+          "screen": {
+            "minX": 220.29437251522438,
+            "maxX": 333.43145750507205,
+            "minY": 257.54844095452677,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:8",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -1.5,
+            0.4632812279653234,
+            0.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 322.0164829459073,
+            "maxY": 417.4965321165895
+          }
+        },
+        {
+          "id": "ground:9",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -0.5,
+            0.46512368074435495,
+            0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.1370849898434,
+            "minY": 289.3018972435119,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:10",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.46272304118181795,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.8647477220921,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:11",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 12,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            1.5,
+            0.5128718800784289,
+            0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.9999999999958,
+            "minY": 220.99163088194797,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:12",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -1.5,
+            0.4484493311643354,
+            1.5
+          ],
+          "screen": {
+            "minX": 503.1370849898434,
+            "maxX": 616.274169979691,
+            "minY": 290.3921558321385,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:13",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -0.5,
+            0.6306309325539552,
+            1.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 245.88602739551303,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:14",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            0.5,
+            0.5542107731993161,
+            1.5
+          ],
+          "screen": {
+            "minX": 389.9999999999958,
+            "maxX": 503.1370849898434,
+            "minY": 218.28867188177395,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:15",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            1.5,
+            0.4534488917558406,
+            1.5
+          ],
+          "screen": {
+            "minX": 333.431457505072,
+            "maxX": 446.5685424949196,
+            "minY": 192.28290897810666,
+            "maxY": 287.12006716541305
+          }
+        },
+        {
+          "id": "tree",
+          "entityName": "Tree",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.502565324306488,
+            0.4,
+            0.5461060106754303
+          ],
+          "max": [
+            0.4650653004646301,
+            2.625000023841858,
+            1.4163939952850342
+          ],
+          "screen": {
+            "minX": 394.58435485937423,
+            "maxX": 498.5527318163389,
+            "minY": 86.75307110945381,
+            "maxY": 292.14086329269225
+          }
+        },
+        {
+          "id": "pine",
+          "entityName": "Pine",
+          "role": "scenery",
+          "meshes": 1,
+          "min": [
+            0.43251117706298825,
+            0.3999999999999999,
+            0.45996532440185545
+          ],
+          "max": [
+            1.54395254611969,
+            3.163297200202942,
+            1.5712090253829956
+          ],
+          "screen": {
+            "minX": 328.68042278429607,
+            "maxX": 454.41447762156446,
+            "minY": 11.344873365596452,
+            "maxY": 264.47055065702995
+          }
+        },
+        {
+          "id": "path:0",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.96948556861713,
+            "maxY": 391.3423821986573
+          }
+        },
+        {
+          "id": "path:1",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.37536933082305,
+            "maxY": 358.7482659608632
+          }
+        },
+        {
+          "id": "path:2",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.7812530930289,
+            "maxY": 326.154149723069
+          }
+        }
+      ]
+    },
+    {
+      "file": "woodland-path-lateAutumn-dusk.png",
+      "stage": "lateAutumn",
+      "light": "dusk",
+      "date": "2026-11-21T15:17:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.9664103005099179,
+        "leafRetention": 0.21436110119786556,
+        "fallingLeafIntensity": 0.8842092294106056,
+        "settledLeafAmount": 0.7317946648621781
+      },
+      "objects": [
+        {
+          "id": "WoodlandMushrooms",
+          "entityName": "WoodlandMushrooms",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3852750062942505,
+            0.4,
+            -1.405000001192093
+          ],
+          "max": [
+            -1.646800011396408,
+            0.7799999952316284,
+            -0.6550000011920929
+          ],
+          "screen": {
+            "minX": 403.6782741525117,
+            "maxX": 487.87913515402175,
+            "minY": 343.738728726607,
+            "maxY": 417.10069765249074
+          }
+        },
+        {
+          "id": "StoneMedium",
+          "entityName": "StoneMedium",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3604909362792967,
+            0.4,
+            -0.2916891402006149
+          ],
+          "max": [
+            -1.7207217555046082,
+            0.7216320897340776,
+            0.31613454699516297
+          ],
+          "screen": {
+            "minX": 470.8382922254519,
+            "maxX": 541.4128023936031,
+            "minY": 318.31127764892926,
+            "maxY": 380.00549918162284
+          }
+        },
+        {
+          "id": "AutumnLeafPileCrescent",
+          "entityName": "AutumnLeafPileCrescent",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -1.2714017033576965,
+            0.4,
+            -0.373699814081192
+          ],
+          "max": [
+            -0.625,
+            0.5224285736680031,
+            0.373699814081192
+          ],
+          "screen": {
+            "minX": 404.2156852461262,
+            "maxX": 483.06099509770127,
+            "minY": 293.7459028404551,
+            "maxY": 347.1806635676495
+          }
+        },
+        {
+          "id": "FallenLog",
+          "entityName": "FallenLog",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.4210000038146973,
+            0.4,
+            0.7007499933242798
+          ],
+          "max": [
+            -0.5789999961853027,
+            0.8320000112056732,
+            1.407802253961563
+          ],
+          "screen": {
+            "minX": 462.393591664447,
+            "maxX": 606.5897632236724,
+            "minY": 238.29947392356794,
+            "maxY": 349.63006228526615
+          }
+        },
+        {
+          "id": "ground:0",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -1.5,
+            0.4471294456381357,
+            -1.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 388.26080575469473,
+            "maxY": 482.6847645921777
+          }
+        },
+        {
+          "id": "ground:1",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -0.5,
+            0.46435387901198205,
+            -1.5
+          ],
+          "screen": {
+            "minX": 276.8629150101483,
+            "maxX": 389.99999999999585,
+            "minY": 354.5404634935141,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:2",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.47096868225612737,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.5138358696299,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:3",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            1.5,
+            0.5486907326343673,
+            -1.5
+          ],
+          "screen": {
+            "minX": 163.7258300203006,
+            "maxX": 276.8629150101482,
+            "minY": 283.83783427589486,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:4",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -1.5,
+            0.5237113308970087,
+            -0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.13708498984346,
+            "minY": 350.659354284062,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:5",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -0.5,
+            0.47299788218049815,
+            -0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 321.38115587302985,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:6",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4586135139959068,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.7275669331646,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:7",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            1.5,
+            0.4522666778180857,
+            -0.5
+          ],
+          "screen": {
+            "minX": 220.29437251522438,
+            "maxX": 333.43145750507205,
+            "minY": 257.54844095452677,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:8",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -1.5,
+            0.4632812279653234,
+            0.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 322.0164829459073,
+            "maxY": 417.4965321165895
+          }
+        },
+        {
+          "id": "ground:9",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -0.5,
+            0.46512368074435495,
+            0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.1370849898434,
+            "minY": 289.3018972435119,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:10",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.46272304118181795,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.8647477220921,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:11",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 12,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            1.5,
+            0.5128718800784289,
+            0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.9999999999958,
+            "minY": 220.99163088194797,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:12",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -1.5,
+            0.4484493311643354,
+            1.5
+          ],
+          "screen": {
+            "minX": 503.1370849898434,
+            "maxX": 616.274169979691,
+            "minY": 290.3921558321385,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:13",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -0.5,
+            0.6306309325539552,
+            1.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 245.88602739551303,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:14",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            0.5,
+            0.5542107731993161,
+            1.5
+          ],
+          "screen": {
+            "minX": 389.9999999999958,
+            "maxX": 503.1370849898434,
+            "minY": 218.28867188177395,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:15",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            1.5,
+            0.4534488917558406,
+            1.5
+          ],
+          "screen": {
+            "minX": 333.431457505072,
+            "maxX": 446.5685424949196,
+            "minY": 192.28290897810666,
+            "maxY": 287.12006716541305
+          }
+        },
+        {
+          "id": "tree",
+          "entityName": "Tree",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.502565324306488,
+            0.4,
+            0.5461060106754303
+          ],
+          "max": [
+            0.4650653004646301,
+            2.625000023841858,
+            1.4163939952850342
+          ],
+          "screen": {
+            "minX": 394.58435485937423,
+            "maxX": 498.5527318163389,
+            "minY": 86.75307110945381,
+            "maxY": 292.14086329269225
+          }
+        },
+        {
+          "id": "pine",
+          "entityName": "Pine",
+          "role": "scenery",
+          "meshes": 1,
+          "min": [
+            0.43251117706298825,
+            0.3999999999999999,
+            0.45996532440185545
+          ],
+          "max": [
+            1.54395254611969,
+            3.163297200202942,
+            1.5712090253829956
+          ],
+          "screen": {
+            "minX": 328.68042278429607,
+            "maxX": 454.41447762156446,
+            "minY": 11.344873365596452,
+            "maxY": 264.47055065702995
+          }
+        },
+        {
+          "id": "path:0",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.96948556861713,
+            "maxY": 391.3423821986573
+          }
+        },
+        {
+          "id": "path:1",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.37536933082305,
+            "maxY": 358.7482659608632
+          }
+        },
+        {
+          "id": "path:2",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.7812530930289,
+            "maxY": 326.154149723069
+          }
+        }
+      ]
+    },
+    {
+      "file": "woodland-path-lateAutumn-night.png",
+      "stage": "lateAutumn",
+      "light": "night",
+      "date": "2026-11-21T21:30:00.000Z",
+      "autumn": {
+        "foliageColorProgress": 0.9678717111131429,
+        "leafRetention": 0.210404664117673,
+        "fallingLeafIntensity": 0.8758507619317566,
+        "settledLeafAmount": 0.7352866919581618
+      },
+      "objects": [
+        {
+          "id": "WoodlandMushrooms",
+          "entityName": "WoodlandMushrooms",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3852750062942505,
+            0.4,
+            -1.405000001192093
+          ],
+          "max": [
+            -1.646800011396408,
+            0.7799999952316284,
+            -0.6550000011920929
+          ],
+          "screen": {
+            "minX": 403.6782741525117,
+            "maxX": 487.87913515402175,
+            "minY": 343.738728726607,
+            "maxY": 417.10069765249074
+          }
+        },
+        {
+          "id": "StoneMedium",
+          "entityName": "StoneMedium",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.3604909362792967,
+            0.4,
+            -0.2916891402006149
+          ],
+          "max": [
+            -1.7207217555046082,
+            0.7216320897340776,
+            0.31613454699516297
+          ],
+          "screen": {
+            "minX": 470.8382922254519,
+            "maxX": 541.4128023936031,
+            "minY": 318.31127764892926,
+            "maxY": 380.00549918162284
+          }
+        },
+        {
+          "id": "AutumnLeafPileCrescent",
+          "entityName": "AutumnLeafPileCrescent",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -1.2714017033576965,
+            0.4,
+            -0.373699814081192
+          ],
+          "max": [
+            -0.625,
+            0.5224285736680031,
+            0.373699814081192
+          ],
+          "screen": {
+            "minX": 404.2156852461262,
+            "maxX": 483.06099509770127,
+            "minY": 293.7459028404551,
+            "maxY": 347.1806635676495
+          }
+        },
+        {
+          "id": "FallenLog",
+          "entityName": "FallenLog",
+          "role": "included",
+          "meshes": 1,
+          "min": [
+            -2.4210000038146973,
+            0.4,
+            0.7007499933242798
+          ],
+          "max": [
+            -0.5789999961853027,
+            0.8320000112056732,
+            1.407802253961563
+          ],
+          "screen": {
+            "minX": 462.393591664447,
+            "maxX": 606.5897632236724,
+            "minY": 238.29947392356794,
+            "maxY": 349.63006228526615
+          }
+        },
+        {
+          "id": "ground:0",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -1.5,
+            0.4471294456381357,
+            -1.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 388.26080575469473,
+            "maxY": 482.6847645921777
+          }
+        },
+        {
+          "id": "ground:1",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            -0.5,
+            0.46435387901198205,
+            -1.5
+          ],
+          "screen": {
+            "minX": 276.8629150101483,
+            "maxX": 389.99999999999585,
+            "minY": 354.5404634935141,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:2",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.47096868225612737,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.5138358696299,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:3",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -2.5
+          ],
+          "max": [
+            1.5,
+            0.5486907326343673,
+            -1.5
+          ],
+          "screen": {
+            "minX": 163.7258300203006,
+            "maxX": 276.8629150101482,
+            "minY": 283.83783427589486,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:4",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -1.5,
+            0.5237113308970087,
+            -0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.13708498984346,
+            "minY": 350.659354284062,
+            "maxY": 450.0906483543837
+          }
+        },
+        {
+          "id": "ground:5",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            -0.5,
+            0.47299788218049815,
+            -0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 321.38115587302985,
+            "maxY": 417.49653211658955
+          }
+        },
+        {
+          "id": "ground:6",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4586135139959068,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.7275669331646,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:7",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 6,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -1.5
+          ],
+          "max": [
+            1.5,
+            0.4522666778180857,
+            -0.5
+          ],
+          "screen": {
+            "minX": 220.29437251522438,
+            "maxX": 333.43145750507205,
+            "minY": 257.54844095452677,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:8",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -1.5,
+            0.4632812279653234,
+            0.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 322.0164829459073,
+            "maxY": 417.4965321165895
+          }
+        },
+        {
+          "id": "ground:9",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            -0.5,
+            0.46512368074435495,
+            0.5
+          ],
+          "screen": {
+            "minX": 389.99999999999585,
+            "maxX": 503.1370849898434,
+            "minY": 289.3018972435119,
+            "maxY": 384.90241587879547
+          }
+        },
+        {
+          "id": "ground:10",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.46272304118181795,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.8647477220921,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:11",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 12,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            -0.5
+          ],
+          "max": [
+            1.5,
+            0.5128718800784289,
+            0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.9999999999958,
+            "minY": 220.99163088194797,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:12",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -2.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -1.5,
+            0.4484493311643354,
+            1.5
+          ],
+          "screen": {
+            "minX": 503.1370849898434,
+            "maxX": 616.274169979691,
+            "minY": 290.3921558321385,
+            "maxY": 384.9024158787954
+          }
+        },
+        {
+          "id": "ground:13",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -1.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            -0.5,
+            0.6306309325539552,
+            1.5
+          ],
+          "screen": {
+            "minX": 446.5685424949196,
+            "maxX": 559.7056274847672,
+            "minY": 245.88602739551303,
+            "maxY": 352.3082996410013
+          }
+        },
+        {
+          "id": "ground:14",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 4,
+          "min": [
+            -0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            0.5,
+            0.5542107731993161,
+            1.5
+          ],
+          "screen": {
+            "minX": 389.9999999999958,
+            "maxX": 503.1370849898434,
+            "minY": 218.28867188177395,
+            "maxY": 319.7141834032072
+          }
+        },
+        {
+          "id": "ground:15",
+          "entityName": "Block_Grass",
+          "role": "scenery",
+          "meshes": 2,
+          "min": [
+            0.5,
+            -2.980232227667301e-9,
+            0.5
+          ],
+          "max": [
+            1.5,
+            0.4534488917558406,
+            1.5
+          ],
+          "screen": {
+            "minX": 333.431457505072,
+            "maxX": 446.5685424949196,
+            "minY": 192.28290897810666,
+            "maxY": 287.12006716541305
+          }
+        },
+        {
+          "id": "tree",
+          "entityName": "Tree",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.502565324306488,
+            0.4,
+            0.5461060106754303
+          ],
+          "max": [
+            0.4650653004646301,
+            2.625000023841858,
+            1.4163939952850342
+          ],
+          "screen": {
+            "minX": 394.58435485937423,
+            "maxX": 498.5527318163389,
+            "minY": 86.75307110945381,
+            "maxY": 292.14086329269225
+          }
+        },
+        {
+          "id": "pine",
+          "entityName": "Pine",
+          "role": "scenery",
+          "meshes": 1,
+          "min": [
+            0.43251117706298825,
+            0.3999999999999999,
+            0.45996532440185545
+          ],
+          "max": [
+            1.54395254611969,
+            3.163297200202942,
+            1.5712090253829956
+          ],
+          "screen": {
+            "minX": 328.68042278429607,
+            "maxX": 454.41447762156446,
+            "minY": 11.344873365596452,
+            "maxY": 264.47055065702995
+          }
+        },
+        {
+          "id": "path:0",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -2.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -1.5
+          ],
+          "screen": {
+            "minX": 220.29437251522444,
+            "maxX": 333.43145750507205,
+            "minY": 321.96948556861713,
+            "maxY": 391.3423821986573
+          }
+        },
+        {
+          "id": "path:1",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -1.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            -0.5
+          ],
+          "screen": {
+            "minX": 276.8629150101482,
+            "maxX": 389.99999999999585,
+            "minY": 289.37536933082305,
+            "maxY": 358.7482659608632
+          }
+        },
+        {
+          "id": "path:2",
+          "entityName": "StoneWalkway",
+          "role": "scenery",
+          "meshes": 3,
+          "min": [
+            -0.5,
+            0.4,
+            -0.5
+          ],
+          "max": [
+            0.5,
+            0.4640000030398369,
+            0.5
+          ],
+          "screen": {
+            "minX": 333.43145750507205,
+            "maxX": 446.5685424949196,
+            "minY": 256.7812530930289,
+            "maxY": 326.154149723069
+          }
+        }
+      ]
+    }
+  ],
+  "errors": []
+}
