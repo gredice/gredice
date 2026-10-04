@@ -550,7 +550,8 @@ export function InventoryHud({
 } = {}) {
     const { data: inventory } = useInventory();
     const { data: operations } = useOperations();
-    const { data: blockData } = useBlockData();
+    const blockCatalogue = useBlockData();
+    const { data: blockData } = blockCatalogue;
     const { track } = useGameAnalytics();
     const [isOpen, setIsOpen] = useBackpackOpenParam();
     const packs = useGardenPackInventory(isOpen);
@@ -775,6 +776,7 @@ export function InventoryHud({
                                     <Typography>Paketi</Typography>
                                     <span className={tabCountClassName}>
                                         {packs.purchases.length}
+                                        {packs.hasNextPage ? '+' : ''}
                                     </span>
                                 </Row>
                             </TabsTrigger>
@@ -785,6 +787,7 @@ export function InventoryHud({
                             <GardenPackInventory
                                 inventory={packs}
                                 blockData={blockData}
+                                catalogue={blockCatalogue}
                                 placement={packPlacement}
                                 previewLayouts={previewLayouts}
                                 onPlaced={() => handleOpenChange(false)}

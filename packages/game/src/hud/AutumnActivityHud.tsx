@@ -21,10 +21,7 @@ export function AutumnActivityHud() {
     const pending = action.isPending || Boolean(action.recovery?.uncertain);
     if (
         !activity.context.eligible ||
-        (activity.data &&
-            !campaign &&
-            !activity.data.enabled &&
-            !action.recovery?.command)
+        (activity.data && !campaign && !action.recovery?.command)
     )
         return null;
     return (

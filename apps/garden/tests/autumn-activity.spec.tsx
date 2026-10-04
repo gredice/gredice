@@ -451,6 +451,33 @@ test('uncertain action stays private across selected-account changes and can rec
     expect(commands[1]).toEqual(commands[0]);
 });
 
+test('enabled rollout without a configured campaign hides the album', async ({
+    mount,
+    page,
+}) => {
+    await page.route('**/api/accounts/current/autumn-activity', (route) =>
+        route.fulfill({
+            json: {
+                ...createAutumnActivityFixture(),
+                enabled: true,
+                campaign: null,
+                progress: null,
+                eventStatus: null,
+                actionAvailable: false,
+                readiness: 'not-configured',
+            },
+        }),
+    );
+    const response = page.waitForResponse(
+        '**/api/accounts/current/autumn-activity',
+    );
+    await mount(<AutumnActivityStory />);
+    await response;
+    await expect(
+        page.getByRole('button', { name: 'Jesenski album', exact: true }),
+    ).toHaveCount(0);
+});
+
 test('disabled rollout, owned inventory, anonymous and sandbox contexts issue no activity reads', async ({
     mount,
     page,

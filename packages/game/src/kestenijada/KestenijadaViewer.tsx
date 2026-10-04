@@ -92,7 +92,12 @@ export function KestenijadaViewer({
         const controller = new AbortController();
         setDirectoryState('loading');
         directoriesClient()
-            .GET('/entities/block', { signal: controller.signal })
+            .GET('/entities/block', {
+                signal: AbortSignal.any([
+                    controller.signal,
+                    AbortSignal.timeout(15_000),
+                ]),
+            })
             .then((response) => {
                 if (controller.signal.aborted) return;
                 if (response.error || !Array.isArray(response.data))

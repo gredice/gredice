@@ -94,6 +94,7 @@ export const config: PlaywrightTestConfig = {
         },
         {
             name: 'chromium-webgl',
+            grepInvert: /@profile/,
             testMatch: [
                 squirrelCachingComponentTestPattern,
                 webglComponentTestPattern,
