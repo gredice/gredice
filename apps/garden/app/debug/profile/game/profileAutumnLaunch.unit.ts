@@ -57,6 +57,18 @@ test('autumn launch density repeats deterministic exact contents without overlap
     )[]) {
         const a = createAutumnLaunchFixture(size);
         assert.deepEqual(a, createAutumnLaunchFixture(size));
+        const base = createAutumnLaunchFixture('small').stacks;
+        assert.ok(
+            base.every((s) =>
+                a.stacks.some(
+                    (n) =>
+                        n.x === s.x &&
+                        n.y === s.y &&
+                        JSON.stringify(n.blocks) === JSON.stringify(s.blocks),
+                ),
+            ),
+            'A populated central repeat must be shared across all density cases',
+        );
         const blocks = a.stacks.flatMap((stack) => stack.blocks);
         assert.equal(new Set(blocks.map((b) => b.id)).size, blocks.length);
         assert.equal(a.stats.blockCount, blocks.length);

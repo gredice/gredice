@@ -42,8 +42,19 @@ export function createAutumnLaunchFixture(size: 'small' | 'medium' | 'dense') {
     const otherNames = autumnLaunchFirstWaveNames.filter(
         (name) => !pilotNames.has(name),
     );
-    const columns = Math.ceil(Math.sqrt(repetitions));
-    const rows = Math.ceil(repetitions / columns);
+    // Always keep one full authored repeat at the standard camera origin.
+    // Three repeats must not leave the camera in an empty fourth corner.
+    const repeatCells = [
+        [0, 0],
+        [-1, 0],
+        [1, 0],
+        [0, -1],
+        [0, 1],
+        [-1, -1],
+        [1, -1],
+        [-1, 1],
+        [1, 1],
+    ];
     const stacks = new Map<
         string,
         {
@@ -75,8 +86,10 @@ export function createAutumnLaunchFixture(size: 'small' | 'medium' | 'dense') {
         names[name] = (names[name] ?? 0) + 1;
     };
     for (let repeat = 0; repeat < repetitions; repeat++) {
-        const offsetX = (repeat % columns) * 16 - columns * 8;
-        const offsetY = Math.floor(repeat / columns) * 20 - rows * 10;
+        const cell = repeatCells[repeat];
+        if (!cell) throw new Error('Unbounded launch fixture repeat');
+        const offsetX = cell[0] * 16 - 6;
+        const offsetY = cell[1] * 20 - 8;
         for (const [index, arrangement] of autumnArrangements.entries()) {
             for (const placement of arrangement.placements) {
                 append(

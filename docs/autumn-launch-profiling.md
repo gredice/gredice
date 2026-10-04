@@ -28,7 +28,12 @@ The 18-case matrix covers small/medium/dense at low, constrained auto and high;
 early clear sun, mid-autumn cloud/rain, late wind, winter snow, two night cases,
 and constrained dense reduced motion. Constrained auto uses synthetic four-core,
 4-GB navigator metrics and a touch/mobile viewport; it is not a real phone.
-Each scenario pins the Europe/Zagreb browser timezone. Sound, avatar, HUD and
+A populated central repeat is shared by all density cases. The ordinary normal
+camera and frustum remain active, so mounted population is distinct from visible
+geometry; the screenshots do not claim every identity is simultaneously in frame.
+A launch-only lower scene-geometry witness rejects sky-only views even when the
+generic nonblank image/upper performance budgets pass. Each scenario pins the
+Europe/Zagreb browser timezone. Sound, avatar, HUD and
 controls stay off to isolate the scene workload. Existing automatic quality,
 shadows, DPR, particles, foliage and scheduler policies remain active.
 

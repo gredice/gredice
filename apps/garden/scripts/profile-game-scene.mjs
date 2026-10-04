@@ -9645,6 +9645,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         });
         const sample = closeup.cold.steady.sample;
         const request = getScenarioRequest(scenario.path);
+        if (
+            scenario.autumnLaunchProfile === true &&
+            sample.trianglesPerRenderedFrame < 5000
+        )
+            throw new Error(
+                'Launch fixture contains no meaningful visible scene geometry at the standard camera; reject sky-only measurements.',
+            );
         const memory = await collectScenarioMemoryEvidence(cdp);
         await context.close();
 
