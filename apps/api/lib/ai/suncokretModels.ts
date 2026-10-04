@@ -64,6 +64,7 @@ const MODEL_REGISTRY_USD: SuncokretModelUsdConfig[] = [
 
 const USD_PER_TOKEN_TO_USD_PER_MILLION = 1_000_000;
 const EUR_TO_MICRO_EUR = 1_000_000;
+export const SUNCOKRET_GATEWAY_COST_LOOKUP_TIMEOUT_MS = 90_000;
 
 type GatewayModelMetadata = Awaited<
     ReturnType<typeof gateway.getAvailableModels>
@@ -285,7 +286,7 @@ export async function getSuncokretGatewayBilledCostMicroEur(
         }).getGenerationInfo({ id }),
     wait: (ms: number, signal: AbortSignal) => Promise<void> = (ms, signal) =>
         delay(ms, undefined, { signal }),
-    timeoutMs = 90_000,
+    timeoutMs = SUNCOKRET_GATEWAY_COST_LOOKUP_TIMEOUT_MS,
 ) {
     const generationIds = suncokretGatewayGenerationIds(steps);
     if (generationIds.length === 0) {

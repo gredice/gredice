@@ -13,9 +13,12 @@ Each unique Gateway generation is looked up once initially. Only a 404
 (seven attempts, with the final poll after 63 seconds of backoff). Successful
 lookups are retained while other tool steps retry. A shared 90-second deadline
 bounds lookups and backoff, and aborts pending network requests. The API route's
-existing 300-second maximum duration is unchanged. Polling remains outside the
-chat stream; the reservation stays counted in both quotas throughout the longer
-window.
+existing 300-second maximum duration is unchanged. Vercel's `getDeadline()` caps
+polling to the invocation's remaining runtime minus five seconds for ledger
+persistence. If only that headroom remains, settlement skips polling and
+immediately persists the estimate. Outside Vercel, where no invocation deadline
+is available, the 90-second bound applies. Polling remains outside the chat
+stream; the reservation stays counted in both quotas throughout the longer window.
 
 The reservation remains counted until settlement finalizes that request's
 ledger row. When all generation costs are available, their billed totals are
