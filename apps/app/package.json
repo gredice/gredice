@@ -62,7 +62,7 @@
         "@gredice/ui": "workspace:*",
         "@mdxeditor/editor": "4.2.5",
         "@playwright/experimental-ct-react": "1.62.1",
-        "@playwright/test": "1.62.1",
+        "@playwright/test": "1.63.0",
         "@tailwindcss/postcss": "4.3.3",
         "@tailwindcss/typography": "0.5.20",
         "@tanstack/react-query": "5.103.2",

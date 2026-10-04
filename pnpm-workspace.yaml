@@ -40,9 +40,9 @@ overrides:
   'react': '19.2.8'
   'react-dom': '19.2.8'
   # @playwright/experimental-ct-react has no 1.63 release; keep auto-installed Playwright peers on the same version.
-  '@playwright/test': '1.62.1'
-  'playwright': '1.62.1'
-  'playwright-core': '1.62.1'
+  '@playwright/test': '1.63.0'
+  'playwright': '1.63.0'
+  'playwright-core': '1.63.0'
   'react-docgen-typescript@2.4.0>typescript': '-'
   'tsconfck@3.1.6>typescript': '-'
 patchedDependencies:
