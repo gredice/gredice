@@ -1,3 +1,5 @@
+import type { RaisedBedField } from './types';
+
 export type ScheduleTaskVersionChange = {
     key: string;
     previous: number;
@@ -10,6 +12,26 @@ export function scheduleTaskVersionChange(
     current: number,
 ) {
     return { scheduleTaskVersions: [{ key, previous, current }] };
+}
+
+export function fieldScheduleTaskVersionChange(
+    field: Pick<RaisedBedField, 'id' | 'plantCycles'>,
+    plantCycleEventId: number,
+    previous: number,
+) {
+    // A terminal lifecycle update closes the cycle. Its committed version must
+    // still be read from that exact cycle rather than only an active one.
+    const cycle = field.plantCycles?.find(
+        (item) => item.plantPlaceEventId === plantCycleEventId,
+    );
+    if (!cycle?.endedEventId) {
+        throw new Error('Trenutna verzija sijanja nije ispravna.');
+    }
+    return scheduleTaskVersionChange(
+        `field:${field.id}`,
+        previous,
+        cycle.endedEventId,
+    );
 }
 
 export function resolveScheduleFormVersion(

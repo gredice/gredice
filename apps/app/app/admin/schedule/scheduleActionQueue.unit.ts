@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     createScheduleActionQueue,
+    fieldScheduleTaskVersionChange,
     resolveScheduleFormVersion,
     scheduleTaskVersionChange,
     settleScheduleActions,
@@ -10,6 +11,60 @@ import {
 function deferred() {
     return Promise.withResolvers<void>();
 }
+
+test('terminal planting updates hand off the closed cycle version', () => {
+    assert.deepEqual(
+        fieldScheduleTaskVersionChange(
+            {
+                id: 1,
+                plantCycles: [
+                    { active: false, plantPlaceEventId: 10, endedEventId: 12 },
+                ],
+            },
+            10,
+            11,
+        ),
+        scheduleTaskVersionChange('field:1', 11, 12),
+    );
+});
+
+test('field version handoff targets the submitted cycle even when another exists', () => {
+    assert.deepEqual(
+        fieldScheduleTaskVersionChange(
+            {
+                id: 1,
+                plantCycles: [
+                    { active: false, plantPlaceEventId: 10, endedEventId: 12 },
+                    { active: true, plantPlaceEventId: 20, endedEventId: 21 },
+                ],
+            },
+            10,
+            11,
+        ),
+        scheduleTaskVersionChange('field:1', 11, 12),
+    );
+});
+
+test('field version handoff refuses a missing task cycle', () => {
+    assert.throws(
+        () =>
+            fieldScheduleTaskVersionChange(
+                {
+                    id: 1,
+                    plantCycles: [
+                        {
+                            active: true,
+                            plantPlaceEventId: 20,
+                            endedEventId: 21,
+                        },
+                    ],
+                },
+                10,
+                11,
+            ),
+        /Trenutna verzija/,
+    );
+});
 
 test('overlapping single and bulk requests preserve submission order', async () => {
     const queue = createScheduleActionQueue();

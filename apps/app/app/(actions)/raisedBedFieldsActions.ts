@@ -25,7 +25,10 @@ import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
-import { scheduleTaskVersionChange } from '../admin/schedule/scheduleActionQueue';
+import {
+    fieldScheduleTaskVersionChange,
+    scheduleTaskVersionChange,
+} from '../admin/schedule/scheduleActionQueue';
 import {
     activePlantCycleEventId,
     activePlantCycleVersionEventId,
@@ -68,17 +71,16 @@ async function revalidateRaisedBedPaths(raisedBed: {
 // Capture the version while the task lock is held, before another editor can write.
 async function fieldVersionChange(
     raisedBedId: number,
-    positionIndex: number,
+    fieldId: number,
+    plantCycleEventId: number,
     previous: number,
     transaction: Parameters<typeof getRaisedBedFieldsWithEvents>[1],
 ) {
     const field = (
         await getRaisedBedFieldsWithEvents(raisedBedId, transaction)
-    ).find((item) => item.positionIndex === positionIndex && item.active);
+    ).find((item) => item.id === fieldId);
     if (!field) throw new Error('Polje za sijanje nije pronađeno.');
-    const current = activePlantCycleVersionEventId(field);
-    if (!current) throw new Error('Trenutna verzija sijanja nije ispravna.');
-    return scheduleTaskVersionChange(`field:${field.id}`, previous, current);
+    return fieldScheduleTaskVersionChange(field, plantCycleEventId, previous);
 }
 
 async function notifyCompletedPlanting({
@@ -265,7 +267,8 @@ async function applyRaisedBedFieldPlantUpdate({
             return {
                 ...(await fieldVersionChange(
                     raisedBed.id,
-                    positionIndex,
+                    existingField.id,
+                    expectedPlantCycleEventId,
                     expectedPlantCycleVersionEventId,
                     transaction,
                 )),
@@ -687,7 +690,8 @@ export async function acceptRaisedBedFieldAction(
             }
             return fieldVersionChange(
                 raisedBedId,
-                positionIndex,
+                field.id,
+                expectedPlantCycleEventId,
                 expectedPlantCycleVersionEventId,
                 transaction,
             );
@@ -784,7 +788,8 @@ export async function rescheduleRaisedBedFieldAction(formData: FormData) {
             }
             return fieldVersionChange(
                 raisedBedId,
-                positionIndex,
+                field.id,
+                expectedPlantCycleEventId,
                 expectedPlantCycleVersionEventId,
                 transaction,
             );
@@ -862,7 +867,8 @@ export async function setRaisedBedFieldSowingLocationAction(
             );
             return fieldVersionChange(
                 raisedBedId,
-                positionIndex,
+                field.id,
+                expectedPlantCycleEventId,
                 expectedPlantCycleVersionEventId,
                 transaction,
             );
