@@ -14,7 +14,7 @@ export const gardenPackPlacementBodySchema = z.strictObject({
         x: z.number().int().min(-2_147_483_648).max(2_147_483_647),
         y: z.number().int().min(-2_147_483_648).max(2_147_483_647),
     }),
-    expectedExistingBlocks: z.array(z.string().min(1).max(128)).max(100),
+    expectedExistingBlocks: z.array(z.string().min(1).max(128)).max(128),
     variant: gardenPackFixedVariantSchema,
 });
 export const gardenPackPlacementIdentitySchema = z.strictObject({
