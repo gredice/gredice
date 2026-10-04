@@ -1010,16 +1010,35 @@ async function completeOperationForActor(
         throw new Error('Operation must be accepted before completion');
     }
 
-    const result = await submitOperationTaskCompletion({
-        actor,
-        imageUrls,
-        notes: completionNotes,
-        operationId,
-        expectedEntityId,
-        expectedTaskVersionEventId: assertTaskVersionEventId(
-            expectedTaskVersionEventId,
-        ),
-    });
+    const { result, taskVersionEventId } =
+        await withOperationScheduleTaskTransaction(
+            operationId,
+            async (transaction) => {
+                const result = await submitOperationTaskCompletion(
+                    {
+                        actor,
+                        imageUrls,
+                        notes: completionNotes,
+                        operationId,
+                        expectedEntityId,
+                        expectedTaskVersionEventId: assertTaskVersionEventId(
+                            expectedTaskVersionEventId,
+                        ),
+                    },
+                    transaction,
+                );
+                // Admin completion also writes verification. Return the final task
+                // version while holding the same lock, rather than the completion ID.
+                const completedOperation = await getOperationById(
+                    operationId,
+                    transaction,
+                );
+                return {
+                    result,
+                    taskVersionEventId: completedOperation.taskVersionEventId,
+                };
+            },
+        );
     if (result.status === 'completed') {
         const verifiedOperation = await getOperationById(operationId);
         await notifyVerifiedOperationCompletion(verifiedOperation, {
@@ -1031,7 +1050,7 @@ async function completeOperationForActor(
     return scheduleTaskVersionChange(
         `operation:${operationId}`,
         expectedTaskVersionEventId,
-        result.eventId,
+        taskVersionEventId,
     );
 }
 

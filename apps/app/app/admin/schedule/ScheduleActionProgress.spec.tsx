@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import { ScheduleActionQueueHarness } from '../../../playwright/ScheduleActionQueueHarness';
 
-test('shows queued and running changes, serializes a target and hands off its version', async ({
+test('shows queued and running changes and hands off the final version after a multi-event completion', async ({
     mount,
     page,
 }) => {
@@ -12,7 +12,12 @@ test('shows queued and running changes, serializes a target and hands off its ve
         const body = route.request().postDataJSON();
         started.push(body);
         if (body.id === 1 && body.status === 'completed') await first.promise;
-        await route.fulfill({ json: { success: true } });
+        await route.fulfill({
+            json: {
+                success: true,
+                taskVersionEventId: body.expectedVersion + 2,
+            },
+        });
     });
     const component = await mount(<ScheduleActionQueueHarness />);
     await component.getByRole('button', { name: '1: completed' }).click();
@@ -28,7 +33,7 @@ test('shows queued and running changes, serializes a target and hands off its ve
     expect(started[2]).toEqual({
         id: 1,
         status: 'canceled',
-        expectedVersion: 11,
+        expectedVersion: 12,
     });
     await expect(page.getByRole('status')).toHaveText(
         'Sve promjene rasporeda su obrađene.',

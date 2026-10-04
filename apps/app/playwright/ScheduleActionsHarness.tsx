@@ -45,7 +45,8 @@ export function ScheduleActionsHarness() {
                                                   ...scheduleTaskVersionChange(
                                                       `operation:${id}`,
                                                       expectedVersion,
-                                                      expectedVersion + 1,
+                                                      result.taskVersionEventId ??
+                                                          expectedVersion + 1,
                                                   ),
                                               }
                                             : result;
