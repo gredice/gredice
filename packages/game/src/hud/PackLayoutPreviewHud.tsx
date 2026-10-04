@@ -104,7 +104,12 @@ export function PackLayoutPreviewHud() {
             update(movePackLayout(selection, x, y));
         }
     };
-    if (!selection && !flow.session?.command && !flow.session?.receipt)
+    if (
+        !selection &&
+        !flow.session?.command &&
+        !flow.session?.receipt &&
+        !flow.session?.error
+    )
         return null;
     if (!flow.context.eligible) return null;
     return (
@@ -269,6 +274,10 @@ export function PackLayoutPreviewHud() {
                         Zatvori
                     </Button>
                 </>
+            ) : !selection && !flow.session?.command ? (
+                <Button className="w-full" onClick={() => flow.dismiss()}>
+                    Zatvori
+                </Button>
             ) : (
                 <Button
                     className="w-full"
