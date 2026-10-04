@@ -1,0 +1,71 @@
+{
+  "url": "https://api.gredice.com/api/directories/entities/block",
+  "observedAt": "2026-10-03T23:10:28Z",
+  "httpStatus": 200,
+  "rowCount": 144,
+  "byteLength": 138280,
+  "sha256": "8c4fff1ebe0a5ac9f90f9ba52436d263c70b16f9cb5a85f1cc018b4674c88cde",
+  "headers": {
+    "Age": "0",
+    "Cache-Control": "public, max-age=3600",
+    "Content-Type": "application/json",
+    "Date": "Sat, 03 Oct 2026 23:10:28 GMT",
+    "X-Vercel-Cache": "MISS",
+    "X-Vercel-Id": "fra1::fra1::7k2lt-1791069028701-4149916a0f3a"
+  },
+  "limits": "Public/CDN readback only; not direct database or asset/runtime acceptance.",
+  "includedMatches": [
+    {
+      "modelName": "HarvestPumpkinGroupOrange",
+      "ids": []
+    },
+    {
+      "modelName": "HarvestPumpkinSquatCream",
+      "ids": []
+    },
+    {
+      "modelName": "HarvestCrateOrchard",
+      "ids": []
+    },
+    {
+      "modelName": "GardenScarecrow",
+      "ids": []
+    },
+    {
+      "modelName": "WoodlandMushrooms",
+      "ids": []
+    },
+    {
+      "modelName": "StoneMedium",
+      "ids": [
+        140
+      ]
+    },
+    {
+      "modelName": "AutumnLeafPileCrescent",
+      "ids": []
+    },
+    {
+      "modelName": "FallenLog",
+      "ids": []
+    },
+    {
+      "modelName": "AutumnBlanketBench",
+      "ids": []
+    },
+    {
+      "modelName": "GardenTeaTable",
+      "ids": []
+    },
+    {
+      "modelName": "EnamelGardenLamp",
+      "ids": [
+        758
+      ]
+    },
+    {
+      "modelName": "AutumnAsterPotMauve",
+      "ids": []
+    }
+  ]
+}

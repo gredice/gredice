@@ -1,3 +1,4 @@
+import { gardenPackGroupMemberOperationId } from './gardenPackGroupPlacementRepo';
 import { isGardenPackLifecycleStorageReady } from './gardenPackLifecycleRepo';
 import 'server-only';
 import { randomUUID } from 'node:crypto';
@@ -5,6 +6,12 @@ import { isDeepStrictEqual } from 'node:util';
 import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { getGardenPackUnits } from '../gardenPackContract';
+import {
+    type GardenPackGroupPlacementCommand,
+    type GardenPackGroupPlacementResponse,
+    gardenPackGroupPlacementCommandSchema,
+    gardenPackGroupPlacementResponseSchema,
+} from '../gardenPackGroupPlacementContract';
 import {
     type GardenPackPlacementCommand,
     type GardenPackPlacementResponse,
@@ -147,8 +154,40 @@ export async function recordGardenPackPlacement(
     command: GardenPackPlacementCommand,
     response: GardenPackPlacementResponse,
     tx: GardenPackTransaction,
+    groupReceipt?: {
+        command: GardenPackGroupPlacementCommand;
+        response: GardenPackGroupPlacementResponse;
+        root: boolean;
+    },
 ) {
     gardenPackPlacementResponseSchema.parse(response);
+    if (groupReceipt) {
+        gardenPackGroupPlacementCommandSchema.parse(groupReceipt.command);
+        gardenPackGroupPlacementResponseSchema.parse(groupReceipt.response);
+        const index = groupReceipt.response.placements.findIndex(
+            (p) =>
+                p.lineId === command.lineId &&
+                p.unitOrdinal === command.unitOrdinal,
+        );
+        const member = groupReceipt.response.placements[index];
+        if (
+            !member ||
+            groupReceipt.root !== (index === 0) ||
+            command.accountId !== groupReceipt.command.accountId ||
+            command.purchaseId !== groupReceipt.command.purchaseId ||
+            command.gardenId !== groupReceipt.command.gardenId ||
+            command.operationId !==
+                gardenPackGroupMemberOperationId(groupReceipt.command, index) ||
+            !isDeepStrictEqual(response, {
+                blockId: member.blockId,
+                variant: member.variant,
+                position: member.position,
+            })
+        )
+            throw new GardenPackConflictError(
+                'Group member receipt does not match physical placement',
+            );
+    }
     await tx.insert(gardenPackUnitLocations).values({
         purchaseId: command.purchaseId,
         lineId: command.lineId,
@@ -167,8 +206,18 @@ export async function recordGardenPackPlacement(
         creditedSunflowers: 0,
         gardenId: command.gardenId,
         blockId: response.blockId,
-        placementPayload: gardenPackPlacementPayload(command),
-        placementResponse: response,
+        placementPayload: groupReceipt
+            ? {
+                  kind: groupReceipt.root
+                      ? 'group-placement:v1'
+                      : 'group-member:v1',
+                  command: groupReceipt.command,
+              }
+            : gardenPackPlacementPayload(command),
+        // Keep scalar physical provenance fields for deferred lifecycle guards.
+        placementResponse: groupReceipt
+            ? { ...response, group: groupReceipt.response }
+            : response,
     });
     await tx
         .update(gardenPackUnits)
