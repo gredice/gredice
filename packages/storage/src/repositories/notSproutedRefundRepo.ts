@@ -121,6 +121,10 @@ export async function settleNotSproutedPlanting(
             : event.createdAt;
     const eligible = isNotSproutedRefundEligible(target.sowedAt, changedAt);
     const settlementKey = `not-sprouted:${target.key}`;
+    // Plantings retain this identity when moved to another physical field.
+    await db.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${settlementKey}));`,
+    );
     const previous = await db.query.events.findFirst({
         where: and(
             eq(events.type, knownEventTypes.raisedBedFields.notSproutedRefund),
