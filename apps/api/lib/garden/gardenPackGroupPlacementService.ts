@@ -76,6 +76,26 @@ class GroupError extends Error {
         super(message);
     }
 }
+
+function resolveLayoutGeometry(
+    layout: GardenPackLayout,
+    command: Pick<GardenPackGroupPlacementCommand, 'anchor' | 'rotation'>,
+) {
+    try {
+        const placements = resolveGardenPackLayoutPlacements(
+            layout,
+            command.anchor,
+            command.rotation,
+        );
+        return { placements, cells: getGardenPackLayoutCells(placements) };
+    } catch {
+        throw new GroupError(
+            'INVALID_LAYOUT_GEOMETRY',
+            400,
+            'Raspored prelazi podržane granice vrta.',
+        );
+    }
+}
 export type GardenPackGroupPlacementResult =
     | ({ ok: true; replayed: boolean } & GardenPackGroupPlacementResponse)
     | { ok: false; status: 400 | 404 | 409 | 503; code: string; error: string };
@@ -225,12 +245,10 @@ export function createGardenPackGroupPlacementService<T>(
                             'Podaci o predmetima trenutačno nisu dostupni.',
                         );
                     assertGardenPackLayoutDirectory(layout, directory.value);
-                    const placements = resolveGardenPackLayoutPlacements(
+                    const { placements, cells } = resolveLayoutGeometry(
                         layout,
-                        command.anchor,
-                        command.rotation,
+                        command,
                     );
-                    const cells = getGardenPackLayoutCells(placements);
                     if (
                         cells.length !==
                         placements.reduce(

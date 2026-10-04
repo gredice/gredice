@@ -244,6 +244,11 @@ export function useGardenPackLayoutPlacement() {
             if (definitive) {
                 session.command = null;
                 savePendingPackLayout(userId, accountId, gardenId, null);
+                if (
+                    authority(userId, accountId, gardenId) &&
+                    store.getState().packLayoutPreview?.key === selection?.key
+                )
+                    store.getState().setPackLayoutPreview(null);
             }
             session.error = definitive
                 ? 'Raspored nije postavljen. Osvježi vrt i paket pa pokušaj ponovno.'

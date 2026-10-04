@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { withInternalSceneBlockData } from '../internalSceneBlockData';
 import { getLocalSandboxBlockData } from '../localSandboxBlockData';
 import {
     autumnArrangements,
@@ -121,6 +122,20 @@ test('unknown catalogue spans fail instead of inventing one-cell support', () =>
             () => getAutumnArrangementLayout(arrangement, []),
             /Missing arrangement block/,
         );
+});
+
+test('sandbox previews exclude internal fallback decorations', () => {
+    const withoutLamp = blockData.filter(
+        (block) => block.information.name !== 'EnamelGardenLamp',
+    );
+    const available = getAvailableAutumnArrangements({
+        blockData: withInternalSceneBlockData(withoutLamp),
+        isSandbox: true,
+    });
+    assert.ok(
+        !available.some((arrangement) => arrangement.id === 'evening-seat'),
+    );
+    assert.equal(available.length, 2);
 });
 
 test('withdrawn prices and changed multi-cell spans hide stale previews', () => {

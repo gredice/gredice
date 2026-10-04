@@ -384,6 +384,21 @@ test('missing quantity, foreign owner/garden, stale layout and expected account 
     assert.equal(fenced.code, 'EXPECTED_ACCOUNT_MISMATCH');
     assert.deepEqual(await count(command), previous);
 });
+test('grid overflow rejects placement definitively without consuming inventory', async () => {
+    const { command } = await fixture();
+    const previous = await count(command);
+    for (const geometry of [
+        { anchor: { x: 2147483647, y: 2147483647 }, rotation: 0 },
+        { anchor: { x: -2147483648, y: -2147483648 }, rotation: 2 },
+    ]) {
+        const result = await service()({ ...command, ...geometry });
+        assert.ok(!result.ok);
+        assert.equal(result.status, 400);
+        assert.equal(result.code, 'INVALID_LAYOUT_GEOMETRY');
+    }
+    assert.deepEqual(await count(command), previous);
+});
+
 test('changed non-anchor multi-cell stack, structures and ambiguous directory fail all-or-none', async () => {
     for (let rotation = 0; rotation < 4; rotation++) {
         const { command, layout } = await fixture(1, rotation);
