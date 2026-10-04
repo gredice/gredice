@@ -12,7 +12,10 @@ BEGIN
     IF to_jsonb(NEW) IS DISTINCT FROM to_jsonb(OLD) THEN RAISE EXCEPTION 'Garden pack product version is immutable'; END IF;
   ELSIF TG_TABLE_NAME IN ('garden_pack_purchases', 'garden_pack_unit_events', 'garden_pack_lifecycle_receipts') THEN
     IF (to_jsonb(NEW) - 'account_id') IS DISTINCT FROM (to_jsonb(OLD) - 'account_id') OR
-       (NEW.account_id IS DISTINCT FROM OLD.account_id AND NOT (OLD.account_id IS NOT NULL AND NEW.account_id IS NULL)) THEN
+       (NEW.account_id IS DISTINCT FROM OLD.account_id AND NOT (
+         OLD.account_id IS NOT NULL AND NEW.account_id IS NULL AND
+         NOT EXISTS (SELECT 1 FROM accounts WHERE id = OLD.account_id)
+       )) THEN
       RAISE EXCEPTION 'Garden pack purchase snapshot is immutable';
     END IF;
   ELSIF TG_TABLE_NAME = 'garden_pack_units' THEN
