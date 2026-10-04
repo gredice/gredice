@@ -1,5 +1,6 @@
 import type { BlockData } from '@gredice/client';
 import { Button } from '@gredice/ui/Button';
+import type { useBlockData } from '../hooks/useBlockData';
 import type { useGardenPackInventory } from '../hooks/useGardenPackInventory';
 import { GardenPackInventoryPurchase } from './GardenPackInventoryPurchase';
 import type { GardenPackInventoryPlacement } from './ownedGardenPackInventory';
@@ -7,17 +8,43 @@ import type { GardenPackInventoryPlacement } from './ownedGardenPackInventory';
 export function GardenPackInventory({
     inventory,
     blockData,
+    catalogue,
     placement,
     onPlaced,
 }: {
     inventory: ReturnType<typeof useGardenPackInventory>;
     blockData: BlockData[] | null | undefined;
+    catalogue?: Pick<
+        ReturnType<typeof useBlockData>,
+        'isPending' | 'isError' | 'isFetching' | 'refetch'
+    >;
     placement?: GardenPackInventoryPlacement;
     onPlaced: () => void;
 }) {
     if (!inventory.visible) return null;
     return (
-        <div className="min-w-0 space-y-3" aria-busy={inventory.isFetching}>
+        <div
+            className="min-w-0 space-y-3"
+            aria-busy={inventory.isFetching || catalogue?.isFetching}
+        >
+            {catalogue?.isPending && <p role="status">Učitavanje predmeta…</p>}
+            {catalogue?.isError && (
+                <div role="alert" className="space-y-2">
+                    <p>
+                        Predmete trenutačno nije moguće učitati. Pokušaj
+                        ponovno.
+                    </p>
+                    <Button
+                        size="sm"
+                        disabled={catalogue.isFetching}
+                        onClick={() => {
+                            void catalogue.refetch();
+                        }}
+                    >
+                        Osvježi predmete
+                    </Button>
+                </div>
+            )}
             {inventory.isPending && (
                 <p role="status">Učitavanje kupljenih paketa…</p>
             )}
@@ -49,6 +76,9 @@ export function GardenPackInventory({
                     key={pack.purchaseId}
                     pack={pack}
                     blockData={blockData}
+                    catalogueUnavailable={
+                        catalogue?.isPending || catalogue?.isError
+                    }
                     placement={placement}
                     onPlaced={onPlaced}
                 />
