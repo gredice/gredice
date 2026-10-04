@@ -62,7 +62,7 @@ The client validates response shape, command identity and unique unit/block/slot
 membership. Network loss, invalid receipt, 401/403, 408/429, 5xx and expected-account
 mismatch remain uncertain: retain the original command and UUID for recovery.
 Definitive business failures such as collision or missing quantity can clear the
-pending command. The game UI integration is a separate stacked change.
+pending command. The game UI uses the recovery flow below.
 
 ## Transaction and receipt invariants
 
@@ -128,3 +128,30 @@ API typechecking passes. Direct storage/client typechecks reproduce exactly the 
 `fcbfadc62` baseline after normalizing worktree paths (52/39 diagnostic lines), with no
 new-file errors. The direct JS typecheck likewise matches its existing 32-line baseline. The focused JS run also includes 17 existing placement cases (20 total).
 Existing isolated placement and lifecycle suites pass 7 and 11 cases respectively.
+
+
+## Owned-pack preview in the game
+
+In the 3D inventory, an eligible owner opens a paid pack and selects **Postavi kao na slici**. The client fetches the current server-owned layout and available exact unit ordinals for that purchase; unsupported or withdrawn layout/model identities leave ordinary inventory visible. Owned placement does not require a current positive shop price, another purchase or additional sunflowers.
+
+The existing camera rig temporarily fits the complete rendered group and footprint markers into the visible canvas above the measured panel, including quarter-turns and expanded quantities. Confirmation requires completed model readiness and fitting. Cancel, receipt, owner change and unmount restore the original camera snapshot; this never changes the saved home camera.
+
+The optional panel shows total required/available quantities; its expandable item list uses Croatian labels with per-item counts. Its translucent model ghosts and footprint cells move together by a short canvas tap, the arrow controls/keys, and quarter-turn rotation (**R** or **Zakreni 90°**). The existing geometry resolver checks every rotated cell against ground/support, structures, multi-cell occupants and other proposed pieces. A collision or missing unit keeps every renderable ghost visible with red cells and disables confirmation; unsupported metadata gives a persistent reason. **Odustani** or **Escape** removes the preview without an API mutation. The panel receives keyboard focus and cancellation returns focus to the inventory trigger.
+
+Cached asset geometry/materials stay untouched. The preview owns translucent material clones and disposes them on move/cancel/unmount; JSX-owned decoration materials also clean up. Preview scope suppresses rain/snow overlays, lamp registration/point lights and steam registration. Ghosts have no picking targets or spring animation leases. Model-load errors disable confirmation and instruct the owner to refresh the page before reopening, because the shared GLTF loader caches failed requests. No placement command is created for an unready preview.
+
+Confirmation captures the exact reviewed UUID, owner, purchase/layout/version, selected unit ordinals, anchor/quarter turn and **all** footprint cell stack IDs. It writes this command to owner-and-garden-scoped session storage before submitting. There is no optimistic charge, grant, placement or inventory consumption. A verified receipt invalidates private garden/inventory reads; the resulting blocks retain their normal individual editing and lifecycle paths.
+
+An uncertain response keeps **Provjeri isti zahtjev**, including after remount/reload and when a layout is subsequently unavailable. Movement, rotation, recycling and ordinary placement controls remain paused until that command resolves. A different account or garden hides the pending session and cannot submit or unlock it; returning to the original owner/garden restores exact recovery. A definitive business rejection clears the old UUID and refreshes private reads; a fresh review can use a new command. Garden changes before initial confirmation disable it and require a fresh preview. Switching to 2D/walking cancels an unsubmitted preview.
+
+Frontend validation from the repository root:
+
+```sh
+pnpm --filter @gredice/game exec tsx --import ./scripts/register-test-assets.mjs --test src/packLayouts/packLayoutProjection.unit.ts src/gardenOverview2DBundleBoundary.unit.ts src/viewers/outletGardenBrowserBundleBoundary.unit.ts
+pnpm --filter garden exec playwright test --config playwright.pack-layouts.config.ts
+pnpm --filter @gredice/game exec tsc --noEmit --pretty false
+pnpm --filter garden typecheck
+pnpm --filter www typecheck
+```
+
+The focused browser fixture uses actual WebGL models, camera projection and the production inventory action, planner, HUD and request hook. It checks mobile/keyboard/touch movement, four turns and exact multi-cell footprints, complete invalid previews, cancellation without writes, stale garden/missing quantities, owner switching, an exact lost-response retry through remount, and definitive rejection followed by a new operation. API responses are private local fixtures; this is not deployed/live commerce acceptance.

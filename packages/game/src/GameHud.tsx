@@ -1,18 +1,18 @@
-import { useGardenPackUnitPlace } from './hooks/useGardenPackUnitPlace';
-
-('use client');
+'use client';
 
 import { IconButton } from '@gredice/ui/IconButton';
 import { Megaphone } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { GardenViewMode } from './gardenViewMode';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useCurrentUser } from './hooks/useCurrentUser';
+import { useGardenPackUnitPlace } from './hooks/useGardenPackUnitPlace';
 import { useMarkTutorialChecklistTaskReady } from './hooks/useTutorialChecklist';
 import { AccountHud } from './hud/AccountHud';
 import { AdventHud } from './hud/AdventHud';
 import { AudioHud } from './hud/AudioHud';
+import { AutumnActivityHud } from './hud/AutumnActivityHud';
 import { AutumnPhotoHud } from './hud/AutumnPhotoHud';
 import { CameraHud } from './hud/CameraHud';
 import { ControlsTooltipHud } from './hud/ControlsTooltipHud';
@@ -26,6 +26,7 @@ import { InventoryHud } from './hud/InventoryHud';
 import { ItemsHud } from './hud/ItemsHud';
 import { LeafRakingHud } from './hud/LeafRakingHud';
 import { OutletHud } from './hud/OutletHud';
+import { PackLayoutPreviewHud } from './hud/PackLayoutPreviewHud';
 import { PaymentSuccessfulMessage } from './hud/PaymentSuccessfulMessage';
 import { RaisedBedFieldHud } from './hud/RaisedBedFieldHud';
 import { RaisedBedOnboardingModal } from './hud/RaisedBedOnboardingModal';
@@ -88,8 +89,25 @@ export function GameHud({
         confirmed: boolean;
         gardenId: number | null;
     }>({ confirmed: false, gardenId: null });
+    const packLayoutActive = useGameState(
+        (state) =>
+            state.packLayoutPreview !== null || state.packLayoutPreviewLocked,
+    );
     const isCloseup = useGameState((state) => state.view) === 'closeup';
     const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
+    const cancelPackPreview = useGameState(
+        (state) => state.setPackLayoutPreview,
+    );
+    const packPreviewLocked = useGameState(
+        (state) => state.packLayoutPreviewLocked,
+    );
+    useEffect(() => {
+        if (
+            (viewMode !== '3d' || gardenAvatarView !== 'overview') &&
+            !packPreviewLocked
+        )
+            cancelPackPreview(null);
+    }, [viewMode, gardenAvatarView, packPreviewLocked, cancelPackPreview]);
     const packPlacementMutation = useGardenPackUnitPlace();
     const packPlacement = {
         place: packPlacementMutation.mutateAsync,
@@ -140,9 +158,14 @@ export function GameHud({
                 ) : null}
                 <GardenAvatarHud />
                 {showAccountEconomy && (
-                    <InventoryHud hideTrigger packPlacement={packPlacement} />
+                    <InventoryHud
+                        hideTrigger
+                        packPlacement={packPlacement}
+                        previewLayouts={false}
+                    />
                 )}
                 <WoodenSignModal />
+                <PackLayoutPreviewHud />
                 {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
             </>
         );
@@ -158,6 +181,7 @@ export function GameHud({
             ) : null}
             <div
                 data-game-hud-top-left
+                inert={packLayoutActive ? true : undefined}
                 className={cx(
                     'absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] left-[calc(var(--game-safe-area-left,0px)+0.5rem)] flex flex-col items-start gap-2',
                     gameHudEntranceClassName,
@@ -200,7 +224,10 @@ export function GameHud({
                         className={closeupHiddenHudClassName}
                         visible={showLoadedAccountEconomy}
                     >
-                        <InventoryHud packPlacement={packPlacement} />
+                        <InventoryHud
+                            packPlacement={packPlacement}
+                            previewLayouts={viewMode === '3d'}
+                        />
                     </HudListItemPresence>
                 )}
                 {!isLocalSandbox && (
@@ -209,6 +236,14 @@ export function GameHud({
                         visible={showLoadedAccountEconomy}
                     >
                         <GardenPackStorefrontHud />
+                    </HudListItemPresence>
+                )}
+                {!isLocalSandbox && (
+                    <HudListItemPresence
+                        className={closeupHiddenHudClassName}
+                        visible={showLoadedAccountEconomy}
+                    >
+                        <AutumnActivityHud />
                     </HudListItemPresence>
                 )}
                 {!isLocalSandbox && (
@@ -250,8 +285,8 @@ export function GameHud({
             <div className={gameHudBottomBarClassName}>
                 <div
                     data-game-hud-bottom-controls
-                    aria-hidden={isCloseup}
-                    inert={isCloseup ? true : undefined}
+                    aria-hidden={isCloseup || packLayoutActive}
+                    inert={isCloseup || packLayoutActive ? true : undefined}
                     className={cx(
                         gameHudBottomControlsClassName,
                         getGameHudBottomCloseupClassName(isCloseup),
@@ -281,8 +316,8 @@ export function GameHud({
                 </div>
                 <div
                     data-game-hud-bottom-items
-                    aria-hidden={isCloseup}
-                    inert={isCloseup ? true : undefined}
+                    aria-hidden={isCloseup || packLayoutActive}
+                    inert={isCloseup || packLayoutActive ? true : undefined}
                     className={cx(
                         gameHudBottomItemsClassName,
                         getGameHudBottomCloseupClassName(isCloseup),
@@ -316,6 +351,7 @@ export function GameHud({
                 </>
             )}
             {!isLocalSandbox && <PaymentSuccessfulMessage />}
+            <PackLayoutPreviewHud />
             {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
         </SuncokretChatProvider>
     );
