@@ -83,10 +83,34 @@ describe('static opaque scene cache GPU timer', () => {
         hitQuery.available = true;
         hitQuery.nanoseconds = 1_500_000;
         assert.deepEqual(timer.poll(3), [
-            { elapsedMs: 6, kind: 'capture' },
-            { elapsedMs: 1.5, kind: 'hit' },
+            { elapsedMs: 6, kind: 'capture', startedAtMs: 0, windowId: 0 },
+            { elapsedMs: 1.5, kind: 'hit', startedAtMs: 1, windowId: 0 },
         ]);
         assert.deepEqual(state.deleted, [captureQuery.id, hitQuery.id]);
+    });
+
+    it('preserves the benefit window that owned a delayed query', () => {
+        const { state, timer } = createTimer();
+        timer.begin('hit', 10, 4);
+        timer.end();
+        const query = state.queries[0];
+        assert.ok(query);
+        query.available = true;
+        query.nanoseconds = 1_000_000;
+        assert.equal(timer.poll(20)[0]?.windowId, 4);
+    });
+
+    it('rejects nonfinite or negative GPU query results', () => {
+        for (const nanoseconds of [Number.NaN, Number.POSITIVE_INFINITY, -1]) {
+            const { state, timer } = createTimer();
+            timer.begin('hit', 0);
+            timer.end();
+            const query = state.queries[0];
+            assert.ok(query);
+            query.available = true;
+            query.nanoseconds = nanoseconds;
+            assert.deepEqual(timer.poll(1), []);
+        }
     });
 
     it('yields to a query another owner already opened', () => {
@@ -98,6 +122,39 @@ describe('static opaque scene cache GPU timer', () => {
 
         context.endQuery();
         assert.equal(timer.isAvailable(0), true);
+    });
+
+    it('yields to the external profiler and isolates diagnostic observer errors', () => {
+        const saved = Object.getOwnPropertyDescriptor(globalThis, 'window');
+        try {
+            Object.defineProperty(globalThis, 'window', {
+                configurable: true,
+                value: { __gameProfileGpuTimer: {} },
+            });
+            const external = createTimer();
+            assert.equal(external.timer.begin('hit', 0), false);
+            assert.equal(external.state.queries.length, 0);
+            Object.defineProperty(globalThis, 'window', {
+                configurable: true,
+                value: {
+                    __gameProfileCacheGpuObserver: () => {
+                        throw new Error('diagnostic observer');
+                    },
+                },
+            });
+            const own = createTimer();
+            assert.equal(own.timer.isProfileObserved(), true);
+            assert.equal(own.timer.begin('hit', 1, 2), true);
+            own.timer.end();
+            const query = own.state.queries[0];
+            assert.ok(query);
+            query.available = true;
+            query.nanoseconds = 1_000_000;
+            assert.equal(own.timer.poll(2)[0]?.elapsedMs, 1);
+        } finally {
+            if (saved) Object.defineProperty(globalThis, 'window', saved);
+            else Reflect.deleteProperty(globalThis, 'window');
+        }
     });
 
     it('is unavailable while a query is open or results are backed up', () => {

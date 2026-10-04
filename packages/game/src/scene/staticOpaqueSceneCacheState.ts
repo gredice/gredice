@@ -55,6 +55,21 @@ export type StaticOpaqueSceneCacheReason =
     | 'unsupported'
     | 'wireframe';
 
+/** Disabled shadow maps retain dirty flags because the renderer never updates them. */
+export function resolveStaticOpaqueSceneCacheShadowBypass({
+    autoUpdate,
+    enabled,
+    needsUpdate,
+}: {
+    autoUpdate: boolean;
+    enabled: boolean;
+    needsUpdate: boolean;
+}): 'shadow-update' | 'unsupported' | undefined {
+    if (!enabled) return undefined;
+    if (autoUpdate) return 'unsupported';
+    return needsUpdate ? 'shadow-update' : undefined;
+}
+
 export type StaticOpaqueSceneCacheAction =
     | 'capture'
     | 'hit'

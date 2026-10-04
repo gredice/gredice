@@ -3,11 +3,13 @@
 import { GameScene, type GameSceneProps } from '@gredice/game';
 import { useEffect, useMemo, useState } from 'react';
 import { restoreGameProfileDate } from './profileDate';
+import { resolveGameProfileControllerEnabled } from './profileFlags';
 import {
     gameProfileGardenSwitchEventName,
     readGameProfileGardenSwitchProfile,
 } from './profileGardenSwitch';
 import {
+    createGameProfileWeatherWitness,
     gameProfileWeatherTransitionEventName,
     readGameProfileWeatherTransitionRequest,
     resolveGameProfileWeatherTransition,
@@ -16,10 +18,12 @@ import {
 type ProfileGameSceneProps = Omit<GameSceneProps, 'freezeTime'> & {
     freezeTime?: string;
     gardenSwitchEnabled?: boolean;
+    cacheClearanceWitnessMode?: string;
 };
 
 export function ProfileGameScene({
     gardenSwitchEnabled = false,
+    cacheClearanceWitnessMode,
     freezeTime,
     mockGardenProfile: initialMockGardenProfile,
     weather: initialWeather,
@@ -33,6 +37,10 @@ export function ProfileGameScene({
         initialMockGardenProfile,
     );
     const [weather, setWeather] = useState(initialWeather);
+    const [weatherReceipt, setWeatherReceipt] = useState({
+        request: 'initial',
+        revision: 0,
+    });
 
     useEffect(() => {
         if (!gardenSwitchEnabled) {
@@ -71,6 +79,12 @@ export function ProfileGameScene({
             }
 
             setWeather(resolveGameProfileWeatherTransition(request));
+            if (cacheClearanceWitnessMode) {
+                setWeatherReceipt((previous) => ({
+                    request,
+                    revision: previous.revision + 1,
+                }));
+            }
         };
 
         window.addEventListener(
@@ -82,14 +96,35 @@ export function ProfileGameScene({
                 gameProfileWeatherTransitionEventName,
                 handleWeatherTransition,
             );
-    }, []);
+    }, [cacheClearanceWitnessMode]);
 
-    return (
+    const scene = (
         <GameScene
             {...gameSceneProps}
+            enableGameProfileController={resolveGameProfileControllerEnabled(
+                gameSceneProps.enableGameProfileController,
+                cacheClearanceWitnessMode,
+            )}
             freezeTime={date}
             mockGardenProfile={mockGardenProfile}
             weather={weather}
         />
+    );
+    return cacheClearanceWitnessMode ? (
+        <>
+            <output
+                hidden
+                data-game-profile-cache-weather-witness={JSON.stringify({
+                    mode: cacheClearanceWitnessMode,
+                    cacheEnabled:
+                        gameSceneProps.staticOpaqueSceneCache === true,
+                    ...weatherReceipt,
+                    weather: createGameProfileWeatherWitness(weather),
+                })}
+            />
+            {scene}
+        </>
+    ) : (
+        scene
     );
 }

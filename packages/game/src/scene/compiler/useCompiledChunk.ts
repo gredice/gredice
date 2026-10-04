@@ -66,11 +66,28 @@ export function useCompiledChunkSources(
         let bytes = 0;
         let cancelled = false;
         setResult(undefined);
-        const cancel = lease.compiler.request(
-            sources.map(({ geometry, instances, localTransform, scale }) => ({
+        const preparationStartedAt = performance.now();
+        const preparedSources = sources.map(
+            ({ geometry, instances, localTransform, scale }) => ({
                 geometry,
                 matrices: createChunkMatrices(instances, localTransform, scale),
-            })),
+            }),
+        );
+        const preparationMs = performance.now() - preparationStartedAt;
+        recordChunkCompilerMetrics((metrics) => {
+            metrics.matrixPreparationMs += preparationMs;
+            metrics.matrixPreparationMaxMs = Math.max(
+                metrics.matrixPreparationMaxMs,
+                preparationMs,
+            );
+            metrics.matrixPreparationInstances += sources.reduce(
+                (count, source) => count + source.instances.length,
+                0,
+            );
+            metrics.matrixPreparationBatches++;
+        });
+        const cancel = lease.compiler.request(
+            preparedSources,
             (packet, durationMs) => {
                 if (!packet || cancelled) return;
                 owned = unpackMeshGeometry(packet);

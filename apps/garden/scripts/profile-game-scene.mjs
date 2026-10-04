@@ -5,6 +5,15 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from '@playwright/test';
 import sharp from 'sharp';
 import { assertSafeGameProfileOutputDirectory } from './game-profile-output.mjs';
+import {
+    allowMissingStaticCacheShadowPopulation,
+    buildStaticCacheClearanceScenarioSets,
+    classifyStaticCacheWitness,
+    evaluateStaticCacheClearance,
+    installStaticCacheGpuMetrics,
+    readStaticCacheWitness,
+    staticCacheClearanceMinimumSoakMs,
+} from './static-cache-clearance.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const appRoot = resolve(__dirname, '..');
@@ -525,6 +534,15 @@ const crossTierProfileMatrix = [
         tier: 'auto-constrained',
     },
 ];
+
+const staticCacheClearanceScenarioSets = buildStaticCacheClearanceScenarioSets(
+    crossTierProfileMatrix,
+);
+const staticCacheClearanceComparisonPairs = new Set(
+    staticCacheClearanceScenarioSets['static-cache-visuals'].map(
+        (scenario) => scenario.comparisonPair,
+    ),
+);
 
 const crossTierPhases = [
     {
@@ -1262,6 +1280,7 @@ const morningMistScenarios = autumnScenarios.map((scenario) => ({
 }));
 
 const scenarioSets = {
+    ...staticCacheClearanceScenarioSets,
     'morning-mist': morningMistScenarios,
     'rain-ripples': rainRippleScenarios,
     autumn: autumnScenarios,
@@ -1832,7 +1851,7 @@ function printHelp(options) {
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, lifecycle-live, runtime-owners, static-idle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, lifecycle-live, runtime-owners, static-idle, static-cache-clearance, static-cache-visuals, static-cache-depth, static-cache-lifecycle, static-cache-soak, static-cache-layers, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget or report-comparability check fails.',
@@ -1897,18 +1916,22 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
             : [process.env.GAME_PROFILE_SCENARIO_SET ?? 'core'];
     const scenarios = [];
     const seen = new Set();
-    const knownScenarios = allScenarios();
+    const canonicalScenarios = allScenarios();
+    const knownScenarios = [
+        ...canonicalScenarios,
+        ...staticCacheClearanceScenarioSets['static-cache-clearance'],
+    ];
 
     for (const token of selected) {
         const candidates =
             token === 'all'
-                ? knownScenarios
+                ? canonicalScenarios
                 : (scenarioSets[token] ??
                   knownScenarios.filter((scenario) => scenario.name === token));
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, lifecycle-live, runtime-owners, static-idle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, lifecycle-live, runtime-owners, static-idle, static-cache-clearance, static-cache-visuals, static-cache-depth, static-cache-lifecycle, static-cache-soak, static-cache-layers, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -3175,7 +3198,10 @@ function beginInteractiveProfileSample() {
         metrics.submittedTriangles = 0;
     }
     globalThis.__gameProfileLongTasks = [];
-    globalThis.__gameProfileGpuTimer?.reset();
+    (
+        globalThis.__gameProfileGpuTimer ??
+        globalThis.__gameProfileCacheGpuTimer
+    )?.reset();
 
     const startedAt = performance.now();
     globalThis.__gameProfileLifecycleSuspensionBoundary?.beginSample(startedAt);
@@ -3435,7 +3461,10 @@ async function finishInteractiveProfileSample() {
             renderedFrames > 0 ? submittedTriangles / safeRenderedFrames : 0,
         trianglesPerSecond: submittedTriangles / safeElapsedSeconds,
     };
-    globalThis.__gameProfileGpuTimer?.stop();
+    (
+        globalThis.__gameProfileGpuTimer ??
+        globalThis.__gameProfileCacheGpuTimer
+    )?.stop();
     globalThis.__gameProfileInteractiveSample = null;
 
     return {
@@ -3458,14 +3487,20 @@ async function finishInteractiveProfileSample() {
 }
 
 async function drainProfileSample(sampleWindow) {
-    await globalThis.__gameProfileGpuTimer?.finish();
+    await (
+        globalThis.__gameProfileGpuTimer ??
+        globalThis.__gameProfileCacheGpuTimer
+    )?.finish();
     await new Promise((resolveDrain) => setTimeout(resolveDrain, 0));
     const longTasks =
         globalThis.__gameProfileReadLongTasks?.(
             sampleWindow.startedAt,
             sampleWindow.endedAt,
         ) ?? [];
-    const gpu = globalThis.__gameProfileGpuTimer?.snapshot() ?? {
+    const gpu = (
+        globalThis.__gameProfileGpuTimer ??
+        globalThis.__gameProfileCacheGpuTimer
+    )?.snapshot() ?? {
         complete: false,
         disjoint: false,
         elapsedMaxMs: null,
@@ -6655,12 +6690,12 @@ function evaluateLifecycleAcceptance({
         exact(
             `${prefix}ScreenshotWidth`,
             control?.screenshotWitness?.width,
-            2_560,
+            expectedCanvasWidth,
         ),
         exact(
             `${prefix}ScreenshotHeight`,
             control?.screenshotWitness?.height,
-            1_440,
+            expectedCanvasHeight,
         ),
     ];
     const baselineResidualWindowChecks = (prefix, phase) => [
@@ -7187,6 +7222,14 @@ function evaluateLifecycleAcceptance({
     };
     const minimumActiveFrames = (sample) =>
         Math.max(1, Math.floor((sample?.elapsedMs ?? 0) / 1_000));
+    const cacheSupplement = requested?.staticCacheClearance === true;
+    const expectedQuality = cacheSupplement
+        ? requested.expectedQualityTier
+        : 'high';
+    const expectedDprCap = cacheSupplement ? requested.expectedDprCap : 2;
+    const expectedCanvasWidth = Math.round(1_280 * expectedDprCap);
+    const expectedCanvasHeight = Math.round(720 * expectedDprCap);
+    const expectedCacheEnabled = cacheSupplement;
     const checks = [
         exact('lifecycleOptIn', requested?.lifecycle, '1'),
         exact('lifecycleRequestOptIn', requested?.lifecycleRequest, '1'),
@@ -7219,21 +7262,33 @@ function evaluateLifecycleAcceptance({
             requested?.fixedTimeSeconds,
             requested?.lifecycleLiveProfile === true ? null : 43_200,
         ),
-        exact('lifecycleQualityRequest', requested?.quality, 'high'),
-        exact('lifecycleResolvedQualityTier', resolved?.qualityTier, 'high'),
-        exact('lifecycleResolvedDprCap', resolved?.dprCap, 2),
+        exact(
+            'lifecycleQualityRequest',
+            requested?.quality,
+            cacheSupplement ? requested.expectedQualitySetting : 'high',
+        ),
+        exact(
+            'lifecycleResolvedQualityTier',
+            resolved?.qualityTier,
+            expectedQuality,
+        ),
+        exact('lifecycleResolvedDprCap', resolved?.dprCap, expectedDprCap),
         exact(
             'lifecycleResolvedShadowsEnabled',
             resolved?.shadowsEnabled,
-            true,
+            cacheSupplement ? requested.expectedShadows : true,
         ),
-        exact('lifecycleResolvedShadowMapSize', resolved?.shadowMapSize, 4_096),
+        exact(
+            'lifecycleResolvedShadowMapSize',
+            resolved?.shadowMapSize,
+            cacheSupplement ? requested.expectedShadowMapSize : 4_096,
+        ),
         exact('lifecycleRequestedDpr', requested?.dpr, 2),
         exact('lifecycleBrowserReportedDpr', resolved?.browserDpr, 2),
         exact(
             'lifecycleStaticSceneCacheRequest',
             requested?.staticSceneCache,
-            'legacy',
+            cacheSupplement ? 'cache' : 'legacy',
         ),
         exact(
             'lifecycleGardenId',
@@ -7256,8 +7311,16 @@ function evaluateLifecycleAcceptance({
             fixture?.canvas?.clientHeight,
             720,
         ),
-        exact('lifecycleCanvasWidth', fixture?.canvas?.width, 2_560),
-        exact('lifecycleCanvasHeight', fixture?.canvas?.height, 1_440),
+        exact(
+            'lifecycleCanvasWidth',
+            fixture?.canvas?.width,
+            expectedCanvasWidth,
+        ),
+        exact(
+            'lifecycleCanvasHeight',
+            fixture?.canvas?.height,
+            expectedCanvasHeight,
+        ),
         exact(
             'lifecycleColdCanvasPersistent',
             cold?.fixture?.canvas?.sameCanvas,
@@ -7306,7 +7369,7 @@ function evaluateLifecycleAcceptance({
         exact(
             'lifecycleColdStaticOpaqueSceneCacheEnabled',
             cold?.fixture?.resources?.staticOpaqueSceneCacheEnabled,
-            false,
+            expectedCacheEnabled,
         ),
         ...rendererStatsChecks('lifecycleCold', cold?.fixture?.resources),
         exact(
@@ -7317,12 +7380,12 @@ function evaluateLifecycleAcceptance({
         exact(
             'lifecycleColdScreenshotWidth',
             cold?.screenshotWitness?.width,
-            2_560,
+            expectedCanvasWidth,
         ),
         exact(
             'lifecycleColdScreenshotHeight',
             cold?.screenshotWitness?.height,
-            1_440,
+            expectedCanvasHeight,
         ),
         exact(
             'lifecycleFixtureStackCount',
@@ -7362,16 +7425,20 @@ function evaluateLifecycleAcceptance({
         exact(
             'lifecycleStaticOpaqueSceneCacheEnabled',
             fixture?.resources?.staticOpaqueSceneCacheEnabled,
-            false,
+            expectedCacheEnabled,
         ),
         finite('lifecycleColdDomContentLoadedMs', cold?.domContentLoadedMs),
         finite('lifecycleColdCanvasAttachedMs', cold?.canvasAttachedMs),
         finite('lifecycleColdCanvasSizedMs', cold?.canvasSizedMs),
-        exact('lifecycleColdCanvasSizedWidth', cold?.canvasSize?.width, 2_560),
+        exact(
+            'lifecycleColdCanvasSizedWidth',
+            cold?.canvasSize?.width,
+            expectedCanvasWidth,
+        ),
         exact(
             'lifecycleColdCanvasSizedHeight',
             cold?.canvasSize?.height,
-            1_440,
+            expectedCanvasHeight,
         ),
         finite(
             'lifecycleColdFirstSubmittedFrameMs',
@@ -7808,12 +7875,12 @@ function evaluateLifecycleAcceptance({
         exact(
             'lifecycleRestoredScreenshotWidth',
             restoredScreenshotWitness?.width,
-            2_560,
+            expectedCanvasWidth,
         ),
         exact(
             'lifecycleRestoredScreenshotHeight',
             restoredScreenshotWitness?.height,
-            1_440,
+            expectedCanvasHeight,
         ),
         exact('lifecycleApiErrors', apiErrors.length, 0),
         exact('lifecycleApiRequests', apiRequests.length, 0),
@@ -8008,7 +8075,25 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
     });
 
     await cdp.send('Performance.enable');
-    await page.addInitScript(installLifecycleMilestoneTracker);
+    if (scenario.navigatorMetrics) {
+        await page.addInitScript(
+            installNavigatorMetrics,
+            scenario.navigatorMetrics,
+        );
+    }
+    if (scenario.cacheGpuMetrics === true) {
+        await page.addInitScript(installStaticCacheGpuMetrics);
+    }
+    await page.addInitScript(
+        installLifecycleMilestoneTracker,
+        scenario.staticCacheClearance
+            ? {
+                  expectedClientHeight: scenario.viewport.height,
+                  expectedClientWidth: scenario.viewport.width,
+                  expectedDpr: Math.min(scenario.dpr, scenario.expectedDprCap),
+              }
+            : undefined,
+    );
     await page.addInitScript(installProfileContextTracker);
     if (scenario.lifecycleLiveProfile === true) {
         await page.addInitScript(installLifecycleSuspensionBoundaryTracker, {
@@ -8130,6 +8215,20 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
 
         await hideLifecycleOutline(page);
         await page.waitForTimeout(options.warmupMs);
+        let staticCacheEvidence = null;
+        if (scenario.staticCacheClearance === true) {
+            await waitForStaticCacheClearanceDecision(page, 'cache');
+            staticCacheEvidence = {
+                witnesses: [
+                    await captureStaticCacheWitness(
+                        page,
+                        lifecycleRendererStatsMode,
+                        scenario.expectedShadows,
+                    ),
+                ],
+                soakMs: 0,
+            };
+        }
         const sampleMs = scenario.sampleMs ?? options.sampleMs;
         const residualCounterFields =
             scenario.lifecycleLiveProfile === true
@@ -8533,6 +8632,16 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             restoreRequested,
             supported,
         };
+        if (staticCacheEvidence) {
+            await waitForStaticCacheClearanceDecision(page, 'cache');
+            staticCacheEvidence.witnesses.push(
+                await captureStaticCacheWitness(
+                    page,
+                    lifecycleRendererStatsMode,
+                    scenario.expectedShadows,
+                ),
+            );
+        }
         const fixture = restoredControl.fixture;
         const screenshotPath = restoredControl.screenshotPath;
         const screenshotWitness = restoredControl.screenshotWitness;
@@ -8575,6 +8684,16 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             dpr: scenario.dpr,
             fixedTimeSeconds: profileMetadata?.fixedTimeSeconds ?? null,
             freshContext: true,
+            ...(scenario.staticCacheClearance === true
+                ? {
+                      staticCacheClearance: true,
+                      expectedQualityTier: scenario.expectedQualityTier,
+                      expectedQualitySetting: scenario.expectedQualitySetting,
+                      expectedDprCap: scenario.expectedDprCap,
+                      expectedShadowMapSize: scenario.expectedShadowMapSize,
+                      expectedShadows: scenario.expectedShadows,
+                  }
+                : {}),
             gardenProfile:
                 profileMetadata?.gardenProfile ?? request.gardenProfile,
             graphicsBackend: options.graphicsBackend,
@@ -8587,13 +8706,19 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
                 : {}),
             lifecycleProfile: true,
             lifecycleRequest: request.lifecycle ?? '0',
-            mode: profileMetadata?.mode ?? request.mode,
+            mode: scenario.staticCacheClearance
+                ? request.mode
+                : (profileMetadata?.mode ?? request.mode),
             motion: 'runtime-lifecycle',
             outline: profileMetadata?.outline ?? request.outline,
-            quality: profileMetadata?.quality ?? request.quality,
+            quality: scenario.staticCacheClearance
+                ? request.quality
+                : (profileMetadata?.quality ?? request.quality),
             sampleMs,
-            staticSceneCache:
-                profileMetadata?.staticSceneCache ?? request.staticSceneCache,
+            staticSceneCache: scenario.staticCacheClearance
+                ? request.staticSceneCache
+                : (profileMetadata?.staticSceneCache ??
+                  request.staticSceneCache),
             viewport: scenario.viewport,
         };
         const resolved = await page.evaluate(() => {
@@ -8606,7 +8731,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
                 shadowsEnabled: profile?.shadowsEnabled ?? null,
             };
         });
-        const acceptance = evaluateLifecycleAcceptance({
+        let acceptance = evaluateLifecycleAcceptance({
             active,
             apiErrors,
             apiRequests,
@@ -8623,6 +8748,47 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             restoredInteraction: restoredControl.interaction,
             restoredScreenshotWitness: screenshotWitness,
         });
+        if (staticCacheEvidence) {
+            const cacheAcceptance = evaluateStaticCacheClearance({
+                requested,
+                runtime: {
+                    ...resolved,
+                    profileGardenId: fixture.gardenId,
+                    profileGardenStackCount: fixture.fixture.stackCount,
+                    profileGardenBlockCount: fixture.fixture.blockCount,
+                    profileGardenRaisedBedCount: fixture.fixture.raisedBedCount,
+                    generatedPlantVisibleFieldCount:
+                        fixture.fixture.generatedPlantVisibleFieldCount,
+                    generatedPlantVisibleInstanceCount:
+                        fixture.fixture.generatedPlantVisibleInstanceCount,
+                    generatedPlantFieldCount:
+                        fixture.fixture.generatedPlantVisibleFieldCount,
+                },
+                sample: active.sample,
+                evidence: staticCacheEvidence,
+                screenshotValid:
+                    isProfileScreenshotWitnessValid(screenshotWitness),
+                fixtureExpected: {
+                    profileGardenId: lifecycleExpectedGardenId,
+                    profileGardenStackCount: lifecycleExpectedGardenStackCount,
+                    profileGardenBlockCount: lifecycleExpectedGardenBlockCount,
+                    profileGardenRaisedBedCount:
+                        lifecycleExpectedGardenRaisedBedCount,
+                    generatedPlantVisibleFieldCount:
+                        highTargetExpectedGeneratedPlantFieldCount,
+                    generatedPlantVisibleInstanceCount:
+                        highTargetExpectedGeneratedPlantInstanceCount,
+                    generatedPlantFieldCount:
+                        highTargetExpectedGeneratedPlantFieldCount,
+                },
+            });
+            acceptance = {
+                ...acceptance,
+                cacheClearance: cacheAcceptance,
+                checks: [...acceptance.checks, ...cacheAcceptance.checks],
+                pass: acceptance.pass && cacheAcceptance.pass,
+            };
+        }
         const memory = await collectScenarioMemoryEvidence(cdp);
         const performanceBudget = evaluateBudget(
             active.sample,
@@ -8668,6 +8834,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
                             : null,
                 };
             }),
+            ...(staticCacheEvidence ? { staticCacheEvidence } : {}),
             lifecycle: {
                 active,
                 cold,
@@ -8704,6 +8871,133 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
     }
 }
 
+async function captureStaticCacheWitness(
+    page,
+    rendererStatsMode,
+    expectedShadows,
+) {
+    const observedShadows = await page.evaluate(
+        () => globalThis.__grediceGameProfile?.shadowsEnabled,
+    );
+    const allowMissingPopulation = allowMissingStaticCacheShadowPopulation(
+        expectedShadows,
+        observedShadows,
+    );
+    const resources = await captureCrossTierResourceSnapshot(
+        page,
+        rendererStatsMode,
+        { allowMissingPopulation },
+    );
+    const witness = await page.evaluate(readStaticCacheWitness);
+    if (allowMissingPopulation && witness.shadowsEnabled !== false)
+        throw new Error(
+            'Disabled-shadow population policy changed during the resource witness',
+        );
+    return {
+        ...witness,
+        ...resources.resources,
+        resourceMeasurementMode: resources.measurementMode,
+        resourceMeasurementValid: isLifecycleRendererStatsMeasurementValid(
+            resources.resources,
+            rendererStatsMode,
+        ),
+        populationExposureSignature: resources.populationExposureSignature,
+        shadowPopulationPolicy: allowMissingPopulation
+            ? 'observed-disabled-shadow-registry'
+            : 'registered-shadow-population',
+    };
+}
+
+async function runStaticCacheLayerCycle(
+    page,
+    rendererStatsMode,
+    evidence,
+    expectedShadows,
+) {
+    const requests = [
+        'snow-sparse-to-integrated',
+        'snow-integrated-to-sparse',
+        'clear-to-cloudy',
+        'cloudy-to-clear',
+        'clear-to-rain',
+        'rain-to-clear',
+        'clear-to-frost',
+        'frost-to-clear',
+    ];
+    evidence.layers = [];
+    for (const [index, request] of requests.entries()) {
+        const dispatched = await page.evaluate(
+            ({ eventName, request }) =>
+                globalThis.dispatchEvent(
+                    new CustomEvent(eventName, { detail: { request } }),
+                ),
+            { eventName: gameProfileWeatherTransitionEventName, request },
+        );
+        // dispatchEvent only proves that an event was not cancelled. Wait for
+        // the receiving component to commit this exact request and revision.
+        await page.waitForFunction(
+            ({ request, revision }) => {
+                const element = document.querySelector(
+                    '[data-game-profile-cache-weather-witness]',
+                );
+                try {
+                    const receipt = JSON.parse(
+                        element?.getAttribute(
+                            'data-game-profile-cache-weather-witness',
+                        ) ?? 'null',
+                    );
+                    return (
+                        receipt?.request === request &&
+                        receipt.revision === revision
+                    );
+                } catch {
+                    return false;
+                }
+            },
+            { request, revision: index + 1 },
+            { timeout: 15_000 },
+        );
+        await page.waitForTimeout(3_000);
+        await waitForStaticCacheClearanceDecision(page, 'cache');
+        const witness = await captureStaticCacheWitness(
+            page,
+            rendererStatsMode,
+            expectedShadows,
+        );
+        evidence.layers.push({ request, dispatched, witness });
+        evidence.witnesses.push(witness);
+    }
+}
+
+async function waitForStaticCacheClearanceDecision(page, requestedMode) {
+    if (requestedMode === 'legacy') return;
+    await page.waitForFunction(
+        () => {
+            const profile = globalThis.__grediceGameProfile;
+            return (
+                profile?.staticOpaqueSceneCacheSupported === false ||
+                (profile?.staticOpaqueSceneCacheBenefitStatus === 'enabled' &&
+                    profile.staticOpaqueSceneCacheBenefitReason ===
+                        'gpu-savings' &&
+                    profile.staticOpaqueSceneCacheState === 'ready' &&
+                    profile.staticOpaqueSceneCacheReplayStatus === 'ready') ||
+                profile?.staticOpaqueSceneCacheBenefitStatus === 'disabled'
+            );
+        },
+        undefined,
+        { timeout: 60_000 },
+    );
+    // Disabled gates shrink GPU targets on the next rendered frame.
+    await page.evaluate(
+        () =>
+            new Promise((resolveFrame) =>
+                requestAnimationFrame(() =>
+                    requestAnimationFrame(resolveFrame),
+                ),
+            ),
+    );
+}
+
 async function measureScenario(browser, baseUrl, scenario, options) {
     const context = await browser.newContext({
         deviceScaleFactor: scenario.dpr,
@@ -8732,6 +9026,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             expectedClientWidth: scenario.viewport.width,
             expectedDpr,
         });
+    }
+    if (scenario.cacheGpuMetrics === true) {
+        await page.addInitScript(installStaticCacheGpuMetrics);
     }
     await page.addInitScript(installBrowserMetrics, {
         displayCadenceControl: scenario.displayCadenceControl ?? null,
@@ -8783,7 +9080,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     });
     const servedBuildProvenance = await readServedBuildProvenance(page);
     const crossTierRendererStatsMode =
-        scenario.crossTierProfile === true
+        scenario.crossTierProfile === true ||
+        scenario.staticCacheClearance === true
             ? resolveLifecycleRendererStatsCaptureMode({
                   harness: options.harnessProvenance,
                   requestedMode: options.lifecycleRendererStatsMode,
@@ -8953,7 +9251,25 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     if (scenario.staticIdleProfile === true) {
         await waitForStaticIdleStabilization(page);
     }
+    let staticCacheEvidence = null;
+    if (scenario.staticCacheClearance === true) {
+        await waitForStaticCacheClearanceDecision(
+            page,
+            request.staticSceneCache,
+        );
+        staticCacheEvidence = {
+            witnesses: [
+                await captureStaticCacheWitness(
+                    page,
+                    crossTierRendererStatsMode,
+                    scenario.expectedShadows,
+                ),
+            ],
+            soakMs: 0,
+        };
+    }
     if (
+        scenario.staticCacheClearance !== true &&
         scenario.staticSceneCacheBenchmark === true &&
         request.staticSceneCache === 'cache'
     ) {
@@ -8972,7 +9288,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             { timeout: 60_000 },
         );
     }
-    if (request.staticSceneCacheOcclusionFixture === '1') {
+    if (
+        request.staticSceneCacheOcclusionFixture === '1' &&
+        (scenario.staticCacheClearance !== true ||
+            classifyStaticCacheWitness(
+                staticCacheEvidence?.witnesses.at(-1),
+            ) === 'measured-caching')
+    ) {
         await page.waitForFunction(
             () => {
                 const state =
@@ -8984,8 +9306,33 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             { timeout: 60_000 },
         );
     }
-    if (options.soakMs > 0) {
+    if (scenario.staticCacheSoak === true) {
+        const soakMs = Math.max(
+            options.soakMs,
+            staticCacheClearanceMinimumSoakMs,
+        );
+        const startedAt = Date.now();
+        while (Date.now() - startedAt < soakMs) {
+            await wait(Math.min(5_000, soakMs - (Date.now() - startedAt)));
+            staticCacheEvidence.witnesses.push(
+                await captureStaticCacheWitness(
+                    page,
+                    crossTierRendererStatsMode,
+                    scenario.expectedShadows,
+                ),
+            );
+        }
+        staticCacheEvidence.soakMs = Date.now() - startedAt;
+    } else if (options.soakMs > 0) {
         await wait(options.soakMs);
+    }
+    if (scenario.staticCacheLayers === true) {
+        await runStaticCacheLayerCycle(
+            page,
+            crossTierRendererStatsMode,
+            staticCacheEvidence,
+            scenario.expectedShadows,
+        );
     }
     const motionRunsBeforeSample = scenario.motion === 'foliage-detail-zoom';
     const motionWarmupMs = Number.isFinite(scenario.motionWarmupMs)
@@ -9297,7 +9644,10 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 metrics.submittedTriangles = 0;
             }
             globalThis.__gameProfileLongTasks = [];
-            globalThis.__gameProfileGpuTimer?.reset();
+            (
+                globalThis.__gameProfileGpuTimer ??
+                globalThis.__gameProfileCacheGpuTimer
+            )?.reset();
             const requestProfileAnimationFrame =
                 globalThis.__gameProfileRequestNativeAnimationFrame ??
                 globalThis.requestAnimationFrame.bind(globalThis);
@@ -10601,7 +10951,10 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 weatherTransitionRequest,
                 weatherSurfaceTransitionProfile,
             };
-            globalThis.__gameProfileGpuTimer?.stop();
+            (
+                globalThis.__gameProfileGpuTimer ??
+                globalThis.__gameProfileCacheGpuTimer
+            )?.stop();
 
             return {
                 ...nonGpuSample,
@@ -11573,6 +11926,16 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         }
     }
 
+    if (staticCacheEvidence) {
+        staticCacheEvidence.witnesses.push(
+            await captureStaticCacheWitness(
+                page,
+                crossTierRendererStatsMode,
+                scenario.expectedShadows,
+            ),
+        );
+        runtime = { ...runtime, ...staticCacheEvidence.witnesses.at(-1) };
+    }
     const memory = await collectScenarioMemoryEvidence(cdp);
     await context.close();
 
@@ -11626,7 +11989,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         hud: profileMetadata?.hud ?? request.hud,
         isMobile: scenario.isMobile,
         legacyOutlinePipeline: options.legacyOutlinePipeline,
-        mode: profileMetadata?.mode ?? request.mode,
+        mode: scenario.staticCacheClearance
+            ? request.mode
+            : (profileMetadata?.mode ?? request.mode),
         motion: scenario.motion ?? scenario.interaction ?? 'none',
         motionWarmupMs,
         operationVisuals:
@@ -11641,14 +12006,26 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         animalProfileCommand: animalProfileCommandRequest,
         profileControl: scenario.profileControl === true,
         profileControlRecovery: scenario.profileControlRecovery === true,
-        quality: profileMetadata?.quality ?? request.quality,
+        quality: scenario.staticCacheClearance
+            ? request.quality
+            : (profileMetadata?.quality ?? request.quality),
         runtimeGpuSource: scenario.runtimeGpuSource === true,
         runtimeOwnersProfile: scenario.runtimeOwnersProfile === true,
         sampleMs,
-        staticSceneCache:
-            profileMetadata?.staticSceneCache ?? request.staticSceneCache,
+        staticSceneCache: scenario.staticCacheClearance
+            ? request.staticSceneCache
+            : (profileMetadata?.staticSceneCache ?? request.staticSceneCache),
         staticIdle: profileMetadata?.staticIdle ?? request.staticIdle ?? '0',
         staticIdleProfile: scenario.staticIdleProfile === true,
+        ...(scenario.staticCacheClearance === true
+            ? {
+                  staticCacheClearance: true,
+                  expectedQualitySetting: scenario.expectedQualitySetting,
+                  staticCacheDepth: scenario.staticCacheDepth === true,
+                  staticCacheLayers: scenario.staticCacheLayers === true,
+                  staticCacheSoak: scenario.staticCacheSoak === true,
+              }
+            : {}),
         staticSceneCacheVisualDeterministic:
             scenario.staticSceneCacheVisualDeterministic !== false,
         staticSceneCacheOcclusionFixture:
@@ -11678,9 +12055,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         sample: roundedSample,
         screenshotWitness,
         staticIdle,
+        staticCacheEvidence,
     });
     return {
         acceptance,
+        ...(staticCacheEvidence ? { staticCacheEvidence } : {}),
         apiErrors: apiErrors.slice(0, 8),
         apiRequests: apiRequests.slice(0, 8),
         budget: {
@@ -14610,7 +14989,45 @@ function evaluateHighTargetAcceptance({
     sample,
     screenshotWitness,
     staticIdle,
+    staticCacheEvidence,
 }) {
+    if (requested?.staticCacheClearance === true) {
+        return evaluateStaticCacheClearance({
+            requested,
+            runtime,
+            sample,
+            evidence: staticCacheEvidence,
+            apiErrors,
+            consoleMessages: consoleMessages.filter(
+                (message) => !isIgnoredLocalProfilerConsoleError(message),
+            ),
+            pageErrors,
+            screenshotValid: isProfileScreenshotWitnessValid(screenshotWitness),
+            fixtureExpected: {
+                profileGardenId: lifecycleExpectedGardenId,
+                profileGardenStackCount: lifecycleExpectedGardenStackCount,
+                profileGardenBlockCount: lifecycleExpectedGardenBlockCount,
+                profileGardenRaisedBedCount:
+                    lifecycleExpectedGardenRaisedBedCount,
+                generatedPlantFieldCount:
+                    highTargetExpectedGeneratedPlantFieldCount,
+                generatedPlantExpectedInstanceCount:
+                    highTargetExpectedGeneratedPlantInstanceCount,
+                generatedPlantVisibleFieldCount:
+                    highTargetExpectedGeneratedPlantFieldCount,
+                generatedPlantVisibleInstanceCount:
+                    highTargetExpectedGeneratedPlantInstanceCount,
+            },
+            depthThresholds: {
+                maximumLeakRatio:
+                    highTargetStaticSceneCacheOcclusionMaximumLeakRatio,
+                minimumMatchRatio:
+                    highTargetStaticSceneCacheOcclusionMinimumMatchRatio,
+                verifiedHitCount:
+                    highTargetStaticSceneCacheOcclusionVerifiedHitCount,
+            },
+        });
+    }
     if (requested?.staticIdleProfile === true) {
         return evaluateStaticIdleAcceptance({
             apiErrors,
@@ -16418,6 +16835,11 @@ function buildHighTargetMedians(scenarios) {
                     value >= 0;
                 return {
                     disjoint: run.sample.gpu?.disjoint === true,
+                    ...(run.sample.gpu?.measurementMode
+                        ? {
+                              measurementMode: run.sample.gpu.measurementMode,
+                          }
+                        : {}),
                     profileRun: run.profileRun ?? index + 1,
                     reason: run.sample.gpu?.reason ?? null,
                     valid,
@@ -17194,9 +17616,12 @@ async function readStaticSceneCacheParityImage(path) {
 async function buildStaticSceneCacheVisualComparisons(scenarios) {
     const candidates = scenarios.filter(
         (scenario) =>
-            highTargetStaticSceneCacheComparisonPairs.has(
+            (highTargetStaticSceneCacheComparisonPairs.has(
                 scenario.requested?.comparisonPair,
-            ) &&
+            ) ||
+                staticCacheClearanceComparisonPairs.has(
+                    scenario.requested?.comparisonPair,
+                )) &&
             (scenario.requested?.comparisonRole === 'legacy' ||
                 scenario.requested?.comparisonRole === 'cache'),
     );
@@ -17318,9 +17743,12 @@ function buildStaticSceneCacheComparisons(
 ) {
     const pairedSummaries = Object.entries(highTargetMedians).filter(
         ([, summary]) =>
-            highTargetStaticSceneCacheComparisonPairs.has(
+            (highTargetStaticSceneCacheComparisonPairs.has(
                 summary.comparisonPair,
-            ) &&
+            ) ||
+                staticCacheClearanceComparisonPairs.has(
+                    summary.comparisonPair,
+                )) &&
             (summary.comparisonRole === 'legacy' ||
                 summary.comparisonRole === 'cache'),
     );
@@ -17416,6 +17844,11 @@ function buildStaticSceneCacheComparisons(
                     const valid =
                         legacyRun?.valid === true &&
                         cachedRun?.valid === true &&
+                        (!staticCacheClearanceComparisonPairs.has(pairName) ||
+                            (legacyRun.measurementMode ===
+                                'cache-owned-render-pass-v1' &&
+                                cachedRun.measurementMode ===
+                                    'cache-owned-render-pass-v1')) &&
                         Number.isFinite(legacyRun.value) &&
                         legacyRun.value > 0 &&
                         Number.isFinite(cachedRun.value);

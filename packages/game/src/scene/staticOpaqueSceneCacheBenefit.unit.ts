@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
     createStaticOpaqueSceneCacheBenefitState,
     estimateStaticOpaqueSceneCacheFrameWorkSavings,
+    invalidateStaticOpaqueSceneCacheBenefitGpuSamples,
     isStaticOpaqueSceneCacheBenefitAllowed,
     recordStaticOpaqueSceneCacheBenefitFrame,
     recordStaticOpaqueSceneCacheBenefitGpuSample,
@@ -109,13 +110,13 @@ describe('static opaque scene cache benefit gate', () => {
         assert.equal(state.evaluations, 0);
     });
 
-    it('enables a cache whose hits amortize their captures', () => {
+    it('ends the bounded probe without measured GPU clearance', () => {
         const state = record(createStaticOpaqueSceneCacheBenefitState(), [
             capture,
             ...repeat(hit, staticOpaqueSceneCacheBenefitWindowFrames - 1),
         ]);
-        assert.equal(state.status, 'enabled');
-        assert.equal(state.reason, 'work-savings');
+        assert.equal(state.status, 'disabled');
+        assert.equal(state.reason, 'gpu-unavailable');
         assert.equal(state.evaluations, 1);
         assert.ok((state.lastNetWorkPerFrame ?? 0) > 0);
         assert.equal(state.lastNetGpuMsPerFrame, null);
@@ -182,10 +183,13 @@ describe('static opaque scene cache benefit gate', () => {
             staticOpaqueSceneCacheBenefitMaximumCooldownMs,
         ]);
 
-        const recovered = record(state, [
-            capture,
-            ...repeat(hit, staticOpaqueSceneCacheBenefitWindowFrames - 1),
-        ]);
+        const recovered = record(
+            withGpuSamples(state, { capture: 6, hit: 2, live: 4 }),
+            [
+                capture,
+                ...repeat(hit, staticOpaqueSceneCacheBenefitWindowFrames - 1),
+            ],
+        );
         assert.equal(recovered.status, 'enabled');
         assert.equal(recovered.consecutiveLosses, 0);
     });
@@ -223,7 +227,7 @@ describe('static opaque scene cache benefit gate', () => {
         assert.ok((losing.lastNetWorkPerFrame ?? 0) > 0);
     });
 
-    it('falls back to the work model without a capture sample', () => {
+    it('rejects incomplete GPU evidence even with positive modeled savings', () => {
         const state = record(
             withGpuSamples(createStaticOpaqueSceneCacheBenefitState(), {
                 hit: 4.5,
@@ -234,7 +238,82 @@ describe('static opaque scene cache benefit gate', () => {
                 ...repeat(hit, staticOpaqueSceneCacheBenefitWindowFrames - 1),
             ],
         );
-        assert.equal(state.reason, 'work-savings');
+        assert.equal(state.reason, 'gpu-unavailable');
+        assert.equal(state.status, 'disabled');
+    });
+
+    it('ignores late samples from an earlier evaluation window', () => {
+        const state = record(
+            withGpuSamples(createStaticOpaqueSceneCacheBenefitState(), {
+                capture: 6,
+                hit: 2,
+                live: 4,
+            }),
+            [
+                capture,
+                ...repeat(hit, staticOpaqueSceneCacheBenefitWindowFrames - 1),
+            ],
+        );
+        assert.equal(state.windowId, 1);
+        assert.equal(
+            recordStaticOpaqueSceneCacheBenefitGpuSample(
+                state,
+                'capture',
+                1,
+                0,
+            ),
+            state,
+        );
+        assert.equal(
+            recordStaticOpaqueSceneCacheBenefitGpuSample(state, 'hit', 1, 1)
+                .window.hitGpuMs.length,
+            1,
+        );
+    });
+
+    it('disjoint invalidation drops measured evidence without extending the probe', () => {
+        const before = record(
+            withGpuSamples(createStaticOpaqueSceneCacheBenefitState(), {
+                capture: 6,
+                hit: 2,
+                live: 4,
+            }),
+            [capture, ...repeat(hit, 58)],
+        );
+        const state = invalidateStaticOpaqueSceneCacheBenefitGpuSamples(before);
+        assert.equal(state.window.hits, 58);
+        assert.equal(state.window.liveGpuMs.length, 0);
+        assert.equal(state.window.gpuHits, 0);
+        assert.equal(state.windowId, before.windowId + 1);
+        assert.equal(record(state, [hit]).reason, 'gpu-unavailable');
+    });
+
+    it('does not amortize a changed scene capture against old scene hits', () => {
+        let state = record(createStaticOpaqueSceneCacheBenefitState(), [
+            capture,
+            ...repeat(hit, 58),
+        ]);
+        state = invalidateStaticOpaqueSceneCacheBenefitGpuSamples(state);
+        state = withGpuSamples(state, { capture: 10, hit: 2, live: 4 });
+        state = record(state, [capture]);
+        assert.equal(state.status, 'disabled');
+        assert.equal(state.reason, 'gpu-cost');
+        assert.equal(state.lastNetGpuMsPerFrame, -6);
+    });
+
+    it('bounds samples even while a render cannot record a cache frame', () => {
+        let state = createStaticOpaqueSceneCacheBenefitState();
+        for (let index = 0; index < 1_000; index += 1) {
+            state = recordStaticOpaqueSceneCacheBenefitGpuSample(
+                state,
+                'live',
+                1,
+            );
+        }
+        assert.equal(
+            state.window.liveGpuMs.length,
+            staticOpaqueSceneCacheBenefitWindowFrames,
+        );
     });
 
     it('ignores invalid GPU samples', () => {

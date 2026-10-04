@@ -3,16 +3,16 @@
  *
  * The cache only stays enabled while it saves more GPU work than it spends on
  * captures and composition. Measured GPU time decides when timer queries are
- * available. Otherwise a submitted-work model built from renderer counters
- * decides. A losing window disables the cache and releases its targets for a
- * cooldown that doubles on every consecutive loss.
+ * available. Submitted work remains a diagnostic and can reject churn; it
+ * never establishes a GPU saving. Missing measured evidence ends the probe
+ * and releases its targets for a cooldown that doubles on every consecutive loss.
  */
 
 // Hits and captures needed before a window is judged.
 export const staticOpaqueSceneCacheBenefitWindowFrames = 60;
 // Captures that end a window early, so capture churn is caught quickly.
 export const staticOpaqueSceneCacheBenefitWindowCaptures = 8;
-// GPU samples needed per kind before measured time replaces the work model.
+// GPU samples needed per kind before caching can be admitted.
 export const staticOpaqueSceneCacheBenefitMinimumGpuSamples = 3;
 // A live probe frame is rendered after this many consecutive hits.
 export const staticOpaqueSceneCacheBenefitProbeInterval = 30;
@@ -35,9 +35,9 @@ export type StaticOpaqueSceneCacheBenefitStatus =
 export type StaticOpaqueSceneCacheBenefitReason =
     | 'gpu-cost'
     | 'gpu-savings'
+    | 'gpu-unavailable'
     | 'warming-up'
-    | 'work-cost'
-    | 'work-savings';
+    | 'work-cost';
 
 export type StaticOpaqueSceneCacheBenefitSampleKind =
     | 'capture'
@@ -55,6 +55,8 @@ export type StaticOpaqueSceneCacheBenefitFrame = {
 type StaticOpaqueSceneCacheBenefitWindow = {
     captureGpuMs: number[];
     captures: number;
+    gpuCaptures: number;
+    gpuHits: number;
     hitGpuMs: number[];
     hits: number;
     liveGpuMs: number[];
@@ -71,12 +73,15 @@ export type StaticOpaqueSceneCacheBenefitState = {
     reason: StaticOpaqueSceneCacheBenefitReason;
     status: StaticOpaqueSceneCacheBenefitStatus;
     window: StaticOpaqueSceneCacheBenefitWindow;
+    windowId: number;
 };
 
 function createWindow(): StaticOpaqueSceneCacheBenefitWindow {
     return {
         captureGpuMs: [],
         captures: 0,
+        gpuCaptures: 0,
+        gpuHits: 0,
         hitGpuMs: [],
         hits: 0,
         liveGpuMs: [],
@@ -95,6 +100,17 @@ export function createStaticOpaqueSceneCacheBenefitState(): StaticOpaqueSceneCac
         reason: 'warming-up',
         status: 'probing',
         window: createWindow(),
+        windowId: 0,
+    };
+}
+
+/** Preference changes start a fresh probe without reusing a pending query's ID. */
+export function restartStaticOpaqueSceneCacheBenefit(
+    state: StaticOpaqueSceneCacheBenefitState,
+): StaticOpaqueSceneCacheBenefitState {
+    return {
+        ...createStaticOpaqueSceneCacheBenefitState(),
+        windowId: state.windowId + 1,
     };
 }
 
@@ -167,6 +183,7 @@ export function resumeStaticOpaqueSceneCacheBenefit(
         reason: 'warming-up',
         status: 'probing',
         window: createWindow(),
+        windowId: state.windowId + 1,
     };
 }
 
@@ -196,9 +213,11 @@ export function recordStaticOpaqueSceneCacheBenefitGpuSample(
     state: StaticOpaqueSceneCacheBenefitState,
     kind: StaticOpaqueSceneCacheBenefitSampleKind,
     elapsedMs: number,
+    windowId = state.windowId,
 ): StaticOpaqueSceneCacheBenefitState {
     if (
         state.status === 'disabled' ||
+        windowId !== state.windowId ||
         !Number.isFinite(elapsedMs) ||
         elapsedMs < 0
     ) {
@@ -214,8 +233,34 @@ export function recordStaticOpaqueSceneCacheBenefitGpuSample(
         ...state,
         window: {
             ...state.window,
-            [key]: [...state.window[key], elapsedMs],
+            [key]: [...state.window[key], elapsedMs].slice(
+                -staticOpaqueSceneCacheBenefitWindowFrames,
+            ),
         },
+    };
+}
+
+/** Drop query evidence after disjoint/context changes without extending the probe. */
+export function invalidateStaticOpaqueSceneCacheBenefitGpuSamples(
+    state: StaticOpaqueSceneCacheBenefitState,
+): StaticOpaqueSceneCacheBenefitState {
+    if (state.status === 'disabled') {
+        return state;
+    }
+    return {
+        ...state,
+        lastNetGpuMsPerFrame: null,
+        reason: 'warming-up',
+        status: 'probing',
+        window: {
+            ...state.window,
+            captureGpuMs: [],
+            gpuCaptures: 0,
+            gpuHits: 0,
+            hitGpuMs: [],
+            liveGpuMs: [],
+        },
+        windowId: state.windowId + 1,
     };
 }
 
@@ -225,16 +270,17 @@ function resolveNetGpuMs(window: StaticOpaqueSceneCacheBenefitWindow) {
             staticOpaqueSceneCacheBenefitMinimumGpuSamples ||
         window.hitGpuMs.length <
             staticOpaqueSceneCacheBenefitMinimumGpuSamples ||
-        (window.captures > 0 && window.captureGpuMs.length === 0)
+        (window.gpuCaptures > 0 && window.captureGpuMs.length === 0)
     ) {
         return null;
     }
     const liveMs = average(window.liveGpuMs);
     const hitMs = average(window.hitGpuMs);
     const captureMs =
-        window.captures > 0 ? average(window.captureGpuMs) : liveMs;
+        window.gpuCaptures > 0 ? average(window.captureGpuMs) : liveMs;
     return (
-        window.hits * (liveMs - hitMs) - window.captures * (captureMs - liveMs)
+        window.gpuHits * (liveMs - hitMs) -
+        window.gpuCaptures * (captureMs - liveMs)
     );
 }
 
@@ -251,6 +297,9 @@ export function recordStaticOpaqueSceneCacheBenefitFrame(
         ...state.window,
         captures: state.window.captures + (frame.action === 'capture' ? 1 : 0),
         hits: state.window.hits + (frame.action === 'hit' ? 1 : 0),
+        gpuCaptures:
+            state.window.gpuCaptures + (frame.action === 'capture' ? 1 : 0),
+        gpuHits: state.window.gpuHits + (frame.action === 'hit' ? 1 : 0),
         workUnits:
             state.window.workUnits +
             estimateStaticOpaqueSceneCacheFrameWorkSavings(frame),
@@ -269,19 +318,23 @@ export function recordStaticOpaqueSceneCacheBenefitFrame(
     }
 
     const netGpuMs = resolveNetGpuMs(window);
-    const profitable = netGpuMs !== null ? netGpuMs > 0 : window.workUnits > 0;
+    const profitable = netGpuMs !== null && netGpuMs > 0;
     const evaluated = {
         ...next,
         evaluations: state.evaluations + 1,
-        lastNetGpuMsPerFrame: netGpuMs === null ? null : netGpuMs / frames,
+        lastNetGpuMsPerFrame:
+            netGpuMs === null
+                ? null
+                : netGpuMs / Math.max(1, window.gpuCaptures + window.gpuHits),
         lastNetWorkPerFrame: window.workUnits / frames,
         window: createWindow(),
+        windowId: state.windowId + 1,
     };
     if (profitable) {
         return {
             ...evaluated,
             consecutiveLosses: 0,
-            reason: netGpuMs !== null ? 'gpu-savings' : 'work-savings',
+            reason: 'gpu-savings',
             status: 'enabled',
         };
     }
@@ -298,7 +351,12 @@ export function recordStaticOpaqueSceneCacheBenefitFrame(
                     2 ** (consecutiveLosses - 1),
             ),
         hitsSinceProbe: 0,
-        reason: netGpuMs !== null ? 'gpu-cost' : 'work-cost',
+        reason:
+            netGpuMs !== null
+                ? 'gpu-cost'
+                : window.workUnits <= 0
+                  ? 'work-cost'
+                  : 'gpu-unavailable',
         status: 'disabled',
     };
 }

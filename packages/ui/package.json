@@ -12,7 +12,7 @@
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
-        "test": "node --import tsx --test src/cms/CmsOgImage.unit.ts src/CalendarDatePicker/calendarDateUtils.unit.ts src/PublicChrome/publicEnvironment.unit.ts src/GridIcons/plantGridLayout.unit.ts",
+        "test": "node --import tsx --test src/cms/CmsOgImage.unit.ts src/CalendarDatePicker/calendarDateUtils.unit.ts src/PublicChrome/publicEnvironment.unit.ts src/GridIcons/plantGridLayout.unit.ts src/auth/lastLoginProviderRequest.unit.ts",
         "typecheck": "tsc --noEmit --pretty false"
     },
     "devDependencies": {
@@ -39,7 +39,7 @@
         "clsx": "2.1.1",
         "lucide-react": "1.47.0",
         "motion": "13.4.0",
-        "next": "16.3.6",
+        "next": "16.3.8",
         "next-themes": "0.4.6",
         "nuqs": "2.10.1",
         "react": "19.2.8",
