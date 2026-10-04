@@ -6,6 +6,7 @@ import {
     type GardenEmissiveMaterialRef,
     useGardenLightRegistry,
 } from '../../scene/GardenLightProvider';
+import { useSceneRenderRequest } from '../../scene/SceneTime';
 import { EntityPreviewContext } from './EntityPreviewContext';
 import {
     resolveGardenNightLightEmissivePeakIntensity,
@@ -16,6 +17,7 @@ const emptyEmissiveMaterialRefs: readonly GardenEmissiveMaterialRef[] = [];
 
 export function GardenNightLight({
     color,
+    glowAmountOverride,
     decay = 1.8,
     distance,
     emissiveBaseIntensity = 0.2,
@@ -26,6 +28,7 @@ export function GardenNightLight({
     position,
 }: {
     color: string;
+    glowAmountOverride?: 0 | 1;
     decay?: number;
     distance: number;
     emissiveBaseIntensity?: number;
@@ -35,13 +38,15 @@ export function GardenNightLight({
     lightKey: string;
     position: readonly [number, number, number];
 }) {
+    const requestRender = useSceneRenderRequest();
     const preview = useContext(EntityPreviewContext);
     const registry = useGardenLightRegistry();
     const lightRef = useRef<PointLight>(null);
 
     useEffect(() => {
         if (preview) return;
-        return registry.register({
+        const unregister = registry.register({
+            glowAmountOverride,
             emissiveBaseIntensity,
             emissiveMaterialRefs,
             emissivePeakIntensity: resolveGardenNightLightEmissivePeakIntensity(
@@ -51,8 +56,13 @@ export function GardenNightLight({
             lightIntensity: resolveGardenNightLightIntensity(lightIntensity),
             lightRef,
         });
+        if (glowAmountOverride !== undefined)
+            requestRender('pumpkin-trail-light', 2);
+        return unregister;
     }, [
         preview,
+        glowAmountOverride,
+        requestRender,
         emissiveBaseIntensity,
         emissiveMaterialRefs,
         emissivePeakIntensity,
