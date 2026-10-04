@@ -1,11 +1,11 @@
 'use client';
 
 import { useSearchParam } from '@gredice/ui/hooks';
-import { Modal } from '@gredice/ui/Modal';
 import { Spinner } from '@gredice/ui/Spinner';
 import { useCallback, useEffect, useState } from 'react';
 import { useAdventCalendar } from '../../hooks/useAdventCalendar';
 import { useOpenAdventDay } from '../../hooks/useOpenAdventDay';
+import { GameModal } from '../../shared-ui/game-modal';
 import { AdventAlreadyOpenedScreen } from './AdventAlreadyOpenedScreen';
 import { AdventAwardScreen } from './AdventAwardScreen';
 import { AdventCalendarScreen } from './AdventCalendarScreen';
@@ -224,13 +224,13 @@ export function AdventModal() {
     };
 
     return (
-        <Modal
+        <GameModal
             title="Adventski kalendar"
             open={isOpen}
             onOpenChange={(open) => !open && handleClose()}
-            className="md:max-w-sm border-tertiary border-b-4 p-0 overflow-hidden"
+            className="md:max-w-sm p-0 overflow-hidden"
         >
             <div className="bg-background">{renderContent()}</div>
-        </Modal>
+        </GameModal>
     );
 }

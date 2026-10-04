@@ -1,5 +1,6 @@
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { useSearchParam } from '@gredice/ui/hooks';
 import { IconButton } from '@gredice/ui/IconButton';
 import {
@@ -10,6 +11,7 @@ import {
 import { Popper } from '@gredice/ui/Popper';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { sunflowerMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
@@ -31,11 +33,17 @@ function DailyRewardInfo() {
             </Typography>
             <Row justifyContent="space-between">
                 <Typography level="body3">{`Danas - dan ${currentDay}`}</Typography>
-                <Typography level="body2">+{data.current.amount} 🌻</Typography>
+                <Typography level="body2">
+                    +{data.current.amount}{' '}
+                    <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
+                </Typography>
             </Row>
             <Row justifyContent="space-between">
                 <Typography level="body3">{`Sutra te čeka`}</Typography>
-                <Typography level="body2">+{data.next.amount} 🌻</Typography>
+                <Typography level="body2">
+                    +{data.next.amount}{' '}
+                    <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
+                </Typography>
             </Row>
         </Stack>
     );
@@ -46,7 +54,7 @@ export function SunflowersInfoTooltipContent() {
         <Stack className="p-4" spacing={4}>
             <Row spacing={4} alignItems="start">
                 <Image
-                    src="https://cdn.gredice.com/sunflower-large.svg"
+                    src={sunflowerMascotArtwork}
                     alt="Suncokret"
                     width={72}
                     height={72}
@@ -75,7 +83,8 @@ export function SunflowersInfoTooltipContent() {
                             Plaćanje
                         </Typography>
                         <Typography level="body1" bold className="tabular-nums">
-                            1 € = 1.000 🌻
+                            1 € = 1.000{' '}
+                            <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
                         </Typography>
                     </Stack>
                     <Stack
@@ -89,7 +98,8 @@ export function SunflowersInfoTooltipContent() {
                             Bonus za kupnju
                         </Typography>
                         <Typography level="body1" bold className="tabular-nums">
-                            1 € = 10 🌻
+                            1 € = 10{' '}
+                            <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
                         </Typography>
                     </Stack>
                 </div>
@@ -148,7 +158,7 @@ function SunflowersCard({ pendingSunflowers }: { pendingSunflowers: number }) {
                     className="rounded-t-none"
                     onClick={() => setProfileModalOpen('suncokreti')}
                 >
-                    Prikaži sve aktivnosti
+                    Pregled i kupnja suncokreta
                 </Button>
             </Stack>
         </Stack>
@@ -165,10 +175,6 @@ function SunflowersAmount() {
             ? sunflowerCount - pendingSunflowers
             : undefined;
 
-    if (isLoading) {
-        return null;
-    }
-
     return (
         <Popper
             className="overflow-hidden border-tertiary border-b-4"
@@ -176,12 +182,13 @@ function SunflowersAmount() {
             sideOffset={12}
             trigger={
                 <Button
+                    aria-busy={isLoading}
                     variant="plain"
                     title="Suncokreti"
                     data-sunflowers-hud-target
                     startDecorator={
                         <Image
-                            src="https://cdn.gredice.com/sunflower-large.svg"
+                            src={sunflowerMascotArtwork}
                             alt="Suncokret"
                             className="size-6"
                             width={24}
@@ -190,15 +197,28 @@ function SunflowersAmount() {
                     }
                     className="relative rounded-full px-2 md:min-w-20 justify-between pr-4"
                 >
-                    <Typography level="body2" className="text-base pl-0.5">
-                        {typeof displayedSunflowerCount === 'number'
-                            ? formatSunflowers(displayedSunflowerCount)
-                            : sunflowerCount}
+                    <Typography
+                        component="span"
+                        level="body2"
+                        className="inline-flex min-w-10 items-center pl-0.5 text-base"
+                    >
+                        {isLoading ? (
+                            <span
+                                aria-label="Učitavanje broja suncokreta"
+                                className="h-5 w-10 animate-pulse rounded-md bg-muted"
+                                data-sunflowers-hud-amount-skeleton="true"
+                                role="status"
+                            />
+                        ) : typeof displayedSunflowerCount === 'number' ? (
+                            formatSunflowers(displayedSunflowerCount)
+                        ) : (
+                            '—'
+                        )}
                     </Typography>
                     {pendingSunflowers > 0 && (
                         <span
                             aria-hidden="true"
-                            title={`U košari: ${formatSunflowers(pendingSunflowers)} 🌻`}
+                            title={`U košari: ${formatSunflowers(pendingSunflowers)} suncokreta`}
                             data-sunflowers-cart-indicator
                             className="pointer-events-none absolute -right-1 -top-1 flex size-6 items-center justify-center rounded-full border border-background bg-neutral-100 text-neutral-900 shadow-xs"
                         >

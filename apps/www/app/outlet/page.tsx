@@ -1,0 +1,229 @@
+import { Container } from '@gredice/ui/Container';
+import { GameSeedlingIcon } from '@gredice/ui/GameIcons';
+import { Discount, Timer } from '@gredice/ui/icons';
+import { NavigatingButton } from '@gredice/ui/NavigatingButton';
+import { Stack } from '@gredice/ui/Stack';
+import { Typography } from '@gredice/ui/Typography';
+import { ShoppingBasketVisual } from '../../components/ShoppingBasketVisual';
+import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
+import { KnownPages } from '../../src/KnownPages';
+import { OutletBrandMark } from './OutletBrandMark';
+import { OutletOfferCard } from './OutletOfferCard';
+import { getOutletOffers, outletOfferImage } from './outletData';
+import { currencyFormatter } from './outletPresentation';
+
+export const dynamic = 'force-dynamic';
+
+export const metadata = createPublicMetadata({
+    title: 'Outlet sadnica',
+    description:
+        'Vremenski ograničene outlet ponude presadnica koje su ostale u Gredice stakleniku.',
+    path: KnownPages.Outlet,
+    eyebrow: 'Ponuda iz staklenika',
+});
+
+function outletStructuredData(
+    offers: Awaited<ReturnType<typeof getOutletOffers>>,
+) {
+    return {
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        name: 'Gredice Outlet sadnica',
+        url: `https://www.gredice.com${KnownPages.Outlet}`,
+        itemListElement: offers.map((offer, index) => ({
+            '@type': 'ListItem',
+            position: index + 1,
+            item: {
+                '@type': 'Product',
+                name: offer.plantSort.name,
+                description: offer.plantSort.description ?? undefined,
+                image: outletOfferImage(offer) ?? undefined,
+                brand: {
+                    '@type': 'Brand',
+                    name: 'Gredice',
+                },
+                offers: {
+                    '@type': 'Offer',
+                    price: offer.outletPrice.toFixed(2),
+                    priceCurrency: 'EUR',
+                    priceValidUntil: offer.endAt.slice(0, 10),
+                    availability:
+                        offer.remainingQuantity > 0
+                            ? 'https://schema.org/InStock'
+                            : 'https://schema.org/OutOfStock',
+                    inventoryLevel: {
+                        '@type': 'QuantitativeValue',
+                        value: offer.remainingQuantity,
+                    },
+                    url: `https://www.gredice.com${KnownPages.Outlet}?offer=${offer.id}`,
+                },
+            },
+        })),
+    };
+}
+
+function outletSummary(offers: Awaited<ReturnType<typeof getOutletOffers>>) {
+    const remainingQuantity = offers.reduce(
+        (total, offer) => total + offer.remainingQuantity,
+        0,
+    );
+    const lowestOutletPrice = offers.reduce<number | null>(
+        (lowestPrice, offer) =>
+            lowestPrice === null
+                ? offer.outletPrice
+                : Math.min(lowestPrice, offer.outletPrice),
+        null,
+    );
+    return {
+        lowestOutletPrice,
+        remainingQuantity,
+    };
+}
+
+export default async function OutletPage() {
+    const offers = await getOutletOffers();
+    const { lowestOutletPrice, remainingQuantity } = outletSummary(offers);
+
+    return (
+        <Container className="py-10 sm:py-14">
+            {offers.length > 0 ? (
+                <StructuredDataScript data={outletStructuredData(offers)} />
+            ) : null}
+            <Stack spacing={10}>
+                <section className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.55fr)] lg:items-end">
+                    <Stack spacing={5} className="max-w-3xl">
+                        <div className="grid grid-cols-[5rem_minmax(0,1fr)] items-center gap-x-4 gap-y-3 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-x-6">
+                            <OutletBrandMark className="col-start-1 row-start-1 h-auto w-20 shrink-0 object-contain drop-shadow-lg sm:row-span-2 sm:w-32" />
+                            <div className="col-start-2 row-start-1 inline-flex w-fit items-center gap-2 rounded-full border border-amber-300/70 bg-amber-100 px-3 py-1.5 text-sm font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                                <Discount aria-hidden className="size-4" />
+                                Outlet cijena, Gredice kvaliteta
+                            </div>
+                            <Stack
+                                spacing={1}
+                                className="col-span-2 row-start-2 sm:col-span-1 sm:col-start-2"
+                            >
+                                <Typography level="body1" semiBold tertiary>
+                                    Gredice Outlet
+                                </Typography>
+                                <Typography level="h1">
+                                    Presadnice po outlet cijeni
+                                </Typography>
+                            </Stack>
+                        </div>
+                        <Typography
+                            level="body1"
+                            secondary
+                            className="max-w-2xl text-pretty"
+                        >
+                            Zdrave presadnice koje su već krenule u rast iz
+                            našeg staklenika možeš dodati u svoju gredicu po
+                            povoljnijoj cijeni. Ponude su vremenski i količinski
+                            ograničene.
+                        </Typography>
+                        <div className="flex flex-wrap gap-2">
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-sm text-secondary-foreground ring-1 ring-tertiary">
+                                <GameSeedlingIcon
+                                    aria-hidden
+                                    className="size-8 shrink-0"
+                                />
+                                Spremne za tvoju gredicu
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-sm text-secondary-foreground ring-1 ring-tertiary">
+                                <ShoppingBasketVisual className="h-auto w-6 shrink-0 object-contain drop-shadow-sm" />
+                                Rezervacija kroz vrt
+                            </span>
+                        </div>
+                    </Stack>
+                    {offers.length > 0 ? (
+                        <dl className="grid grid-cols-3 gap-2 sm:gap-3">
+                            <div className="rounded-2xl border border-tertiary border-b-4 bg-card p-3 sm:p-4">
+                                <dt className="text-sm text-muted-foreground">
+                                    Ponude
+                                </dt>
+                                <dd className="mt-1 text-2xl leading-tight sm:text-3xl">
+                                    {offers.length}
+                                </dd>
+                            </div>
+                            <div className="rounded-2xl border border-tertiary border-b-4 bg-card p-3 sm:p-4">
+                                <dt className="text-sm text-muted-foreground">
+                                    Sadnice
+                                </dt>
+                                <dd className="mt-1 text-2xl leading-tight sm:text-3xl">
+                                    {remainingQuantity}
+                                </dd>
+                            </div>
+                            <div className="rounded-2xl border border-tertiary border-b-4 bg-card p-3 sm:p-4">
+                                <dt className="text-sm text-muted-foreground">
+                                    Od
+                                </dt>
+                                <dd className="mt-1 text-2xl leading-tight sm:text-3xl">
+                                    {lowestOutletPrice === null
+                                        ? '-'
+                                        : currencyFormatter.format(
+                                              lowestOutletPrice,
+                                          )}
+                                </dd>
+                            </div>
+                        </dl>
+                    ) : null}
+                </section>
+                {offers.length > 0 ? (
+                    <section
+                        aria-labelledby="outlet-offers-heading"
+                        className="grid gap-5"
+                    >
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                            <Stack spacing={1}>
+                                <Typography
+                                    id="outlet-offers-heading"
+                                    level="h2"
+                                >
+                                    Dostupne outlet sadnice
+                                </Typography>
+                            </Stack>
+                            <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-sm text-secondary-foreground ring-1 ring-tertiary">
+                                <Timer
+                                    aria-hidden
+                                    className="size-4 text-amber-600 dark:text-amber-300"
+                                />
+                                Dok traju zalihe
+                            </span>
+                        </div>
+                        <div className="grid gap-5 md:grid-cols-2">
+                            {offers.map((offer) => (
+                                <OutletOfferCard key={offer.id} offer={offer} />
+                            ))}
+                        </div>
+                    </section>
+                ) : (
+                    <div className="rounded-2xl border border-tertiary border-b-4 bg-card p-6 sm:p-8">
+                        <Stack spacing={4} className="max-w-2xl">
+                            <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                <GameSeedlingIcon
+                                    aria-hidden
+                                    className="size-8 shrink-0"
+                                />
+                            </div>
+                            <Typography level="h3" component="h2">
+                                Trenutno nema aktivnih outlet ponuda
+                            </Typography>
+                            <Typography level="body2" secondary>
+                                Kad u stakleniku ostane dostupnih presadnica,
+                                prikazat ćemo ih ovdje s rokom ponude i
+                                preostalom količinom.
+                            </Typography>
+                            <NavigatingButton
+                                href={KnownPages.Plants}
+                                variant="outlined"
+                                className="w-fit"
+                            >
+                                Pregledaj biljke
+                            </NavigatingButton>
+                        </Stack>
+                    </div>
+                )}
+            </Stack>
+        </Container>
+    );
+}

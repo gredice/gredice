@@ -1,25 +1,49 @@
+import { deliveryPricePerKilometre } from '@gredice/js/delivery';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Container } from '@gredice/ui/Container';
-import { Calendar, Warning } from '@gredice/ui/icons';
+import {
+    GameCalendarIcon,
+    GameGiftIcon,
+    GameInformationIcon,
+    GameLocationIcon,
+    GameReceiptIcon,
+    GameSeedlingIcon,
+} from '@gredice/ui/GameIcons';
+import { Warning } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
+import { RelatedFaq } from '../../components/faq/RelatedFaq';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from '../../components/shared/Card';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
+import { PublicGardenIllustration } from '../../components/visuals/PublicGardenIllustration';
 import { formatPrice } from '../../lib/formatPrice';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
+import { DeliveryAvailabilityChecker } from './DeliveryAvailabilityChecker';
+import { DeliveryZoneMap } from './DeliveryZoneMap';
+import {
+    deliverySummaryFacts,
+    deliverySummaryHeading,
+    deliverySummaryHeadingId,
+    deliverySummaryLead,
+} from './deliverySummary';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Dostava',
     description: 'Sve informacije o dostavi povrća iz tvojih gredica.',
-};
-
-const distanceSurchargePerKm = 0.2;
+    path: KnownPages.Delivery,
+    eyebrow: 'Dostava uroda',
+});
 
 const deliveryLocations = [
     { name: 'Velika Gorica', distance: 20 },
@@ -29,21 +53,51 @@ const deliveryLocations = [
 ] as const;
 
 export default function DeliveryPage() {
+    const googleMapsApiKey =
+        process.env.NEXT_PUBLIC_GREDICE_GOOGLE_MAPS_API_KEY?.trim() ?? '';
+
     return (
         <Container maxWidth="md">
             <Stack>
                 <PageHeader
                     padded
-                    header="🚚 Dostava"
+                    header="Dostava"
+                    visual={
+                        <PublicGardenIllustration
+                            kind="delivery"
+                            loading="eager"
+                        />
+                    }
                     subHeader="Sve informacije o dostavi povrća iz tvojih gredica"
                 />
                 <StyledHtml>
+                    <h2 id={deliverySummaryHeadingId}>
+                        <GameSeedlingIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-7 align-text-bottom"
+                        />{' '}
+                        {deliverySummaryHeading}
+                    </h2>
+                    <p>{deliverySummaryLead}</p>
+                    <ul>
+                        {deliverySummaryFacts.map((fact) => (
+                            <li key={fact}>{fact}</li>
+                        ))}
+                    </ul>
                     <p>
                         Kad tvoje povrće bude spremno za berbu, mi ćemo se
                         pobrinuti da ga sigurno i svježe dostavimo na tvoju
                         adresu - ili te čekamo da ga preuzmeš osobno. U nastavku
                         možeš saznati kako funkcionira dostava, koje su opcije
                         dostupne i koji su uvjeti.
+                    </p>
+                    <p>
+                        Ako tek upoznaješ Gredice, pročitaj kako funkcionira{' '}
+                        <a href={KnownPages.DeliveryZagreb}>
+                            dostava svježeg povrća u Zagrebu iz tvoje vlastite
+                            gredice
+                        </a>
+                        .
                     </p>
                     <Typography
                         level="body2"
@@ -54,22 +108,43 @@ export default function DeliveryPage() {
                         dostavu na vrijeme. Termini unutar dva dana često više
                         nisu dostupni.
                     </Typography>
-                    <h2 id="besplatna-dostava">🆓 Besplatna dostava</h2>
+                    <h2 id="besplatna-dostava">
+                        <GameGiftIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-7 align-text-bottom"
+                        />{' '}
+                        Besplatna dostava
+                    </h2>
                     <p>
                         Za adrese na području Zagreba dostava je uvijek{' '}
                         <strong>besplatna</strong>, bez obzira na broj biljaka
                         ili količinu povrća u narudžbi.
                     </p>
-                    <Alert startDecorator={'ℹ️'} color="info">
+                    <Alert
+                        startDecorator={
+                            <GameInformationIcon
+                                aria-hidden
+                                className="size-6"
+                            />
+                        }
+                        color="info"
+                    >
                         Dostava za adrese izvan Zagreba računa se prema
                         udaljenosti:
                         <strong>
                             {' '}
-                            {formatPrice(distanceSurchargePerKm)} po kilometru
+                            {formatPrice(deliveryPricePerKilometre)} po
+                            kilometru
                         </strong>
                         .
                     </Alert>
-                    <h2 id="cijena-dostave">🫰 Cijena dostave</h2>
+                    <h2 id="cijena-dostave">
+                        <GameReceiptIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-7 align-text-bottom"
+                        />{' '}
+                        Cijena dostave
+                    </h2>
                     <p>
                         Za dostavu izvan Zagreba cijena se računa prema
                         udaljenosti od naše najbliže{' '}
@@ -78,42 +153,50 @@ export default function DeliveryPage() {
                         </a>
                         :{' '}
                         <strong>
-                            {formatPrice(distanceSurchargePerKm)} po kilometru
+                            {formatPrice(deliveryPricePerKilometre)} po
+                            kilometru
                         </strong>
                         .
                     </p>
+                    <DeliveryAvailabilityChecker />
                     <p>Vidi mapu zona dostave i tablicu s cijenama ispod:</p>
-                    <div>
-                        <figure className="mb-4 w-full text-center">
-                            <div className="aspect-[4/3] w-full">
-                                <iframe
-                                    title="Zone dostave"
-                                    src="https://www.google.com/maps/d/u/4/embed?mid=1hya16VbRWVVdH4G-8-iCHHrLl8pAISA&ehbc=2E312F&ll=45.778793753891875%2C15.983640700842331&z=9"
-                                    className="h-full w-full rounded-lg border-0"
-                                    sandbox="allow-scripts allow-same-origin"
-                                    loading="lazy"
-                                ></iframe>
-                            </div>
-                            <figcaption className="not-prose mt-2 text-sm text-foreground">
-                                <strong>Zone dostave</strong> -{' '}
-                                <em>
-                                    zone su okvirne, a stvarne zone dostave mogu
-                                    se razlikovati.
-                                </em>
-                            </figcaption>
-                        </figure>
-                    </div>
-                    <table
-                        style={{
-                            width: '100%',
-                            borderCollapse: 'collapse',
-                            borderStyle: 'hidden',
-                            boxShadow: '0 0 0 1px #ddd',
-                            borderRadius: '12px',
-                            marginBottom: '1rem',
-                        }}
-                    >
-                        <caption>
+                    <figure className="not-prose mb-4 w-full">
+                        <DeliveryZoneMap apiKey={googleMapsApiKey} />
+                        <figcaption className="mt-2 text-sm text-foreground">
+                            <strong>Zone dostave</strong> – područje do 100 km
+                            izračunato je prema udaljenosti vožnje cestom i
+                            ograničeno na Hrvatsku. Podaci o cestama:{' '}
+                            <a
+                                href="https://www.openstreetmap.org/copyright"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline"
+                            >
+                                © OpenStreetMap contributors
+                            </a>
+                            , izračun{' '}
+                            <a
+                                href="https://valhalla.github.io/valhalla/api/isochrone/api-reference/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline"
+                            >
+                                Valhalla
+                            </a>
+                            . Granica Grada Zagreba prikazana je prema{' '}
+                            <a
+                                href="https://geohub-zagreb.hub.arcgis.com/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline"
+                            >
+                                službenim podacima GeoHuba Grada Zagreba
+                            </a>
+                            .
+                        </figcaption>
+                    </figure>
+                    <table className="not-prose mb-4 w-full overflow-hidden rounded-xl border border-border border-separate border-spacing-0 bg-card text-sm text-card-foreground">
+                        <caption className="caption-top pb-1 text-foreground">
                             <strong>Cijena dostave</strong> -{' '}
                             <em>
                                 udaljenost će biti točno izračunata prilikom
@@ -122,101 +205,55 @@ export default function DeliveryPage() {
                         </caption>
                         <thead>
                             <tr>
-                                <th
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                        backgroundColor: '#faf4e3',
-                                        color: 'hsl(28 47.4% 11.2%)',
-                                        borderTopLeftRadius: '12px',
-                                    }}
-                                >
+                                <th className="rounded-tl-xl border-border border-r bg-accent px-2 py-2 text-left font-normal text-accent-foreground">
                                     Mjesto
                                 </th>
-                                <th
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                        backgroundColor: '#faf4e3',
-                                        color: 'hsl(28 47.4% 11.2%)',
-                                    }}
-                                >
+                                <th className="border-border border-r bg-accent px-2 py-2 text-left font-normal text-accent-foreground">
                                     Cijena dostave
                                 </th>
-                                <th
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                        backgroundColor: '#faf4e3',
-                                        color: 'hsl(28 47.4% 11.2%)',
-                                        borderTopRightRadius: '12px',
-                                    }}
-                                >
+                                <th className="rounded-tr-xl bg-accent px-2 py-2 text-left font-normal text-accent-foreground">
                                     Formula
                                 </th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
+                                <td className="border-border border-t border-r px-2 py-2">
                                     <strong>Zagreb</strong>
                                 </td>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
-                                    <strong>🎉 Besplatna dostava 🎉</strong>
+                                <td className="border-border border-t border-r px-2 py-2">
+                                    <strong>
+                                        <GameGiftIcon
+                                            aria-hidden
+                                            className="mr-2 inline-block size-5 align-text-bottom"
+                                        />{' '}
+                                        Besplatna dostava
+                                    </strong>
                                 </td>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
+                                <td className="border-border border-t px-2 py-2">
                                     <strong>0 €</strong>
                                 </td>
                             </tr>
                             {deliveryLocations.map((location) => {
                                 const distanceFee =
-                                    location.distance * distanceSurchargePerKm;
+                                    location.distance *
+                                    deliveryPricePerKilometre;
                                 return (
                                     <tr key={location.name}>
-                                        <td
-                                            style={{
-                                                border: '1px solid #ddd',
-                                                padding: '8px',
-                                            }}
-                                        >
+                                        <td className="border-border border-t border-r px-2 py-2">
                                             <strong>{location.name}</strong> (
                                             {location.distance} km)
                                         </td>
-                                        <td
-                                            style={{
-                                                border: '1px solid #ddd',
-                                                padding: '8px',
-                                            }}
-                                        >
+                                        <td className="border-border border-t border-r px-2 py-2">
                                             <strong>
                                                 {formatPrice(distanceFee)}
                                             </strong>
                                         </td>
-                                        <td
-                                            style={{
-                                                border: '1px solid #ddd',
-                                                padding: '8px',
-                                            }}
-                                        >
+                                        <td className="border-border border-t px-2 py-2">
                                             <strong>
                                                 {location.distance} km ×{' '}
                                                 {formatPrice(
-                                                    distanceSurchargePerKm,
+                                                    deliveryPricePerKilometre,
                                                 )}
                                                 /km = {formatPrice(distanceFee)}
                                             </strong>
@@ -225,12 +262,7 @@ export default function DeliveryPage() {
                                 );
                             })}
                             <tr>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
+                                <td className="border-border border-t border-r px-2 py-2">
                                     <strong>Ostala mjesta</strong>
                                     <br />(
                                     <em>
@@ -239,26 +271,16 @@ export default function DeliveryPage() {
                                     </em>
                                     )
                                 </td>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
+                                <td className="border-border border-t border-r px-2 py-2">
                                     <strong>
-                                        {formatPrice(distanceSurchargePerKm)}
+                                        {formatPrice(deliveryPricePerKilometre)}
                                         /km
                                     </strong>
                                 </td>
-                                <td
-                                    style={{
-                                        border: '1px solid #ddd',
-                                        padding: '8px',
-                                    }}
-                                >
+                                <td className="border-border border-t px-2 py-2">
                                     <strong>
                                         udaljenost ×{' '}
-                                        {formatPrice(distanceSurchargePerKm)}
+                                        {formatPrice(deliveryPricePerKilometre)}
                                         /km
                                     </strong>
                                 </td>
@@ -275,7 +297,13 @@ export default function DeliveryPage() {
                         </strong>
                         , niti nudimo dostavu <strong>izvan Hrvatske</strong>.
                     </Alert>
-                    <h2 id="osobno-preuzimanje">🚶 Osobno preuzimanje</h2>
+                    <h2 id="osobno-preuzimanje">
+                        <GameLocationIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-7 align-text-bottom"
+                        />{' '}
+                        Osobno preuzimanje
+                    </h2>
                     <p>
                         Ako ti više odgovara osobno preuzeti svoje povrće,
                         uvijek možeš doći do jedne od naših{' '}
@@ -300,7 +328,11 @@ export default function DeliveryPage() {
                         </li>
                     </ul>
                     <h2 id="planiranje-i-zakazivanje">
-                        ⌛ Planiranje i zakazivanje
+                        <GameCalendarIcon
+                            aria-hidden
+                            className="mr-2 inline-block size-7 align-text-bottom"
+                        />{' '}
+                        Planiranje i zakazivanje
                     </h2>
                     <p>
                         Dostave se zakazuju unaprijed, minimalno{' '}
@@ -317,9 +349,31 @@ export default function DeliveryPage() {
                         dogovoreno vrijeme, pokušat ćemo te kontaktirati. U
                         slučaju da dostava ipak ne uspije, svoje povrće možeš
                         naknadno osobno preuzeti na našoj lokaciji u Zagrebu.
-                        Ako povrće ne preuzmeš u roku od{' '}
-                        <strong>72 sata</strong>, donirat ćemo ga onima kojima
-                        je najpotrebnije.
+                    </p>
+                    <h2>Neuspjela dostava i preuzimanje</h2>
+                    <p>
+                        Ako je dostava izostala zbog naše pogreške, obrati nam
+                        se radi dogovora o ispunjenju obveze ili drugom rješenju
+                        prema primjenjivim pravima. Naknadno osobno preuzimanje
+                        ne oduzima pravo na reklamaciju i nije obvezna zamjena
+                        za dostavu koju nismo uredno izvršili.
+                    </p>
+                    <p>
+                        Ako povrće ne preuzmeš nakon neuspjelog pokušaja
+                        dostave, obavijestit ćemo te o mjestu preuzimanja i roku
+                        od <strong>72 sata od te obavijesti</strong>. Nakon
+                        isteka roka nepreuzeto povrće može biti donirano samo
+                        ako je sigurno za konzumaciju. Hranu koja nije sigurna
+                        ne dostavljamo niti doniramo. Taj rok nije jamstvo da
+                        svaka vrsta povrća ostaje svježa 72 sata.
+                    </p>
+                    <p>
+                        Postupanje s nepreuzetim povrćem ne isključuje zakonska
+                        prava zbog neuredne dostave ili nedostatka proizvoda.
+                        Ako primijetiš problem, javi se što prije kako bismo
+                        mogli provjeriti stanje. Upute su na stranicama{' '}
+                        <a href={KnownPages.Refunds}>Povrat novca</a> i{' '}
+                        <a href={KnownPages.Contact}>Kontakt</a>.
                     </p>
                     <hr />
                     <p>
@@ -332,7 +386,13 @@ export default function DeliveryPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <Card className="mb-8">
                     <CardHeader>
-                        <CardTitle>📅 Termini dostave</CardTitle>
+                        <CardTitle>
+                            <GameCalendarIcon
+                                aria-hidden
+                                className="mr-2 inline-block size-7 align-text-bottom"
+                            />{' '}
+                            Termini dostave
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <Stack spacing={6}>
@@ -343,7 +403,12 @@ export default function DeliveryPage() {
                             <Button
                                 href={KnownPages.DeliverySlots}
                                 variant="solid"
-                                startDecorator={<Calendar className="size-4" />}
+                                startDecorator={
+                                    <GameCalendarIcon
+                                        aria-hidden
+                                        className="size-4"
+                                    />
+                                }
                             >
                                 Pogledaj dostupne termine
                             </Button>
@@ -355,6 +420,7 @@ export default function DeliveryPage() {
                 <Typography level="h5">Imaš dodatna pitanja?</Typography>
                 <WhatsAppCard />
             </Stack>
+            <RelatedFaq placement="delivery" />
             <Row spacing={4} className="mt-8">
                 <Typography level="body1">
                     Jesu li ti informacije korisne?

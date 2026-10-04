@@ -1,8 +1,8 @@
 'use client';
 
 import type {
+    getEntityRevisions,
     SelectAttributeDefinition,
-    SelectEntityRevision,
 } from '@gredice/storage';
 import { Down } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
@@ -10,6 +10,8 @@ import { Stack } from '@gredice/ui/Stack';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { cx } from '@gredice/ui/utils';
 import { useMemo, useState } from 'react';
+
+type EntityRevision = Awaited<ReturnType<typeof getEntityRevisions>>[number];
 
 const actionLabels: Record<string, string> = {
     created: 'Kreirano',
@@ -20,7 +22,7 @@ const actionLabels: Record<string, string> = {
 };
 
 type TimelineRevision = {
-    revision: SelectEntityRevision;
+    revision: EntityRevision;
     actionLabel: string;
     attributeLabel: string | null;
     actorName: string;
@@ -81,24 +83,24 @@ function revisionTitle(revision: TimelineRevision): string {
         : revision.actionLabel;
 }
 
-function actorNamesForGroup(revisions: TimelineRevision[]): string[] {
-    const names: string[] = [];
+function actorsForGroup(revisions: TimelineRevision[]): TimelineRevision[] {
+    const names: TimelineRevision[] = [];
     const seenNames = new Set<string>();
 
     for (const revision of revisions) {
-        if (seenNames.has(revision.actorName)) {
+        if (seenNames.has(revision.revision.actorId ?? revision.actorName)) {
             continue;
         }
 
-        seenNames.add(revision.actorName);
-        names.push(revision.actorName);
+        seenNames.add(revision.revision.actorId ?? revision.actorName);
+        names.push(revision);
     }
 
     return names;
 }
 
 function buildTimelineGroups(
-    revisions: SelectEntityRevision[],
+    revisions: EntityRevision[],
     labelsByDefinitionId: Map<number, string>,
 ): TimelineGroup[] {
     const groups: TimelineGroup[] = [];
@@ -138,11 +140,11 @@ export function HistoryRevisionListClient({
     revisions,
     attributeDefinitions,
 }: {
-    revisions: SelectEntityRevision[];
+    revisions: EntityRevision[];
     attributeDefinitions: SelectAttributeDefinition[];
 }) {
     const [selectedRevision, setSelectedRevision] =
-        useState<SelectEntityRevision | null>(null);
+        useState<EntityRevision | null>(null);
 
     const labelsByDefinitionId = useMemo(
         () =>
@@ -182,8 +184,9 @@ export function HistoryRevisionListClient({
                 {timelineGroups.map((group, groupIndex) => {
                     const expanded = expandedGroupKeys.has(group.key);
                     const contentId = `history-${group.key}`;
-                    const actorNames = actorNamesForGroup(group.revisions);
-                    const visibleActorNames = actorNames.slice(0, 4);
+                    const actors = actorsForGroup(group.revisions);
+                    const actorNames = actors.map((actor) => actor.actorName);
+                    const visibleActorNames = actors.slice(0, 4);
                     const hiddenActorCount =
                         actorNames.length - visibleActorNames.length;
 
@@ -229,23 +232,29 @@ export function HistoryRevisionListClient({
                                             title={actorNames.join(', ')}
                                             aria-hidden
                                         >
-                                            {visibleActorNames.map(
-                                                (actorName) => (
-                                                    <span
-                                                        key={actorName}
-                                                        className="block size-6 overflow-hidden rounded-full ring-2 ring-background"
-                                                    >
-                                                        <UserAvatar
-                                                            avatarUrl={null}
-                                                            displayName={
-                                                                actorName
-                                                            }
-                                                            size="sm"
-                                                            className="rounded-full"
-                                                        />
-                                                    </span>
-                                                ),
-                                            )}
+                                            {visibleActorNames.map((actor) => (
+                                                <span
+                                                    key={
+                                                        actor.revision
+                                                            .actorId ??
+                                                        actor.actorName
+                                                    }
+                                                    className="block size-6 rounded-full ring-2 ring-background"
+                                                >
+                                                    <UserAvatar
+                                                        avatarUrl={null}
+                                                        achievementCount={
+                                                            actor.revision
+                                                                .actorAchievementCount
+                                                        }
+                                                        displayName={
+                                                            actor.actorName
+                                                        }
+                                                        size="sm"
+                                                        className="rounded-full"
+                                                    />
+                                                </span>
+                                            ))}
                                             {hiddenActorCount > 0 && (
                                                 <span className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-[10px] font-medium text-muted-foreground ring-2 ring-background">
                                                     +{hiddenActorCount}
@@ -280,6 +289,10 @@ export function HistoryRevisionListClient({
                                             <UserAvatar
                                                 avatarUrl={null}
                                                 displayName={revision.actorName}
+                                                achievementCount={
+                                                    revision.revision
+                                                        .actorAchievementCount
+                                                }
                                                 size="sm"
                                                 className="shrink-0"
                                             />

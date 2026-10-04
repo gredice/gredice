@@ -1,0 +1,76 @@
+// These observed historical URLs each have one verified current destination.
+// Keep the lookup exact so unrelated invalid aliases remain normal 404s.
+const legacyPlantSortPathnames = new Map<string, string>([
+    [
+        '/biljke/blitva/sorte/blitva-bright-lighs',
+        '/biljke/blitva/sorte/blitva-bright-lights',
+    ],
+    [
+        '/biljke/bosiljak/sorte/bisiljak-italiano-classico',
+        '/biljke/bosiljak/sorte/bosiljak-italiano-classico',
+    ],
+    [
+        '/biljke/dinja/sorte/dinja-melona-ananas',
+        '/biljke/dinja/sorte/dinja-ananas',
+    ],
+    [
+        '/biljke/grah/sorte/grah-borloto-lingua-di-fuoco-2',
+        '/biljke/grah/sorte/grah-borlotto-lingua-di-fuoco-2',
+    ],
+    [
+        '/biljke/grah/sorte/grah-mahunar-zeleni-niski-starozagorski',
+        '/biljke/mahuna/sorte/grah-mahunar-zeleni-niski-starozagorski',
+    ],
+    [
+        '/biljke/grasak/sorte/grasak-deliket',
+        '/biljke/grasak/sorte/grasak-delikett',
+    ],
+    [
+        '/biljke/luk/sorte/luk-blanca-barletta',
+        '/biljke/luk/sorte/luk-bianca-di-barletta',
+    ],
+    [
+        '/biljke/mahuna/sorte/grah-mahunar-meraviglia-di-veneyia-a-grano-nero',
+        '/biljke/mahuna/sorte/grah-mahunar-meraviglia-di-venezia-a-grano-nero',
+    ],
+    [
+        '/biljke/mahuna/sorte/grah-zeleni-niski-starozagorski',
+        '/biljke/mahuna/sorte/grah-mahunar-zeleni-niski-starozagorski',
+    ],
+    [
+        '/biljke/matovilac/sorte/matovilac-favor-f1',
+        '/biljke/matovilac/sorte/matovilac-favor',
+    ],
+    [
+        '/biljke/paprika/sorte/paprika-californian-wonder',
+        '/biljke/paprika/sorte/paprika-california-wonder',
+    ],
+    [
+        '/biljke/persin/sorte/persin-hablange',
+        '/biljke/persin/sorte/persin-berlinski-poludugi',
+    ],
+    [
+        '/biljke/rajcica/sorte/rajcica-scatolone-2',
+        '/biljke/rajcica/sorte/rajcica-scatolone',
+    ],
+    [
+        '/biljke/rotkva/sorte/rotkva-crna-zimska-nero-tondo-dinverno',
+        '/biljke/rotkvica/sorte/rotkvica-crna-zimska-nero-tondo-d-inverno',
+    ],
+    [
+        '/biljke/rotkvica/sorte/rotkvica-crna-zimska-nero-tondo-dinverno',
+        '/biljke/rotkvica/sorte/rotkvica-crna-zimska-nero-tondo-d-inverno',
+    ],
+    [
+        '/biljke/rotkvica/sorte/rotkvica-schwarzer-winter',
+        '/biljke/rotkvica/sorte/rotkvica-runder-schwarzer-winter',
+    ],
+    [
+        '/biljke/salata/sorte/salata-puterica-zimska',
+        '/biljke/salata/sorte/salata-puterica-zimska-rjavka',
+    ],
+]);
+
+export function canonicalLegacyPlantSortPathname(pathname: string) {
+    return legacyPlantSortPathnames.get(pathname) ?? null;
+}

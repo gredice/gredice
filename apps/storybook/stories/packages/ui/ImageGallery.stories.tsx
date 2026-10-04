@@ -1,4 +1,6 @@
+import { resolveAvatarSource } from '@gredice/ui/Avatar';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
+import { sunflowerSadMascotArtwork } from '@gredice/ui/SunflowerVisuals';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
 const largeImageSvg = encodeURIComponent(
@@ -6,17 +8,29 @@ const largeImageSvg = encodeURIComponent(
 );
 const largeImageSrc = `data:image/svg+xml,${largeImageSvg}`;
 
+const wideImageSvg = encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="900" viewBox="0 0 2400 900"><defs><linearGradient id="sky" x1="0" x2="1"><stop stop-color="#86b6d6"/><stop offset="1" stop-color="#f4c56a"/></linearGradient></defs><rect width="2400" height="900" fill="url(#sky)"/><rect y="520" width="2400" height="380" fill="#4f7d45"/><path d="M0 610 C360 470 680 700 1040 560 S1750 520 2400 610" fill="#8db15d"/><text x="1200" y="450" text-anchor="middle" font-size="120" font-family="Arial" fill="#1f2937">2400 x 900 panorama</text></svg>',
+);
+const wideImageSrc = `data:image/svg+xml,${wideImageSvg}`;
+
 const sampleImages = [
     {
-        src: 'https://cdn.gredice.com/sunflower-sad-500x500.png',
+        src:
+            typeof sunflowerSadMascotArtwork === 'string'
+                ? sunflowerSadMascotArtwork
+                : sunflowerSadMascotArtwork.src,
         alt: 'Suncokret',
     },
     {
-        src: 'https://cdn.gredice.com/avatars/farmer-male.png',
+        src: resolveAvatarSource(
+            'https://cdn.gredice.com/avatars/farmer-male.png',
+        ),
         alt: 'Farmer',
     },
     {
-        src: 'https://cdn.gredice.com/avatars/farmer-female.png',
+        src: resolveAvatarSource(
+            'https://cdn.gredice.com/avatars/farmer-female.png',
+        ),
         alt: 'Farmerka',
     },
 ];
@@ -66,6 +80,17 @@ export const LargeImage: Story = {
             {
                 src: largeImageSrc,
                 alt: 'Large garden image',
+            },
+        ],
+    },
+};
+
+export const WideImage: Story = {
+    args: {
+        images: [
+            {
+                src: wideImageSrc,
+                alt: 'Wide garden panorama',
             },
         ],
     },

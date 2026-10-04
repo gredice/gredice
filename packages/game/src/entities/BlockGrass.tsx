@@ -1,16 +1,22 @@
-import { animated } from '@react-spring/three';
+import { RainWetOverlay } from '../rain/RainWetOverlay';
+import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { BlockSurfaceDecorationSprites } from './groundDecorations/BlockSurfaceDecorationSprites';
+import { useGroundPatchMaterial } from './helpers/groundPatchMaterial';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
 export function BlockGrass({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials } = useGameGLTF('BlockGrass');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const grassMaterial = useGroundPatchMaterial(
+        materials[`Material.Grass`],
+        'grass',
+    );
     // const hovered = useHoveredBlockStore(state => state.hoveredBlock) === block;
 
     const variantResolved = 1;
@@ -24,7 +30,10 @@ export function BlockGrass({ stack, block, rotation }: EntityInstanceProps) {
                 castShadow
                 receiveShadow
                 geometry={nodes[`Block_Grass_${variantResolved}_2`].geometry}
-                material={materials[`Material.Grass`]}
+                material={grassMaterial}
+            />
+            <RainWetOverlay
+                geometry={nodes[`Block_Grass_${variantResolved}_2`].geometry}
             />
             <SnowOverlay
                 geometry={nodes[`Block_Grass_${variantResolved}_2`].geometry}

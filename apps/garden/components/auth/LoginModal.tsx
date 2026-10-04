@@ -7,27 +7,99 @@ import {
     GoogleLoginButton,
     useLastLoginProvider,
 } from '@gredice/ui/auth';
-import { Divider } from '@gredice/ui/Divider';
+import { Button } from '@gredice/ui/Button';
+import { ArrowLeft, Mail, Sprout } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
+import { Typography } from '@gredice/ui/Typography';
 import { usePostHog } from '@posthog/next';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useCallback, useState } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import {
+    type GardenOAuthProvider,
+    getGardenOAuthStartUrl,
+} from '../../lib/auth/gardenAuthContinuation';
 import { EmailPasswordForm } from './EmailPasswordForm';
 import LoginBanner from './LoginBanner';
 
-export default function LoginModal() {
+const fetchLastLogin = () => clientPublic().api.auth['last-login'].$get();
+
+type AuthTab = 'login' | 'register';
+type RegistrationSuccessHref =
+    | '/prijava/registracija-uspijesna'
+    | '/prijava/registracija-uspijesna?upgrade=1';
+
+export type LoginModalProps = {
+    continueWithoutLoginLabel?: string;
+    defaultTab?: AuthTab;
+    description?: ReactNode;
+    dismissible?: boolean;
+    onAuthenticated?: () => void;
+    onContinueWithoutLogin?: () => void;
+    onOpenChange?: (open: boolean) => void;
+    open?: boolean;
+    registrationSuccessHref?: RegistrationSuccessHref;
+    returnTo?: string;
+    showBanner?: boolean;
+    title?: string;
+};
+
+const authContentTransitionClassName =
+    'w-full animate-in fade-in-0 duration-200 ease-out motion-reduce:duration-[120ms]';
+const authContentDirectionClassNames = {
+    email: 'motion-safe:slide-in-from-bottom-2',
+    providers: 'motion-safe:slide-in-from-top-2',
+};
+
+export default function LoginModal({
+    continueWithoutLoginLabel = 'Nastavi kao gost',
+    defaultTab = 'login',
+    description,
+    dismissible = false,
+    onAuthenticated,
+    onContinueWithoutLogin,
+    onOpenChange,
+    open = true,
+    registrationSuccessHref = '/prijava/registracija-uspijesna',
+    returnTo,
+    showBanner = true,
+    title = 'Prijava',
+}: LoginModalProps = {}) {
     const posthog = usePostHog();
     const router = useRouter();
     const queryClient = useQueryClient();
     const [error, setError] = useState<string>();
-    const fetchLastLogin = useCallback(
-        () => clientPublic().api.auth['last-login'].$get(),
-        [],
+    const [activeTab, setActiveTab] = useState<AuthTab>(defaultTab);
+    const [emailExpanded, setEmailExpanded] = useState(false);
+    const [shouldAnimateAuthContent, setShouldAnimateAuthContent] =
+        useState(false);
+    const emailTriggerId = useId();
+    const restoreEmailTriggerFocusRef = useRef(false);
+    const lastLoginProvider = useLastLoginProvider(
+        fetchLastLogin,
+        undefined,
+        open,
     );
-    const lastLoginProvider = useLastLoginProvider(fetchLastLogin);
+
+    useEffect(() => {
+        if (!open) {
+            return;
+        }
+
+        setActiveTab(defaultTab);
+        setEmailExpanded(false);
+        setError(undefined);
+        setShouldAnimateAuthContent(false);
+    }, [defaultTab, open]);
+
+    useEffect(() => {
+        if (!emailExpanded && restoreEmailTriggerFocusRef.current) {
+            restoreEmailTriggerFocusRef.current = false;
+            document.getElementById(emailTriggerId)?.focus();
+        }
+    }, [emailExpanded, emailTriggerId]);
 
     const handleLogin = async (email: string, password: string) => {
         setError(undefined);
@@ -44,7 +116,10 @@ export default function LoginModal() {
 
         if (response.status === 200) {
             await response.json();
-            await queryClient.invalidateQueries();
+            await queryClient.resetQueries();
+            router.refresh();
+            handleOpenChange(false);
+            onAuthenticated?.();
             return;
         } else {
             const json = await response.json();
@@ -130,97 +205,212 @@ export default function LoginModal() {
             return;
         }
 
-        router.push('/prijava/registracija-uspijesna');
+        router.push(registrationSuccessHref);
     };
 
-    const handleOAuthLogin = (provider: 'google' | 'facebook') => {
+    const handleOAuthLogin = (provider: GardenOAuthProvider) => {
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.delete('prijava');
         posthog?.capture('user_oauth_started', {
             provider,
             surface: 'garden',
         });
-        const authUrl = new URL(
-            `/api/auth/${provider}`,
-            getBrowserGrediceAppOrigin('api'),
-        );
-        window.location.href = authUrl.toString();
+        window.location.href = getGardenOAuthStartUrl({
+            apiOrigin: getBrowserGrediceAppOrigin('api'),
+            gardenOrigin: window.location.origin,
+            provider,
+            returnTo: returnTo ?? `${currentUrl.pathname}${currentUrl.search}`,
+        });
     };
+
+    function handleOpenChange(nextOpen: boolean) {
+        if (!nextOpen) {
+            setActiveTab(defaultTab);
+            setEmailExpanded(false);
+            setError(undefined);
+            setShouldAnimateAuthContent(false);
+        }
+        onOpenChange?.(nextOpen);
+    }
+
+    const handleTabChange = (value: string) => {
+        if (value === 'login' || value === 'register') {
+            setActiveTab(value);
+            setError(undefined);
+        }
+    };
+
+    const handleEmailExpand = () => {
+        setShouldAnimateAuthContent(true);
+        setEmailExpanded(true);
+    };
+
+    const handleProvidersBack = () => {
+        restoreEmailTriggerFocusRef.current = true;
+        setShouldAnimateAuthContent(true);
+        setEmailExpanded(false);
+        setError(undefined);
+    };
+
+    const authContent = emailExpanded ? 'email' : 'providers';
 
     return (
         <>
-            <LoginBanner />
+            {open && showBanner ? <LoginBanner /> : null}
             <Modal
-                open
-                title="Prijava"
+                open={open}
+                title={title}
                 className="bg-card z-[60] border-tertiary border-b-4 rounded-lg shadow-2xl"
-                dismissible={false}
+                dismissible={dismissible}
+                onOpenChange={handleOpenChange}
             >
-                <Tabs defaultValue="login" className="w-full">
-                    <div className="flex justify-center w-full">
-                        <TabsList className="grid grid-cols-2">
-                            <TabsTrigger value="login">Prijava</TabsTrigger>
-                            <TabsTrigger value="register">
-                                Registracija
-                            </TabsTrigger>
-                        </TabsList>
-                    </div>
-                    <Stack spacing={4}>
-                        <TabsContent value="login" className="mt-4">
-                            <div className="space-y-4 px-1">
-                                <Stack spacing={4}>
-                                    <EmailPasswordForm
-                                        onSubmit={handleLogin}
-                                        submitText="Prijava"
-                                    />
-                                    {error && (
-                                        <Alert color="danger">{error}</Alert>
-                                    )}
-                                </Stack>
-                                <div className="relative">
-                                    <div className="absolute inset-0 flex items-center">
-                                        <Divider />
-                                    </div>
-                                    <div className="relative flex justify-center">
-                                        <span className="bg-background px-2 text-xs rounded-xs">
-                                            ili nastavi sa
-                                        </span>
-                                    </div>
-                                </div>
+                {onContinueWithoutLogin ? (
+                    <Button
+                        type="button"
+                        size="lg"
+                        fullWidth
+                        className="mb-4"
+                        startDecorator={
+                            <Sprout aria-hidden className="size-5 shrink-0" />
+                        }
+                        onClick={onContinueWithoutLogin}
+                    >
+                        {continueWithoutLoginLabel}
+                    </Button>
+                ) : null}
+                <Tabs
+                    value={activeTab}
+                    onValueChange={handleTabChange}
+                    className="w-full"
+                >
+                    {description && (
+                        <Typography
+                            level="body2"
+                            className="mt-4 text-center text-muted-foreground"
+                        >
+                            {description}
+                        </Typography>
+                    )}
+                    <Stack spacing={4} className="mt-4">
+                        <div className="w-full">
+                            <div
+                                key={authContent}
+                                className={
+                                    shouldAnimateAuthContent
+                                        ? `${authContentTransitionClassName} ${authContentDirectionClassNames[authContent]}`
+                                        : 'w-full'
+                                }
+                                data-auth-content={authContent}
+                                data-testid="auth-content-transition"
+                            >
+                                {!emailExpanded ? (
+                                    <Stack spacing={2}>
+                                        <GoogleLoginButton
+                                            onClick={() =>
+                                                handleOAuthLogin('google')
+                                            }
+                                            lastUsed={
+                                                lastLoginProvider === 'google'
+                                            }
+                                        >
+                                            Nastavi sa Google
+                                        </GoogleLoginButton>
+                                        <FacebookLoginButton
+                                            onClick={() =>
+                                                handleOAuthLogin('facebook')
+                                            }
+                                            lastUsed={
+                                                lastLoginProvider === 'facebook'
+                                            }
+                                        >
+                                            Nastavi sa Facebook
+                                        </FacebookLoginButton>
+                                        <Button
+                                            type="button"
+                                            variant="outlined"
+                                            color="neutral"
+                                            fullWidth
+                                            startDecorator={
+                                                <Mail className="h-4 w-4 shrink-0" />
+                                            }
+                                            id={emailTriggerId}
+                                            onClick={handleEmailExpand}
+                                        >
+                                            Nastavi s emailom
+                                        </Button>
+                                    </Stack>
+                                ) : (
+                                    <Stack spacing={4}>
+                                        <div className="flex justify-center w-full">
+                                            <TabsList className="grid grid-cols-2">
+                                                <TabsTrigger value="login">
+                                                    Prijava
+                                                </TabsTrigger>
+                                                <TabsTrigger value="register">
+                                                    Registracija
+                                                </TabsTrigger>
+                                            </TabsList>
+                                        </div>
+                                        <TabsContent
+                                            value="login"
+                                            className="mt-0"
+                                        >
+                                            <div className="px-1">
+                                                <Stack spacing={4}>
+                                                    <EmailPasswordForm
+                                                        autoFocusEmail
+                                                        onSubmit={handleLogin}
+                                                        submitText="Prijava"
+                                                    />
+                                                    {error && (
+                                                        <Alert color="danger">
+                                                            {error}
+                                                        </Alert>
+                                                    )}
+                                                </Stack>
+                                            </div>
+                                        </TabsContent>
+                                        <TabsContent
+                                            value="register"
+                                            className="mt-0"
+                                        >
+                                            <div className="px-1">
+                                                <Stack spacing={4}>
+                                                    <EmailPasswordForm
+                                                        autoFocusEmail
+                                                        onSubmit={
+                                                            handleRegister
+                                                        }
+                                                        submitText="Registriraj se"
+                                                        registration
+                                                    />
+                                                    {error && (
+                                                        <Alert color="danger">
+                                                            {error}
+                                                        </Alert>
+                                                    )}
+                                                </Stack>
+                                            </div>
+                                        </TabsContent>
+                                        <Button
+                                            color="neutral"
+                                            fullWidth
+                                            onClick={handleProvidersBack}
+                                            startDecorator={
+                                                <ArrowLeft
+                                                    aria-hidden="true"
+                                                    className="size-4"
+                                                />
+                                            }
+                                            type="button"
+                                            variant="plain"
+                                        >
+                                            Natrag na druge načine prijave
+                                        </Button>
+                                    </Stack>
+                                )}
                             </div>
-                        </TabsContent>
-                        <TabsContent value="register" className="mt-4">
-                            <div className="space-y-4 px-1">
-                                <Stack spacing={4}>
-                                    <EmailPasswordForm
-                                        onSubmit={handleRegister}
-                                        submitText="Registriraj se"
-                                        registration
-                                    />
-                                    {error && (
-                                        <Alert color="danger">{error}</Alert>
-                                    )}
-                                </Stack>
-                                <div className="relative">
-                                    <div className="absolute inset-0 flex items-center">
-                                        <Divider />
-                                    </div>
-                                    <div className="relative flex justify-center">
-                                        <span className="bg-background px-2 text-xs rounded-xs">
-                                            ili nastavi sa
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </TabsContent>
-                        <Stack spacing={2}>
-                            <FacebookLoginButton
-                                onClick={() => handleOAuthLogin('facebook')}
-                                lastUsed={lastLoginProvider === 'facebook'}
-                            />
-                            <GoogleLoginButton
-                                onClick={() => handleOAuthLogin('google')}
-                                lastUsed={lastLoginProvider === 'google'}
-                            />
-                        </Stack>
+                        </div>
                     </Stack>
                 </Tabs>
             </Modal>

@@ -1,26 +1,50 @@
 import { clientAuthenticated } from '@gredice/client';
 import { Button } from '@gredice/ui/Button';
 import { Card } from '@gredice/ui/Card';
-import { Checkbox } from '@gredice/ui/Checkbox';
+import { GameMailboxIcon } from '@gredice/ui/GameIcons';
 import { Input } from '@gredice/ui/Input';
-import { Approved, Close, Empty, Megaphone } from '@gredice/ui/icons';
+import {
+    Approved,
+    Desktop,
+    Device,
+    Empty,
+    Laptop,
+    Megaphone,
+    Tablet,
+} from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
+import { Switch } from '@gredice/ui/Switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
+import {
+    browserPushNeedsSubscriptionRecovery,
+    currentPushDevicePermissionReconciliation,
+    pushDeviceNeedsSubscriptionRecovery,
+} from '../../hooks/pushSubscription';
 import { useMarkAllNotificationsRead } from '../../hooks/useMarkAllNotificationsRead';
-import { usePushPermissionOnboarding } from '../../hooks/usePushPermissionOnboarding';
+import {
+    type NotificationPreferenceUpdate,
+    useNotificationPreferences,
+    useSaveNotificationPreferences,
+} from '../../hooks/useNotificationPreferences';
+import {
+    type PushSetupStatus,
+    usePushPermissionOnboarding,
+} from '../../hooks/usePushPermissionOnboarding';
 import { NotificationList } from '../../hud/NotificationList';
+import {
+    isNotificationsView,
+    type NotificationsFilter,
+    type NotificationsView,
+} from '../../notificationFilters';
+import { WhatsNewNotificationToggle } from './WhatsNewNotificationToggle';
 
 type ApiClient = ReturnType<typeof clientAuthenticated>;
-
-type NotificationPreferenceUpdate = NonNullable<
-    Parameters<ApiClient['api']['notifications']['preferences']['$put']>[0]
->['json']['preferences'][number];
 
 type PushDeviceUpdate = NonNullable<
     Parameters<ApiClient['api']['notifications']['devices'][':id']['$patch']>[0]
@@ -31,8 +55,17 @@ type DigestFrequency = NonNullable<
 >;
 type DigestPeriod = Exclude<DigestFrequency, 'off'>;
 
-type NotificationsView = 'notifications' | 'settings';
-type NotificationsFilter = 'unread' | 'all';
+type NotificationDeviceListItem = {
+    deviceId?: string | null;
+    deviceLabel?: string | null;
+    enabled: boolean;
+    id: string;
+    permissionState?: string | null;
+    platform?: string | null;
+    revokedAt?: string | null;
+    userAgent?: string | null;
+};
+
 type NotificationPreferenceItem = {
     category: string;
     channel: NotificationPreferenceUpdate['channel'];
@@ -43,11 +76,22 @@ type NotificationPreferenceItem = {
     quietHoursEligible: boolean;
 };
 
-const notificationPreferencesKey = ['notifications', 'preferences'];
+type NotificationPreferencePolicy = Pick<
+    NotificationPreferenceItem,
+    | 'category'
+    | 'channel'
+    | 'defaultEnabled'
+    | 'digestEligible'
+    | 'quietHoursEligible'
+>;
+
 const notificationDevicesKey = ['notifications', 'devices'];
 const notificationPushStatusKey = ['notifications', 'push-status'];
+const pushDeviceIdKey = 'game:push:device-id';
 const defaultQuietHoursStartMinute = 22 * 60;
 const defaultQuietHoursEndMinute = 7 * 60;
+const quietHoursTimeZoneUnavailableMessage =
+    'Vremenska zona preglednika nije dostupna. Provjeri postavke uređaja i pokušaj ponovno.';
 
 function readBooleanFlag(value: string | undefined, defaultValue: boolean) {
     const normalizedValue = value?.trim().toLowerCase();
@@ -57,7 +101,23 @@ function readBooleanFlag(value: string | undefined, defaultValue: boolean) {
     return ['1', 'true', 'yes', 'on', 'enabled'].includes(normalizedValue);
 }
 
-const premiumNotificationControlsEnabled = readBooleanFlag(
+function readCurrentPushDeviceId() {
+    if (typeof window === 'undefined') {
+        return undefined;
+    }
+
+    return window.localStorage.getItem(pushDeviceIdKey) ?? undefined;
+}
+
+function readCurrentTimeZone() {
+    try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+    } catch {
+        return null;
+    }
+}
+
+const premiumNotificationControlsRolloutEnabled = readBooleanFlag(
     process.env.NEXT_PUBLIC_GREDICE_NOTIFICATIONS_PREMIUM_CONTROLS_ENABLED,
     true,
 );
@@ -87,10 +147,20 @@ const categoryPreferences: NotificationPreferenceItem[] = [
         channel: 'push',
         defaultEnabled: true,
         description:
-            'Radovi u vrtu, promjene termina i berba. Hitna upozorenja o vrtu ostaju odmah vidljiva.',
+            'Radovi u vrtu, promjene termina, berba i zdravstvena upozorenja o vrtu.',
         digestEligible: true,
         label: 'Radovi i berba u vrtu',
         quietHoursEligible: true,
+    },
+    {
+        category: 'weather_alerts',
+        channel: 'push',
+        defaultEnabled: false,
+        description:
+            'Upozorenja za grmljavinu, vjetar, kišu, snijeg, poledicu i druge vremenske rizike za regiju vrta.',
+        digestEligible: false,
+        label: 'Vremenska upozorenja',
+        quietHoursEligible: false,
     },
     {
         category: 'reminders',
@@ -124,6 +194,44 @@ const categoryPreferences: NotificationPreferenceItem[] = [
     },
 ];
 
+const deliveryPreferenceItems: NotificationPreferenceItem[] = [
+    {
+        category: 'delivery_updates',
+        channel: 'in_app',
+        defaultEnabled: true,
+        description:
+            'Status dostave i poveznice za praćenje u popisu obavijesti.',
+        digestEligible: false,
+        label: 'Ažuriranja dostave u aplikaciji',
+        quietHoursEligible: true,
+    },
+    {
+        category: 'delivery_updates',
+        channel: 'email',
+        defaultEnabled: true,
+        description:
+            'E-pošta o važnim promjenama statusa i očekivanom vremenu dolaska.',
+        digestEligible: false,
+        label: 'Ažuriranja dostave e-poštom',
+        quietHoursEligible: true,
+    },
+    {
+        category: 'delivery_updates',
+        channel: 'push',
+        defaultEnabled: true,
+        description:
+            'Push obavijesti kada dostava krene, približi se ili završi.',
+        digestEligible: false,
+        label: 'Push ažuriranja dostave',
+        quietHoursEligible: true,
+    },
+];
+
+const globalPreferencePolicies: NotificationPreferencePolicy[] = [
+    ...categoryPreferences,
+    ...deliveryPreferenceItems,
+];
+
 const digestFrequencyItems: Array<{
     label: string;
     value: DigestPeriod;
@@ -132,14 +240,6 @@ const digestFrequencyItems: Array<{
     { label: 'Dnevno', value: 'daily' },
     { label: 'Tjedno', value: 'weekly' },
 ];
-
-function isNotificationsView(value: string): value is NotificationsView {
-    return value === 'notifications' || value === 'settings';
-}
-
-function isNotificationsFilter(value: string): value is NotificationsFilter {
-    return value === 'unread' || value === 'all';
-}
 
 function isDigestPeriod(value: string): value is DigestPeriod {
     return digestFrequencyItems.some((item) => item.value === value);
@@ -171,47 +271,54 @@ function timeValueToMinute(value: string) {
     return hours * 60 + minutes;
 }
 
-function permissionStatusLabel(status: string) {
-    switch (status) {
-        case 'granted':
-            return 'dopušteno';
-        case 'denied':
-            return 'odbijeno';
-        case 'unsupported':
-            return 'nije podržano';
-        case 'unconfigured':
-            return 'nije konfigurirano';
-        case 'prompt-dismissed':
-            return 'odgođeno';
-        case 'subscribed':
-            return 'uključeno';
-        default:
-            return 'nije odlučeno';
+function deviceDisplayName(device: NotificationDeviceListItem) {
+    const label = device.deviceLabel?.trim();
+    if (!label) {
+        return 'Nepoznati uređaj';
     }
+
+    return label.replace(/\s*\([^)]*\)\s*$/u, '');
 }
 
-function pushStatusLabel(status: string | undefined) {
-    switch (status) {
-        case 'subscribed':
-            return 'uključeno';
-        case 'unsubscribed':
-            return 'nije uključeno';
-        case 'denied':
-            return 'blokirano';
-        case 'disabled':
-            return 'isključeno';
-        case undefined:
-            return 'učitavanje';
-        default:
-            return status;
+function deviceIcon(device: NotificationDeviceListItem) {
+    const deviceText =
+        `${device.platform ?? ''} ${device.userAgent ?? ''}`.toLowerCase();
+
+    if (/ipad|tablet/u.test(deviceText)) {
+        return <Tablet aria-hidden className="size-5" />;
     }
+
+    if (/iphone|android|mobile/u.test(deviceText)) {
+        return <Device aria-hidden className="size-5" />;
+    }
+
+    if (/mac|linux|windows/u.test(deviceText)) {
+        return <Laptop aria-hidden className="size-5" />;
+    }
+
+    return <Desktop aria-hidden className="size-5" />;
 }
 
-export function NotificationsTab() {
+type NotificationsTabProps = {
+    initialFilter?: NotificationsFilter;
+    initialView?: NotificationsView;
+    premiumNotificationControlsEnabled?: boolean;
+    pushSetupState?: {
+        status: PushSetupStatus;
+        subscriptionChecked: boolean;
+    };
+};
+
+export function NotificationsTab({
+    initialFilter = 'unread',
+    initialView = 'notifications',
+    premiumNotificationControlsEnabled = premiumNotificationControlsRolloutEnabled,
+    pushSetupState,
+}: NotificationsTabProps = {}) {
     const [activeView, setActiveView] =
-        useState<NotificationsView>('notifications');
+        useState<NotificationsView>(initialView);
     const [notificationsFilter, setNotificationsFilter] =
-        useState<NotificationsFilter>('unread');
+        useState<NotificationsFilter>(initialFilter);
     const [quietHoursEnabled, setQuietHoursEnabled] = useState(false);
     const [quietHoursStartMinute, setQuietHoursStartMinute] = useState(
         defaultQuietHoursStartMinute,
@@ -219,24 +326,34 @@ export function NotificationsTab() {
     const [quietHoursEndMinute, setQuietHoursEndMinute] = useState(
         defaultQuietHoursEndMinute,
     );
+    const [quietHoursTimeZone, setQuietHoursTimeZone] = useState<string | null>(
+        null,
+    );
+    const [quietHoursTimeZoneError, setQuietHoursTimeZoneError] = useState<
+        string | null
+    >(null);
     const [digestEnabled, setDigestEnabled] = useState(false);
     const [digestFrequency, setDigestFrequency] =
         useState<DigestPeriod>('daily');
     const markAllNotificationsRead = useMarkAllNotificationsRead();
     const { track } = useGameAnalytics();
     const pushOnboarding = usePushPermissionOnboarding();
+    const pushSetupStatus = pushSetupState?.status ?? pushOnboarding.status;
+    const pushSubscriptionChecked =
+        pushSetupState?.subscriptionChecked ??
+        pushOnboarding.subscriptionChecked;
     const queryClient = useQueryClient();
+    const lastPermissionReconciliationKey = useRef<string | null>(null);
 
-    const preferencesQuery = useQuery({
-        queryKey: notificationPreferencesKey,
-        queryFn: async () => {
-            const response =
-                await clientAuthenticated().api.notifications.preferences.$get();
-            if (!response.ok)
-                throw new Error('Postavke obavijesti nisu učitane');
-            return (await response.json()).preferences;
-        },
-    });
+    useEffect(() => {
+        setNotificationsFilter(initialFilter);
+    }, [initialFilter]);
+
+    useEffect(() => {
+        setActiveView(initialView);
+    }, [initialView]);
+
+    const preferencesQuery = useNotificationPreferences();
 
     const devicesQuery = useQuery({
         queryKey: notificationDevicesKey,
@@ -261,20 +378,7 @@ export function NotificationsTab() {
         },
     });
 
-    const savePreferencesMutation = useMutation({
-        mutationFn: async (preferences: NotificationPreferenceUpdate[]) => {
-            const response =
-                await clientAuthenticated().api.notifications.preferences.$put({
-                    json: { preferences },
-                });
-            if (!response.ok)
-                throw new Error('Postavke obavijesti nisu spremljene');
-        },
-        onSuccess: () =>
-            queryClient.invalidateQueries({
-                queryKey: notificationPreferencesKey,
-            }),
-    });
+    const savePreferencesMutation = useSaveNotificationPreferences();
 
     const updateDeviceMutation = useMutation({
         mutationFn: async ({
@@ -293,31 +397,74 @@ export function NotificationsTab() {
                 });
             if (!response.ok) throw new Error('Uređaj nije ažuriran');
         },
+        onError: (_error, { id, payload }) => {
+            if (
+                payload.permissionState !== 'default' &&
+                payload.permissionState !== 'denied'
+            ) {
+                return;
+            }
+            const reconciliationKey = `${id}:${payload.permissionState}`;
+            if (lastPermissionReconciliationKey.current === reconciliationKey) {
+                lastPermissionReconciliationKey.current = null;
+            }
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: notificationDevicesKey });
             queryClient.invalidateQueries({
                 queryKey: notificationPushStatusKey,
             });
         },
+        retry: 1,
+        retryDelay: 0,
     });
 
-    const revokeDeviceMutation = useMutation({
-        mutationFn: async (id: string) => {
-            const response =
-                await clientAuthenticated().api.notifications.devices[
-                    ':id'
-                ].$delete({
-                    param: { id },
-                });
-            if (!response.ok) throw new Error('Uređaj nije uklonjen');
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: notificationDevicesKey });
-            queryClient.invalidateQueries({
-                queryKey: notificationPushStatusKey,
-            });
-        },
-    });
+    const currentPushDeviceId = readCurrentPushDeviceId();
+    const browserPermissionToReconcile =
+        pushSetupStatus === 'denied'
+            ? 'denied'
+            : pushSetupStatus === 'default' ||
+                pushSetupStatus === 'prompt-dismissed'
+              ? 'default'
+              : null;
+    const permissionReconciliation = browserPermissionToReconcile
+        ? currentPushDevicePermissionReconciliation({
+              browserPermission: browserPermissionToReconcile,
+              currentDeviceId: currentPushDeviceId,
+              devices: devicesQuery.data ?? [],
+          })
+        : null;
+    const permissionReconciliationDeviceId = permissionReconciliation?.id;
+    const permissionReconciliationState =
+        permissionReconciliation?.permissionState;
+    const reconcileCurrentDevicePermission = updateDeviceMutation.mutate;
+
+    useEffect(() => {
+        if (
+            !permissionReconciliationDeviceId ||
+            !permissionReconciliationState
+        ) {
+            lastPermissionReconciliationKey.current = null;
+            return;
+        }
+
+        const reconciliationKey = `${permissionReconciliationDeviceId}:${permissionReconciliationState}`;
+        if (lastPermissionReconciliationKey.current === reconciliationKey) {
+            return;
+        }
+        lastPermissionReconciliationKey.current = reconciliationKey;
+        reconcileCurrentDevicePermission({
+            id: permissionReconciliationDeviceId,
+            payload: {
+                enabled: false,
+                permissionState: permissionReconciliationState,
+            },
+        });
+    }, [
+        permissionReconciliationDeviceId,
+        permissionReconciliationState,
+        reconcileCurrentDevicePermission,
+    ]);
 
     const sendTestMutation = useMutation({
         mutationFn: async () => {
@@ -335,26 +482,32 @@ export function NotificationsTab() {
 
         const quietHoursPreference = preferencesQuery.data.find(
             (preference) =>
-                categoryPreferences.some(
+                globalPreferencePolicies.some(
                     (item) =>
                         item.quietHoursEligible &&
                         item.category === preference.category &&
                         item.channel === preference.channel,
                 ) &&
                 preference.quietHoursStartMinute !== null &&
-                preference.quietHoursEndMinute !== null,
+                preference.quietHoursEndMinute !== null &&
+                typeof preference.timezone === 'string' &&
+                preference.timezone.length > 0,
         );
         if (
             typeof quietHoursPreference?.quietHoursStartMinute === 'number' &&
-            typeof quietHoursPreference.quietHoursEndMinute === 'number'
+            typeof quietHoursPreference.quietHoursEndMinute === 'number' &&
+            typeof quietHoursPreference.timezone === 'string'
         ) {
             setQuietHoursEnabled(true);
             setQuietHoursStartMinute(
                 quietHoursPreference.quietHoursStartMinute,
             );
             setQuietHoursEndMinute(quietHoursPreference.quietHoursEndMinute);
+            setQuietHoursTimeZone(quietHoursPreference.timezone);
+            setQuietHoursTimeZoneError(null);
         } else {
             setQuietHoursEnabled(false);
+            setQuietHoursTimeZone(null);
         }
 
         const digestPreference = preferencesQuery.data.find(
@@ -379,7 +532,7 @@ export function NotificationsTab() {
         }
     }, [preferencesQuery.data]);
 
-    function findPreference(item: (typeof categoryPreferences)[number]) {
+    function findPreference(item: NotificationPreferencePolicy) {
         return preferencesQuery.data?.find(
             (preference) =>
                 preference.category === item.category &&
@@ -389,12 +542,13 @@ export function NotificationsTab() {
     }
 
     function buildPreferenceUpdate(
-        item: (typeof categoryPreferences)[number],
+        item: NotificationPreferencePolicy,
         enabled: boolean,
         options: {
             quietEnabled?: boolean;
             quietStart?: number;
             quietEnd?: number;
+            quietTimeZone?: string;
             summaryEnabled?: boolean;
             summaryFrequency?: DigestPeriod;
         } = {},
@@ -415,6 +569,10 @@ export function NotificationsTab() {
                 item.quietHoursEligible && nextQuietEnabled
                     ? (options.quietEnd ?? quietHoursEndMinute)
                     : null,
+            timezone:
+                item.quietHoursEligible && nextQuietEnabled
+                    ? (options.quietTimeZone ?? quietHoursTimeZone)
+                    : null,
             digestFrequency:
                 item.digestEligible && nextSummaryEnabled
                     ? (options.summaryFrequency ?? digestFrequency)
@@ -425,23 +583,42 @@ export function NotificationsTab() {
     function saveAllPreferenceSettings(
         options: Parameters<typeof buildPreferenceUpdate>[2] = {},
     ) {
+        const nextQuietEnabled = options.quietEnabled ?? quietHoursEnabled;
+        const nextQuietTimeZone = nextQuietEnabled
+            ? (options.quietTimeZone ??
+              quietHoursTimeZone ??
+              readCurrentTimeZone())
+            : null;
+        if (nextQuietEnabled && !nextQuietTimeZone) {
+            setQuietHoursTimeZoneError(quietHoursTimeZoneUnavailableMessage);
+            return false;
+        }
+
+        setQuietHoursTimeZoneError(null);
+        setQuietHoursTimeZone(nextQuietTimeZone);
         savePreferencesMutation.mutate(
-            categoryPreferences.map((item) =>
+            globalPreferencePolicies.map((item) =>
                 buildPreferenceUpdate(
                     item,
                     findPreference(item)?.enabled ?? item.defaultEnabled,
-                    options,
+                    {
+                        ...options,
+                        quietTimeZone: nextQuietTimeZone ?? undefined,
+                    },
                 ),
             ),
         );
+        return true;
     }
 
-    const handleEnablePush = async () => {
+    const handleEnablePush = async (replaceExistingSubscription = false) => {
         track('game_push_enable_clicked', {
             source: 'overview_notifications_tab',
-            status: pushOnboarding.status,
+            status: pushSetupStatus,
         });
-        const result = await pushOnboarding.requestPermission();
+        const result = await pushOnboarding.requestPermission({
+            replaceExistingSubscription,
+        });
         if (result === 'subscribed') {
             queryClient.invalidateQueries({ queryKey: notificationDevicesKey });
             queryClient.invalidateQueries({
@@ -459,20 +636,76 @@ export function NotificationsTab() {
         markAllNotificationsRead.mutate({ readWhere: 'game' });
     };
 
-    const notificationsSupported =
-        typeof window !== 'undefined' && 'Notification' in window;
     const settingsBusy =
         savePreferencesMutation.isPending ||
         preferencesQuery.isPending ||
         preferencesQuery.isError;
-    const deviceMutationBusy =
-        updateDeviceMutation.isPending || revokeDeviceMutation.isPending;
+    const deviceMutationBusy = updateDeviceMutation.isPending;
     const testNotificationResult = sendTestMutation.data;
+    const currentNotificationDevice = currentPushDeviceId
+        ? devicesQuery.data?.find(
+              (device) => device.deviceId === currentPushDeviceId,
+          )
+        : undefined;
+    const browserSubscriptionNeedsRecovery =
+        browserPushNeedsSubscriptionRecovery({
+            status: pushSetupStatus,
+            subscriptionChecked: pushSubscriptionChecked,
+        });
+    const currentDeviceNeedsRecovery = currentNotificationDevice
+        ? pushDeviceNeedsSubscriptionRecovery(currentNotificationDevice) ||
+          browserSubscriptionNeedsRecovery
+        : false;
+    const currentDeviceNotificationsEnabled =
+        Boolean(currentNotificationDevice?.enabled) &&
+        !currentDeviceNeedsRecovery;
+    const currentDeviceSubscriptionChecking =
+        Boolean(currentNotificationDevice) &&
+        pushSetupStatus === 'granted' &&
+        !pushSubscriptionChecked;
+    const currentDeviceStatusLabel =
+        devicesQuery.isPending || currentDeviceSubscriptionChecking
+            ? 'Učitavanje'
+            : currentDeviceNotificationsEnabled
+              ? 'Uključeno'
+              : 'Isključeno';
+    const canRequestPush =
+        pushSetupStatus !== 'denied' &&
+        pushSetupStatus !== 'unsupported' &&
+        pushSetupStatus !== 'unconfigured';
+    const currentDeviceToggleDisabled =
+        pushStatusQuery.isPending ||
+        devicesQuery.isPending ||
+        devicesQuery.isError ||
+        pushStatusQuery.isError ||
+        deviceMutationBusy ||
+        currentDeviceSubscriptionChecking ||
+        ((!currentNotificationDevice || currentDeviceNeedsRecovery) &&
+            !canRequestPush);
+    const visibleCategoryPreferences = premiumNotificationControlsEnabled
+        ? [...categoryPreferences, ...deliveryPreferenceItems]
+        : deliveryPreferenceItems;
+
+    function handleCurrentDeviceToggle() {
+        if (currentNotificationDevice && !currentDeviceNeedsRecovery) {
+            updateDeviceMutation.mutate({
+                id: currentNotificationDevice.id,
+                payload: { enabled: !currentDeviceNotificationsEnabled },
+            });
+            return;
+        }
+
+        void handleEnablePush(true);
+    }
 
     return (
         <Stack spacing={4}>
-            <Typography level="h4" className="hidden md:block">
-                🔔 Obavijesti
+            <Typography
+                level="h4"
+                className="hidden md:flex items-center gap-2"
+            >
+                <GameMailboxIcon aria-hidden className="size-8 shrink-0" />
+                Obavijesti
             </Typography>
             <Tabs
                 value={activeView}
@@ -497,9 +730,6 @@ export function NotificationsTab() {
                                 <SelectItems
                                     value={notificationsFilter}
                                     onValueChange={(value) => {
-                                        if (!isNotificationsFilter(value)) {
-                                            return;
-                                        }
                                         track(
                                             'game_notifications_filter_changed',
                                             {
@@ -542,81 +772,161 @@ export function NotificationsTab() {
                         </div>
                     </Stack>
                 </TabsContent>
-                <TabsContent value="settings" className="mt-3">
+                <TabsContent value="settings" className="mt-3 min-h-0">
                     <Stack spacing={2}>
+                        <WhatsNewNotificationToggle />
                         <Card className="bg-card p-2">
-                            <Stack spacing={2}>
-                                <Typography level="body1" semiBold>
-                                    Obavijesti na ovom uređaju
-                                </Typography>
-                                <Typography level="body2" secondary>
-                                    Preglednik:{' '}
-                                    {notificationsSupported
-                                        ? 'podržava obavijesti'
-                                        : 'ne podržava obavijesti'}{' '}
-                                    · Dozvola:{' '}
-                                    {permissionStatusLabel(
-                                        pushOnboarding.status,
-                                    )}{' '}
-                                    · Status:{' '}
-                                    {pushStatusLabel(
-                                        pushStatusQuery.data?.status,
-                                    )}
-                                </Typography>
+                            <Stack spacing={1.5}>
+                                <Row
+                                    alignItems="center"
+                                    className="gap-4"
+                                    justifyContent="space-between"
+                                >
+                                    <Stack
+                                        spacing={0.5}
+                                        className="min-w-0 flex-1"
+                                    >
+                                        <Typography level="body1" semiBold>
+                                            Obavijesti na ovom uređaju
+                                        </Typography>
+                                        <Typography level="body3" secondary>
+                                            {currentDeviceStatusLabel}
+                                        </Typography>
+                                    </Stack>
+                                    <Switch
+                                        aria-label={
+                                            currentDeviceNotificationsEnabled
+                                                ? 'Isključi obavijesti na ovom uređaju'
+                                                : 'Uključi obavijesti na ovom uređaju'
+                                        }
+                                        checked={
+                                            currentDeviceNotificationsEnabled
+                                        }
+                                        disabled={currentDeviceToggleDisabled}
+                                        onCheckedChange={
+                                            handleCurrentDeviceToggle
+                                        }
+                                    />
+                                </Row>
                                 {pushStatusQuery.isError && (
                                     <Typography level="body3" secondary>
                                         Status obavijesti nije učitan.
                                     </Typography>
                                 )}
-                                {pushOnboarding.status === 'denied' && (
+                                {pushSetupStatus === 'denied' && (
                                     <Typography level="body3" secondary>
                                         Obavijesti su blokirane u pregledniku.
                                         Otvori postavke preglednika i omogući
                                         obavijesti za ovu stranicu.
                                     </Typography>
                                 )}
-                                {pushOnboarding.canPrompt &&
-                                    pushStatusQuery.data?.status !==
-                                        'subscribed' && (
-                                        <Row justifyContent="end">
-                                            <Button
-                                                size="sm"
-                                                onClick={handleEnablePush}
-                                                startDecorator={
-                                                    <Megaphone className="size-4" />
-                                                }
-                                            >
-                                                Uključi obavijesti
-                                            </Button>
-                                        </Row>
-                                    )}
+                                {pushSetupStatus === 'failed' && (
+                                    <div role="alert" aria-atomic="true">
+                                        <Typography level="body3" secondary>
+                                            Push obavijesti nisu ponovno
+                                            povezane. Provjeri vezu i pokušaj
+                                            ponovno.
+                                        </Typography>
+                                    </div>
+                                )}
                             </Stack>
                         </Card>
 
-                        {premiumNotificationControlsEnabled ? (
-                            <>
-                                <Card className="bg-card p-2">
-                                    <Stack spacing={2}>
-                                        <Typography level="body1" semiBold>
-                                            Uvijek uključeno
-                                        </Typography>
-                                        <Typography level="body2" secondary>
-                                            Sigurnosne, pravne i naplatne
-                                            obavijesti ne koriste sažetak ni
-                                            tihi period.
-                                        </Typography>
-                                        {requiredNotificationGroups.map(
-                                            (item) => (
-                                                <div
-                                                    key={item.category}
-                                                    className="rounded border border-border/60 p-2"
+                        <Card className="bg-card p-2">
+                            <Stack spacing={2}>
+                                <Row justifyContent="space-between">
+                                    <Typography level="body1" semiBold>
+                                        Vrste obavijesti
+                                    </Typography>
+                                    <Button
+                                        size="sm"
+                                        variant="plain"
+                                        disabled={settingsBusy}
+                                        onClick={() =>
+                                            savePreferencesMutation.mutate(
+                                                visibleCategoryPreferences.map(
+                                                    (item) =>
+                                                        buildPreferenceUpdate(
+                                                            item,
+                                                            true,
+                                                        ),
+                                                ),
+                                            )
+                                        }
+                                    >
+                                        Omogući sve
+                                    </Button>
+                                </Row>
+                                <Stack spacing={0.5}>
+                                    {requiredNotificationGroups.map((item) => (
+                                        <Row
+                                            key={item.category}
+                                            justifyContent="space-between"
+                                            alignItems="start"
+                                            spacing={4}
+                                            className="py-2"
+                                        >
+                                            <Stack
+                                                spacing={0.5}
+                                                className="min-w-0 flex-1"
+                                            >
+                                                <Typography semiBold>
+                                                    {item.label}
+                                                </Typography>
+                                                <Typography
+                                                    level="body3"
+                                                    secondary
                                                 >
+                                                    {item.description}
+                                                </Typography>
+                                            </Stack>
+                                            <Stack
+                                                spacing={0.5}
+                                                alignItems="center"
+                                                className="shrink-0"
+                                            >
+                                                <Switch
+                                                    aria-label={`Obavezna obavijest ${item.label.toLowerCase()}`}
+                                                    checked
+                                                    readOnly
+                                                />
+                                                <Typography
+                                                    level="body3"
+                                                    secondary
+                                                >
+                                                    Obavezno
+                                                </Typography>
+                                            </Stack>
+                                        </Row>
+                                    ))}
+                                    {preferencesQuery.isPending ? (
+                                        <Typography level="body2" secondary>
+                                            Postavke se učitavaju.
+                                        </Typography>
+                                    ) : preferencesQuery.isError ? (
+                                        <Typography level="body2" secondary>
+                                            Postavke obavijesti nisu učitane.
+                                        </Typography>
+                                    ) : (
+                                        visibleCategoryPreferences.map(
+                                            (item) => {
+                                                const preference =
+                                                    findPreference(item);
+                                                const checked =
+                                                    preference?.enabled ??
+                                                    item.defaultEnabled;
+                                                return (
                                                     <Row
+                                                        key={`${item.category}:${item.channel}`}
                                                         justifyContent="space-between"
                                                         alignItems="start"
                                                         spacing={4}
+                                                        className="py-2"
                                                     >
-                                                        <Stack spacing={0.5}>
+                                                        <Stack
+                                                            spacing={0.5}
+                                                            className="min-w-0 flex-1"
+                                                        >
                                                             <Typography
                                                                 semiBold
                                                             >
@@ -631,247 +941,228 @@ export function NotificationsTab() {
                                                                 }
                                                             </Typography>
                                                         </Stack>
-                                                        <Typography
-                                                            level="body3"
-                                                            semiBold
-                                                            className="shrink-0"
-                                                        >
-                                                            Uvijek uključeno
-                                                        </Typography>
+                                                        <Switch
+                                                            aria-label={`${
+                                                                checked
+                                                                    ? 'Isključi'
+                                                                    : 'Uključi'
+                                                            } ${item.label.toLowerCase()}`}
+                                                            checked={checked}
+                                                            disabled={
+                                                                settingsBusy
+                                                            }
+                                                            onCheckedChange={(
+                                                                checked,
+                                                            ) =>
+                                                                savePreferencesMutation.mutate(
+                                                                    [
+                                                                        buildPreferenceUpdate(
+                                                                            item,
+                                                                            checked,
+                                                                        ),
+                                                                    ],
+                                                                )
+                                                            }
+                                                        />
                                                     </Row>
-                                                </div>
-                                            ),
-                                        )}
-                                    </Stack>
-                                </Card>
-
-                                <Card className="bg-card p-2">
-                                    <Stack spacing={2}>
-                                        <Row justifyContent="space-between">
-                                            <Typography level="body1" semiBold>
-                                                Vrste koje možeš prilagoditi
-                                            </Typography>
-                                            <Button
-                                                size="sm"
-                                                variant="plain"
-                                                disabled={settingsBusy}
-                                                onClick={() =>
-                                                    savePreferencesMutation.mutate(
-                                                        categoryPreferences.map(
-                                                            (item) =>
-                                                                buildPreferenceUpdate(
-                                                                    item,
-                                                                    true,
-                                                                ),
-                                                        ),
-                                                    )
-                                                }
-                                            >
-                                                Omogući sve
-                                            </Button>
-                                        </Row>
-                                        {preferencesQuery.isPending ? (
-                                            <Typography level="body2" secondary>
-                                                Postavke se učitavaju.
-                                            </Typography>
-                                        ) : preferencesQuery.isError ? (
-                                            <Typography level="body2" secondary>
-                                                Postavke obavijesti nisu
-                                                učitane.
-                                            </Typography>
-                                        ) : (
-                                            categoryPreferences.map((item) => {
-                                                const preference =
-                                                    findPreference(item);
-                                                const checked =
-                                                    preference?.enabled ??
-                                                    item.defaultEnabled;
-                                                return (
-                                                    <div
-                                                        key={item.category}
-                                                        className="rounded border border-border/60 p-2"
-                                                    >
-                                                        <Row
-                                                            justifyContent="space-between"
-                                                            alignItems="start"
-                                                            spacing={4}
-                                                        >
-                                                            <Stack
-                                                                spacing={0.5}
-                                                            >
-                                                                <Typography
-                                                                    semiBold
-                                                                >
-                                                                    {item.label}
-                                                                </Typography>
-                                                                <Typography
-                                                                    level="body3"
-                                                                    secondary
-                                                                >
-                                                                    {
-                                                                        item.description
-                                                                    }
-                                                                </Typography>
-                                                            </Stack>
-                                                            <Checkbox
-                                                                aria-label={`Uključi ${item.label.toLowerCase()}`}
-                                                                checked={
-                                                                    checked
-                                                                }
-                                                                disabled={
-                                                                    settingsBusy
-                                                                }
-                                                                onCheckedChange={(
-                                                                    checked: boolean,
-                                                                ) =>
-                                                                    savePreferencesMutation.mutate(
-                                                                        [
-                                                                            buildPreferenceUpdate(
-                                                                                item,
-                                                                                Boolean(
-                                                                                    checked,
-                                                                                ),
-                                                                            ),
-                                                                        ],
-                                                                    )
-                                                                }
-                                                            />
-                                                        </Row>
-                                                    </div>
                                                 );
-                                            })
-                                        )}
-                                        {savePreferencesMutation.isError && (
-                                            <Typography level="body3" secondary>
-                                                Postavke obavijesti nisu
-                                                spremljene.
-                                            </Typography>
-                                        )}
-                                    </Stack>
-                                </Card>
-
+                                            },
+                                        )
+                                    )}
+                                </Stack>
+                                {savePreferencesMutation.isError && (
+                                    <Typography level="body3" secondary>
+                                        Postavke obavijesti nisu spremljene.
+                                    </Typography>
+                                )}
+                            </Stack>
+                        </Card>
+                        {premiumNotificationControlsEnabled ? (
+                            <>
                                 <Card className="bg-card p-2">
                                     <Stack spacing={2}>
-                                        <Checkbox
-                                            label="Ne ometaj"
-                                            checked={quietHoursEnabled}
-                                            disabled={settingsBusy}
-                                            onCheckedChange={(
-                                                checked: boolean,
-                                            ) => {
-                                                const enabled =
-                                                    Boolean(checked);
-                                                setQuietHoursEnabled(enabled);
-                                                saveAllPreferenceSettings({
-                                                    quietEnabled: enabled,
-                                                });
-                                            }}
-                                        />
-                                        <Typography level="body3" secondary>
-                                            Vrijedi samo za prilagodljive
-                                            obavijesti koje podržavaju tihi
-                                            period.
-                                        </Typography>
-                                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                            <Input
-                                                label="Od"
-                                                type="time"
-                                                value={minuteToTimeValue(
-                                                    quietHoursStartMinute,
-                                                )}
-                                                disabled={
-                                                    !quietHoursEnabled ||
-                                                    settingsBusy
+                                        <Row
+                                            justifyContent="space-between"
+                                            alignItems="start"
+                                            spacing={4}
+                                        >
+                                            <Stack
+                                                spacing={0.5}
+                                                className="min-w-0 flex-1"
+                                            >
+                                                <Typography semiBold>
+                                                    Ne ometaj
+                                                </Typography>
+                                                {quietHoursEnabled ? (
+                                                    <Typography
+                                                        level="body3"
+                                                        secondary
+                                                    >
+                                                        Vrijedi samo za
+                                                        prilagodljive obavijesti
+                                                        koje podržavaju tihi
+                                                        period.
+                                                    </Typography>
+                                                ) : null}
+                                            </Stack>
+                                            <Switch
+                                                aria-label={
+                                                    quietHoursEnabled
+                                                        ? 'Isključi ne ometaj'
+                                                        : 'Uključi ne ometaj'
                                                 }
-                                                onChange={(event) => {
-                                                    const minute =
-                                                        timeValueToMinute(
-                                                            event.target.value,
+                                                checked={quietHoursEnabled}
+                                                disabled={settingsBusy}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) {
+                                                        const timeZone =
+                                                            readCurrentTimeZone();
+                                                        if (!timeZone) {
+                                                            setQuietHoursTimeZoneError(
+                                                                quietHoursTimeZoneUnavailableMessage,
+                                                            );
+                                                            return;
+                                                        }
+                                                        setQuietHoursEnabled(
+                                                            true,
                                                         );
-                                                    if (minute === null) {
+                                                        saveAllPreferenceSettings(
+                                                            {
+                                                                quietEnabled: true,
+                                                                quietTimeZone:
+                                                                    timeZone,
+                                                            },
+                                                        );
                                                         return;
                                                     }
-                                                    setQuietHoursStartMinute(
-                                                        minute,
-                                                    );
-                                                    if (quietHoursEnabled) {
+
+                                                    setQuietHoursEnabled(false);
+                                                    setQuietHoursTimeZone(null);
+                                                    saveAllPreferenceSettings({
+                                                        quietEnabled: false,
+                                                    });
+                                                }}
+                                            />
+                                        </Row>
+                                        {quietHoursTimeZoneError && (
+                                            <div role="alert">
+                                                <Typography
+                                                    level="body3"
+                                                    secondary
+                                                >
+                                                    {quietHoursTimeZoneError}
+                                                </Typography>
+                                            </div>
+                                        )}
+                                        {quietHoursEnabled && (
+                                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                                <Input
+                                                    label="Od"
+                                                    type="time"
+                                                    value={minuteToTimeValue(
+                                                        quietHoursStartMinute,
+                                                    )}
+                                                    disabled={settingsBusy}
+                                                    onChange={(event) => {
+                                                        const minute =
+                                                            timeValueToMinute(
+                                                                event.target
+                                                                    .value,
+                                                            );
+                                                        if (minute === null) {
+                                                            return;
+                                                        }
+                                                        setQuietHoursStartMinute(
+                                                            minute,
+                                                        );
                                                         saveAllPreferenceSettings(
                                                             {
                                                                 quietStart:
                                                                     minute,
                                                             },
                                                         );
-                                                    }
-                                                }}
-                                            />
-                                            <Input
-                                                label="Do"
-                                                type="time"
-                                                value={minuteToTimeValue(
-                                                    quietHoursEndMinute,
-                                                )}
-                                                disabled={
-                                                    !quietHoursEnabled ||
-                                                    settingsBusy
-                                                }
-                                                onChange={(event) => {
-                                                    const minute =
-                                                        timeValueToMinute(
-                                                            event.target.value,
+                                                    }}
+                                                />
+                                                <Input
+                                                    label="Do"
+                                                    type="time"
+                                                    value={minuteToTimeValue(
+                                                        quietHoursEndMinute,
+                                                    )}
+                                                    disabled={settingsBusy}
+                                                    onChange={(event) => {
+                                                        const minute =
+                                                            timeValueToMinute(
+                                                                event.target
+                                                                    .value,
+                                                            );
+                                                        if (minute === null) {
+                                                            return;
+                                                        }
+                                                        setQuietHoursEndMinute(
+                                                            minute,
                                                         );
-                                                    if (minute === null) {
-                                                        return;
-                                                    }
-                                                    setQuietHoursEndMinute(
-                                                        minute,
-                                                    );
-                                                    if (quietHoursEnabled) {
                                                         saveAllPreferenceSettings(
                                                             {
                                                                 quietEnd:
                                                                     minute,
                                                             },
                                                         );
-                                                    }
-                                                }}
-                                            />
-                                        </div>
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
                                     </Stack>
                                 </Card>
 
                                 <Card className="bg-card p-2">
                                     <Stack spacing={2}>
-                                        <Checkbox
-                                            label="Primaj sažetak obavijesti"
-                                            checked={digestEnabled}
-                                            disabled={settingsBusy}
-                                            onCheckedChange={(
-                                                checked: boolean,
-                                            ) => {
-                                                const enabled =
-                                                    Boolean(checked);
-                                                setDigestEnabled(enabled);
-                                                saveAllPreferenceSettings({
-                                                    summaryEnabled: enabled,
-                                                });
-                                            }}
-                                        />
-                                        <Typography level="body3" secondary>
-                                            Sažetak vrijedi za prilagodljive
-                                            kategorije; obavezne poruke ne
-                                            čekaju sažetak.
-                                        </Typography>
-                                        <Stack spacing={1}>
-                                            <Typography level="body2" semiBold>
-                                                Razdoblje sažetka
-                                            </Typography>
-                                            <div
-                                                className={
-                                                    digestEnabled
-                                                        ? undefined
-                                                        : 'pointer-events-none opacity-50'
-                                                }
+                                        <Row
+                                            justifyContent="space-between"
+                                            alignItems="start"
+                                            spacing={4}
+                                        >
+                                            <Stack
+                                                spacing={0.5}
+                                                className="min-w-0 flex-1"
                                             >
+                                                <Typography semiBold>
+                                                    Primaj sažetak obavijesti
+                                                </Typography>
+                                                <Typography
+                                                    level="body3"
+                                                    secondary
+                                                >
+                                                    Sažetak vrijedi za
+                                                    prilagodljive kategorije;
+                                                    obavezne poruke ne čekaju
+                                                    sažetak.
+                                                </Typography>
+                                            </Stack>
+                                            <Switch
+                                                aria-label={
+                                                    digestEnabled
+                                                        ? 'Isključi primanje sažetka obavijesti'
+                                                        : 'Uključi primanje sažetka obavijesti'
+                                                }
+                                                checked={digestEnabled}
+                                                disabled={settingsBusy}
+                                                onCheckedChange={(checked) => {
+                                                    setDigestEnabled(checked);
+                                                    saveAllPreferenceSettings({
+                                                        summaryEnabled: checked,
+                                                    });
+                                                }}
+                                            />
+                                        </Row>
+                                        {digestEnabled && (
+                                            <Stack spacing={1}>
+                                                <Typography
+                                                    level="body2"
+                                                    semiBold
+                                                >
+                                                    Razdoblje sažetka
+                                                </Typography>
                                                 <SelectItems
                                                     value={digestFrequency}
                                                     onValueChange={(value) => {
@@ -885,19 +1176,17 @@ export function NotificationsTab() {
                                                         setDigestFrequency(
                                                             value,
                                                         );
-                                                        if (digestEnabled) {
-                                                            saveAllPreferenceSettings(
-                                                                {
-                                                                    summaryFrequency:
-                                                                        value,
-                                                                },
-                                                            );
-                                                        }
+                                                        saveAllPreferenceSettings(
+                                                            {
+                                                                summaryFrequency:
+                                                                    value,
+                                                            },
+                                                        );
                                                     }}
                                                     items={digestFrequencyItems}
                                                 />
-                                            </div>
-                                        </Stack>
+                                            </Stack>
+                                        )}
                                     </Stack>
                                 </Card>
                             </>
@@ -905,7 +1194,8 @@ export function NotificationsTab() {
                             <Card className="bg-card p-2">
                                 <Typography level="body2" secondary>
                                     Napredne postavke obavijesti trenutno nisu
-                                    dostupne.
+                                    dostupne. Kanale dostave i dalje možeš
+                                    prilagoditi iznad.
                                 </Typography>
                             </Card>
                         )}
@@ -954,84 +1244,90 @@ export function NotificationsTab() {
                                         Uređaji za obavijesti nisu učitani.
                                     </Typography>
                                 ) : devicesQuery.data?.length ? (
-                                    devicesQuery.data.map((device) => (
-                                        <Card
-                                            key={device.id}
-                                            className="p-1 bg-muted/20"
-                                        >
-                                            <Stack spacing={1}>
-                                                <Typography semiBold>
-                                                    {device.deviceLabel ||
-                                                        'Nepoznati uređaj'}
-                                                </Typography>
-                                                <Typography
-                                                    level="body3"
-                                                    secondary
+                                    devicesQuery.data.map((device) => {
+                                        const label = deviceDisplayName(device);
+                                        const isCurrentDevice =
+                                            device.deviceId ===
+                                            currentPushDeviceId;
+                                        const subscriptionChecking =
+                                            isCurrentDevice &&
+                                            currentDeviceSubscriptionChecking;
+                                        const needsRecovery =
+                                            pushDeviceNeedsSubscriptionRecovery(
+                                                device,
+                                            ) ||
+                                            (isCurrentDevice &&
+                                                browserSubscriptionNeedsRecovery);
+                                        const notificationsEnabled =
+                                            device.enabled && !needsRecovery;
+                                        const statusLabel = subscriptionChecking
+                                            ? 'Provjera veze'
+                                            : needsRecovery
+                                              ? 'Potrebno ponovno povezivanje'
+                                              : notificationsEnabled
+                                                ? 'Uključeno'
+                                                : 'Isključeno';
+
+                                        return (
+                                            <div
+                                                key={device.id}
+                                                className="flex items-center gap-3 rounded border border-border/60 p-2"
+                                            >
+                                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                                                    {deviceIcon(device)}
+                                                </div>
+                                                <Stack
+                                                    spacing={0.5}
+                                                    className="min-w-0 flex-1"
                                                 >
-                                                    {device.userAgent ||
-                                                        'Nepoznat preglednik'}
-                                                </Typography>
-                                                <Typography
-                                                    level="body3"
-                                                    secondary
-                                                >
-                                                    Status:{' '}
-                                                    {device.enabled
-                                                        ? 'aktivan'
-                                                        : 'isključen'}{' '}
-                                                    · Zadnji put viđen:{' '}
-                                                    {device.lastSeenAt
-                                                        ? new Date(
-                                                              device.lastSeenAt,
-                                                          ).toLocaleString(
-                                                              'hr-HR',
-                                                          )
-                                                        : 'nema podataka'}
-                                                </Typography>
-                                                <Row spacing={2}>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="plain"
-                                                        disabled={
-                                                            deviceMutationBusy
+                                                    <Typography semiBold>
+                                                        {label}
+                                                    </Typography>
+                                                    <Typography
+                                                        level="body3"
+                                                        secondary
+                                                    >
+                                                        {statusLabel}
+                                                    </Typography>
+                                                </Stack>
+                                                <Switch
+                                                    aria-label={`${
+                                                        needsRecovery
+                                                            ? 'Ponovno poveži'
+                                                            : notificationsEnabled
+                                                              ? 'Isključi'
+                                                              : 'Uključi'
+                                                    } ${label}${
+                                                        needsRecovery
+                                                            ? ' na tom uređaju'
+                                                            : ''
+                                                    }`}
+                                                    checked={
+                                                        notificationsEnabled
+                                                    }
+                                                    disabled={
+                                                        deviceMutationBusy ||
+                                                        needsRecovery ||
+                                                        subscriptionChecking
+                                                    }
+                                                    onCheckedChange={() => {
+                                                        if (needsRecovery) {
+                                                            return;
                                                         }
-                                                        onClick={() =>
-                                                            updateDeviceMutation.mutate(
-                                                                {
-                                                                    id: device.id,
-                                                                    payload: {
-                                                                        enabled:
-                                                                            !device.enabled,
-                                                                    },
+                                                        updateDeviceMutation.mutate(
+                                                            {
+                                                                id: device.id,
+                                                                payload: {
+                                                                    enabled:
+                                                                        !notificationsEnabled,
                                                                 },
-                                                            )
-                                                        }
-                                                    >
-                                                        {device.enabled
-                                                            ? 'Isključi'
-                                                            : 'Uključi'}
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="plain"
-                                                        disabled={
-                                                            deviceMutationBusy
-                                                        }
-                                                        startDecorator={
-                                                            <Close className="size-4" />
-                                                        }
-                                                        onClick={() =>
-                                                            revokeDeviceMutation.mutate(
-                                                                device.id,
-                                                            )
-                                                        }
-                                                    >
-                                                        Ukloni
-                                                    </Button>
-                                                </Row>
-                                            </Stack>
-                                        </Card>
-                                    ))
+                                                            },
+                                                        );
+                                                    }}
+                                                />
+                                            </div>
+                                        );
+                                    })
                                 ) : (
                                     <Typography level="body2" secondary>
                                         Nema uređaja prijavljenih za obavijesti.

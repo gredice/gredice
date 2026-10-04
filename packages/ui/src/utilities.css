@@ -1,0 +1,460 @@
+@source "../node_modules/streamdown/dist/*.js";
+
+body[data-gredice-ui-portal-root] {
+    position: relative;
+}
+
+.gredice-ui-application-root {
+    isolation: isolate;
+    min-height: inherit;
+    min-width: 0;
+    width: 100%;
+}
+
+body.flex > .gredice-ui-application-root {
+    display: flex;
+    flex: 1 1 auto;
+}
+
+/* Scroll-aware masks adapted from shadcn/ui's scroll-fade utility. */
+:is(.scrollbar-none, .no-scrollbar) {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+:is(.scrollbar-none, .no-scrollbar)::-webkit-scrollbar {
+    display: none;
+}
+
+@property --scroll-fade-t {
+    syntax: "<length-percentage>";
+    inherits: false;
+    initial-value: 0px;
+}
+
+@property --scroll-fade-b {
+    syntax: "<length-percentage>";
+    inherits: false;
+    initial-value: 0px;
+}
+
+@property --scroll-fade-s {
+    syntax: "<length-percentage>";
+    inherits: false;
+    initial-value: 0px;
+}
+
+@property --scroll-fade-e {
+    syntax: "<length-percentage>";
+    inherits: false;
+    initial-value: 0px;
+}
+
+@keyframes scroll-fade-reveal-t {
+    from {
+        --scroll-fade-t: 0px;
+    }
+    to {
+        --scroll-fade-t: var(--_scroll-fade-size-t);
+    }
+}
+
+@keyframes scroll-fade-reveal-b {
+    from {
+        --scroll-fade-b: var(--_scroll-fade-size-b);
+    }
+    to {
+        --scroll-fade-b: 0px;
+    }
+}
+
+@keyframes scroll-fade-reveal-s {
+    from {
+        --scroll-fade-s: 0px;
+    }
+    to {
+        --scroll-fade-s: var(--_scroll-fade-size-s);
+    }
+}
+
+@keyframes scroll-fade-reveal-e {
+    from {
+        --scroll-fade-e: var(--_scroll-fade-size-e);
+    }
+    to {
+        --scroll-fade-e: 0px;
+    }
+}
+
+:is(.scroll-fade-y, .scroll-fade-t, .scroll-fade-b) {
+    --_scroll-fade-size-t: var(
+        --scroll-fade-t-size,
+        var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)))
+    );
+    --_scroll-fade-size-b: var(
+        --scroll-fade-b-size,
+        var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)))
+    );
+    --scroll-fade-block: linear-gradient(
+        to bottom,
+        transparent 0,
+        #000 var(--scroll-fade-t, 0px),
+        #000 calc(100% - var(--scroll-fade-b, 0px)),
+        transparent 100%
+    );
+    -webkit-mask-image: var(--scroll-fade-mask, var(--scroll-fade-block));
+    mask-image: var(--scroll-fade-mask, var(--scroll-fade-block));
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+}
+
+.scroll-fade-t {
+    --_scroll-fade-size-b: 0px;
+}
+
+.scroll-fade-b {
+    --_scroll-fade-size-t: 0px;
+}
+
+:is(.scroll-fade-x, .scroll-fade-s, .scroll-fade-e) {
+    --_scroll-fade-size-s: var(
+        --scroll-fade-s-size,
+        var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)))
+    );
+    --_scroll-fade-size-e: var(
+        --scroll-fade-e-size,
+        var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)))
+    );
+    --scroll-fade-inline: linear-gradient(
+        to right,
+        transparent 0,
+        #000 var(--scroll-fade-s, 0px),
+        #000 calc(100% - var(--scroll-fade-e, 0px)),
+        transparent 100%
+    );
+    -webkit-mask-image: var(--scroll-fade-mask, var(--scroll-fade-inline));
+    mask-image: var(--scroll-fade-mask, var(--scroll-fade-inline));
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+}
+
+:is(.scroll-fade-x, .scroll-fade-s, .scroll-fade-e):where(
+    [dir="rtl"],
+    [dir="rtl"] *
+) {
+    --scroll-fade-inline: linear-gradient(
+        to left,
+        transparent 0,
+        #000 var(--scroll-fade-s, 0px),
+        #000 calc(100% - var(--scroll-fade-e, 0px)),
+        transparent 100%
+    );
+}
+
+.scroll-fade-s {
+    --_scroll-fade-size-e: 0px;
+}
+
+.scroll-fade-e {
+    --_scroll-fade-size-s: 0px;
+}
+
+@supports (animation-timeline: scroll()) {
+    :is(.scroll-fade-y, .scroll-fade-t, .scroll-fade-b) {
+        animation:
+            scroll-fade-reveal-t 1ms ease-in-out,
+            scroll-fade-reveal-b 1ms ease-in-out;
+        animation-timeline: scroll(self y), scroll(self y);
+        animation-range:
+            0 var(--scroll-fade-reveal, calc(var(--spacing) * 24)),
+            calc(100% - var(--scroll-fade-reveal, calc(var(--spacing) * 24)))
+            100%;
+        animation-fill-mode: both;
+    }
+
+    :is(.scroll-fade-x, .scroll-fade-s, .scroll-fade-e) {
+        animation:
+            scroll-fade-reveal-s 1ms ease-in-out,
+            scroll-fade-reveal-e 1ms ease-in-out;
+        animation-timeline: scroll(self inline), scroll(self inline);
+        animation-range:
+            0 var(--scroll-fade-reveal, calc(var(--spacing) * 24)),
+            calc(100% - var(--scroll-fade-reveal, calc(var(--spacing) * 24)))
+            100%;
+        animation-fill-mode: both;
+    }
+}
+
+@supports not (animation-timeline: scroll()) {
+    :is(.scroll-fade-y, .scroll-fade-t, .scroll-fade-b) {
+        --scroll-fade-t: var(--_scroll-fade-size-t);
+        --scroll-fade-b: var(--_scroll-fade-size-b);
+    }
+
+    :is(.scroll-fade-x, .scroll-fade-s, .scroll-fade-e) {
+        --scroll-fade-s: var(--_scroll-fade-size-s);
+        --scroll-fade-e: var(--_scroll-fade-size-e);
+    }
+}
+
+@keyframes chat-shimmer {
+    to {
+        background-position: -200% center;
+    }
+}
+
+.chat-shimmer {
+    animation: chat-shimmer 1.8s linear infinite;
+    background-image: linear-gradient(
+        90deg,
+        hsl(var(--muted-foreground)) 35%,
+        hsl(var(--foreground)) 50%,
+        hsl(var(--muted-foreground)) 65%
+    );
+    background-position: 200% center;
+    background-size: 200% 100%;
+    background-clip: text;
+    color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chat-shimmer {
+        animation: none;
+        background: none;
+        color: inherit;
+    }
+}
+
+@keyframes public-environment-drift {
+    from {
+        background-position:
+            0 0,
+            12rem 2rem,
+            28rem -1rem;
+    }
+    to {
+        background-position:
+            24rem 1rem,
+            40rem 3rem,
+            60rem 0;
+    }
+}
+
+@keyframes public-environment-rain {
+    from {
+        background-position: 0 -8rem;
+    }
+    to {
+        background-position: -3rem 8rem;
+    }
+}
+
+@keyframes public-environment-snow {
+    from {
+        background-position:
+            0 -8rem,
+            4rem -4rem;
+    }
+    to {
+        background-position:
+            2rem 8rem,
+            7rem 10rem;
+    }
+}
+
+html[data-public-environment="on"] body {
+    background-color: transparent;
+    isolation: isolate;
+}
+
+/* Public copy must remain readable over every part of the sky, including
+   the outer edges and the bright horizon in the dark theme. */
+[data-public-environment="on"] {
+    --public-theme-color-duration: 0s;
+    --muted-foreground: var(--baseHue, 28) 12% 22%;
+    --secondary-foreground: var(--baseHue, 28) 12% 20%;
+    --tertiary-foreground: var(--baseHue, 28) 12% 22%;
+}
+
+.dark[data-public-environment="on"] {
+    --muted-foreground: var(--environmentHue, 212) 10% 90%;
+    --secondary-foreground: var(--environmentHue, 212) 10% 90%;
+    --tertiary-foreground: var(--environmentHue, 212) 10% 90%;
+}
+
+[data-public-environment="on"] .public-page-description {
+    color: hsl(var(--foreground));
+}
+
+.public-environment-backdrop {
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+    transition: background 1.2s ease;
+}
+
+.public-environment-stars,
+.public-environment-clouds,
+.public-environment-fog,
+.public-environment-rain,
+.public-environment-snow,
+.public-environment-storm,
+.public-environment-contrast-veil {
+    position: absolute;
+    inset: 0;
+}
+
+.public-environment-stars {
+    transition: opacity 1.2s ease;
+}
+
+.public-environment-sun,
+.public-environment-moon {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    transition:
+        left 1.2s ease,
+        opacity 1.2s ease,
+        top 1.2s ease;
+}
+
+.public-environment-sun {
+    width: clamp(3.5rem, 9vw, 7.5rem);
+    aspect-ratio: 1;
+    border-radius: 9999px;
+    background: rgb(255 246 204);
+    box-shadow:
+        0 0 2rem rgb(255 238 167 / 0.85),
+        0 0 7rem rgb(255 215 131 / 0.72);
+}
+
+.public-environment-moon {
+    width: clamp(2.75rem, 7vw, 5.5rem);
+    overflow: visible;
+    filter: drop-shadow(0 0 1.6rem rgb(201 222 255 / 0.54));
+}
+
+.public-environment-clouds {
+    background-image:
+        radial-gradient(
+            ellipse at center,
+            rgb(255 255 255 / 0.58) 0 24%,
+            transparent 68%
+        ),
+        radial-gradient(
+            ellipse at center,
+            rgb(222 230 236 / 0.52) 0 26%,
+            transparent 70%
+        ),
+        radial-gradient(
+            ellipse at center,
+            rgb(255 255 255 / 0.45) 0 20%,
+            transparent 66%
+        );
+    background-position:
+        0 0,
+        12rem 2rem,
+        28rem -1rem;
+    background-size:
+        31rem 13rem,
+        38rem 16rem,
+        27rem 12rem;
+    filter: blur(10px);
+    animation: public-environment-drift 90s linear infinite alternate;
+}
+
+.public-environment-fog {
+    background: linear-gradient(
+        180deg,
+        transparent 12%,
+        rgb(238 241 239 / 0.48) 52%,
+        rgb(244 241 231 / 0.72) 100%
+    );
+    filter: blur(8px);
+}
+
+.public-environment-rain {
+    background-image: repeating-linear-gradient(
+        108deg,
+        transparent 0 18px,
+        rgb(214 228 240 / 0.55) 19px 20px,
+        transparent 21px 34px
+    );
+    background-size: 8rem 8rem;
+    animation: public-environment-rain 0.9s linear infinite;
+}
+
+.public-environment-snow {
+    background-image:
+        radial-gradient(
+            circle,
+            rgb(255 255 255 / 0.92) 0 2px,
+            transparent 2.5px
+        ),
+        radial-gradient(
+            circle,
+            rgb(255 255 255 / 0.72) 0 1.5px,
+            transparent 2px
+        );
+    background-position:
+        0 -8rem,
+        4rem -4rem;
+    background-size:
+        8rem 8rem,
+        6rem 6rem;
+    animation: public-environment-snow 10s linear infinite;
+}
+
+.public-environment-storm {
+    background: radial-gradient(
+        ellipse at 68% 8%,
+        rgb(195 207 234 / 0.32),
+        rgb(13 24 42 / 0.52) 48%,
+        rgb(5 13 25 / 0.7)
+    );
+}
+
+.public-environment-contrast-veil {
+    --veil-opacity: calc(0.68 + var(--public-environment-contrast-boost, 0));
+    /* A continuous reading surface, with a little more sky at the edges.
+       The base wash protects text even outside the central content column. */
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            hsl(var(--background) / 0.16) 16%,
+            hsl(var(--background) / 0.16) 84%,
+            transparent
+        ),
+        linear-gradient(
+            180deg,
+            hsl(var(--background) / var(--veil-opacity)),
+            hsl(var(--background) / calc(var(--veil-opacity) + 0.04)) 50%,
+            hsl(var(--background) / calc(var(--veil-opacity) + 0.08))
+        );
+}
+
+.dark .public-environment-contrast-veil {
+    --veil-opacity: calc(
+        0.8 +
+        var(--public-environment-contrast-boost, 0) *
+        0.6
+    );
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .public-environment-backdrop,
+    .public-environment-sun,
+    .public-environment-moon,
+    .public-environment-clouds,
+    .public-environment-rain,
+    .public-environment-snow {
+        animation: none;
+        transition: none;
+    }
+}

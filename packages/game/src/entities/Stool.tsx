@@ -1,5 +1,5 @@
-import { animated } from '@react-spring/three';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
+import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
@@ -24,7 +24,7 @@ export function Stool({ stack, block, rotation }: EntityInstanceProps) {
             >
                 <SnowOverlay
                     geometry={nodes.Stool.geometry}
-                    maxThickness={0.11}
+                    maxThickness={0.08}
                     slopeExponent={2.9}
                     noiseScale={3}
                 />

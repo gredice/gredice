@@ -1,32 +1,83 @@
-import type { SVGProps } from 'react';
-import { Grid1Icon } from './Grid1Icon';
-import { Grid4Icon } from './Grid4Icon';
-import { Grid9Icon } from './Grid9Icon';
-import { Grid16Icon } from './Grid16Icon';
+import { type SVGProps, useId } from 'react';
+import { GameIconFrame } from '../GameIcons/GameIconFrame';
+import soil from './assets/density-soil.webp';
+import spot from './assets/density-spot.webp';
+import { plantGridLayout } from './plantGridLayout';
 
 export interface PlantGridIconProps extends SVGProps<SVGSVGElement> {
     /**
-     * Total number of plants per field.
-     * Supported values: 1, 4, 9, 16
-     * For other values, defaults to the closest supported value.
+     * Exact number of plants per field, including dense layouts above 16.
+     * Keep the numeric count beside the icon at compact sizes.
      */
     totalPlants: number;
 }
 
 /**
- * Displays a grid icon based on the number of plants per field.
- * Automatically selects the appropriate icon based on totalPlants value.
+ * Repeats one planting spot over the shared soil tile.
+ * An SVG pattern keeps DOM size constant even for very dense layouts.
  */
 export function PlantGridIcon({ totalPlants, ...props }: PlantGridIconProps) {
-    // Find the closest supported grid value
-    const getGridIcon = (plants: number) => {
-        if (plants <= 1) return Grid1Icon;
-        if (plants <= 4) return Grid4Icon;
-        if (plants <= 9) return Grid9Icon;
-        return Grid16Icon;
-    };
+    const patternId = useId();
+    const layout = plantGridLayout(totalPlants);
+    const cellWidth = 32 / (layout?.columns ?? 1);
+    const cellHeight = 29 / (layout?.columns ?? 1);
+    const markerSize = Math.min(cellWidth, cellHeight) * 0.95;
 
-    const IconComponent = getGridIcon(totalPlants);
-
-    return <IconComponent {...props} />;
+    return (
+        <GameIconFrame
+            source={soil}
+            label={
+                layout
+                    ? `Broj biljaka po polju: ${totalPlants}`
+                    : 'Broj biljaka nije poznat'
+            }
+            aria-hidden
+            data-plant-grid-count={layout ? totalPlants : undefined}
+            {...props}
+        >
+            {layout && totalPlants > 0 && (
+                <svg
+                    aria-hidden="true"
+                    x={8}
+                    y={7}
+                    width={32}
+                    height={29}
+                    viewBox="0 0 32 29"
+                >
+                    <defs>
+                        <pattern
+                            id={patternId}
+                            patternUnits="userSpaceOnUse"
+                            width={cellWidth}
+                            height={cellHeight}
+                        >
+                            <image
+                                href={
+                                    typeof spot === 'string' ? spot : spot.src
+                                }
+                                x={(cellWidth - markerSize) / 2}
+                                y={(cellHeight - markerSize) / 2}
+                                width={markerSize}
+                                height={markerSize}
+                            />
+                        </pattern>
+                    </defs>
+                    <rect
+                        width={32}
+                        height={layout.fullRows * cellHeight}
+                        fill={`url(#${patternId})`}
+                    />
+                    {layout.lastRowPlants > 0 && (
+                        <rect
+                            x={0}
+                            y={layout.fullRows * cellHeight}
+                            width={layout.lastRowPlants * cellWidth}
+                            height={cellHeight}
+                            fill={`url(#${patternId})`}
+                        />
+                    )}
+                </svg>
+            )}
+        </GameIconFrame>
+    );
 }

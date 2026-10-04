@@ -6,13 +6,13 @@ import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Close, Navigate, SquareArrowRightEnter } from '@gredice/ui/icons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
-import { cx } from '@gredice/ui/utils';
-import type { CSSProperties } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     isChristmasHolidaySeason,
     useWinterMode,
-} from '../components/providers/WinterModeProvider';
+} from '@gredice/ui/PublicChrome';
+import { cx } from '@gredice/ui/utils';
+import type { CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 
 // Summer weather - warm and sunny
@@ -188,7 +188,7 @@ export function LandingGameScene() {
             <div
                 className={cx(
                     interactiveMounted
-                        ? 'pointer-events-auto fixed z-50 overflow-hidden bg-background transition-[top,left,width,height,border-radius,box-shadow] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[top,left,width,height,border-radius]'
+                        ? 'pointer-events-auto fixed z-50 overflow-hidden bg-background transition-[top,left,width,height,border-radius,box-shadow] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[top,left,width,height,border-radius] [--game-safe-area-top:env(safe-area-inset-top,0px)] [--game-safe-area-right:env(safe-area-inset-right,0px)] [--game-safe-area-bottom:env(safe-area-inset-bottom,0px)] [--game-safe-area-left:env(safe-area-inset-left,0px)]'
                         : 'absolute inset-0 overflow-hidden',
                     interactiveMounted &&
                         (interactiveVisible
@@ -236,7 +236,7 @@ export function LandingGameScene() {
                 {interactiveMounted && (
                     <div
                         className={cx(
-                            'pointer-events-none absolute bottom-4 right-4 z-10 flex max-w-[calc(100%-2rem)] flex-col items-end gap-2 transition-[opacity,transform] duration-300 ease-out md:bottom-6 md:right-6 md:max-w-sm',
+                            'pointer-events-none absolute bottom-[calc(var(--game-safe-area-bottom,0px)+1rem)] right-[calc(var(--game-safe-area-right,0px)+1rem)] z-10 flex max-w-[calc(100%-var(--game-safe-area-left,0px)-var(--game-safe-area-right,0px)-2rem)] flex-col items-end gap-2 transition-[opacity,transform] duration-300 ease-out md:bottom-[calc(var(--game-safe-area-bottom,0px)+1.5rem)] md:right-[calc(var(--game-safe-area-right,0px)+1.5rem)] md:max-w-sm',
                             interactiveVisible
                                 ? 'translate-y-0 opacity-100 delay-200'
                                 : 'translate-y-3 opacity-0',
@@ -282,8 +282,9 @@ export function LandingGameScene() {
                     </Button>
                     <NavigatingButton
                         href={gardenBaseUrl}
+                        color="neutral"
                         variant="outlined"
-                        className="rounded-full bg-background/90 shadow-lg backdrop-blur-xs"
+                        className="rounded-full bg-background text-primary shadow-lg"
                     >
                         Otvori aplikaciju
                     </NavigatingButton>
@@ -317,8 +318,9 @@ export function LandingGameSignupCta() {
             </NavigatingButton>
             <NavigatingButton
                 href={gardenBaseUrl}
+                color="neutral"
                 variant="outlined"
-                className="rounded-full bg-background/90 shadow-sm backdrop-blur-xs"
+                className="rounded-full bg-background text-primary shadow-sm"
             >
                 Otvori aplikaciju
             </NavigatingButton>

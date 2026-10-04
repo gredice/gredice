@@ -492,7 +492,7 @@ test('directory entity search derives block images from block names', async () =
     assert.equal(rows[0]?.entityId, blockId);
     assert.equal(
         rows[0]?.imageUrl,
-        'https://www.gredice.com/assets/blocks/Block_Snow.png',
+        'https://www.gredice.com/assets/blocks/Block_Snow.webp',
     );
     assert.equal(rows[0]?.imageAlt, `Snijeg ${blockToken}`);
 });
@@ -561,6 +561,7 @@ test('directory entity search exposes operation visual keys from stages', async 
 
 test('directory entity search returns canonical plant sort URLs through parent plant data', async () => {
     createTestDb();
+    const sortToken = uniqueToken('cherrysort');
     const plantId = await createSearchableEntity({
         entityTypeName: 'plant',
         entityTypeLabel: 'Plant',
@@ -600,7 +601,7 @@ test('directory entity search returns canonical plant sort URLs through parent p
         attributeDefinitionId: nameDefinitionId,
         entityTypeName: 'plantSort',
         entityId: sortId,
-        value: 'Cherry Rajčica',
+        value: `Cherry ${sortToken} Rajčica`,
     });
     await upsertAttributeValue({
         attributeDefinitionId: plantDefinitionId,
@@ -611,12 +612,15 @@ test('directory entity search returns canonical plant sort URLs through parent p
     await updateEntity({ id: sortId, state: 'published' });
 
     const rows = await searchDirectoryEntities({
-        query: 'cherry',
+        query: sortToken,
         entityTypeNames: ['plantSort'],
     });
 
     assert.equal(rows[0]?.entityId, sortId);
-    assert.equal(rows[0]?.publicUrl, '/biljke/rajcica/sorte/cherry-rajcica');
+    assert.equal(
+        rows[0]?.publicUrl,
+        `/biljke/rajcica/sorte/cherry-${sortToken}-rajcica`,
+    );
     assert.equal(
         rows[0]?.imageUrl,
         'https://cdn.gredice.com/search/sort-parent.jpg',
@@ -624,9 +628,10 @@ test('directory entity search returns canonical plant sort URLs through parent p
     assert.equal(rows[0]?.imageAlt, 'Rajčica kao naslijeđena slika sorte');
 });
 
-test('directory entity search returns canonical seed URLs through plant sort data', async () => {
+test('directory entity search returns canonical seed detail URLs', async () => {
     createTestDb();
     const token = uniqueToken('sjeme');
+    const sortToken = uniqueToken('cherrysort');
     const plantId = await createSearchableEntity({
         entityTypeName: 'plant',
         entityTypeLabel: 'Plant',
@@ -667,7 +672,7 @@ test('directory entity search returns canonical seed URLs through plant sort dat
         attributeDefinitionId: sortNameDefinitionId,
         entityTypeName: 'plantSort',
         entityId: sortId,
-        value: 'Cherry Rajčica',
+        value: `Cherry ${sortToken} Rajčica`,
     });
     await upsertAttributeValue({
         attributeDefinitionId: sortPlantDefinitionId,
@@ -727,7 +732,7 @@ test('directory entity search returns canonical seed URLs through plant sort dat
     assert.equal(rows[0]?.entityId, seedId);
     assert.equal(rows[0]?.publicCategory, 'seeds');
     assert.equal(rows[0]?.publicCategoryLabel, 'Sjeme');
-    assert.equal(rows[0]?.publicUrl, '/biljke/rajcica/sorte/cherry-rajcica');
+    assert.equal(rows[0]?.publicUrl, `/sjeme/sjeme-cherry-${token}`);
     assert.equal(
         rows[0]?.imageUrl,
         'https://cdn.gredice.com/search/seed-parent.jpg',
@@ -741,7 +746,7 @@ test('directory entity search returns canonical seed URLs through plant sort dat
         entityTypeNames: ['seed'],
     });
     assert.equal(refreshedRows[0]?.entityId, seedId);
-    assert.equal(refreshedRows[0]?.publicUrl, '/biljke/rajcica');
+    assert.equal(refreshedRows[0]?.publicUrl, `/sjeme/sjeme-cherry-${token}`);
 });
 
 test('directory entity search includes prefix matches after exact token matches', async () => {
@@ -837,7 +842,7 @@ test('directory entity search preserves websearch operators without prefix fallb
     assert.ok(!quotedRowIds.includes(prefixPlantId));
 });
 
-test('directory entity search falls back to plant URLs for seeds without plant sort data', async () => {
+test('directory entity search keeps seed detail URLs without plant sort data', async () => {
     createTestDb();
     const nonExistentPlantSortId = 999_999;
     const token = uniqueToken('sjeme');
@@ -896,7 +901,7 @@ test('directory entity search falls back to plant URLs for seeds without plant s
     });
 
     assert.equal(rows[0]?.entityId, seedId);
-    assert.equal(rows[0]?.publicUrl, '/biljke/rajcica');
+    assert.equal(rows[0]?.publicUrl, `/sjeme/sjeme-bez-sorte-${token}`);
 });
 
 test('directory entity search excludes public entity types without route-compatible names', async () => {

@@ -4,11 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 /**
  * Fetch recorded weather history within an optional date range.
  */
-export function useWeatherHistory(
-    from?: Date,
-    to?: Date,
-    enabled = true,
-) {
+export function useWeatherHistory(from?: Date, to?: Date, enabled = true) {
     const fromIso = from?.toISOString();
     const toIso = to?.toISOString();
     return useQuery({

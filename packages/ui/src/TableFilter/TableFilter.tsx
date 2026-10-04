@@ -18,6 +18,7 @@ import { Row } from '../Row';
 export interface FilterOption {
     key: string;
     label: string;
+    activeLabel?: string | null;
     icon?: ReactNode;
     options: Array<{
         value: string;
@@ -155,6 +156,10 @@ export function TableFilter({
                 {Object.entries(currentFilters).map(([key, value]) => {
                     const filter = filters.find((f) => f.key === key);
                     if (!filter) return null;
+                    const activeLabel =
+                        filter.activeLabel === undefined
+                            ? filter.label
+                            : filter.activeLabel;
 
                     return (
                         <Chip
@@ -166,7 +171,7 @@ export function TableFilter({
                             <Row spacing={2} className="items-center">
                                 {filter.icon}
                                 <span>
-                                    {filter.label}:{' '}
+                                    {activeLabel ? `${activeLabel}: ` : null}
                                     {getOptionLabel(filter, value)}
                                 </span>
                                 <Close className="size-3" />

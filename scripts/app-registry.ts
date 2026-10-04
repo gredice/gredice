@@ -3,8 +3,10 @@ import { fileURLToPath } from 'node:url';
 
 export type AppName =
     | 'www'
+    | 'news'
     | 'garden'
     | 'farm'
+    | 'delivery'
     | 'app'
     | 'storybook'
     | 'api'
@@ -35,6 +37,17 @@ export const appRegistry: AppRegistryEntry[] = [
         startsInDefaultDev: true,
     },
     {
+        name: 'news',
+        packagePath: 'apps/news',
+        localDomain: 'novosti.gredice.test',
+        devPort: 3007,
+        startPort: 3007,
+        testPort: 3007,
+        componentTestPort: null,
+        vercelProjectName: 'news',
+        startsInDefaultDev: true,
+    },
+    {
         name: 'garden',
         packagePath: 'apps/garden',
         localDomain: 'vrt.gredice.test',
@@ -54,6 +67,17 @@ export const appRegistry: AppRegistryEntry[] = [
         testPort: 3002,
         componentTestPort: 3102,
         vercelProjectName: 'farm',
+        startsInDefaultDev: true,
+    },
+    {
+        name: 'delivery',
+        packagePath: 'apps/delivery',
+        localDomain: 'dostava.gredice.test',
+        devPort: 3008,
+        startPort: 3008,
+        testPort: 3008,
+        componentTestPort: 3104,
+        vercelProjectName: 'delivery',
         startsInDefaultDev: true,
     },
     {

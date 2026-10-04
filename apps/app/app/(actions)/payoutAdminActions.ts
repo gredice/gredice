@@ -6,6 +6,7 @@ import {
     getAllPayoutRequests,
     getFarmerBalance,
     markPayoutAsPaid,
+    type PayoutAdjustmentInput,
     rejectPayoutRequest,
     upsertOperationPrice,
 } from '@gredice/storage';
@@ -13,9 +14,13 @@ import { revalidatePath } from 'next/cache';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
 
-export async function approvePayoutAction(id: number, adminNote?: string) {
+export async function approvePayoutAction(
+    id: number,
+    adminNote?: string,
+    adjustments?: PayoutAdjustmentInput[],
+) {
     const { userId } = await auth(['admin']);
-    await approvePayoutRequest(id, userId, adminNote);
+    await approvePayoutRequest(id, userId, adminNote, adjustments);
     revalidatePath(KnownPages.FarmerPayouts);
 }
 

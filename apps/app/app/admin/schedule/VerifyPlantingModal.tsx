@@ -1,8 +1,6 @@
 'use client';
 
 import { Button } from '@gredice/ui/Button';
-import { IconButton } from '@gredice/ui/IconButton';
-import { Check } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -13,6 +11,9 @@ import { verifyRaisedBedPlantingAction } from '../../(actions)/raisedBedFieldsAc
 interface VerifyPlantingModalProps {
     raisedBedId: number;
     positionIndex: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     label: string;
     onConfirm?: () => unknown | Promise<unknown>;
 }
@@ -20,6 +21,9 @@ interface VerifyPlantingModalProps {
 export function VerifyPlantingModal({
     raisedBedId,
     positionIndex,
+    expectedPlantCycleEventId,
+    expectedPlantCycleVersionEventId,
+    expectedPlantSortId,
     label,
     onConfirm,
 }: VerifyPlantingModalProps) {
@@ -32,7 +36,13 @@ export function VerifyPlantingModal({
             if (onConfirm) {
                 await onConfirm();
             } else {
-                await verifyRaisedBedPlantingAction(raisedBedId, positionIndex);
+                await verifyRaisedBedPlantingAction(
+                    raisedBedId,
+                    positionIndex,
+                    expectedPlantCycleEventId,
+                    expectedPlantSortId,
+                    expectedPlantCycleVersionEventId,
+                );
             }
             setOpen(false);
         } catch (error) {
@@ -49,13 +59,15 @@ export function VerifyPlantingModal({
             open={open}
             onOpenChange={setOpen}
             trigger={
-                <IconButton
-                    variant="plain"
+                <Button
+                    variant="solid"
+                    color="success"
+                    size="xs"
                     title="Verificiraj sijanje"
                     loading={isSubmitting}
                 >
-                    <Check className="size-4 shrink-0" />
-                </IconButton>
+                    Potvrdi
+                </Button>
             }
         >
             <Stack spacing={4}>

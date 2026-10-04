@@ -3,7 +3,7 @@ import {
     scrollableTableCardClassName,
     scrollableTableCardOverflowClassName,
 } from '../../../../components/admin/cards/tableCardLayout';
-import { TransactionsTable } from '../../transactions/TransactionsTable';
+import { TransactionsTable } from '../../../../components/admin/tables';
 
 export async function AccountTransactionsCard({
     accountId,

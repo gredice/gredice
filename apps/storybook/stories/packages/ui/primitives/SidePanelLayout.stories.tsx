@@ -3,6 +3,7 @@ import { PanelSection } from '@gredice/ui/PanelSection';
 import { Row } from '@gredice/ui/Row';
 import {
     SidePanelLayout,
+    type SidePanelLayoutBreakpoint,
     SidePanelToggleButton,
 } from '@gredice/ui/SidePanelLayout';
 import { Stack } from '@gredice/ui/Stack';
@@ -32,9 +33,11 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function Demo({
+    desktopBreakpoint = 'xl',
     initialLeftOpen = true,
     initialRightOpen = true,
 }: {
+    desktopBreakpoint?: SidePanelLayoutBreakpoint;
     initialLeftOpen?: boolean;
     initialRightOpen?: boolean;
 }) {
@@ -61,6 +64,7 @@ function Demo({
                 />
             </Row>
             <SidePanelLayout
+                desktopBreakpoint={desktopBreakpoint}
                 leftOpen={leftOpen}
                 leftPanel={
                     <Stack spacing={2}>
@@ -126,4 +130,8 @@ export const LeftClosed: Story = {
 
 export const BothClosed: Story = {
     render: () => <Demo initialLeftOpen={false} initialRightOpen={false} />,
+};
+
+export const MediumBreakpoint: Story = {
+    render: () => <Demo desktopBreakpoint="md" />,
 };

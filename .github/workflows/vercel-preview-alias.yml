@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Sticky PR comment with alias placeholder
-        uses: marocchino/sticky-pull-request-comment@v2.9.4
+        uses: marocchino/sticky-pull-request-comment@v3.0.5
         with:
           header: vercel-preview-alias
           number: ${{ github.event.pull_request.number }}
@@ -48,11 +48,11 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
 
-      - uses: actions/setup-node@v6.4.0
+      - uses: actions/setup-node@v7.0.0
         with:
-          node-version: "24.15.0"
+          node-version: "24.21.0"
 
       - name: Install Vercel CLI
         run: npm i --global vercel@latest
@@ -65,6 +65,7 @@ jobs:
           VERCEL_SCOPE: gredice
           GREDICE_PREVIEW_DOMAIN: preview.gredice.com
           VERCEL_PROJECT_ID_WWW: ${{ secrets.VERCEL_PROJECT_ID_WWW }}
+          VERCEL_PROJECT_ID_NEWS: ${{ secrets.VERCEL_PROJECT_ID_NEWS }}
           VERCEL_PROJECT_ID_GARDEN: ${{ secrets.VERCEL_PROJECT_ID_GARDEN }}
           VERCEL_PROJECT_ID_FARM: ${{ secrets.VERCEL_PROJECT_ID_FARM }}
           VERCEL_PROJECT_ID_APP: ${{ secrets.VERCEL_PROJECT_ID_APP }}
@@ -83,10 +84,11 @@ jobs:
           aliases_table="| App | Preview |"
           aliases_table+=$'\n| --- | --- |'
           alias_count=0
-          apps=(www garden farm app storybook api status)
+          apps=(www news garden farm app storybook api status)
           declare -A pending_project_ids
           declare -A vercel_project_names=(
             [www]=www
+            [news]=news
             [garden]=garden
             [farm]=farm
             [app]=app
@@ -225,7 +227,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Sticky PR comment with preview aliases
-        uses: marocchino/sticky-pull-request-comment@v2.9.4
+        uses: marocchino/sticky-pull-request-comment@v3.0.5
         with:
           header: vercel-preview-alias
           number: ${{ inputs.pull_request_number }}

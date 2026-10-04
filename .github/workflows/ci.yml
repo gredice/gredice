@@ -15,11 +15,28 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 env:
-  TURBO_TOKEN: ${{ secrets.VERCEL_TOKEN }}
   TURBO_TEAM: gredice
 
 jobs:
+  ui_primitives:
+    name: "Validate UI primitive boundary"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24.21.0
+      - run: bash scripts/ci-isolated-tests.sh node --test scripts/check-ui-primitives.test.mjs
+      - run: bash scripts/ci-isolated-tests.sh node --test scripts/blob-test-fixtures.test.mjs
+      - run: bash scripts/ci-isolated-tests.sh node scripts/ci-network-isolation-check.mjs
+      - run: node scripts/check-ui-primitives.mjs
+
   changes:
     name: "Detect changes"
     runs-on: ubuntu-latest
@@ -27,19 +44,42 @@ jobs:
       pull-requests: read
       contents: read
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 1
-      - uses: dorny/paths-filter@v4.0.1
+      - uses: dorny/paths-filter@v4.0.3
         id: filter
         with:
           filters: |
             app_www:
+              - scripts/blob-test-fixtures.mjs
+              - scripts/ci-blob-network-guard.mjs
+              - scripts/ci-isolated-tests.sh
+              - scripts/ci-test-app.sh
+              - scripts/ci-font-fixtures.cjs
+              - scripts/ci-api-fixtures.mjs
               - apps/www/**
               - packages/client/**
               - packages/directory-types/**
               - packages/game/**
               - packages/js/**
+              - packages/storage/**
+              - packages/ui/**
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - turbo.json
+            app_news:
+              - scripts/blob-test-fixtures.mjs
+              - scripts/ci-blob-network-guard.mjs
+              - scripts/ci-isolated-tests.sh
+              - scripts/ci-test-app.sh
+              - scripts/ci-font-fixtures.cjs
+              - scripts/ci-api-fixtures.mjs
+              - apps/news/**
+              - packages/js/**
+              - packages/storage/**
               - packages/ui/**
               - .github/workflows/**
               - package.json
@@ -47,6 +87,12 @@ jobs:
               - pnpm-workspace.yaml
               - turbo.json
             app_garden:
+              - scripts/blob-test-fixtures.mjs
+              - scripts/ci-blob-network-guard.mjs
+              - scripts/ci-isolated-tests.sh
+              - scripts/ci-test-app.sh
+              - scripts/ci-font-fixtures.cjs
+              - scripts/ci-api-fixtures.mjs
               - apps/garden/**
               - packages/client/**
               - packages/game/**
@@ -57,12 +103,30 @@ jobs:
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
               - turbo.json
+            app_garden_android:
+              - apps/garden-android/**
+              - apps/garden/app/manifest.json
+              - apps/garden/public/.well-known/assetlinks.json
+              - scripts/render-svg-png.swift
+              - scripts/validate-android-store-listing.mjs
+              - scripts/validate-garden-twa-contract.mjs
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
             app_farm:
+              - scripts/blob-test-fixtures.mjs
+              - scripts/ci-blob-network-guard.mjs
+              - scripts/ci-isolated-tests.sh
+              - scripts/ci-test-app.sh
+              - scripts/ci-font-fixtures.cjs
+              - scripts/ci-api-fixtures.mjs
               - apps/farm/**
               - packages/auth/**
               - packages/client/**
               - packages/js/**
               - packages/label-printer/**
+              - packages/notifications/**
               - packages/storage/**
               - packages/ui/**
               - .github/workflows/**
@@ -70,7 +134,46 @@ jobs:
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
               - turbo.json
+            app_delivery:
+              - scripts/blob-test-fixtures.mjs
+              - scripts/ci-blob-network-guard.mjs
+              - scripts/ci-isolated-tests.sh
+              - scripts/ci-test-app.sh
+              - scripts/ci-font-fixtures.cjs
+              - scripts/ci-api-fixtures.mjs
+              - apps/delivery/**
+              - packages/auth/**
+              - packages/client/**
+              - packages/js/**
+              - packages/notifications/**
+              - packages/storage/**
+              - packages/ui/**
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - turbo.json
+            app_delivery_android:
+              - apps/delivery-android/**
+              - apps/delivery/app/icon.svg
+              - apps/delivery/app/manifest.json
+              - apps/delivery/public/.well-known/assetlinks.json
+              - scripts/digital-asset-links.mjs
+              - scripts/digital-asset-links.test.mjs
+              - scripts/render-svg-png.swift
+              - scripts/validate-android-store-listing.mjs
+              - scripts/validate-delivery-car-contract.mjs
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
             app_app:
+              - scripts/blob-test-fixtures.mjs
+              - scripts/ci-blob-network-guard.mjs
+              - scripts/ci-isolated-tests.sh
+              - scripts/ci-test-app.sh
+              - scripts/ci-font-fixtures.cjs
+              - scripts/ci-api-fixtures.mjs
               - apps/app/**
               - packages/auth/**
               - packages/client/**
@@ -90,10 +193,17 @@ jobs:
               - pnpm-workspace.yaml
               - turbo.json
             app_api:
+              - scripts/blob-test-fixtures.mjs
+              - scripts/ci-blob-network-guard.mjs
+              - scripts/ci-isolated-tests.sh
+              - scripts/ci-test-app.sh
+              - scripts/ci-font-fixtures.cjs
+              - scripts/ci-api-fixtures.mjs
               - apps/api/**
               - packages/auth/**
               - packages/directory-types/**
               - packages/email/**
+              - packages/fiscalization/**
               - packages/google/**
               - packages/js/**
               - packages/notifications/**
@@ -118,6 +228,12 @@ jobs:
               - pnpm-workspace.yaml
               - turbo.json
             app_status:
+              - scripts/blob-test-fixtures.mjs
+              - scripts/ci-blob-network-guard.mjs
+              - scripts/ci-isolated-tests.sh
+              - scripts/ci-test-app.sh
+              - scripts/ci-font-fixtures.cjs
+              - scripts/ci-api-fixtures.mjs
               - apps/status/**
               - packages/ui/**
               - .github/workflows/**
@@ -139,6 +255,14 @@ jobs:
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
               - turbo.json
+            packages_email:
+              - packages/email/**
+              - packages/storage/**
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - turbo.json
             packages_game:
               - packages/client/**
               - packages/game/**
@@ -150,16 +274,43 @@ jobs:
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
               - turbo.json
+            plugin_package:
+              - .agents/plugins/**
+              - .claude-plugin/**
+              - plugins/**
+              - scripts/check-plugins.mjs
+              - apps/api/app/api/mcp/catalog.ts
+              - package.json
+              - .github/workflows/**
     outputs:
       app_www: ${{ steps.filter.outputs.app_www }}
+      app_news: ${{ steps.filter.outputs.app_news }}
       app_garden: ${{ steps.filter.outputs.app_garden }}
+      app_garden_android: ${{ steps.filter.outputs.app_garden_android }}
       app_farm: ${{ steps.filter.outputs.app_farm }}
+      app_delivery: ${{ steps.filter.outputs.app_delivery }}
+      app_delivery_android: ${{ steps.filter.outputs.app_delivery_android }}
       app_app: ${{ steps.filter.outputs.app_app }}
       app_api: ${{ steps.filter.outputs.app_api }}
       app_storybook: ${{ steps.filter.outputs.app_storybook }}
       app_status: ${{ steps.filter.outputs.app_status }}
+      app_desktop: ${{ steps.filter.outputs.app_desktop }}
       packages_storage: ${{ steps.filter.outputs.packages_storage }}
+      packages_email: ${{ steps.filter.outputs.packages_email }}
       packages_game: ${{ steps.filter.outputs.packages_game }}
+      plugin_package: ${{ steps.filter.outputs.plugin_package }}
+
+  plugin_package:
+    name: "Validate plugins"
+    needs: changes
+    if: success() && needs.changes.outputs.plugin_package == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24.21.0
+      - run: node scripts/check-plugins.mjs
 
   ci_www:
     name: "CI - www"
@@ -169,17 +320,24 @@ jobs:
     with:
       name: "www"
       path: "apps/www"
-      vercelProjectIdSecretName: "VERCEL_PROJECT_ID_WWW"
       testShardMatrix: >-
         [
           {"name":"a11y 1/3","index":1,"total":5,"args":"tests/a11y.spec.ts --shard=1/3"},
           {"name":"a11y 2/3","index":2,"total":5,"args":"tests/a11y.spec.ts --shard=2/3"},
           {"name":"a11y 3/3","index":3,"total":5,"args":"tests/a11y.spec.ts --shard=3/3"},
-          {"name":"rest 1/2","index":4,"total":5,"args":"tests/landing.spec.ts tests/search.spec.ts tests/search-interactive.spec.tsx tests/titlesPresent.spec.ts --shard=1/2"},
-          {"name":"rest 2/2","index":5,"total":5,"args":"tests/landing.spec.ts tests/search.spec.ts tests/search-interactive.spec.tsx tests/titlesPresent.spec.ts --shard=2/2"}
+          {"name":"rest 1/2","index":4,"total":5,"args":"tests/landing.spec.ts tests/search.spec.ts tests/search-interactive.spec.tsx tests/titlesPresent.spec.ts tests/cms-markdown.spec.tsx tests/blob-network-guard.spec.ts tests/inline-login-dialog.spec.tsx tests/regional-calendar.spec.ts --shard=1/2"},
+          {"name":"rest 2/2","index":5,"total":5,"args":"tests/landing.spec.ts tests/search.spec.ts tests/search-interactive.spec.tsx tests/titlesPresent.spec.ts tests/cms-markdown.spec.tsx tests/blob-network-guard.spec.ts tests/inline-login-dialog.spec.tsx tests/regional-calendar.spec.ts --shard=2/2"}
         ]
       testShardPrepareScript: "test:prepare:routes"
-    secrets: inherit
+
+  ci_news:
+    name: "CI - news"
+    needs: changes
+    if: success() && needs.changes.outputs.app_news == 'true'
+    uses: ./.github/workflows/nextjs_ci_reusable.yml
+    with:
+      name: "news"
+      path: "apps/news"
 
   ci_garden:
     name: "CI - garden"
@@ -189,8 +347,29 @@ jobs:
     with:
       name: "garden"
       path: "apps/garden"
-      vercelProjectIdSecretName: "VERCEL_PROJECT_ID_GARDEN"
-    secrets: inherit
+      testShardMatrix: >-
+        [
+          {"name":"chromium 1/2","args":"--project=chromium --shard=1/2"},
+          {"name":"chromium 2/2","args":"--project=chromium --shard=2/2"},
+          {"name":"webgl components 1/2","args":"--project=chromium-webgl --shard=1/2"},
+          {"name":"webgl components 2/2","args":"--project=chromium-webgl --shard=2/2"},
+          {"name":"outlet layout","args":"--project=chromium-webgl-outlet --grep @outlet-layout"},
+          {"name":"outlet reconcile","args":"--project=chromium-webgl-outlet --grep @outlet-reconcile"},
+          {"name":"outlet lifecycle","args":"--project=chromium-webgl-outlet --grep @outlet-lifecycle"},
+          {"name":"outlet walk","args":"--project=chromium-webgl-outlet --grep @outlet-walk"},
+          {"name":"outlet rest","args":"--project=chromium-webgl-outlet --grep-invert @outlet-slow"}
+        ]
+      testShardPrepareScript: "test:ci:prepare"
+
+  ci_garden_android:
+    name: "CI - garden Android"
+    needs: changes
+    if: success() && needs.changes.outputs.app_garden_android == 'true'
+    uses: ./.github/workflows/android_ci_reusable.yml
+    with:
+      name: "garden"
+      path: "apps/garden-android"
+      validateGardenTwaContract: true
 
   ci_farm:
     name: "CI - farm"
@@ -200,8 +379,27 @@ jobs:
     with:
       name: "farm"
       path: "apps/farm"
-      vercelProjectIdSecretName: "VERCEL_PROJECT_ID_FARM"
-    secrets: inherit
+
+  ci_delivery:
+    name: "CI - delivery"
+    needs: changes
+    if: success() && needs.changes.outputs.app_delivery == 'true'
+    uses: ./.github/workflows/nextjs_ci_reusable.yml
+    with:
+      name: "delivery"
+      path: "apps/delivery"
+
+  ci_delivery_android:
+    name: "CI - delivery Android"
+    needs: changes
+    if: success() && needs.changes.outputs.app_delivery_android == 'true'
+    uses: ./.github/workflows/android_ci_reusable.yml
+    with:
+      name: "delivery"
+      path: "apps/delivery-android"
+      allowMissingStoreScreenshots: true
+      validateDeliveryCarContract: true
+      compileInstrumentedTests: true
 
   ci_app:
     name: "CI - app"
@@ -211,8 +409,7 @@ jobs:
     with:
       name: "app"
       path: "apps/app"
-      vercelProjectIdSecretName: "VERCEL_PROJECT_ID_APP"
-    secrets: inherit
+      nextBuildCache: true
 
   ci_api:
     name: "CI - api"
@@ -222,8 +419,6 @@ jobs:
     with:
       name: "api"
       path: "apps/api"
-      vercelProjectIdSecretName: "VERCEL_PROJECT_ID_API"
-    secrets: inherit
 
   ci_status:
     name: "CI - status"
@@ -233,38 +428,42 @@ jobs:
     with:
       name: "status"
       path: "apps/status"
-      vercelProjectIdSecretName: "VERCEL_PROJECT_ID_STATUS"
-    secrets: inherit
+
+  ci_desktop:
+    name: "CI - desktop"
+    needs: changes
+    if: success() && needs.changes.outputs.app_desktop == 'true'
+    uses: ./.github/workflows/nextjs_ci_reusable.yml
+    with:
+      name: "desktop"
+      path: "apps/desktop"
 
   test_packages:
     name: "CI - test @gredice/storage"
-    timeout-minutes: 5
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     needs: changes
     if: success() && github.event_name == 'pull_request' &&
       needs.changes.outputs.packages_storage == 'true'
-    env:
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_APP }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 2
 
-      - uses: pnpm/action-setup@v6.0.4
+      - uses: pnpm/action-setup@v6.1.0
         name: ✨ Install pnpm
 
       - name: ✨ Setup Node
-        uses: actions/setup-node@v6.4.0
+        uses: actions/setup-node@v7.0.0
         with:
-          node-version: "24.15.0"
+          node-version: "24.21.0"
 
       - name: ✨ Get pnpm store directory
         shell: bash
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - uses: actions/cache@v5.0.5
+      - uses: actions/cache@v6.1.0
         name: ✨ Setup pnpm cache
         with:
           path: ${{ env.STORE_PATH }}
@@ -275,43 +474,40 @@ jobs:
       - name: 📦️ Install dependencies
         run: pnpm install --frozen-lockfile --filter @gredice/storage... --filter .
 
-      - name: ✨ Setup Vercel CLI
-        run: npm i --global vercel@latest
-
-      - name: ⚙️ Pull Vercel Environment Information
-        run: vercel env pull --yes --environment=preview --token=${{
-          secrets.VERCEL_TOKEN }}
-        working-directory: ./packages/storage/
+      - name: 📦 Prepare offline package manager
+        run: |
+          echo "COREPACK_HOME=$RUNNER_TEMP/gredice-corepack" >> "$GITHUB_ENV"
+          COREPACK_HOME="$RUNNER_TEMP/gredice-corepack" pnpm exec corepack pnpm --version
 
       - name: ⚒️ Test app
-        run: pnpm test --filter=@gredice/storage
+        run: bash scripts/ci-isolated-tests.sh --database env -u POSTGRES_URL -u TEST_ENV -u VERCEL_ENV -u NEXT_PUBLIC_VERCEL_ENV pnpm run test --filter=@gredice/storage --cache=local:rw
 
   test_game_package:
-    name: "CI - test @gredice/game"
+    name: "CI - test @gredice/game and @gredice/js"
     timeout-minutes: 5
     runs-on: ubuntu-latest
     needs: changes
     if: success() && github.event_name == 'pull_request' &&
       needs.changes.outputs.packages_game == 'true'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 2
 
-      - uses: pnpm/action-setup@v6.0.4
+      - uses: pnpm/action-setup@v6.1.0
         name: ✨ Install pnpm
 
       - name: ✨ Setup Node
-        uses: actions/setup-node@v6.4.0
+        uses: actions/setup-node@v7.0.0
         with:
-          node-version: "24.15.0"
+          node-version: "24.21.0"
 
       - name: ✨ Get pnpm store directory
         shell: bash
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - uses: actions/cache@v5.0.5
+      - uses: actions/cache@v6.1.0
         name: ✨ Setup pnpm cache
         with:
           path: ${{ env.STORE_PATH }}
@@ -320,21 +516,73 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: 📦️ Install dependencies
-        run: pnpm install --frozen-lockfile --filter @gredice/game... --filter .
+        run: pnpm install --frozen-lockfile --filter @gredice/game... --filter @gredice/js... --filter .
+
+      - name: 📦 Prepare offline package manager
+        run: |
+          echo "COREPACK_HOME=$RUNNER_TEMP/gredice-corepack" >> "$GITHUB_ENV"
+          COREPACK_HOME="$RUNNER_TEMP/gredice-corepack" pnpm exec corepack pnpm --version
+
+      - name: ⚒️ Test packages
+        run: bash scripts/ci-isolated-tests.sh pnpm run test --filter=@gredice/game --filter=@gredice/js --cache=local:rw
+
+  test_email_package:
+    name: "CI - test @gredice/email"
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    needs: changes
+    if: success() && github.event_name == 'pull_request' &&
+      needs.changes.outputs.packages_email == 'true'
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 2
+
+      - uses: pnpm/action-setup@v6.1.0
+        name: ✨ Install pnpm
+
+      - name: ✨ Setup Node
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: "24.21.0"
+
+      - name: ✨ Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v6.1.0
+        name: ✨ Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: 📦️ Install dependencies
+        run: pnpm install --frozen-lockfile --filter @gredice/email... --filter .
+
+      - name: 📦 Prepare offline package manager
+        run: |
+          echo "COREPACK_HOME=$RUNNER_TEMP/gredice-corepack" >> "$GITHUB_ENV"
+          COREPACK_HOME="$RUNNER_TEMP/gredice-corepack" pnpm exec corepack pnpm --version
 
       - name: ⚒️ Test package
-        run: pnpm test --filter=@gredice/game
+        run: bash scripts/ci-isolated-tests.sh pnpm --filter @gredice/email test
+
+      - name: 🔎 Typecheck package
+        run: pnpm --filter @gredice/email typecheck
 
   ci_filter_check:
     name: "CI - verify app package filters"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
 
       - name: ✨ Setup Node
-        uses: actions/setup-node@v6.4.0
+        uses: actions/setup-node@v7.0.0
         with:
-          node-version: "24.15.0"
+          node-version: "24.21.0"
 
       - name: 🔎 Verify CI app filters
         run: node ./scripts/check-ci-filters.mjs
@@ -343,15 +591,22 @@ jobs:
     name: "[CI] OK"
     needs:
       [
+        ui_primitives,
         changes,
         ci_www,
+        ci_news,
         ci_garden,
+        ci_garden_android,
         ci_farm,
+        ci_delivery,
+        ci_delivery_android,
         ci_app,
         ci_api,
         ci_status,
+        ci_desktop,
         test_packages,
         test_game_package,
+        test_email_package,
         ci_filter_check,
       ]
     if: ${{ always() }}

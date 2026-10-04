@@ -1,31 +1,37 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { restoreGameProfileDate } from '../../profile/game/profileDate';
 
-type EntityViewerComponent = typeof import('@gredice/game').EntityViewer;
+type EntitySandboxViewerComponent =
+    typeof import('@gredice/game').EntitySandboxViewer;
 
 export function EntityViewerDynamic({
     entityName,
-    noControl,
+    freezeTime,
     rotation,
-    staticEnvironment,
-    zoom,
+    storageKey,
+    variant,
 }: {
     entityName: string;
-    noControl?: boolean;
+    freezeTime?: string;
     rotation?: number;
-    staticEnvironment?: boolean;
-    zoom?: number;
+    storageKey: string;
+    variant?: number;
 }) {
-    const [EntityViewer, setEntityViewer] =
-        useState<EntityViewerComponent | null>(null);
+    const date = useMemo(
+        () => restoreGameProfileDate(freezeTime),
+        [freezeTime],
+    );
+    const [EntitySandboxViewer, setEntitySandboxViewer] =
+        useState<EntitySandboxViewerComponent | null>(null);
 
     useEffect(() => {
         let isMounted = true;
 
         void import('@gredice/game').then((mod) => {
             if (isMounted) {
-                setEntityViewer(() => mod.EntityViewer);
+                setEntitySandboxViewer(() => mod.EntitySandboxViewer);
             }
         });
 
@@ -34,7 +40,7 @@ export function EntityViewerDynamic({
         };
     }, []);
 
-    if (!EntityViewer) {
+    if (!EntitySandboxViewer) {
         return (
             <div className="flex h-full items-center justify-center text-sm text-neutral-700">
                 Loading entity scene...
@@ -43,15 +49,14 @@ export function EntityViewerDynamic({
     }
 
     return (
-        <EntityViewer
+        <EntitySandboxViewer
             className="h-full w-full"
             debugHud
             entityName={entityName}
-            noControl={noControl}
+            freezeTime={date}
+            localSandboxStorageKey={storageKey}
             rotation={rotation}
-            showBackground
-            staticEnvironment={staticEnvironment}
-            zoom={zoom}
+            variant={variant}
         />
     );
 }

@@ -1,12 +1,14 @@
 'use client';
 
 import { OrbitControls } from '@react-three/drei';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Vector3 } from 'three';
 import { groundGameAssetNames } from '../../../data/models';
 import { RaisedBed } from '../../../entities/RaisedBed';
 import { Environment } from '../../../scene/Environment';
 import { Scene } from '../../../scene/Scene';
+import type { Block } from '../../../types/Block';
+import type { Stack } from '../../../types/Stack';
 import {
     createGameState,
     GameStateContext,
@@ -14,9 +16,8 @@ import {
     useDisposeGameStateStore,
 } from '../../../useGameState';
 import { preloadGameAssetModels } from '../../../utils/useGameGLTF';
-import { useGeneratedLSystemSymbols } from '../hooks/useGeneratedLSystem';
-import { serializeLSystemSymbols } from '../lib/l-system';
-import { MAX_PLANT_GENERATION, type Rule } from '../lib/plant-definitions';
+import { buildDevelopmentalPlantGraph } from '../developmental/developmentalPlantGraph';
+import { MAX_PLANT_GENERATION } from '../lib/plant-definitions';
 import { PlantGenerator } from '../PlantGenerator';
 import { DesktopControls } from './components/DesktopControls';
 import { EditorGrassContext } from './components/EditorGrassContext';
@@ -25,21 +26,36 @@ import { usePlantState } from './hooks/usePlantState';
 
 const zoom = 1000;
 const cameraPosition: [x: number, y: number, z: number] = [-100, 100, -100];
-const desktopEditorTarget: [x: number, y: number, z: number] = [-0.55, 0.9, 0];
-const mobileEditorTarget: [x: number, y: number, z: number] = [0, 0.9, 0];
+const editorScenePosition: [x: number, y: number, z: number] = [0, 0.7, 0];
+const editorGrassPosition: [x: number, y: number, z: number] = [0, -0.4, 0];
+const editorPlantPosition: [x: number, y: number, z: number] = [0, 0.25, 0];
+const editorOrbitTarget: [x: number, y: number, z: number] = [
+    0,
+    editorScenePosition[1] + editorPlantPosition[1],
+    0,
+];
+const editorRaisedBedStack: Stack = {
+    position: new Vector3(0, 0, 0),
+    blocks: [],
+};
+const editorRaisedBedBlock: Block = {
+    id: '',
+    name: '',
+    rotation: 0,
+};
 
 export function PlantEditor({
     initialPlantType,
 }: {
     initialPlantType?: string;
 } = {}) {
-    const [isDesktop, setIsDesktop] = useState(false);
     const {
         state,
         visibility,
         updateState,
         updateVisibility,
         updateDefinition,
+        updateDefinitionChanges,
         selectPlantType,
         randomizeSeed,
         undo,
@@ -63,16 +79,6 @@ export function PlantEditor({
         return () => clearTimeout(saveTimeoutRef.current);
     }, [state.definition, state.plantType, saveDefinitionToStorage]);
 
-    /**
-     * Handle L-system rules changes
-     */
-    const handleRulesChange = useCallback(
-        (newRules: Record<string, Rule>) => {
-            updateDefinition('rules', newRules);
-        },
-        [updateDefinition],
-    );
-
     const stepGeneration = useCallback(
         (delta: number) => {
             const nextGeneration =
@@ -89,16 +95,6 @@ export function PlantEditor({
         },
         [state.generation, updateState],
     );
-
-    useEffect(() => {
-        const mediaQuery = window.matchMedia('(min-width: 768px)');
-        const handleChange = (event: MediaQueryListEvent) =>
-            setIsDesktop(event.matches);
-
-        setIsDesktop(mediaQuery.matches);
-        mediaQuery.addEventListener('change', handleChange);
-        return () => mediaQuery.removeEventListener('change', handleChange);
-    }, []);
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -146,40 +142,16 @@ export function PlantEditor({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [redo, stepGeneration, undo]);
 
-    /**
-     * Generate L-system symbols based on current parameters
-     */
-    const lSystemTask = useMemo(
-        () => ({
-            axiom: state.definition.axiom,
-            iterations: Math.ceil(state.generation),
-            rules: state.definition.rules,
-            seed: state.seed,
-        }),
-        [
-            state.definition.axiom,
-            state.definition.rules,
-            state.generation,
-            state.seed,
-        ],
+    const developmentalGraph = useMemo(
+        () =>
+            buildDevelopmentalPlantGraph({
+                generation: state.generation,
+                plantDefinition: state.definition,
+                seed: state.seed,
+            }),
+        [state.definition, state.generation, state.seed],
     );
-    const { symbols: lSystemSymbolsResult } = useGeneratedLSystemSymbols(
-        lSystemTask,
-        {
-            syncInitialResult: true,
-        },
-    );
-    const lSystemSymbols = lSystemSymbolsResult ?? [];
-
-    /**
-     * Generate L-system chain string for display
-     */
-    const lSystemChain = useMemo(
-        () => serializeLSystemSymbols(lSystemSymbols),
-        [lSystemSymbols],
-    );
-    const orbitTarget = isDesktop ? desktopEditorTarget : mobileEditorTarget;
-
+    const organCount = developmentalGraph.organs.length;
     /**
      * Common props for control components
      */
@@ -190,7 +162,7 @@ export function PlantEditor({
         onPlantTypeChange: selectPlantType,
         onVisibilityChange: updateVisibility,
         onDefinitionChange: updateDefinition,
-        onRulesChange: handleRulesChange,
+        onDefinitionChanges: updateDefinitionChanges,
         onRandomizeSeed: randomizeSeed,
         onUndo: undo,
         onRedo: redo,
@@ -200,8 +172,7 @@ export function PlantEditor({
         canResetDefinition,
         onCreateCustomPlant: createCustomPlant,
         onDeleteCustomPlant: deleteCustomPlant,
-        lSystemChain,
-        lSystemSymbolCount: lSystemSymbols.length,
+        organCount,
     };
 
     const freezeTime = new Date('2024-06-21T10:00:00'); // Noon on summer solstice
@@ -259,15 +230,17 @@ export function PlantEditor({
                         </mesh>
 
                         {/* Plant */}
-                        <group position={[0, 0.7, 0]}>
-                            <EditorGrassContext />
-                            <group position={[0, 0.25, 0]}>
+                        <group position={editorScenePosition}>
+                            <group position={editorGrassPosition}>
+                                <EditorGrassContext />
+                            </group>
+                            <group position={editorPlantPosition}>
                                 <PlantGenerator
                                     key={`${state.plantType}-${state.seed}`}
                                     plantDefinition={state.definition}
-                                    lSystemSymbols={lSystemSymbols}
                                     generation={state.generation}
                                     seed={state.seed}
+                                    graph={developmentalGraph}
                                     flowerGrowth={state.flowerGrowth}
                                     fruitGrowth={state.fruitGrowth}
                                     showLeaves={visibility.showLeaves}
@@ -277,16 +250,8 @@ export function PlantEditor({
                             </group>
 
                             <RaisedBed
-                                stack={{
-                                    position: new Vector3(0, 0, 0),
-                                    blocks: [],
-                                }}
-                                block={{
-                                    id: '',
-                                    name: '',
-                                    rotation: 0,
-                                    variant: undefined,
-                                }}
+                                stack={editorRaisedBedStack}
+                                block={editorRaisedBedBlock}
                                 rotation={0}
                             />
                         </group>
@@ -295,7 +260,7 @@ export function PlantEditor({
                         <OrbitControls
                             minDistance={1}
                             maxDistance={40}
-                            target={orbitTarget}
+                            target={editorOrbitTarget}
                         />
                     </Scene>
                 </GameStateContext.Provider>

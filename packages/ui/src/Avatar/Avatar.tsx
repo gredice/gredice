@@ -1,5 +1,6 @@
 import type { HTMLAttributes, ReactNode } from 'react';
 import { cx } from '../utils';
+import { resolveAvatarSource } from './farmerAvatarSources';
 
 export type AvatarProps = HTMLAttributes<HTMLDivElement> & {
     size?: 'sm' | 'md' | 'lg';
@@ -17,9 +18,9 @@ export type AvatarProps = HTMLAttributes<HTMLDivElement> & {
     );
 
 const sizeClassNames = {
-    sm: 'h-6 min-w-[24px] max-w-[24px] text-xs',
-    md: 'h-9 min-w-[36px] max-w-[36px]',
-    lg: 'h-12 min-w-[48px] max-w-[48px] text-lg',
+    sm: 'size-6 text-xs',
+    md: 'size-9',
+    lg: 'size-12 text-lg',
 };
 
 export function Avatar({
@@ -41,7 +42,11 @@ export function Avatar({
         >
             {src ? (
                 // biome-ignore lint/performance/noImgElement: avatar URLs can be user-provided and should not require Next image config
-                <img src={src} alt={alt} className="size-full object-cover" />
+                <img
+                    src={resolveAvatarSource(src)}
+                    alt={alt}
+                    className="size-full object-cover"
+                />
             ) : (
                 children
             )}

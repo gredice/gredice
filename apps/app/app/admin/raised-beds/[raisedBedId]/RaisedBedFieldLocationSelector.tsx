@@ -16,9 +16,13 @@ import { setRaisedBedFieldSowingLocationAction } from '../../../(actions)/raised
 type RaisedBedFieldLocationSelectorProps = {
     raisedBedId: number;
     positionIndex: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     sowingLocation: RaisedBedFieldSowingLocation;
     currentLocation: 'greenhouse' | 'raisedBed';
     greenhouseCurrentLocationEligible: boolean;
+    className?: string;
 };
 
 const locationLabels = {
@@ -38,9 +42,13 @@ function getOptimisticCurrentLocation(
 export function RaisedBedFieldLocationSelector({
     raisedBedId,
     positionIndex,
+    expectedPlantCycleEventId,
+    expectedPlantCycleVersionEventId,
+    expectedPlantSortId,
     sowingLocation,
     currentLocation,
     greenhouseCurrentLocationEligible,
+    className,
 }: RaisedBedFieldLocationSelectorProps) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
@@ -69,6 +77,9 @@ export function RaisedBedFieldLocationSelector({
                 await setRaisedBedFieldSowingLocationAction(
                     raisedBedId,
                     positionIndex,
+                    expectedPlantCycleEventId,
+                    expectedPlantSortId,
+                    expectedPlantCycleVersionEventId,
                     nextLocation,
                 );
                 router.refresh();
@@ -93,9 +104,10 @@ export function RaisedBedFieldLocationSelector({
                     }
                     startDecorator={<span aria-hidden>{current.icon}</span>}
                     title="Promijeni trenutnu lokaciju biljke"
+                    className={className}
                     onClick={() => {}}
                 >
-                    {current.label}
+                    <span className="min-w-0 truncate">{current.label}</span>
                 </Chip>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">

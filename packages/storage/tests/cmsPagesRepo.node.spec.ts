@@ -8,7 +8,9 @@ import {
     getCmsPage,
     getCmsPageBySlug,
     getCmsPageRevisions,
+    getCmsPageSlugValidationError,
     getCmsPages,
+    getPublishedCmsNewsPages,
     normalizeCmsPageSlug,
     restoreCmsPageRevision,
     softDeleteCmsPage,
@@ -16,6 +18,7 @@ import {
     updateCmsPage,
     updateCmsPageState,
 } from '@gredice/storage';
+import { eq } from 'drizzle-orm';
 import { createTestDb } from './testDb';
 
 test('CMS pages normalize slugs and support CRUD lifecycle', async () => {
@@ -115,8 +118,54 @@ test('CMS page slugs must be unique across active pages', async () => {
     assert.notEqual(replacementPageId, pageId);
 });
 
+test('CMS pages must be unpublished before deletion', async () => {
+    createTestDb();
+    const content = JSON.stringify([
+        { component: 'Feature1', header: 'Published section' },
+    ]);
+    const pageId = await createCmsPage({
+        slug: `delete-published-${randomUUID()}`,
+        title: 'Delete published page',
+        content,
+        state: 'published',
+        metaTitle: 'Delete published page',
+        metaDescription: 'Published pages cannot be deleted directly.',
+    });
+
+    await assert.rejects(
+        () => softDeleteCmsPage(pageId),
+        /unpublished before deletion/,
+    );
+    assert.equal((await getCmsPage(pageId))?.state, 'published');
+
+    await updateCmsPageState(pageId, 'draft');
+    await softDeleteCmsPage(pageId);
+    assert.equal(await getCmsPage(pageId), undefined);
+});
+
 test('CMS page slugs reject reserved static route conflicts', async () => {
     createTestDb();
+    for (const slug of ['postignuca', 'postignuca/sadnja']) {
+        assert.match(
+            getCmsPageSlugValidationError(slug) ?? '',
+            /reserved route/,
+        );
+    }
+    assert.match(
+        getCmsPageSlugValidationError('kalendar-sjetve') ?? '',
+        /reserved route/,
+    );
+    assert.match(
+        getCmsPageSlugValidationError('kalendar-sjetve/rujan') ?? '',
+        /reserved route/,
+    );
+
+    for (const slug of ['iskustvo-i-razine', 'iskustvo-i-razine/primjer']) {
+        assert.match(
+            getCmsPageSlugValidationError(slug) ?? '',
+            /reserved route/,
+        );
+    }
 
     assert.equal(normalizeCmsPageSlug('/Česta pitanja/'), 'cesta-pitanja');
     assert.equal(
@@ -131,6 +180,136 @@ test('CMS page slugs reject reserved static route conflicts', async () => {
             }),
         /reserved route/,
     );
+    await assert.rejects(
+        () =>
+            createCmsPage({
+                slug: '/novosti',
+                title: 'Conflicting news index',
+            }),
+        /reserved route/,
+    );
+    await assert.rejects(
+        () =>
+            createCmsPage({
+                slug: '/outlet',
+                title: 'Conflicting outlet index',
+            }),
+        /reserved route/,
+    );
+});
+
+test('CMS news page slugs follow blog and changelog namespaces', async () => {
+    createTestDb();
+    const suffix = randomUUID();
+
+    assert.equal(
+        getCmsPageSlugValidationError('/novosti/vrtni-dnevnik', {
+            contentKind: 'blog',
+        }),
+        null,
+    );
+    assert.equal(
+        getCmsPageSlugValidationError('/novosti/sto-je-novo/nova-gredica', {
+            contentKind: 'changelog',
+        }),
+        null,
+    );
+    assert.match(
+        getCmsPageSlugValidationError('/novosti/sto-je-novo', {
+            contentKind: 'blog',
+        }) ?? '',
+        /changelog route/,
+    );
+    assert.match(
+        getCmsPageSlugValidationError('/novosti/vrt', {
+            contentKind: 'changelog',
+        }) ?? '',
+        /Changelog page slug/,
+    );
+
+    const blogId = await createCmsPage({
+        slug: `/novosti/${suffix}`,
+        title: 'Blog objava',
+        contentKind: 'blog',
+        category: '  Vrt   dnevnik ',
+        tags: ['Vrt', 'Biljke', 'vrt', ' '],
+    });
+
+    const blog = await getCmsPage(blogId);
+    assert.equal(blog?.contentKind, 'blog');
+    assert.equal(blog?.category, 'Vrt dnevnik');
+    assert.deepEqual(blog?.tags, ['Vrt', 'Biljke']);
+});
+
+test('CMS blog pages require category before publishing', async () => {
+    createTestDb();
+    const content = JSON.stringify([
+        { component: 'MarkdownBlock', markdown: '## Objave' },
+    ]);
+    const pageId = await createCmsPage({
+        slug: `/novosti/${randomUUID()}`,
+        title: 'Blog without category',
+        contentKind: 'blog',
+        content,
+        metaTitle: 'Blog without category',
+        metaDescription: 'Missing category should block publishing.',
+    });
+
+    await assert.rejects(
+        () => updateCmsPageState(pageId, 'published'),
+        /Blog category is required/,
+    );
+
+    await updateCmsPage({
+        id: pageId,
+        category: 'Vrt',
+        state: 'published',
+    });
+
+    const page = await getCmsPage(pageId);
+    assert.equal(page?.state, 'published');
+});
+
+test('CMS pages support in-review state before publishing', async () => {
+    createTestDb();
+    const content = JSON.stringify([
+        { component: 'MarkdownBlock', markdown: '## Ready for review' },
+    ]);
+
+    await assert.rejects(
+        () =>
+            createCmsPage({
+                slug: `review-not-ready-${randomUUID()}`,
+                title: 'Review without metadata',
+                content,
+                state: 'in-review',
+            }),
+        /Page is not ready for publishing/,
+    );
+
+    const pageId = await createCmsPage({
+        slug: `review-ready-${randomUUID()}`,
+        title: 'Review ready page',
+        content,
+        state: 'in-review',
+        metaTitle: 'Review ready page',
+        metaDescription: 'Ready for publishing, but not published yet.',
+    });
+
+    const reviewPage = await getCmsPage(pageId);
+    assert.equal(reviewPage?.state, 'in-review');
+    assert.equal(reviewPage?.publishedAt, null);
+
+    const reviewPages = await getCmsPages({ state: 'in-review' });
+    assert.equal(
+        reviewPages.some((page) => page.id === pageId),
+        true,
+    );
+
+    await updateCmsPageState(pageId, 'published');
+    const publishedPage = await getCmsPage(pageId);
+    assert.equal(publishedPage?.state, 'published');
+    assert.ok(publishedPage?.publishedAt instanceof Date);
 });
 
 test('CMS page publish readiness uses metadata from the same update', async () => {
@@ -156,6 +335,82 @@ test('CMS page publish readiness uses metadata from the same update', async () =
     assert.equal(page?.metaTitle, 'Publishable meta title');
     assert.equal(page?.metaDescription, 'Publishable meta description');
     assert.ok(page?.publishedAt instanceof Date);
+});
+
+test('CMS pages use requested published dates for publish ordering', async () => {
+    createTestDb();
+    const content = JSON.stringify([
+        { component: 'MarkdownBlock', markdown: '## Changelog' },
+    ]);
+    const olderPublishedAt = new Date('2026-05-03T08:00:00.000Z');
+    const newerPublishedAt = new Date('2026-05-05T08:00:00.000Z');
+    const draftPublishedAt = new Date('2026-05-04T08:00:00.000Z');
+
+    const olderPageId = await createCmsPage({
+        slug: `/novosti/sto-je-novo/older-${randomUUID()}`,
+        title: 'Older changelog',
+        contentKind: 'changelog',
+        content,
+        state: 'published',
+        publishedAt: olderPublishedAt,
+        metaTitle: 'Older changelog',
+        metaDescription: 'Older changelog entry.',
+    });
+    const newerPageId = await createCmsPage({
+        slug: `/novosti/sto-je-novo/newer-${randomUUID()}`,
+        title: 'Newer changelog',
+        contentKind: 'changelog',
+        content,
+        state: 'published',
+        publishedAt: newerPublishedAt.toISOString(),
+        metaTitle: 'Newer changelog',
+        metaDescription: 'Newer changelog entry.',
+    });
+    const draftPageId = await createCmsPage({
+        slug: `/novosti/sto-je-novo/draft-${randomUUID()}`,
+        title: 'Draft changelog',
+        contentKind: 'changelog',
+        content,
+        publishedAt: draftPublishedAt,
+        metaTitle: 'Draft changelog',
+        metaDescription: 'Draft changelog entry.',
+    });
+
+    const draft = await getCmsPage(draftPageId);
+    assert.equal(draft?.state, 'draft');
+    assert.equal(
+        draft?.publishedAt?.toISOString(),
+        draftPublishedAt.toISOString(),
+    );
+
+    await updateCmsPageState(draftPageId, 'published');
+    const publishedDraft = await getCmsPage(draftPageId);
+    assert.equal(
+        publishedDraft?.publishedAt?.toISOString(),
+        draftPublishedAt.toISOString(),
+    );
+
+    const entries = await getPublishedCmsNewsPages({
+        contentKind: 'changelog',
+    });
+    assert.deepEqual(
+        entries.map((page) => page.id),
+        [newerPageId, draftPageId, olderPageId],
+    );
+});
+
+test('CMS pages reject invalid published dates', async () => {
+    createTestDb();
+
+    await assert.rejects(
+        () =>
+            createCmsPage({
+                slug: `invalid-published-date-${randomUUID()}`,
+                title: 'Invalid published date',
+                publishedAt: 'not-a-date',
+            }),
+        /Published date must be a valid date/,
+    );
 });
 
 test('CMS page content stores valid SectionData JSON payload', async () => {
@@ -307,6 +562,8 @@ test('CMS page revisions are recorded and can be restored', async () => {
         title: 'V1 title',
         content: firstContent,
         canonicalPath: '/history-v1',
+        metaImagePoiX: 25,
+        metaImagePoiY: 75,
         noIndex: true,
     });
     await updateCmsPage({
@@ -314,6 +571,8 @@ test('CMS page revisions are recorded and can be restored', async () => {
         title: 'V2 title',
         content: secondContent,
         canonicalPath: '/history-v2',
+        metaImagePoiX: 80,
+        metaImagePoiY: 20,
         noIndex: false,
     });
 
@@ -330,6 +589,8 @@ test('CMS page revisions are recorded and can be restored', async () => {
     assert.equal(restored?.title, 'V1 title');
     assert.equal(restored?.content, firstContent);
     assert.equal(restored?.canonicalPath, '/history-v1');
+    assert.equal(restored?.metaImagePoiX, 25);
+    assert.equal(restored?.metaImagePoiY, 75);
     assert.equal(restored?.noIndex, true);
 });
 
@@ -340,6 +601,7 @@ test('CMS page cache keys include normalized page and list variants', () => {
         'cms:page:slug:vodici/cesta-pitanja:v1',
         'cms:pages:list:all:v1',
         'cms:pages:list:draft:v1',
+        'cms:pages:list:in-review:v1',
         'cms:pages:list:published:v1',
     ]);
 });
@@ -353,6 +615,9 @@ test('CMS page metadata is preserved when updating only content', async () => {
         metaTitle: 'Meta title',
         metaDescription: 'Meta description',
         metaImageUrl: 'https://www.gredice.com/meta.png',
+        metaImagePoiX: 70,
+        metaImagePoiY: 30,
+        seoImageUrl: 'https://www.gredice.com/seo.png',
     });
 
     await updateCmsPage({
@@ -364,4 +629,193 @@ test('CMS page metadata is preserved when updating only content', async () => {
     assert.equal(page?.metaTitle, 'Meta title');
     assert.equal(page?.metaDescription, 'Meta description');
     assert.equal(page?.metaImageUrl, 'https://www.gredice.com/meta.png');
+    assert.equal(page?.metaImagePoiX, 70);
+    assert.equal(page?.metaImagePoiY, 30);
+    assert.equal(page?.seoImageUrl, 'https://www.gredice.com/seo.png');
+});
+
+test('CMS page cover image POI coordinates must be percentages', async () => {
+    createTestDb();
+
+    await assert.rejects(
+        createCmsPage({
+            slug: `invalid-cover-poi-${randomUUID()}`,
+            title: 'Invalid cover POI',
+            metaImagePoiX: 101,
+            metaImagePoiY: 50,
+        }),
+        /Cover image POI X must be an integer from 0 to 100/,
+    );
+});
+
+test('published CMS news pages list only published blog and changelog entries', async () => {
+    createTestDb();
+    const testTag = `news-test-${randomUUID()}`;
+    const content = JSON.stringify([
+        { component: 'MarkdownBlock', markdown: '## Novost' },
+    ]);
+    const blogId = await createCmsPage({
+        slug: `/novosti/blog-${randomUUID()}`,
+        title: 'Published blog',
+        contentKind: 'blog',
+        category: 'Vrt',
+        tags: ['Vrt', 'Biljke', testTag],
+        content,
+        state: 'published',
+        metaTitle: 'Published blog',
+        metaDescription: 'A published blog post for filtering.',
+    });
+    const changelogId = await createCmsPage({
+        slug: `/novosti/sto-je-novo/changelog-${randomUUID()}`,
+        title: 'Published changelog',
+        contentKind: 'changelog',
+        tags: ['Vrt', testTag],
+        content,
+        state: 'published',
+        metaTitle: 'Published changelog',
+        metaDescription: 'A published changelog entry for filtering.',
+    });
+    const unrelatedBlogId = await createCmsPage({
+        slug: `/novosti/unrelated-${randomUUID()}`,
+        title: 'Unrelated published blog',
+        contentKind: 'blog',
+        category: 'Vrt',
+        tags: ['Unrelated'],
+        content,
+        state: 'published',
+        metaTitle: 'Unrelated published blog',
+        metaDescription: 'A newer blog post without the requested tag.',
+    });
+    await createCmsPage({
+        slug: `/novosti/draft-${randomUUID()}`,
+        title: 'Draft blog',
+        contentKind: 'blog',
+        category: 'Vrt',
+        tags: ['Vrt'],
+        content,
+        metaTitle: 'Draft blog',
+        metaDescription: 'Draft content must not be listed.',
+    });
+    await createCmsPage({
+        slug: `/novosti/review-${randomUUID()}`,
+        title: 'In-review blog',
+        contentKind: 'blog',
+        category: 'Vrt',
+        tags: ['Vrt', testTag],
+        content,
+        state: 'in-review',
+        metaTitle: 'In-review blog',
+        metaDescription: 'Review content must not be listed.',
+    });
+    await createCmsPage({
+        slug: `generic-${randomUUID()}`,
+        title: 'Generic published page',
+        content,
+        state: 'published',
+        metaTitle: 'Generic page',
+        metaDescription: 'Generic pages are not news entries.',
+    });
+
+    const afterDate = new Date('2026-01-02T00:00:00.000Z');
+    await storage()
+        .update(cmsPages)
+        .set({ publishedAt: new Date('2026-01-01T00:00:00.000Z') })
+        .where(eq(cmsPages.id, blogId));
+    await storage()
+        .update(cmsPages)
+        .set({ publishedAt: new Date('2026-01-03T00:00:00.000Z') })
+        .where(eq(cmsPages.id, changelogId));
+    await storage()
+        .update(cmsPages)
+        .set({ publishedAt: new Date('2026-01-04T00:00:00.000Z') })
+        .where(eq(cmsPages.id, unrelatedBlogId));
+
+    const allNews = await getPublishedCmsNewsPages({ tag: testTag });
+    assert.deepEqual(
+        allNews.map((page) => page.id),
+        [changelogId, blogId],
+    );
+
+    const blogEntries = await getPublishedCmsNewsPages({
+        contentKind: 'blog',
+        category: 'vrt',
+        tag: 'biljke',
+    });
+    assert.deepEqual(
+        blogEntries.map((page) => page.id),
+        [blogId],
+    );
+
+    const recentEntries = await getPublishedCmsNewsPages({
+        publishedAfter: afterDate,
+        tag: testTag,
+    });
+    assert.deepEqual(
+        recentEntries.map((page) => page.id),
+        [changelogId],
+    );
+
+    const limitedTaggedEntries = await getPublishedCmsNewsPages({
+        tag: testTag,
+        limit: 1,
+    });
+    assert.deepEqual(
+        limitedTaggedEntries.map((page) => page.id),
+        [changelogId],
+    );
+});
+
+test('durable News cache sources have no list cap and immediately exclude unpublished/deleted content', async () => {
+    createTestDb();
+    const { getPublishedCmsNewsSourcePages, getPublishedCmsNewsPageBySlug } =
+        await import('@gredice/storage');
+    const slug = `novosti/cache-source-${randomUUID()}`;
+    const pageId = await createCmsPage({
+        slug,
+        title: 'News cache source',
+        contentKind: 'blog',
+        category: 'Vodiči',
+        state: 'published',
+        content: JSON.stringify([
+            { component: 'Heading1', header: 'Published' },
+        ]),
+        metaTitle: 'News cache source',
+        metaDescription: 'Public description',
+    });
+    assert.equal((await getPublishedCmsNewsPageBySlug(slug))?.id, pageId);
+    assert.ok(
+        (await getPublishedCmsNewsSourcePages()).some(
+            (page) => page.id === pageId,
+        ),
+    );
+    await updateCmsPageState(pageId, 'draft');
+    assert.equal(await getPublishedCmsNewsPageBySlug(slug), undefined);
+    assert.ok(
+        !(await getPublishedCmsNewsSourcePages()).some(
+            (page) => page.id === pageId,
+        ),
+    );
+    await softDeleteCmsPage(pageId);
+    assert.equal(await getPublishedCmsNewsPageBySlug(slug), undefined);
+    const rows = Array.from(
+        { length: 101 },
+        (_, i) =>
+            ({
+                slug: `novosti/bulk-source-${randomUUID()}-${i}`,
+                title: `Bulk ${i}`,
+                contentKind: 'blog',
+                state: 'published',
+                publishedAt: new Date(),
+            }) satisfies typeof cmsPages.$inferInsert,
+    );
+    const inserted = await storage()
+        .insert(cmsPages)
+        .values(rows)
+        .returning({ id: cmsPages.id });
+    const sources = await getPublishedCmsNewsSourcePages();
+    assert.equal(
+        sources.filter((page) => inserted.some(({ id }) => id === page.id))
+            .length,
+        101,
+    );
 });

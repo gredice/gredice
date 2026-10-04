@@ -104,7 +104,7 @@ export default async function EmailDetailPage({
                     </DetailItem>
                     <DetailItem label="Tip">
                         {email.messageType ? (
-                            <Chip className="w-fit">{email.messageType}</Chip>
+                            <Chip>{email.messageType}</Chip>
                         ) : (
                             <NoDataPlaceholder>Nije određeno</NoDataPlaceholder>
                         )}

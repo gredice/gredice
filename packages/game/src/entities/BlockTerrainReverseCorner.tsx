@@ -1,12 +1,18 @@
-import { animated } from '@react-spring/three';
+import { RainWetOverlay } from '../rain/RainWetOverlay';
+import { animated } from '../scene/sceneSpring';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import { dryGroundBaseColor } from './dryGroundPalette';
+import {
+    useGroundPatchMaterial,
+    useGroundPatchStandardMaterial,
+} from './helpers/groundPatchMaterial';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 
-export function BlockGroundReverseCorner({
+export function BlockDryGroundReverseCorner({
     stack,
     block,
     rotation,
@@ -14,6 +20,12 @@ export function BlockGroundReverseCorner({
     const { nodes } = useGameGLTF('BlockTerrainReverseCorner');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const material = useGroundPatchStandardMaterial({
+        color: dryGroundBaseColor,
+        metalness: 0,
+        roughness: 1,
+        surface: 'dryDirt',
+    });
 
     return (
         <animated.group
@@ -23,20 +35,49 @@ export function BlockGroundReverseCorner({
             <mesh
                 castShadow
                 receiveShadow
-                geometry={nodes.Block_Ground_Reverse_Corner_1_1.geometry}
-                material={nodes.Block_Ground_Reverse_Corner_1_1.material}
+                geometry={nodes.Block_Sand_Reverse_Corner_1.geometry}
+                material={material}
+            />
+            <RainWetOverlay
+                geometry={nodes.Block_Sand_Reverse_Corner_1.geometry}
             />
             <SnowOverlay
-                geometry={nodes.Block_Ground_Reverse_Corner_1_1.geometry}
-                maxThickness={0.18}
-                slopeExponent={1.7}
-                noiseScale={1.8}
+                geometry={nodes.Block_Sand_Reverse_Corner_1.geometry}
+                {...snowPresets.sandReverseCorner}
             />
+        </animated.group>
+    );
+}
+
+export function BlockGroundReverseCorner({
+    stack,
+    block,
+    rotation,
+}: EntityInstanceProps) {
+    const { nodes } = useGameGLTF('BlockTerrainReverseCorner');
+    const [animatedRotation] = useAnimatedEntityRotation(rotation);
+    const currentStackHeight = useStackHeight(stack, block);
+    const groundMaterial1 = useGroundPatchMaterial(
+        nodes.Block_Ground_Reverse_Corner_1.material,
+        'dirt',
+    );
+
+    return (
+        <animated.group
+            position={stack.position.clone().setY(currentStackHeight + 0.2)}
+            rotation={animatedRotation as unknown as [number, number, number]}
+        >
             <mesh
                 castShadow
                 receiveShadow
-                geometry={nodes.Block_Ground_Reverse_Corner_1_2.geometry}
-                material={nodes.Block_Ground_Reverse_Corner_1_2.material}
+                geometry={nodes.Block_Ground_Reverse_Corner_1.geometry}
+                material={groundMaterial1}
+            />
+            <SnowOverlay
+                geometry={nodes.Block_Ground_Reverse_Corner_1.geometry}
+                maxThickness={0.18}
+                slopeExponent={1.7}
+                noiseScale={1.8}
             />
         </animated.group>
     );
@@ -50,6 +91,14 @@ export function BlockGrassReverseCorner({
     const { nodes } = useGameGLTF('BlockTerrainReverseCorner');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const grassMaterial1 = useGroundPatchMaterial(
+        nodes.Block_Grass_Reverse_Corner_1_1.material,
+        'grass',
+    );
+    const grassMaterial2 = useGroundPatchMaterial(
+        nodes.Block_Grass_Reverse_Corner_1_2.material,
+        'grass',
+    );
 
     return (
         <animated.group
@@ -60,13 +109,13 @@ export function BlockGrassReverseCorner({
                 castShadow
                 receiveShadow
                 geometry={nodes.Block_Grass_Reverse_Corner_1_1.geometry}
-                material={nodes.Block_Grass_Reverse_Corner_1_1.material}
+                material={grassMaterial1}
             />
             <mesh
                 castShadow
                 receiveShadow
                 geometry={nodes.Block_Grass_Reverse_Corner_1_2.geometry}
-                material={nodes.Block_Grass_Reverse_Corner_1_2.material}
+                material={grassMaterial2}
             />
             <SnowOverlay
                 geometry={nodes.Block_Grass_Reverse_Corner_1_2.geometry}
@@ -84,6 +133,10 @@ export function BlockSandReverseCorner({
     const { nodes } = useGameGLTF('BlockTerrainReverseCorner');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const sandMaterial = useGroundPatchMaterial(
+        nodes.Block_Sand_Reverse_Corner_1.material,
+        'sand',
+    );
 
     return (
         <animated.group
@@ -94,7 +147,7 @@ export function BlockSandReverseCorner({
                 castShadow
                 receiveShadow
                 geometry={nodes.Block_Sand_Reverse_Corner_1.geometry}
-                material={nodes.Block_Sand_Reverse_Corner_1.material}
+                material={sandMaterial}
             />
             <SnowOverlay
                 geometry={nodes.Block_Sand_Reverse_Corner_1.geometry}
@@ -112,6 +165,12 @@ export function BlockSnowReverseCorner({
     const { nodes } = useGameGLTF('BlockTerrainReverseCorner');
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const currentStackHeight = useStackHeight(stack, block);
+    const snowMaterial = useGroundPatchStandardMaterial({
+        color: '#f0f7ff',
+        metalness: 0,
+        roughness: 1,
+        surface: 'snow',
+    });
 
     return (
         <animated.group
@@ -122,13 +181,8 @@ export function BlockSnowReverseCorner({
                 castShadow
                 receiveShadow
                 geometry={nodes.Block_Sand_Reverse_Corner_1.geometry}
-            >
-                <meshStandardMaterial
-                    color={'#FFFFFF'}
-                    roughness={1}
-                    metalness={0}
-                />
-            </mesh>
+                material={snowMaterial}
+            />
             <SnowOverlay
                 geometry={nodes.Block_Sand_Reverse_Corner_1.geometry}
                 {...snowPresets.snowReverseCorner}

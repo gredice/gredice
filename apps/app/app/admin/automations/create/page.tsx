@@ -1,7 +1,9 @@
 import {
     type AutomationGraph,
     automationModuleKeys,
+    defaultAutomationMaxConcurrentRuns,
     getAutomationModuleMetadata,
+    maxAutomationMaxConcurrentRuns,
 } from '@gredice/storage';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -26,7 +28,7 @@ const initialGraph: AutomationGraph = {
             kind: 'action',
             position: { x: 420, y: 160 },
             config: {
-                message: 'Automation reached log action.',
+                message: 'Automatizacija je došla do koraka zapisa.',
             },
         },
     ],
@@ -50,7 +52,7 @@ export default async function AutomationCreatePage() {
                     Nova automatizacija
                 </Typography>
                 <Typography level="body2" className="text-muted-foreground">
-                    Sastavite workflow iz dostupnih triggera, uvjeta i akcija.
+                    Sastavite tijek rada iz dostupnih okidača, uvjeta i akcija.
                 </Typography>
             </Stack>
             <AutomationFlowEditor
@@ -58,6 +60,8 @@ export default async function AutomationCreatePage() {
                 initialName="Nova automatizacija"
                 initialDescription={null}
                 initialStatus="draft"
+                initialMaxConcurrentRuns={defaultAutomationMaxConcurrentRuns}
+                maxConcurrentRunsLimit={maxAutomationMaxConcurrentRuns}
                 initialGraph={initialGraph}
                 modules={getAutomationModuleMetadata()}
             />

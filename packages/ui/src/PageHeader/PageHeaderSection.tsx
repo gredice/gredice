@@ -26,6 +26,7 @@ export function PageHeaderSection({
         <div className="@container/cms w-full">
             <PageHeader
                 header={typeof header === 'string' ? header : ''}
+                padded
                 responsive="container"
                 subHeader={typeof description === 'string' ? description : null}
                 visual={visual}

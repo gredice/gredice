@@ -1,6 +1,7 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGameState } from '../useGameState';
+import { ensureBlockPlaceOperationId } from './blockPlaceOperation';
 import {
     createOptimisticBlockPlacement,
     replaceOptimisticBlockId,
@@ -8,6 +9,7 @@ import {
 import { useBlockData } from './useBlockData';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 import { inventoryQueryKey } from './useInventory';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 const mutationKey = ['inventory', 'gardenBoxPlaceBlock'];
 const optimisticBlockIdPrefix = 'optimistic-garden-box-block';
@@ -40,6 +42,7 @@ export type GardenBoxPlaceBlockArgs = {
     gardenId: number;
     gardenBoxBlockId: string;
     entityId: string;
+    operationId?: string;
 };
 
 function decrementGardenBoxInventoryItem(
@@ -96,14 +99,21 @@ export function useGardenBoxPlaceBlock() {
     const { data: currentGarden } = useCurrentGarden();
     const { data: blockData } = useBlockData();
     const winterMode = useGameState((state) => state.winterMode);
+    const queueBlockPlacementDropAnimation = useGameState(
+        (state) => state.queueBlockPlacementDropAnimation,
+    );
+    const confirmBlockPlacementDropAnimation = useGameState(
+        (state) => state.confirmBlockPlacementDropAnimation,
+    );
+    const cancelBlockPlacementDropAnimation = useGameState(
+        (state) => state.cancelBlockPlacementDropAnimation,
+    );
 
     return useMutation({
         mutationKey,
-        mutationFn: async ({
-            entityId,
-            gardenBoxBlockId,
-            gardenId,
-        }: GardenBoxPlaceBlockArgs) => {
+        mutationFn: async (variables: GardenBoxPlaceBlockArgs) => {
+            const operationId = ensureBlockPlaceOperationId(variables);
+            const { entityId, gardenBoxBlockId, gardenId } = variables;
             const response = await clientAuthenticated().api.inventory[
                 'garden-boxes'
             ][':gardenId'][':blockId'].items.block[':entityId'].place.$post({
@@ -112,6 +122,7 @@ export function useGardenBoxPlaceBlock() {
                     blockId: gardenBoxBlockId,
                     entityId,
                 },
+                json: { operationId },
             });
 
             if (!response.ok) {
@@ -121,6 +132,7 @@ export function useGardenBoxPlaceBlock() {
             return await response.json();
         },
         onMutate: async (args) => {
+            ensureBlockPlaceOperationId(args);
             const gardenQueryKey = currentGardenKeys(winterMode, args.gardenId);
             await Promise.all([
                 queryClient.cancelQueries({ queryKey: inventoryQueryKey }),
@@ -159,7 +171,8 @@ export function useGardenBoxPlaceBlock() {
                       )
                     : null;
 
-            if (garden && optimisticPlacement) {
+            if (garden && optimisticBlockId && optimisticPlacement) {
+                queueBlockPlacementDropAnimation(optimisticBlockId);
                 queryClient.setQueryData<CurrentGardenData>(gardenQueryKey, {
                     ...garden,
                     stacks: optimisticPlacement.stacks,
@@ -179,6 +192,7 @@ export function useGardenBoxPlaceBlock() {
             }
 
             const optimisticBlockId = context.optimisticBlockId;
+            confirmBlockPlacementDropAnimation(optimisticBlockId, data.id);
             queryClient.setQueryData<CurrentGardenData | null>(
                 context.gardenQueryKey,
                 (garden) =>
@@ -205,6 +219,9 @@ export function useGardenBoxPlaceBlock() {
                     context.previousGarden,
                 );
             }
+            if (context?.optimisticBlockId) {
+                cancelBlockPlacementDropAnimation(context.optimisticBlockId);
+            }
         },
         onSettled: async (_data, _error, variables) => {
             const gardenQueryKey = currentGardenKeys(
@@ -217,6 +234,9 @@ export function useGardenBoxPlaceBlock() {
                 });
                 await queryClient.invalidateQueries({
                     queryKey: gardenQueryKey,
+                });
+                await queryClient.invalidateQueries({
+                    queryKey: tutorialChecklistKeys,
                 });
             }
         },

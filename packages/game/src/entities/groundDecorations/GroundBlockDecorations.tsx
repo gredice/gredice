@@ -1,64 +1,104 @@
 'use client';
 
-import { Fragment, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import {
+    type ActiveDragPreviewTarget,
+    createActiveDragPreviewTarget,
+    getActiveDragPreviewTargetPositionOffset,
+} from '../../dragPreviewIdentity';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
-import { useWeatherNow } from '../../hooks/useWeatherNow';
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
 import type { Stack } from '../../types/Stack';
 import { useGameState } from '../../useGameState';
 import { getStackHeight } from '../../utils/getStackHeight';
-import { BlockSurfaceDecorationSprites } from './BlockSurfaceDecorationSprites';
+import {
+    type GroundDecorationInstance,
+    GroundDecorationInstances,
+    type GroundDecorationWeather,
+} from './GroundDecorationInstances';
 import { getBlockSurfaceDecorations } from './getBlockSurfaceDecorations';
-import { resolveGroundDecorationSurface } from './groundDecorationConfig';
+import { getGroundDecorationBlocks } from './groundDecorationBlocks';
+import { swampGroundDecorationTint } from './groundDecorationConfig';
 
 const blockSurfaceYOffset = 0.2;
-const compassToDirection: Record<string, number> = {
-    E: 90,
-    N: 0,
-    NE: 45,
-    NW: 315,
-    S: 180,
-    SE: 135,
-    SW: 225,
-    W: 270,
-};
-
 type GroundBlockDecorationsProps = {
     density: number;
+    farmId?: number | null;
     stacks: Stack[] | undefined;
+    weather?: GroundDecorationWeather;
 };
+
+function activeDragTargetKey(target: ActiveDragPreviewTarget) {
+    return `${target.stackPosition.x}|${target.stackPosition.z}|${target.blockId}|${target.blockIndex}`;
+}
+
+function numbersEqual(left: number, right: number) {
+    return Math.abs(left - right) <= 0.0001;
+}
+
+function decorationInstancesEqual(
+    left: GroundDecorationInstance[] | undefined,
+    right: GroundDecorationInstance[],
+) {
+    if (left === right) {
+        return true;
+    }
+    if (!left || left.length !== right.length) {
+        return false;
+    }
+
+    return left.every((leftInstance, index) => {
+        const rightInstance = right[index];
+        return (
+            Boolean(rightInstance) &&
+            numbersEqual(leftInstance.alphaTest, rightInstance.alphaTest) &&
+            numbersEqual(leftInstance.height, rightInstance.height) &&
+            numbersEqual(leftInstance.opacity, rightInstance.opacity) &&
+            numbersEqual(
+                leftInstance.position[0],
+                rightInstance?.position[0] ?? Number.NaN,
+            ) &&
+            numbersEqual(
+                leftInstance.position[1],
+                rightInstance?.position[1] ?? Number.NaN,
+            ) &&
+            numbersEqual(
+                leftInstance.position[2],
+                rightInstance?.position[2] ?? Number.NaN,
+            ) &&
+            numbersEqual(leftInstance.rotationZ, rightInstance.rotationZ) &&
+            leftInstance.spriteName === rightInstance.spriteName &&
+            leftInstance.tint === rightInstance.tint
+        );
+    });
+}
+
+function useStableDecorationInstances(instances: GroundDecorationInstance[]) {
+    const previous = useRef<GroundDecorationInstance[] | undefined>(undefined);
+
+    if (!decorationInstancesEqual(previous.current, instances)) {
+        previous.current = instances;
+    }
+
+    return previous.current ?? instances;
+}
 
 export function GroundBlockDecorations({
     density,
+    farmId,
     stacks,
+    weather,
 }: GroundBlockDecorationsProps) {
     const { data: blockData } = useBlockData();
     const { data: garden } = useCurrentGarden();
-    const gameWeather = useGameState((state) => state.weather);
-    const { data: weatherNow } = useWeatherNow();
-    const windSpeed =
-        typeof gameWeather?.windSpeed === 'number'
-            ? gameWeather.windSpeed
-            : (weatherNow?.windSpeed ?? 0);
-    const windDirection =
-        typeof gameWeather?.windDirection === 'number'
-            ? gameWeather.windDirection
-            : typeof weatherNow?.windDirection === 'string'
-              ? (compassToDirection[weatherNow.windDirection] ?? 0)
-              : 0;
     const decorationBlocks = useMemo(() => {
         if (!stacks || density <= 0) {
             return [];
         }
 
-        return stacks.flatMap((stack) =>
-            stack.blocks.flatMap((block) => {
-                const surface = resolveGroundDecorationSurface(block.name);
-                if (!surface) {
-                    return [];
-                }
-
+        return getGroundDecorationBlocks(stacks).flatMap(
+            ({ block, blockIndex, stack, surface }) => {
                 const placements = getBlockSurfaceDecorations({
                     block,
                     density,
@@ -73,17 +113,114 @@ export function GroundBlockDecorations({
                 return [
                     {
                         block,
+                        blockIndex,
                         placements,
                         stack,
                         surface,
                     },
                 ];
-            }),
+            },
         );
     }, [density, garden?.id, stacks]);
+    const decoratedBlockPreviewKeys = useMemo(
+        () =>
+            new Set(
+                decorationBlocks.map(({ block, blockIndex, stack }) =>
+                    activeDragTargetKey(
+                        createActiveDragPreviewTarget({
+                            blockId: block.id,
+                            blockIndex,
+                            stackPosition: stack.position,
+                        }),
+                    ),
+                ),
+            ),
+        [decorationBlocks],
+    );
+    const activeDragPreview = useGameState((state) => {
+        const preview = state.activeDragPreview;
+        if (!preview) {
+            return null;
+        }
+
+        if (
+            decoratedBlockPreviewKeys.has(activeDragTargetKey(preview.source))
+        ) {
+            return preview;
+        }
+
+        return preview.targets.some((target) =>
+            decoratedBlockPreviewKeys.has(activeDragTargetKey(target)),
+        )
+            ? preview
+            : null;
+    });
     const decorationCount = decorationBlocks.reduce(
         (sum, block) => sum + block.placements.length,
         0,
+    );
+    const computedDecorationInstances = useMemo(() => {
+        const instances: GroundDecorationInstance[] = [];
+
+        for (const {
+            block,
+            blockIndex,
+            placements,
+            stack,
+            surface,
+        } of decorationBlocks) {
+            const dragPreviewOffset = getActiveDragPreviewTargetPositionOffset(
+                createActiveDragPreviewTarget({
+                    blockId: block.id,
+                    blockIndex,
+                    stackPosition: stack.position,
+                }),
+                activeDragPreview,
+            );
+            const blockRotation = block.rotation * (Math.PI / 2);
+            const cos = Math.cos(blockRotation);
+            const sin = Math.sin(blockRotation);
+            const baseHeight =
+                getStackHeight(blockData, stack, block) + blockSurfaceYOffset;
+            const offsetX = dragPreviewOffset?.x ?? 0;
+            const offsetY = dragPreviewOffset?.y ?? 0;
+            const offsetZ = dragPreviewOffset?.z ?? 0;
+
+            for (const placement of placements) {
+                const [localX, localY, localZ] = placement.position;
+                const rotatedX = localX * cos + localZ * sin;
+                const rotatedZ = -localX * sin + localZ * cos;
+
+                instances.push({
+                    alphaTest: placement.kind === 'flower' ? 0.05 : 0.06,
+                    height:
+                        placement.kind === 'flower'
+                            ? placement.scale
+                            : placement.height,
+                    opacity:
+                        placement.kind === 'flower'
+                            ? 0.95
+                            : Math.round(placement.opacity * 20) / 20,
+                    position: [
+                        stack.position.x + rotatedX + offsetX,
+                        baseHeight + localY + offsetY,
+                        stack.position.z + rotatedZ + offsetZ,
+                    ],
+                    rotationZ:
+                        placement.kind === 'flower' ? placement.rotation : 0,
+                    spriteName: placement.spriteName,
+                    tint:
+                        placement.kind === 'sprite' && surface === 'swamp'
+                            ? swampGroundDecorationTint
+                            : undefined,
+                });
+            }
+        }
+
+        return instances;
+    }, [activeDragPreview, blockData, decorationBlocks]);
+    const decorationInstances = useStableDecorationInstances(
+        computedDecorationInstances,
     );
 
     useEffect(() => {
@@ -98,44 +235,10 @@ export function GroundBlockDecorations({
     }
 
     return (
-        <>
-            {stacks.map((stack) => (
-                <Fragment
-                    key={`ground-decorations:${stack.position.x}:${stack.position.z}`}
-                >
-                    {decorationBlocks
-                        .filter((block) => block.stack === stack)
-                        .map(({ block, placements, surface }) => {
-                            return (
-                                <group
-                                    key={`ground-decoration:${block.id}`}
-                                    position={[
-                                        stack.position.x,
-                                        getStackHeight(
-                                            blockData,
-                                            stack,
-                                            block,
-                                        ) + blockSurfaceYOffset,
-                                        stack.position.z,
-                                    ]}
-                                    rotation={[
-                                        0,
-                                        block.rotation * (Math.PI / 2),
-                                        0,
-                                    ]}
-                                >
-                                    <BlockSurfaceDecorationSprites
-                                        blockId={block.id}
-                                        placements={placements}
-                                        surface={surface}
-                                        windDirection={windDirection}
-                                        windSpeed={windSpeed}
-                                    />
-                                </group>
-                            );
-                        })}
-                </Fragment>
-            ))}
-        </>
+        <GroundDecorationInstances
+            farmId={farmId}
+            instances={decorationInstances}
+            weather={weather}
+        />
     );
 }

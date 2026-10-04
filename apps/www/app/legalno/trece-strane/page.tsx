@@ -3,12 +3,15 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
+import { KnownPages } from '../../../src/KnownPages';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Treće strane',
     description: 'Informacije o korištenim izvorima podataka trećih strana.',
-};
+    path: KnownPages.LegalThirdParty,
+    eyebrow: 'Pravni dokument',
+});
 
 const thirdPartyPlatforms = [
     {
@@ -75,7 +78,7 @@ const thirdPartyPlatforms = [
                 name: 'Vercel Analytics',
                 category: 'Web analitika',
                 description:
-                    'Alat za analitiku koji nam pomaže razumjeti kako korisnici koriste našu web stranicu.',
+                    'Alat za analitiku koji nam pomaže razumjeti korištenje naše web stranice.',
                 iconUrl: 'https://vercel.com/favicon.ico',
                 website: 'https://vercel.com',
             },
@@ -214,8 +217,8 @@ export default function UvjetiKoristenjaPage() {
                     <p>
                         Zadržavamo pravo izmjene ovih informacija u bilo kojem
                         trenutku, uključujući dodavanje ili uklanjanje platformi
-                        trećih strana. Ukoliko platforma nije navedena na ovoj
-                        stranici, molimo kontaktirajte nas na{' '}
+                        trećih strana. Ako platforma nije navedena na ovoj
+                        stranici, slobodno nas kontaktiraj na{' '}
                         <a href="mailto:kontakt@gredice.com">
                             kontakt@gredice.com
                         </a>

@@ -1,10 +1,19 @@
 type TimestampValue = Date | string | null | undefined;
 
 export type AppliedRaisedBedOperation = {
+    raisedBedId?: number | null;
     raisedBedFieldId?: number | null;
     createdAt: TimestampValue;
     completedAt?: TimestampValue;
 };
+
+export type SerializableAppliedRaisedBedOperation =
+    AppliedRaisedBedOperation & {
+        id: number;
+        entityId: number;
+        scheduledDate?: TimestampValue;
+        status: string;
+    };
 
 export type AppliedRaisedBedField = {
     id: number;
@@ -24,6 +33,26 @@ function timestampMs(value: TimestampValue) {
         value instanceof Date ? value.getTime() : Date.parse(value);
 
     return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function timestampIso(value: TimestampValue) {
+    if (!value) {
+        return null;
+    }
+
+    const date = value instanceof Date ? value : new Date(value);
+    const timestamp = date.getTime();
+
+    return Number.isFinite(timestamp) ? date.toISOString() : null;
+}
+
+function requiredTimestampIso(value: TimestampValue, fieldName: string) {
+    const isoValue = timestampIso(value);
+    if (!isoValue) {
+        throw new Error(`Applied operation is missing ${fieldName}.`);
+    }
+
+    return isoValue;
 }
 
 function activePlantCycleStartMs(field: AppliedRaisedBedField) {
@@ -63,4 +92,19 @@ export function isAppliedOperationCurrentForRaisedBedFields(
     }
 
     return appliedAtMs >= cycleStartMs;
+}
+
+export function serializeAppliedRaisedBedOperation(
+    operation: SerializableAppliedRaisedBedOperation,
+) {
+    return {
+        id: operation.id,
+        entityId: operation.entityId,
+        raisedBedId: operation.raisedBedId ?? null,
+        raisedBedFieldId: operation.raisedBedFieldId ?? null,
+        status: operation.status,
+        createdAt: requiredTimestampIso(operation.createdAt, 'createdAt'),
+        completedAt: timestampIso(operation.completedAt),
+        scheduledDate: timestampIso(operation.scheduledDate),
+    };
 }

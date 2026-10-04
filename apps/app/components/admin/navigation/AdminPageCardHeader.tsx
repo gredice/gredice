@@ -18,7 +18,7 @@ export function AdminPageCardHeader() {
     }
 
     return (
-        <div className="mb-4 flex min-h-9 items-center gap-2">
+        <div className="mb-4 flex min-h-9 flex-wrap items-center gap-2">
             <MobileNav />
             <DesktopNavToggle />
             {showHeaderContent && (
@@ -28,7 +28,7 @@ export function AdminPageCardHeader() {
                         aria-hidden="true"
                     />
                     <div
-                        className="flex min-w-0 flex-1 items-center justify-between gap-2 overflow-hidden"
+                        className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2"
                         ref={setSlotElement}
                     >
                         {!activeHeaderId && (

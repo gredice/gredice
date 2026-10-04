@@ -139,6 +139,7 @@ function applyLocalServiceEnv() {
         app: getAppByName('app'),
         farm: getAppByName('farm'),
         garden: getAppByName('garden'),
+        news: getAppByName('news'),
         www: getAppByName('www'),
     };
 
@@ -159,8 +160,15 @@ function applyLocalServiceEnv() {
     process.env.NEXT_PUBLIC_GREDICE_GARDEN_ORIGIN ??= trimTrailingSlash(
         localAppBrowserOrigin(appOrigins.garden),
     );
+    process.env.NEXT_PUBLIC_GREDICE_NEWS_ORIGIN ??= trimTrailingSlash(
+        localAppBrowserOrigin(appOrigins.news),
+    );
     process.env.NEXT_PUBLIC_GREDICE_WWW_ORIGIN ??= trimTrailingSlash(
         localAppBrowserOrigin(appOrigins.www),
+    );
+
+    process.env.GREDICE_NEWS_HOST ??= trimTrailingSlash(
+        localAppServerUrl(appOrigins.news),
     );
 }
 

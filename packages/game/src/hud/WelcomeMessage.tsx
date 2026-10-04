@@ -3,8 +3,12 @@
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
-import { Modal } from '@gredice/ui/Modal';
+import { GameSunflowerIcon } from '@gredice/ui/GameIcons';
 import { Stack } from '@gredice/ui/Stack';
+import {
+    SunflowerText,
+    sunflowerMascotArtwork,
+} from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
@@ -15,6 +19,7 @@ import {
     AnimateFlyToItem,
     useAnimateFlyToSunflowersHud,
 } from '../indicators/AnimateFlyTo';
+import { GameModal } from '../shared-ui/game-modal';
 import { useGameState } from '../useGameState';
 
 const messageTypes = {
@@ -46,13 +51,15 @@ const messageTypes = {
     },
 };
 
-export function WelcomeMessage() {
-    const { data: dailyReward } = useDailyReward();
+export function WelcomeMessage({ onClosed }: { onClosed?: () => void }) {
+    const dailyRewardQuery = useDailyReward();
     const claimDailyReward = useClaimDailyReward();
+    const dailyReward = dailyRewardQuery.data;
     const shouldShow = Boolean(dailyReward?.canClaim);
     const [open, setOpen] = useState(shouldShow);
     const [isClosing, setIsClosing] = useState(false);
     const previousShouldShow = useRef(shouldShow);
+    const openingCompleteNotifiedRef = useRef(false);
     const closeTimeoutRef = useRef<number | null>(null);
     useEffect(() => {
         if (shouldShow && !previousShouldShow.current) {
@@ -102,8 +109,34 @@ export function WelcomeMessage() {
             if (dailyReward?.canClaim) {
                 claimDailyReward.mutate();
             }
+            openingCompleteNotifiedRef.current = true;
+            onClosed?.();
         }, animationDuration + 50);
     };
+
+    useEffect(() => {
+        if (shouldShow) {
+            openingCompleteNotifiedRef.current = false;
+            return;
+        }
+
+        if (
+            openingCompleteNotifiedRef.current ||
+            open ||
+            (!dailyRewardQuery.isFetched && !dailyRewardQuery.isError)
+        ) {
+            return;
+        }
+
+        openingCompleteNotifiedRef.current = true;
+        onClosed?.();
+    }, [
+        dailyRewardQuery.isError,
+        dailyRewardQuery.isFetched,
+        onClosed,
+        open,
+        shouldShow,
+    ]);
 
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const isDay = timeOfDay > 0.2 && timeOfDay < 0.8;
@@ -127,10 +160,10 @@ export function WelcomeMessage() {
     }
 
     return (
-        <Modal
+        <GameModal
             title={title}
             open={open}
-            className="max-w-screen-md border-tertiary border-b-4"
+            className="max-w-screen-md"
             dismissible={false}
         >
             <div className="grid md:grid-cols-2 [grid-template-areas:'sunflower'_'content'] md:[grid-template-areas:'content_sunflower'] md:p-4 gap-4">
@@ -159,9 +192,9 @@ export function WelcomeMessage() {
                                         }`}
                                     </Typography>
                                     <Typography level="body1" gutterBottom>
-                                        {`Danas dobivaš 🌻${
+                                        <SunflowerText>{`Danas dobivaš 🌻${
                                             dailyReward.current.amount
-                                        } za dnevnu aktivnost.`}
+                                        } za dnevnu aktivnost.`}</SunflowerText>
                                     </Typography>
                                     <Typography level="body3">
                                         ✨ Posjeti svoj vrt svaki dan i skupljaj
@@ -189,7 +222,7 @@ export function WelcomeMessage() {
                                 >
                                     <span>{`+${dailyReward.current.amount}`}</span>
                                     <span role="img" aria-hidden>
-                                        🌻
+                                        <GameSunflowerIcon className="inline-block size-[1.2em] align-[-0.2em]" />
                                     </span>
                                 </AnimateFlyToItem>
                             </Chip>
@@ -201,7 +234,7 @@ export function WelcomeMessage() {
                 <div className="w-full h-full rounded-3xl bg-card flex flex-row items-end justify-center [grid-area:sunflower]">
                     <div className="size-40 relative">
                         <Image
-                            src="https://cdn.gredice.com/sunflower-large.svg"
+                            src={sunflowerMascotArtwork}
                             alt="Suncokret"
                             width={160}
                             height={160}
@@ -210,6 +243,6 @@ export function WelcomeMessage() {
                     </div>
                 </div>
             </div>
-        </Modal>
+        </GameModal>
     );
 }

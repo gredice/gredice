@@ -9,6 +9,7 @@ import {
     refreshTokenCookieName,
     sessionCookieName,
 } from '../auth/sessionConfig';
+import { touchTemporaryUserActivityBestEffort } from '../auth/temporaryUserActivity';
 
 type AuthContext = Exclude<
     Awaited<ReturnType<typeof getAuthContextFromAccessToken>>,
@@ -83,11 +84,16 @@ async function getAuthContextFromAccessToken(
             return null;
         }
 
+        if (dbUser.isTemporary) {
+            await touchTemporaryUserActivityBestEffort(dbUser.id);
+        }
+
         return {
             userId: dbUser.id,
             user: {
                 id: dbUser.id,
                 accountIds,
+                isTemporary: dbUser.isTemporary,
                 role: dbUser.role,
             },
             accountId,
@@ -140,6 +146,10 @@ export function authValidator(roles: string[]) {
             return context.newResponse('Unauthorized', { status: 401 });
         }
 
+        if (dbUser.isTemporary) {
+            await touchTemporaryUserActivityBestEffort(dbUser.id);
+        }
+
         const newAccessToken = await createJwt(
             refreshed.userId,
             accessTokenExpiry,
@@ -154,6 +164,7 @@ export function authValidator(roles: string[]) {
             user: {
                 id: dbUser.id,
                 accountIds,
+                isTemporary: dbUser.isTemporary,
                 role: dbUser.role,
             },
             accountId,

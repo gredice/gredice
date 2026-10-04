@@ -18,11 +18,13 @@ import { assignOperationUserAction } from '../../(actions)/operationActions';
 
 type AssignableUser = Pick<
     OperationAssignableFarmUser,
-    'id' | 'userName' | 'displayName' | 'avatarUrl'
+    'id' | 'userName' | 'displayName' | 'avatarUrl' | 'achievementCount'
 >;
 
 interface AssignOperationModalProps {
     operationId: number;
+    expectedEntityId: number;
+    expectedTaskVersionEventId: number;
     label: string;
     farmUsers: AssignableUser[];
     assignedUsers?: OperationAssignedUser[];
@@ -38,6 +40,8 @@ function getUserLabel(user: AssignableUser | OperationAssignedUser) {
 
 export function AssignOperationModal({
     operationId,
+    expectedEntityId,
+    expectedTaskVersionEventId,
     label,
     farmUsers,
     assignedUsers,
@@ -105,7 +109,12 @@ export function AssignOperationModal({
             if (onSubmit) {
                 await onSubmit(selectedUserIds);
             } else {
-                await assignOperationUserAction(operationId, selectedUserIds);
+                await assignOperationUserAction(
+                    operationId,
+                    expectedEntityId,
+                    expectedTaskVersionEventId,
+                    selectedUserIds,
+                );
             }
             setOpen(false);
         } catch (error) {
@@ -120,7 +129,7 @@ export function AssignOperationModal({
         (assignedUsers?.length ?? 0) > 0 ? (
             <button
                 type="button"
-                className="rounded-full transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-7 min-w-7 items-center justify-center rounded-full transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
                 title={`Dodijeljeno korisnika: ${assignedUsers?.length ?? 0}`}
                 aria-label={`Dodijeljeno korisnika: ${assignedUsers?.length ?? 0}`}
                 disabled={!canOpen}
@@ -128,13 +137,14 @@ export function AssignOperationModal({
                 <Row spacing={-2}>
                     {(assignedUsers ?? []).slice(0, 2).map((assignedUser) => (
                         <UserAvatar
+                            achievementCount={assignedUser.achievementCount}
                             key={assignedUser.id}
                             avatarUrl={assignedUser.avatarUrl}
                             displayName={
                                 assignedUser.displayName ??
                                 assignedUser.userName
                             }
-                            className="size-7 ring-2 ring-background"
+                            className="size-6 ring-1 ring-background"
                         />
                     ))}
                     {(assignedUsers?.length ?? 0) > 2 && (
@@ -146,7 +156,9 @@ export function AssignOperationModal({
             </button>
         ) : (
             <IconButton
-                variant="plain"
+                variant="soft"
+                color="warning"
+                size="xs"
                 title={
                     canOpen
                         ? 'Dodijeli korisnika'

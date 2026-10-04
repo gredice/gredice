@@ -1,5 +1,7 @@
 type RaisedBedFieldPlantLifecycleLike = {
     assignedAt?: Date | string | null;
+    cancellationReason?: string | null;
+    cancelReason?: string | null;
     createdAt?: Date | string | null;
     endedAt?: Date | string | null;
     plantDeadDate?: Date | string | null;
@@ -17,27 +19,53 @@ type RaisedBedFieldPlantLifecycleLike = {
     updatedAt?: Date | string | null;
 };
 
+type RaisedBedFieldPlantCycleLike = RaisedBedFieldPlantLifecycleLike & {
+    active?: boolean | null;
+    endedEventId?: number | null;
+    plantPlaceEventId?: number | null;
+    plantSortId?: number | null;
+    positionIndex?: number | null;
+    statusChanges?: ReadonlyArray<{ status?: string | null }> | null;
+};
+
 export type RaisedBedFieldPlantHistoryEntry =
     RaisedBedFieldPlantLifecycleLike & {
         active?: boolean | null;
+        plantCycles?: RaisedBedFieldPlantCycleLike[] | null;
         plantPlaceEventId?: number | null;
         plantSortId?: number | null;
         positionIndex: number;
     };
 
-type RaisedBedFieldPlantCycleLike = RaisedBedFieldPlantLifecycleLike & {
-    active?: boolean | null;
-    plantPlaceEventId?: number | null;
-    plantSortId?: number | null;
-    positionIndex?: number | null;
-};
-
 type RaisedBedFieldLike = RaisedBedFieldPlantLifecycleLike & {
     active?: boolean | null;
     plantCycles?: RaisedBedFieldPlantCycleLike[] | null;
+    plantPlaceEventId?: number | null;
     plantSortId?: number | null;
     positionIndex: number;
 };
+
+export function getRaisedBedFieldActivePlantIdentity(
+    field: RaisedBedFieldLike | null | undefined,
+) {
+    const activePlantCycle = field?.plantCycles?.find(
+        (plantCycle) => plantCycle.active,
+    );
+    const plantPlaceEventId =
+        activePlantCycle?.plantPlaceEventId ?? field?.plantPlaceEventId;
+    const plantSortId = activePlantCycle?.plantSortId ?? field?.plantSortId;
+    const plantCycleVersionEventId = activePlantCycle?.endedEventId;
+
+    if (
+        typeof plantPlaceEventId !== 'number' ||
+        typeof plantSortId !== 'number' ||
+        typeof plantCycleVersionEventId !== 'number'
+    ) {
+        return null;
+    }
+
+    return { plantCycleVersionEventId, plantPlaceEventId, plantSortId };
+}
 
 export function isRaisedBedFieldOccupied(
     field: Omit<RaisedBedFieldLike, 'positionIndex'> | null | undefined,

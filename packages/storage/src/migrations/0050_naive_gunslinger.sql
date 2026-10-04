@@ -1,0 +1,1 @@
+ALTER TABLE "gardens" ADD COLUMN "background_palette" text DEFAULT 'current' NOT NULL;

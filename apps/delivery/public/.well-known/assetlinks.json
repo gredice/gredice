@@ -1,0 +1,12 @@
+[
+    {
+        "relation": ["delegate_permission/common.handle_all_urls"],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "com.gredice.dostava",
+            "sha256_cert_fingerprints": [
+                "BD:05:C5:6A:AB:8C:E4:5D:41:22:4B:06:F9:20:D8:9D:06:5F:4E:E5:9C:D5:69:26:EB:02:6E:C3:7A:44:53:6B"
+            ]
+        }
+    }
+]

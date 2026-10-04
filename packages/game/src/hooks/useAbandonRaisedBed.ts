@@ -7,6 +7,7 @@ import {
 } from '../raisedBedConstants';
 import { useGameState } from '../useGameState';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 const mutationKey = ['gardens', 'current', 'raisedBedAbandon'];
 const SINGLE_MUTATION = 1;
@@ -17,6 +18,15 @@ async function getAbandonErrorMessage(response: Response) {
         if (typeof body === 'object' && body !== null && 'error' in body) {
             const { error } = body;
             if (typeof error === 'string' && error.trim()) {
+                if (error === 'Raised bed is already abandoned') {
+                    return 'Odabrana gredica je već napuštena. Odaberi drugu aktivnu gredicu.';
+                }
+                if (error === 'Only active raised beds can be abandoned') {
+                    return 'Odabrana gredica više nije aktivna. Osvježi popis i odaberi drugu gredicu.';
+                }
+                if (error === 'Raised bed not found') {
+                    return 'Odabrana gredica više nije dostupna. Osvježi popis i pokušaj ponovno.';
+                }
                 return error;
             }
         }
@@ -27,7 +37,7 @@ async function getAbandonErrorMessage(response: Response) {
     return RAISED_BED_ABANDON_FAILED_MESSAGE;
 }
 
-export function useAbandonRaisedBed(gardenId: number, raisedBedId: number) {
+export function useAbandonRaisedBed(gardenId: number) {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
     const winterMode = useGameState((state) => state.winterMode);
@@ -35,7 +45,7 @@ export function useAbandonRaisedBed(gardenId: number, raisedBedId: number) {
 
     return useMutation({
         mutationKey,
-        mutationFn: async () => {
+        mutationFn: async (raisedBedId: number) => {
             const response = await clientAuthenticated().api.gardens[
                 ':gardenId'
             ]['raised-beds'][':raisedBedId'].abandon.$post({
@@ -53,7 +63,7 @@ export function useAbandonRaisedBed(gardenId: number, raisedBedId: number) {
                 throw new Error(await getAbandonErrorMessage(response));
             }
         },
-        onMutate: async () => {
+        onMutate: async (raisedBedId) => {
             if (!garden) {
                 return;
             }
@@ -90,6 +100,9 @@ export function useAbandonRaisedBed(gardenId: number, raisedBedId: number) {
                 });
                 await queryClient.invalidateQueries({
                     queryKey: ['garden-operations', gardenId],
+                });
+                await queryClient.invalidateQueries({
+                    queryKey: tutorialChecklistKeys,
                 });
             }
         },

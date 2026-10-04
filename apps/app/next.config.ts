@@ -13,8 +13,10 @@ const nextConfig: NextConfig = {
         browserToTerminal: true,
     },
     experimental: {
+        authInterrupts: true,
         typedEnv: true,
-        turbopackFileSystemCacheForDev: true,
+        turbopackRustReactCompiler: true,
+        useTypeScriptCli: true,
         optimizePackageImports: [
             'three',
             '@react-three/drei',
@@ -40,18 +42,8 @@ const nextConfig: NextConfig = {
                 protocol: 'https',
             },
             {
-                hostname: 'vrt.gredice.com',
                 protocol: 'https',
-            },
-            {
-                // Garden - Vercel Blob
-                protocol: 'https',
-                hostname: 'myegtvromcktt2y7.public.blob.vercel-storage.com',
-            },
-            {
-                // Public - Vercel Blob
-                protocol: 'https',
-                hostname: '7ql7fvz1vzzo6adz.public.blob.vercel-storage.com',
+                hostname: '*.public.blob.vercel-storage.com',
             },
         ],
     },

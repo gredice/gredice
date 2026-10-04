@@ -20,6 +20,18 @@ async function assertLlmsResponse(response: Response) {
     assert.match(body, /\[Plants\]\(https:\/\/www\.gredice\.com\/biljke\)/);
     assert.match(
         body,
+        /\[Harvest quality and safety\]\(https:\/\/www\.gredice\.com\/kvaliteta-i-sigurnost-uroda\)/,
+    );
+    assert.match(
+        body,
+        /\[MCP for AI assistants\]\(https:\/\/www\.gredice\.com\/mcp\)/,
+    );
+    assert.match(
+        body,
+        /\[Zagreb vegetable delivery\]\(https:\/\/www\.gredice\.com\/dostava-povrca-zagreb\)/,
+    );
+    assert.match(
+        body,
         /\[Privacy policy\]\(https:\/\/www\.gredice\.com\/legalno\/politika-privatnosti\)/,
     );
 }

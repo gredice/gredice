@@ -5,6 +5,9 @@ export const dynamic = 'force-dynamic';
 
 const EVENT_BATCH_LIMIT = 500;
 const RUN_BATCH_LIMIT = 25;
+const RUN_MAX_BATCHES = 10;
+const RUN_MAX_DURATION_MS = 45_000;
+const RUN_MIN_REMAINING_MS = 5_000;
 
 export async function GET(request: NextRequest) {
     const authHeader = request.headers.get('authorization');
@@ -20,6 +23,9 @@ export async function GET(request: NextRequest) {
         const result = await runAutomations({
             eventBatchLimit: EVENT_BATCH_LIMIT,
             runBatchLimit: RUN_BATCH_LIMIT,
+            runMaxBatches: RUN_MAX_BATCHES,
+            runMaxDurationMs: RUN_MAX_DURATION_MS,
+            runMinRemainingMs: RUN_MIN_REMAINING_MS,
             lockedBy: 'api-cron-automations',
         });
 

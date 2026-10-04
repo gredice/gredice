@@ -2,8 +2,8 @@ import { TimeRange } from '@gredice/ui/LocalDateTime';
 import { Typography } from '@gredice/ui/Typography';
 
 export interface TimeSlotData {
-    startAt: Date;
-    endAt: Date;
+    startAt: Date | string;
+    endAt: Date | string;
 }
 
 export function TimeSlotDisplay({

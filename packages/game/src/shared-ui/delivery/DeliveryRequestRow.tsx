@@ -1,13 +1,22 @@
 import { Button } from '@gredice/ui/Button';
-import { Close, MapPin, ShoppingCart, Timer, Truck } from '@gredice/ui/icons';
+import { GameRaisedBedIcon as RaisedBedIcon } from '@gredice/ui/GameIcons';
+import {
+    Close,
+    ExternalLink,
+    MapPin,
+    ShoppingCart,
+    Timer,
+    Truck,
+} from '@gredice/ui/icons';
 import { TimeRange } from '@gredice/ui/LocalDateTime';
 import { OperationImage } from '@gredice/ui/OperationImage';
+import { PaperNote } from '@gredice/ui/PaperNote';
 import { PlantOrSortImage } from '@gredice/ui/plants';
-import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { DeliveryRequestData } from '../../hooks/useDeliveryRequests';
+import { KnownPages } from '../../knownPages';
 import {
     CANCEL_REASON_OPTIONS,
     DeliveryCancelRequestModal,
@@ -200,14 +209,32 @@ export function DeliveryRequestRow({
                         <Typography level="body3" secondary>
                             Napomene:
                         </Typography>
-                        <Typography level="body2">
+                        <PaperNote
+                            noteKey={request.id}
+                            aria-label="Napomena dostave"
+                        >
                             {request.requestNotes}
-                        </Typography>
+                        </PaperNote>
                     </Stack>
                 )}
             </Stack>
             <Stack className="items-end">
-                <Row spacing={2}>
+                <Row spacing={2} className="flex-wrap justify-end">
+                    {request.trace && (
+                        <Button
+                            variant="outlined"
+                            color="neutral"
+                            size="sm"
+                            href={KnownPages.GrediceHarvestTrace(
+                                request.trace.publicPath,
+                            )}
+                            target="_blank"
+                            rel="noreferrer"
+                            startDecorator={<ExternalLink className="size-4" />}
+                        >
+                            Trag
+                        </Button>
+                    )}
                     <DeliveryStatusChip state={request.state} />
                     {canCancel && (
                         <DeliveryCancelRequestModal

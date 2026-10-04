@@ -1,5 +1,6 @@
 import { SeededRNG } from '../../generators/plant/lib/rng';
 import type { Block } from '../../types/Block';
+import { getSlopedGroundNormalizedHeight } from '../groundSurfaceHeight';
 import {
     type GroundDecorationSurface,
     getGroundDecorationSprites,
@@ -20,13 +21,12 @@ export type BlockSurfaceFlowerDecorationPlacement = {
     position: [number, number, number];
     rotation: number;
     scale: number;
+    spriteName: string;
 };
 
 export type BlockSurfaceDecorationPlacement =
     | BlockSurfaceSpriteDecorationPlacement
     | BlockSurfaceFlowerDecorationPlacement;
-
-const angledBlockHighEdgeX = 0.5;
 
 function resolveDecorationBaseY(
     block: Block,
@@ -34,28 +34,13 @@ function resolveDecorationBaseY(
     x: number,
     z: number,
 ) {
-    if (block.name.endsWith('_Reverse_Corner')) {
-        return (
-            options.baseY +
-            (Math.max(x, z) - angledBlockHighEdgeX) * options.angleLiftPerUnit
-        );
-    }
-
-    if (block.name.endsWith('_Corner')) {
-        return (
-            options.baseY +
-            (Math.min(x, z) - angledBlockHighEdgeX) * options.angleLiftPerUnit
-        );
-    }
-
-    if (!block.name.endsWith('_Angle')) {
+    const normalizedHeight = getSlopedGroundNormalizedHeight(block.name, x, z);
+    if (normalizedHeight === null) {
         return options.baseY;
     }
 
-    // baseY is tuned for the raised local +X edge of angled block meshes.
-    return (
-        options.baseY + (x - angledBlockHighEdgeX) * options.angleLiftPerUnit
-    );
+    // baseY is tuned for the raised edge/corner of sloped block meshes.
+    return options.baseY + (normalizedHeight - 1) * options.angleLiftPerUnit;
 }
 
 function getDecorationCount(
@@ -87,16 +72,18 @@ function pickSpriteName(rng: SeededRNG, surface: GroundDecorationSurface) {
     return sprites[spriteIndex] ?? sprites[0];
 }
 
-function pickFlowerColor(
+function pickFlowerVariant(
     rng: SeededRNG,
-    colors: readonly string[],
-): string | undefined {
-    const colorIndex = Math.min(
-        colors.length - 1,
-        Math.floor(rng.nextFloat() * colors.length),
+    variants: NonNullable<
+        (typeof groundDecorationOptions)[GroundDecorationSurface]['flowers']
+    >['variants'],
+) {
+    const variantIndex = Math.min(
+        variants.length - 1,
+        Math.floor(rng.nextFloat() * variants.length),
     );
 
-    return colors[colorIndex];
+    return variants[variantIndex];
 }
 
 function findDecorationPosition(
@@ -226,13 +213,13 @@ function getFlowerPlacements({
             }
         }
 
-        const color = pickFlowerColor(rng, flowerOptions.colors);
-        if (!color) {
+        const variant = pickFlowerVariant(rng, flowerOptions.variants);
+        if (!variant) {
             continue;
         }
 
         flowers.push({
-            color,
+            color: variant.color,
             kind: 'flower',
             position: [
                 flowerX,
@@ -252,6 +239,7 @@ function getFlowerPlacements({
                 flowerOptions.scaleRange[0],
                 flowerOptions.scaleRange[1],
             ),
+            spriteName: variant.spriteName,
         });
     }
 

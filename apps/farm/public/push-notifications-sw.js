@@ -1,5 +1,5 @@
-const DEFAULT_ICON = '/icon.svg';
-const DEFAULT_BADGE = '/badge.svg';
+const DEFAULT_ICON = '/web-app-manifest-192x192.png';
+const DEFAULT_BADGE = '/notification-badge-96x96.png';
 const ALLOWED_PROTOCOLS = new Set(['https:', 'http:']);
 
 function isObject(value) {

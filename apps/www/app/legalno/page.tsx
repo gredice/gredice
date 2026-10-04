@@ -2,12 +2,14 @@ import { Container } from '@gredice/ui/Container';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Legalno',
-    description: 'Pravni dokumenti i informacije',
-};
+    description: 'Pravni dokumenti i informacije.',
+    path: '/legalno',
+    eyebrow: 'Pravne informacije',
+});
 
 export default function LegalnoPage() {
     return (

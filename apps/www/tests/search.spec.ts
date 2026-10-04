@@ -337,6 +337,7 @@ test.describe('public search filters', () => {
     });
 
     test('navbar search avoids primary link overlap', async ({ page }) => {
+        test.slow();
         await page.setViewportSize({ width: 1180, height: 720 });
         await page.goto(navSearchTestPath, { waitUntil: 'domcontentloaded' });
         await expect(
@@ -347,9 +348,11 @@ test.describe('public search filters', () => {
         ).toBeVisible();
 
         await page.setViewportSize({ width: 1280, height: 720 });
-        const searchBox = await page
-            .locator('header search[aria-label="Pretraga"]')
-            .boundingBox();
+        const desktopSearch = page.locator(
+            'header search[aria-label="Pretraga"]',
+        );
+        await expect(desktopSearch).toBeVisible();
+        const searchBox = await desktopSearch.boundingBox();
         const raisedBedLinkBox = await page
             .locator('header')
             .getByRole('link', { name: 'Gredica', exact: true })
@@ -379,11 +382,13 @@ test.describe('public search filters', () => {
             navbar.getByRole('link', { name: 'Gredica', exact: true }),
         ).toHaveAttribute('href', '/podignuta-gredica');
         await expect(
-            navbar.getByRole('link', { name: 'Radnje', exact: true }),
-        ).toHaveAttribute('href', '/radnje');
+            navbar.getByRole('link', { name: 'Novosti', exact: true }),
+        ).toHaveAttribute('href', '/novosti');
     });
 
-    test('navbar shows current user avatar image', async ({ page }) => {
+    test('navbar links the current user avatar to their public profile', async ({
+        page,
+    }) => {
         await page.unroute('**/api/gredice/api/auth/current-claims**');
         await page.route(
             '**/api/gredice/api/auth/current-claims**',
@@ -392,6 +397,7 @@ test.describe('public search filters', () => {
                     contentType: 'application/json',
                     json: {
                         id: 'test-user',
+                        publicId: 'u_test-user',
                         userName: 'ana@example.com',
                         displayName: 'Ana Kovač',
                         avatarUrl: '/icon.svg',
@@ -408,6 +414,9 @@ test.describe('public search filters', () => {
             navbar.getByRole('img', { name: 'Ana Kovač' }),
         ).toBeVisible();
         await expect(navbar.getByText('AK', { exact: true })).toHaveCount(0);
+        await expect(
+            navbar.getByRole('link', { name: 'Otvori profil: Ana Kovač' }),
+        ).toHaveAttribute('href', '/korisnici/u_test-user');
     });
 
     test('navbar search uses compact mobile button', async ({ page }) => {
@@ -429,12 +438,24 @@ test.describe('public search filters', () => {
     test('plant search keeps keyboard focus and ignores Croatian diacritics', async ({
         page,
     }) => {
+        test.slow();
         await page.goto('/biljke', { waitUntil: 'load' });
 
         const searchInput = page.locator('#plant-search');
         await typeSearch(searchInput, 'rajcica');
 
         await expectSearchParam(page, 'pretraga', 'rajcica');
+        await expect(page.getByText('Rajčica', { exact: true })).toBeVisible();
+        await expect(page.getByText('Nema rezultata pretrage.')).toBeHidden();
+    });
+
+    test('block search suppresses its empty state when a plant matches', async ({
+        page,
+    }) => {
+        test.slow();
+
+        await page.goto('/blokovi?pretraga=rajcica', { waitUntil: 'load' });
+
         await expect(page.getByText('Rajčica', { exact: true })).toBeVisible();
         await expect(page.getByText('Nema rezultata pretrage.')).toBeHidden();
     });
@@ -460,6 +481,7 @@ test.describe('public search filters', () => {
     test('operation search keeps keyboard focus and ignores Croatian diacritics', async ({
         page,
     }) => {
+        test.slow();
         const imageDimensionWarnings: string[] = [];
         page.on('console', (message) => {
             const text = message.text();

@@ -7,14 +7,19 @@ import {
     type AutomationJsonObject,
     type AutomationModuleKind,
     automationDefinitionStatusValues,
+    automationModuleKeys,
     createAutomationDefinition,
     createAutomationRun,
-    executeAutomationRun,
     getAutomationDefinitionById,
+    getAutomationDefinitionByKey,
     getAutomationRunById,
     getDomainEventById,
+    getScheduleTestOccurrence,
+    isAutomationScheduleEventType,
+    isScheduleTriggerModuleKey,
     listAutomationRunSteps,
-    startAutomationRun,
+    maxAutomationMaxConcurrentRuns,
+    retryFailedAutomationRun,
     updateAutomationDefinition,
     validateAutomationGraph,
 } from '@gredice/storage';
@@ -49,6 +54,7 @@ export type SaveAutomationDefinitionPayload = {
     name: string;
     description?: string | null;
     status: AutomationDefinitionStatus;
+    maxConcurrentRuns: number;
     graph: AutomationGraph;
 };
 
@@ -84,13 +90,22 @@ function normalizeModuleKind(kind: unknown): AutomationModuleKind | null {
     return null;
 }
 
+function normalizeMaxConcurrentRuns(value: unknown) {
+    return typeof value === 'number' &&
+        Number.isInteger(value) &&
+        value >= 1 &&
+        value <= maxAutomationMaxConcurrentRuns
+        ? value
+        : null;
+}
+
 function normalizeGraph(graph: AutomationGraph): AutomationGraph {
     return {
         nodes: graph.nodes.map((node) => {
             const kind = normalizeModuleKind(node.kind);
             if (!kind) {
                 throw new Error(
-                    `Unsupported automation node kind: ${node.kind}`,
+                    `Nepodržana vrsta čvora automatizacije: ${node.kind}`,
                 );
             }
 
@@ -122,6 +137,12 @@ function getTriggerEventType(graph: AutomationGraph) {
         : null;
 }
 
+function getTriggerModuleKey(graph: AutomationGraph) {
+    return (
+        graph.nodes.find((node) => node.kind === 'trigger')?.moduleKey ?? null
+    );
+}
+
 function parseEventDataJson(value: string | undefined) {
     if (!value?.trim()) {
         return {};
@@ -129,7 +150,7 @@ function parseEventDataJson(value: string | undefined) {
 
     const parsed: unknown = JSON.parse(value);
     if (!isRecord(parsed)) {
-        throw new Error('Event data must be a JSON object.');
+        throw new Error('Podaci eventa moraju biti JSON objekt.');
     }
 
     return parsed;
@@ -142,6 +163,157 @@ function revalidateAutomationPages(automationId?: number) {
     }
 }
 
+function automationKeyExistsMessage(key: string) {
+    return `Ključ automatizacije "${key}" već postoji.`;
+}
+
+function isAutomationKeyUniqueConstraintError(error: unknown) {
+    if (!isRecord(error)) {
+        return false;
+    }
+
+    const candidate = isRecord(error.cause) ? error.cause : error;
+
+    return (
+        candidate.code === '23505' &&
+        candidate.constraint === 'automation_definitions_key_idx'
+    );
+}
+
+const requiredFieldLabels: Record<string, string> = {
+    dayOfMonth: 'Dan u mjesecu',
+    dayOfWeek: 'Dan u tjednu',
+    daysOfWeek: 'Dani u tjednu',
+    entityId: 'ID entiteta radnje',
+    eventType: 'Tip eventa',
+    frequency: 'Učestalost',
+    minConfidence: 'Minimalna pouzdanost',
+    operator: 'Operator',
+    operations: 'Radnje',
+    path: 'Putanja podataka',
+    status: 'Status',
+    anchorDate: 'Referentni datum',
+    targetSowingLocation: 'Ciljana lokacija sijanja',
+    targetStatus: 'Ciljani status',
+    timeZone: 'Vremenska zona',
+};
+
+function localizeAutomationValidationError(error: string) {
+    if (error === 'Every node must have an id.') {
+        return 'Svaki čvor mora imati ID.';
+    }
+    if (error === 'Automation graph must have exactly one trigger.') {
+        return 'Graf automatizacije mora imati točno jedan okidač.';
+    }
+    if (error === 'Trigger node cannot have incoming edges.') {
+        return 'Okidač ne može imati ulazne veze.';
+    }
+    if (error === 'Automation graph must include at least one action.') {
+        return 'Graf automatizacije mora imati barem jednu akciju.';
+    }
+    if (error === 'dayOfMonth must be an integer from 1 to 31.') {
+        return 'Dan u mjesecu mora biti cijeli broj od 1 do 31.';
+    }
+    if (error === 'timeZone must be a valid IANA time zone.') {
+        return 'Vremenska zona mora biti valjana IANA vremenska zona.';
+    }
+    if (error === 'frequency must be daily, weekly, biweekly, or monthly.') {
+        return 'Učestalost mora biti daily, weekly, biweekly ili monthly.';
+    }
+    if (error === 'daysOfWeek must contain valid weekdays.') {
+        return 'Dani u tjednu moraju sadržavati valjane dane.';
+    }
+    if (error === 'dayOfWeek or daysOfWeek is required for weekly schedules.') {
+        return 'Za tjedne rasporede unesite dan ili dane u tjednu.';
+    }
+    if (error === 'anchorDate must be a valid YYYY-MM-DD date.') {
+        return 'Referentni datum mora biti valjan datum u obliku YYYY-MM-DD.';
+    }
+    if (error === 'operations must be a non-empty JSON array.') {
+        return 'Radnje moraju biti neprazan JSON niz.';
+    }
+    if (
+        error ===
+        'Each operation must include a positive integer entityId. Optional fields: entityTypeName, integer scheduledInDays.'
+    ) {
+        return 'Svaka radnja mora imati pozitivan cijeli broj entityId. Neobavezna polja su entityTypeName i scheduledInDays.';
+    }
+    if (error === 'minConfidence must be a number from 0 to 1.') {
+        return 'Minimalna pouzdanost mora biti broj od 0 do 1.';
+    }
+    if (
+        error ===
+        'At least one of targetStatus or targetSowingLocation is required.'
+    ) {
+        return 'Unesite ciljani status ili ciljanu lokaciju sijanja.';
+    }
+    if (error === 'targetSowingLocation must be direct or greenhouse.') {
+        return 'Ciljana lokacija sijanja mora biti direct ili greenhouse.';
+    }
+
+    const requiredMatch = /^(.+) is required\.$/.exec(error);
+    if (requiredMatch) {
+        const key = requiredMatch[1] ?? '';
+        return `${requiredFieldLabels[key] ?? key} je obavezan.`;
+    }
+
+    const duplicateMatch = /^Duplicate node id: (.+)\.$/.exec(error);
+    if (duplicateMatch) {
+        return `Dupli ID čvora: ${duplicateMatch[1]}.`;
+    }
+
+    const unknownModuleMatch = /^Unknown automation module: (.+)\.$/.exec(
+        error,
+    );
+    if (unknownModuleMatch) {
+        return `Nepoznat modul automatizacije: ${unknownModuleMatch[1]}.`;
+    }
+
+    const wrongKindMatch = /^Module (.+) is a (.+), not a (.+)\.$/.exec(error);
+    if (wrongKindMatch) {
+        return `Modul ${wrongKindMatch[1]} je tipa ${wrongKindMatch[2]}, a ne ${wrongKindMatch[3]}.`;
+    }
+
+    const missingSourceMatch = /^Edge (.+) has missing source (.+)\.$/.exec(
+        error,
+    );
+    if (missingSourceMatch) {
+        return `Veza ${missingSourceMatch[1]} nema izvor ${missingSourceMatch[2]}.`;
+    }
+
+    const missingTargetMatch = /^Edge (.+) has missing target (.+)\.$/.exec(
+        error,
+    );
+    if (missingTargetMatch) {
+        return `Veza ${missingTargetMatch[1]} nema odredište ${missingTargetMatch[2]}.`;
+    }
+
+    const missingReachableMatch = /^Reachable node (.+) is missing\.$/.exec(
+        error,
+    );
+    if (missingReachableMatch) {
+        return `Dohvatljiv čvor ${missingReachableMatch[1]} nedostaje.`;
+    }
+
+    const pointsToMissingMatch =
+        /^Edge (.+) points to missing node (.+)\.$/.exec(error);
+    if (pointsToMissingMatch) {
+        return `Veza ${pointsToMissingMatch[1]} pokazuje na čvor koji nedostaje: ${pointsToMissingMatch[2]}.`;
+    }
+
+    const unreachableActionMatch =
+        /^Action node (.+) is not reachable from the trigger\.$/.exec(error);
+    if (unreachableActionMatch) {
+        return `Akcijski čvor ${unreachableActionMatch[1]} nije dohvatljiv iz okidača.`;
+    }
+
+    return error;
+}
+
+function localizeAutomationValidationErrors(errors: string[]) {
+    return errors.map(localizeAutomationValidationError);
+}
+
 export async function saveAutomationDefinitionAction(
     payload: SaveAutomationDefinitionPayload,
 ): Promise<AutomationSaveResult> {
@@ -151,24 +323,43 @@ export async function saveAutomationDefinitionAction(
     const graph = normalizeGraph(payload.graph);
     const key = payload.key.trim() || slugify(payload.name);
     const name = payload.name.trim();
+    const maxConcurrentRuns = normalizeMaxConcurrentRuns(
+        payload.maxConcurrentRuns,
+    );
 
     if (!key) {
-        errors.push('Automation key is required.');
+        errors.push('Ključ automatizacije je obavezan.');
     }
     if (!name) {
-        errors.push('Automation name is required.');
+        errors.push('Naziv automatizacije je obavezan.');
     }
     if (!status) {
-        errors.push('Automation status is invalid.');
+        errors.push('Status automatizacije nije valjan.');
+    }
+    if (!maxConcurrentRuns) {
+        errors.push(
+            `Paralelna izvođenja moraju biti između 1 i ${maxAutomationMaxConcurrentRuns}.`,
+        );
     }
 
     const validation = validateAutomationGraph(graph);
     if (!validation.ok) {
-        errors.push(...validation.errors);
+        errors.push(...localizeAutomationValidationErrors(validation.errors));
     }
 
-    if (errors.length > 0 || !status) {
+    if (errors.length > 0 || !status || !maxConcurrentRuns) {
         return { ok: false, errors };
+    }
+
+    const existingDefinition = await getAutomationDefinitionByKey(key);
+    if (
+        existingDefinition &&
+        (!payload.id || existingDefinition.id !== payload.id)
+    ) {
+        return {
+            ok: false,
+            errors: [automationKeyExistsMessage(key)],
+        };
     }
 
     const input = {
@@ -176,21 +367,34 @@ export async function saveAutomationDefinitionAction(
         name,
         description: payload.description?.trim() || null,
         status,
+        maxConcurrentRuns,
         graph,
         updatedByUserId: userId,
     };
 
-    const definition = payload.id
-        ? await updateAutomationDefinition(payload.id, input)
-        : await createAutomationDefinition({
-              ...input,
-              createdByUserId: userId,
-          });
+    let definition: Awaited<ReturnType<typeof updateAutomationDefinition>>;
+    try {
+        definition = payload.id
+            ? await updateAutomationDefinition(payload.id, input)
+            : await createAutomationDefinition({
+                  ...input,
+                  createdByUserId: userId,
+              });
+    } catch (error) {
+        if (isAutomationKeyUniqueConstraintError(error)) {
+            return {
+                ok: false,
+                errors: [automationKeyExistsMessage(key)],
+            };
+        }
+
+        throw error;
+    }
 
     if (!definition) {
         return {
             ok: false,
-            errors: ['Automation definition was not found.'],
+            errors: ['Definicija automatizacije nije pronađena.'],
         };
     }
 
@@ -205,13 +409,19 @@ export async function updateAutomationStatusAction(
     const { userId } = await auth(['admin']);
     const definition = await getAutomationDefinitionById(automationId);
     if (!definition) {
-        return { ok: false, errors: ['Automation definition was not found.'] };
+        return {
+            ok: false,
+            errors: ['Definicija automatizacije nije pronađena.'],
+        };
     }
 
     if (status === 'enabled') {
         const validation = validateAutomationGraph(definition.graph);
         if (!validation.ok) {
-            return { ok: false, errors: validation.errors };
+            return {
+                ok: false,
+                errors: localizeAutomationValidationErrors(validation.errors),
+            };
         }
     }
 
@@ -221,7 +431,10 @@ export async function updateAutomationStatusAction(
     });
 
     if (!updated) {
-        return { ok: false, errors: ['Automation definition was not found.'] };
+        return {
+            ok: false,
+            errors: ['Definicija automatizacije nije pronađena.'],
+        };
     }
 
     revalidateAutomationPages(automationId);
@@ -234,50 +447,99 @@ export async function runAutomationTestAction(
     const { userId } = await auth(['admin']);
     const definition = await getAutomationDefinitionById(payload.automationId);
     if (!definition) {
-        return { ok: false, errors: ['Automation definition was not found.'] };
+        return {
+            ok: false,
+            errors: ['Definicija automatizacije nije pronađena.'],
+        };
     }
 
     const validation = validateAutomationGraph(definition.graph);
     if (!validation.ok) {
-        return { ok: false, errors: validation.errors };
-    }
-
-    const eventType = getTriggerEventType(definition.graph);
-    if (!eventType) {
         return {
             ok: false,
-            errors: ['Automation trigger event type is missing.'],
+            errors: localizeAutomationValidationErrors(validation.errors),
+        };
+    }
+
+    const triggerModuleKey = getTriggerModuleKey(definition.graph);
+    const eventType = getTriggerEventType(definition.graph);
+    const isDomainEventTrigger =
+        triggerModuleKey === automationModuleKeys.triggerDomainEvent;
+    const isScheduleTrigger = triggerModuleKey
+        ? isScheduleTriggerModuleKey(triggerModuleKey)
+        : false;
+
+    if (isDomainEventTrigger && !eventType) {
+        return {
+            ok: false,
+            errors: ['Okidač automatizacije nema tip eventa.'],
         };
     }
 
     try {
-        const sourceEvent = payload.eventId
-            ? await getDomainEventById(payload.eventId)
-            : null;
+        const sourceEvent =
+            isDomainEventTrigger && payload.eventId
+                ? await getDomainEventById(payload.eventId)
+                : null;
 
-        if (payload.eventId && !sourceEvent) {
-            return { ok: false, errors: ['Source event was not found.'] };
+        if (isDomainEventTrigger && payload.eventId && !sourceEvent) {
+            return { ok: false, errors: ['Izvorni event nije pronađen.'] };
         }
 
-        const input = sourceEvent
-            ? {
-                  eventId: sourceEvent.id,
-                  eventType: sourceEvent.type,
-                  aggregateId: sourceEvent.aggregateId,
-                  data: isRecord(sourceEvent.data) ? sourceEvent.data : {},
-                  createdAt: sourceEvent.createdAt.toISOString(),
-              }
-            : {
-                  eventType,
-                  aggregateId: payload.aggregateId?.trim() || 'manual-test',
-                  data: parseEventDataJson(payload.eventDataJson),
-                  createdAt: new Date().toISOString(),
-              };
+        let input: AutomationJsonObject;
+        let sourceEventType: string | null = eventType;
+        let sourceAggregateId: string | null = null;
+
+        if (isScheduleTrigger) {
+            const now = new Date();
+            const trigger = definition.graph.nodes.find(
+                (node) => node.kind === 'trigger',
+            );
+            const occurrence = trigger
+                ? getScheduleTestOccurrence(trigger, now)
+                : null;
+            if (!occurrence) {
+                return {
+                    ok: false,
+                    errors: ['Okidač rasporeda nema valjanu konfiguraciju.'],
+                };
+            }
+
+            sourceEventType = occurrence.eventType;
+            sourceAggregateId = occurrence.aggregateId;
+            input = occurrence.input;
+        } else if (isDomainEventTrigger) {
+            input = sourceEvent
+                ? {
+                      eventId: sourceEvent.id,
+                      eventType: sourceEvent.type,
+                      aggregateId: sourceEvent.aggregateId,
+                      data: isRecord(sourceEvent.data) ? sourceEvent.data : {},
+                      createdAt: sourceEvent.createdAt.toISOString(),
+                  }
+                : {
+                      eventType,
+                      aggregateId: payload.aggregateId?.trim() || 'manual-test',
+                      data: parseEventDataJson(payload.eventDataJson),
+                      createdAt: new Date().toISOString(),
+                  };
+            sourceAggregateId =
+                typeof input.aggregateId === 'string'
+                    ? input.aggregateId
+                    : null;
+        } else {
+            return {
+                ok: false,
+                errors: ['Ovaj tip okidača još se ne može testirati.'],
+            };
+        }
 
         const run = await createAutomationRun({
             automationDefinition: definition,
             source: 'test',
             sourceEvent,
+            sourceEventType,
+            sourceAggregateId,
             input,
             dryRun: payload.dryRun,
             manualRequestedByUserId: userId,
@@ -286,43 +548,74 @@ export async function runAutomationTestAction(
         if (!run) {
             return {
                 ok: false,
-                errors: ['Automation test run was not created.'],
+                errors: ['Testno izvođenje automatizacije nije kreirano.'],
             };
         }
 
-        const started =
-            (await startAutomationRun(run.id, {
-                lockedBy: `app-admin-test:${userId}`,
-            })) ?? run;
-        const result = await executeAutomationRun(started);
-
         revalidateAutomationPages(definition.id);
-        return { ok: true, runId: run.id, status: result.status };
+        return { ok: true, runId: run.id, status: run.status };
     } catch (error) {
         return {
             ok: false,
             errors: [
-                error instanceof Error ? error.message : 'Unknown test error.',
+                error instanceof Error
+                    ? error.message
+                    : 'Nepoznata greška testiranja.',
             ],
         };
     }
 }
 
-export async function replayAutomationRunAction(
-    runId: number,
-    dryRun = true,
-): Promise<AutomationRunActionResult> {
+async function runAutomationRunAgain({
+    runId,
+    dryRun,
+    actionName,
+}: {
+    runId: number;
+    dryRun: boolean;
+    actionName: 'replay' | 'retry';
+}): Promise<AutomationRunActionResult> {
     const { userId } = await auth(['admin']);
     const originalRun = await getAutomationRunById(runId);
     if (!originalRun) {
-        return { ok: false, errors: ['Automation run was not found.'] };
+        return {
+            ok: false,
+            errors: ['Izvođenje automatizacije nije pronađeno.'],
+        };
+    }
+
+    if (actionName === 'retry' && originalRun.status !== 'failed') {
+        return {
+            ok: false,
+            errors: ['Samo neuspjela izvođenja mogu se ponovno pokrenuti.'],
+        };
+    }
+
+    if (actionName === 'retry') {
+        const run = await retryFailedAutomationRun({
+            id: originalRun.id,
+            manualRequestedByUserId: userId,
+        });
+
+        if (!run) {
+            return {
+                ok: false,
+                errors: ['Ponovno pokretanje nije zakazano.'],
+            };
+        }
+
+        revalidateAutomationPages(originalRun.automationDefinitionId);
+        return { ok: true, runId: run.id, status: run.status };
     }
 
     const definition = await getAutomationDefinitionById(
         originalRun.automationDefinitionId,
     );
     if (!definition) {
-        return { ok: false, errors: ['Automation definition was not found.'] };
+        return {
+            ok: false,
+            errors: ['Definicija automatizacije nije pronađena.'],
+        };
     }
 
     const sourceEvent = originalRun.sourceEventId
@@ -330,8 +623,14 @@ export async function replayAutomationRunAction(
         : null;
     const run = await createAutomationRun({
         automationDefinition: definition,
-        source: 'replay',
+        source: dryRun ? 'replay' : 'manual',
         sourceEvent,
+        sourceEventType: originalRun.sourceEventType,
+        sourceAggregateId: isAutomationScheduleEventType(
+            originalRun.sourceEventType,
+        )
+            ? null
+            : originalRun.sourceAggregateId,
         parentRunId: originalRun.id,
         input: originalRun.input,
         dryRun,
@@ -339,20 +638,38 @@ export async function replayAutomationRunAction(
     });
 
     if (!run) {
+        const actionLabel =
+            actionName === 'replay'
+                ? 'probno ponavljanje'
+                : 'ponovno pokretanje';
         return {
             ok: false,
-            errors: ['Automation replay run was not created.'],
+            errors: [`${actionLabel} nije kreirano.`],
         };
     }
 
-    const started =
-        (await startAutomationRun(run.id, {
-            lockedBy: `app-admin-replay:${userId}`,
-        })) ?? run;
-    const result = await executeAutomationRun(started);
-
     revalidateAutomationPages(definition.id);
-    return { ok: true, runId: run.id, status: result.status };
+    return { ok: true, runId: run.id, status: run.status };
+}
+
+export async function replayAutomationRunAction(
+    runId: number,
+): Promise<AutomationRunActionResult> {
+    return runAutomationRunAgain({
+        runId,
+        dryRun: true,
+        actionName: 'replay',
+    });
+}
+
+export async function retryAutomationRunAction(
+    runId: number,
+): Promise<AutomationRunActionResult> {
+    return runAutomationRunAgain({
+        runId,
+        dryRun: false,
+        actionName: 'retry',
+    });
 }
 
 export async function getAutomationRunStepsAction(runId: number) {

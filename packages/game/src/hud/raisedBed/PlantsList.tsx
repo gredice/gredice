@@ -14,9 +14,19 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
+import { sortFavoritesFirst, useFavoriteIds } from '../../hooks/useFavorites';
+import type { OutletOfferData } from '../../hooks/useOutletOffers';
 import { usePlants } from '../../hooks/usePlants';
 import { KnownPages } from '../../knownPages';
+import { OutletBadge } from '../components/OutletBadge';
+import { FavoriteToggleButton } from './FavoriteToggleButton';
 import { PlantListItemSkeleton } from './PlantListItemSkeleton';
+import {
+    getPlantRelationshipSignal,
+    getPlantRelationshipSignalSortScore,
+    type NeighborPlantSummary,
+    type PlantRelationshipSignal,
+} from './plantRelationshipSignals';
 
 type PlantSearchable = {
     information: {
@@ -45,15 +55,78 @@ function plantMatchesSearch(plant: PlantSearchable, normalizedSearch: string) {
     );
 }
 
+function formatNeighborPlantNames(names: string[]) {
+    const visibleNames = names.slice(0, 2);
+    const remainingCount = names.length - visibleNames.length;
+    return remainingCount > 0
+        ? `${visibleNames.join(', ')} +${remainingCount.toString()}`
+        : visibleNames.join(', ');
+}
+
+const outletCurrencyFormatter = new Intl.NumberFormat('hr-HR', {
+    style: 'currency',
+    currency: 'EUR',
+});
+
+function outletOfferBadgeLabel(outletOffers: OutletOfferData[]) {
+    if (outletOffers.length === 1) {
+        return `Outlet ${outletCurrencyFormatter.format(outletOffers[0].outletPrice)}`;
+    }
+
+    return `Outlet ${outletOffers.length} ponude`;
+}
+
+export function PlantRelationshipSignalChips({
+    signal,
+}: {
+    signal: PlantRelationshipSignal;
+}) {
+    if (signal.status === 'neutral') {
+        return null;
+    }
+
+    return (
+        <>
+            {signal.companionNeighborNames.length > 0 && (
+                <Chip
+                    color="success"
+                    size="sm"
+                    title={`Dobro uz ${signal.companionNeighborNames.join(', ')}`}
+                    variant="soft"
+                >
+                    Dobro uz{' '}
+                    {formatNeighborPlantNames(signal.companionNeighborNames)}
+                </Chip>
+            )}
+            {signal.antagonistNeighborNames.length > 0 && (
+                <Chip
+                    color="warning"
+                    size="sm"
+                    title={`Oprez uz ${signal.antagonistNeighborNames.join(', ')}`}
+                    variant="soft"
+                >
+                    Oprez uz{' '}
+                    {formatNeighborPlantNames(signal.antagonistNeighborNames)}
+                </Chip>
+            )}
+        </>
+    );
+}
+
 export function PlantsList({
+    neighborPlants = [],
     onChange,
+    outletOffersByPlantId,
     search,
 }: {
+    neighborPlants?: NeighborPlantSummary[];
     onChange: (plant: PlantData) => void;
+    outletOffersByPlantId?: Map<number, OutletOfferData[]>;
     search: string;
 }) {
     const { track } = useGameAnalytics();
     const { data: plants, isLoading, isError } = usePlants();
+    const favoritePlantIds = useFavoriteIds('plant');
     const normalizedSearch = normalizePlantSearchText(search);
     // Filter plants based on search query
     const filteredPlants =
@@ -63,12 +136,47 @@ export function PlantsList({
               )
             : plants;
 
-    // Mark and sort recommended plants
-    const sortedPlants = filteredPlants?.sort((a, b) => {
-        const aRec = a.isRecommended ? 1 : 0;
-        const bRec = b.isRecommended ? 1 : 0;
-        return bRec - aRec;
-    });
+    const relationshipSignalsByPlantId = new Map(
+        filteredPlants?.map((plant) => [
+            plant.id,
+            getPlantRelationshipSignal({
+                candidate: plant,
+                neighborPlants,
+            }),
+        ]) ?? [],
+    );
+
+    // Mark and sort relationship-compatible plants before seasonal recommendations.
+    const sortedPlants = filteredPlants
+        ? sortFavoritesFirst(filteredPlants, favoritePlantIds).sort((a, b) => {
+              const aFavorite = favoritePlantIds.has(a.id) ? 1 : 0;
+              const bFavorite = favoritePlantIds.has(b.id) ? 1 : 0;
+              if (aFavorite !== bFavorite) {
+                  return bFavorite - aFavorite;
+              }
+
+              const aRelationshipScore = getPlantRelationshipSignalSortScore(
+                  relationshipSignalsByPlantId.get(a.id)?.status ?? 'neutral',
+              );
+              const bRelationshipScore = getPlantRelationshipSignalSortScore(
+                  relationshipSignalsByPlantId.get(b.id)?.status ?? 'neutral',
+              );
+              if (aRelationshipScore !== bRelationshipScore) {
+                  return bRelationshipScore - aRelationshipScore;
+              }
+
+              const aRec = a.isRecommended ? 1 : 0;
+              const bRec = b.isRecommended ? 1 : 0;
+              if (aRec !== bRec) {
+                  return bRec - aRec;
+              }
+
+              return a.information.name.localeCompare(
+                  b.information.name,
+                  'hr-HR',
+              );
+          })
+        : undefined;
 
     return (
         <>
@@ -90,14 +198,25 @@ export function PlantsList({
                         <PlantListItemSkeleton key={index} />
                     ))}
                 {sortedPlants?.map((plant) => {
+                    const outletOffers = outletOffersByPlantId?.get(plant.id);
+                    const relationshipSignal =
+                        relationshipSignalsByPlantId.get(plant.id) ??
+                        getPlantRelationshipSignal({
+                            candidate: plant,
+                            neighborPlants,
+                        });
                     const { totalPlants } = calculatePlantsPerField(
                         plant.attributes?.seedingDistance,
+                        plant.information.name,
                     );
                     const price = plant.prices?.perPlant
                         ? plant.prices.perPlant.toFixed(2)
                         : 'Nepoznato';
                     return (
-                        <Stack key={plant.id}>
+                        <Stack
+                            key={plant.id}
+                            data-plant-picker-plant-id={plant.id}
+                        >
                             <Button
                                 variant="plain"
                                 className="justify-start text-start p-0 h-auto py-2 gap-3 px-4 rounded-none font-normal"
@@ -106,6 +225,17 @@ export function PlantsList({
                                         is_recommended: plant.isRecommended,
                                         plant_id: plant.id,
                                         plant_name: plant.information.name,
+                                        ...(relationshipSignal.status !==
+                                        'neutral'
+                                            ? {
+                                                  relationship_neighbor_plant_ids:
+                                                      relationshipSignal.neighborPlantIds.join(
+                                                          ',',
+                                                      ),
+                                                  relationship_signal:
+                                                      relationshipSignal.status,
+                                              }
+                                            : {}),
                                     });
                                     onChange(plant);
                                 }}
@@ -153,6 +283,14 @@ export function PlantsList({
                                 {plant.isRecommended && (
                                     <SeedTimeInformationBadge size="sm" />
                                 )}
+                                {outletOffers?.length ? (
+                                    <OutletBadge>
+                                        {outletOfferBadgeLabel(outletOffers)}
+                                    </OutletBadge>
+                                ) : null}
+                                <PlantRelationshipSignalChips
+                                    signal={relationshipSignal}
+                                />
                                 <Button
                                     title="Više informacija"
                                     variant="link"
@@ -169,6 +307,11 @@ export function PlantsList({
                                 >
                                     Više informacija...
                                 </Button>
+                                <FavoriteToggleButton
+                                    entityId={plant.id}
+                                    entityType="plant"
+                                    label={plant.information.name}
+                                />
                             </div>
                         </Stack>
                     );

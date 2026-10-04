@@ -1,9 +1,11 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { canAddBlockToGardenBox } from '../gardenBoxInventoryLimits';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { useGameState } from '../useGameState';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 import { inventoryQueryKey } from './useInventory';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 const mutationKey = ['gardens', 'current', 'gardenBoxStoreBlock'];
 
@@ -34,6 +36,7 @@ type StoreBlockArgs = {
     blockEntityId?: string;
     blockLabel?: string;
     gardenBoxBlockId: string;
+    onOptimisticUpdate?: () => void;
 };
 
 function incrementInventoryItem(
@@ -41,6 +44,10 @@ function incrementInventoryItem(
     args: StoreBlockArgs,
 ) {
     const entityId = args.blockEntityId ?? args.blockName;
+    if (!canAddBlockToGardenBox(items, entityId)) {
+        return items;
+    }
+
     const existingItemIndex = items.findIndex(
         (item) => item.entityTypeName === 'block' && item.entityId === entityId,
     );
@@ -87,11 +94,18 @@ export function useGardenBoxStoreBlock() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
     const winterMode = useGameState((state) => state.winterMode);
+    const showGardenBoxTooltip = useGameState(
+        (state) => state.showGardenBoxTooltip,
+    );
+    const clearGardenBoxTooltip = useGameState(
+        (state) => state.clearGardenBoxTooltip,
+    );
     const gardenQueryKey = currentGardenKeys(winterMode, garden?.id);
 
     return useMutation({
         mutationKey,
         mutationFn: async ({
+            blockEntityId,
             blockIndex,
             gardenBoxBlockId,
             sourceBlockId,
@@ -110,6 +124,7 @@ export function useGardenBoxStoreBlock() {
                 },
                 json: {
                     blockIndex,
+                    entityId: blockEntityId,
                     gardenBoxBlockId,
                     sourcePosition,
                 },
@@ -131,6 +146,8 @@ export function useGardenBoxStoreBlock() {
             if (!garden) {
                 return;
             }
+
+            clearGardenBoxTooltip();
 
             const updatedStacks = garden.stacks.map((stack) => {
                 const isSourceStack =
@@ -156,6 +173,9 @@ export function useGardenBoxStoreBlock() {
                     stacks: updatedStacks,
                 },
             );
+            if (previousGarden) {
+                args.onOptimisticUpdate?.();
+            }
 
             await queryClient.cancelQueries({ queryKey: inventoryQueryKey });
             const previousInventory =
@@ -176,8 +196,15 @@ export function useGardenBoxStoreBlock() {
                 previousInventory,
             };
         },
-        onError: (error, _variables, context) => {
+        onError: (error, variables, context) => {
             console.error('Error storing block in garden box', error);
+            showGardenBoxTooltip({
+                blockId: variables.gardenBoxBlockId,
+                message:
+                    error instanceof Error
+                        ? error.message
+                        : 'Failed to store block in garden box',
+            });
             if (context?.previousGarden) {
                 queryClient.setQueryData(
                     gardenQueryKey,
@@ -198,6 +225,9 @@ export function useGardenBoxStoreBlock() {
                 });
                 await queryClient.invalidateQueries({
                     queryKey: inventoryQueryKey,
+                });
+                await queryClient.invalidateQueries({
+                    queryKey: tutorialChecklistKeys,
                 });
             }
         },

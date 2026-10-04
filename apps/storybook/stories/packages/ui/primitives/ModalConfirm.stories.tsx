@@ -11,7 +11,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'ModalConfirm provides a first-party confirmation dialog for destructive or irreversible actions.',
+                    'ModalConfirm composes Base UI Alert Dialog with Gredice confirmation, cancellation, and expected-text validation behavior.',
             },
         },
     },
@@ -46,8 +46,17 @@ export const WithPrompt: Story = {
     },
 };
 
+export const CustomActions: Story = {
+    args: {
+        cancelLabel: 'Zadrži zapis',
+        confirmLabel: 'Trajno obriši',
+    },
+};
+
 export const RichContent: Story = {
     args: {
+        description:
+            'Brisanjem se uklanjaju povezani podaci iz aktivnog prikaza.',
         children: (
             <Typography level="body2">
                 Brisanjem se uklanjaju povezani podaci iz aktivnog prikaza.

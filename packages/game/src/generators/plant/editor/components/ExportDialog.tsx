@@ -22,9 +22,9 @@ export function ExportDialog({ definition }: ExportDialogProps) {
             <Stack spacing={4}>
                 <Typography>Export Plant Definition</Typography>
                 <Typography level="body2">
-                    Copy this JSON and paste it into the{' '}
-                    <code>plant-definitions.ts</code> file to save your custom
-                    plant.
+                    Kopirajte ovaj JSON u odgovarajući modul u{' '}
+                    <code>plant-presets</code> direktoriju kako biste spremili
+                    prilagođenu biljku.
                 </Typography>
                 <textarea
                     readOnly

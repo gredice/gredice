@@ -10,24 +10,30 @@
         "dev": "node ../../scripts/run-app-command.mjs dev",
         "build": "next build",
         "start": "node ../../scripts/run-app-command.mjs start",
-        "test": "pnpm run build"
+        "test": "pnpm run test:node",
+        "test:node": "node --import tsx --test --conditions=react-server ./lib/**/*.node.spec.ts",
+        "test:disconnect": "node --import tsx --test --experimental-test-module-mocks --conditions=react-server --test-timeout=60000 ./tests/livePools.disconnect.ts",
+        "test:buffer": "node --import tsx --test --conditions=react-server --test-timeout=60000 ./tests/activityBuffer.redis.ts",
+        "typecheck": "next typegen && tsc --noEmit --pretty false"
     },
     "dependencies": {
-        "next": "16.2.6",
-        "react": "19.2.6",
-        "react-dom": "19.2.6",
+        "next": "16.3.8",
+        "pg": "8.23.0",
+        "react": "19.2.8",
+        "react-dom": "19.2.8",
         "server-only": "0.0.1"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.16",
+        "@biomejs/biome": "2.5.14",
         "@gredice/ui": "workspace:*",
-        "@tailwindcss/postcss": "4.3.0",
-        "@types/node": "24.12.4",
-        "@types/react": "19.2.15",
-        "@types/react-dom": "19.2.3",
-        "babel-plugin-react-compiler": "19.1.0-rc.3",
-        "postcss": "8.5.15",
-        "tailwindcss": "4.3.0",
-        "typescript": "6.0.3"
+        "@tailwindcss/postcss": "4.3.3",
+        "@types/node": "24.19.0",
+        "@types/pg": "8.23.1",
+        "@types/react": "19.2.18",
+        "@types/react-dom": "19.2.4",
+        "postcss": "8.5.28",
+        "tailwindcss": "4.3.3",
+        "tsx": "4.23.15",
+        "typescript": "7.0.2"
     }
 }

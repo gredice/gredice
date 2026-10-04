@@ -14,6 +14,7 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
+import { formatOperationsDuration } from './operationsDuration';
 
 export type OperationsDurationPoint = {
     date: string;
@@ -25,6 +26,7 @@ export type OperationsDurationPoint = {
         userId: string;
         userName: string;
         userAvatarUrl: string | null;
+        achievementCount?: number;
         operationsMinutes: number;
         plannedMinutes: number;
     }[];
@@ -39,6 +41,7 @@ export type OperationsDurationData = {
         userId: string;
         userName: string;
         userAvatarUrl: string | null;
+        achievementCount?: number;
         operationsMinutes: number;
         plannedMinutes: number;
         operationsCount: number;
@@ -78,17 +81,6 @@ function getPlannedDataKey(userId: string) {
     return `planned-${userId}`;
 }
 
-function formatTotalDuration(totalMinutes: number) {
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = Math.round(totalMinutes % 60);
-
-    if (hours <= 0) {
-        return `${minutes} min`;
-    }
-
-    return `${hours} h ${minutes.toString().padStart(2, '0')} min`;
-}
-
 function formatTooltipDuration(minutes: number) {
     if (!minutes) {
         return '0 min';
@@ -117,6 +109,7 @@ export function OperationsDurationCard({
         userId: user.userId,
         userName: user.userName,
         userAvatarUrl: user.userAvatarUrl,
+        achievementCount: user.achievementCount,
         completedDataKey: getCompletedDataKey(user.userId),
         plannedDataKey: getPlannedDataKey(user.userId),
         color: getUserBarColor(index),
@@ -151,7 +144,7 @@ export function OperationsDurationCard({
                             Ukupno trajanje radnji
                         </Typography>
                         <Typography level="h4" semiBold>
-                            {formatTotalDuration(data.totalMinutes)}
+                            {formatOperationsDuration(data.totalMinutes)}
                         </Typography>
                         <Row className="gap-4 text-xs text-muted-foreground">
                             <Row spacing={1} className="items-center">
@@ -411,6 +404,9 @@ export function OperationsDurationCard({
                                             <UserAvatar
                                                 size="sm"
                                                 avatarUrl={user.userAvatarUrl}
+                                                achievementCount={
+                                                    user.achievementCount
+                                                }
                                                 displayName={user.userName}
                                             />
                                             <Stack

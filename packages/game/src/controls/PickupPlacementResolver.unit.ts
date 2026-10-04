@@ -1,0 +1,667 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+import type { BlockData } from '@gredice/client';
+import { Vector3 } from 'three';
+import type { Block } from '../types/Block';
+import type { Stack } from '../types/Stack';
+import {
+    createPickupPlacementPreviewResolver,
+    type MovingSegment,
+    resolvePickupPlacementPreviewForRelative,
+} from './PickupPlacementResolver';
+
+function createBlock(name: string, id = name): Block {
+    return {
+        id,
+        name,
+        rotation: 0,
+    };
+}
+
+function createStack(x: number, z: number, blocks: Block[]): Stack {
+    return {
+        position: new Vector3(x, 0, z),
+        blocks,
+    };
+}
+
+function createBlockData({
+    height = 1,
+    id,
+    name,
+    placeableOnWater,
+    recycler = false,
+    stackable = true,
+    spanDepth,
+    spanWidth,
+}: {
+    height?: number;
+    id: number;
+    name: string;
+    placeableOnWater?: boolean;
+    recycler?: boolean;
+    stackable?: boolean;
+    spanDepth?: number;
+    spanWidth?: number;
+}): BlockData {
+    return {
+        id,
+        entityType: {
+            id: 8,
+            name: 'block',
+            label: 'Blok',
+        },
+        slug: name,
+        information: {
+            name,
+            shortDescription: name,
+            fullDescription: name,
+            label: name,
+        },
+        attributes: {
+            height,
+            stackable,
+            ...(placeableOnWater !== undefined ? { placeableOnWater } : {}),
+            type: 'decoration',
+            nightOnlyPurchase: false,
+            ...(spanDepth !== undefined ? { spanDepth } : {}),
+            ...(spanWidth !== undefined ? { spanWidth } : {}),
+        },
+        prices: {
+            sunflowers: 0,
+        },
+        functions: {
+            recycler,
+            raisedBed: name === 'Raised_Bed',
+        },
+        createdAt: '2026-06-01T00:00:00.000Z',
+        updatedAt: '2026-06-01T00:00:00.000Z',
+    };
+}
+
+function createMovingSegment({
+    block,
+    canRecycle = false,
+    sourceStack,
+}: {
+    block: Block;
+    canRecycle?: boolean;
+    sourceStack: Stack;
+}): MovingSegment {
+    return {
+        sourceStack,
+        sourceStartIndex: sourceStack.blocks.indexOf(block),
+        blocks: [block],
+        baseHeight: 0,
+        canRecycle,
+    };
+}
+
+const blockData = [
+    createBlockData({ id: 1, name: 'Tree' }),
+    createBlockData({
+        id: 2,
+        name: 'GardenBox',
+        stackable: false,
+    }),
+    createBlockData({
+        id: 3,
+        name: 'RecyclingBin',
+        recycler: true,
+        stackable: false,
+    }),
+    createBlockData({
+        id: 4,
+        name: 'WaterWell',
+        stackable: false,
+    }),
+    createBlockData({
+        id: 5,
+        name: 'Raised_Bed',
+        stackable: false,
+    }),
+    createBlockData({
+        id: 6,
+        name: 'Composter',
+        recycler: true,
+        stackable: false,
+    }),
+    createBlockData({
+        id: 7,
+        name: 'LemonadeStand',
+        stackable: false,
+        spanDepth: 1,
+        spanWidth: 2,
+    }),
+    createBlockData({
+        id: 8,
+        name: 'Block_Water',
+        placeableOnWater: true,
+    }),
+    createBlockData({
+        id: 9,
+        name: 'SmallWoodenBridge',
+        placeableOnWater: true,
+        stackable: false,
+    }),
+    createBlockData({
+        id: 10,
+        name: 'HazelLightArch',
+        stackable: false,
+    }),
+    createBlockData({
+        height: 0.1,
+        id: 11,
+        name: 'StoneWalkway',
+        stackable: false,
+    }),
+    createBlockData({
+        height: 0.1,
+        id: 12,
+        name: 'WoodenWalkway',
+        stackable: false,
+    }),
+    createBlockData({
+        height: 0.4,
+        id: 13,
+        name: 'Block_Grass',
+    }),
+    createBlockData({
+        id: 14,
+        name: 'FishingBoat',
+        placeableOnWater: true,
+        spanDepth: 2,
+        spanWidth: 1,
+        stackable: false,
+    }),
+    createBlockData({
+        id: 15,
+        name: 'Block_Grass_Angle',
+    }),
+    createBlockData({
+        height: 0.01,
+        id: 16,
+        name: 'MulchWood',
+        stackable: false,
+    }),
+    createBlockData({
+        id: 17,
+        name: 'IceCreamCart',
+        spanDepth: 2,
+        spanWidth: 3,
+        stackable: false,
+    }),
+];
+
+describe('resolvePickupPlacementPreviewForRelative', () => {
+    it('allows a single non-sandbox block to be stored in a GardenBox', () => {
+        const tree = createBlock('Tree', 'tree');
+        const gardenBox = createBlock('GardenBox', 'garden-box');
+        const sourceStack = createStack(0, 0, [tree]);
+        const gardenBoxStack = createStack(1, 0, [gardenBox]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [createMovingSegment({ block: tree, sourceStack })],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, gardenBoxStack],
+        });
+
+        assert.equal(preview?.hoveredGardenBoxBlockId, 'garden-box');
+        assert.equal(preview?.canStoreInGardenBox, true);
+        assert.equal(preview?.nextIsBlocked, false);
+        assert.equal(preview?.nextIsOverRecycler, false);
+        assert.equal(preview?.targetOffsets[0]?.blockId, 'tree');
+        assert.equal(preview?.targetOffsets[0]?.hoverHeight, 1);
+    });
+
+    it('keeps GardenBox placement blocked in local sandbox gardens', () => {
+        const tree = createBlock('Tree', 'tree');
+        const gardenBox = createBlock('GardenBox', 'garden-box');
+        const sourceStack = createStack(0, 0, [tree]);
+        const gardenBoxStack = createStack(1, 0, [gardenBox]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: true,
+            localSandboxStorageKey: 'gredice.debug.sandbox.garden.v1',
+            movingSegments: [createMovingSegment({ block: tree, sourceStack })],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, gardenBoxStack],
+        });
+
+        assert.equal(preview?.hoveredGardenBoxBlockId, 'garden-box');
+        assert.equal(preview?.canStoreInGardenBox, false);
+        assert.equal(preview?.nextIsBlocked, true);
+    });
+
+    it('keeps GardenBox storage blocked for multi-selection previews', () => {
+        const primaryTree = createBlock('Tree', 'primary-tree');
+        const extraTree = createBlock('Tree', 'extra-tree');
+        const gardenBox = createBlock('GardenBox', 'garden-box');
+        const primaryStack = createStack(0, 0, [primaryTree]);
+        const extraStack = createStack(0, 1, [extraTree]);
+        const gardenBoxStack = createStack(1, 0, [gardenBox]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [
+                createMovingSegment({
+                    block: primaryTree,
+                    sourceStack: primaryStack,
+                }),
+                createMovingSegment({
+                    block: extraTree,
+                    sourceStack: extraStack,
+                }),
+            ],
+            relative: new Vector3(1, 0, 0),
+            stacks: [primaryStack, extraStack, gardenBoxStack],
+        });
+
+        assert.equal(preview?.hoveredGardenBoxBlockId, 'garden-box');
+        assert.equal(preview?.canStoreInGardenBox, false);
+        assert.equal(preview?.nextIsBlocked, true);
+        assert.equal(preview?.targetOffsets.length, 2);
+    });
+
+    it('routes recyclable selections to recycler targets instead of blocking', () => {
+        const raisedBed = createBlock('Raised_Bed', 'raised-bed');
+        const recycler = createBlock('RecyclingBin', 'recycler');
+        const sourceStack = createStack(0, 0, [raisedBed]);
+        const recyclerStack = createStack(1, 0, [recycler]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [
+                createMovingSegment({
+                    block: raisedBed,
+                    canRecycle: true,
+                    sourceStack,
+                }),
+            ],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, recyclerStack],
+        });
+
+        assert.equal(preview?.nextIsOverRecycler, true);
+        assert.equal(preview?.nextIsBlocked, false);
+        assert.equal(preview?.canStoreInGardenBox, false);
+    });
+
+    it('keeps recycler drops blocked when a raised bed is part of a multi-selection', () => {
+        const raisedBed = createBlock('Raised_Bed', 'raised-bed');
+        const extraTree = createBlock('Tree', 'extra-tree');
+        const recycler = createBlock('RecyclingBin', 'recycler');
+        const raisedBedStack = createStack(0, 0, [raisedBed]);
+        const extraStack = createStack(0, 1, [extraTree]);
+        const recyclerStack = createStack(1, 0, [recycler]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [
+                createMovingSegment({
+                    block: raisedBed,
+                    canRecycle: false,
+                    sourceStack: raisedBedStack,
+                }),
+                createMovingSegment({
+                    block: extraTree,
+                    sourceStack: extraStack,
+                }),
+            ],
+            relative: new Vector3(1, 0, 0),
+            stacks: [raisedBedStack, extraStack, recyclerStack],
+        });
+
+        assert.equal(preview?.nextIsOverRecycler, false);
+        assert.equal(preview?.nextIsBlocked, true);
+        assert.equal(preview?.canStoreInGardenBox, false);
+    });
+
+    it('routes recyclable selections to composter recycler targets', () => {
+        const raisedBed = createBlock('Raised_Bed', 'raised-bed');
+        const composter = createBlock('Composter', 'composter');
+        const sourceStack = createStack(0, 0, [raisedBed]);
+        const composterStack = createStack(1, 0, [composter]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [
+                createMovingSegment({
+                    block: raisedBed,
+                    canRecycle: true,
+                    sourceStack,
+                }),
+            ],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, composterStack],
+        });
+
+        assert.equal(preview?.nextIsOverRecycler, true);
+        assert.equal(preview?.nextIsBlocked, false);
+        assert.equal(preview?.canStoreInGardenBox, false);
+    });
+
+    it('does not recycle when the selection is released at its source position', () => {
+        const raisedBed = createBlock('Raised_Bed', 'raised-bed');
+        const sourceStack = createStack(0, 0, [raisedBed]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [
+                createMovingSegment({
+                    block: raisedBed,
+                    canRecycle: true,
+                    sourceStack,
+                }),
+            ],
+            relative: new Vector3(0, 0, 0),
+            stacks: [sourceStack],
+        });
+
+        assert.equal(preview?.nextIsOverRecycler, false);
+        assert.equal(preview?.nextIsBlocked, false);
+    });
+
+    it('blocks drops onto non-stackable non-recycler targets', () => {
+        const tree = createBlock('Tree', 'tree');
+        const waterWell = createBlock('WaterWell', 'water-well');
+        const sourceStack = createStack(0, 0, [tree]);
+        const blockedStack = createStack(1, 0, [waterWell]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [createMovingSegment({ block: tree, sourceStack })],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, blockedStack],
+        });
+
+        assert.equal(preview?.canStoreInGardenBox, false);
+        assert.equal(preview?.nextIsOverRecycler, false);
+        assert.equal(preview?.nextIsBlocked, true);
+    });
+
+    for (const walkwayName of ['StoneWalkway', 'WoodenWalkway']) {
+        it(`allows HazelLightArch to be placed on ${walkwayName}`, () => {
+            const arch = createBlock('HazelLightArch', 'hazel-light-arch');
+            const grass = createBlock('Block_Grass', 'grass');
+            const walkway = createBlock(walkwayName, 'walkway');
+            const sourceStack = createStack(0, 0, [arch]);
+            const walkwayStack = createStack(1, 0, [grass, walkway]);
+
+            const preview = resolvePickupPlacementPreviewForRelative({
+                blockData,
+                gardenIsSandbox: false,
+                localSandboxStorageKey: null,
+                movingSegments: [
+                    createMovingSegment({ block: arch, sourceStack }),
+                ],
+                relative: new Vector3(1, 0, 0),
+                stacks: [sourceStack, walkwayStack],
+            });
+
+            assert.equal(preview?.nextIsBlocked, false);
+            assert.equal(preview?.targetOffsets[0]?.hoverHeight, 0.5);
+        });
+    }
+
+    it('blocks multi-cell drops that overlap a non-stackable footprint cell', () => {
+        const stand = createBlock('LemonadeStand', 'stand');
+        const waterWell = createBlock('WaterWell', 'water-well');
+        const sourceStack = createStack(0, 0, [stand]);
+        const supportStack = createStack(1, 0, [createBlock('Tree', 'tree')]);
+        const blockedStack = createStack(2, 0, [waterWell]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [
+                createMovingSegment({ block: stand, sourceStack }),
+            ],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, supportStack, blockedStack],
+        });
+
+        assert.equal(preview?.nextIsBlocked, true);
+    });
+
+    it('blocks multi-cell drops onto uneven support heights', () => {
+        const stand = createBlock('LemonadeStand', 'stand');
+        const sourceStack = createStack(0, 0, [stand]);
+        const supportStack = createStack(1, 0, [createBlock('Tree', 'tree')]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [
+                createMovingSegment({ block: stand, sourceStack }),
+            ],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, supportStack],
+        });
+
+        assert.equal(preview?.nextIsBlocked, true);
+    });
+
+    for (const [surfaceName, surfaceHeight] of [
+        ['MulchWood', 0.01],
+        ['WoodenWalkway', 0.1],
+    ] as const) {
+        it(`allows moving a multi-cell decoration across even ${surfaceName} supports`, () => {
+            const cart = createBlock('IceCreamCart', 'ice-cream-cart');
+            const sourceStack = createStack(0, 0, [cart]);
+            const surfaceStacks = Array.from({ length: 3 }, (_, x) =>
+                Array.from({ length: 2 }, (_, z) =>
+                    createStack(x + 4, z, [
+                        createBlock(surfaceName, `surface-${x}-${z}`),
+                    ]),
+                ),
+            ).flat();
+
+            const preview = resolvePickupPlacementPreviewForRelative({
+                blockData,
+                gardenIsSandbox: false,
+                localSandboxStorageKey: null,
+                movingSegments: [
+                    createMovingSegment({ block: cart, sourceStack }),
+                ],
+                relative: new Vector3(4, 0, 0),
+                stacks: [sourceStack, ...surfaceStacks],
+            });
+
+            assert.equal(preview?.nextIsBlocked, false);
+            assert.equal(preview?.previewHoverHeight, surfaceHeight);
+        });
+    }
+
+    it('blocks drops onto water when the moving block is not placeable on water', () => {
+        const tree = createBlock('Tree', 'tree');
+        const water = createBlock('Block_Water', 'water');
+        const sourceStack = createStack(0, 0, [tree]);
+        const waterStack = createStack(1, 0, [water]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [createMovingSegment({ block: tree, sourceStack })],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, waterStack],
+        });
+
+        assert.equal(preview?.nextIsBlocked, true);
+    });
+
+    it('allows drops onto water when the moving block is placeable on water', () => {
+        const waterA = createBlock('Block_Water', 'water-a');
+        const waterB = createBlock('Block_Water', 'water-b');
+        const sourceStack = createStack(0, 0, [waterA]);
+        const waterStack = createStack(1, 0, [waterB]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [
+                createMovingSegment({ block: waterA, sourceStack }),
+            ],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, waterStack],
+        });
+
+        assert.equal(preview?.nextIsBlocked, false);
+    });
+
+    it('allows the small wooden bridge to be dropped onto water', () => {
+        const bridge = createBlock('SmallWoodenBridge', 'bridge');
+        const water = createBlock('Block_Water', 'water');
+        const sourceStack = createStack(0, 0, [bridge]);
+        const waterStack = createStack(1, 0, [water]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [
+                createMovingSegment({ block: bridge, sourceStack }),
+            ],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, waterStack],
+        });
+
+        assert.equal(preview?.nextIsBlocked, false);
+        assert.equal(preview?.targetOffsets[0]?.hoverHeight, 1);
+    });
+
+    it('only allows the fishing boat when both footprint cells are water', () => {
+        const boat = createBlock('FishingBoat', 'boat');
+        const sourceStack = createStack(0, 0, [boat]);
+        const firstWaterStack = createStack(1, 0, [
+            createBlock('Block_Water', 'water-a'),
+        ]);
+        const secondWaterStack = createStack(1, 1, [
+            createBlock('Block_Water', 'water-b'),
+        ]);
+
+        const fullySupported = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [createMovingSegment({ block: boat, sourceStack })],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, firstWaterStack, secondWaterStack],
+        });
+        const partiallySupported = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [createMovingSegment({ block: boat, sourceStack })],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, firstWaterStack],
+        });
+        const unsupported = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [createMovingSegment({ block: boat, sourceStack })],
+            relative: new Vector3(2, 0, 0),
+            stacks: [sourceStack],
+        });
+
+        assert.equal(fullySupported?.nextIsBlocked, false);
+        assert.equal(partiallySupported?.nextIsBlocked, true);
+        assert.equal(unsupported?.nextIsBlocked, true);
+    });
+
+    it('allows the fishing boat across level water with different support stacks', () => {
+        const boat = createBlock('FishingBoat', 'boat');
+        const sourceStack = createStack(0, 0, [boat]);
+        const shapedWaterStack = createStack(1, 0, [
+            createBlock('Block_Grass_Angle', 'angle'),
+            createBlock('Block_Water', 'water-shaped'),
+        ]);
+        const flatWaterStack = createStack(1, 1, [
+            createBlock('Block_Water', 'water-flat'),
+        ]);
+
+        const preview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments: [createMovingSegment({ block: boat, sourceStack })],
+            relative: new Vector3(1, 0, 0),
+            stacks: [sourceStack, shapedWaterStack, flatWaterStack],
+        });
+
+        assert.equal(preview?.nextIsBlocked, false);
+        assert.equal(preview?.previewHoverHeight, 1);
+    });
+
+    it('matches the single-resolution path when reusing prepared placement state', () => {
+        const stand = createBlock('LemonadeStand', 'stand');
+        const sourceStack = createStack(0, 0, [stand]);
+        const supportStack = createStack(1, 0, [createBlock('Tree', 'tree')]);
+        const blockedStack = createStack(2, 0, [
+            createBlock('WaterWell', 'water-well'),
+        ]);
+        const movingSegments = [
+            createMovingSegment({ block: stand, sourceStack }),
+        ];
+        const resolver = createPickupPlacementPreviewResolver({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments,
+            stacks: [sourceStack, supportStack, blockedStack],
+        });
+        if (!resolver) {
+            throw new Error('Expected placement resolver');
+        }
+
+        const relative = new Vector3(1, 0, 0);
+        const preparedPreview = resolver.resolveForRelative(relative);
+        const directPreview = resolvePickupPlacementPreviewForRelative({
+            blockData,
+            gardenIsSandbox: false,
+            localSandboxStorageKey: null,
+            movingSegments,
+            relative,
+            stacks: [sourceStack, supportStack, blockedStack],
+        });
+
+        assert.deepEqual(
+            {
+                hoveredGardenBoxBlockId:
+                    preparedPreview?.hoveredGardenBoxBlockId,
+                nextIsBlocked: preparedPreview?.nextIsBlocked,
+                nextIsOverRecycler: preparedPreview?.nextIsOverRecycler,
+                previewHoverHeight: preparedPreview?.previewHoverHeight,
+                targetOffsets: preparedPreview?.targetOffsets,
+            },
+            {
+                hoveredGardenBoxBlockId: directPreview?.hoveredGardenBoxBlockId,
+                nextIsBlocked: directPreview?.nextIsBlocked,
+                nextIsOverRecycler: directPreview?.nextIsOverRecycler,
+                previewHoverHeight: directPreview?.previewHoverHeight,
+                targetOffsets: directPreview?.targetOffsets,
+            },
+        );
+    });
+});

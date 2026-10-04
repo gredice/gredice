@@ -1,6 +1,22 @@
 import 'server-only';
+import {
+    publicPriceEntityTypes,
+    publishPublicPriceList,
+} from '@gredice/storage';
 
-type PublicDirectoryEntityType = 'block' | 'plant' | 'plantSort' | 'operation';
+type PublicDirectoryEntityType =
+    | 'faq'
+    | 'faq-category'
+    | 'block'
+    | 'brand'
+    | 'hqLocations'
+    | 'plant'
+    | 'plantDisease'
+    | 'plantPest'
+    | 'plantSort'
+    | 'operation'
+    | 'seed'
+    | 'sunflowerPackage';
 
 const publicWwwRevalidationPath = '/api/revalidate/directories';
 
@@ -8,10 +24,18 @@ function publicDirectoryEntityType(
     entityTypeName: string | null | undefined,
 ): PublicDirectoryEntityType | null {
     switch (entityTypeName) {
+        case 'faq':
+        case 'faq-category':
         case 'block':
+        case 'brand':
+        case 'hqLocations':
         case 'plant':
+        case 'plantDisease':
+        case 'plantPest':
         case 'plantSort':
         case 'operation':
+        case 'seed':
+        case 'sunflowerPackage':
             return entityTypeName;
         default:
             return null;
@@ -54,6 +78,27 @@ export async function revalidatePublicDirectoryPagesForEntityTypes(
 
     if (entityTypes.size === 0) {
         return;
+    }
+
+    if (
+        Array.from(entityTypes).some((type) =>
+            publicPriceEntityTypes.includes(type),
+        )
+    ) {
+        try {
+            await publishPublicPriceList();
+        } catch (error) {
+            // The directory edit is already committed. Retain the last export
+            // and let the daily publisher retry without misreporting the save.
+            console.error(
+                'Failed to publish price list after directory change',
+                {
+                    entityTypes: Array.from(entityTypes),
+                    reason,
+                    error,
+                },
+            );
+        }
     }
 
     const secret = process.env.GREDICE_WWW_REVALIDATE_SECRET?.trim();

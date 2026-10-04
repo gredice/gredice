@@ -8,6 +8,7 @@ import { exit } from 'node:process';
 import { fileURLToPath } from 'node:url';
 import {
     appRegistry,
+    getAppByName,
     getAppDevPort,
     getWorktreeId,
     getWorktreeProxyHttpPort,
@@ -145,18 +146,38 @@ function formatExternalProxyUrl(protocol, domain, port) {
 }
 
 function renderCaddyfile() {
+    const newsApp = getAppByName('news');
+    const renderReverseProxy = (
+        app,
+    ) => `reverse_proxy http://host.docker.internal:${getAppDevPort(app)} {
+        header_up X-Forwarded-Proto {http.request.scheme}
+    }`;
+    const renderHttpsBlock = (app) => {
+        if (app.name !== 'www') {
+            return `https://${app.localDomain} {
+    tls internal
+    ${renderReverseProxy(app)}
+}`;
+        }
+
+        return `https://${app.localDomain} {
+    tls internal
+    handle /novosti* {
+        ${renderReverseProxy(newsApp)}
+    }
+    handle {
+        ${renderReverseProxy(app)}
+    }
+}`;
+    };
+
     const appBlocks = appRegistry
         .map(
             (app) => `http://${app.localDomain} {
     redir ${formatExternalProxyUrl('https', app.localDomain, activeProxyPorts.https)}{uri}
 }
 
-https://${app.localDomain} {
-    tls internal
-    reverse_proxy http://host.docker.internal:${getAppDevPort(app)} {
-        header_up X-Forwarded-Proto {http.request.scheme}
-    }
-}`,
+${renderHttpsBlock(app)}`,
         )
         .join('\n\n');
 
@@ -876,9 +897,7 @@ function containerPublishesHostPort(container, port) {
     }
 
     const escapedPort = escapeRegExp(trimmedPort);
-    const pattern = new RegExp(
-        `(?:^|[\\s,])(?:[^\\s,]+:)?${escapedPort}->`,
-    );
+    const pattern = new RegExp(`(?:^|[\\s,])(?:[^\\s,]+:)?${escapedPort}->`);
     return pattern.test(container.ports);
 }
 
@@ -1144,13 +1163,10 @@ async function runTurboDev() {
         const signalHandlers = shutdownSignals.map((signal) => {
             const handler = () => {
                 requestedSignal ??= signal;
-                shutdownPromise ??= terminateChildProcessTree(
-                    turboProcess,
-                    {
-                        signal,
-                        gracefulTimeoutMs: 12000,
-                    },
-                ).catch((error) => {
+                shutdownPromise ??= terminateChildProcessTree(turboProcess, {
+                    signal,
+                    gracefulTimeoutMs: 12000,
+                }).catch((error) => {
                     shutdownError = error;
                     return false;
                 });

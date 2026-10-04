@@ -1,12 +1,17 @@
 import { tz } from '@date-fns/tz';
 import { sendEmail } from '@gredice/email/acs';
+import { safeUserDisplayName } from '@gredice/js/userDisplayName';
 import {
     acceptAccountInvitation,
+    accountHasActiveRaisedBed,
     cancelAccountInvitation,
+    claimSunflowerDrop,
+    claimTutorialChecklistTask,
     createAccountInvitation,
     deleteAccountWithDependencies,
     earnSunflowers,
     getAccount,
+    getAccountAchievementActivity,
     getAccountAchievements,
     getAccountGardens,
     getAccountInvitationByToken,
@@ -14,12 +19,20 @@ import {
     getAccountInvitationsByEmail,
     getAccountReferralState,
     getAccountUsers,
-    getRaisedBeds,
+    getGarden,
+    getGardenBlocks,
+    getOrCreateSunflowerDropSpawn,
     getReferralAccountSummary,
+    getSunflowerPackageEligibilityForAccount,
     getSunflowers,
     getSunflowersHistory,
+    getTutorialChecklistState,
     getUser,
+    getUserDefaultGarden,
+    grediceCached,
+    grediceCacheKeys,
     knownEventTypes,
+    markTutorialChecklistTaskReady,
     REFERRAL_REWARD_AMOUNT,
     ReferralCodeAlreadyExistsError,
     ReferralCodeAlreadyUsedError,
@@ -29,15 +42,22 @@ import {
     ReferralCodeReservedError,
     ReferralCodeSelfUseError,
     redeemReferralCodeForAccount,
+    SUNFLOWER_DROP_BLOCK_NAME,
     setReferralCodeForAccount,
+    setUserDefaultGarden,
+    TutorialChecklistTaskNotClaimableError,
+    TutorialChecklistTaskNotFoundError,
+    UserDefaultGardenNotAccessibleError,
+    UserDefaultGardenSandboxError,
     updateAccountTimeZone,
 } from '@gredice/storage';
 import AccountDeleteConfirmationTemplate from '@gredice/transactional/emails/Account/delete-confirmation';
 import { addDays, differenceInCalendarDays, startOfDay } from 'date-fns';
 import { Hono } from 'hono';
 import { setCookie as honoSetCookie } from 'hono/cookie';
-import { describeRoute, validator as zValidator } from 'hono-openapi';
+import { describeRoute, resolver, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import { accountAchievementsResponse } from '../../../lib/accounts/accountAchievementsResponse';
 import { createJwt, verifyJwt } from '../../../lib/auth/auth';
 import {
     accountCookieName,
@@ -45,11 +65,21 @@ import {
 } from '../../../lib/auth/sessionConfig';
 import { authSecurity } from '../../../lib/docs/security';
 import { sendAccountInvitation } from '../../../lib/email/transactional';
+import { getSunflowerDropSpawnChance } from '../../../lib/garden/sunflowerDropChance';
+import { isSunflowerDropWeatherEligible } from '../../../lib/garden/sunflowerDropWeather';
 import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
 import { getPostHogClient } from '../../../lib/posthog-server';
+import {
+    buildSunflowerPackageCatalogResponse,
+    sunflowerPackageCatalogResponseSchema,
+} from '../../../lib/sunflowers/packageCatalog';
+import { getBjelovarForecast } from '../../../lib/weather/forecast';
+import { populateWeatherFromSymbol } from '../../../lib/weather/populateWeatherFromSymbol';
+import { findClosestForecastEntry } from '../../../lib/weather/weatherNowContract';
+import accountBillingRoutes from './accountBillingRoutes';
 
 const dailyRewards = [5, 10, 15, 20, 25, 50];
 const DAILY_REWARD_TIME_ZONE = 'Europe/Zagreb';
@@ -198,15 +228,44 @@ async function getDailyRewardState(accountId: string) {
 }
 
 async function hasActiveRaisedBed(accountId: string) {
-    const gardens = await getAccountGardens(accountId);
-    for (const garden of gardens) {
-        const raisedBeds = await getRaisedBeds(garden.id, { status: 'active' });
-        if (raisedBeds.length > 0) return true;
+    return accountHasActiveRaisedBed(accountId);
+}
+
+async function getSunflowerDropWeather(now: Date) {
+    const forecast = await grediceCached(
+        grediceCacheKeys.forecastBjelovar,
+        getBjelovarForecast,
+        60 * 60,
+    ).catch((error) => {
+        console.warn('Sunflower drop weather unavailable', { error });
+        return null;
+    });
+    const closestEntry = forecast
+        ? findClosestForecastEntry(forecast, now.getTime())
+        : null;
+    if (!closestEntry) {
+        return {
+            sunny: false,
+            symbol: null,
+        };
     }
-    return false;
+
+    const weather = populateWeatherFromSymbol(closestEntry.symbol);
+    return {
+        sunny: isSunflowerDropWeatherEligible({
+            ...weather,
+            rain: closestEntry.rain,
+        }),
+        symbol: closestEntry.symbol,
+    };
+}
+
+function pickSunflowerBlock<T extends { id: string }>(blocks: T[]) {
+    return blocks[Math.floor(Math.random() * blocks.length)] ?? null;
 }
 
 const app = new Hono<{ Variables: AuthVariables }>()
+    .route('/current/billing', accountBillingRoutes)
     .get(
         '/current',
         describeRoute({
@@ -246,10 +305,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 users.map((accountUser) => ({
                     id: accountUser.user.id,
                     userName: accountUser.user.userName,
-                    displayName:
+                    displayName: safeUserDisplayName(
                         accountUser.user.displayName ??
-                        accountUser.user.userName,
+                            accountUser.user.userName,
+                    ),
                     avatarUrl: accountUser.user.avatarUrl,
+                    achievementCount: accountUser.user.achievementCount,
                     assignedAt: accountUser.createdAt.toISOString(),
                 })),
             );
@@ -284,6 +345,104 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 createdAt: dbAccount?.createdAt.toISOString(),
                 updatedAt: dbAccount?.updatedAt.toISOString(),
             });
+        },
+    )
+    .get(
+        '/current/tutorial-checklist',
+        describeRoute({
+            description: 'Get the current account tutorial checklist',
+            security: authSecurity,
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId, userId } = context.get('authContext');
+            return context.json(
+                await getTutorialChecklistState({ accountId, userId }),
+            );
+        },
+    )
+    .post(
+        '/current/tutorial-checklist/:taskKey/ready',
+        describeRoute({
+            description: 'Mark a manual tutorial checklist task as ready',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                taskKey: z.string().min(1),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId, userId } = context.get('authContext');
+            const { taskKey } = context.req.valid('param');
+
+            try {
+                return context.json(
+                    await markTutorialChecklistTaskReady({
+                        accountId,
+                        taskKey,
+                        userId,
+                    }),
+                );
+            } catch (error) {
+                if (error instanceof TutorialChecklistTaskNotFoundError) {
+                    return context.json({ error: 'Task not found' }, 404);
+                }
+                if (error instanceof TutorialChecklistTaskNotClaimableError) {
+                    return context.json(
+                        {
+                            error: 'Task cannot be marked ready',
+                            reason: error.reason,
+                        },
+                        409,
+                    );
+                }
+                throw error;
+            }
+        },
+    )
+    .post(
+        '/current/tutorial-checklist/:taskKey/claim',
+        describeRoute({
+            description: 'Claim a tutorial checklist task reward',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                taskKey: z.string().min(1),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId, userId } = context.get('authContext');
+            const { taskKey } = context.req.valid('param');
+
+            try {
+                return context.json(
+                    await claimTutorialChecklistTask({
+                        accountId,
+                        taskKey,
+                        userId,
+                    }),
+                );
+            } catch (error) {
+                if (error instanceof TutorialChecklistTaskNotFoundError) {
+                    return context.json({ error: 'Task not found' }, 404);
+                }
+                if (error instanceof TutorialChecklistTaskNotClaimableError) {
+                    return context.json(
+                        {
+                            error: 'Task is not claimable',
+                            reason: error.reason,
+                        },
+                        409,
+                    );
+                }
+                throw error;
+            }
         },
     )
     .get(
@@ -412,6 +571,33 @@ const app = new Hono<{ Variables: AuthVariables }>()
     )
 
     .get(
+        '/current/sunflowers/packages',
+        describeRoute({
+            description:
+                'Get active sunflower packages with eligibility for the current account',
+            security: authSecurity,
+            responses: {
+                200: {
+                    description: 'Active sunflower package catalog',
+                    content: {
+                        'application/json': {
+                            schema: resolver(
+                                sunflowerPackageCatalogResponseSchema,
+                            ),
+                        },
+                    },
+                },
+            },
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const packages =
+                await getSunflowerPackageEligibilityForAccount(accountId);
+            return context.json(buildSunflowerPackageCatalogResponse(packages));
+        },
+    )
+    .get(
         '/current/sunflowers',
         describeRoute({
             description: 'Get the current account sunflowers',
@@ -439,26 +625,130 @@ const app = new Hono<{ Variables: AuthVariables }>()
         },
     )
     .get(
+        '/current/sunflowers/drops/gardens/:gardenId',
+        describeRoute({
+            description:
+                'Try to issue a collectible sunflower drop for a sunny garden visit.',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const gardenIdParam = context.req.valid('param').gardenId;
+            if (!/^\d+$/.test(gardenIdParam)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+            const gardenId = Number.parseInt(gardenIdParam, 10);
+
+            const [garden, gardenBlocks] = await Promise.all([
+                getGarden(gardenId),
+                getGardenBlocks(gardenId),
+            ]);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            if (garden.isSandbox) {
+                return context.json({ spawn: null, reason: 'sandbox' });
+            }
+
+            const sunflowerBlocks = gardenBlocks.filter(
+                (block) => block.name === SUNFLOWER_DROP_BLOCK_NAME,
+            );
+            const sourceBlock = pickSunflowerBlock(sunflowerBlocks);
+            if (!sourceBlock) {
+                return context.json({ spawn: null, reason: 'no_sunflower' });
+            }
+
+            const now = new Date();
+            const weather = await getSunflowerDropWeather(now);
+            if (!weather.sunny) {
+                return context.json({
+                    spawn: null,
+                    reason: 'weather',
+                    weather,
+                });
+            }
+
+            const result = await getOrCreateSunflowerDropSpawn({
+                accountId,
+                allowCreate:
+                    Math.random() <
+                    getSunflowerDropSpawnChance(sunflowerBlocks.length),
+                gardenId,
+                now,
+                sourceBlockId: sourceBlock.id,
+            });
+
+            return context.json({
+                ...result,
+                weather,
+            });
+        },
+    )
+    .post(
+        '/current/sunflowers/drops/:spawnId/claim',
+        describeRoute({
+            description:
+                'Claim a server-issued sunflower drop for the current account.',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                spawnId: z.uuid(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const { spawnId } = context.req.valid('param');
+            const result = await claimSunflowerDrop({ accountId, spawnId });
+            if (result.status === 'claimed') {
+                return context.json({
+                    amount: result.amount,
+                    status: result.status,
+                });
+            }
+
+            const error = {
+                error: result.reason,
+                status: result.status,
+            };
+
+            if (result.reason === 'not_found') {
+                return context.json(error, 404);
+            }
+            if (result.reason === 'expired') {
+                return context.json(error, 410);
+            }
+
+            return context.json(error, 409);
+        },
+    )
+    .get(
         '/current/achievements',
         describeRoute({
-            description: 'Get the current account achievements',
+            description:
+                'Get the current account awards and current verified activity for numeric achievement goals. Reading progress does not grant awards or rewards.',
+            security: authSecurity,
         }),
         authValidator(['user', 'admin']),
         async (context) => {
             const { accountId } = context.get('authContext');
-            const achievements = await getAccountAchievements(accountId);
-            return context.json({
-                achievements: achievements.map((achievement) => ({
-                    id: achievement.id,
-                    key: achievement.achievementKey,
-                    status: achievement.status,
-                    rewardSunflowers: achievement.rewardSunflowers,
-                    progressValue: achievement.progressValue,
-                    threshold: achievement.threshold,
-                    rewardGrantedAt:
-                        achievement.rewardGrantedAt?.toISOString() ?? null,
-                })),
-            });
+            const [achievements, activity] = await Promise.all([
+                getAccountAchievements(accountId),
+                getAccountAchievementActivity(accountId),
+            ]);
+            return context.json(
+                accountAchievementsResponse(accountId, achievements, activity),
+            );
         },
     )
     .get(
@@ -509,9 +799,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     status: invitation.status,
                     invitedBy: {
                         id: invitation.invitedByUser.id,
-                        displayName:
+                        displayName: safeUserDisplayName(
                             invitation.invitedByUser.displayName ??
-                            invitation.invitedByUser.userName,
+                                invitation.invitedByUser.userName,
+                        ),
                     },
                     expiresAt: invitation.expiresAt.toISOString(),
                     createdAt: invitation.createdAt.toISOString(),
@@ -583,8 +874,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             // Get inviter info for the email
             const inviter = await getUser(userId);
-            const inviterName =
-                inviter?.displayName ?? inviter?.userName ?? 'Korisnik';
+            const inviterName = safeUserDisplayName(
+                inviter?.displayName ?? inviter?.userName,
+            );
 
             const acceptUrl = `https://vrt.gredice.com/pozivnica?token=${invitation.token}`;
 
@@ -757,9 +1049,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     token: invitation.token,
                     invitedBy: {
                         id: invitation.invitedByUser.id,
-                        displayName:
+                        displayName: safeUserDisplayName(
                             invitation.invitedByUser.displayName ??
-                            invitation.invitedByUser.userName,
+                                invitation.invitedByUser.userName,
+                        ),
                     },
                     expiresAt: invitation.expiresAt.toISOString(),
                     createdAt: invitation.createdAt.toISOString(),
@@ -781,7 +1074,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 user,
                 userId,
             } = context.get('authContext');
-            const currentUser = await getUser(userId);
+            const [currentUser, defaultGarden] = await Promise.all([
+                getUser(userId),
+                getUserDefaultGarden(userId),
+            ]);
             const fallbackEmail = currentUser?.userName ?? 'Gredice';
             const orderedAccountIds = [
                 currentAccountId,
@@ -806,6 +1102,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         gardens: gardens.map((garden) => ({
                             id: garden.id,
                             name: garden.name,
+                            isDefault: garden.id === defaultGarden?.id,
+                            isSandbox: garden.isSandbox,
                             createdAt: garden.createdAt,
                         })),
                     };
@@ -813,6 +1111,47 @@ const app = new Hono<{ Variables: AuthVariables }>()
             );
 
             return context.json(accountGardenGroups);
+        },
+    )
+    .put(
+        '/gardens/default',
+        describeRoute({
+            description:
+                'Set the real garden that opens by default for the current user.',
+            security: authSecurity,
+        }),
+        zValidator(
+            'json',
+            z.object({
+                gardenId: z.number().int().positive(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { userId } = context.get('authContext');
+            const { gardenId } = context.req.valid('json');
+
+            try {
+                const garden = await setUserDefaultGarden({
+                    gardenId,
+                    userId,
+                });
+                return context.json({
+                    accountId: garden.accountId,
+                    gardenId: garden.id,
+                });
+            } catch (error) {
+                if (error instanceof UserDefaultGardenSandboxError) {
+                    return context.json(
+                        { error: 'Sandbox gardens cannot be the default' },
+                        400,
+                    );
+                }
+                if (error instanceof UserDefaultGardenNotAccessibleError) {
+                    return context.json({ error: 'Garden not found' }, 404);
+                }
+                throw error;
+            }
         },
     )
     .post(
@@ -858,9 +1197,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             // TODO: Use zod
             const token = context.req.query('token');
-            console.info(
-                `[AccountDelete] Deleting account with token=${token}`,
-            );
+            const hasDeletionToken =
+                typeof token === 'string' && token.length > 0;
+            console.info('Account deletion requested', {
+                hasToken: hasDeletionToken,
+            });
             let currentUserId: string | undefined;
             let requestedAccountId: string | undefined;
             try {
@@ -871,7 +1212,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     },
                 );
                 if (error || !result?.payload.sub) {
-                    console.warn('JWT verify returned error:', error);
+                    console.warn(
+                        'Account deletion token verification returned error',
+                        {
+                            error,
+                            hasToken: hasDeletionToken,
+                        },
+                    );
                     throw new Error('Invalid state token');
                 }
                 currentUserId = result.payload.sub;
@@ -881,7 +1228,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         ? accountIdClaim
                         : undefined;
             } catch (error) {
-                console.warn('Error verifying JWT:', error);
+                console.warn('Account deletion token verification failed', {
+                    error,
+                    hasToken: hasDeletionToken,
+                });
                 return context.json({ error: 'Invalid or expired link.' }, 400);
             }
 
@@ -904,7 +1254,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 // TODO: Move check to delete function (repo)
                 // Check preconditions again
                 const users = await getAccountUsers(accountId);
-                if (!users || users.length !== 1) {
+                if (users?.length !== 1) {
                     return context.json(
                         { error: 'Account must have exactly one user.' },
                         400,
@@ -918,7 +1268,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     message: 'Account deleted successfully.',
                 });
             } catch (error) {
-                console.error('[AccountDelete] Error deleting account:', error);
+                console.error('Account deletion failed', {
+                    accountId: requestedAccountId,
+                    error,
+                    userId: currentUserId,
+                });
                 return context.json({ error: 'Invalid or expired link.' }, 500);
             }
         },

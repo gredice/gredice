@@ -11,13 +11,14 @@ export const publicSearchCategoryByDirectoryEntityType = {
     operation: { slug: 'operations', label: 'Radnje' },
     block: { slug: 'blocks', label: 'Blokovi' },
     plantSort: { slug: 'sorts', label: 'Sorte' },
+    plantDisease: { slug: 'diseases', label: 'Bolesti' },
+    plantPest: { slug: 'pests', label: 'Štetnici' },
     seed: { slug: 'seeds', label: 'Sjeme' },
 } satisfies Partial<
     Record<DirectoryEntityTypeName, PublicSearchCategoryConfig>
 >;
 
 export const publicDirectoryEntityTypeExclusions = {
-    brand: 'No canonical www brand detail or listing page exists yet.',
     farmSupply:
         'Farm supplies are operational inventory records without a public www destination.',
     hqLocations:
@@ -47,11 +48,17 @@ export type DirectoryEntityPublicUrlParts = {
     label?: string | null;
     parentName?: string | null;
     parentLabel?: string | null;
-    plantName?: string | null;
-    plantSortName?: string | null;
 };
 
 export const PublicDirectoryPaths = {
+    Seeds: '/sjeme',
+    Seed(alias: string) {
+        return `/sjeme/${toPublicPageAlias(alias)}`;
+    },
+    SeedBrands: '/sjeme/brendovi',
+    SeedBrand(alias: string) {
+        return `/sjeme/brend/${toPublicPageAlias(alias)}`;
+    },
     Plants: '/biljke',
     Plant(alias: string) {
         return `/biljke/${toPublicPageAlias(alias)}`;
@@ -67,9 +74,18 @@ export const PublicDirectoryPaths = {
     BlockPlant(alias: string) {
         return `/blokovi/biljke/${toPublicPageAlias(alias)}`;
     },
+    BlockPets: '/blokovi/ljubimci',
     Operations: '/radnje',
     Operation(alias: string) {
         return `/radnje/${toPublicPageAlias(alias)}`;
+    },
+    PlantDiseases: '/bolesti',
+    PlantDisease(alias: string) {
+        return `/bolesti/${toPublicPageAlias(alias)}`;
+    },
+    PlantPests: '/stetnici',
+    PlantPest(alias: string) {
+        return `/stetnici/${toPublicPageAlias(alias)}`;
     },
     FAQ: '/cesta-pitanja',
     LegalOccasions: '/legalno/natjecaji',
@@ -108,8 +124,6 @@ export function resolveDirectoryEntityPublicPathFromParts({
     label,
     parentName,
     parentLabel,
-    plantName,
-    plantSortName,
 }: DirectoryEntityPublicUrlParts): string | null {
     const entityTitle = firstText(label, name);
 
@@ -129,6 +143,14 @@ export function resolveDirectoryEntityPublicPathFromParts({
             return entityTitle
                 ? PublicDirectoryPaths.Operation(entityTitle)
                 : null;
+        case 'plantDisease':
+            return entityTitle
+                ? PublicDirectoryPaths.PlantDisease(entityTitle)
+                : null;
+        case 'plantPest':
+            return entityTitle
+                ? PublicDirectoryPaths.PlantPest(entityTitle)
+                : null;
         case 'block':
             return entityTitle ? PublicDirectoryPaths.Block(entityTitle) : null;
         case 'faq':
@@ -140,22 +162,12 @@ export function resolveDirectoryEntityPublicPathFromParts({
                 ? PublicDirectoryPaths.Occasion(occasionAlias)
                 : null;
         }
-        case 'seed': {
-            const seedPlantAlias = firstText(
-                parentName,
-                parentLabel,
-                plantName,
-            );
-            if (seedPlantAlias && plantSortName) {
-                return PublicDirectoryPaths.PlantSort(
-                    seedPlantAlias,
-                    plantSortName,
-                );
-            }
-            return seedPlantAlias
-                ? PublicDirectoryPaths.Plant(seedPlantAlias)
+        case 'seed':
+            return entityTitle ? PublicDirectoryPaths.Seed(entityTitle) : null;
+        case 'brand':
+            return entityTitle
+                ? PublicDirectoryPaths.SeedBrand(entityTitle)
                 : null;
-        }
         default:
             return null;
     }
@@ -183,6 +195,18 @@ export function resolveDirectoryEntityPublicPath(
                 name: input.entity.information.name,
                 label: input.entity.information.label,
             });
+        case 'plantDisease':
+            return resolveDirectoryEntityPublicPathFromParts({
+                entityTypeName: input.entityTypeName,
+                name: input.entity.information.name,
+                label: input.entity.information.label,
+            });
+        case 'plantPest':
+            return resolveDirectoryEntityPublicPathFromParts({
+                entityTypeName: input.entityTypeName,
+                name: input.entity.information.name,
+                label: input.entity.information.label,
+            });
         case 'block':
             return resolveDirectoryEntityPublicPathFromParts({
                 entityTypeName: input.entityTypeName,
@@ -201,9 +225,11 @@ export function resolveDirectoryEntityPublicPath(
             return resolveDirectoryEntityPublicPathFromParts({
                 entityTypeName: input.entityTypeName,
                 name: input.entity.information.name,
-                parentName: input.entity.information.plant.information.name,
-                plantSortName:
-                    input.entity.information.plantSort.information.name,
+            });
+        case 'brand':
+            return resolveDirectoryEntityPublicPathFromParts({
+                entityTypeName: input.entityTypeName,
+                name: input.entity.information.name,
             });
         default:
             return null;

@@ -1,51 +1,26 @@
 import { revalidatePath } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
-
-type PublicDirectoryEntityType = 'block' | 'plant' | 'plantSort' | 'operation';
-type RevalidationPath = {
-    path: string;
-    type?: 'page' | 'layout';
-};
-
-const revalidationPathsByEntityType: Record<
-    PublicDirectoryEntityType,
-    RevalidationPath[]
-> = {
-    block: [{ path: '/blokovi' }, { path: '/blokovi/[alias]', type: 'page' }],
-    plant: [
-        { path: '/' },
-        { path: '/biljke' },
-        { path: '/biljke/[alias]', type: 'page' },
-        { path: '/biljke/[alias]/sorte/[sortAlias]', type: 'page' },
-        { path: '/blokovi' },
-        { path: '/blokovi/biljke' },
-        { path: '/blokovi/biljke/[alias]', type: 'page' },
-        { path: '/radnje/[alias]', type: 'page' },
-        { path: '/cjenik' },
-    ],
-    plantSort: [
-        { path: '/' },
-        { path: '/biljke/[alias]', type: 'page' },
-        { path: '/biljke/[alias]/sorte/[sortAlias]', type: 'page' },
-        { path: '/blokovi/biljke/[alias]', type: 'page' },
-    ],
-    operation: [
-        { path: '/radnje' },
-        { path: '/radnje/[alias]', type: 'page' },
-        { path: '/biljke/[alias]', type: 'page' },
-        { path: '/sjetva' },
-        { path: '/cjenik' },
-    ],
-};
+import {
+    collectRevalidationPaths,
+    type PublicDirectoryEntityType,
+} from './revalidationPaths';
 
 function publicDirectoryEntityType(
     value: unknown,
 ): PublicDirectoryEntityType | null {
     switch (value) {
+        case 'faq':
+        case 'faq-category':
         case 'block':
+        case 'brand':
+        case 'hqLocations':
         case 'plant':
+        case 'plantDisease':
+        case 'plantPest':
         case 'plantSort':
         case 'operation':
+        case 'seed':
+        case 'sunflowerPackage':
             return value;
         default:
             return null;
@@ -92,25 +67,6 @@ function revalidationSecret(request: NextRequest) {
         request.headers.get('x-revalidate-secret') ??
         request.nextUrl.searchParams.get('secret')
     );
-}
-
-function collectRevalidationPaths(entityTypes: PublicDirectoryEntityType[]) {
-    const paths: RevalidationPath[] = [];
-    const pathKeys = new Set<string>();
-
-    for (const entityType of entityTypes) {
-        for (const revalidationPath of revalidationPathsByEntityType[
-            entityType
-        ]) {
-            const key = `${revalidationPath.type ?? 'path'}:${revalidationPath.path}`;
-            if (!pathKeys.has(key)) {
-                pathKeys.add(key);
-                paths.push(revalidationPath);
-            }
-        }
-    }
-
-    return paths;
 }
 
 async function handleRevalidationRequest(request: NextRequest) {

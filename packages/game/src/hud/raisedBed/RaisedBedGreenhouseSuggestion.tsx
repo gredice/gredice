@@ -1,11 +1,11 @@
 import type { OperationData } from '@gredice/client';
-import { Modal } from '@gredice/ui/Modal';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { useOperations } from '../../hooks/useOperations';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
+import { GameModal } from '../../shared-ui/game-modal';
 import { OperationsList } from './shared/OperationsList';
 
 function greenhouseOperationsFilter(operation: OperationData) {
@@ -32,8 +32,7 @@ export function RaisedBedGreenhouseSuggestion({
     }
 
     return (
-        <Modal
-            className="border border-tertiary border-b-4"
+        <GameModal
             title="Zalijevanje"
             open={open}
             modal={false}
@@ -60,6 +59,6 @@ export function RaisedBedGreenhouseSuggestion({
                     filterFunc={greenhouseOperationsFilter}
                 />
             </Stack>
-        </Modal>
+        </GameModal>
     );
 }

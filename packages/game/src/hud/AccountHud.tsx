@@ -1,18 +1,19 @@
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
 import { DotIndicator } from '@gredice/ui/DotIndicator';
+import {
+    GameContactIcon,
+    GameGardenIcon,
+    GameGardenPlanIcon,
+    GameLogoutIcon,
+    GameProfileIcon,
+    GameSettingsIcon,
+    GameMailboxIcon as Inbox,
+    GameSeedlingIcon as Sprout,
+} from '@gredice/ui/GameIcons';
 import { useSearchParam } from '@gredice/ui/hooks';
 import { IconButton } from '@gredice/ui/IconButton';
-import {
-    Approved,
-    Comment,
-    Configuration,
-    ExternalLink,
-    Inbox,
-    LogOut,
-    Sprout,
-    User,
-} from '@gredice/ui/icons';
+import { Approved, ExternalLink, Save } from '@gredice/ui/icons';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -25,13 +26,21 @@ import { Row } from '@gredice/ui/Row';
 import { Skeleton } from '@gredice/ui/Skeleton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import { useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
+import { type GardenViewMode, getGardenViewModeHref } from '../gardenViewMode';
+import { requestTemporaryAccountUpgrade } from '../hooks/useCheckout';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useMarkAllNotificationsRead } from '../hooks/useMarkAllNotificationsRead';
 import { useNotifications } from '../hooks/useNotifications';
 import { KnownPages } from '../knownPages';
+import {
+    type NotificationsFilter,
+    notificationsFilterSearchParam,
+    notificationsViewSearchParam,
+} from '../notificationFilters';
 import { ProfileAvatar } from '../shared-ui/ProfileAvatar';
 import { ProfileInfo } from '../shared-ui/ProfileInfo';
 import { HudCard } from './components/HudCard';
@@ -39,12 +48,39 @@ import { GardenAccountMenuItems } from './GardenAccountMenuItems';
 import { GardenOperationsHud } from './GardenOperationsHud';
 import { NotificationList } from './NotificationList';
 
+function useOpenNotificationsOverview() {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
+    return useCallback(
+        (filter: NotificationsFilter = 'unread') => {
+            const next = new URLSearchParams(
+                Array.from(searchParams.entries()),
+            );
+            next.set('pregled', 'obavijesti');
+            next.set(notificationsViewSearchParam, 'notifications');
+
+            if (filter === 'all') {
+                next.set(notificationsFilterSearchParam, filter);
+            } else {
+                next.delete(notificationsFilterSearchParam);
+            }
+
+            const query = next.toString();
+            const nextUrl = `${pathname}${query ? `?${query}` : ''}`;
+            router.replace(nextUrl as Parameters<typeof router.replace>[0]);
+        },
+        [pathname, router, searchParams],
+    );
+}
+
 function NotificationsCard({
     onNotificationSelected,
 }: {
     onNotificationSelected: () => void;
 }) {
-    const [, setProfileModalOpen] = useSearchParam('pregled');
+    const openNotificationsOverview = useOpenNotificationsOverview();
     const markAllNotificationsRead = useMarkAllNotificationsRead();
     const { track } = useGameAnalytics();
     const { data: currentUser } = useCurrentUser();
@@ -98,7 +134,7 @@ function NotificationsCard({
                                 track('game_notifications_view_all_opened', {
                                     source: 'quick_panel_no_unread',
                                 });
-                                setProfileModalOpen('obavijesti');
+                                openNotificationsOverview('all');
                             }}
                         >
                             Prikaži sve pročitane
@@ -117,7 +153,7 @@ function NotificationsCard({
                         track('game_notifications_view_all_opened', {
                             source: 'quick_panel',
                         });
-                        setProfileModalOpen('obavijesti');
+                        openNotificationsOverview('all');
                     }}
                 >
                     Prikaži sve obavijesti
@@ -127,45 +163,102 @@ function NotificationsCard({
     );
 }
 
-function ProfileCard() {
+function ProfileCard({ viewMode }: { viewMode: GardenViewMode }) {
     const [, setProfileModalOpen] = useSearchParam('pregled');
+    const openNotificationsOverview = useOpenNotificationsOverview();
     const { track } = useGameAnalytics();
+    const searchParams = useSearchParams();
     const { data: currentUser } = useCurrentUser();
     const { data: notifications } = useNotifications(currentUser?.id, false);
     const hasUnreadNotifications = notifications?.some(
         (notification) => !notification.readAt,
     );
+    const nextViewMode = viewMode === '2d' ? '3d' : '2d';
+    const viewModeHref = getGardenViewModeHref(
+        viewMode,
+        searchParams.entries(),
+    );
+
+    const handleSaveTemporaryAccount = () => {
+        track('game_temporary_account_upgrade_opened', {
+            source: 'profile_menu',
+        });
+        requestTemporaryAccountUpgrade();
+    };
 
     return (
         <DropdownMenuContent className="w-80 p-4" align="end" sideOffset={12}>
             <ProfileInfo />
+            {currentUser?.isTemporary && (
+                <Stack
+                    spacing={2}
+                    className="mt-3 rounded-md bg-primary/10 p-3"
+                >
+                    <Typography level="body3" semiBold>
+                        Privremeni vrt
+                    </Typography>
+                    <Typography level="body3">
+                        Spremi račun za plaćanje i povratak kasnije.
+                    </Typography>
+                    <Button
+                        size="sm"
+                        variant="soft"
+                        fullWidth
+                        startDecorator={<Save className="size-4" />}
+                        onClick={handleSaveTemporaryAccount}
+                    >
+                        Spremi račun
+                    </Button>
+                </Stack>
+            )}
             <DropdownMenuSeparator className="my-4" />
             <GardenAccountMenuItems
                 onGardenOverviewOpen={() => setProfileModalOpen('vrt')}
             />
+            <DropdownMenuItem
+                className="gap-3"
+                href={viewModeHref}
+                onClick={() =>
+                    track('game_view_mode_changed', {
+                        from: viewMode,
+                        source: 'profile_menu',
+                        to: nextViewMode,
+                    })
+                }
+            >
+                {nextViewMode === '2d' ? (
+                    <GameGardenPlanIcon
+                        aria-hidden
+                        className="size-6 shrink-0"
+                    />
+                ) : (
+                    <GameGardenIcon aria-hidden className="size-6 shrink-0" />
+                )}
+                <span>{nextViewMode.toUpperCase()} prikaz vrta</span>
+            </DropdownMenuItem>
             <DropdownMenuSeparator className="my-4" />
             <DropdownMenuItem
                 className="gap-3"
                 onClick={() => setProfileModalOpen('generalno')}
             >
-                <User className="size-4" />
+                <GameProfileIcon aria-hidden className="size-6 shrink-0" />
                 <span>Profil</span>
             </DropdownMenuItem>
             <DropdownMenuItem
                 className="gap-3"
-                onClick={() => setProfileModalOpen('obavijesti')}
+                onClick={() => openNotificationsOverview()}
                 endDecorator={
                     hasUnreadNotifications && <DotIndicator color={'success'} />
                 }
             >
-                <Inbox className="size-4" />
+                <Inbox aria-hidden className="size-6 shrink-0" />
                 <span>Obavijesti</span>
             </DropdownMenuItem>
             <DropdownMenuItem
                 className="gap-3"
                 onClick={() => setProfileModalOpen('generalno')}
             >
-                <Configuration className="size-4" />
+                <GameSettingsIcon aria-hidden className="size-6 shrink-0" />
                 <span>Postavke</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator className="my-4" />
@@ -180,7 +273,7 @@ function ProfileCard() {
                 }
             >
                 <Row spacing={3}>
-                    <Sprout className="size-4" />
+                    <Sprout aria-hidden className="size-6 shrink-0" />
                     <span>Baza biljaka</span>
                 </Row>
                 <ExternalLink className="size-4 self-end" />
@@ -196,21 +289,21 @@ function ProfileCard() {
                 }
             >
                 <Row spacing={3}>
-                    <Comment className="size-4" />
+                    <GameContactIcon aria-hidden className="size-6 shrink-0" />
                     <span>Kontaktiraj nas</span>
                 </Row>
                 <ExternalLink className="size-4 self-end" />
             </DropdownMenuItem>
             <DropdownMenuSeparator className="my-4" />
             <DropdownMenuItem className="gap-3" href="/odjava">
-                <LogOut className="size-4" />
+                <GameLogoutIcon aria-hidden className="size-6 shrink-0" />
                 <span>Odjava</span>
             </DropdownMenuItem>
         </DropdownMenuContent>
     );
 }
 
-export function AccountHud() {
+export function AccountHud({ viewMode = '3d' }: { viewMode?: GardenViewMode }) {
     const { track } = useGameAnalytics();
     const [isNotificationsOpen, setNotificationsOpen] = useState(false);
     const { data: currentUser } = useCurrentUser();
@@ -232,18 +325,10 @@ export function AccountHud() {
                             onClick={() => track('game_profile_menu_opened')}
                         >
                             <ProfileAvatar variant="transparentOnMobile" />
-                            {hasUnreadNotifications && (
-                                <div className="md:hidden absolute right-0 -top-1">
-                                    <DotIndicator size={14} color={'success'} />
-                                </div>
-                            )}
                         </IconButton>
                     </DropdownMenuTrigger>
-                    <ProfileCard />
+                    <ProfileCard viewMode={viewMode} />
                 </DropdownMenu>
-                <div className="md:order-3">
-                    <GardenOperationsHud />
-                </div>
                 <div className="hidden md:block md:order-1">
                     {isLoading ? (
                         <Skeleton className="w-32 h-7" />
@@ -272,7 +357,7 @@ export function AccountHud() {
                         )
                     )}
                 </div>
-                <div className="md:order-2">
+                <div className="md:order-3">
                     <Popper
                         className="w-[min(24rem,calc(100vw-1rem))] overflow-hidden border-tertiary border-b-4"
                         side="bottom"
@@ -295,7 +380,7 @@ export function AccountHud() {
                                         <DotIndicator color={'success'} />
                                     </div>
                                 )}
-                                <Inbox className="size-5" />
+                                <Inbox className="size-8" />
                             </Button>
                         }
                     >
@@ -305,6 +390,9 @@ export function AccountHud() {
                             }
                         />
                     </Popper>
+                </div>
+                <div className="md:order-4">
+                    <GardenOperationsHud />
                 </div>
             </Row>
         </HudCard>

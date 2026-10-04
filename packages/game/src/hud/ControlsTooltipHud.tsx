@@ -1,18 +1,29 @@
 'use client';
 
 import { IconButton } from '@gredice/ui/IconButton';
-import { Check, Info } from '@gredice/ui/icons';
+import { Check, GamepadDirectional } from '@gredice/ui/icons';
+import { Popper } from '@gredice/ui/Popper';
 import { useEffect, useState } from 'react';
-import { useIsEditMode } from '../hooks/useIsEditMode';
+import { observeDocumentVisibility } from '../hooks/documentVisibilityObserver';
+import { VisibilityAwareInterval } from '../hooks/visibilityAwareInterval';
+import { useGameSceneRuntimeActive } from '../scene/sceneRuntimeActivity';
 import { ButtonGreen } from '../shared-ui/ButtonGreen';
 import type { DeviceType } from './controls-tooltip';
 import { ControlsVisualization } from './controls-tooltip';
 
 const STORAGE_KEY = 'game-controls-tooltip-v1';
-const TOOLTIP_VERSION = 2;
+const TOOLTIP_VERSION = 3;
 const REMINDER_AFTER_MS = 1000 * 60 * 60 * 24 * 30;
 
 type TooltipState = { dismissedAt: number; seenVersion: number };
+type TooltipStorageKey = DeviceType | `view:${DeviceType}`;
+
+function tooltipStorageKey(
+    mode: 'edit' | 'view',
+    deviceType: DeviceType,
+): TooltipStorageKey {
+    return mode === 'edit' ? deviceType : `view:${deviceType}`;
+}
 
 function getDeviceType(): DeviceType {
     if (typeof window === 'undefined') return 'desktop';
@@ -22,20 +33,20 @@ function getDeviceType(): DeviceType {
     return 'desktop';
 }
 
-function readStorage(): Partial<Record<DeviceType, TooltipState>> {
+function readStorage(): Partial<Record<TooltipStorageKey, TooltipState>> {
     try {
         const raw = window.localStorage.getItem(STORAGE_KEY);
         if (!raw) return {};
         const parsed = JSON.parse(raw) as unknown;
         return typeof parsed === 'object' && parsed
-            ? (parsed as Partial<Record<DeviceType, TooltipState>>)
+            ? (parsed as Partial<Record<TooltipStorageKey, TooltipState>>)
             : {};
     } catch {
         return {};
     }
 }
 
-function writeStorage(next: Partial<Record<DeviceType, TooltipState>>) {
+function writeStorage(next: Partial<Record<TooltipStorageKey, TooltipState>>) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
 }
 
@@ -54,17 +65,29 @@ function prefersReducedMotion() {
     );
 }
 
-export function ControlsTooltipHud() {
-    const isEditMode = useIsEditMode();
+export function ControlsTooltipHud({
+    isCloseup = false,
+    mode = 'edit',
+    offsetForItemsHud = true,
+}: {
+    isCloseup?: boolean;
+    mode?: 'edit' | 'view';
+    offsetForItemsHud?: boolean;
+} = {}) {
     const [deviceType, setDeviceType] = useState<DeviceType>('desktop');
     const [open, setOpen] = useState(false);
     const [phase, setPhase] = useState(0.75);
+    const runtimeActive = useGameSceneRuntimeActive();
 
     useEffect(() => {
         const syncDeviceType = () => {
             const nextType = getDeviceType();
             setDeviceType(nextType);
-            const record = readStorage()[nextType];
+            if (isCloseup) {
+                setOpen(false);
+                return;
+            }
+            const record = readStorage()[tooltipStorageKey(mode, nextType)];
             if (shouldShowTooltip(record)) {
                 setOpen(true);
             }
@@ -73,49 +96,79 @@ export function ControlsTooltipHud() {
         syncDeviceType();
         window.addEventListener('resize', syncDeviceType);
         return () => window.removeEventListener('resize', syncDeviceType);
-    }, []);
+    }, [isCloseup, mode]);
 
     useEffect(() => {
         if (!open || prefersReducedMotion()) return;
 
-        const interval = window.setInterval(() => {
-            setPhase((current) => current + 0.12);
-        }, 50);
+        const interval = new VisibilityAwareInterval({
+            clearInterval: (handle) => window.clearInterval(Number(handle)),
+            documentVisible: !document.hidden,
+            intervalMs: 50,
+            runtimeActive,
+            setInterval: (callback, intervalMs) =>
+                window.setInterval(callback, intervalMs),
+            tick: () => setPhase((current) => current + 0.12),
+        });
+        const stopVisibilityTracking = observeDocumentVisibility({
+            documentTarget: document,
+            onVisibilityChange: (visible) =>
+                interval.setDocumentVisible(visible),
+            windowTarget: window,
+        });
 
-        return () => window.clearInterval(interval);
-    }, [open]);
+        return () => {
+            stopVisibilityTracking();
+            interval.dispose();
+        };
+    }, [open, runtimeActive]);
 
     const dismiss = () => {
         setOpen(false);
         const map = readStorage();
-        map[deviceType] = {
+        map[tooltipStorageKey(mode, deviceType)] = {
             dismissedAt: Date.now(),
             seenVersion: TOOLTIP_VERSION,
         };
         writeStorage(map);
     };
 
-    if (!open) {
-        return (
-            <div className="pointer-events-auto">
-                <IconButton
-                    title="Prikaži kontrole"
-                    variant="plain"
-                    onClick={() => setOpen(true)}
-                    className="hover:bg-muted"
-                >
-                    <Info className="size-5" />
-                </IconButton>
-            </div>
-        );
-    }
+    const handleOpenChange = (nextOpen: boolean) => {
+        if (nextOpen) {
+            setOpen(true);
+            return;
+        }
+
+        dismiss();
+    };
 
     return (
-        <div className="pointer-events-auto relative p-2 sm:p-3">
+        <Popper
+            align="start"
+            className="relative w-auto border-0 bg-transparent p-2 shadow-none sm:p-3"
+            data-controls-tooltip-hud="open"
+            id="game-controls-tooltip"
+            onOpenAutoFocus={(event) => event.preventDefault()}
+            onOpenChange={handleOpenChange}
+            open={open}
+            side="top"
+            sideOffset={offsetForItemsHud && deviceType !== 'mobile' ? 104 : 8}
+            trigger={
+                <IconButton
+                    title={open ? 'Sakrij kontrole' : 'Prikaži kontrole'}
+                    aria-controls="game-controls-tooltip"
+                    aria-expanded={open}
+                    variant="plain"
+                    className="pointer-events-auto hover:bg-muted"
+                >
+                    <GamepadDirectional className="size-5" />
+                </IconButton>
+            }
+        >
             <ControlsVisualization
                 deviceType={deviceType}
+                mode={mode}
                 phase={phase}
-                isEditMode={isEditMode}
             />
             <ButtonGreen
                 title="Zatvori"
@@ -126,6 +179,6 @@ export function ControlsTooltipHud() {
             >
                 <Check className="size-4 shrink-0" />
             </ButtonGreen>
-        </div>
+        </Popper>
     );
 }

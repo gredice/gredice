@@ -1,7 +1,9 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
+import { persistLocalSandboxGarden } from '../localSandboxGarden';
 import { useGameState } from '../useGameState';
+import { rotateBlocksInStacks } from './optimisticStackUpdates';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
 const mutationKey = ['gardens', 'current', 'blockRotate'];
@@ -9,8 +11,16 @@ const mutationKey = ['gardens', 'current', 'blockRotate'];
 export function useBlockRotate() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
+    const localSandboxStorageKey = useGameState(
+        (state) => state.localSandboxStorageKey,
+    );
     const winterMode = useGameState((state) => state.winterMode);
-    const gardenQueryKey = currentGardenKeys(winterMode, garden?.id);
+    const gardenQueryKey = currentGardenKeys(
+        winterMode,
+        garden?.id,
+        undefined,
+        localSandboxStorageKey,
+    );
 
     return useMutation({
         mutationFn: async ({
@@ -24,6 +34,9 @@ export function useBlockRotate() {
         }) => {
             if (!garden) {
                 throw new Error('No garden selected');
+            }
+            if (localSandboxStorageKey) {
+                return;
             }
             const gardenId = garden.id;
             const targetBlockIds = Array.from(
@@ -55,20 +68,10 @@ export function useBlockRotate() {
             const targetBlockIds = new Set(
                 blockIds?.length ? blockIds : [blockId],
             );
-            const updatedStacks = currentGarden.stacks.map((stack) => {
-                const updatedBlocks = stack.blocks.map((candidate) => {
-                    if (targetBlockIds.has(candidate.id)) {
-                        return {
-                            ...candidate,
-                            rotation: rotation,
-                        };
-                    }
-                    return candidate;
-                });
-                return {
-                    ...stack,
-                    blocks: updatedBlocks,
-                };
+            const updatedStacks = rotateBlocksInStacks({
+                blockIds: targetBlockIds,
+                rotation,
+                stacks: currentGarden.stacks,
             });
 
             const previousItem = await handleOptimisticUpdate(
@@ -78,6 +81,12 @@ export function useBlockRotate() {
                     stacks: [...updatedStacks],
                 },
             );
+            if (localSandboxStorageKey) {
+                persistLocalSandboxGarden(localSandboxStorageKey, {
+                    ...currentGarden,
+                    stacks: updatedStacks,
+                });
+            }
 
             return {
                 previousItem,
@@ -90,6 +99,10 @@ export function useBlockRotate() {
             }
         },
         onSettled: async () => {
+            if (localSandboxStorageKey) {
+                return;
+            }
+
             if (queryClient.isMutating({ mutationKey }) === 1) {
                 await queryClient.invalidateQueries({
                     queryKey: gardenQueryKey,

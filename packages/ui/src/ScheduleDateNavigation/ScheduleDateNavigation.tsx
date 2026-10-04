@@ -2,6 +2,7 @@ import { Left, Navigate } from '../icons';
 import { Link } from '../Link';
 import { Row } from '../Row';
 import { Typography } from '../Typography';
+import { cx } from '../utils';
 
 function formatDateParam(date: Date) {
     const year = date.getFullYear();
@@ -28,6 +29,8 @@ export interface ScheduleDateNavigationProps {
     basePath: string;
     /** Name of the query parameter used to carry the selected date. */
     paramName?: string;
+    /** Reduces spacing and text size on narrow schedule headers. */
+    compact?: boolean;
 }
 
 /**
@@ -37,6 +40,7 @@ export interface ScheduleDateNavigationProps {
 export function ScheduleDateNavigation({
     date,
     basePath,
+    compact = false,
     paramName = 'date',
 }: ScheduleDateNavigationProps) {
     const dayOfWeek = new Intl.DateTimeFormat('hr-HR', {
@@ -55,26 +59,53 @@ export function ScheduleDateNavigation({
     const nextHref = buildHref(basePath, paramName, getOffsetDate(date, 1));
 
     return (
-        <Row spacing={2} className="shrink-0">
+        <Row
+            spacing={compact ? undefined : 2}
+            className={cx('shrink-0', compact && 'gap-1 sm:gap-2')}
+        >
             <Link
                 href={prevHref}
                 title="Prethodni dan"
-                className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                className={cx(
+                    'inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                    compact ? 'p-1 sm:p-2' : 'p-2',
+                )}
             >
                 <Left className="size-4 shrink-0" />
             </Link>
-            <div className="text-center min-w-20">
-                <Typography level="body2" semiBold className="capitalize">
+            <div
+                className={cx(
+                    'text-center',
+                    compact ? 'min-w-16 sm:min-w-20' : 'min-w-20',
+                )}
+            >
+                <Typography
+                    level="body2"
+                    semiBold
+                    className={cx(
+                        'capitalize',
+                        compact && 'text-xs leading-tight sm:text-sm',
+                    )}
+                >
                     {isToday ? 'Danas' : dayOfWeek}
                 </Typography>
-                <Typography level="body2" className="text-muted-foreground">
+                <Typography
+                    level="body2"
+                    className={cx(
+                        'text-muted-foreground',
+                        compact && 'text-xs leading-tight sm:text-sm',
+                    )}
+                >
                     {dateFormatted}
                 </Typography>
             </div>
             <Link
                 href={nextHref}
                 title="Sljedeći dan"
-                className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                className={cx(
+                    'inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                    compact ? 'p-1 sm:p-2' : 'p-2',
+                )}
             >
                 <Navigate className="size-4 shrink-0" />
             </Link>

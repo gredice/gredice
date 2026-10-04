@@ -1,0 +1,13 @@
+interface:
+  display_name: "Explore Gredice plants"
+  short_description: "Find Croatian plant and growing knowledge"
+  default_prompt: "Use $explore-plants to help me choose plants for my garden."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "gredice"
+      description: "Gredice plant directory tools"
+      transport: "streamable_http"
+      url: "https://api.gredice.com/api/mcp"
+policy:
+  allow_implicit_invocation: true

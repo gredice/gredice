@@ -1,6 +1,20 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { deliveryAddressesQueryKey } from './useDeliveryAddresses';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
+
+async function deliveryAddressMutationError(
+    response: Response,
+    fallback: string,
+) {
+    const body: unknown = await response.json().catch(() => null);
+    return typeof body === 'object' &&
+        body !== null &&
+        'error' in body &&
+        typeof body.error === 'string'
+        ? body.error
+        : fallback;
+}
 
 export function useCreateDeliveryAddress() {
     const queryClient = useQueryClient();
@@ -22,7 +36,12 @@ export function useCreateDeliveryAddress() {
                     json: data,
                 });
             if (!response.ok) {
-                throw new Error('Failed to create delivery address');
+                throw new Error(
+                    await deliveryAddressMutationError(
+                        response,
+                        'Adresu nije moguće dodati.',
+                    ),
+                );
             }
             return await response.json();
         },
@@ -30,6 +49,7 @@ export function useCreateDeliveryAddress() {
             queryClient.invalidateQueries({
                 queryKey: deliveryAddressesQueryKey,
             });
+            queryClient.invalidateQueries({ queryKey: tutorialChecklistKeys });
         },
     });
 }
@@ -58,7 +78,12 @@ export function useUpdateDeliveryAddress() {
                 json: updateData,
             });
             if (!response.ok) {
-                throw new Error('Failed to update delivery address');
+                throw new Error(
+                    await deliveryAddressMutationError(
+                        response,
+                        'Adresu nije moguće ažurirati.',
+                    ),
+                );
             }
             return await response.json();
         },
@@ -66,6 +91,7 @@ export function useUpdateDeliveryAddress() {
             queryClient.invalidateQueries({
                 queryKey: deliveryAddressesQueryKey,
             });
+            queryClient.invalidateQueries({ queryKey: tutorialChecklistKeys });
         },
     });
 }
@@ -81,7 +107,12 @@ export function useDeleteDeliveryAddress() {
                 param: { id: id.toString() },
             });
             if (!response.ok) {
-                throw new Error('Failed to delete delivery address');
+                throw new Error(
+                    await deliveryAddressMutationError(
+                        response,
+                        'Adresu nije moguće obrisati.',
+                    ),
+                );
             }
             return await response.json();
         },
@@ -89,6 +120,7 @@ export function useDeleteDeliveryAddress() {
             queryClient.invalidateQueries({
                 queryKey: deliveryAddressesQueryKey,
             });
+            queryClient.invalidateQueries({ queryKey: tutorialChecklistKeys });
         },
     });
 }

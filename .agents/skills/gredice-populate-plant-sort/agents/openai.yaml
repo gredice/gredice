@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gredice Plant Sort Population"
+  short_description: "Create complete draft cultivar records"
+  default_prompt: "Use $gredice-populate-plant-sort to create and fully populate a new unpublished Gredice plant-sort record."

@@ -40,16 +40,26 @@ SEO usually does not apply to authenticated `garden`, `farm`, `app`, or API rout
 - Existing product, operation, plant, sort, merchant return policy, and list pages should keep their schema.org data accurate.
 - Inject JSON-LD through the existing structured data component pattern.
 - Do not invent price, availability, review, or legal data for schema.
+- Every `Product` must have a non-empty name and at least one valid `offers`, `review`, or `aggregateRating` property. Use `WebPage`/`Thing` for informational entities and `Service` for garden operations instead of creating incomplete Products.
+- Keep unrelated catalogue entries as generic `ItemList` items. Google Product rich results are intended for pages focused on one product or its variants.
+- Render public breadcrumb navigation with `PublicBreadcrumbs` so the visible trail and its Google `BreadcrumbList` JSON-LD always share the same labels and links. Breadcrumb trails must contain at least two items, use sequential positions, and give every non-final item an absolute canonical URL.
+- `StructuredDataScript` validates every JSON-LD payload before rendering. Invalid payloads fail in development and CI; production omits and logs the invalid script instead of publishing it.
+- Run `pnpm --filter www test:seo` for the fast structured-data contract tests. The sitemap-driven public metadata suite parses rendered JSON-LD on every generated public route.
 
 ## Sitemaps and tests
 
-- `apps/www` runs `next-sitemap` in `postbuild`.
+- `apps/www` serves the sitemap from `app/sitemap.ts` and robots rules from `app/robots.ts`. There is no generator and no file in `public/`.
+- Nothing discovers routes automatically: a new public page must be added to the sitemap source model, or excluded by policy, or `pnpm --filter www test:sitemap` fails.
+- Sitemap inclusion, exclusion and `lastmod` rules live in `apps/www/lib/sitemap/`; see `docs/sitemap-policy.md` for the policy and the page-level reasons (GRE-930).
+- `lastModified` must come from content timestamps. Omit it when no reliable timestamp exists; never report build time.
+- Removing a URL from the sitemap does not deindex it. Keep the page crawlable and declare `robots: { index: false, follow: true }` in its metadata instead.
+- Run `pnpm --filter www test:sitemap` for the sitemap source and policy tests, and `pnpm --filter www sitemap:inventory` for the route-family inventory.
 - Sitemap-driven test cases are populated by `apps/www/tests/populate-test-cases.ts`.
 - Public route changes may require checking:
 
 ```bash
 pnpm build --filter www
-pnpm test --filter www
+pnpm run test --filter www
 ```
 
 - If a page should not be indexed, make that explicit through the app's metadata or sitemap config.

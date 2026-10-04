@@ -6,55 +6,39 @@ import {
 } from './raisedBedsService';
 
 describe('calculateRaisedBedsValidity', () => {
-    it('ignores adjacent non-raised-bed blocks when validating a merged bed', () => {
-        const blockNameById = new Map([
-            ['grass-a', 'Block_Grass'],
-            ['grass-b', 'Block_Grass'],
-            ['grass-c', 'Block_Grass'],
-            ['bed-a', 'Raised_Bed'],
-            ['bed-b', 'Raised_Bed'],
-            ['shade-a', 'Shade'],
-        ]);
-        const raisedBeds = [{ id: 1, blockId: 'bed-a' }];
-        const stacks = [
-            { positionX: 0, positionY: 0, blocks: ['grass-a', 'bed-a'] },
-            { positionX: 0, positionY: 1, blocks: ['grass-b', 'bed-b'] },
-            { positionX: 1, positionY: 0, blocks: ['grass-c', 'shade-a'] },
-        ];
-
+    it('requires one referenced raised-bed block to be placed', () => {
         const validity = calculateRaisedBedsValidity(
-            raisedBeds,
-            stacks,
-            blockNameById,
+            [
+                { id: 1, blockId: 'bed-a' },
+                { id: 2, blockId: 'missing' },
+            ],
+            [{ positionX: 0, positionY: 0, blocks: ['grass-a', 'bed-a'] }],
+            new Map([
+                ['grass-a', 'Block_Grass'],
+                ['bed-a', 'Raised_Bed'],
+                ['missing', 'Raised_Bed'],
+            ]),
         );
 
-        assert.strictEqual(validity.get(1), true);
+        assert.equal(validity.get(1), true);
+        assert.equal(validity.get(2), false);
     });
 });
 
 describe('calculateRaisedBedsOrientation', () => {
-    it('derives orientation only from adjacent raised-bed blocks', () => {
-        const blockNameById = new Map([
-            ['grass-a', 'Block_Grass'],
-            ['grass-b', 'Block_Grass'],
-            ['grass-c', 'Block_Grass'],
-            ['bed-a', 'Raised_Bed'],
-            ['bed-b', 'Raised_Bed'],
-            ['shade-a', 'Shade'],
-        ]);
-        const raisedBeds = [{ id: 1, blockId: 'bed-a' }];
-        const stacks = [
-            { positionX: 0, positionY: 0, blocks: ['grass-a', 'bed-a'] },
-            { positionX: 0, positionY: 1, blocks: ['grass-b', 'bed-b'] },
-            { positionX: 1, positionY: 0, blocks: ['grass-c', 'shade-a'] },
-        ];
-
+    it('derives the field orientation from the single block rotation', () => {
         const orientations = calculateRaisedBedsOrientation(
-            raisedBeds,
-            stacks,
-            blockNameById,
+            [
+                { id: 1, blockId: 'horizontal' },
+                { id: 2, blockId: 'vertical' },
+            ],
+            new Map([
+                ['horizontal', 0],
+                ['vertical', 1],
+            ]),
         );
 
-        assert.strictEqual(orientations.get(1), 'horizontal');
+        assert.equal(orientations.get(1), 'horizontal');
+        assert.equal(orientations.get(2), 'vertical');
     });
 });

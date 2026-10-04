@@ -16,6 +16,7 @@ export function ProfileAvatar({
     return (
         <UserAvatar
             avatarUrl={currentUser.data?.avatarUrl}
+            achievementCount={currentUser.data?.achievementCount}
             displayName={currentUser.data?.displayName ?? ''}
             className={cx(
                 variant === 'transparentOnMobile' &&

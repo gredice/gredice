@@ -13,6 +13,7 @@ export interface WeatherHistoryPoint {
     temperature?: number | null;
     rain?: number | null;
     windDirection?: string | null;
+    /** DHMZ wind category (0–4), stored under the legacy windSpeed name. */
     windSpeed?: number | null;
     rainy?: number | null;
     snowy?: number | null;
@@ -27,6 +28,7 @@ export interface WeatherForecastEntry {
     temperature?: number | null;
     symbol?: number | null;
     windDirection?: string | null;
+    /** DHMZ wind category (0–4), not a speed in m/s. */
     windStrength?: number | null;
     rain?: number | null;
 }
@@ -49,6 +51,7 @@ export interface WeatherSeriesPoint {
     timestamp: number;
     temperature: number | null;
     rain: number;
+    /** DHMZ wind category (0–4), not a speed in m/s. */
     windSpeed: number;
     windDirection: string | null;
     symbol: number | null;
@@ -85,11 +88,24 @@ export const weatherMetrics: WeatherMetricDefinition[] = [
     {
         key: 'wind',
         label: 'Vjetar',
-        unit: 'm/s',
+        unit: '',
         dataKey: 'windSpeed',
         color: '#10b981',
     },
 ];
+
+/** https://meteo.hr/prognoze.php?section=prognoze_metp&param=meteoroloski_simboli */
+export const windStrengthLabels = [
+    'Tišina',
+    'Slab',
+    'Umjeren',
+    'Jak',
+    'Olujan',
+];
+
+export function formatWindStrength(value: number): string {
+    return windStrengthLabels[value] ?? '—';
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

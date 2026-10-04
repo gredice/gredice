@@ -1,5 +1,13 @@
 import Link from 'next/link';
+import {
+    resolveGameProfileDate,
+    serializeGameProfileDate,
+} from '../../profile/game/profileDate';
+import { SandboxDebugActions } from '../../sandbox/SandboxDebugActions';
+import { getEntitySandboxStorageKey } from '../entitySandboxStorage';
 import { EntityViewerDynamic } from './EntityViewerDynamic';
+
+export const instant = false;
 
 type EntityDebugParams = Promise<{ entityName: string }>;
 type EntityDebugSearchParams = Promise<
@@ -25,10 +33,9 @@ export default async function DebugEntityPage({
     searchParams: EntityDebugSearchParams;
 }) {
     const [{ entityName }, query] = await Promise.all([params, searchParams]);
-    const zoom = resolveNumber(firstValue(query.zoom));
     const rotation = resolveNumber(firstValue(query.rotation));
-    const staticEnvironment = firstValue(query.static) === '1';
-    const noControl = firstValue(query.controls) === '0';
+    const variant = resolveNumber(firstValue(query.variant));
+    const storageKey = getEntitySandboxStorageKey(entityName);
 
     return (
         <main className="flex h-screen w-screen flex-col bg-[#e7e2cc]">
@@ -38,7 +45,7 @@ export default async function DebugEntityPage({
                         {entityName}
                     </h1>
                     <p className="text-sm text-neutral-400">
-                        Single entity debug view
+                        Single block sandbox scene
                     </p>
                 </div>
                 <nav className="flex items-center gap-3 text-sm">
@@ -56,14 +63,17 @@ export default async function DebugEntityPage({
                     </Link>
                 </nav>
             </header>
-            <div className="min-h-0 flex-1">
+            <div className="relative min-h-0 flex-1">
                 <EntityViewerDynamic
                     entityName={entityName}
-                    noControl={noControl}
+                    freezeTime={serializeGameProfileDate(
+                        resolveGameProfileDate(firstValue(query.date)),
+                    )}
                     rotation={rotation}
-                    staticEnvironment={staticEnvironment}
-                    zoom={zoom}
+                    storageKey={storageKey}
+                    variant={variant}
                 />
+                <SandboxDebugActions storageKey={storageKey} />
             </div>
         </main>
     );

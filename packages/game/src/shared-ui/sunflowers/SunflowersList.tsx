@@ -1,10 +1,23 @@
 import { getAchievementDefinition } from '@gredice/js/achievements';
+import { AchievementAward } from '@gredice/ui/AchievementAwards';
 import { BlockImage } from '@gredice/ui/BlockImage';
-import { Empty, ShoppingCart as ShoppingCartIcon } from '@gredice/ui/icons';
+import {
+    GameBasketIcon,
+    GameBirthdayIcon,
+    GameCalendarIcon,
+    GameCommunityIcon,
+    GameGiftIcon,
+    GameHistoryIcon,
+    GameReceiptIcon,
+    GameRefundIcon,
+    GameSunflowerIcon,
+    GameTasksIcon,
+} from '@gredice/ui/GameIcons';
 import { List } from '@gredice/ui/List';
 import { ListItem } from '@gredice/ui/ListItem';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
+import { SunflowerPackageVisual } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useCurrentAccount } from '../../hooks/useCurrentAccount';
@@ -14,7 +27,13 @@ import { NoSunflowersPlaceholder } from './NoSunflowersPlaceholder';
 function sunflowerReasonToDescription(reason: string) {
     if (reason === 'registration') {
         return {
-            icon: <span className="text-4xl text-center size-10">🎉</span>,
+            icon: (
+                <AchievementAward
+                    achievementKey="registration"
+                    className="size-10"
+                    aria-hidden
+                />
+            ),
             label: 'Nagrada za registraciju',
         };
     }
@@ -23,7 +42,13 @@ function sunflowerReasonToDescription(reason: string) {
         const key = reason.split(':')[1];
         const definition = key ? getAchievementDefinition(key) : undefined;
         return {
-            icon: <span className="text-4xl text-center size-10">🏆</span>,
+            icon: (
+                <AchievementAward
+                    achievementKey={key ?? 'unknown'}
+                    className="size-10"
+                    aria-hidden
+                />
+            ),
             label: definition
                 ? `Postignuće: ${definition.title}`
                 : 'Nagrada za postignuće',
@@ -69,20 +94,46 @@ function sunflowerReasonToDescription(reason: string) {
     }
     if (reason === 'gift') {
         return {
-            icon: <span className="text-4xl text-center size-10">🎁</span>,
+            icon: <GameGiftIcon className="size-10 shrink-0" aria-hidden />,
             label: 'Poklon',
         };
     }
     if (reason.startsWith('daily')) {
         return {
-            icon: <span className="text-4xl text-center size-10">📅</span>,
+            icon: <GameCalendarIcon className="size-10 shrink-0" aria-hidden />,
             label: 'Dnevna aktivnost',
+        };
+    }
+    if (reason.startsWith('tutorial')) {
+        return {
+            icon: <GameTasksIcon className="size-10 shrink-0" aria-hidden />,
+            label: 'Zadaci za novi vrt',
+        };
+    }
+    if (reason === 'sunflowerDrop') {
+        return {
+            icon: (
+                <GameSunflowerIcon className="size-10 shrink-0" aria-hidden />
+            ),
+            label: 'Suncokret iz vrta',
         };
     }
     if (reason === 'payment') {
         return {
-            icon: <span className="text-4xl text-center size-10">💰</span>,
+            icon: <GameReceiptIcon className="size-10 shrink-0" aria-hidden />,
             label: 'Plaćanje',
+        };
+    }
+    if (reason.startsWith('sunflowerPackage:')) {
+        return {
+            icon: (
+                <SunflowerPackageVisual
+                    packageCode={reason.split(':')[1]}
+                    className="size-10 shrink-0"
+                    aria-hidden
+                />
+            ),
+            label: 'Kupnja paketa suncokreta',
         };
     }
     if (
@@ -90,33 +141,38 @@ function sunflowerReasonToDescription(reason: string) {
         reason.startsWith('shoppingCartItem:')
     ) {
         return {
-            icon: <span className="text-4xl text-center size-10">🛒</span>,
+            icon: <GameBasketIcon className="size-10 shrink-0" aria-hidden />,
             label: 'Kupnja',
         };
     }
     if (reason.startsWith('refund:operation')) {
         return {
-            icon: <span className="text-4xl text-center size-10">↩️</span>,
+            icon: <GameRefundIcon className="size-10 shrink-0" aria-hidden />,
             label: 'Povrat sredstava za radnju',
         };
     }
 
     if (reason.startsWith('referral')) {
         return {
-            icon: <span className="text-4xl text-center size-10">💮</span>,
+            icon: (
+                <GameCommunityIcon className="size-10 shrink-0" aria-hidden />
+            ),
             label: 'Referral nagrada',
         };
     }
 
     if (reason.startsWith('birthday')) {
         return {
-            icon: <span className="text-4xl text-center size-10">🎂</span>,
+            icon: <GameBirthdayIcon className="size-10 shrink-0" aria-hidden />,
             label: 'Rođendanski poklon',
         };
     }
 
     console.warn('Unknown sunflower reason:', reason);
-    return { icon: <Empty className="size-10" />, label: 'Nepoznato' };
+    return {
+        icon: <GameHistoryIcon className="size-10 shrink-0" aria-hidden />,
+        label: 'Nepoznato',
+    };
 }
 
 export function SunflowersList({
@@ -180,9 +236,10 @@ export function SunflowersList({
                     label={
                         <Row spacing={2} justifyContent="space-between">
                             <Row spacing={4}>
-                                <div className="size-10 flex items-center justify-center rounded-full bg-yellow-100 text-yellow-800">
-                                    <ShoppingCartIcon className="size-5 shrink-0" />
-                                </div>
+                                <GameBasketIcon
+                                    className="size-10 shrink-0"
+                                    aria-hidden
+                                />
                                 <Stack>
                                     <Typography level="body2">
                                         U košari
@@ -192,7 +249,7 @@ export function SunflowersList({
                                     </Typography>
                                 </Stack>
                             </Row>
-                            <Typography color="danger">
+                            <Typography className="shrink-0 whitespace-nowrap text-red-700 tabular-nums dark:text-red-400">
                                 {formatSunflowers(-pendingSunflowers)}
                             </Typography>
                         </Row>
@@ -233,10 +290,10 @@ export function SunflowersList({
                                     </Stack>
                                 </Row>
                                 <Typography
-                                    color={
+                                    className={
                                         event.totalAmount > 0
-                                            ? 'success'
-                                            : 'danger'
+                                            ? 'shrink-0 whitespace-nowrap text-green-700 tabular-nums dark:text-green-400'
+                                            : 'shrink-0 whitespace-nowrap text-red-700 tabular-nums dark:text-red-400'
                                     }
                                 >
                                     {event.totalAmount > 0

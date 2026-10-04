@@ -1,6 +1,9 @@
 import 'server-only';
 
-import { and, asc, desc, eq, gt, inArray, lte, sql } from 'drizzle-orm';
+import { createHash } from 'node:crypto';
+import { and, asc, desc, eq, gt, inArray, lte, or, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { signalDueWork } from '../dueWork';
 import {
     type AutomationDefinitionStatus,
     type AutomationGraph,
@@ -28,20 +31,29 @@ type DomainEventRow = typeof events.$inferSelect;
 const defaultCursorKey = 'domain-events';
 const defaultRunLimit = 50;
 const defaultRunMaxAttempts = 3;
+const automationDefinitionAdvisoryLockNamespace = 707_001;
+
+export const defaultAutomationMaxConcurrentRuns = 1;
+export const maxAutomationMaxConcurrentRuns = 25;
 
 export type AutomationDefinitionInput = {
     key: string;
     name: string;
     description?: string | null;
     status?: AutomationDefinitionStatus;
+    maxConcurrentRuns?: number;
     graph?: AutomationGraph;
     metadata?: AutomationJsonObject;
     createdByUserId?: string | null;
     updatedByUserId?: string | null;
+    preserveExistingStatus?: boolean;
 };
 
 export type AutomationDefinitionUpdate = Partial<
-    Omit<AutomationDefinitionInput, 'key' | 'createdByUserId'>
+    Omit<
+        AutomationDefinitionInput,
+        'key' | 'createdByUserId' | 'preserveExistingStatus'
+    >
 > & {
     key?: string;
 };
@@ -50,6 +62,8 @@ export type CreateAutomationRunInput = {
     automationDefinition: SelectAutomationDefinition;
     source: AutomationRunSource;
     sourceEvent?: DomainEventRow | null;
+    sourceEventType?: string | null;
+    sourceAggregateId?: string | null;
     parentRunId?: number | null;
     dryRun?: boolean;
     input?: AutomationJsonObject;
@@ -65,6 +79,12 @@ export type CompleteAutomationRunInput = {
     errorCode?: string | null;
     errorMessage?: string | null;
     retryAt?: Date | null;
+};
+
+export type RetryFailedAutomationRunInput = {
+    id: number;
+    manualRequestedByUserId?: string | null;
+    retryAt?: Date;
 };
 
 export type RecordAutomationRunStepInput = {
@@ -127,6 +147,8 @@ function automationDefinitionValues(input: AutomationDefinitionInput) {
         name: input.name,
         description: input.description ?? null,
         status: input.status ?? 'draft',
+        maxConcurrentRuns:
+            input.maxConcurrentRuns ?? defaultAutomationMaxConcurrentRuns,
         triggerModuleKey: trigger?.moduleKey ?? null,
         triggerEventType: getTriggerEventTypeFromNode(trigger),
         graph,
@@ -147,6 +169,9 @@ function automationDefinitionUpdateValues(input: AutomationDefinitionUpdate) {
             ? { description: input.description }
             : {}),
         ...(input.status !== undefined ? { status: input.status } : {}),
+        ...(input.maxConcurrentRuns !== undefined
+            ? { maxConcurrentRuns: input.maxConcurrentRuns }
+            : {}),
         ...(graph
             ? {
                   graph,
@@ -174,6 +199,7 @@ export async function createAutomationDefinition(
         throw new Error('Failed to create automation definition.');
     }
 
+    await signalDueWork('automations');
     return created;
 }
 
@@ -189,7 +215,12 @@ export async function upsertAutomationDefinitionByKey(
             set: {
                 name: values.name,
                 description: values.description,
-                status: values.status,
+                ...(input.preserveExistingStatus
+                    ? {}
+                    : { status: values.status }),
+                ...(input.maxConcurrentRuns !== undefined
+                    ? { maxConcurrentRuns: values.maxConcurrentRuns }
+                    : {}),
                 triggerModuleKey: values.triggerModuleKey,
                 triggerEventType: values.triggerEventType,
                 graph: values.graph,
@@ -197,14 +228,155 @@ export async function upsertAutomationDefinitionByKey(
                 updatedByUserId: values.updatedByUserId,
                 updatedAt: new Date(),
             },
+            setWhere: or(
+                sql`${automationDefinitions.name} is distinct from ${values.name}`,
+                sql`${automationDefinitions.description} is distinct from ${values.description}`,
+                input.preserveExistingStatus
+                    ? undefined
+                    : sql`${automationDefinitions.status} is distinct from ${values.status}`,
+                input.maxConcurrentRuns === undefined
+                    ? undefined
+                    : sql`${automationDefinitions.maxConcurrentRuns} is distinct from ${values.maxConcurrentRuns}`,
+                sql`${automationDefinitions.triggerModuleKey} is distinct from ${values.triggerModuleKey}`,
+                sql`${automationDefinitions.triggerEventType} is distinct from ${values.triggerEventType}`,
+                sql`${automationDefinitions.graph} is distinct from ${JSON.stringify(values.graph)}::jsonb`,
+                sql`${automationDefinitions.metadata} is distinct from ${JSON.stringify(values.metadata)}::jsonb`,
+                sql`${automationDefinitions.updatedByUserId} is distinct from ${values.updatedByUserId}`,
+            ),
         })
         .returning();
 
     if (!definition) {
-        throw new Error('Failed to upsert automation definition.');
+        const existing = await getAutomationDefinitionByKey(input.key);
+        if (!existing) {
+            throw new Error('Failed to upsert automation definition.');
+        }
+        return existing;
     }
 
+    await signalDueWork('automations');
     return definition;
+}
+
+// The revision describes source-managed content, not the current admin edits.
+// Keeping it in metadata lets existing databases adopt synchronization without
+// a migration and lets every worker check durable state instead of a local cache.
+export async function syncManagedAutomationDefinitions(
+    inputs: AutomationDefinitionInput[],
+) {
+    if (inputs.length === 0) {
+        return { definitions: [], changedDefinitions: 0 };
+    }
+
+    const managed = inputs.map((input) => {
+        const values = automationDefinitionValues(input);
+        const managedRevision = createHash('sha256')
+            .update(
+                JSON.stringify({
+                    values,
+                    preserveExistingStatus:
+                        input.preserveExistingStatus ?? false,
+                }),
+            )
+            .digest('hex');
+        return {
+            input,
+            values: {
+                ...values,
+                metadata: { ...values.metadata, managedRevision },
+            },
+            managedRevision,
+        };
+    });
+    const keys = managed.map(({ values }) => values.key);
+    const readReferences = () =>
+        storage()
+            .select({
+                id: automationDefinitions.id,
+                key: automationDefinitions.key,
+                managedRevision: sql<
+                    string | null
+                >`${automationDefinitions.metadata}->>'managedRevision'`,
+            })
+            .from(automationDefinitions)
+            .where(inArray(automationDefinitions.key, keys));
+    const existing = await readReferences();
+    const references = new Map(
+        existing.map((definition) => [definition.key, definition]),
+    );
+    const changed = managed.filter(
+        ({ values, managedRevision }) =>
+            references.get(values.key)?.managedRevision !== managedRevision,
+    );
+    let changedDefinitions = 0;
+
+    if (changed.length > 0) {
+        await storage().transaction(async (tx) => {
+            // Keep lock acquisition in the same order across concurrent workers.
+            for (const { input, values, managedRevision } of changed.sort(
+                (a, b) => a.values.key.localeCompare(b.values.key),
+            )) {
+                const [definition] = await tx
+                    .insert(automationDefinitions)
+                    .values(values)
+                    .onConflictDoUpdate({
+                        target: automationDefinitions.key,
+                        set: {
+                            name: values.name,
+                            description: values.description,
+                            ...(input.preserveExistingStatus
+                                ? {}
+                                : { status: values.status }),
+                            ...(input.maxConcurrentRuns !== undefined
+                                ? {
+                                      maxConcurrentRuns:
+                                          values.maxConcurrentRuns,
+                                  }
+                                : {}),
+                            triggerModuleKey: values.triggerModuleKey,
+                            triggerEventType: values.triggerEventType,
+                            graph: values.graph,
+                            metadata: values.metadata,
+                            updatedByUserId: values.updatedByUserId,
+                            updatedAt: new Date(),
+                        },
+                        // The conflict row is locked before this predicate is
+                        // evaluated, so a competing worker cannot rewrite it.
+                        setWhere: sql`${automationDefinitions.metadata}->>'managedRevision' is distinct from ${managedRevision}`,
+                    })
+                    .returning({
+                        id: automationDefinitions.id,
+                        key: automationDefinitions.key,
+                    });
+                if (definition) {
+                    references.set(definition.key, {
+                        ...definition,
+                        managedRevision,
+                    });
+                    changedDefinitions += 1;
+                }
+            }
+        });
+        if (references.size < keys.length) {
+            // Another worker may have installed a missing row after our read.
+            for (const definition of await readReferences()) {
+                references.set(definition.key, definition);
+            }
+        }
+    }
+
+    return {
+        definitions: inputs.map(({ key }) => {
+            const definition = references.get(key);
+            if (!definition) {
+                throw new Error(
+                    'Managed automation definition was not initialized.',
+                );
+            }
+            return { id: definition.id, key: definition.key };
+        }),
+        changedDefinitions,
+    };
 }
 
 export async function updateAutomationDefinition(
@@ -217,6 +389,7 @@ export async function updateAutomationDefinition(
         .where(eq(automationDefinitions.id, id))
         .returning();
 
+    if (updated) await signalDueWork('automations');
     return updated ?? null;
 }
 
@@ -249,6 +422,7 @@ export async function listAutomationDefinitions(filters?: {
     triggerEventType?: string;
     limit?: number;
     offset?: number;
+    db?: DatabaseClient;
 }): Promise<SelectAutomationDefinition[]> {
     const statuses = Array.isArray(filters?.status)
         ? filters.status
@@ -256,7 +430,9 @@ export async function listAutomationDefinitions(filters?: {
           ? [filters.status]
           : undefined;
 
-    return storage()
+    const db = filters?.db ?? storage();
+
+    return db
         .select()
         .from(automationDefinitions)
         .where(
@@ -279,37 +455,84 @@ export async function listAutomationDefinitions(filters?: {
 
 export function listEnabledAutomationDefinitionsForEventType(
     eventType: string,
+    db: DatabaseClient = storage(),
 ): Promise<SelectAutomationDefinition[]> {
     return listAutomationDefinitions({
         status: 'enabled',
         triggerEventType: eventType,
         limit: 500,
+        db,
     });
+}
+
+export function listEnabledAutomationDefinitionsForTriggerModule(
+    triggerModuleKey: string,
+): Promise<SelectAutomationDefinition[]> {
+    return storage()
+        .select()
+        .from(automationDefinitions)
+        .where(
+            and(
+                eq(automationDefinitions.status, 'enabled'),
+                eq(automationDefinitions.triggerModuleKey, triggerModuleKey),
+            ),
+        )
+        .orderBy(desc(automationDefinitions.updatedAt))
+        .limit(500);
 }
 
 export async function createAutomationRun(
     input: CreateAutomationRunInput,
+    db: DatabaseClient = storage(),
 ): Promise<SelectAutomationRun | null> {
     const definition = input.automationDefinition;
     const sourceEvent = input.sourceEvent ?? null;
-    const [created] = await storage()
+    const sourceEventType = input.sourceEventType ?? sourceEvent?.type ?? null;
+    const sourceAggregateId =
+        input.sourceAggregateId ?? sourceEvent?.aggregateId ?? null;
+    const values = {
+        automationDefinitionId: definition.id,
+        automationDefinitionKey: definition.key,
+        automationDefinitionName: definition.name,
+        source: input.source,
+        sourceEventId: sourceEvent?.id ?? null,
+        sourceEventType,
+        sourceAggregateId,
+        parentRunId: input.parentRunId ?? null,
+        dryRun: input.dryRun ?? input.source === 'test',
+        maxAttempts: input.maxAttempts ?? defaultRunMaxAttempts,
+        nextRunAt: input.nextRunAt ?? new Date(),
+        manualRequestedByUserId: input.manualRequestedByUserId ?? null,
+        graphSnapshot: definition.graph,
+        input: input.input ?? {},
+    };
+
+    if (input.source === 'schedule' && !sourceAggregateId) {
+        throw new Error(
+            'Scheduled automation runs require a sourceAggregateId.',
+        );
+    }
+
+    if (input.source === 'schedule') {
+        const [created] = await db
+            .insert(automationRuns)
+            .values(values)
+            .onConflictDoNothing({
+                target: [
+                    automationRuns.automationDefinitionId,
+                    automationRuns.sourceAggregateId,
+                ],
+                where: sql`${automationRuns.sourceEventType} in ('automation.schedule', 'automation.schedule.monthly')`,
+            })
+            .returning();
+
+        if (created) await signalDueWork('automations', created.nextRunAt);
+        return created ?? null;
+    }
+
+    const [created] = await db
         .insert(automationRuns)
-        .values({
-            automationDefinitionId: definition.id,
-            automationDefinitionKey: definition.key,
-            automationDefinitionName: definition.name,
-            source: input.source,
-            sourceEventId: sourceEvent?.id ?? null,
-            sourceEventType: sourceEvent?.type ?? null,
-            sourceAggregateId: sourceEvent?.aggregateId ?? null,
-            parentRunId: input.parentRunId ?? null,
-            dryRun: input.dryRun ?? input.source === 'test',
-            maxAttempts: input.maxAttempts ?? defaultRunMaxAttempts,
-            nextRunAt: input.nextRunAt ?? new Date(),
-            manualRequestedByUserId: input.manualRequestedByUserId ?? null,
-            graphSnapshot: definition.graph,
-            input: input.input ?? {},
-        })
+        .values(values)
         .onConflictDoNothing({
             target: [
                 automationRuns.automationDefinitionId,
@@ -319,6 +542,7 @@ export async function createAutomationRun(
         })
         .returning();
 
+    if (created) await signalDueWork('automations', created.nextRunAt);
     return created ?? null;
 }
 
@@ -393,6 +617,70 @@ export async function listAutomationRuns(filters?: {
         .limit(filters?.limit ?? defaultRunLimit);
 }
 
+export type AutomationDefinitionRunSummary = {
+    automationDefinitionId: number;
+    latestRun: SelectAutomationRun | null;
+    failedRunsCount: number;
+};
+
+export async function listAutomationDefinitionRunSummaries(
+    automationDefinitionIds: number[],
+): Promise<AutomationDefinitionRunSummary[]> {
+    const definitionIds = [...new Set(automationDefinitionIds)].filter((id) =>
+        Number.isInteger(id),
+    );
+
+    if (definitionIds.length === 0) {
+        return [];
+    }
+
+    const [latestRuns, failedCountRows] = await Promise.all([
+        storage()
+            .selectDistinctOn([automationRuns.automationDefinitionId])
+            .from(automationRuns)
+            .where(
+                inArray(automationRuns.automationDefinitionId, definitionIds),
+            )
+            .orderBy(
+                automationRuns.automationDefinitionId,
+                desc(automationRuns.createdAt),
+                desc(automationRuns.id),
+            ),
+        storage()
+            .select({
+                automationDefinitionId: automationRuns.automationDefinitionId,
+                failedRunsCount: sql<number>`count(*)::int`,
+            })
+            .from(automationRuns)
+            .where(
+                and(
+                    inArray(
+                        automationRuns.automationDefinitionId,
+                        definitionIds,
+                    ),
+                    eq(automationRuns.status, 'failed'),
+                ),
+            )
+            .groupBy(automationRuns.automationDefinitionId),
+    ]);
+    const latestRunsByDefinitionId = new Map(
+        latestRuns.map((run) => [run.automationDefinitionId, run]),
+    );
+    const failedRunsByDefinitionId = new Map(
+        failedCountRows.map((row) => [
+            row.automationDefinitionId,
+            Number(row.failedRunsCount),
+        ]),
+    );
+
+    return definitionIds.map((automationDefinitionId) => ({
+        automationDefinitionId,
+        latestRun: latestRunsByDefinitionId.get(automationDefinitionId) ?? null,
+        failedRunsCount:
+            failedRunsByDefinitionId.get(automationDefinitionId) ?? 0,
+    }));
+}
+
 export async function getAutomationRunById(
     id: number,
 ): Promise<SelectAutomationRun | null> {
@@ -416,45 +704,161 @@ export async function claimDueAutomationRuns({
     lockedBy?: string;
     db?: DatabaseClient;
 } = {}): Promise<SelectAutomationRun[]> {
-    const candidates = await db
-        .select({ id: automationRuns.id })
-        .from(automationRuns)
-        .where(
-            and(
-                inArray(automationRuns.status, ['queued', 'retrying']),
-                lte(automationRuns.nextRunAt, now),
-            ),
-        )
-        .orderBy(asc(automationRuns.nextRunAt), asc(automationRuns.id))
-        .limit(limit);
-
-    const claimed: SelectAutomationRun[] = [];
-    for (const candidate of candidates) {
-        const [updated] = await db
-            .update(automationRuns)
-            .set({
-                status: 'running',
-                attempt: sql`${automationRuns.attempt} + 1`,
-                lockedAt: now,
-                lockedBy,
-                startedAt: now,
-                updatedAt: now,
-            })
-            .where(
-                and(
-                    eq(automationRuns.id, candidate.id),
-                    inArray(automationRuns.status, ['queued', 'retrying']),
-                    lte(automationRuns.nextRunAt, now),
-                ),
-            )
-            .returning();
-
-        if (updated) {
-            claimed.push(updated);
-        }
+    if (limit <= 0) {
+        return [];
     }
 
-    return claimed;
+    const runningAutomationRuns = alias(
+        automationRuns,
+        'running_automation_runs',
+    );
+    const candidatePageSize = Math.max(limit * 4, 50);
+
+    return db.transaction(async (tx) => {
+        const claimed: SelectAutomationRun[] = [];
+        const remainingCapacityByDefinitionId = new Map<number, number>();
+        let cursor: { id: number; nextRunAt: Date } | null = null;
+
+        while (claimed.length < limit) {
+            const candidates = await tx
+                .select({
+                    id: automationRuns.id,
+                    automationDefinitionId:
+                        automationRuns.automationDefinitionId,
+                    nextRunAt: automationRuns.nextRunAt,
+                })
+                .from(automationRuns)
+                .where(
+                    and(
+                        inArray(automationRuns.status, ['queued', 'retrying']),
+                        lte(automationRuns.nextRunAt, now),
+                        cursor
+                            ? or(
+                                  gt(
+                                      automationRuns.nextRunAt,
+                                      cursor.nextRunAt,
+                                  ),
+                                  and(
+                                      eq(
+                                          automationRuns.nextRunAt,
+                                          cursor.nextRunAt,
+                                      ),
+                                      gt(automationRuns.id, cursor.id),
+                                  ),
+                              )
+                            : undefined,
+                    ),
+                )
+                .orderBy(asc(automationRuns.nextRunAt), asc(automationRuns.id))
+                .limit(candidatePageSize);
+
+            if (candidates.length === 0) {
+                break;
+            }
+
+            for (const candidate of candidates) {
+                cursor = {
+                    id: candidate.id,
+                    nextRunAt: candidate.nextRunAt,
+                };
+
+                if (claimed.length >= limit) {
+                    break;
+                }
+
+                let remainingCapacity = remainingCapacityByDefinitionId.get(
+                    candidate.automationDefinitionId,
+                );
+
+                if (remainingCapacity === undefined) {
+                    await tx.execute(
+                        sql`select pg_advisory_xact_lock(${automationDefinitionAdvisoryLockNamespace}, ${candidate.automationDefinitionId});`,
+                    );
+
+                    const [capacity] = await tx
+                        .select({
+                            maxConcurrentRuns:
+                                automationDefinitions.maxConcurrentRuns,
+                            runningCount: sql<number>`count(${runningAutomationRuns.id})::int`,
+                        })
+                        .from(automationDefinitions)
+                        .leftJoin(
+                            runningAutomationRuns,
+                            and(
+                                eq(
+                                    runningAutomationRuns.automationDefinitionId,
+                                    automationDefinitions.id,
+                                ),
+                                eq(runningAutomationRuns.status, 'running'),
+                            ),
+                        )
+                        .where(
+                            eq(
+                                automationDefinitions.id,
+                                candidate.automationDefinitionId,
+                            ),
+                        )
+                        .groupBy(
+                            automationDefinitions.id,
+                            automationDefinitions.maxConcurrentRuns,
+                        )
+                        .limit(1);
+
+                    remainingCapacity = capacity
+                        ? Math.max(
+                              0,
+                              capacity.maxConcurrentRuns -
+                                  Number(capacity.runningCount),
+                          )
+                        : 0;
+                    remainingCapacityByDefinitionId.set(
+                        candidate.automationDefinitionId,
+                        remainingCapacity,
+                    );
+                }
+
+                if (remainingCapacity <= 0) {
+                    continue;
+                }
+
+                const [updated] = await tx
+                    .update(automationRuns)
+                    .set({
+                        status: 'running',
+                        attempt: sql`${automationRuns.attempt} + 1`,
+                        lockedAt: now,
+                        lockedBy,
+                        startedAt: now,
+                        updatedAt: now,
+                    })
+                    .where(
+                        and(
+                            eq(automationRuns.id, candidate.id),
+                            inArray(automationRuns.status, [
+                                'queued',
+                                'retrying',
+                            ]),
+                            lte(automationRuns.nextRunAt, now),
+                        ),
+                    )
+                    .returning();
+
+                if (updated) {
+                    claimed.push(updated);
+                    remainingCapacityByDefinitionId.set(
+                        candidate.automationDefinitionId,
+                        remainingCapacity - 1,
+                    );
+                }
+            }
+
+            if (candidates.length < candidatePageSize) {
+                break;
+            }
+        }
+
+        return claimed;
+    });
 }
 
 export async function recoverStaleAutomationRuns({
@@ -541,6 +945,38 @@ export async function completeAutomationRun(
         .where(eq(automationRuns.id, input.id))
         .returning();
 
+    if (updated?.status === 'retrying')
+        await signalDueWork('automations', updated.nextRunAt);
+    return updated ?? null;
+}
+
+export async function retryFailedAutomationRun(
+    input: RetryFailedAutomationRunInput,
+): Promise<SelectAutomationRun | null> {
+    const now = new Date();
+    const [updated] = await storage()
+        .update(automationRuns)
+        .set({
+            source: 'manual',
+            status: 'retrying',
+            dryRun: false,
+            maxAttempts: sql<number>`${automationRuns.maxAttempts} + 1`,
+            nextRunAt: input.retryAt ?? now,
+            lockedAt: null,
+            lockedBy: null,
+            completedAt: null,
+            manualRequestedByUserId: input.manualRequestedByUserId ?? null,
+            updatedAt: now,
+        })
+        .where(
+            and(
+                eq(automationRuns.id, input.id),
+                eq(automationRuns.status, 'failed'),
+            ),
+        )
+        .returning();
+
+    if (updated) await signalDueWork('automations', updated.nextRunAt);
     return updated ?? null;
 }
 
@@ -614,6 +1050,15 @@ export async function initializeAutomationEventCursorToLatest({
     key?: string;
     db?: DatabaseClient;
 } = {}): Promise<number> {
+    const [existingCursor] = await db
+        .select({ lastEventId: automationEventCursors.lastEventId })
+        .from(automationEventCursors)
+        .where(eq(automationEventCursors.key, key))
+        .limit(1);
+    if (existingCursor) {
+        return existingCursor.lastEventId;
+    }
+
     const [latestEvent] = await db
         .select({
             lastEventId: sql<number>`coalesce(max(${events.id}), 0)`,
@@ -735,27 +1180,36 @@ export async function getRunnableAutomationEventTypes() {
 
 export async function enqueueAutomationRunsForEvent(
     event: DomainEventRow,
+    {
+        db = storage(),
+    }: {
+        db?: DatabaseClient;
+    } = {},
 ): Promise<SelectAutomationRun[]> {
     const definitions = await listEnabledAutomationDefinitionsForEventType(
         event.type,
+        db,
     );
     const createdRuns: SelectAutomationRun[] = [];
 
     for (const definition of definitions) {
-        const run = await createAutomationRun({
-            automationDefinition: definition,
-            source: 'event',
-            sourceEvent: event,
-            input: {
-                eventId: event.id,
-                eventType: event.type,
-                aggregateId: event.aggregateId,
-                data:
-                    event.data && typeof event.data === 'object'
-                        ? (event.data as AutomationJsonObject)
-                        : {},
+        const run = await createAutomationRun(
+            {
+                automationDefinition: definition,
+                source: 'event',
+                sourceEvent: event,
+                input: {
+                    eventId: event.id,
+                    eventType: event.type,
+                    aggregateId: event.aggregateId,
+                    data:
+                        event.data && typeof event.data === 'object'
+                            ? (event.data as AutomationJsonObject)
+                            : {},
+                },
             },
-        });
+            db,
+        );
 
         if (run) {
             createdRuns.push(run);

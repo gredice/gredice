@@ -3,6 +3,7 @@ import {
     publicSearchCategoryForDirectoryEntityType,
     resolveDirectoryEntityPublicPathFromParts,
 } from '@gredice/directory-types';
+import { getBlockImageUrl } from '@gredice/js/blocks';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import {
     attributeValues,
@@ -184,8 +185,13 @@ function blockImageMetadata(entity: EntitySearchSource): ImageMetadata | null {
         return null;
     }
 
+    const imageUrl = getBlockImageUrl(blockName);
+    if (!imageUrl) {
+        return null;
+    }
+
     return {
-        url: `https://www.gredice.com/assets/blocks/${encodeURIComponent(blockName)}.png`,
+        url: imageUrl,
         alt: entityTitle(entity),
     };
 }
@@ -203,10 +209,7 @@ async function resolveEntitySearchPublicUrl(entity: EntitySearchSource) {
     let parentName: string | null = null;
     let parentLabel: string | null = null;
 
-    if (
-        entity.entityTypeName === 'plantSort' ||
-        entity.entityTypeName === 'seed'
-    ) {
+    if (entity.entityTypeName === 'plantSort') {
         const parentPlantId = attributeRefId(entity, 'information', 'plant');
         const parentPlant = parentPlantId
             ? await getEntityRaw(parentPlantId)
@@ -219,22 +222,12 @@ async function resolveEntitySearchPublicUrl(entity: EntitySearchSource) {
             : null;
     }
 
-    let plantSortName: string | null = null;
-    if (entity.entityTypeName === 'seed') {
-        const plantSortId = attributeRefId(entity, 'information', 'plantSort');
-        const plantSort = plantSortId ? await getEntityRaw(plantSortId) : null;
-        plantSortName = plantSort
-            ? attributeValue(plantSort, 'information', 'name')
-            : null;
-    }
-
     return resolveDirectoryEntityPublicPathFromParts({
         entityTypeName: entity.entityTypeName,
         name: attributeValue(entity, 'information', 'name'),
         label: attributeValue(entity, 'information', 'label'),
         parentName,
         parentLabel,
-        plantSortName,
     });
 }
 
@@ -467,6 +460,12 @@ async function entityImageMetadata(
 ): Promise<ImageMetadata | null> {
     const direct = directEntityImageMetadata(entity);
     if (direct) {
+        if (entity.entityTypeName === 'block') {
+            return {
+                url: direct.url,
+                alt: direct.alt ?? entityTitle(entity),
+            };
+        }
         return direct;
     }
 
@@ -685,17 +684,13 @@ async function relatedEntityIdsForPublicUrl(entityTypeName: string) {
 }
 
 export async function refreshImpactedEntitySearchDocuments(entityId: number) {
-    const sourceEntity = await getEntityRaw(entityId);
-    const deletedEntityInfo = sourceEntity
-        ? null
-        : await storage().query.entities.findFirst({
-              where: eq(entities.id, entityId),
-              columns: {
-                  entityTypeName: true,
-              },
-          });
-    const sourceEntityTypeName =
-        sourceEntity?.entityTypeName ?? deletedEntityInfo?.entityTypeName;
+    const sourceEntityInfo = await storage().query.entities.findFirst({
+        where: eq(entities.id, entityId),
+        columns: {
+            entityTypeName: true,
+        },
+    });
+    const sourceEntityTypeName = sourceEntityInfo?.entityTypeName;
 
     const impacted = new Set<number>([entityId]);
     const relatedIds = sourceEntityTypeName
@@ -846,7 +841,9 @@ export async function searchDirectoryEntities({
         rowsByEntityId.set(row.entityId, row);
     }
 
-    const rowsWithPublicUrls: DirectoryEntitySearchRow[] = [];
+    const rowsWithPublicUrls: Array<
+        DirectoryEntitySearchRow & { highPriorityBoost: number }
+    > = [];
     for (const row of rowsByEntityId.values()) {
         const entity = await getEntityRaw(row.entityId);
         if (!entity) {
@@ -860,18 +857,26 @@ export async function searchDirectoryEntities({
 
         const image = await entityImageMetadata(entity);
         const visualKey = await entityVisualKey(entity);
+        const highPriorityBoost = highPrioritySearchBoost(
+            entity,
+            normalizedQuery,
+        );
         rowsWithPublicUrls.push({
             ...row,
             publicUrl,
             imageUrl: image?.url ?? null,
             imageAlt: image?.alt ?? null,
             visualKey,
-            score: row.score + highPrioritySearchBoost(entity, normalizedQuery),
+            score: row.score + highPriorityBoost,
+            highPriorityBoost,
         });
     }
 
     return rowsWithPublicUrls
         .toSorted((a, b) => {
+            if (b.highPriorityBoost !== a.highPriorityBoost) {
+                return b.highPriorityBoost - a.highPriorityBoost;
+            }
             if (b.score !== a.score) {
                 return b.score - a.score;
             }
@@ -880,7 +885,8 @@ export async function searchDirectoryEntities({
             }
             return a.entityId - b.entityId;
         })
-        .slice(requestedOffset, requestedOffset + requestedLimit);
+        .slice(requestedOffset, requestedOffset + requestedLimit)
+        .map(({ highPriorityBoost: _highPriorityBoost, ...row }) => row);
 }
 
 export function publicSearchCategoryForEntityType(entityTypeName: string) {

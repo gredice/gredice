@@ -1,5 +1,7 @@
 import { relations } from 'drizzle-orm';
 import {
+    type AnyPgColumn,
+    boolean,
     index,
     integer,
     pgEnum,
@@ -11,7 +13,7 @@ import {
     uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { farms } from './farmsSchema';
-import { raisedBeds } from './gardenSchema';
+import { gardens, raisedBeds } from './gardenSchema';
 
 export const accounts = pgTable('accounts', {
     id: text('id').primaryKey(),
@@ -121,12 +123,34 @@ export const users = pgTable(
         birthdayMonth: smallint('birthday_month'),
         birthdayYear: smallint('birthday_year'),
         birthdayLastUpdatedAt: timestamp('birthday_last_updated_at'),
+        whatsNewLastSeenAt: timestamp('whats_new_last_seen_at'),
+        whatsNewPopupDisabled: boolean('whats_new_popup_disabled')
+            .notNull()
+            .default(false),
+        isTemporary: boolean('is_temporary').notNull().default(false),
+        lastActiveAt: timestamp('last_active_at').notNull().defaultNow(),
+        farmScheduleGroupedWateringEnabled: boolean(
+            'farm_schedule_grouped_watering_enabled',
+        )
+            .notNull()
+            .default(true),
+        defaultGardenId: integer('default_garden_id').references(
+            (): AnyPgColumn => gardens.id,
+            { onDelete: 'set null' },
+        ),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()
             .$onUpdate(() => new Date()),
     },
-    (table) => [index('users_u_username_idx').on(table.userName)],
+    (table) => [
+        index('users_u_username_idx').on(table.userName),
+        index('users_temporary_last_active_idx').on(
+            table.isTemporary,
+            table.lastActiveAt,
+        ),
+        index('users_u_default_garden_id_idx').on(table.defaultGardenId),
+    ],
 );
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -144,7 +168,13 @@ export const usersRelations = relations(users, ({ many }) => ({
 export type InsertUser = typeof users.$inferInsert;
 export type UpdateUserInfo = Omit<
     typeof users.$inferInsert,
-    'id' | 'createdAt' | 'updatedAt' | 'role'
+    | 'id'
+    | 'createdAt'
+    | 'updatedAt'
+    | 'role'
+    | 'isTemporary'
+    | 'lastActiveAt'
+    | 'defaultGardenId'
 >;
 export type SelectUser = typeof users.$inferSelect;
 

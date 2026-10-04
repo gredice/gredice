@@ -1,10 +1,9 @@
 import type { BlockData, OperationData, PlantSortData } from '@gredice/client';
-import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
+import { GameBackpackIcon as BackpackIcon } from '@gredice/ui/GameIcons';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Add } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
@@ -12,13 +11,19 @@ import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
+import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
+import {
+    GARDEN_BOX_BLOCK_STACK_LIMIT,
+    getGardenBoxInventoryCapacity,
+} from '../gardenBoxInventoryLimits';
 import { useBlockData } from '../hooks/useBlockData';
 import { useGardenBoxPlaceBlock } from '../hooks/useGardenBoxPlaceBlock';
 import { useInventory } from '../hooks/useInventory';
 import { useOperations } from '../hooks/useOperations';
 import { useSorts } from '../hooks/usePlantSorts';
+import { GameModal } from '../shared-ui/game-modal';
 import { useGameState } from '../useGameState';
 import {
     normalizeBackpackTab,
@@ -27,7 +32,8 @@ import {
 } from '../useUrlState';
 import { HudCard } from './components/HudCard';
 
-const GRID_SIZE = 24; // 3x4 grid
+const BACKPACK_GRID_SIZE = 24;
+const inventoryBackpackIconSrc = '/assets/hud/inventory-backpack.webp';
 
 type InventoryItemData = {
     entityTypeName: string;
@@ -111,7 +117,7 @@ function inventoryItemDisplayName({
 }
 
 function resolveBlockImageName(item?: InventoryItemData) {
-    if (!item || item.entityTypeName !== 'block') {
+    if (item?.entityTypeName !== 'block') {
         return null;
     }
 
@@ -154,12 +160,14 @@ function InventoryItemCell({
             className="relative aspect-square overflow-visible rounded-lg border bg-card p-0.5 transition-all hover:bg-primary/10"
         >
             {sortData ? (
-                <PlantOrSortImage
-                    width={48}
-                    height={48}
-                    className="rounded-md w-full h-full object-cover"
-                    plantSort={sortData}
-                />
+                <div className="relative size-full overflow-hidden rounded-md">
+                    <PlantOrSortImage
+                        fill
+                        sizes="(max-width: 767px) calc((100vw - 5.5rem) / 6), 68px"
+                        className="object-cover"
+                        plantSort={sortData}
+                    />
+                </div>
             ) : operationData ? (
                 <div className="flex items-center justify-center h-full w-full rounded-md bg-card">
                     <OperationImage operation={operationData} size={48} />
@@ -205,6 +213,7 @@ function InventoryItemCell({
 function InventoryItemsGrid({
     items,
     keyPrefix,
+    minSlots = BACKPACK_GRID_SIZE,
     operationLookup,
     sortData,
     blockData,
@@ -212,6 +221,7 @@ function InventoryItemsGrid({
 }: {
     items: InventoryItemData[];
     keyPrefix: string;
+    minSlots?: number;
     operationLookup: Map<string, OperationData>;
     sortData?: PlantSortData[];
     blockData?: BlockData[] | null;
@@ -219,11 +229,11 @@ function InventoryItemsGrid({
 }) {
     const gridItems = useMemo(() => {
         const result: (InventoryItemData | null)[] = [...items];
-        while (result.length < GRID_SIZE) {
+        while (result.length < minSlots) {
             result.push(null);
         }
         return result;
-    }, [items]);
+    }, [items, minSlots]);
 
     return (
         <div className="grid grid-cols-6 gap-1">
@@ -314,7 +324,7 @@ function InventoryItemModal({
     }
 
     return (
-        <Modal
+        <GameModal
             open={open}
             onOpenChange={(isOpen) => !isOpen && onClose()}
             title={displayName}
@@ -431,7 +441,7 @@ function InventoryItemModal({
                     </Stack>
                 )}
             </Stack>
-        </Modal>
+        </GameModal>
     );
 }
 
@@ -450,7 +460,7 @@ function GardenBoxInventoryGroup({
     blockData?: BlockData[] | null;
     onItemClick: (item: InventoryItemData) => void;
 }) {
-    const itemTotal = inventoryItemTotal(gardenBox.items);
+    const capacity = getGardenBoxInventoryCapacity(gardenBox.items);
 
     return (
         <Stack spacing={3} className="rounded-lg border bg-card/50 p-3">
@@ -467,7 +477,11 @@ function GardenBoxInventoryGroup({
                         Vrtna kutija {index + 1}
                     </Typography>
                     <Typography level="body3" secondary>
-                        {[gardenBox.gardenName, `${itemTotal} predmeta`]
+                        {[
+                            gardenBox.gardenName,
+                            `${capacity.stackCount.toString()}/${capacity.maxStacks.toString()} vrsta`,
+                            `${capacity.blockCount.toString()}/${capacity.maxBlocks.toString()} blokova`,
+                        ]
                             .filter(Boolean)
                             .join(' · ')}
                     </Typography>
@@ -476,6 +490,7 @@ function GardenBoxInventoryGroup({
             <InventoryItemsGrid
                 items={gardenBox.items}
                 keyPrefix={`garden-box-${gardenBox.gardenId}-${gardenBox.blockId}`}
+                minSlots={GARDEN_BOX_BLOCK_STACK_LIMIT}
                 operationLookup={operationLookup}
                 sortData={sortData}
                 blockData={blockData}
@@ -490,7 +505,13 @@ function GardenBoxInventoryGroup({
     );
 }
 
-export function InventoryHud() {
+export function InventoryHud({
+    hideTrigger = false,
+}: {
+    // The avatar walk-through opens garden boxes straight from the world, so
+    // the modal is mounted without its HUD shell and backpack button.
+    hideTrigger?: boolean;
+} = {}) {
     const { data: inventory } = useInventory();
     const { data: operations } = useOperations();
     const { data: blockData } = useBlockData();
@@ -624,141 +645,160 @@ export function InventoryHud() {
     const tabCountClassName =
         'ml-1 rounded-full bg-muted px-1.5 text-[10px] font-semibold leading-4 text-muted-foreground';
 
-    return (
-        <HudCard open position="floating" className="static p-0.5">
-            <Modal
-                open={isOpen}
-                onOpenChange={handleOpenChange}
-                title="Inventar"
-                trigger={
+    const modal = (
+        <GameModal
+            open={isOpen}
+            onOpenChange={handleOpenChange}
+            title="Inventar"
+            headerIcon={
+                <Image
+                    alt=""
+                    aria-hidden="true"
+                    className="h-auto w-10 max-w-none object-contain drop-shadow-[0_2px_3px_rgb(15_23_42_/_0.25)]"
+                    data-inventory-modal-icon="true"
+                    height={40}
+                    src={inventoryBackpackIconSrc}
+                    unoptimized
+                    width={40}
+                />
+            }
+            trigger={
+                hideTrigger ? undefined : (
                     <IconButton
                         variant="plain"
-                        className="rounded-full size-10"
+                        className="relative size-10 overflow-visible rounded-full"
                         title="Inventar"
                     >
-                        <div className="relative flex items-center justify-center">
-                            <BackpackIcon className="size-6" />
-                            {totalItems > 0 && (
-                                <div
-                                    className={cx(
-                                        'absolute -top-4 -right-4 size-6 px-1.5 rounded-full bg-tertiary text-tertiary-foreground text-sm font-semibold leading-none flex items-center justify-center shadow-md border border-tertiary-foreground/30',
-                                        totalItems > 99 && 'text-[10px]',
-                                    )}
-                                >
-                                    {totalItems > 99 ? '99+' : totalItems}
-                                </div>
-                            )}
-                        </div>
+                        <Image
+                            alt=""
+                            aria-hidden="true"
+                            className="pointer-events-none absolute left-1/2 top-0 h-auto w-12 max-w-none -translate-x-1/2 -translate-y-2.5 object-contain drop-shadow-[0_2px_3px_rgb(15_23_42_/_0.35)]"
+                            data-inventory-trigger-icon="true"
+                            height={48}
+                            loading="eager"
+                            src={inventoryBackpackIconSrc}
+                            unoptimized
+                            width={48}
+                        />
+                        {backpackItemsTotal > 0 && (
+                            <div
+                                className={cx(
+                                    'pointer-events-none absolute -right-4 -top-4 z-20 flex size-6 items-center justify-center rounded-full border border-tertiary-foreground/30 bg-tertiary px-1.5 text-sm font-semibold leading-none text-tertiary-foreground shadow-md',
+                                    backpackItemsTotal > 99 && 'text-[10px]',
+                                )}
+                            >
+                                {backpackItemsTotal > 99
+                                    ? '99+'
+                                    : backpackItemsTotal}
+                            </div>
+                        )}
                     </IconButton>
-                }
-            >
-                <Stack spacing={4}>
-                    <Row spacing={2}>
-                        <BackpackIcon className="size-8 shrink-0" />
-                        <Typography level="h6" className="font-bold">
-                            Inventar
-                        </Typography>
-                    </Row>
-                    <Tabs
-                        value={backpackTab}
-                        onValueChange={handleTabChange}
-                        className="flex flex-col"
-                    >
-                        <TabsList className="self-start bg-muted-foreground/10">
-                            <TabsTrigger value="backpack">
-                                <Row spacing={2} alignItems="center">
-                                    <BackpackIcon className="size-4 shrink-0" />
-                                    <Typography>Ruksak</Typography>
-                                    <span className={tabCountClassName}>
-                                        {backpackItemsTotal}
-                                    </span>
-                                </Row>
-                            </TabsTrigger>
-                            <TabsTrigger value="gardenBoxes">
-                                <Row spacing={2} alignItems="center">
-                                    <BlockImage
-                                        blockName="GardenBox"
-                                        alt=""
-                                        width={16}
-                                        height={16}
-                                        className="size-4 shrink-0"
-                                    />
-                                    <Typography>Kutije</Typography>
-                                    <span className={tabCountClassName}>
-                                        {gardenBoxes.length}
-                                    </span>
-                                </Row>
-                            </TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="backpack" className="mt-4">
-                            <Stack spacing={4}>
-                                <Stack>
-                                    <Typography level="body2" semiBold>
-                                        Predmeti u ruksaku koje možeš
-                                        iskoristiti pri sadnji ili izvođenju
-                                        radnji u vrtu.
-                                    </Typography>
-                                    <Typography level="body3" secondary>
-                                        Klikni na predmet za više informacija.
-                                    </Typography>
-                                </Stack>
-                                <InventoryItemsGrid
-                                    items={items}
-                                    keyPrefix="backpack"
-                                    operationLookup={operationLookup}
-                                    sortData={sortData}
-                                    blockData={blockData}
-                                    onItemClick={(item) =>
-                                        handleItemClick(item, 'backpack')
-                                    }
+                )
+            }
+        >
+            <Stack spacing={4}>
+                <Tabs
+                    value={backpackTab}
+                    onValueChange={handleTabChange}
+                    className="flex flex-col"
+                >
+                    <TabsList className="self-start bg-muted-foreground/10">
+                        <TabsTrigger value="backpack">
+                            <Row spacing={2} alignItems="center">
+                                <BackpackIcon className="size-4 shrink-0" />
+                                <Typography>Ruksak</Typography>
+                                <span className={tabCountClassName}>
+                                    {backpackItemsTotal}
+                                </span>
+                            </Row>
+                        </TabsTrigger>
+                        <TabsTrigger value="gardenBoxes">
+                            <Row spacing={2} alignItems="center">
+                                <BlockImage
+                                    blockName="GardenBox"
+                                    alt=""
+                                    width={16}
+                                    height={16}
+                                    className="size-4 shrink-0"
                                 />
-                                {items.length === 0 && (
-                                    <Typography
-                                        level="body3"
-                                        secondary
-                                        className="text-center"
-                                    >
-                                        Predmeti se dodaju kroz kupnju ili
-                                        nagrade.
-                                    </Typography>
-                                )}
+                                <Typography>Kutije</Typography>
+                                <span className={tabCountClassName}>
+                                    {gardenBoxes.length}
+                                </span>
+                            </Row>
+                        </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="backpack" className="mt-4">
+                        <Stack spacing={4}>
+                            <Stack>
+                                <Typography level="body2" semiBold>
+                                    Predmeti u ruksaku koje možeš iskoristiti
+                                    pri sadnji ili izvođenju radnji u vrtu.
+                                </Typography>
+                                <Typography level="body3" secondary>
+                                    Klikni na predmet za više informacija.
+                                </Typography>
                             </Stack>
-                        </TabsContent>
-                        <TabsContent value="gardenBoxes" className="mt-4">
-                            <Stack spacing={3}>
-                                {gardenBoxes.length === 0 ? (
-                                    <Typography
-                                        level="body3"
-                                        secondary
-                                        className="text-center"
-                                    >
-                                        Još nema vrtnih kutija.
-                                    </Typography>
-                                ) : (
-                                    gardenBoxes.map((gardenBox, index) => (
-                                        <GardenBoxInventoryGroup
-                                            key={`${gardenBox.gardenId}-${gardenBox.blockId}`}
-                                            gardenBox={gardenBox}
-                                            index={index}
-                                            operationLookup={operationLookup}
-                                            sortData={sortData}
-                                            blockData={blockData}
-                                            onItemClick={(item) =>
-                                                handleItemClick(
-                                                    item,
-                                                    'gardenBox',
-                                                    gardenBox,
-                                                )
-                                            }
-                                        />
-                                    ))
-                                )}
-                            </Stack>
-                        </TabsContent>
-                    </Tabs>
-                </Stack>
-            </Modal>
+                            <InventoryItemsGrid
+                                items={items}
+                                keyPrefix="backpack"
+                                operationLookup={operationLookup}
+                                sortData={sortData}
+                                blockData={blockData}
+                                onItemClick={(item) =>
+                                    handleItemClick(item, 'backpack')
+                                }
+                            />
+                            {items.length === 0 && (
+                                <Typography
+                                    level="body3"
+                                    secondary
+                                    className="text-center"
+                                >
+                                    Predmeti se dodaju kroz kupnju ili nagrade.
+                                </Typography>
+                            )}
+                        </Stack>
+                    </TabsContent>
+                    <TabsContent value="gardenBoxes" className="mt-4">
+                        <Stack spacing={3}>
+                            {gardenBoxes.length === 0 ? (
+                                <Typography
+                                    level="body3"
+                                    secondary
+                                    className="text-center"
+                                >
+                                    Još nema vrtnih kutija.
+                                </Typography>
+                            ) : (
+                                gardenBoxes.map((gardenBox, index) => (
+                                    <GardenBoxInventoryGroup
+                                        key={`${gardenBox.gardenId}-${gardenBox.blockId}`}
+                                        gardenBox={gardenBox}
+                                        index={index}
+                                        operationLookup={operationLookup}
+                                        sortData={sortData}
+                                        blockData={blockData}
+                                        onItemClick={(item) =>
+                                            handleItemClick(
+                                                item,
+                                                'gardenBox',
+                                                gardenBox,
+                                            )
+                                        }
+                                    />
+                                ))
+                            )}
+                        </Stack>
+                    </TabsContent>
+                </Tabs>
+            </Stack>
+        </GameModal>
+    );
 
+    const content = (
+        <>
+            {modal}
             {selectedItem && (
                 <InventoryItemModal
                     item={selectedItem.item}
@@ -771,6 +811,21 @@ export function InventoryHud() {
                     onClose={() => setSelectedItem(null)}
                 />
             )}
+        </>
+    );
+
+    if (hideTrigger) {
+        return content;
+    }
+
+    return (
+        <HudCard
+            open
+            position="floating"
+            className="static size-12 p-0.5"
+            data-inventory-hud-shell="true"
+        >
+            {content}
         </HudCard>
     );
 }

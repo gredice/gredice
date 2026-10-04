@@ -1,14 +1,19 @@
+import { gardenActionUrl } from '@gredice/js/gardenActions';
+import { isOperationApplicableToPlant } from '@gredice/js/operations';
 import { getHarvestBehaviorOverviewDisclaimer } from '@gredice/js/plants';
-import { BlockImage } from '@gredice/ui/BlockImage';
-import { Card, CardContent } from '@gredice/ui/Card';
+import { GameSeedlingIcon } from '@gredice/ui/GameIcons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { Typography } from '@gredice/ui/Typography';
+import { Card, CardContent } from '../../../components/shared/Card';
+import { PublicBlockImage as BlockImage } from '../../../components/shared/PublicBlockImage';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
 import { KnownPages } from '../../../src/KnownPages';
+
+const noLinkedPlantOperations = new Set<string>();
 
 export async function OperationApplicationsList({
     operationId,
@@ -45,7 +50,10 @@ export async function OperationApplicationsList({
                         <Row justifyContent="space-between">
                             <Typography>Dostupno u tvom vrtu</Typography>
                             <NavigatingButton
-                                href={KnownPages.GardenApp}
+                                href={gardenActionUrl(KnownPages.GardenApp, {
+                                    type: 'operation',
+                                    operationId,
+                                })}
                                 className="bg-green-800 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white"
                             >
                                 Moj vrt
@@ -82,6 +90,26 @@ export async function OperationApplicationsList({
     }
 
     if (operation.attributes.application === 'plant') {
+        if (isOperationApplicableToPlant(operation, noLinkedPlantOperations)) {
+            return (
+                <div className="py-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                    <Card className="border-tertiary border-b-4">
+                        <CardContent noHeader>
+                            <Row spacing={4}>
+                                <GameSeedlingIcon
+                                    aria-hidden
+                                    className="size-6 shrink-0"
+                                />
+                                <Typography>
+                                    Ova radnja je dostupna za sve biljke
+                                </Typography>
+                            </Row>
+                        </CardContent>
+                    </Card>
+                </div>
+            );
+        }
+
         const plants = await getPlantsData();
         const plantsWithOperation = plants?.filter((plant) =>
             plant.information.operations

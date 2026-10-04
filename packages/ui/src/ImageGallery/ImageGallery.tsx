@@ -20,6 +20,7 @@ import { cx } from '../utils';
 interface ImageGalleryItem {
     src: string;
     alt: string;
+    dateLabel?: string;
 }
 
 interface ImageGalleryProps {
@@ -27,7 +28,8 @@ interface ImageGalleryProps {
     previewWidth?: number;
     previewHeight?: number;
     previewAs?: 'button' | 'div';
-    previewVariant?: 'carousel' | 'stacked';
+    previewVariant?: 'carousel' | 'grid' | 'stacked';
+    previewLimitBeforeStack?: number;
 }
 
 export function ImageGallery({
@@ -36,6 +38,7 @@ export function ImageGallery({
     previewHeight = 200,
     previewAs = 'button',
     previewVariant = 'carousel',
+    previewLimitBeforeStack,
 }: ImageGalleryProps) {
     const imageInstructionsId = useId();
     const lastFocusedElementRef = useRef<Element | null>(null);
@@ -69,7 +72,25 @@ export function ImageGallery({
     const resolveAlt = (imageAlt: string | null | undefined, index: number) =>
         imageAlt?.trim() || `Slika ${index + 1}`;
 
-    const stackedImages = useMemo(() => images.slice(0, 4), [images]);
+    const stackedPreviewLimit = Math.max(1, previewLimitBeforeStack ?? 4);
+    const stackedImages = useMemo(
+        () => images.slice(0, stackedPreviewLimit),
+        [images, stackedPreviewLimit],
+    );
+    const gridPreviewLimit = Math.max(
+        1,
+        previewLimitBeforeStack ?? images.length,
+    );
+    const shouldShowGridStack = images.length > gridPreviewLimit + 1;
+    const gridImages = shouldShowGridStack
+        ? images.slice(0, gridPreviewLimit)
+        : images;
+    const gridStackImages = shouldShowGridStack
+        ? images.slice(gridPreviewLimit, gridPreviewLimit + 4).reverse()
+        : [];
+    const gridStackCount = shouldShowGridStack
+        ? images.length - gridPreviewLimit
+        : 0;
 
     const resetTransform = useCallback(() => {
         resetZoomLevel();
@@ -417,9 +438,135 @@ export function ImageGallery({
                                 sizes={`${previewWidth}px`}
                                 className="h-full w-full object-cover"
                             />
+                            {image.dateLabel && (
+                                <span className="absolute inset-x-0 bottom-0 z-10 bg-black/55 px-2 py-1 text-left text-[11px] leading-none text-white/90 backdrop-blur-sm">
+                                    {image.dateLabel}
+                                </span>
+                            )}
                             <div className="absolute inset-0 bg-white/30 opacity-0 transition-opacity group-hover:opacity-100" />
                         </PreviewComponent>
                     ))}
+                </div>
+            ) : previewVariant === 'grid' ? (
+                <div className="grid gap-2 sm:grid-cols-3">
+                    {gridImages.map((image, index) => (
+                        <PreviewComponent
+                            key={image.src}
+                            {...(previewAs === 'button'
+                                ? { type: 'button' as const }
+                                : {
+                                      role: 'button' as const,
+                                      tabIndex: 0,
+                                  })}
+                            aria-label={`Otvori sliku ${index + 1} u punoj veličini: ${resolveAlt(image.alt, index)}`}
+                            title="Otvori u punoj veličini"
+                            className="group relative aspect-[4/3] w-full overflow-hidden rounded-lg bg-muted transition-shadow duration-200 hover:cursor-zoom-in hover:shadow-md"
+                            onClick={(event: React.MouseEvent) => {
+                                event.stopPropagation();
+                                openModal(index, event.currentTarget);
+                            }}
+                            onKeyDown={(event: React.KeyboardEvent) => {
+                                if (previewAs === 'button') return;
+                                event.stopPropagation();
+                                if (
+                                    event.key === 'Enter' ||
+                                    event.key === ' '
+                                ) {
+                                    event.preventDefault();
+                                    openModal(index, event.currentTarget);
+                                }
+                            }}
+                        >
+                            <Image
+                                src={image.src}
+                                alt={resolveAlt(image.alt, index)}
+                                fill
+                                sizes={`(min-width: 640px) ${previewWidth}px, 100vw`}
+                                className="h-full w-full object-cover"
+                            />
+                            {image.dateLabel && (
+                                <span className="absolute inset-x-0 bottom-0 z-10 bg-black/55 px-2 py-1 text-left text-[11px] leading-none text-white/90 backdrop-blur-sm">
+                                    {image.dateLabel}
+                                </span>
+                            )}
+                            <div className="absolute inset-0 bg-white/30 opacity-0 transition-opacity group-hover:opacity-100" />
+                        </PreviewComponent>
+                    ))}
+                    {gridStackImages.length > 0 ? (
+                        <PreviewComponent
+                            key={`stack-${gridPreviewLimit}`}
+                            {...(previewAs === 'button'
+                                ? { type: 'button' as const }
+                                : {
+                                      role: 'button' as const,
+                                      tabIndex: 0,
+                                  })}
+                            aria-label={`Otvori preostale slike u punoj veličini (${gridStackCount})`}
+                            title="Otvori preostale slike"
+                            className="group relative aspect-[4/3] w-full overflow-visible rounded-lg bg-transparent transition-shadow duration-200 hover:cursor-zoom-in"
+                            onMouseEnter={() => setIsStackHovered(true)}
+                            onMouseLeave={() => setIsStackHovered(false)}
+                            onFocus={() => setIsStackHovered(true)}
+                            onBlur={() => setIsStackHovered(false)}
+                            onClick={(event: React.MouseEvent) => {
+                                event.stopPropagation();
+                                openModal(
+                                    gridPreviewLimit,
+                                    event.currentTarget,
+                                );
+                            }}
+                            onKeyDown={(event: React.KeyboardEvent) => {
+                                if (previewAs === 'button') return;
+                                event.stopPropagation();
+                                if (
+                                    event.key === 'Enter' ||
+                                    event.key === ' '
+                                ) {
+                                    event.preventDefault();
+                                    openModal(
+                                        gridPreviewLimit,
+                                        event.currentTarget,
+                                    );
+                                }
+                            }}
+                        >
+                            {gridStackImages.map((image, index) => {
+                                const reverseIndex =
+                                    gridStackImages.length - index - 1;
+                                const originalIndex =
+                                    gridPreviewLimit + reverseIndex;
+
+                                return (
+                                    <span
+                                        key={image.src}
+                                        className="absolute inset-0 block overflow-hidden rounded-lg border border-black/10 bg-muted shadow-md transition-all duration-300 group-hover:shadow-lg"
+                                        style={{
+                                            zIndex: index + 1,
+                                            transform: `translate(${reverseIndex * (isStackHovered ? 11 : 5)}px, ${reverseIndex * (isStackHovered ? -8 : -4)}px) rotate(${reverseIndex * 2.5}deg)`,
+                                        }}
+                                    >
+                                        <span
+                                            className="absolute inset-0 transition-transform duration-300 group-hover:scale-105"
+                                            style={{
+                                                transform: `translate(${reverseIndex * -1}px, ${reverseIndex * 1}px)`,
+                                            }}
+                                        >
+                                            <Image
+                                                src={image.src}
+                                                alt={resolveAlt(
+                                                    image.alt,
+                                                    originalIndex,
+                                                )}
+                                                fill
+                                                sizes={`(min-width: 640px) ${previewWidth}px, 100vw`}
+                                                className="h-full w-full object-cover"
+                                            />
+                                        </span>
+                                    </span>
+                                );
+                            })}
+                        </PreviewComponent>
+                    ) : null}
                 </div>
             ) : (
                 <PreviewComponent
@@ -487,22 +634,26 @@ export function ImageGallery({
                 onOpenChange={handleModalOpenChange}
                 title="Pregled galerije"
                 dismissible={false}
+                disableMobile
                 className={cx(
-                    'm-0 h-[100dvh] w-[100dvw] max-h-none max-w-none rounded-none border-0 p-0',
-                    'bg-black/60 backdrop-blur',
-                    '[&>div:last-child]:h-full [&>div:last-child]:p-0 [&>div:not(:last-child)]:hidden',
+                    '!inset-0 !m-0 h-auto max-h-none w-auto max-w-none !translate-x-0 !translate-y-0 overflow-hidden rounded-none border-0 p-0',
+                    'bg-black/60 backdrop-blur overscroll-none',
+                    '[&>div:last-child]:h-full [&>div:last-child]:overflow-hidden [&>div:last-child]:p-0 [&>div:not(:last-child)]:hidden',
                 )}
             >
-                <div className="relative flex h-full w-full overflow-clip">
+                <div className="relative flex h-full max-h-full w-full max-w-full min-w-0 overflow-hidden">
                     <p id={imageInstructionsId} className="sr-only">
                         Pritisni Escape za zatvaranje, lijevu ili desnu strelicu
                         za promjenu slike, plus ili minus za zumiranje i nulu za
                         prilagodbu zaslonu.
                     </p>
                     <div
-                        className="absolute right-4 top-4 z-10 flex gap-1"
+                        className="absolute z-10 flex max-w-[calc(100%-1.5rem)] justify-end gap-1 overflow-x-auto"
                         style={{
-                            top: 'calc(env(safe-area-inset-top) + 1rem)',
+                            right: 'calc(env(safe-area-inset-right) + 0.75rem)',
+                            top: 'calc(env(safe-area-inset-top) + 0.75rem)',
+                            WebkitOverflowScrolling: 'touch',
+                            touchAction: 'pan-x',
                         }}
                     >
                         <IconButton
@@ -563,7 +714,19 @@ export function ImageGallery({
                         </IconButton>
                     </div>
 
-                    <div className="flex h-full min-h-0 w-full min-w-0 items-center justify-center pb-32 sm:pb-36">
+                    <div
+                        className="flex h-full min-h-0 w-full min-w-0 items-center justify-center"
+                        style={{
+                            paddingBottom:
+                                'calc(env(safe-area-inset-bottom) + 6.5rem)',
+                            paddingLeft:
+                                'calc(env(safe-area-inset-left) + 0.5rem)',
+                            paddingRight:
+                                'calc(env(safe-area-inset-right) + 0.5rem)',
+                            paddingTop:
+                                'calc(env(safe-area-inset-top) + 4.5rem)',
+                        }}
+                    >
                         <button
                             type="button"
                             ref={imageRef}
@@ -583,7 +746,7 @@ export function ImageGallery({
                             style={{ touchAction: 'none' }}
                         >
                             <span
-                                className="relative flex h-full w-full select-none items-center justify-center transition-transform duration-200 ease-out will-change-transform"
+                                className="relative block h-full w-full select-none transition-transform duration-200 ease-out will-change-transform"
                                 style={{
                                     transform: `scale(${zoomLevel}) translate(${position.x / zoomLevel}px, ${position.y / zoomLevel}px)`,
                                     transformOrigin: 'center center',
@@ -597,7 +760,7 @@ export function ImageGallery({
                                         activeImage?.alt,
                                         safeIndex,
                                     )}
-                                    className="h-auto w-auto max-h-none max-w-none select-none object-contain"
+                                    className="absolute left-1/2 top-1/2 h-auto w-auto max-h-none max-w-none -translate-x-1/2 -translate-y-1/2 select-none object-contain"
                                     draggable={false}
                                     onLoad={handleImageLoad}
                                 />
@@ -608,16 +771,16 @@ export function ImageGallery({
                     <Chip
                         aria-label={`Slika ${safeIndex + 1} od ${images.length}, zumiranje ${Math.round(zoomLevel * 100)} posto`}
                         aria-live="polite"
-                        className="absolute left-4 [top:calc(env(safe-area-inset-top)+1rem)] z-10 select-none border-0 bg-black/60 text-white/80 backdrop-blur"
+                        className="absolute [left:calc(env(safe-area-inset-left)+1rem)] [top:calc(env(safe-area-inset-top)+0.75rem)] z-10 select-none border-0 bg-black/60 text-white/80 backdrop-blur"
                         variant="solid"
                     >
                         {safeIndex + 1}/{images.length} •{' '}
                         {Math.round(zoomLevel * 100)}%
                     </Chip>
 
-                    <div className="absolute bottom-0 left-0 z-10 w-full border-t border-white/10 bg-black/55 px-4 py-3 backdrop-blur [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)]">
+                    <div className="absolute bottom-0 left-0 z-10 w-full max-w-full overflow-hidden border-t border-white/10 bg-black/55 py-3 backdrop-blur [padding-bottom:calc(env(safe-area-inset-bottom)+0.75rem)] [padding-left:calc(env(safe-area-inset-left)+1rem)] [padding-right:calc(env(safe-area-inset-right)+1rem)]">
                         <div
-                            className="mx-auto flex max-w-5xl gap-2 overflow-x-auto"
+                            className="mx-auto flex max-w-full gap-2 overflow-x-auto"
                             style={{
                                 WebkitOverflowScrolling: 'touch',
                                 touchAction: 'pan-x',

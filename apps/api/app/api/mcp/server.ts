@@ -6,15 +6,18 @@ import { z } from 'zod';
 import { verifyJwt } from '../../../lib/auth/auth';
 import { accountCookieName } from '../../../lib/auth/sessionConfig';
 import { resolveMcpAccountId } from '../../../lib/mcp/accountSelection';
+import { mcpPublicDocumentationUrl } from '../../../lib/mcp/publicMetadata';
 import {
     getMcpResources,
     getMcpResourceTemplates,
     getMcpToolCatalogEntry,
-    getMcpToolNamesByDomain,
     getMcpTools,
     type McpExposure,
+    type McpToolCatalogEntry,
 } from './catalog';
+import { executeCommerceTool } from './commerce/tools/call/execute';
 import { executeDirectoryTool } from './directories/tools/call/execute';
+import { executeGardenTool } from './gardens/tools/call/execute';
 import { Logger } from './logger';
 
 const SUPPORTED_PROTOCOL_VERSIONS = ['2025-03-26', '2024-11-05'] as const;
@@ -182,6 +185,54 @@ function requiredScopeForExposure(exposure: McpExposure) {
     }
 }
 
+async function executeMcpTool({
+    args,
+    authContext,
+    name,
+    signal,
+    tool,
+}: {
+    args: unknown;
+    authContext: {
+        accountId: string;
+        role: string;
+        userId: string;
+    } | null;
+    name: string;
+    signal: AbortSignal;
+    tool: McpToolCatalogEntry;
+}) {
+    switch (tool.domain) {
+        case 'directories':
+            return executeDirectoryTool(name, args, { signal });
+        case 'gardens':
+            if (!authContext) {
+                throw new Error('Garden tools require authentication');
+            }
+            return executeGardenTool(name, args, authContext);
+        case 'commerce':
+            return executeCommerceTool(name, args, authContext);
+    }
+}
+
+function buildMcpToolResult(result: unknown) {
+    const structuredContent =
+        result !== null && typeof result === 'object' && !Array.isArray(result)
+            ? result
+            : { value: result };
+
+    return {
+        ...structuredContent,
+        content: [
+            {
+                type: 'text',
+                text: JSON.stringify(result) ?? 'null',
+            },
+        ],
+        structuredContent,
+    };
+}
+
 async function authenticateMcpRequest(
     request: NextRequest,
     requiredScope: string,
@@ -304,47 +355,6 @@ export async function handleMcpRequest(request: NextRequest) {
         const id = body?.id ?? null;
         const toolName = body?.params?.name as string | undefined;
 
-        const rolloutStage = process.env.MCP_ROLLOUT_STAGE ?? 'all';
-        if (method === 'tools/call' && typeof toolName === 'string') {
-            const tool = getMcpToolCatalogEntry(toolName);
-            if (tool) {
-                if (
-                    rolloutStage === 'public-read-only' &&
-                    tool.exposure !== 'public-read'
-                ) {
-                    return NextResponse.json(
-                        {
-                            jsonrpc: '2.0',
-                            id,
-                            error: {
-                                code: -32004,
-                                message:
-                                    'Tool not enabled in current rollout stage',
-                            },
-                        },
-                        { status: 403 },
-                    );
-                }
-                if (
-                    rolloutStage === 'auth-read-only' &&
-                    tool.exposure === 'auth-mutation'
-                ) {
-                    return NextResponse.json(
-                        {
-                            jsonrpc: '2.0',
-                            id,
-                            error: {
-                                code: -32004,
-                                message:
-                                    'Tool not enabled in current rollout stage',
-                            },
-                        },
-                        { status: 403 },
-                    );
-                }
-            }
-        }
-
         const rateClass = method === 'tools/call' ? 'tool-call' : 'metadata';
         const rateKey = `${clientAddress}:${rateClass}:${toolName ?? method ?? 'unknown'}`;
         const rate = checkRateLimit(
@@ -400,6 +410,13 @@ export async function handleMcpRequest(request: NextRequest) {
                     },
                 },
             );
+        }
+
+        if (method === 'notifications/initialized') {
+            return new NextResponse(null, {
+                status: 202,
+                headers: { 'x-correlation-id': correlationId },
+            });
         }
 
         if (method === 'tools/list') {
@@ -475,10 +492,7 @@ export async function handleMcpRequest(request: NextRequest) {
             }
 
             const tool = getMcpToolCatalogEntry(name);
-            if (
-                !tool ||
-                !getMcpToolNamesByDomain('directories').includes(name)
-            ) {
+            if (!tool) {
                 return NextResponse.json(
                     {
                         jsonrpc: '2.0',
@@ -515,13 +529,13 @@ export async function handleMcpRequest(request: NextRequest) {
             try {
                 const result = await executeWithTimeout(
                     (signal) =>
-                        executeDirectoryTool(
+                        executeMcpTool({
                             name,
-                            body?.params?.arguments ?? {},
-                            {
-                                signal,
-                            },
-                        ),
+                            args: body?.params?.arguments ?? {},
+                            authContext,
+                            signal,
+                            tool,
+                        }),
                     MCP_TOOL_TIMEOUT_MS,
                 );
                 logger.info('mcp.request.success', {
@@ -535,23 +549,36 @@ export async function handleMcpRequest(request: NextRequest) {
                     role: authContext?.role,
                 });
                 return NextResponse.json(
-                    { jsonrpc: '2.0', id, result },
+                    {
+                        jsonrpc: '2.0',
+                        id,
+                        result: buildMcpToolResult(result),
+                    },
                     { headers: { 'x-correlation-id': correlationId } },
                 );
             } catch (error) {
                 const isInvalidParams = error instanceof z.ZodError;
                 const isTimeout = error instanceof ToolExecutionTimeoutError;
+                const errorType = isInvalidParams
+                    ? 'invalid_params'
+                    : isTimeout
+                      ? 'timeout'
+                      : 'tool_failure';
                 logger.error('mcp.request.error', {
                     correlationId,
                     method,
                     toolName: name,
                     latencyMs: Math.round(performance.now() - requestStart),
                     status: 'error',
-                    errorType: isInvalidParams
-                        ? 'invalid_params'
-                        : isTimeout
-                          ? 'timeout'
-                          : 'tool_failure',
+                    errorType,
+                    error:
+                        error instanceof Error
+                            ? {
+                                  name: error.name,
+                                  message: error.message.slice(0, 1_000),
+                                  stack: error.stack?.slice(0, 4_000),
+                              }
+                            : String(error),
                 });
                 return NextResponse.json(
                     {
@@ -566,7 +593,9 @@ export async function handleMcpRequest(request: NextRequest) {
                                   : error instanceof Error
                                     ? error.message
                                     : 'Tool execution failed',
-                            data: isInvalidParams ? error.issues : undefined,
+                            data: isInvalidParams
+                                ? error.issues
+                                : { category: errorType },
                         },
                     },
                     {
@@ -603,7 +632,7 @@ export function getProtectedResourceMetadata(request: NextRequest) {
         resource,
         authorization_servers: [issuer],
         bearer_methods_supported: ['header'],
-        resource_documentation: `${baseUrlFromRequest(request)}/test`,
+        resource_documentation: mcpPublicDocumentationUrl,
         scopes_supported: [MCP_SCOPES.read, MCP_SCOPES.write, MCP_SCOPES.admin],
     });
 }

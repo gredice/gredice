@@ -11,15 +11,32 @@ import {
     cacheControlPresets,
     setCacheControl,
 } from '../../../../lib/http/cacheControl';
+import {
+    filterWeatherAlertsForFarm,
+    getDhmzWeatherAlerts,
+    resolveWeatherAlertRegionCode,
+} from '../../../../lib/weather/alerts';
 import { getBjelovarForecast } from '../../../../lib/weather/forecast';
 import { populateWeatherFromSymbol } from '../../../../lib/weather/populateWeatherFromSymbol';
 import {
     fallbackWeatherNow,
     findClosestForecastEntry,
     pickFarmSnowAccumulation,
+    pickWeatherFarm,
 } from '../../../../lib/weather/weatherNowContract';
 
 // import { signalcoClient } from '@gredice/signalco';
+
+async function getCachedBjelovarForecast() {
+    return grediceCached(
+        grediceCacheKeys.forecastBjelovar,
+        getBjelovarForecast,
+        60 * 60,
+    ).catch((error) => {
+        console.warn('Weather forecast unavailable', { error });
+        return [];
+    });
+}
 
 const app = new Hono()
     .get(
@@ -28,11 +45,7 @@ const app = new Hono()
             description: 'Get weather forecast',
         }),
         async (context) => {
-            const forecast = await grediceCached(
-                grediceCacheKeys.forecastBjelovar,
-                getBjelovarForecast,
-                60 * 60,
-            );
+            const forecast = await getCachedBjelovarForecast();
             setCacheControl(context, cacheControlPresets.weatherShortTerm);
             return context.json(forecast ?? []);
         },
@@ -43,11 +56,7 @@ const app = new Hono()
             description: 'Get current weather',
         }),
         async (context) => {
-            const forecast = await grediceCached(
-                grediceCacheKeys.forecastBjelovar,
-                getBjelovarForecast,
-                60 * 60,
-            );
+            const forecast = await getCachedBjelovarForecast();
 
             // const measurements = await grediceCached(grediceCacheKeys.airSensorOpgIb, async () => {
             //     const airSensorData = await signalcoClient().GET('/entity/{id}', { params: { path: { id: '565c2653-b3eb-4a7e-9399-bf5734128e03' } } });
@@ -66,13 +75,30 @@ const app = new Hono()
 
             const farmId = context.req.query('farmId');
             const farms = await getFarms();
+            const farm = pickWeatherFarm(farms, farmId);
             const snowAccumulation = pickFarmSnowAccumulation(farms, farmId);
+            const alerts = await grediceCached(
+                grediceCacheKeys.weatherAlertsCroatia,
+                getDhmzWeatherAlerts,
+                30 * 60,
+            )
+                .then((sourceAlerts) =>
+                    filterWeatherAlertsForFarm(sourceAlerts ?? [], farm),
+                )
+                .catch((error) => {
+                    console.warn('Weather alerts unavailable for now route', {
+                        error,
+                        farmId,
+                    });
+                    return [];
+                });
 
             if (!forecast || forecast.length === 0) {
                 setCacheControl(context, cacheControlPresets.weatherShortTerm);
                 return context.json({
                     ...fallbackWeatherNow,
                     snowAccumulation,
+                    alerts,
                 });
             }
 
@@ -82,6 +108,7 @@ const app = new Hono()
                 return context.json({
                     ...fallbackWeatherNow,
                     snowAccumulation,
+                    alerts,
                 });
             }
             setCacheControl(context, cacheControlPresets.weatherShortTerm);
@@ -97,9 +124,32 @@ const app = new Hono()
                 ...populateWeatherFromSymbol(closestEntry.symbol),
                 source: 'forecast' as const,
                 isStale: false,
+                alerts,
             };
 
             return context.json(weather);
+        },
+    )
+    .get(
+        '/alerts',
+        describeRoute({
+            description: 'Get regional weather alerts for a farm',
+        }),
+        async (context) => {
+            const farmId = context.req.query('farmId');
+            const farms = await getFarms();
+            const farm = pickWeatherFarm(farms, farmId);
+            const sourceAlerts = await grediceCached(
+                grediceCacheKeys.weatherAlertsCroatia,
+                getDhmzWeatherAlerts,
+                30 * 60,
+            );
+            const alerts = filterWeatherAlertsForFarm(sourceAlerts ?? [], farm);
+            setCacheControl(context, cacheControlPresets.weatherShortTerm);
+            return context.json({
+                alerts,
+                regionCode: resolveWeatherAlertRegionCode(farm),
+            });
         },
     )
     .get(

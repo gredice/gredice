@@ -11,6 +11,10 @@ import {
 } from '@gredice/ui/Card';
 import { Input } from '@gredice/ui/Input';
 import { Clear, Mail, Send } from '@gredice/ui/icons';
+import {
+    markdownEditorClassNames,
+    markdownEditorContentEditableClassName,
+} from '@gredice/ui/MarkdownEditor';
 import { Typography } from '@gredice/ui/Typography';
 import {
     BlockTypeSelect,
@@ -174,12 +178,13 @@ export function EmailSendForm({ from }: { from: string }) {
                                     }}
                                     placeholder="Unesite poruku..."
                                     className={cx(
-                                        'border rounded-md',
+                                        markdownEditorClassNames,
+                                        'rounded-md border',
                                         pending && 'bg-muted',
-                                        !pending &&
-                                            '[&_.mdxeditor-toolbar]:bg-background [&_.mdxeditor-toolbar]:text-muted-foreground',
                                     )}
-                                    contentEditableClassName="prose prose-p:my-2 prose-sm max-w-none"
+                                    contentEditableClassName={
+                                        markdownEditorContentEditableClassName
+                                    }
                                     plugins={[
                                         headingsPlugin(),
                                         listsPlugin(),

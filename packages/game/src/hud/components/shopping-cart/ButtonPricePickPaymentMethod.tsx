@@ -1,4 +1,5 @@
 import { Row } from '@gredice/ui/Row';
+import { SunflowerText } from '@gredice/ui/SunflowerVisuals';
 import { Typography } from '@gredice/ui/Typography';
 import { useRef } from 'react';
 import { useSunflowerTransferAnimation } from '../../../indicators/SunflowerTransfer/useSunflowerTransferAnimation';
@@ -96,7 +97,7 @@ export function ButtonPricePickPaymentMethod({
                         isSunflower ? 'translate-x-5' : 'translate-x-0.5'
                     } ${isToggleDisabled ? 'opacity-60' : ''}`}
                 >
-                    {isSunflower ? '🌻' : '€'}
+                    <SunflowerText>{isSunflower ? '🌻' : '€'}</SunflowerText>
                 </span>
             </button>
         </Row>

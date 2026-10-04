@@ -1,0 +1,64 @@
+import { getAchievementDefinitions } from '@gredice/js/achievements';
+import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { expect } from 'storybook/test';
+import {
+    AchievementAwardsShowcase,
+    isAdvancedAchievement,
+} from './AchievementAwardsShowcase';
+
+const meta = {
+    title: 'packages/ui/AchievementAwards',
+    component: AchievementAwardsShowcase,
+    tags: ['autodocs'],
+    parameters: { layout: 'fullscreen' },
+    play: async ({ canvasElement, args }) => {
+        const definitions = getAchievementDefinitions()
+            .filter(
+                (definition) =>
+                    !args.newFamiliesOnly ||
+                    ['garden_diversity', 'seed_to_table', 'seasonal'].includes(
+                        definition.familyKey,
+                    ),
+            )
+            .filter(
+                (definition) =>
+                    !args.advancedLevelsOnly ||
+                    isAdvancedAchievement(definition),
+            );
+        await expect(
+            canvasElement.querySelectorAll('[data-award-example]'),
+        ).toHaveLength(definitions.length);
+        const dedicatedImages = canvasElement.querySelectorAll(
+            '[data-award-example] svg:not([data-achievement-placeholder]) image',
+        );
+        const urls = new Set(
+            Array.from(dedicatedImages, (image) => image.getAttribute('href')),
+        );
+        await expect(urls.size).toBe(definitions.length);
+        await expect(
+            canvasElement.querySelectorAll('[data-achievement-placeholder]'),
+        ).toHaveLength(0);
+        await Promise.all(
+            Array.from(urls, async (url) => {
+                if (!url) throw new Error('Missing achievement artwork');
+                const image = new Image();
+                image.src = url;
+                await image.decode();
+                await expect(image.naturalWidth).toBe(512);
+            }),
+        );
+    },
+} satisfies Meta<typeof AchievementAwardsShowcase>;
+export default meta;
+type Story = StoryObj<typeof meta>;
+export const Light: Story = {};
+export const Dark: Story = { args: { dark: true } };
+export const NewFamilies: Story = { args: { newFamiliesOnly: true } };
+export const NewFamiliesDark: Story = {
+    args: { newFamiliesOnly: true, dark: true },
+};
+
+export const AdvancedLevels: Story = { args: { advancedLevelsOnly: true } };
+export const AdvancedLevelsDark: Story = {
+    args: { advancedLevelsOnly: true, dark: true },
+};

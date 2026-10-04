@@ -72,15 +72,11 @@ export function RaisedBedFieldIconStack({ children }: { children: ReactNode }) {
         }
     }
 
-    // React's event delegation walks the *component* tree, so capture-phase
-    // handlers on the fieldset also fire for events on React children that
-    // were rendered through portals (for example, the vaul drawer overlay
-    // attached to a stacked-plant modal). If we treat those events as taps
-    // inside the stack we will both `setIsTouchExpanded(true)` again and call
-    // `event.stopPropagation()`, which prevents Radix's document-level
-    // pointerdown listener from firing — so backdrop-tap-to-dismiss and
-    // swipe-down dismissal of the opened drawer silently break. Guard every
-    // capture-phase handler with a DOM `contains` check.
+    // React's event delegation walks the component tree, so capture-phase
+    // handlers on the fieldset also fire for React children rendered through
+    // a portal. Treating overlay events as taps inside the stack would expand
+    // it again and stop the dismissal event. Guard every capture-phase handler
+    // with a DOM `contains` check.
     function isEventInsideStack(
         event:
             | ReactPointerEvent<HTMLFieldSetElement>
@@ -152,7 +148,7 @@ export function RaisedBedFieldIconStack({ children }: { children: ReactNode }) {
         <fieldset
             ref={stackRef}
             aria-label="Pokazatelji polja"
-            className="group absolute -right-1.5 -top-1.5 z-20 m-0 min-w-0 border-0 p-0"
+            className="group absolute -right-1.5 -top-1.5 z-30 m-0 min-w-0 border-0 p-0"
             data-field-icon-stack
             data-touch-expanded={isTouchExpanded ? 'true' : 'false'}
             onClickCapture={handleClickCapture}

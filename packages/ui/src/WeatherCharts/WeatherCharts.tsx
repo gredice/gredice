@@ -3,14 +3,23 @@
 import {
     buildWeatherSeries,
     clampRangeToBounds,
+    formatWindStrength,
     type WeatherForecastDay,
     type WeatherHistoryPoint,
     type WeatherMetricKey,
     type WeatherSeriesPoint,
     weatherMetrics,
     windDirectionToDegrees,
+    windStrengthLabels,
 } from '@gredice/js/weather';
-import { type ComponentType, useMemo, useState } from 'react';
+import {
+    type ComponentType,
+    type MouseEvent,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import {
     Area,
     Bar,
@@ -30,7 +39,7 @@ import {
     ButtonGroup,
     buttonGroupItemClassName,
 } from '../ButtonGroup/ButtonGroup';
-import { Input } from '../Input/Input';
+import { CalendarDatePicker } from '../CalendarDatePicker/CalendarDatePicker';
 import { ArrowUp, Calendar, Droplets, ThermometerSun, Wind } from '../icons';
 import { Popper } from '../Popper/Popper';
 import { Row } from '../Row/Row';
@@ -59,15 +68,39 @@ export interface WeatherChartsProps {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
 const DEFAULT_FORECAST_DAYS = 3;
 const HISTORY_PRESETS = [3, 7, 30];
+const SMALL_CHART_WIDTH = 560;
+const SMALL_CHART_AGGREGATION_MS = 8 * HOUR_MS;
 
 type ForecastMode = 'standard' | 'extended';
 
-type MetricChartPoint = WeatherSeriesPoint & {
+type DisplayWeatherSeriesPoint = WeatherSeriesPoint & {
+    aggregateStart?: number;
+    aggregateEnd?: number;
+    aggregatePointCount?: number;
+};
+
+type MetricChartPoint = DisplayWeatherSeriesPoint & {
     historyValue: number | null;
     forecastValue: number | null;
 };
+
+interface WeatherSeriesBucket {
+    source: WeatherSeriesPoint['source'];
+    bucketStart: number;
+    bucketEnd: number;
+    timestampTotal: number;
+    pointCount: number;
+    temperatureTotal: number;
+    temperatureCount: number;
+    rainTotal: number;
+    windSpeedTotal: number;
+    windSpeedCount: number;
+    windDirection: string | null;
+    symbol: number | null;
+}
 
 const weatherMetricIcons: Record<
     WeatherMetricKey,
@@ -82,8 +115,77 @@ function isWeatherMetricKey(value: string): value is WeatherMetricKey {
     return weatherMetrics.some((metric) => metric.key === value);
 }
 
+function roundMetric(value: number): number {
+    return Math.round(value * 10) / 10;
+}
+
+function aggregateWeatherSeries(
+    points: DisplayWeatherSeriesPoint[],
+    bucketMs: number,
+): DisplayWeatherSeriesPoint[] {
+    const buckets = new Map<string, WeatherSeriesBucket>();
+
+    for (const point of points) {
+        const bucketStart = Math.floor(point.timestamp / bucketMs) * bucketMs;
+        const bucketKey = `${point.source}:${bucketStart}`;
+        const existing = buckets.get(bucketKey);
+        const bucket =
+            existing ??
+            ({
+                source: point.source,
+                bucketStart,
+                bucketEnd: bucketStart + bucketMs,
+                timestampTotal: 0,
+                pointCount: 0,
+                temperatureTotal: 0,
+                temperatureCount: 0,
+                rainTotal: 0,
+                windSpeedTotal: 0,
+                windSpeedCount: 0,
+                windDirection: null,
+                symbol: null,
+            } satisfies WeatherSeriesBucket);
+
+        bucket.timestampTotal += point.timestamp;
+        bucket.pointCount += 1;
+        if (point.temperature != null) {
+            bucket.temperatureTotal += point.temperature;
+            bucket.temperatureCount += 1;
+        }
+        bucket.rainTotal += point.rain;
+        bucket.windSpeedTotal += point.windSpeed;
+        bucket.windSpeedCount += 1;
+        bucket.windDirection = point.windDirection ?? bucket.windDirection;
+        bucket.symbol = point.symbol ?? bucket.symbol;
+        buckets.set(bucketKey, bucket);
+    }
+
+    return Array.from(buckets.values())
+        .map((bucket) => ({
+            timestamp: Math.round(bucket.timestampTotal / bucket.pointCount),
+            temperature:
+                bucket.temperatureCount > 0
+                    ? roundMetric(
+                          bucket.temperatureTotal / bucket.temperatureCount,
+                      )
+                    : null,
+            rain: roundMetric(bucket.rainTotal),
+            windSpeed:
+                bucket.windSpeedCount > 0
+                    ? roundMetric(bucket.windSpeedTotal / bucket.windSpeedCount)
+                    : 0,
+            windDirection: bucket.windDirection,
+            symbol: bucket.symbol,
+            source: bucket.source,
+            aggregateStart: bucket.bucketStart,
+            aggregateEnd: bucket.bucketEnd,
+            aggregatePointCount: bucket.pointCount,
+        }))
+        .sort((a, b) => a.timestamp - b.timestamp);
+}
+
 function toMetricChartData(
-    points: WeatherSeriesPoint[],
+    points: DisplayWeatherSeriesPoint[],
     metricKey: WeatherMetricKey,
 ): MetricChartPoint[] {
     const definition = weatherMetrics.find(
@@ -120,6 +222,7 @@ function createBridgeMetricChartPoint(
     previous: MetricChartPoint,
     next: MetricChartPoint,
     timestamp: number,
+    interpolate: boolean,
 ): MetricChartPoint | null {
     if (previous.historyValue == null || next.forecastValue == null) {
         return null;
@@ -128,10 +231,9 @@ function createBridgeMetricChartPoint(
     const duration = next.timestamp - previous.timestamp;
     if (duration <= 0) return null;
 
-    const ratio = Math.min(
-        1,
-        Math.max(0, (timestamp - previous.timestamp) / duration),
-    );
+    const ratio = interpolate
+        ? Math.min(1, Math.max(0, (timestamp - previous.timestamp) / duration))
+        : 0;
     const bridgedValue =
         previous.historyValue +
         (next.forecastValue - previous.historyValue) * ratio;
@@ -148,8 +250,12 @@ function createBridgeMetricChartPoint(
             0,
             interpolateNumber(previous.windSpeed, next.windSpeed, ratio),
         ),
-        windDirection: next.windDirection ?? previous.windDirection,
-        symbol: next.symbol ?? previous.symbol,
+        windDirection: interpolate
+            ? (next.windDirection ?? previous.windDirection)
+            : previous.windDirection,
+        symbol: interpolate
+            ? (next.symbol ?? previous.symbol)
+            : previous.symbol,
         source: 'forecast',
         historyValue: bridgedValue,
         forecastValue: bridgedValue,
@@ -159,6 +265,7 @@ function createBridgeMetricChartPoint(
 function stitchMetricChartData(
     points: MetricChartPoint[],
     nowTs: number,
+    interpolate = true,
 ): MetricChartPoint[] {
     let lastHistoryIndex = -1;
     let firstForecastIndex = -1;
@@ -210,6 +317,7 @@ function stitchMetricChartData(
         lastHistory,
         firstForecast,
         bridgeTimestamp,
+        interpolate,
     );
     if (!bridgePoint) return points;
 
@@ -232,6 +340,42 @@ function toEmptyMetricChartData(range: WeatherChartsRange): MetricChartPoint[] {
         historyValue: null,
         forecastValue: null,
     }));
+}
+
+function useElementWidth<T extends HTMLElement>() {
+    const ref = useRef<T>(null);
+    const [width, setWidth] = useState<number | null>(null);
+
+    useLayoutEffect(() => {
+        const element = ref.current;
+        if (!element) return;
+
+        const updateWidth = () => {
+            setWidth(Math.round(element.getBoundingClientRect().width));
+        };
+
+        updateWidth();
+
+        if (typeof ResizeObserver === 'undefined') {
+            window.addEventListener('resize', updateWidth);
+            return () => window.removeEventListener('resize', updateWidth);
+        }
+
+        const observer = new ResizeObserver((entries) => {
+            const entry = entries[0];
+            setWidth(
+                Math.round(
+                    entry?.contentRect.width ??
+                        element.getBoundingClientRect().width,
+                ),
+            );
+        });
+
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, []);
+
+    return { ref, width };
 }
 
 function formatShortDate(date: Date): string {
@@ -276,6 +420,15 @@ function getCalendarDayDiff(from: Date, to: Date): number {
     );
     const toDay = new Date(to.getFullYear(), to.getMonth(), to.getDate());
     return Math.round((toDay.getTime() - fromDay.getTime()) / DAY_MS);
+}
+
+function preventRechartsPointerFocus(event: MouseEvent<HTMLDivElement>) {
+    if (
+        event.target instanceof Element &&
+        event.target.closest('.recharts-surface')
+    ) {
+        event.preventDefault();
+    }
 }
 
 function getPresetSelectableBounds(
@@ -337,9 +490,11 @@ function WeatherTooltip({
             </Typography>
             <Row spacing={1} className="pt-0.5">
                 <Typography level="body2" semiBold>
-                    {Number.isFinite(value)
-                        ? `${value.toFixed(1)} ${unit}`
-                        : '—'}
+                    {showDirection
+                        ? formatWindStrength(value)
+                        : Number.isFinite(value)
+                          ? `${value.toFixed(1)} ${unit}`
+                          : '—'}
                 </Typography>
                 {showDirection && degrees != null && (
                     <ArrowUp
@@ -372,10 +527,21 @@ export function WeatherCharts({
     const nowTs = Date.now();
     const now = new Date(nowTs);
     const selectableBounds = getPresetSelectableBounds(bounds, now);
+    const { ref: containerRef, width: containerWidth } =
+        useElementWidth<HTMLDivElement>();
+    const isSmallChart =
+        containerWidth != null && containerWidth < SMALL_CHART_WIDTH;
 
-    const data = useMemo(
+    const rawData = useMemo<DisplayWeatherSeriesPoint[]>(
         () => buildWeatherSeries(history, forecast, range),
         [history, forecast, range],
+    );
+    const data = useMemo(
+        () =>
+            isSmallChart
+                ? aggregateWeatherSeries(rawData, SMALL_CHART_AGGREGATION_MS)
+                : rawData,
+        [isSmallChart, rawData],
     );
 
     const forecastStart = Math.max(nowTs, range.from.getTime());
@@ -384,7 +550,7 @@ export function WeatherCharts({
 
     const spansMultipleDays =
         range.to.getTime() - range.from.getTime() > 2 * DAY_MS;
-    const xTicks = getTimeTicks(range);
+    const xTicks = getTimeTicks(range, isSmallChart ? 4 : 5);
     const tickFormatter = (value: number) => {
         const date = new Date(value);
         return spansMultipleDays
@@ -460,17 +626,25 @@ export function WeatherCharts({
         const { color, unit, dataKey } = definition;
         const isRain = metricKey === 'rain';
         const isWind = metricKey === 'wind';
-        const rawMetricChartData = toMetricChartData(data, metricKey);
+        // Wind symbols are categories: averaging them invents fractional values.
+        const rawMetricChartData = toMetricChartData(
+            isWind ? rawData : data,
+            metricKey,
+        );
         const metricChartData = isRain
             ? rawMetricChartData
-            : stitchMetricChartData(rawMetricChartData, nowTs);
+            : stitchMetricChartData(rawMetricChartData, nowTs, !isWind);
         const hasMetricData = metricChartData.length > 0;
         const chartData = hasMetricData
             ? metricChartData
             : toEmptyMetricChartData(range);
 
         return (
-            <div style={{ height: chartHeight }} className="relative w-full">
+            <div
+                style={{ height: chartHeight }}
+                className="relative w-full"
+                onMouseDownCapture={preventRechartsPointerFocus}
+            >
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart
                         data={chartData}
@@ -524,16 +698,27 @@ export function WeatherCharts({
                             scale="time"
                             domain={[range.from.getTime(), range.to.getTime()]}
                             tickFormatter={tickFormatter}
-                            tick={{ fontSize: 11 }}
                             ticks={xTicks}
-                            minTickGap={24}
+                            tick={{ fontSize: isSmallChart ? 10 : 11 }}
+                            minTickGap={isSmallChart ? 40 : 24}
                         />
                         <YAxis
                             tick={{ fontSize: 11 }}
                             tickMargin={4}
-                            width={48}
+                            width={isWind ? 64 : 48}
                             unit={isWind ? '' : ` ${unit}`}
-                            allowDecimals={!isRain}
+                            allowDecimals={!isRain && !isWind}
+                            domain={isWind ? [0, 4] : undefined}
+                            ticks={
+                                isWind
+                                    ? windStrengthLabels.map(
+                                          (_, index) => index,
+                                      )
+                                    : undefined
+                            }
+                            tickFormatter={
+                                isWind ? formatWindStrength : undefined
+                            }
                         />
                         {hasMetricData && (
                             <Tooltip
@@ -552,6 +737,9 @@ export function WeatherCharts({
                                 fill={color}
                                 fillOpacity={0.025}
                                 ifOverflow="visible"
+                                pointerEvents="none"
+                                focusable={false}
+                                aria-hidden="true"
                             />
                         )}
                         {nowTs >= range.from.getTime() &&
@@ -591,7 +779,7 @@ export function WeatherCharts({
                             ) : isWind ? (
                                 <>
                                     <Line
-                                        type="monotone"
+                                        type="stepAfter"
                                         dataKey="historyValue"
                                         stroke={color}
                                         strokeWidth={2}
@@ -599,7 +787,7 @@ export function WeatherCharts({
                                         isAnimationActive={false}
                                     />
                                     <Line
-                                        type="monotone"
+                                        type="stepAfter"
                                         dataKey="forecastValue"
                                         stroke={color}
                                         strokeDasharray="5 5"
@@ -681,7 +869,11 @@ export function WeatherCharts({
               : undefined;
 
     return (
-        <Stack spacing={compact ? 1 : 2} className={cx('w-full', className)}>
+        <Stack
+            ref={containerRef}
+            spacing={compact ? 1 : 2}
+            className={cx('w-full', className)}
+        >
             <div className="flex flex-col items-start gap-2 md:flex-row md:items-center md:justify-between">
                 <ButtonGroup legend="Mjerenje" size="sm">
                     {weatherMetrics.map((definition) => {
@@ -775,25 +967,19 @@ export function WeatherCharts({
                         }
                     >
                         <Row spacing={1} className="items-end">
-                            <Input
-                                type="date"
+                            <CalendarDatePicker
                                 value={toDateInputValue(range.from)}
                                 min={minInput}
                                 max={maxInput}
-                                onChange={(event) =>
-                                    handleFromChange(event.target.value)
-                                }
+                                onValueChange={handleFromChange}
                                 label="Od"
                                 className="w-36"
                             />
-                            <Input
-                                type="date"
+                            <CalendarDatePicker
                                 value={toDateInputValue(range.to)}
                                 min={minInput}
                                 max={maxInput}
-                                onChange={(event) =>
-                                    handleToChange(event.target.value)
-                                }
+                                onValueChange={handleToChange}
                                 label="Do"
                                 className="w-36"
                             />

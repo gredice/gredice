@@ -1,5 +1,5 @@
 import Image, { type ImageProps } from 'next/image';
-import { resolvePlantType } from './plantNamesWithLSystem';
+import { resolveProceduralPlantType } from './plantNamesWithProceduralModels';
 
 export type PlantBlockImageStage = 'seedling' | 'growing' | 'mature';
 
@@ -15,7 +15,7 @@ export function PlantBlockImage({
     stage = 'mature',
     ...rest
 }: PlantBlockImageProps) {
-    const plantType = resolvePlantType(plantName);
+    const plantType = resolveProceduralPlantType(plantName);
     const src = plantType
         ? `/assets/plants/${plantType}_${stage}.png`
         : '/assets/plants/placeholder.png';

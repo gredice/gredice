@@ -1,9 +1,29 @@
 # Automations
 
 Automations are configurable, trusted server-side workflows that react to
-Gredice domain events. The MVP covers the existing planting workflow where a
-`raisedBedField.plantUpdate` event with `data.status = "sowed"` queues seasonal
-watering operations asynchronously.
+Gredice domain events or scheduled occurrences. The first workflows cover the
+existing planting flow where a `raisedBedField.plantUpdate` event with
+`data.status = "sowed"` queues seasonal watering operations asynchronously, and
+daily, weekly, biweekly, and monthly schedules that can create recurring
+operations. Operation
+completion images can also be reviewed asynchronously for high-confidence plant
+status changes that create pending admin approval requests. Verifying the
+seedling transplanting operation also switches the targeted plant from
+greenhouse sowing to direct sowing and queues 50L watering operations for the
+next two days when that raised bed does not already have at least 50L of
+watering scheduled on those days. Verifying the `Uklanjanje biljke` operation
+marks the targeted raised-bed field plant status as `removed`, which closes the
+plant cycle and frees the field for future planting. Plant field changes are
+available as configurable action modules so new operation-driven plant-state
+automations can be created from the admin graph editor without adding code. A
+completed operation in the `harvest` plant stage creates a pending proposal to
+change every active targeted plant to `harvested`; whole-raised-bed harvests
+expand to the active fields in that bed. Reviewers approve the proposal only
+when that plant is fully harvested and reject it when another harvest is
+expected, so the completion event never changes plant state directly. A
+managed weekly schedule also creates `Fotografiranje gredice` operations every
+Tuesday and Friday for active raised beds, reusing the existing operation
+completion image flow and `photographyUpdate` visual reward handling.
 
 ## Ownership
 
@@ -20,7 +40,7 @@ The schema is defined in
 `packages/storage/src/schema/automationsSchema.ts`.
 
 - `automation_definitions` stores name, key, status, trigger metadata, graph
-  JSON, metadata, and audit timestamps.
+  JSON, max concurrent runs, metadata, and audit timestamps.
 - `automation_runs` stores one async execution with source event/manual test
   context, graph snapshot, status, attempt count, dry-run flag, lock fields,
   input/output snapshots, and error fields.
@@ -30,35 +50,90 @@ The schema is defined in
   event polling runner.
 
 Event-triggered runs are idempotent through a partial unique index on
-`automation_definition_id` and `source_event_id` for `source = 'event'`. Manual,
-test, and replay runs can be repeated while still keeping their source event
-context.
+`automation_definition_id` and `source_event_id` for `source = 'event'`.
+Schedule-triggered runs are idempotent through a partial unique index on
+`automation_definition_id` and `source_aggregate_id` for schedule occurrence
+event types. Manual, test, and replay runs can be repeated while still keeping
+their source context.
+
+Matching event-triggered runs are enqueued as part of `createEvent()`, so live
+domain events do not need to wait for the polling cron before they appear in the
+automation queue. The cursor-based polling runner remains as a safety net for
+event writes that bypass immediate enqueueing, missed duplicate-safe enqueue
+attempts, scheduled runs, and periodic queue execution.
 
 ## Runner Lifecycle
 
-`runAutomations()` in `packages/storage/src/automations/runner.ts` performs three
+`runAutomations()` in `packages/storage/src/automations/runner.ts` performs
 bounded phases:
 
-1. Ensure default automation definitions exist.
-2. Read new domain events after the cursor and enqueue matching enabled
+1. Check the managed revision of default automation definitions once for the
+   invocation and synchronize only missing or changed defaults.
+2. Enqueue due scheduled automation runs one local calendar day before the
+   configured occurrence, using deterministic occurrence keys so repeated cron
+   ticks do not duplicate the same period.
+3. Read new domain events after the cursor and enqueue matching enabled
    automation runs.
-3. Recover stale running jobs, claim due queued/retryable runs, and execute them
-   through the graph executor.
+4. Recover stale running jobs.
+5. Claim due queued/retryable runs up to each automation definition's
+   concurrency cap and execute the claimed batch through the graph executor.
+6. When a batch finishes quickly, claim another due batch in the same cron
+   invocation. The runner measures batch duration and only starts another batch
+   when the estimated next batch plus the safety margin still fits inside the
+   processing budget.
 
 When defaults are first installed, the runner initializes the event cursor to
 the current latest domain event id if no cursor exists. This prevents the MVP
 from backfilling historical sowing events and creating past-dated seasonal
 watering operations on first cron execution.
 
-The API cron route is protected with `CRON_SECRET` and is registered in
-`apps/api/vercel.json` on a five-minute schedule:
+Default synchronization reads only each definition's ID, key, and the
+`metadata.managedRevision` SHA-256 of its source-managed content. An unchanged
+revision performs no definition writes and transfers no definition graph.
+Changed defaults are installed transactionally with a conflict-row revision
+guard, so concurrent workers apply each revision once and failed initialization
+can retry. Existing databases adopt the revision in metadata on their first
+successful synchronization; deleted defaults are restored on the next check.
+The default initializer returns ID/key references instead of full rows.
+
+Administrator graph edits remain in place until their source-managed revision
+changes. On a changed revision, source content is reapplied using the existing
+default policy: definitions with `preserveExistingStatus` keep their configured
+status, and administrator concurrency settings remain unless the source
+explicitly configures a new cap. Cursor initialization reads the existing
+cursor first and never advances it while synchronizing definitions.
+
+For production measurement, compare matching windows before and after the API
+deployment, excluding the one-time adoption updates. Record the deployment
+SHA, window boundaries, cron invocations, and the delta of
+`pg_stat_user_tables.n_tup_upd` for `automation_definitions`; admin edits are
+separate legitimate updates. Also compare the database/provider transfer
+counter for the same window. The compact revision projection and zero idle
+writes are covered locally, but production transfer savings require this
+deployment-window readback and cannot be inferred from JSON sizes alone.
+
+The automation worker route is protected with `CRON_SECRET`. The shared
+due-work dispatcher is registered in `apps/api/vercel.json` on a one-minute
+schedule and invokes it when a Redis hint is due:
 
 ```json
-{ "path": "/api/internal/cron/automations", "schedule": "*/5 * * * *" }
+{ "path": "/api/internal/cron/work-dispatch", "schedule": "* * * * *" }
 ```
 
-Five minutes is the MVP tradeoff: follow-up work is asynchronous and visible in
-run logs without adding a high-frequency cron job.
+Committed definition edits, new events/runs and retries publish hints. An idle
+dispatcher pass skips the automation worker and its PostgreSQL queries; the
+first pass each UTC hour runs recovery, including calendar schedule discovery
+and missed producer hints. Calendar occurrences are still enqueued on the
+previous local day. Redis failure falls back to running the worker. See
+[cron cadences](./cron-cadences.md) for producer configuration, recovery and
+optional dispatcher attribution.
+
+The cron remains bounded and idempotent: it enqueues due schedule/event runs,
+recovers stale locks, and claims limited batches of due queued/retrying runs.
+The API cron currently allows up to 10 processing batches, with a 45-second
+processing budget and a 5-second safety margin. This lets fast skipped/no-op
+jobs drain without waiting for another cron tick, while slower batches naturally
+pause for the next one.
 
 ## Module Registry
 
@@ -71,21 +146,98 @@ MVP modules:
 
 - `trigger.domainEvent`: starts from a stored domain event and filters by event
   type.
+- `trigger.schedule`: starts on a daily, weekly, biweekly, or monthly cadence.
+  The cron creates the run on the previous local calendar day, while
+  `occurrenceDate` remains the configured work date used by task-creating
+  actions. Weekly and biweekly schedules can target one weekday or a JSON array
+  of selected weekdays. Biweekly schedules require an anchor date so alternating
+  week parity stays explicit.
+- `trigger.scheduleMonthly`: legacy monthly trigger that starts once per month
+  on the day before the configured local day.
 - `condition.eventDataEquals`: compares a value in event data.
 - `condition.operationMatches`: checks operation status, entity id, or
-  operation application.
+  operation application or plant stage.
 - `condition.plantStatusEquals`: checks current raised-bed field plant status.
 - `action.queueSeasonalSowingOfferOperations`: queues seasonal free watering
   operations.
+- `action.queuePostTransplantWateringOperations`: queues 50L raised-bed
+  watering operations for the two days after seedling transplant verification,
+  skipping days where active scheduled watering for that raised bed already
+  totals at least 50L.
 - `action.createOperation`: creates an operation for the event context.
-- `action.updateRaisedBedFieldPlantStatus`: writes a
-  `raisedBedField.plantUpdate` event for an operation target.
+- `action.createFarmInventoryOperations`: creates accepted, scheduled farm-level
+  operations for every active farm from a JSON list in the automation
+  definition. Individual entries can set
+  `requiresGreenhouseOrOutletPlants: true` to create that operation only for
+  farms with current greenhouse-located raised-bed fields, or when central
+  outlet stock has active published non-expired offers with remaining quantity.
+  Because outlet offers are not farm-scoped in storage, active outlet stock makes
+  every active farm eligible for that conditional inventory operation.
+- `action.createGreenhouseSeedlingWateringOperations`: creates at most one
+  accepted, scheduled farm-level `Zalijevanje presadnica u stakleniku`
+  operation per active farm and local schedule date. A farm is eligible when it
+  has current greenhouse-located raised-bed fields, or when central outlet stock
+  has active published non-expired offers with remaining quantity. Outlet offers
+  are not farm-scoped in storage, so active outlet stock makes every active farm
+  eligible for the daily care operation.
+- `action.createRaisedBedOperations`: creates accepted, scheduled raised-bed
+  operations for every active, non-deleted raised bed from a single operation
+  entity config. It targets `raisedBedId` without `raisedBedFieldId`, skips
+  inactive, deleted, and abandoned raised beds, and reports `recipientCount`,
+  `projectedCreateCount`, and `skippedExistingCount` during dry runs.
+- `action.updateRaisedBedFieldPlantAttributes`: writes plant status and/or
+  sowing location events for the operation target field. Use this for new
+  no-code plant-state automations.
+- `action.createPlantStatusApprovalRequests`: creates pending plant-status
+  proposals without mutating the plant. A field-targeted operation creates one
+  proposal, while a whole-raised-bed operation expands to every active field;
+  pending proposals are reused on retries.
+- `action.createPlantStatusRequestsFromImageAnalysis`: reviews hosted
+  raised-bed images from operation completion or raised-bed AI analysis events,
+  then creates pending plant-status approval requests and field-level weed-state
+  observations when the visual evidence passes the configured confidence
+  threshold.
 - `action.log`: records a no-op step for diagnostics.
+
+The managed default `default.monthly-farm-inventory-operations` uses the shared
+monthly `trigger.schedule` on day 1 in `Europe/Zagreb`; the run is queued on the
+previous local day and creates the published internal farm inventory operation
+set (`inventoryRaisedBedBoards` through `inventoryPlasticDeliveryBags`,
+operation entity ids 554-565) for each active farm on the configured occurrence
+date.
 
 When adding a module, define metadata, config validation, dry-run behavior, and
 the executor function in the registry. Prefer idempotent repository functions for
 actions that mutate operations, plant state, notifications, or customer-visible
 records.
+
+Graphs can branch after a shared condition. For example, an `operation.verify`
+trigger can flow into one `condition.operationMatches` node and then fan out to
+separate plant-attribute, watering, notification, or operation-creation actions.
+The executor records those sibling actions as separate steps; actions should
+remain idempotent because replays and retries can run the same graph again.
+
+The managed raised-bed photo automation uses `trigger.schedule` with
+`daysOfWeek: ["tuesday", "friday"]` in the `Europe/Zagreb` time zone and
+`action.createRaisedBedOperations` with operation entity `301`
+(`raisedBedFullPhoto`, label `Fotografiranje gredice`). Tuesday work is created
+on Monday and Friday work is created on Thursday. Duplicate prevention is scoped
+to the raised bed, operation entity, and weekday occurrence date; existing
+non-canceled/non-failed operations for the same day are counted as existing
+skips.
+
+The same Tuesday/Friday cadence is mirrored in the AI context by
+`RAISED_BED_PHOTOGRAPHY_WEEKDAYS` in
+`apps/api/lib/ai/raisedBedPhotographySchedule.ts`, so the raised-bed image
+analysis and the Suncokret chat can tell customers when the next photos arrive.
+Change both when the photo schedule changes.
+
+The managed raised-bed detailed inspection automation is seeded as draft under
+`default.raised-bed-detailed-inspection`. When enabled, it uses the weekly
+schedule on Mondays and `action.createRaisedBedOperations` with draft operation
+entity `652` (`detailedRaisedBedInspection`, label `Detaljno pregledavanje
+gredice`) to create one accepted raised-bed-scoped inspection per active raised
+bed and occurrence day.
 
 ## Graph Validation
 
@@ -109,15 +261,20 @@ snapshot reaches the runner.
 Admins manage automations in `apps/app` at `/admin/automations`.
 
 - The list page shows definition status, trigger summary, action summary, latest
-  run status, recent failed-run count, and filters for definition status,
+  run status, recent failed-run count, a jobs queue table with run state,
+  attempts, timing, and source context, and filters for definition status,
   trigger event type, run status, and failed-only runs.
 - The detail page shows the editor, test controls, and expandable run logs with
   per-step input/output/error snapshots.
 - The editor uses `@xyflow/react` and stores layout in the definition graph.
 - The right panel is the module store and selected-node configuration surface.
 - Manual test runs can use a recent matching event or synthetic event context.
-  Dry-run is enabled by default.
-- Failed runs can be replayed as a new linked run.
+  Dry-run is enabled by default. The admin app only enqueues these runs; the API
+  automation runner executes them with the same queue path as event and schedule
+  runs.
+- Failed runs can be replayed as a new linked queued run.
+- Definition details include a parallelism setting that controls how many runs
+  from that automation can be in progress at the same time.
 
 ## Validation
 
@@ -126,7 +283,7 @@ commands from the repo root:
 
 ```bash
 pnpm lint --filter @gredice/storage
-pnpm test --filter @gredice/storage
+pnpm run test --filter @gredice/storage
 pnpm build --filter api
 pnpm build --filter app
 git diff --check

@@ -1,17 +1,21 @@
 import type { PlantData } from '@gredice/client';
 import { slug } from '@gredice/js/slug';
 import { Accordion } from '@gredice/ui/Accordion';
+import { Markdown } from '@gredice/ui/Markdown';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { CommunityEntitySuggestionButton } from '../../../components/community-edits/CommunityEntitySuggestionButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 
 export function PlantTips({
     plant,
+    publicPath,
 }: {
     plant: {
         id: number;
-        information?: { tip?: PlantData['information']['tip'] };
+        information: { name: string; tip?: PlantData['information']['tip'] };
     };
+    publicPath: string;
 }) {
     return (
         <Stack spacing={4}>
@@ -34,7 +38,7 @@ export function PlantTips({
                             {tip.header}
                         </Typography>
                         <Stack spacing={4}>
-                            <Typography>{tip.content}</Typography>
+                            <Markdown>{tip.content}</Markdown>
                             <FeedbackModal
                                 className="self-end"
                                 topic="www/plants/advice"
@@ -46,6 +50,14 @@ export function PlantTips({
                         </Stack>
                     </Accordion>
                 ))}
+                <CommunityEntitySuggestionButton
+                    key={plant.id}
+                    kind="plantTip"
+                    parentPlantId={plant.id}
+                    parentPlantName={plant.information.name}
+                    publicPath={publicPath}
+                    compact
+                />
             </div>
         </Stack>
     );

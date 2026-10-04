@@ -5,7 +5,6 @@ import {
     getWeatherDataBounds,
     type WeatherMetricKey,
 } from '@gredice/js/weather';
-import { Modal } from '@gredice/ui/Modal';
 import {
     WeatherCharts,
     type WeatherChartsRange,
@@ -16,8 +15,15 @@ import {
     useWeatherHistory,
     useWeatherHistoryRange,
 } from '../../../hooks/useWeatherHistory';
+import { GameModal } from '../../../shared-ui/game-modal';
 
-export function WeatherHistoryPanel({ className }: { className?: string }) {
+export function WeatherHistoryPanel({
+    className,
+    enabled = true,
+}: {
+    className?: string;
+    enabled?: boolean;
+}) {
     const [range, setRange] = useState<WeatherChartsRange>(() =>
         getDefaultWeatherRange(),
     );
@@ -26,9 +32,11 @@ export function WeatherHistoryPanel({ className }: { className?: string }) {
     const { data: history, isLoading: historyLoading } = useWeatherHistory(
         range.from,
         range.to,
+        enabled,
     );
-    const { data: forecast, isLoading: forecastLoading } = useWeatherForecast();
-    const { data: historyRange } = useWeatherHistoryRange();
+    const { data: forecast, isLoading: forecastLoading } =
+        useWeatherForecast(enabled);
+    const { data: historyRange } = useWeatherHistoryRange(enabled);
 
     const bounds = getWeatherDataBounds(historyRange?.from, forecast);
 
@@ -58,15 +66,23 @@ export function WeatherHistoryModal({
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
 }) {
+    const [internalOpen, setInternalOpen] = useState(false);
+    const isOpen = open ?? internalOpen;
+
+    function handleOpenChange(nextOpen: boolean) {
+        setInternalOpen(nextOpen);
+        onOpenChange?.(nextOpen);
+    }
+
     return (
-        <Modal
+        <GameModal
             trigger={trigger}
-            open={open}
-            onOpenChange={onOpenChange}
+            open={isOpen}
+            onOpenChange={handleOpenChange}
             title="Vremenske prilike"
             className="w-full max-w-3xl"
         >
-            <WeatherHistoryPanel className="pt-2" />
-        </Modal>
+            <WeatherHistoryPanel className="pt-2" enabled={isOpen} />
+        </GameModal>
     );
 }

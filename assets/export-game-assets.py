@@ -21,6 +21,12 @@ def parse_args():
         "--types-output",
         help="Optional combined GLB output used only for TypeScript generation.",
     )
+    parser.add_argument(
+        "--asset",
+        action="append",
+        default=[],
+        help="Export only this manifest asset name. May be supplied more than once.",
+    )
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     return parser.parse_args(argv)
 
@@ -113,7 +119,20 @@ def export_assets():
     assets = manifest["assets"]
 
     if not args.skip_assets:
-        for asset in assets:
+        selected_names = set(args.asset)
+        selected_assets = (
+            [asset for asset in assets if asset["name"] in selected_names]
+            if selected_names
+            else assets
+        )
+        missing_names = selected_names - {
+            asset["name"] for asset in selected_assets
+        }
+        if missing_names:
+            raise RuntimeError(
+                f"Unknown manifest assets: {', '.join(sorted(missing_names))}"
+            )
+        for asset in selected_assets:
             export_asset(asset, source_dir, output_dir)
 
     if args.types_output:

@@ -1,3 +1,4 @@
+import { GameDeliveryIcon } from '@gredice/ui/GameIcons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { DeliveryAddressesSection } from '../../shared-ui/delivery/DeliveryAddressesSection';
@@ -6,8 +7,12 @@ import { DeliveryRequestsSection } from '../../shared-ui/delivery/DeliveryReques
 export function DeliveryTab() {
     return (
         <Stack spacing={8}>
-            <Typography level="h4" className="hidden md:block">
-                🚚 Dostava
+            <Typography
+                level="h4"
+                className="hidden md:flex items-center gap-2"
+            >
+                <GameDeliveryIcon aria-hidden className="size-8 shrink-0" />
+                Dostava
             </Typography>
             <Stack
                 spacing={4}

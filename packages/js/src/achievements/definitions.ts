@@ -1,14 +1,28 @@
+import {
+    type AchievementArtworkKey,
+    type AchievementVisualGrade,
+    getAchievementPresentation,
+} from './presentation';
+
 export type AchievementCategory =
     | 'registration'
     | 'planting'
     | 'watering'
-    | 'harvest';
+    | 'harvest'
+    | 'community_editing'
+    | 'garden_diversity'
+    | 'seed_to_table'
+    | 'seasonal';
 
 export type AchievementStatus = 'pending' | 'approved' | 'denied';
 
 export interface AchievementDefinition {
     key: string;
     category: AchievementCategory;
+    familyKey: AchievementCategory;
+    level: number;
+    visualGrade: AchievementVisualGrade;
+    artworkKey: AchievementArtworkKey;
     threshold?: number;
     rewardSunflowers: number;
     title: string;
@@ -41,6 +55,10 @@ const wateringThresholds: Array<[threshold: number, reward: number]> = [
     [200, 2_000],
     [300, 5_000],
     [500, 10_000],
+    [750, 15_000],
+    [1_000, 20_000],
+    [1_500, 30_000],
+    [2_000, 40_000],
 ];
 
 // TODO: Balance the rewards
@@ -54,6 +72,80 @@ const harvestThresholds: Array<[threshold: number, reward: number]> = [
     [200, 5_000],
     [300, 10_000],
     [500, 50_000],
+];
+
+// TODO: Balance the rewards
+const communityEditingThresholds: Array<[threshold: number, reward: number]> = [
+    [1, 100],
+    [5, 250],
+    [10, 500],
+    [25, 1_000],
+    [50, 2_000],
+    [100, 5_000],
+    [150, 7_500],
+    [200, 10_000],
+    [300, 15_000],
+    [500, 25_000],
+    [750, 37_500],
+    [1_000, 50_000],
+    [1_500, 75_000],
+];
+
+// TODO: Balance the rewards
+const gardenDiversityThresholds: Array<[threshold: number, reward: number]> = [
+    [3, 150],
+    [5, 300],
+    [10, 600],
+    [15, 1_200],
+    [20, 2_500],
+    [25, 3_500],
+    [30, 4_500],
+    [35, 6_000],
+    [40, 8_000],
+    [45, 10_000],
+];
+
+// TODO: Balance the rewards
+const seedToTableThresholds: Array<[threshold: number, reward: number]> = [
+    [1, 200],
+    [5, 500],
+    [10, 1_000],
+    [25, 2_500],
+    [50, 8_000],
+    [75, 12_000],
+    [100, 16_000],
+    [150, 24_000],
+    [200, 32_000],
+    [300, 48_000],
+];
+
+const seasonalAwards: Array<{
+    key: string;
+    title: string;
+    description: string;
+    rewardSunflowers: number;
+}> = [
+    {
+        key: 'season_2026_spring',
+        title: 'Proljeće 2026',
+        description:
+            'Ostvari potvrđenu sadnju ili berbu od sjemena do stola u proljeće 2026. (1. ožujka – 31. svibnja).',
+        rewardSunflowers: 1_000,
+    },
+    {
+        key: 'season_2026_summer',
+        title: 'Ljeto 2026',
+        description:
+            'Ostvari potvrđenu sadnju ili berbu od sjemena do stola u ljeto 2026. (1. lipnja – 31. kolovoza).',
+        rewardSunflowers: 1_000,
+    },
+    {
+        key: 'season_2026_autumn',
+        title: 'Jesen 2026',
+        description:
+            'Ostvari potvrđenu sadnju ili berbu od sjemena do stola u jesen 2026. (1. rujna – 30. studenoga).',
+        rewardSunflowers: 1_000,
+    },
 ];
 
 function plantingTitle(threshold: number) {
@@ -77,7 +169,61 @@ function harvestTitle(threshold: number) {
     return `${threshold} berbi`;
 }
 
-export const achievementDefinitions: AchievementDefinition[] = [
+function communityEditingTitle(threshold: number) {
+    switch (threshold) {
+        case 1:
+            return 'Prvi doprinos';
+        case 5:
+            return 'Pouzdani urednik';
+        case 10:
+            return 'Čuvar sadržaja';
+        case 25:
+            return 'Znalac zajednice';
+        case 50:
+            return 'Majstor sadržaja';
+        default:
+            return `${threshold} prihvaćenih izmjena`;
+    }
+}
+
+function gardenDiversityTitle(threshold: number) {
+    switch (threshold) {
+        case 3:
+            return 'Tri kulture';
+        case 5:
+            return 'Mali povrtnjak';
+        case 10:
+            return 'Raznolik vrt';
+        case 15:
+            return 'Botanička zbirka';
+        case 20:
+            return 'Živi vrt';
+        default:
+            return `${threshold} različitih vrsta`;
+    }
+}
+
+function seedToTableTitle(threshold: number) {
+    switch (threshold) {
+        case 1:
+            return 'Od sjemena do stola';
+        case 5:
+            return 'Pet punih ciklusa';
+        case 10:
+            return 'Vrt na stolu';
+        case 25:
+            return 'Sezonski stol';
+        case 50:
+            return 'Majstor uzgoja';
+        default:
+            return `${threshold} punih ciklusa`;
+    }
+}
+
+const baseDefinitions: Omit<
+    AchievementDefinition,
+    'familyKey' | 'level' | 'visualGrade' | 'artworkKey'
+>[] = [
     {
         key: 'registration',
         category: 'registration',
@@ -115,7 +261,58 @@ export const achievementDefinitions: AchievementDefinition[] = [
         description: `Uberi biljke ${threshold} puta.`,
         sortOrder: 300 + index,
     })),
+    ...communityEditingThresholds.map(([threshold, reward], index) => ({
+        key: `community_edit_${threshold}`,
+        category: 'community_editing' as const,
+        threshold,
+        rewardSunflowers: reward,
+        title: communityEditingTitle(threshold),
+        description:
+            threshold === 1
+                ? 'Neka tvoj prvi prijedlog izmjene sadržaja bude prihvaćen.'
+                : `Neka ${threshold} tvojih prijedloga izmjene sadržaja bude prihvaćeno.`,
+        sortOrder: 400 + index,
+    })),
+    ...gardenDiversityThresholds.map(([threshold, reward], index) => ({
+        key: `garden_diversity_${threshold}`,
+        category: 'garden_diversity' as const,
+        threshold,
+        rewardSunflowers: reward,
+        title: gardenDiversityTitle(threshold),
+        description: `Posadi ${threshold} ${threshold === 3 ? 'različite vrste' : 'različitih vrsta'} biljaka u svojim gredicama.`,
+        sortOrder: 500 + index,
+    })),
+    ...seedToTableThresholds.map(([threshold, reward], index) => ({
+        key: `seed_to_table_${threshold}`,
+        category: 'seed_to_table' as const,
+        threshold,
+        rewardSunflowers: reward,
+        title: seedToTableTitle(threshold),
+        description:
+            threshold === 1
+                ? 'Dovedi jednu sadnju od sjetve do berbe.'
+                : `Dovedi ${threshold} sadnji od sjetve do berbe.`,
+        sortOrder: 600 + index,
+    })),
+    ...seasonalAwards.map((award, index) => ({
+        key: award.key,
+        category: 'seasonal' as const,
+        rewardSunflowers: award.rewardSunflowers,
+        title: award.title,
+        description: award.description,
+        sortOrder: 700 + index,
+    })),
 ];
+
+export const achievementDefinitions: AchievementDefinition[] =
+    baseDefinitions.map((definition) => {
+        const presentation = getAchievementPresentation(definition.key);
+        if (!presentation)
+            throw new Error(
+                `Missing achievement presentation: ${definition.key}`,
+            );
+        return { ...definition, ...presentation };
+    });
 
 const definitionsByKey = new Map(
     achievementDefinitions.map((definition) => [definition.key, definition]),

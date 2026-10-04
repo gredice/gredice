@@ -1,0 +1,1 @@
+Osvježili smo Android izdanje za novije uređaje i poboljšali pouzdanost pokretanja vrta iz aplikacije.

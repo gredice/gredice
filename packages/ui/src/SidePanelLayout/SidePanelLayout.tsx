@@ -17,6 +17,7 @@ import {
 import { cx } from '../utils';
 
 export type SidePanelSide = 'left' | 'right';
+export type SidePanelLayoutBreakpoint = 'md' | 'lg' | 'xl';
 
 export type SidePanelLayoutProps = Omit<
     HTMLAttributes<HTMLDivElement>,
@@ -27,6 +28,14 @@ export type SidePanelLayoutProps = Omit<
     leftOpen?: boolean;
     leftPanelClassName?: string;
     leftWidth?: string;
+    /**
+     * Breakpoint where panels become side columns instead of stacked content.
+     */
+    desktopBreakpoint?: SidePanelLayoutBreakpoint;
+    /**
+     * Keep closed stacked panels mounted when callers animate them manually.
+     */
+    hideClosedPanelsOnStack?: boolean;
     panelClassName?: string;
     /**
      * @deprecated No-op. Panels now always stay mounted so their width can
@@ -43,6 +52,39 @@ export type SidePanelLayoutProps = Omit<
 // baked into the open track width (and the panel's inner margin) so the gap can
 // collapse together with the panel during the width animation.
 const SIDE_PANEL_GAP = '1.5rem';
+
+const breakpointClasses: Record<
+    SidePanelLayoutBreakpoint,
+    {
+        closedPanel: string;
+        leftPanelInner: string;
+        layout: string;
+        panel: string;
+        rightPanelInner: string;
+    }
+> = {
+    md: {
+        closedPanel: 'hidden md:block',
+        leftPanelInner: 'md:mr-6 md:w-[var(--side-panel-left-width)]',
+        layout: 'md:gap-0 md:[grid-template-columns:var(--side-panel-layout-columns)] md:transition-[grid-template-columns] md:duration-300 md:ease-in-out motion-reduce:md:transition-none',
+        panel: 'md:sticky md:top-4 md:overflow-hidden',
+        rightPanelInner: 'md:ml-6 md:w-[var(--side-panel-right-width)]',
+    },
+    lg: {
+        closedPanel: 'hidden lg:block',
+        leftPanelInner: 'lg:mr-6 lg:w-[var(--side-panel-left-width)]',
+        layout: 'lg:gap-0 lg:[grid-template-columns:var(--side-panel-layout-columns)] lg:transition-[grid-template-columns] lg:duration-300 lg:ease-in-out motion-reduce:lg:transition-none',
+        panel: 'lg:sticky lg:top-4 lg:overflow-hidden',
+        rightPanelInner: 'lg:ml-6 lg:w-[var(--side-panel-right-width)]',
+    },
+    xl: {
+        closedPanel: 'hidden xl:block',
+        leftPanelInner: 'xl:mr-6 xl:w-[var(--side-panel-left-width)]',
+        layout: 'xl:gap-0 xl:[grid-template-columns:var(--side-panel-layout-columns)] xl:transition-[grid-template-columns] xl:duration-300 xl:ease-in-out motion-reduce:xl:transition-none',
+        panel: 'xl:sticky xl:top-4 xl:overflow-hidden',
+        rightPanelInner: 'xl:ml-6 xl:w-[var(--side-panel-right-width)]',
+    },
+};
 
 function sidePanelColumns({
     leftOpen,
@@ -75,6 +117,8 @@ function sidePanelColumns({
 export function SidePanelLayout({
     children,
     className,
+    desktopBreakpoint = 'xl',
+    hideClosedPanelsOnStack = true,
     leftPanel,
     leftOpen = true,
     leftPanelClassName,
@@ -88,6 +132,7 @@ export function SidePanelLayout({
     style,
     ...props
 }: SidePanelLayoutProps) {
+    const responsiveClasses = breakpointClasses[desktopBreakpoint];
     const columns = sidePanelColumns({
         leftOpen,
         leftPanel,
@@ -100,20 +145,20 @@ export function SidePanelLayout({
         '--side-panel-left-width': leftWidth,
         '--side-panel-right-width': rightWidth,
     } as CSSProperties;
-    // Panels stay mounted while closed so their width can animate; below the xl
-    // breakpoint (stacked layout) closed panels are hidden instead.
+    // Panels stay mounted while closed so their width can animate; below the
+    // configured breakpoint (stacked layout) closed panels are hidden by default.
     const basePanelClassName = cx(
-        'h-fit min-w-0 xl:sticky xl:top-4 xl:overflow-hidden',
+        'min-w-0 self-start',
+        responsiveClasses.panel,
         panelClassName,
     );
+    const closedPanelClassName = hideClosedPanelsOnStack
+        ? responsiveClasses.closedPanel
+        : null;
 
     return (
         <div
-            className={cx(
-                'grid gap-6 xl:gap-0 xl:[grid-template-columns:var(--side-panel-layout-columns)]',
-                'xl:transition-[grid-template-columns] xl:duration-300 xl:ease-in-out motion-reduce:xl:transition-none',
-                className,
-            )}
+            className={cx('grid gap-6', responsiveClasses.layout, className)}
             style={layoutStyle}
             {...props}
         >
@@ -122,14 +167,19 @@ export function SidePanelLayout({
                     aria-hidden={!leftOpen || undefined}
                     className={cx(
                         basePanelClassName,
-                        !leftOpen && 'hidden xl:block',
+                        !leftOpen && closedPanelClassName,
                         leftPanelClassName,
                     )}
                     data-side="left"
                     data-state={leftOpen ? 'open' : 'closed'}
                     inert={!leftOpen || undefined}
                 >
-                    <div className="xl:mr-6 xl:w-[var(--side-panel-left-width)]">
+                    <div
+                        className={cx(
+                            'h-full',
+                            responsiveClasses.leftPanelInner,
+                        )}
+                    >
                         {leftPanel}
                     </div>
                 </aside>
@@ -140,14 +190,19 @@ export function SidePanelLayout({
                     aria-hidden={!rightOpen || undefined}
                     className={cx(
                         basePanelClassName,
-                        !rightOpen && 'hidden xl:block',
+                        !rightOpen && closedPanelClassName,
                         rightPanelClassName,
                     )}
                     data-side="right"
                     data-state={rightOpen ? 'open' : 'closed'}
                     inert={!rightOpen || undefined}
                 >
-                    <div className="xl:ml-6 xl:w-[var(--side-panel-right-width)]">
+                    <div
+                        className={cx(
+                            'h-full',
+                            responsiveClasses.rightPanelInner,
+                        )}
+                    >
                         {rightPanel}
                     </div>
                 </aside>

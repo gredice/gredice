@@ -15,15 +15,23 @@ const TWO_PI = Math.PI * 2;
 
 function AnimatedVisualization({
     deviceType,
+    mode = 'edit',
 }: {
     deviceType: 'desktop' | 'tablet' | 'mobile';
+    mode?: 'edit' | 'view';
 }) {
     const [phase, setPhase] = useState(0.75);
     useEffect(() => {
         const id = setInterval(() => setPhase((p) => (p + 0.12) % TWO_PI), 50);
         return () => clearInterval(id);
     }, []);
-    return <ControlsVisualization deviceType={deviceType} phase={phase} />;
+    return (
+        <ControlsVisualization
+            deviceType={deviceType}
+            mode={mode}
+            phase={phase}
+        />
+    );
 }
 
 const meta = {
@@ -62,6 +70,16 @@ export const Desktop: Story = {
 export const Mobile: Story = {
     name: 'Showcase — Mobile',
     render: () => <AnimatedVisualization deviceType="mobile" />,
+};
+
+export const ViewOnlyDesktop: Story = {
+    name: 'View only — Desktop',
+    render: () => <AnimatedVisualization deviceType="desktop" mode="view" />,
+};
+
+export const ViewOnlyMobile: Story = {
+    name: 'View only — Mobile',
+    render: () => <AnimatedVisualization deviceType="mobile" mode="view" />,
 };
 
 export const MoveDesktop: Story = {

@@ -1,11 +1,9 @@
 'use server';
 
+import { issueReceiptForPaidInvoice } from '@gredice/fiscalization/server';
 import {
     cancelInvoice,
     changeInvoiceStatus,
-    createReceiptFromInvoice,
-    getFiscalizationUserSettings,
-    getInvoice,
     getReceiptByInvoice,
     type InvoiceStatus,
     softDeleteInvoice,
@@ -78,25 +76,14 @@ export async function deleteInvoiceAction(invoiceId: number) {
 export async function createReceiptAction(invoiceId: number) {
     await auth(['admin']);
 
+    let receiptId: number;
     try {
-        // TODO: Retrieve from settings
-        const invoice = await getInvoice(invoiceId);
-        const userSettings = await getFiscalizationUserSettings();
-        if (!userSettings) {
-            throw new Error('Fiscalization user settings not found');
+        const result = await issueReceiptForPaidInvoice({ invoiceId });
+        if (result.status === 'skipped') {
+            throw new Error(result.message);
         }
 
-        const receiptId = await createReceiptFromInvoice(invoiceId, {
-            paymentMethod: 'card',
-            businessPin: userSettings.pin,
-            businessName: 'Gredice d.o.o.',
-            businessAddress: 'Ulica Julija Knifera 3, 10000 Zagreb, Hrvatska',
-            customerAddress: invoice?.billToAddress,
-            customerName: invoice?.billToName,
-            paymentReference: invoice?.transactionId?.toString(),
-        });
-
-        redirect(KnownPages.Receipt(receiptId));
+        receiptId = result.receiptId;
     } catch (error) {
         console.error('Error creating receipt:', error);
         return {
@@ -107,6 +94,8 @@ export async function createReceiptAction(invoiceId: number) {
                     : 'Failed to create receipt',
         };
     }
+
+    redirect(KnownPages.Receipt(receiptId));
 }
 
 export async function getInvoiceReceiptAction(invoiceId: number) {

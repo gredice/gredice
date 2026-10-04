@@ -13,6 +13,8 @@ import { cx } from '../utils';
 interface ImageViewerProps {
     src: string;
     alt: string;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
     previewWidth?: number;
     previewHeight?: number;
     /**
@@ -20,19 +22,24 @@ interface ImageViewerProps {
      * Use "div" when ImageViewer is placed inside another <button> to avoid invalid HTML.
      */
     previewAs?: 'button' | 'div';
+    /** Keep the full-screen viewer mounted without rendering its preview. */
+    showPreview?: boolean;
 }
 
 export function ImageViewer({
     src,
     alt,
+    open: openProp,
+    onOpenChange,
     previewWidth = 300,
     previewHeight = 200,
     previewAs = 'button',
+    showPreview = true,
 }: ImageViewerProps) {
     const resolvedAlt = alt?.trim() || 'Slika';
     const imageInstructionsId = useId();
     const lastFocusedElementRef = useRef<Element | null>(null);
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [internalExpanded, setInternalExpanded] = useState(false);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -46,7 +53,17 @@ export function ImageViewer({
         setZoomLevel,
         viewerRef: imageRef,
         zoomLevel,
-    } = useImageFitZoom<HTMLButtonElement>(isExpanded, src);
+    } = useImageFitZoom<HTMLButtonElement>(openProp ?? internalExpanded, src);
+    const isExpanded = openProp ?? internalExpanded;
+    const setIsExpanded = useCallback(
+        (open: boolean) => {
+            if (openProp === undefined) {
+                setInternalExpanded(open);
+            }
+            onOpenChange?.(open);
+        },
+        [onOpenChange, openProp],
+    );
 
     const resetTransform = useCallback(() => {
         resetZoomLevel();
@@ -89,7 +106,7 @@ export function ImageViewer({
             resetTransform();
             restoreFocusedElement();
         },
-        [resetTransform, restoreFocusedElement],
+        [resetTransform, restoreFocusedElement, setIsExpanded],
     );
 
     const getTouchDistance = (touch1: React.Touch, touch2: React.Touch) => {
@@ -291,40 +308,42 @@ export function ImageViewer({
 
     return (
         <>
-            <PreviewComponent
-                {...(previewAs === 'button'
-                    ? { type: 'button' as const }
-                    : {
-                          role: 'button' as const,
-                          tabIndex: 0,
-                      })}
-                aria-label={`Otvori sliku u punoj veličini: ${resolvedAlt}`}
-                title="Otvori u punoj veličini"
-                className="group relative hover:cursor-zoom-in flex items-center justify-center overflow-hidden rounded-lg shadow-md bg-muted hover:shadow-lg transition-shadow duration-200"
-                style={{ width: previewWidth, height: previewHeight }}
-                onClick={(event: React.MouseEvent) => {
-                    event.stopPropagation();
-                    openExpanded(event.currentTarget);
-                }}
-                onKeyDown={(event: React.KeyboardEvent) => {
-                    if (previewAs === 'button') return;
-                    event.stopPropagation();
-                    if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
+            {showPreview ? (
+                <PreviewComponent
+                    {...(previewAs === 'button'
+                        ? { type: 'button' as const }
+                        : {
+                              role: 'button' as const,
+                              tabIndex: 0,
+                          })}
+                    aria-label={`Otvori sliku u punoj veličini: ${resolvedAlt}`}
+                    title="Otvori u punoj veličini"
+                    className="group relative hover:cursor-zoom-in flex items-center justify-center overflow-hidden rounded-lg shadow-md bg-muted hover:shadow-lg transition-shadow duration-200"
+                    style={{ width: previewWidth, height: previewHeight }}
+                    onClick={(event: React.MouseEvent) => {
+                        event.stopPropagation();
                         openExpanded(event.currentTarget);
-                    }
-                }}
-            >
-                <Image
-                    src={src}
-                    alt={resolvedAlt}
-                    fill
-                    sizes={`${previewWidth}px`}
-                    className="h-full w-full object-cover"
-                />
-                <div className="absolute inset-0 bg-white/40 opacity-0 group-hover:opacity-50 transition-opacity"></div>
-                <Search className="stroke-white group-hover:scale-110 size-4 shrink-0 absolute bottom-1 right-1" />
-            </PreviewComponent>
+                    }}
+                    onKeyDown={(event: React.KeyboardEvent) => {
+                        if (previewAs === 'button') return;
+                        event.stopPropagation();
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            openExpanded(event.currentTarget);
+                        }
+                    }}
+                >
+                    <Image
+                        src={src}
+                        alt={resolvedAlt}
+                        fill
+                        sizes={`${previewWidth}px`}
+                        className="h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-white/40 opacity-0 group-hover:opacity-50 transition-opacity"></div>
+                    <Search className="stroke-white group-hover:scale-110 size-4 shrink-0 absolute bottom-1 right-1" />
+                </PreviewComponent>
+            ) : null}
 
             <Modal
                 open={isExpanded}

@@ -1,6 +1,7 @@
-import { resolve } from 'node:path';
 import { test } from '@playwright/experimental-ct-react';
+import type { Locator } from '@playwright/test';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
+import sharp from 'sharp';
 import { MAX_PLANT_GENERATION } from '../../../packages/game/src/generators/plant/lib/plant-definition-types';
 import { plantTypes } from '../../../packages/game/src/generators/plant/lib/plant-presets';
 import type { PlantViewerProps } from '../../../packages/game/src/viewers/PlantViewer';
@@ -8,42 +9,13 @@ import { PlantSnapshotViewer } from './PlantSnapshotViewer';
 
 test.use({
     deviceScaleFactor: 1,
-    viewport: { width: 360, height: 360 },
+    viewport: { width: 552, height: 552 },
 });
 
 test.setTimeout(30_000);
 
-const groundAssetNames = [
-    'BlockGround',
-    'BlockGroundAngle',
-    'BlockGrass',
-    'BlockGrassAngle',
-    'BlockSand',
-    'BlockSandAngle',
-    'BlockTerrainCorner',
-    'BlockTerrainReverseCorner',
-];
-
 test.beforeEach(async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    for (const assetName of groundAssetNames) {
-        await page.route(
-            `**/assets/models/${assetName}.glb*`,
-            async (route) => {
-                const gameAssetsModelPath = resolve(
-                    `../garden/public/assets/models/${assetName}.glb`,
-                );
-
-                await route.fulfill({
-                    contentType: 'model/gltf-binary',
-                    headers: {
-                        'Access-Control-Allow-Origin': '*',
-                    },
-                    path: gameAssetsModelPath,
-                });
-            },
-        );
-    }
 });
 
 type PlantType = PlantViewerProps['plantType'];
@@ -62,6 +34,48 @@ const PLANT_SNAPSHOT_STAGES = [
         generation: MAX_PLANT_GENERATION * 0.92,
     },
 ];
+
+const snapshotRenderSize = 512;
+const snapshotOutputSize = 320;
+const snapshotContentSize = 256;
+const snapshotPadding = (snapshotOutputSize - snapshotContentSize) / 2;
+const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
+
+async function captureTransparentCanvas(canvas: Locator) {
+    const dataUrl = await canvas.evaluate((element) => {
+        if (!(element instanceof HTMLCanvasElement)) {
+            throw new TypeError('Plant snapshot expected a canvas element');
+        }
+
+        return element.toDataURL('image/png');
+    });
+    const encoded = dataUrl.split(',')[1];
+    if (!encoded) {
+        throw new Error('Plant snapshot canvas did not return PNG data');
+    }
+
+    return Buffer.from(encoded, 'base64');
+}
+
+async function writePlantSnapshot(snapshot: Buffer, path: string) {
+    await sharp(snapshot)
+        .trim({ background: transparent })
+        .resize({
+            width: snapshotContentSize,
+            height: snapshotContentSize,
+            fit: 'contain',
+            background: transparent,
+        })
+        .extend({
+            top: snapshotPadding,
+            right: snapshotPadding,
+            bottom: snapshotPadding,
+            left: snapshotPadding,
+            background: transparent,
+        })
+        .png()
+        .toFile(path);
+}
 
 function isPlantType(value: string): value is PlantType {
     return Object.hasOwn(plantTypes, value);
@@ -86,11 +100,11 @@ function getSnapshotView(plantType: PlantType): {
     return tallPlantTypes.has(plantType)
         ? {
               orbitTarget: [0, 1.15, 0],
-              zoom: 95,
+              zoom: 150,
           }
         : {
               orbitTarget: [0, 0.75, 0],
-              zoom: 140,
+              zoom: 220,
           };
 }
 
@@ -117,13 +131,22 @@ test.describe('plant screenshots', () => {
                 const view = getSnapshotView(plantType);
                 const component = await mount(
                     <NuqsTestingAdapter>
-                        <div style={{ width: 320, height: 320 }}>
+                        <div
+                            style={{
+                                width: snapshotRenderSize,
+                                height: snapshotRenderSize,
+                            }}
+                        >
                             <style>
                                 {`
+                                    html, body, #root {
+                                        background: transparent !important;
+                                    }
                                     .plant-snapshot-canvas {
                                         display: block;
-                                        width: 320px;
-                                        height: 320px;
+                                        width: ${snapshotRenderSize}px;
+                                        height: ${snapshotRenderSize}px;
+                                        background: transparent;
                                     }
                                 `}
                             </style>
@@ -135,22 +158,23 @@ test.describe('plant screenshots', () => {
                                 animate={false}
                                 includeEnvironment={false}
                                 lightingPreset="snapshot"
-                                zoom={view.zoom}
                                 orbitTarget={view.orbitTarget}
+                                zoom={view.zoom}
                             />
                         </div>
                     </NuqsTestingAdapter>,
                 );
 
-                await page.locator('canvas').waitFor({ state: 'visible' });
+                const canvas = component.locator('canvas').first();
+                await canvas.waitFor({ state: 'visible' });
                 await page.waitForLoadState('networkidle');
                 await page.waitForTimeout(750);
 
-                await component.screenshot({
-                    omitBackground: true,
-                    path: `./public/assets/plants/${plantType}_${stage.name}.png`,
-                    animations: 'disabled',
-                });
+                const snapshot = await captureTransparentCanvas(canvas);
+                await writePlantSnapshot(
+                    snapshot,
+                    `./public/assets/plants/${plantType}_${stage.name}.png`,
+                );
             });
         }
     }

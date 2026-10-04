@@ -1,7 +1,9 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
+import { persistLocalSandboxGarden } from '../localSandboxGarden';
 import { useGameState } from '../useGameState';
+import { getGardenStackPatchError } from './gardenStackPatchError';
 import { currentAccountKeys } from './useCurrentAccount';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 import {
@@ -9,8 +11,43 @@ import {
     useShoppingCart,
     useShoppingCartQueryKey,
 } from './useShoppingCart';
+import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 const mutationKey = ['gardens', 'current', 'useBlockRecycle'];
+
+type RecycleBlockArgs = {
+    position: { x: number; z: number };
+    blockId: string;
+    blockIndex: number;
+    raisedBedId?: number;
+    onOptimisticUpdate?: () => void;
+};
+
+type RecyclePatchOperation =
+    | {
+          op: 'test';
+          path: string;
+          value: string;
+      }
+    | {
+          op: 'remove';
+          path: string;
+      };
+
+export function createRecyclePatchOperations({
+    blockId,
+    blockIndex,
+    position,
+}: Pick<
+    RecycleBlockArgs,
+    'blockId' | 'blockIndex' | 'position'
+>): RecyclePatchOperation[] {
+    const path = `/${position.x}/${position.z}/${blockIndex}`;
+    return [
+        { op: 'test', path, value: blockId },
+        { op: 'remove', path },
+    ];
+}
 
 async function removeShoppingCartItems(
     shoppingCart: ShoppingCartData,
@@ -38,56 +75,60 @@ async function removeShoppingCartItems(
 export function useBlockRecycle() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
-    const { data: shoppingCart } = useShoppingCart();
+    const localSandboxStorageKey = useGameState(
+        (state) => state.localSandboxStorageKey,
+    );
+    const { data: shoppingCart } = useShoppingCart(!localSandboxStorageKey);
     const winterMode = useGameState((state) => state.winterMode);
-    const gardenQueryKey = currentGardenKeys(winterMode, garden?.id);
+    const gardenQueryKey = currentGardenKeys(
+        winterMode,
+        garden?.id,
+        undefined,
+        localSandboxStorageKey,
+    );
 
     return useMutation({
         mutationKey,
         mutationFn: async ({
             position,
+            blockId,
             blockIndex,
             raisedBedId,
-            attached,
-        }: {
-            position: { x: number; z: number };
-            blockIndex: number;
-            raisedBedId?: number;
-            attached?: {
-                position: { x: number; z: number };
-                blockIndex: number;
-            };
-        }) => {
+        }: RecycleBlockArgs) => {
             console.debug('Recycling block', position, blockIndex);
             if (!garden) {
                 throw new Error('No garden selected');
             }
+            if (localSandboxStorageKey) {
+                return;
+            }
             const gardenId = garden.id;
-            await clientAuthenticated().api.gardens[':gardenId'].stacks.$patch({
+            const response = await clientAuthenticated().api.gardens[
+                ':gardenId'
+            ].stacks.$patch({
                 param: {
                     gardenId: gardenId.toString(),
                 },
-                json: [
-                    {
-                        op: 'remove',
-                        path: `/${position.x}/${position.z}/${blockIndex}`,
-                    },
-                    ...(attached
-                        ? [
-                              {
-                                  op: 'remove' as const,
-                                  path: `/${attached.position.x}/${attached.position.z}/${attached.blockIndex}`,
-                              },
-                          ]
-                        : []),
-                ],
+                json: createRecyclePatchOperations({
+                    blockId,
+                    blockIndex,
+                    position,
+                }),
             });
+            if (!response.ok) {
+                throw new Error(await getGardenStackPatchError(response));
+            }
 
             if (shoppingCart && raisedBedId) {
                 await removeShoppingCartItems(shoppingCart, raisedBedId);
             }
         },
-        onMutate: async ({ position, blockIndex, raisedBedId, attached }) => {
+        onMutate: async ({
+            position,
+            blockIndex,
+            raisedBedId,
+            onOptimisticUpdate,
+        }) => {
             if (!garden) {
                 return;
             }
@@ -97,23 +138,11 @@ export function useBlockRecycle() {
                 const isSourceStack =
                     stack.position.x === position.x &&
                     stack.position.z === position.z;
-                const isAttachedStack =
-                    attached !== undefined &&
-                    stack.position.x === attached.position.x &&
-                    stack.position.z === attached.position.z;
-
-                if (isSourceStack || isAttachedStack) {
+                if (isSourceStack) {
                     return {
                         ...stack,
                         blocks: stack.blocks.filter((_, index) => {
                             if (isSourceStack && index === blockIndex) {
-                                return false;
-                            }
-                            if (
-                                isAttachedStack &&
-                                attached &&
-                                index === attached.blockIndex
-                            ) {
                                 return false;
                             }
                             return true;
@@ -130,6 +159,15 @@ export function useBlockRecycle() {
                     stacks: [...updatedStacks],
                 },
             );
+            if (localSandboxStorageKey) {
+                persistLocalSandboxGarden(localSandboxStorageKey, {
+                    ...garden,
+                    stacks: updatedStacks,
+                });
+            }
+            if (previousItem) {
+                onOptimisticUpdate?.();
+            }
 
             // Optimistically remove from shopping cart if raisedBedId is provided
             let previousShoppingCart: ShoppingCartData | undefined;
@@ -166,6 +204,10 @@ export function useBlockRecycle() {
             }
         },
         onSettled: async (_data, _error, variables) => {
+            if (localSandboxStorageKey) {
+                return;
+            }
+
             // Invalidate queries only on last mutation
             if (queryClient.isMutating({ mutationKey }) === 1) {
                 await queryClient.invalidateQueries({
@@ -177,6 +219,9 @@ export function useBlockRecycle() {
                         queryKey: useShoppingCartQueryKey,
                     });
                 }
+                queryClient.invalidateQueries({
+                    queryKey: tutorialChecklistKeys,
+                });
             }
         },
     });

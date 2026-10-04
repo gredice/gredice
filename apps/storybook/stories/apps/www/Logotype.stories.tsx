@@ -1,4 +1,4 @@
-import { Logotype } from '@apps/www/components/Logotype';
+import { Logotype } from '@gredice/ui/PublicChrome';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
 const meta = {

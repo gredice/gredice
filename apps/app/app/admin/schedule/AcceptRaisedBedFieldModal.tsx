@@ -8,7 +8,11 @@ import { AcceptRequestModal } from './AcceptRequestModal';
 interface AcceptRaisedBedFieldModalProps {
     raisedBedId: number;
     positionIndex: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     label: string;
+    raisedBedPhysicalId?: string;
     disabled?: boolean;
     onConfirm?: () => unknown | Promise<unknown>;
 }
@@ -16,7 +20,11 @@ interface AcceptRaisedBedFieldModalProps {
 export function AcceptRaisedBedFieldModal({
     raisedBedId,
     positionIndex,
+    expectedPlantCycleEventId,
+    expectedPlantCycleVersionEventId,
+    expectedPlantSortId,
     label,
+    raisedBedPhysicalId,
     disabled = false,
     onConfirm,
 }: AcceptRaisedBedFieldModalProps) {
@@ -26,7 +34,13 @@ export function AcceptRaisedBedFieldModal({
             return;
         }
 
-        await acceptRaisedBedFieldAction(raisedBedId, positionIndex);
+        await acceptRaisedBedFieldAction(
+            raisedBedId,
+            positionIndex,
+            expectedPlantCycleEventId,
+            expectedPlantSortId,
+            expectedPlantCycleVersionEventId,
+        );
     };
 
     return (
@@ -36,6 +50,7 @@ export function AcceptRaisedBedFieldModal({
             trigger={
                 <IconButton
                     variant="plain"
+                    size="xs"
                     title="Potvrdi sijanje"
                     disabled={disabled}
                 >
@@ -44,6 +59,7 @@ export function AcceptRaisedBedFieldModal({
             }
             title="Potvrda sijanja"
             header="Potvrda sijanja"
+            raisedBedPhysicalId={raisedBedPhysicalId}
         />
     );
 }

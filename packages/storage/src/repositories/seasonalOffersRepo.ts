@@ -1,14 +1,27 @@
+import { and, eq, sql } from 'drizzle-orm';
+import { bustScheduleCache } from '../cache/scheduleCache';
+import { events } from '../schema';
+import { storage } from '../storage';
 import { knownEvents } from './events/knownEvents';
+import { knownEventTypes } from './events/knownEventTypes';
 import { createEvent } from './eventsRepo';
 import { createOperation, getOperations } from './operationsRepo';
+import { acquireScheduleTaskAdvisoryLock } from './scheduleTaskTransactionsRepo';
 
 export const FREE_WATERING_OPERATION_ID = 274;
+export const RAISED_BED_WATERING_50L_OPERATION_ID = 167;
+
+const wateringOperationLitersById = new Map([
+    [FREE_WATERING_OPERATION_ID, 20],
+    [RAISED_BED_WATERING_50L_OPERATION_ID, 50],
+]);
+const postTransplantWateringDays = 2;
+const postTransplantWateringMinExistingLiters = 50;
 
 type SeasonalSowingOffer = {
     freeWaterings: number;
     dayInterval: number;
     seasonStartMonth: number;
-    seasonEndMonth: number;
 };
 
 function getSeasonalSowingOffer(date: Date): SeasonalSowingOffer | null {
@@ -19,7 +32,6 @@ function getSeasonalSowingOffer(date: Date): SeasonalSowingOffer | null {
             freeWaterings: 3,
             dayInterval: 2,
             seasonStartMonth: 3,
-            seasonEndMonth: 5,
         };
     }
 
@@ -28,7 +40,6 @@ function getSeasonalSowingOffer(date: Date): SeasonalSowingOffer | null {
             freeWaterings: 5,
             dayInterval: 1,
             seasonStartMonth: 6,
-            seasonEndMonth: 8,
         };
     }
 
@@ -37,7 +48,6 @@ function getSeasonalSowingOffer(date: Date): SeasonalSowingOffer | null {
             freeWaterings: 3,
             dayInterval: 2,
             seasonStartMonth: 9,
-            seasonEndMonth: 11,
         };
     }
 
@@ -46,17 +56,6 @@ function getSeasonalSowingOffer(date: Date): SeasonalSowingOffer | null {
 
 function toUtcDayKey(date: Date) {
     return date.toISOString().slice(0, 10);
-}
-
-function getSeasonWindow(date: Date, offer: SeasonalSowingOffer) {
-    const seasonStart = new Date(
-        Date.UTC(date.getUTCFullYear(), offer.seasonStartMonth - 1, 1),
-    );
-    const seasonEnd = new Date(
-        Date.UTC(date.getUTCFullYear(), offer.seasonEndMonth, 1),
-    );
-
-    return { seasonStart, seasonEnd };
 }
 
 function getScheduledWateringDayKeys(
@@ -78,31 +77,27 @@ function getScheduledWateringDayKeys(
     );
 }
 
-function hasConsumedSeasonalOffer(
+function getScheduledWateringLitersByDayKey(
     operations: Awaited<ReturnType<typeof getOperations>>,
-    {
-        seasonStart,
-        seasonEnd,
-    }: {
-        seasonStart: Date;
-        seasonEnd: Date;
-    },
 ) {
-    return operations.some((operation) => {
+    const litersByDayKey = new Map<string, number>();
+
+    for (const operation of operations) {
+        const liters = wateringOperationLitersById.get(operation.entityId);
         if (
-            operation.entityId !== FREE_WATERING_OPERATION_ID ||
+            !liters ||
             operation.status === 'canceled' ||
             operation.status === 'failed' ||
             !operation.scheduledDate
         ) {
-            return false;
+            continue;
         }
 
-        return (
-            operation.scheduledDate >= seasonStart &&
-            operation.scheduledDate < seasonEnd
-        );
-    });
+        const dayKey = toUtcDayKey(operation.scheduledDate);
+        litersByDayKey.set(dayKey, (litersByDayKey.get(dayKey) ?? 0) + liters);
+    }
+
+    return litersByDayKey;
 }
 
 function addDays(date: Date, days: number) {
@@ -127,31 +122,131 @@ export async function queueSeasonalSowingOfferOperations({
         return [];
     }
 
+    const seasonKey = `${referenceDate.getUTCFullYear()}:${offer.seasonStartMonth}`;
+    const result = await storage().transaction(async (tx) => {
+        await acquireScheduleTaskAdvisoryLock(
+            tx,
+            `seasonal-sowing-watering:${raisedBedId}`,
+        );
+        const existingGrant = await tx
+            .select({ id: events.id })
+            .from(events)
+            .where(
+                and(
+                    eq(
+                        events.type,
+                        knownEventTypes.raisedBeds.seasonalSowingOfferGranted,
+                    ),
+                    eq(events.version, 1),
+                    eq(events.aggregateId, raisedBedId.toString()),
+                    eq(sql<string>`${events.data}->>'seasonKey'`, seasonKey),
+                ),
+            )
+            .limit(1);
+        if (existingGrant.length > 0) {
+            return [];
+        }
+        const existingOperations = await getOperations(
+            accountId,
+            gardenId,
+            raisedBedId,
+            undefined,
+            tx,
+        );
+
+        const scheduledWateringDayKeys =
+            getScheduledWateringDayKeys(existingOperations);
+
+        const createdOperationIds: number[] = [];
+        for (let index = 0; index < offer.freeWaterings; index += 1) {
+            const scheduledDate = addDays(
+                referenceDate,
+                index * offer.dayInterval,
+            );
+            const scheduledDayKey = toUtcDayKey(scheduledDate);
+            if (scheduledWateringDayKeys.has(scheduledDayKey)) {
+                continue;
+            }
+
+            const operationId = await createOperation(
+                {
+                    accountId,
+                    entityId: FREE_WATERING_OPERATION_ID,
+                    entityTypeName: 'operation',
+                    gardenId,
+                    raisedBedId,
+                },
+                tx,
+            );
+
+            await createEvent(
+                knownEvents.operations.scheduledV1(operationId.toString(), {
+                    scheduledDate: scheduledDate.toISOString(),
+                }),
+                tx,
+            );
+
+            scheduledWateringDayKeys.add(scheduledDayKey);
+            createdOperationIds.push(operationId);
+        }
+
+        // Commit the originating season and the complete batch together. An
+        // operation's execution date can cross a season boundary or be edited.
+        await createEvent(
+            knownEvents.raisedBeds.seasonalSowingOfferGrantedV1(
+                raisedBedId.toString(),
+                {
+                    seasonKey,
+                    referenceDate: referenceDate.toISOString(),
+                    operationIds: createdOperationIds,
+                },
+            ),
+            tx,
+        );
+        return createdOperationIds;
+    });
+    await bustScheduleCache();
+    return result;
+}
+
+export async function queuePostTransplantWateringOperations({
+    accountId,
+    gardenId,
+    raisedBedId,
+    referenceDate = new Date(),
+}: {
+    accountId: string;
+    gardenId?: number;
+    raisedBedId: number;
+    referenceDate?: Date;
+}) {
     const existingOperations = await getOperations(
         accountId,
         gardenId,
         raisedBedId,
     );
 
-    const seasonWindow = getSeasonWindow(referenceDate, offer);
-    if (hasConsumedSeasonalOffer(existingOperations, seasonWindow)) {
-        return [];
-    }
-
-    const scheduledWateringDayKeys =
-        getScheduledWateringDayKeys(existingOperations);
+    const scheduledWateringLitersByDayKey =
+        getScheduledWateringLitersByDayKey(existingOperations);
 
     const createdOperationIds: number[] = [];
-    for (let index = 0; index < offer.freeWaterings; index += 1) {
-        const scheduledDate = addDays(referenceDate, index * offer.dayInterval);
+    for (
+        let dayOffset = 1;
+        dayOffset <= postTransplantWateringDays;
+        dayOffset += 1
+    ) {
+        const scheduledDate = addDays(referenceDate, dayOffset);
         const scheduledDayKey = toUtcDayKey(scheduledDate);
-        if (scheduledWateringDayKeys.has(scheduledDayKey)) {
+        if (
+            (scheduledWateringLitersByDayKey.get(scheduledDayKey) ?? 0) >=
+            postTransplantWateringMinExistingLiters
+        ) {
             continue;
         }
 
         const operationId = await createOperation({
             accountId,
-            entityId: FREE_WATERING_OPERATION_ID,
+            entityId: RAISED_BED_WATERING_50L_OPERATION_ID,
             entityTypeName: 'operation',
             gardenId,
             raisedBedId,
@@ -163,7 +258,10 @@ export async function queueSeasonalSowingOfferOperations({
             }),
         );
 
-        scheduledWateringDayKeys.add(scheduledDayKey);
+        scheduledWateringLitersByDayKey.set(
+            scheduledDayKey,
+            (scheduledWateringLitersByDayKey.get(scheduledDayKey) ?? 0) + 50,
+        );
         createdOperationIds.push(operationId);
     }
 

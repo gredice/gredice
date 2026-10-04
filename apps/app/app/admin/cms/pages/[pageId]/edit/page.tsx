@@ -1,11 +1,16 @@
-import { getCmsPage } from '@gredice/storage';
+import { getCmsPage, getEntitiesFormatted } from '@gredice/storage';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
+import type { SharedFaqEntry } from '@gredice/ui/cms';
 import { Stack } from '@gredice/ui/Stack';
 import { notFound } from 'next/navigation';
 import { AdminBreadcrumbLevelSelector } from '../../../../../../components/admin/navigation/AdminBreadcrumbLevelSelector';
 import { auth } from '../../../../../../lib/auth/auth';
 import { KnownPages } from '../../../../../../src/KnownPages';
-import { autosaveCmsPageAction, updateCmsPageAction } from '../../actions';
+import {
+    autosaveCmsPageAction,
+    deleteCmsPageAction,
+    updateCmsPageAction,
+} from '../../actions';
 import { CmsPageForm } from '../../CmsPageForm';
 
 export const dynamic = 'force-dynamic';
@@ -30,14 +35,17 @@ export default async function EditCmsPagePage({
 
     const updateAction = updateCmsPageAction.bind(null, id);
     const autosaveAction = autosaveCmsPageAction.bind(null, id);
+    const deleteAction = deleteCmsPageAction.bind(null, id);
 
     return (
         <Stack spacing={8}>
             <CmsPageForm
                 page={page}
+                faqEntries={await getEntitiesFormatted<SharedFaqEntry>('faq')}
                 action={updateAction}
                 formId={`cms-page-${id}-edit-form`}
                 autosaveAction={autosaveAction}
+                deleteAction={deleteAction}
                 breadcrumbs={
                     <Breadcrumbs
                         items={[

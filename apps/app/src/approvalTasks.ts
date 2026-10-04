@@ -1,4 +1,5 @@
-import { plantFieldStatusLabel } from '@gredice/js/plants';
+import 'server-only';
+
 import {
     type ApprovalRequest,
     type EntityStandardized,
@@ -6,16 +7,25 @@ import {
     getAllRaisedBeds,
     getApprovalRequests,
     getEntitiesFormatted,
+    type SelectedRaisedBedPlantingTaskCommandIdentity,
 } from '@gredice/storage';
+
+import { serializeOperationDefinitionForList } from '../app/admin/operations/operationListDefinitionVisual';
+import type { EntityStandardized as OperationEntityStandardized } from '../lib/@types/EntityStandardized';
+import { createAdminApprovalData } from './adminApprovalData';
+import { getPendingLegacyPlantCycle } from './approvalTaskEligibility';
+import { buildSelectedPlantingApprovalTasks } from './selectedPlantingApprovalTasks';
 
 type ApprovalTaskBase = {
     id: string;
     title: string;
     description: string;
     receivedAt: Date;
+    plantImageUrl?: string;
     accountId?: string | null;
     gardenId?: number | null;
     raisedBedId?: number | null;
+    raisedBedPhysicalId?: string | null;
     positionIndex?: number | null;
 };
 
@@ -26,19 +36,35 @@ export type AdminApprovalTask =
           currentStatus?: string | null;
           requestedStatus: string;
           requestedBy: string;
+          note?: string | null;
       })
     | (ApprovalTaskBase & {
           kind: 'scheduleOperationVerification';
           operationId: number;
+          operationDefinition: ReturnType<
+              typeof serializeOperationDefinitionForList
+          >;
+          expectedEntityId: number;
+          expectedTaskVersionEventId: number;
           completedBy?: string | null;
       })
     | (ApprovalTaskBase & {
+          kind: 'selectedPlantingVerification';
+          identity: SelectedRaisedBedPlantingTaskCommandIdentity;
+      })
+    | (ApprovalTaskBase & {
           kind: 'schedulePlantingVerification';
+          expectedPlantCycleEventId: number;
+          expectedPlantCycleVersionEventId: number;
+          expectedPlantSortId: number;
           raisedBedId: number;
           positionIndex: number;
       });
 
-function entityLabel(entity: EntityStandardized | undefined, fallback: string) {
+function entityLabel(
+    entity: EntityStandardized | OperationEntityStandardized | undefined,
+    fallback: string,
+) {
     return entity?.information?.label ?? entity?.information?.name ?? fallback;
 }
 
@@ -56,20 +82,30 @@ function plantSortName(
     );
 }
 
-function raisedBedLabel(input: {
-    raisedBedName?: string | null;
-    physicalId?: string | null;
-    raisedBedId: number;
-    positionIndex?: number | null;
-}) {
-    const base =
-        input.raisedBedName ??
-        (input.physicalId ? `Gredica ${input.physicalId}` : null) ??
-        `Gredica #${input.raisedBedId}`;
+function plantSortImageUrl(plantSort: EntityStandardized | undefined) {
+    return (
+        plantSort?.image?.cover?.url ??
+        plantSort?.images?.cover?.url ??
+        plantSort?.information?.plant?.image?.cover?.url ??
+        plantSort?.information?.plant?.images?.cover?.url
+    );
+}
 
-    return input.positionIndex === null || input.positionIndex === undefined
-        ? base
-        : `${base}, polje ${input.positionIndex + 1}`;
+function raisedBedFieldLabel(positionIndex?: number | null) {
+    return positionIndex === null || positionIndex === undefined
+        ? null
+        : `Polje ${positionIndex + 1}`;
+}
+
+function approvalRequestRequesterLabel(requestedBy: string) {
+    if (requestedBy === 'automation:raised-bed-image-status-review') {
+        return 'AI analiza gredice';
+    }
+    if (requestedBy === 'automation:harvest-operation-status-review') {
+        return 'Automatizacija nakon berbe';
+    }
+
+    return requestedBy;
 }
 
 function buildPlantStatusRequestTask(
@@ -80,54 +116,49 @@ function buildPlantStatusRequestTask(
         Awaited<ReturnType<typeof getAllRaisedBeds>>[number]
     >,
 ): AdminApprovalTask | null {
-    if (request.target.kind !== 'raisedBedField.plantStatus') {
-        return null;
-    }
-
     const raisedBed = raisedBedsById.get(request.target.raisedBedId);
-    const currentStatusLabel = request.target.currentStatus
-        ? plantFieldStatusLabel(request.target.currentStatus).shortLabel
-        : 'Nepoznato';
-    const requestedStatusLabel = plantFieldStatusLabel(
-        request.target.requestedStatus,
-    ).shortLabel;
     const plantName = plantSortName(plantSortsById, request.target.plantSortId);
-    const targetLabel = raisedBedLabel({
-        raisedBedName: raisedBed?.name,
-        physicalId: raisedBed?.physicalId,
-        raisedBedId: request.target.raisedBedId,
-        positionIndex: request.target.positionIndex,
-    });
+    const fieldLabel = raisedBedFieldLabel(request.target.positionIndex);
 
     return {
         id: `approval:${request.id}`,
         kind: 'plantStatusRequest',
         requestId: request.id,
         title: 'Promjena stanja biljke',
-        description: `${targetLabel}: ${plantName}, ${currentStatusLabel} → ${requestedStatusLabel}`,
+        description: `${fieldLabel ? `${fieldLabel}: ` : ''}${plantName}`,
         receivedAt: request.requestedAt,
+        plantImageUrl: plantSortImageUrl(
+            plantSortsById.get(request.target.plantSortId ?? 0),
+        ),
         accountId: request.target.accountId,
         gardenId: request.target.gardenId,
         raisedBedId: request.target.raisedBedId,
+        raisedBedPhysicalId: raisedBed?.physicalId,
         positionIndex: request.target.positionIndex,
         currentStatus: request.target.currentStatus,
         requestedStatus: request.target.requestedStatus,
-        requestedBy: request.requestedBy,
+        requestedBy: approvalRequestRequesterLabel(request.requestedBy),
+        note: request.note,
     };
 }
 
+const { getPendingApprovalData, getPendingAdminApprovalTaskCount } =
+    createAdminApprovalData({
+        requests: () => getApprovalRequests({ status: 'pending' }),
+        operations: () => getAllOperations({ status: 'pendingVerification' }),
+        raisedBeds: getAllRaisedBeds,
+    });
+
+export { getPendingAdminApprovalTaskCount };
+
 export async function getPendingAdminApprovalTasks() {
     const [
-        pendingApprovalRequests,
-        pendingOperations,
-        raisedBeds,
+        { pendingApprovalRequests, pendingOperations, raisedBeds },
         operationsData,
         plantSorts,
     ] = await Promise.all([
-        getApprovalRequests({ status: 'pending' }),
-        getAllOperations({ status: 'pendingVerification' }),
-        getAllRaisedBeds(),
-        getEntitiesFormatted<EntityStandardized>('operation'),
+        getPendingApprovalData(),
+        getEntitiesFormatted<OperationEntityStandardized>('operation'),
         getEntitiesFormatted<EntityStandardized>('plantSort'),
     ]);
 
@@ -156,23 +187,26 @@ export async function getPendingAdminApprovalTasks() {
                 operationsById.get(operation.entityId),
                 `Radnja #${operation.entityId}`,
             );
-            const raisedBed = operation.raisedBedId
-                ? raisedBedsById.get(operation.raisedBedId)
-                : undefined;
-            const targetLabel = operation.raisedBedId
-                ? raisedBedLabel({
-                      raisedBedName: raisedBed?.name,
-                      physicalId: raisedBed?.physicalId,
-                      raisedBedId: operation.raisedBedId,
-                  })
-                : 'Farma';
+            const raisedBed =
+                operation.raisedBedId != null
+                    ? raisedBedsById.get(operation.raisedBedId)
+                    : undefined;
 
             return {
                 id: `operation:${operation.id}`,
                 kind: 'scheduleOperationVerification',
                 operationId: operation.id,
+                operationDefinition: serializeOperationDefinitionForList(
+                    operationsById.get(operation.entityId),
+                    operationName,
+                ),
+                expectedEntityId: operation.entityId,
+                expectedTaskVersionEventId: operation.taskVersionEventId,
                 title: 'Verifikacija radnje',
-                description: `${operationName} • ${targetLabel}`,
+                description:
+                    operation.raisedBedId != null
+                        ? operationName
+                        : `${operationName} • Farma`,
                 receivedAt:
                     operation.completedAt ??
                     operation.scheduledDate ??
@@ -180,6 +214,7 @@ export async function getPendingAdminApprovalTasks() {
                 accountId: operation.accountId,
                 gardenId: operation.gardenId,
                 raisedBedId: operation.raisedBedId,
+                raisedBedPhysicalId: raisedBed?.physicalId,
                 positionIndex: null,
                 completedBy: operation.completedBy,
             };
@@ -187,35 +222,53 @@ export async function getPendingAdminApprovalTasks() {
     );
 
     const plantingTasks: AdminApprovalTask[] = raisedBeds.flatMap((raisedBed) =>
-        raisedBed.fields
-            .filter(
-                (field) =>
-                    field.active && field.plantStatus === 'pendingVerification',
-            )
-            .map((field) => ({
-                id: `planting:${field.id}`,
-                kind: 'schedulePlantingVerification',
-                raisedBedId: raisedBed.id,
-                positionIndex: field.positionIndex,
-                title: 'Verifikacija sijanja',
-                description: `${raisedBedLabel({
-                    raisedBedName: raisedBed.name,
-                    physicalId: raisedBed.physicalId,
+        raisedBed.fields.flatMap((field) => {
+            const activePlantCycle = getPendingLegacyPlantCycle(field);
+            if (!activePlantCycle || !field.plantSortId) {
+                return [];
+            }
+            const fieldLabel = raisedBedFieldLabel(field.positionIndex);
+
+            return [
+                {
+                    id: `planting:${field.id}`,
+                    kind: 'schedulePlantingVerification' as const,
+                    expectedPlantCycleEventId:
+                        activePlantCycle.plantPlaceEventId,
+                    expectedPlantCycleVersionEventId:
+                        activePlantCycle.endedEventId,
+                    expectedPlantSortId: field.plantSortId,
                     raisedBedId: raisedBed.id,
                     positionIndex: field.positionIndex,
-                })}: ${plantSortName(plantSortsById, field.plantSortId)}`,
-                receivedAt: field.plantSowDate ?? field.updatedAt,
-                accountId: raisedBed.accountId,
-                gardenId: raisedBed.gardenId,
-            })),
+                    title: 'Verifikacija sijanja',
+                    description: `${fieldLabel ? `${fieldLabel}: ` : ''}${plantSortName(plantSortsById, field.plantSortId)}`,
+                    receivedAt: field.plantSowDate ?? field.updatedAt,
+                    plantImageUrl: plantSortImageUrl(
+                        plantSortsById.get(field.plantSortId),
+                    ),
+                    accountId: raisedBed.accountId,
+                    gardenId: raisedBed.gardenId,
+                    raisedBedPhysicalId: raisedBed.physicalId,
+                },
+            ];
+        }),
     );
 
-    return [...plantStatusTasks, ...operationTasks, ...plantingTasks].sort(
+    const selectedPlantingTasks = buildSelectedPlantingApprovalTasks(
+        raisedBeds,
+    ).map((task) => ({
+        ...task,
+        description: `${task.description}: ${plantSortName(plantSortsById, task.identity.expectedPlantSortId)}`,
+        plantImageUrl: plantSortImageUrl(
+            plantSortsById.get(task.identity.expectedPlantSortId),
+        ),
+    }));
+    return [
+        ...plantStatusTasks,
+        ...operationTasks,
+        ...plantingTasks,
+        ...selectedPlantingTasks,
+    ].sort(
         (left, right) => right.receivedAt.getTime() - left.receivedAt.getTime(),
     );
-}
-
-export async function getPendingAdminApprovalTaskCount() {
-    const tasks = await getPendingAdminApprovalTasks();
-    return tasks.length;
 }

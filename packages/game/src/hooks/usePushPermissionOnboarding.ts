@@ -6,14 +6,57 @@ import {
     subscribePushDevice,
 } from './pushSubscription';
 
-type PushSetupStatus =
+export type PushSetupStatus =
     | 'unsupported'
     | 'unconfigured'
     | 'default'
     | 'denied'
+    | 'failed'
     | 'granted'
     | 'subscribed'
     | 'prompt-dismissed';
+
+type PushPermissionRefreshDocument = Pick<
+    Document,
+    'addEventListener' | 'removeEventListener' | 'visibilityState'
+>;
+
+type PushPermissionRefreshWindow = Pick<
+    Window,
+    'addEventListener' | 'removeEventListener'
+>;
+
+export function pushSetupStatusAfterSubscriptionCheck(
+    permissionStatus: PushSetupStatus,
+    hasSubscription: boolean,
+) {
+    return permissionStatus === 'granted' && hasSubscription
+        ? 'subscribed'
+        : permissionStatus;
+}
+
+export function observePushPermissionRefresh({
+    documentTarget,
+    refresh,
+    windowTarget,
+}: {
+    documentTarget: PushPermissionRefreshDocument;
+    refresh: () => void;
+    windowTarget: PushPermissionRefreshWindow;
+}) {
+    const refreshWhenVisible = () => {
+        if (documentTarget.visibilityState === 'visible') refresh();
+    };
+    windowTarget.addEventListener('focus', refresh);
+    documentTarget.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+        windowTarget.removeEventListener('focus', refresh);
+        documentTarget.removeEventListener(
+            'visibilitychange',
+            refreshWhenVisible,
+        );
+    };
+}
 
 const pushPromptDismissedKey = 'game:push:prompt-dismissed';
 const pushDeviceIdKey = 'game:push:device-id';
@@ -111,13 +154,61 @@ function resolvePermissionStatus(): PushSetupStatus {
     return readPromptDismissed() ? 'prompt-dismissed' : 'default';
 }
 
+async function browserHasPushSubscription() {
+    const registration = await navigator.serviceWorker.getRegistration(
+        pushServiceWorkerPath,
+    );
+    return Boolean(await registration?.pushManager.getSubscription());
+}
+
 export function usePushPermissionOnboarding() {
-    const [status, setStatus] = useState<PushSetupStatus>(() =>
-        resolvePermissionStatus(),
+    const initialStatus = resolvePermissionStatus();
+    const [status, setStatus] = useState<PushSetupStatus>(initialStatus);
+    const [subscriptionChecked, setSubscriptionChecked] = useState(
+        initialStatus !== 'granted',
     );
 
     useEffect(() => {
-        setStatus(resolvePermissionStatus());
+        let refreshVersion = 0;
+        const refresh = () => {
+            const version = ++refreshVersion;
+            const permissionStatus = resolvePermissionStatus();
+            if (permissionStatus !== 'granted') {
+                setStatus(permissionStatus);
+                setSubscriptionChecked(true);
+                return;
+            }
+            setSubscriptionChecked(false);
+            void browserHasPushSubscription()
+                .then((hasSubscription) => {
+                    if (version !== refreshVersion) return;
+                    setStatus(
+                        pushSetupStatusAfterSubscriptionCheck(
+                            permissionStatus,
+                            hasSubscription,
+                        ),
+                    );
+                    setSubscriptionChecked(true);
+                })
+                .catch(() => {
+                    if (version !== refreshVersion) return;
+                    setStatus('failed');
+                    setSubscriptionChecked(true);
+                });
+        };
+        refresh();
+        if (typeof window === 'undefined' || typeof document === 'undefined') {
+            return;
+        }
+        const stopObserving = observePushPermissionRefresh({
+            documentTarget: document,
+            refresh,
+            windowTarget: window,
+        });
+        return () => {
+            refreshVersion += 1;
+            stopObserving();
+        };
     }, []);
 
     const dismissPrompt = useCallback(() => {
@@ -127,52 +218,74 @@ export function usePushPermissionOnboarding() {
         setStatus('prompt-dismissed');
     }, []);
 
-    const requestPermission = useCallback(async () => {
-        if (
-            typeof window === 'undefined' ||
-            !('Notification' in window) ||
-            !('PushManager' in window)
-        ) {
-            setStatus('unsupported');
-            return 'unsupported' as const;
-        }
-
-        if (!webPushVapidPublicKey) {
-            setStatus('unconfigured');
-            return 'unconfigured' as const;
-        }
-
-        const permission =
-            window.Notification.permission === 'granted'
-                ? 'granted'
-                : await window.Notification.requestPermission();
-        if (permission === 'granted') {
-            const registration = await ensurePushServiceWorkerRegistered();
-            if (!registration) {
+    const requestPermission = useCallback(
+        async ({
+            replaceExistingSubscription = false,
+        }: {
+            replaceExistingSubscription?: boolean;
+        } = {}) => {
+            if (
+                typeof window === 'undefined' ||
+                !('Notification' in window) ||
+                !('PushManager' in window)
+            ) {
                 setStatus('unsupported');
+                setSubscriptionChecked(true);
                 return 'unsupported' as const;
             }
-            await subscribePushDevice({
-                applicationServerKey: webPushVapidPublicKey,
-                metadata: pushDeviceMetadata(),
-                persistSubscription: persistPushSubscription,
-                pushManager: registration.pushManager,
-            });
-            setStatus('subscribed');
-            return 'subscribed' as const;
-        }
 
-        if (permission === 'denied') {
-            setStatus('denied');
-            return 'denied' as const;
-        }
+            if (!webPushVapidPublicKey) {
+                setStatus('unconfigured');
+                setSubscriptionChecked(true);
+                return 'unconfigured' as const;
+            }
 
-        setStatus('default');
-        return 'default' as const;
-    }, []);
+            try {
+                const permission =
+                    window.Notification.permission === 'granted'
+                        ? 'granted'
+                        : await window.Notification.requestPermission();
+                if (permission === 'granted') {
+                    const registration =
+                        await ensurePushServiceWorkerRegistered();
+                    if (!registration) {
+                        setStatus('unsupported');
+                        setSubscriptionChecked(true);
+                        return 'unsupported' as const;
+                    }
+                    await subscribePushDevice({
+                        applicationServerKey: webPushVapidPublicKey,
+                        metadata: pushDeviceMetadata(),
+                        persistSubscription: persistPushSubscription,
+                        pushManager: registration.pushManager,
+                        replaceExistingSubscription,
+                    });
+                    setStatus('subscribed');
+                    setSubscriptionChecked(true);
+                    return 'subscribed' as const;
+                }
+
+                if (permission === 'denied') {
+                    setStatus('denied');
+                    setSubscriptionChecked(true);
+                    return 'denied' as const;
+                }
+
+                setStatus('default');
+                setSubscriptionChecked(true);
+                return 'default' as const;
+            } catch {
+                setStatus('failed');
+                setSubscriptionChecked(true);
+                return 'failed' as const;
+            }
+        },
+        [],
+    );
 
     const canPrompt = useMemo(
-        () => status === 'default' || status === 'granted',
+        () =>
+            status === 'default' || status === 'failed' || status === 'granted',
         [status],
     );
 
@@ -181,5 +294,6 @@ export function usePushPermissionOnboarding() {
         canPrompt,
         dismissPrompt,
         requestPermission,
+        subscriptionChecked,
     };
 }

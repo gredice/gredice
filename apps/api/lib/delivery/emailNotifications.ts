@@ -121,7 +121,7 @@ export async function sendBatchedDeliveryReadyEmails(
 
     for (const request of requests) {
         const details = await buildDeliveryEmailDetails(request.requestId);
-        if (!details || details.state !== 'ready') {
+        if (details?.state !== 'ready') {
             processedGroups.push({
                 readyEvents: [
                     {

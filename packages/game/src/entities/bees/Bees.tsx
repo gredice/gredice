@@ -1,35 +1,49 @@
 import type { BlockData } from '@gredice/client';
-import { useFrame } from '@react-three/fiber';
+import { type ThreeEvent, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import type { Group, Material, Object3D } from 'three';
 import {
     DoubleSide,
     MathUtils,
-    Mesh,
+    type Mesh,
     MeshStandardMaterial,
     Vector3,
 } from 'three';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
-import type { Stack } from '../../types/Stack';
+import {
+    sceneFrameRates,
+    useSceneTimeInvalidation,
+} from '../../scene/SceneTime';
 import {
     type AnimalDebugEntry,
+    type AnimalDisturbance,
     type GameState,
     useGameState,
 } from '../../useGameState';
-import { getStackHeight } from '../../utils/getStackHeight';
-import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
-import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
-import {
-    getGridPositionFromIndex,
-    type RaisedBedOrientation,
-} from '../../utils/raisedBedOrientation';
 import { useGameGLTF } from '../../utils/useGameGLTF';
-import { getCactusVariantConfig } from '../Cactus';
-import { getBlockSurfaceDecorations } from '../groundDecorations/getBlockSurfaceDecorations';
-import { resolveGroundDecorationSurface } from '../groundDecorations/groundDecorationConfig';
-import { tulipBouquetStems } from '../tulipBouquet';
+import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
+import {
+    ActorSpeechBubble,
+    useActorHoverSpeech,
+} from '../animals/ActorSpeechBubble';
+import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
+import { configureActorMeshShadows } from '../animals/actorMeshShadows';
+import { beeSpeechMessages } from '../animals/actorSpeechMessages';
+import { initializeAnimalAtHome } from '../animals/animalRuntimeLifecycle';
+import {
+    useFaunaFrame,
+    useFaunaRenderFrame,
+} from '../animals/FaunaRuntimeProvider';
+import { useFaunaActorCulling } from '../animals/useFaunaActorCulling';
+import {
+    computePollinatorHabitatCenter,
+    createPollinatorInteractionFlowerTargets,
+    createPollinatorPrimaryFlowerTargets,
+    type PollinatorFlowerTarget,
+    type PollinatorGarden,
+} from '../pollinators/flowerTargets';
 import {
     type BeeWeather,
     createBeeWanderOffset,
@@ -40,36 +54,16 @@ import {
     shouldBeeWanderNext,
 } from './beeBehavior';
 
-type BeeRaisedBedField = {
-    active?: boolean | null;
-    plantSortId?: number | null;
-    plantStatus?: string | null;
-    positionIndex: number;
-};
-
 type BeeWeatherOverride = Partial<NonNullable<GameState['weather']>>;
 
-type BeeGarden = {
-    id?: number | string;
-    raisedBeds: {
-        blockId: string | null;
-        fields?: BeeRaisedBedField[] | null;
-        id: number;
-        orientation?: RaisedBedOrientation;
-    }[];
-    stacks: Stack[];
-};
-
-type BeeTarget = {
-    id: string;
-    kind:
-        | 'flower'
-        | 'raised-bed-flower'
-        | 'cactus-flower'
-        | 'ground-flower'
-        | 'wander';
-    position: Vector3;
-};
+type BeeTarget =
+    | PollinatorFlowerTarget
+    | {
+          id: string;
+          blockIds?: string[];
+          kind: 'wander';
+          position: Vector3;
+      };
 
 type BeeHabitat = {
     id: string;
@@ -124,6 +118,14 @@ type BeeRigParts = {
     wingRight: BeeRigNode;
 };
 
+const beeDebugBehaviors = [
+    'flower',
+    'raised-bed-flower',
+    'cactus-flower',
+    'ground-flower',
+    'wander',
+];
+
 const clearBeeWeather = {
     cloudy: 0,
     foggy: 0,
@@ -134,19 +136,15 @@ const clearBeeWeather = {
 } satisfies BeeWeather;
 
 const beeScale = 0.095;
+const beeSpeechBubbleOffsetY = 0.25;
 const beeFlightSpeedBlocksPerSecond = 1.1;
 const beeFlightTurnDamping = 7.5;
 const beeFlightLookAheadProgress = 0.06;
 const beeFlightArcMaxHeight = 0.42;
-const beeFlowerRestHeight = 0.025;
-const cactusFlowerHoverHeight = 0.08;
 const defaultTurnDamping = 9;
-const groundDecorationBlockYOffset = 0.2;
-const groundFlowerHoverHeight = 0.08;
-const raisedBedFlowerHoverHeight = 0.42;
-const tulipFlowerHoverHeight = 0.52;
+const animalDisturbanceReactionWindowMs = 2500;
 const fullTurn = Math.PI * 2;
-const yAxis = new Vector3(0, 1, 0);
+const beeFlowerRestHeight = 0.025;
 
 function hashString(value: string) {
     let hash = 2166136261;
@@ -172,6 +170,43 @@ function horizontalDistance(left: Vector3, right: Vector3) {
     return Math.hypot(left.x - right.x, left.z - right.z);
 }
 
+function distanceToDisturbance(
+    position: Vector3,
+    disturbance: AnimalDisturbance,
+) {
+    return Math.hypot(
+        position.x - disturbance.position.x,
+        position.y - disturbance.position.y,
+        position.z - disturbance.position.z,
+    );
+}
+
+function isBeeTargetDisturbed(
+    target: BeeTarget,
+    disturbance: AnimalDisturbance,
+) {
+    return (
+        (target.blockIds?.includes(disturbance.sourceBlockId) ?? false) ||
+        distanceToDisturbance(target.position, disturbance) <=
+            disturbance.radius
+    );
+}
+
+function isBeeDisturbanceRelevant({
+    disturbance,
+    group,
+    runtime,
+}: {
+    disturbance: AnimalDisturbance;
+    group: Group;
+    runtime: BeeRuntimeState;
+}) {
+    return (
+        isBeeTargetDisturbed(runtime.target, disturbance) ||
+        distanceToDisturbance(group.position, disturbance) <= disturbance.radius
+    );
+}
+
 function pickCandidate<T>(candidates: T[], random: () => number) {
     if (candidates.length <= 0) {
         return null;
@@ -180,288 +215,8 @@ function pickCandidate<T>(candidates: T[], random: () => number) {
     return candidates[Math.floor(random() * candidates.length)] ?? null;
 }
 
-function findBlockPlacement(stacks: Stack[], blockId: string) {
-    for (const stack of stacks) {
-        const block = stack.blocks.find(
-            (candidate) => candidate.id === blockId,
-        );
-        if (block) {
-            return { block, stack };
-        }
-    }
-
-    return null;
-}
-
-function rotateLocalPosition(localPosition: Vector3, rotation: number) {
-    return localPosition
-        .clone()
-        .applyAxisAngle(yAxis, rotation * (Math.PI / 2));
-}
-
-function createTulipTargets(
-    stacks: Stack[],
-    blockData: BlockData[] | null | undefined,
-) {
-    const targets: BeeTarget[] = [];
-
-    for (const stack of stacks) {
-        for (const block of stack.blocks) {
-            if (block.name !== 'Tulip') {
-                continue;
-            }
-
-            const baseHeight = getStackHeight(blockData, stack, block);
-            for (const stem of tulipBouquetStems) {
-                const offset = rotateLocalPosition(
-                    new Vector3(stem.position[0], 0, stem.position[2]),
-                    block.rotation,
-                );
-                targets.push({
-                    id: `tulip-${block.id}-${stem.key}`,
-                    kind: 'flower',
-                    position: new Vector3(
-                        stack.position.x + offset.x,
-                        baseHeight + tulipFlowerHoverHeight + stem.position[1],
-                        stack.position.z + offset.z,
-                    ),
-                });
-            }
-        }
-    }
-
-    return targets;
-}
-
-function isBeeFloweringField(field: BeeRaisedBedField) {
-    return (
-        isRaisedBedFieldOccupied(field) &&
-        (field.plantStatus === 'firstFlowers' ||
-            field.plantStatus === 'firstFruitSet' ||
-            field.plantStatus === 'ready')
-    );
-}
-
-function createRaisedBedTargets(
-    garden: BeeGarden,
-    blockData: BlockData[] | null | undefined,
-) {
-    const targets: BeeTarget[] = [];
-
-    for (const raisedBed of garden.raisedBeds) {
-        const fields = raisedBed.fields?.filter(isBeeFloweringField) ?? [];
-        if (fields.length <= 0) {
-            continue;
-        }
-
-        const blockIds = getRaisedBedBlockIds(garden, raisedBed.id);
-        const orientation = raisedBed.orientation ?? 'vertical';
-
-        for (const blockId of blockIds) {
-            const placement = findBlockPlacement(garden.stacks, blockId);
-            if (!placement) {
-                continue;
-            }
-
-            const blockIndex = blockIds.indexOf(blockId);
-            const blockOffset =
-                Math.max(blockIds.length - 1 - blockIndex, 0) * 9;
-            const currentStackHeight = getStackHeight(
-                blockData,
-                placement.stack,
-                placement.block,
-            );
-            const offsetX =
-                orientation === 'vertical' ? 0.31 - blockIndex * 0.05 : 0.27;
-            const offsetY =
-                orientation === 'vertical' ? 0.27 : 0.27 + blockIndex * 0.05;
-            const multiplierX = orientation === 'vertical' ? 0.285 : 0.27;
-            const multiplierY = orientation === 'vertical' ? 0.27 : 0.285;
-
-            for (const field of fields) {
-                const localPositionIndex = field.positionIndex - blockOffset;
-                if (localPositionIndex < 0 || localPositionIndex >= 9) {
-                    continue;
-                }
-
-                const { row, col } = getGridPositionFromIndex(
-                    localPositionIndex,
-                    orientation,
-                );
-                targets.push({
-                    id: `raised-bed-${raisedBed.id}-${field.positionIndex}`,
-                    kind: 'raised-bed-flower',
-                    position: new Vector3(
-                        placement.stack.position.x +
-                            col * multiplierX -
-                            offsetX,
-                        currentStackHeight +
-                            1 -
-                            0.75 +
-                            raisedBedFlowerHoverHeight,
-                        placement.stack.position.z +
-                            (2 - row) * multiplierY -
-                            offsetY,
-                    ),
-                });
-            }
-        }
-    }
-
-    return targets;
-}
-
-function createCactusTargets(
-    stacks: Stack[],
-    blockData: BlockData[] | null | undefined,
-) {
-    const targets: BeeTarget[] = [];
-
-    for (const stack of stacks) {
-        for (const block of stack.blocks) {
-            const config = getCactusVariantConfig(block.name);
-            if (!config) {
-                continue;
-            }
-
-            const baseHeight = getStackHeight(blockData, stack, block);
-            for (const flower of config.flowers) {
-                const offset = rotateLocalPosition(
-                    new Vector3(
-                        flower.position[0] * config.scale,
-                        0,
-                        flower.position[2] * config.scale,
-                    ),
-                    block.rotation,
-                );
-
-                targets.push({
-                    id: `cactus-${block.id}-${flower.id}`,
-                    kind: 'cactus-flower',
-                    position: new Vector3(
-                        stack.position.x + offset.x,
-                        baseHeight -
-                            config.groundSink +
-                            flower.position[1] * config.scale +
-                            cactusFlowerHoverHeight,
-                        stack.position.z + offset.z,
-                    ),
-                });
-            }
-        }
-    }
-
-    return targets;
-}
-
-function createGroundFlowerTargets({
-    blockData,
-    density,
-    garden,
-}: {
-    blockData: BlockData[] | null | undefined;
-    density: number;
-    garden: BeeGarden;
-}) {
-    if (density <= 0) {
-        return [];
-    }
-
-    const targets: BeeTarget[] = [];
-    const gardenId = garden.id ?? null;
-
-    for (const stack of garden.stacks) {
-        for (const block of stack.blocks) {
-            const surface = resolveGroundDecorationSurface(block.name);
-            if (!surface) {
-                continue;
-            }
-
-            const placements = getBlockSurfaceDecorations({
-                block,
-                density,
-                gardenId,
-                surface,
-            });
-            const blockBaseY =
-                getStackHeight(blockData, stack, block) +
-                groundDecorationBlockYOffset;
-
-            placements.forEach((placement, index) => {
-                if (placement.kind !== 'flower') {
-                    return;
-                }
-
-                const offset = rotateLocalPosition(
-                    new Vector3(
-                        placement.position[0],
-                        0,
-                        placement.position[2],
-                    ),
-                    block.rotation,
-                );
-                targets.push({
-                    id: `ground-flower-${block.id}-${index}`,
-                    kind: 'ground-flower',
-                    position: new Vector3(
-                        stack.position.x + offset.x,
-                        blockBaseY +
-                            placement.position[1] +
-                            Math.max(
-                                groundFlowerHoverHeight,
-                                placement.scale * 0.24,
-                            ),
-                        stack.position.z + offset.z,
-                    ),
-                });
-            });
-        }
-    }
-
-    return targets;
-}
-
-function createFlowerEntityTargets(
-    garden: BeeGarden,
-    blockData: BlockData[] | null | undefined,
-) {
-    return createTulipTargets(garden.stacks, blockData);
-}
-
-function createFlowerInteractionTargets({
-    blockData,
-    garden,
-    groundDecorationDensity,
-}: {
-    blockData: BlockData[] | null | undefined;
-    garden: BeeGarden;
-    groundDecorationDensity: number;
-}) {
-    return [
-        ...createRaisedBedTargets(garden, blockData),
-        ...createCactusTargets(garden.stacks, blockData),
-        ...createGroundFlowerTargets({
-            blockData,
-            density: groundDecorationDensity,
-            garden,
-        }),
-    ];
-}
-
-function computeHabitatCenter(targets: BeeTarget[]) {
-    if (targets.length <= 0) {
-        return new Vector3();
-    }
-
-    const sum = new Vector3();
-    for (const target of targets) {
-        sum.add(target.position);
-    }
-    return sum.divideScalar(targets.length);
-}
-
 function createBeeHabitats(
-    garden: BeeGarden | null | undefined,
+    garden: PollinatorGarden | null | undefined,
     blockData: BlockData[] | null | undefined,
     groundDecorationDensity: number,
 ) {
@@ -469,14 +224,17 @@ function createBeeHabitats(
         return [];
     }
 
-    const spawnTargets = createFlowerEntityTargets(garden, blockData);
+    const spawnTargets = createPollinatorPrimaryFlowerTargets(
+        garden,
+        blockData,
+    );
     if (spawnTargets.length <= 0) {
         return [];
     }
 
     const targetGroups = getBeeSpawnHabitatGroups({
         spawnTargets,
-        additionalTargets: createFlowerInteractionTargets({
+        additionalTargets: createPollinatorInteractionFlowerTargets({
             blockData,
             garden,
             groundDecorationDensity,
@@ -500,7 +258,7 @@ function createBeeHabitats(
             {
                 id: `bee-${index + 1}`,
                 seed,
-                center: computeHabitatCenter(targets),
+                center: computePollinatorHabitatCenter(targets),
                 startTarget:
                     targets[Math.floor(random() * targets.length)] ??
                     firstTarget,
@@ -688,6 +446,54 @@ function createWanderTarget(
     };
 }
 
+function createBeeFleeTarget({
+    disturbance,
+    from,
+    habitatCenter,
+    random,
+}: {
+    disturbance: AnimalDisturbance;
+    from: Vector3;
+    habitatCenter: Vector3;
+    random: () => number;
+}): BeeTarget {
+    const away = new Vector3(
+        from.x - disturbance.position.x,
+        0,
+        from.z - disturbance.position.z,
+    );
+
+    if (away.lengthSq() <= 0.0001) {
+        const angle = random() * fullTurn;
+        away.set(Math.cos(angle), 0, Math.sin(angle));
+    } else {
+        away.normalize();
+    }
+
+    const distance = 1.15 + random() * 0.7;
+    const side = new Vector3(-away.z, 0, away.x).multiplyScalar(
+        (random() - 0.5) * 0.55,
+    );
+
+    const sequenceId = Math.floor(random() * 0xffffffff)
+        .toString(16)
+        .padStart(8, '0');
+
+    return {
+        id: `flee-${disturbance.sequence}-${sequenceId}`,
+        kind: 'wander',
+        position: new Vector3(
+            from.x + away.x * distance + side.x,
+            Math.max(
+                from.y + 0.35 + random() * 0.3,
+                habitatCenter.y + 0.45,
+                disturbance.position.y + 0.85,
+            ),
+            from.z + away.z * distance + side.z,
+        ),
+    };
+}
+
 function chooseNextTarget({
     currentTarget,
     habitatCenter,
@@ -723,6 +529,64 @@ function chooseNextTarget({
             nearbyTargets.length > 0 ? nearbyTargets : otherTargets,
             random,
         ) ?? currentTarget
+    );
+}
+
+function chooseManualNextTarget({
+    currentTarget,
+    habitatCenter,
+    random,
+    targets,
+}: {
+    currentTarget: BeeTarget;
+    habitatCenter: Vector3;
+    random: () => number;
+    targets: BeeTarget[];
+}) {
+    const target = chooseNextTarget({
+        currentTarget,
+        habitatCenter,
+        random,
+        targets,
+    });
+
+    if (target.id !== currentTarget.id || target.kind !== currentTarget.kind) {
+        return target;
+    }
+
+    const alternatives = targets.filter(
+        (candidate) => candidate.id !== currentTarget.id,
+    );
+    if (currentTarget.kind !== 'wander') {
+        alternatives.push(createWanderTarget(habitatCenter, random));
+    }
+
+    return pickCandidate(alternatives, random) ?? target;
+}
+
+function chooseDebugTarget({
+    behavior,
+    habitatCenter,
+    random,
+    targets,
+}: {
+    behavior: string;
+    habitatCenter: Vector3;
+    random: () => number;
+    targets: BeeTarget[];
+}) {
+    if (behavior === 'wander') {
+        return createWanderTarget(habitatCenter, random);
+    }
+
+    const exactTargets = targets.filter((target) => target.kind === behavior);
+    if (exactTargets.length > 0) {
+        return pickCandidate(exactTargets, random);
+    }
+
+    return (
+        pickCandidate(targets, random) ??
+        createWanderTarget(habitatCenter, random)
     );
 }
 
@@ -844,13 +708,8 @@ function cloneBeeMaterial(material: Material, objectName: string) {
     return clone;
 }
 
-function isMesh(object: Object3D): object is Mesh {
-    return object instanceof Mesh;
-}
-
 function prepareBeeMesh(object: Mesh) {
     const isWing = object.name.includes('Bee_Wing');
-    object.castShadow = !isWing;
     object.receiveShadow = !isWing;
     object.material = Array.isArray(object.material)
         ? object.material.map((material) =>
@@ -981,6 +840,7 @@ function createBeeDebugEntry({
         behavior: runtime.target.kind,
         activity: getBeeDebugActivity(runtime),
         targetId: runtime.target.id,
+        debugBehaviors: beeDebugBehaviors,
         position: {
             x: roundBeeDebugCoordinate(group.position.x),
             y: roundBeeDebugCoordinate(group.position.y),
@@ -993,25 +853,33 @@ function createBeeDebugEntry({
 function Bee({ habitat }: { habitat: BeeHabitat }) {
     const gltf = useGameGLTF('Bee');
     const { enableDebugHudFlag = false } = useGameFlags();
+    const clock = useThree((state) => state.clock);
     const groupRef = useRef<Group>(null);
+    const targetDebugRef = useRef<Group>(null);
     const randomRef = useRef(createRandom(habitat.seed));
     const runtimeRef = useRef<BeeRuntimeState | null>(null);
     const lastAnimalDebugUpdateRef = useRef(0);
-    const setAnimalDebugEntry = useGameState(
-        (state) => state.setAnimalDebugEntry,
+    const lastDebugCommandSequenceRef = useRef(0);
+    const lastDisturbanceSequenceRef = useRef(0);
+    const { message: speechMessage, showMessage: showSpeechMessage } =
+        useActorHoverSpeech(beeSpeechMessages);
+    const animalTargetsDebugVisible = useGameState(
+        (state) => state.animalTargetsDebugVisible,
     );
-    const removeAnimalDebugEntry = useGameState(
-        (state) => state.removeAnimalDebugEntry,
+    const animalDebugCommand = useGameState(
+        (state) => state.animalDebugCommand,
     );
+    const faunaWorld = useGameState((state) => state.faunaWorld);
+    const animalDisturbance = useGameState((state) => state.animalDisturbance);
 
     const beeModel = useMemo(() => {
         const clone = gltf.scene.clone(true);
-        clone.traverse((object) => {
-            if (isMesh(object)) {
-                prepareBeeMesh(object);
-            }
-        });
+        const { primaryCasterCount } = configureActorMeshShadows(
+            clone,
+            prepareBeeMesh,
+        );
         return {
+            primaryCasterCount,
             rig: {
                 bodyPivot: getBeeRigNode(clone, 'Bee_BodyPivot'),
                 headPivot: getBeeRigNode(clone, 'Bee_HeadPivot'),
@@ -1021,24 +889,86 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
             scene: clone,
         };
     }, [gltf.scene]);
+    useFaunaActorCulling(beeModel.scene);
+    const updateGroundingShadow = useActorGroundingShadow({
+        id: `bee:${habitat.id}`,
+        primaryCasterCount: beeModel.primaryCasterCount,
+        species: 'bee',
+    });
 
     useEffect(() => {
-        randomRef.current = createRandom(habitat.seed);
-        runtimeRef.current = null;
-        if (groupRef.current) {
-            groupRef.current.position.copy(habitat.startTarget.position);
+        const initialized = initializeAnimalAtHome({
+            actor: groupRef.current,
+            home: habitat.startTarget,
+            runtimeInitialized: runtimeRef.current !== null,
+        });
+        if (initialized) {
+            randomRef.current = createRandom(habitat.seed);
         }
-    }, [habitat.seed, habitat.startTarget.position]);
+    }, [habitat.seed, habitat.startTarget]);
 
     useEffect(() => {
         if (!enableDebugHudFlag) {
-            removeAnimalDebugEntry(habitat.id);
+            faunaWorld.removeDebug(habitat.id);
         }
 
-        return () => removeAnimalDebugEntry(habitat.id);
-    }, [enableDebugHudFlag, habitat.id, removeAnimalDebugEntry]);
+        return () => faunaWorld.removeDebug(habitat.id);
+    }, [enableDebugHudFlag, habitat.id, faunaWorld]);
 
-    useFrame(({ clock }, delta) => {
+    useEffect(() => {
+        if (!animalTargetsDebugVisible && targetDebugRef.current) {
+            targetDebugRef.current.visible = false;
+        }
+    }, [animalTargetsDebugVisible]);
+
+    const syncDebugTarget = (runtime: BeeRuntimeState | null) => {
+        const targetDebug = targetDebugRef.current;
+        if (!targetDebug) {
+            return;
+        }
+
+        targetDebug.visible = animalTargetsDebugVisible && runtime !== null;
+        if (targetDebug.visible && runtime) {
+            targetDebug.position.copy(runtime.target.position);
+        }
+    };
+
+    function handlePointerDown(event: ThreeEvent<PointerEvent>) {
+        event.stopPropagation();
+    }
+
+    function handlePointerOver(event: ThreeEvent<PointerEvent>) {
+        event.stopPropagation();
+        showSpeechMessage();
+    }
+
+    function handleClick(event: ThreeEvent<MouseEvent>) {
+        event.stopPropagation();
+
+        const group = groupRef.current;
+        const runtime = runtimeRef.current;
+        if (!group || !runtime) {
+            return;
+        }
+
+        const random = randomRef.current;
+        const now = clock.getElapsedTime();
+        const target = chooseManualNextTarget({
+            currentTarget: runtime.target,
+            habitatCenter: habitat.center,
+            random,
+            targets: habitat.targets,
+        });
+
+        runtimeRef.current = makeMovingState({
+            from: group.position.clone(),
+            now,
+            random,
+            target,
+        });
+    }
+
+    useFaunaFrame(({ clock }, delta) => {
         const group = groupRef.current;
         if (!group) {
             return;
@@ -1057,6 +987,69 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
             runtimeRef.current = runtime;
             group.position.copy(foragePositionAt(runtime));
         }
+
+        if (
+            animalDebugCommand &&
+            animalDebugCommand.sequence !==
+                lastDebugCommandSequenceRef.current &&
+            animalDebugCommand.species === 'Bee'
+        ) {
+            lastDebugCommandSequenceRef.current = animalDebugCommand.sequence;
+
+            if (
+                !animalDebugCommand.targetId ||
+                animalDebugCommand.targetId === habitat.id
+            ) {
+                const target = chooseDebugTarget({
+                    behavior: animalDebugCommand.behavior,
+                    habitatCenter: habitat.center,
+                    random,
+                    targets: habitat.targets,
+                });
+
+                if (target) {
+                    runtime = makeMovingState({
+                        from: group.position.clone(),
+                        now,
+                        random,
+                        target,
+                    });
+                    runtimeRef.current = runtime;
+                }
+            }
+        }
+
+        if (
+            animalDisturbance &&
+            animalDisturbance.sequence !== lastDisturbanceSequenceRef.current
+        ) {
+            lastDisturbanceSequenceRef.current = animalDisturbance.sequence;
+
+            if (
+                Date.now() - animalDisturbance.createdAt <=
+                    animalDisturbanceReactionWindowMs &&
+                isBeeDisturbanceRelevant({
+                    disturbance: animalDisturbance,
+                    group,
+                    runtime,
+                })
+            ) {
+                runtime = makeMovingState({
+                    from: group.position.clone(),
+                    now,
+                    random,
+                    target: createBeeFleeTarget({
+                        disturbance: animalDisturbance,
+                        from: group.position,
+                        habitatCenter: habitat.center,
+                        random,
+                    }),
+                });
+                runtimeRef.current = runtime;
+            }
+        }
+
+        syncDebugTarget(runtime);
 
         if (runtime.phase === 'moving') {
             const progress = MathUtils.clamp(
@@ -1134,7 +1127,23 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
             }
         }
 
-        runtime = runtimeRef.current;
+        if (
+            enableDebugHudFlag &&
+            runtime &&
+            now - lastAnimalDebugUpdateRef.current >= 0.5
+        ) {
+            lastAnimalDebugUpdateRef.current = now;
+            faunaWorld.reportDebug(
+                createBeeDebugEntry({ group, habitat, now, runtime }),
+            );
+        }
+    }, groupRef);
+
+    useFaunaRenderFrame(({ clock }, delta) => {
+        const group = groupRef.current;
+        const runtime = runtimeRef.current;
+        if (!group || !runtime) return;
+        const now = clock.elapsedTime;
         updateBeeRig({
             delta,
             now,
@@ -1142,23 +1151,41 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
             runtime,
             seed: habitat.seed,
         });
-
-        if (
-            enableDebugHudFlag &&
-            runtime &&
-            now - lastAnimalDebugUpdateRef.current >= 0.5
-        ) {
-            lastAnimalDebugUpdateRef.current = now;
-            setAnimalDebugEntry(
-                createBeeDebugEntry({ group, habitat, now, runtime }),
-            );
+        if (runtime && updateGroundingShadow) {
+            updateGroundingShadow({
+                actorY: group.position.y,
+                receiverY: runtime.target.position.y,
+                visible:
+                    runtime.phase === 'foraging' &&
+                    runtime.target.kind !== 'wander',
+                x: group.position.x,
+                yaw: group.rotation.y,
+                z: group.position.z,
+            });
         }
     });
 
     return (
-        <group ref={groupRef} scale={beeScale}>
-            <primitive object={beeModel.scene} />
-        </group>
+        <>
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: Three.js element is interactive */}
+            <group
+                ref={groupRef}
+                scale={beeScale}
+                onPointerDown={handlePointerDown}
+                onClick={handleClick}
+                onPointerOver={handlePointerOver}
+            >
+                <primitive object={beeModel.scene} />
+            </group>
+            {speechMessage ? (
+                <ActorSpeechBubble
+                    actorRef={groupRef}
+                    message={speechMessage}
+                    offsetY={beeSpeechBubbleOffsetY}
+                />
+            ) : null}
+            <AnimalTargetDebugMarker ref={targetDebugRef} color="#facc15" />
+        </>
     );
 }
 
@@ -1189,12 +1216,14 @@ function resolveBeeWeather({
 }
 
 export function Bees({
+    farmId,
     garden,
     groundDecorationDensity = 1,
     weather,
     weatherDisabled = false,
 }: {
-    garden: BeeGarden | null | undefined;
+    farmId?: number | null;
+    garden: PollinatorGarden | null | undefined;
     groundDecorationDensity?: number;
     weather?: BeeWeatherOverride;
     weatherDisabled?: boolean;
@@ -1202,7 +1231,10 @@ export function Bees({
     const { data: blockData } = useBlockData();
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const gameWeather = useGameState((state) => state.weather);
-    const { data: weatherNow } = useWeatherNow(!weatherDisabled && !weather);
+    const { data: weatherNow } = useWeatherNow(
+        !weatherDisabled && !weather,
+        farmId,
+    );
     const beeWeather = resolveBeeWeather({
         gameWeather,
         weatherDisabled,
@@ -1213,8 +1245,10 @@ export function Bees({
         () => createBeeHabitats(garden, blockData, groundDecorationDensity),
         [blockData, garden, groundDecorationDensity],
     );
+    const active = habitats.length > 0 && isBeeActive(timeOfDay, beeWeather);
+    useSceneTimeInvalidation('fauna:bees', active, sceneFrameRates.ambient);
 
-    if (habitats.length <= 0 || !isBeeActive(timeOfDay, beeWeather)) {
+    if (!active) {
         return null;
     }
 

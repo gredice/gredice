@@ -3,6 +3,7 @@ import { useOperations } from '../../hooks/useOperations';
 import { useSnapshotTime } from '../../hooks/useSnapshotTime';
 import type { RaisedBedFieldPlantHistoryEntry } from '../../utils/raisedBedFields';
 import type { PlantLifecycleAttributes } from './PlantLifecycleProgress';
+import { plantLifecycleMilestones } from './plantLifecycleMilestones';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const FALLBACK_GREENHOUSE_REPLANTING_DAYS = 21;
@@ -127,16 +128,17 @@ export function getGreenhouseSeedlingProgressData({
     const plantGrowthTime = getDateTime(field.plantGrowthDate);
     const plantReadyTime = getDateTime(field.plantReadyDate);
 
-    result.germinationValue = plantGrowthTime
-        ? 100
-        : plantSowTime
-          ? Math.min(
-                100,
-                ((targetDateNow - plantSowTime) /
-                    ((germinationWindowDays || 1) * MS_PER_DAY)) *
+    result.germinationValue =
+        plantGrowthTime || plantLifecycleMilestones(field).sprouted
+            ? 100
+            : plantSowTime
+              ? Math.min(
                     100,
-            )
-          : 0;
+                    ((targetDateNow - plantSowTime) /
+                        ((germinationWindowDays || 1) * MS_PER_DAY)) *
+                        100,
+                )
+              : 0;
     result.germinatingDays = plantSowTime
         ? daysBetween(plantSowTime, plantGrowthTime ?? targetDateNow)
         : 0;

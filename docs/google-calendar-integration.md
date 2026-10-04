@@ -92,6 +92,6 @@ changed workspace:
 
 ```bash
 pnpm lint --filter api
-pnpm test --filter api
+pnpm run test --filter api
 pnpm build --filter api
 ```

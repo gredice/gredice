@@ -2,7 +2,18 @@ import { readFileSync } from 'node:fs';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from './fixtures';
 
-const FALLBACK_ROUTES = ['/', '/recepti'];
+const FALLBACK_ROUTES = ['/'];
+const EXTERNAL_REWRITE_PREFIXES = ['/novosti'];
+const REDIRECT_ONLY_ROUTES = [
+    '/prijava/facebook-prijava/povratak',
+    '/prijava/google-prijava/povratak',
+];
+
+function isExternalRewriteRoute(route: string): boolean {
+    return EXTERNAL_REWRITE_PREFIXES.some(
+        (prefix) => route === prefix || route.startsWith(`${prefix}/`),
+    );
+}
 
 function getRoutesToCheck(): string[] {
     try {
@@ -20,7 +31,20 @@ test.describe('accessibility axe smoke tests', () => {
 
     for (const url of getRoutesToCheck()) {
         test(`page ${url} has no serious axe violations`, async ({ page }) => {
+            test.skip(
+                isExternalRewriteRoute(url),
+                'Route is rendered by a different app behind a www rewrite.',
+            );
+            test.skip(
+                REDIRECT_ONLY_ROUTES.includes(url),
+                'Route immediately forwards the browser after an OAuth callback.',
+            );
+
+            // Keep the smoke test deterministic while the public sky follows
+            // real time. Night contrast is covered by the pixel contrast suite.
+            await page.clock.setFixedTime(new Date('2026-09-23T11:00:00Z'));
             await page.goto(url, { waitUntil: 'domcontentloaded' });
+            await expect(page.locator('html')).not.toHaveClass(/dark/u);
 
             const results = await new AxeBuilder({ page })
                 .withTags(['wcag2a', 'wcag2aa'])

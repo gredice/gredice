@@ -1,9 +1,12 @@
 import type { SVGProps } from 'react';
+import { GameRaisedBedGlyph } from '../GameIcons/GameRaisedBedGlyph';
 import { cx } from '../utils';
 
 export type RaisedBedIconProps = SVGProps<SVGSVGElement> & {
     physicalId: string | number | null;
     containerClassName?: string;
+    /** Game artwork preserves the same identifier layout as the default outline. */
+    appearance?: 'outline' | 'game';
 };
 
 function RaisedBedSvg(props: SVGProps<SVGSVGElement>) {
@@ -28,12 +31,15 @@ function RaisedBedSvg(props: SVGProps<SVGSVGElement>) {
 
 export function RaisedBedIcon({
     physicalId,
+    appearance = 'outline',
     containerClassName,
     className,
     ...props
 }: RaisedBedIconProps) {
+    const Glyph = appearance === 'game' ? GameRaisedBedGlyph : RaisedBedSvg;
+
     if (physicalId == null || physicalId === '') {
-        return <RaisedBedSvg className={className} {...props} />;
+        return <Glyph className={className} {...props} />;
     }
 
     return (
@@ -41,13 +47,28 @@ export function RaisedBedIcon({
             className={cx(
                 'relative inline-flex h-6 min-w-4 shrink-0 items-start justify-center',
                 containerClassName,
+                appearance === 'game' && 'min-w-max',
             )}
             title="Identifikator gredice"
         >
-            <span className="absolute -top-1 left-1/2 -translate-x-1/2 whitespace-nowrap text-[0.725rem] font-bold leading-none">
+            {appearance === 'game' && (
+                <span
+                    aria-hidden="true"
+                    className="invisible min-w-6 whitespace-nowrap px-0.5 text-[0.725rem] font-bold leading-none"
+                >
+                    {physicalId}
+                </span>
+            )}
+            <span
+                className={cx(
+                    'absolute -top-1 left-1/2 -translate-x-1/2 whitespace-nowrap text-[0.725rem] font-bold leading-none',
+                    appearance === 'game' &&
+                        'z-10 rounded-sm bg-background/95 px-0.5 text-foreground',
+                )}
+            >
                 {physicalId}
             </span>
-            <RaisedBedSvg
+            <Glyph
                 className={cx(
                     'absolute top-1 left-1/2 -translate-x-1/2',
                     'size-6',

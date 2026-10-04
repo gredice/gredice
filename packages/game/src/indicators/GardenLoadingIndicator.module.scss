@@ -54,7 +54,8 @@ $shadow: rgba(123, 159, 110, 0.154);
             right: var(--right);
             bottom: var(--bottom);
             left: var(--left);
-            transform: rotateY(var(--rotateY)) rotateX(var(--rotateX)) translateZ(var(--translateZ));
+            transform: rotateY(var(--rotateY)) rotateX(var(--rotateX))
+                translateZ(var(--translateZ));
             &:nth-child(1) {
                 --top: 0;
                 --left: 0;
@@ -89,7 +90,7 @@ $shadow: rgba(123, 159, 110, 0.154);
 }
 
 @keyframes box2 {
-    0%{
+    0% {
         transform: translate(0, 100%);
     }
     50% {
@@ -111,7 +112,7 @@ $shadow: rgba(123, 159, 110, 0.154);
 }
 
 @keyframes box4 {
-    0%{
+    0% {
         transform: translate(200%, 0);
     }
     50% {

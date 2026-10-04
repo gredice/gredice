@@ -1,408 +1,155 @@
-# Gredice MCP Platform
+# Gredice MCP server
 
-**Model Context Protocol (MCP) Implementation for Croatian Gardening Platform**
-
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-15.6-black.svg)](https://nextjs.org/)
-[![MCP](https://img.shields.io/badge/MCP-JSON--RPC%202.0-green.svg)](https://modelcontextprotocol.io/)
-[![Tests](https://img.shields.io/badge/Tests-21%20Passing-brightgreen.svg)](./tests/mcp.spec.ts)
-
-## Overview
-
-The Gredice MCP Platform provides AI assistants with secure, structured access to Croatian gardening data and garden management tools through the Model Context Protocol. Our implementation supports three specialized MCP servers for different functional domains.
-
-The public API-hosted documentation and JSON-RPC test console are published at `/test` on the API app, for example `https://api.gredice.com/test` and `https://api.gredice.test/test`.
-
-## Architecture
+Gredice exposes one supported Streamable HTTP MCP endpoint for Croatian plant
+knowledge, authenticated garden context, and authenticated cart management:
 
 ```text
-🌱 Gredice MCP Platform
-├── 📚 Directories Server  - Croatian plant & botanical data
-├── 🏡 Gardens Server      - Garden & raised bed management  
-└── 🛒 Commerce Server     - Seeds & tools marketplace
+https://api.gredice.com/api/mcp
 ```
 
-- **Commerce**: Shopping cart and checkout functionality
-- **Accounts**: User account and authentication services
-- **Notifications**: Messaging and notification services
+The public user guide is at
+[`https://www.gredice.com/mcp`](https://www.gredice.com/mcp). Older
+domain-specific routes under `/api/mcp/{core,directories,gardens,commerce}` are
+removed. The unified endpoint and its protected-resource metadata are always
+available; authorization is enforced per tool.
 
-## MCP Protocol Overview
+## Availability and origin policy
 
-Model Context Protocol (MCP) is a standardized way for AI assistants to interact with external systems. Gredice implements MCP using:
+The server does not use an MCP enablement or rollout-stage flag. Protocol
+discovery, public catalog tools, protected-resource metadata, and the `/test`
+console are part of the deployed API surface by default. Private tools still
+require their declared bearer scope and selected-account ownership checks.
 
-- **Transport**: HTTP-based JSON-RPC 2.0 protocol
-- **Authentication**: JWT-based with OAuth 2.1 support
-- **Session Management**: Stateless design optimized for serverless environments
+Optional `MCP_ALLOWED_ORIGINS` is a comma-separated origin allowlist. An empty
+value does not restrict origins.
 
-### Server Structure
+## Protocol
 
-```text
-/api/mcp/
-├── core/           # Main MCP coordinator server
-├── directories/    # Public entity collections (plants, seeds, operations)
-├── gardens/        # Garden and raised bed management
-├── accounts/       # User account and authentication services
-├── commerce/       # Shopping cart and checkout functionality
-└── notifications/  # Notification and messaging services
-```
+- Transport: Streamable HTTP JSON-RPC 2.0.
+- Supported versions: `2025-03-26` and `2024-11-05`.
+- Methods: `initialize`, `notifications/initialized`, `tools/list`,
+  `tools/call`, `resources/list`, `resources/templates/list`, and
+  `prompts/list`.
+- Maximum request body: 256 KiB.
+- Tool timeout: 8 seconds.
+- Rate limits: currently per runtime instance; shared production limits remain
+  required before official marketplace publication.
 
-### Core Components
+Example anonymous call:
 
-1. **StreamableHTTPTransport**: Handles HTTP-based MCP communication
-2. **Authentication Middleware**: shared API JWT validation, account scoping, and MCP scope checks
-3. **Logging**: Comprehensive request/response logging via Axiom
-4. **Error Handling**: Standardized error responses with correlation IDs
-
-## Authentication and Authorization
-
-### JWT Integration
-
-MCP discovery and public read tools are callable without credentials. Authenticated read, mutation, and admin tools require standard Gredice API bearer JWTs (`GREDICE_JWT_SIGN_SECRET`) on the request:
-
-```typescript
-Authorization: Bearer <jwt_token>
-```
-
-OAuth protected resource metadata is served at `/.well-known/oauth-protected-resource/api/mcp`.
-
-### Scopes
-
-- `mcp:read`: Read access to resources and tools
-- `mcp:write`: Write access for mutating operations
-- `mcp:admin`: Administrative access to all MCP functions
-
-### Role Matrix
-
-| Tool/Resource | mcp:read | mcp:write | mcp:admin |
-|--------------|----------|-----------|-----------|
-| directories/* | ✓ | ✗ | ✓ |
-| gardens/list-* | ✓ | ✗ | ✓ |
-| gardens/update-* | ✗ | ✓ | ✓ |
-| commerce/get-* | ✓ | ✗ | ✓ |
-| commerce/add-* | ✗ | ✓ | ✓ |
-| accounts/* | ✗ | ✓ | ✓ |
-
-## Available Servers
-
-### 1. Directories MCP Server
-
-**Endpoint**: `/api/mcp/directories`
-
-Provides access to public entity collections including plants, seeds, operations, and botanical information.
-
-#### Tools - Directories
-
-- `directories/get-plants`: Retrieve all plants with attributes and calendar data
-- `directories/get-plant-sorts`: Get plant varieties for specific plants
-- `directories/get-plant`: Get detailed information for a specific plant
-- `directories/search-entities`: Search across entity types
-- `directories/get-operations`: Get agricultural operations
-- `directories/get-seeds`: Get seed catalog information
-
-#### Resources
-
-- Plant entity data (Croatian/Latin names, descriptions)
-- Plant sort information with planting/harvest calendars
-- Agricultural operation definitions and timing
-- Seed and product catalog data
-
-### 2. Gardens MCP Server
-
-**Endpoint**: `/api/mcp/gardens`
-
-Manages raised beds, plant fields, and garden operations.
-
-#### Tools - Gardens
-
-- `gardens/list-raised-beds`: List all raised beds in a garden
-- `gardens/get-raised-bed`: Get raised bed details with field information
-- `gardens/update-raised-bed`: Update raised bed name and status
-- `gardens/plant-field`: Plant a specific crop in a raised bed field
-- `gardens/update-field-status`: Update plant status (sowed, sprouted, harvested)
-- `gardens/get-field-lifecycle`: Get plant growth lifecycle data
-- `gardens/remove-field-plant`: Remove plant from field when harvestable
-- `gardens/get-raised-bed-diary`: Get diary entries for raised bed operations
-
-#### Resources
-
-- Raised bed configurations and field layouts
-- Plant lifecycle and growth stage data
-- Field operation history and diary entries
-- Plant sort compatibility information
-
-### 3. Commerce MCP Server
-
-**Endpoint**: `/api/mcp/commerce`
-
-Handles shopping cart management, dual currency support, and checkout processes.
-
-#### Tools - Commerce
-
-- `commerce/get-shopping-cart`: Retrieve current cart with comprehensive details
-- `commerce/add-to-cart`: Add garden items with placement context
-- `commerce/update-cart-item`: Modify quantities or switch currency
-- `commerce/remove-cart-item`: Remove specific items from cart
-- `commerce/checkout`: Process payment with delivery coordination
-- `commerce/get-sunflower-balance`: Check sunflower currency balance
-- `commerce/convert-currency`: Switch between EUR and sunflower pricing
-- `commerce/track-order-status`: Monitor cart and payment processing
-
-#### Currency System
-
-- **Primary**: EUR (Euro)
-- **Secondary**: 🌻 (Sunflowers)
-- **Exchange Rate**: 1 EUR = 1000 🌻
-- **Minimum Cart**: €0.50
-- **Sunflower Earning**: 10 🌻 per 1 EUR spent
-
-### 4. Accounts MCP Server
-
-**Endpoint**: `/api/mcp/accounts`
-
-Provides user account management and authentication services.
-
-### 5. Notifications MCP Server
-
-**Endpoint**: `/api/mcp/notifications`
-
-Handles messaging and notification management.
-
-## Tool and Resource Schemas
-
-### Input/Output Formats
-
-All tools use structured JSON input/output with Zod validation:
-
-```typescript
-// Example: directories/get-plant
-Input: {
-  plantId: string;
-  includeSorts?: boolean;
-  locale?: "hr" | "en";
-}
-
-Output: {
-  id: string;
-  name: string;
-  nameLatin: string;
-  description: string;
-  sorts?: PlantSort[];
-  calendar?: PlantingCalendar;
-}
-```
-
-### Error Responses
-
-Standardized error format with correlation IDs:
-
-```typescript
-{
-  error: {
-    code: number;        // HTTP status code
-    message: string;     // Human-readable message
-    correlationId: string; // For tracking
-    details?: any;       // Additional context
-  }
-}
-```
-
-## Client Integration Examples
-
-### Basic MCP Client Setup
-
-```typescript
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPTransport } from '@hono/mcp';
-
-const transport = new StreamableHTTPTransport({
-  baseUrl: 'https://api.gredice.com/api/mcp/core',
-  headers: {
-    'Authorization': 'Bearer YOUR_JWT_TOKEN'
-  }
-});
-
-const client = new Client(
-  { name: 'gredice-client', version: '1.0.0' },
-  { capabilities: {} }
-);
-
-await client.connect(transport);
-```
-
-### Using Tools
-
-```typescript
-// Get all plants
-const plants = await client.request({
-  method: 'tools/call',
-  params: {
-    name: 'directories/get-plants',
-    arguments: { locale: 'hr' }
-  }
-});
-
-// Plant a field
-const result = await client.request({
-  method: 'tools/call',
-  params: {
-    name: 'gardens/plant-field',
-    arguments: {
-      raisedBedId: 'bed-123',
-      fieldPosition: 0,
-      plantSortId: 'sort-456',
-      quantity: 10
+```sh
+curl https://api.gredice.com/api/mcp \
+  -H 'Content-Type: application/json' \
+  --data '{
+    "jsonrpc": "2.0",
+    "id": "plants",
+    "method": "tools/call",
+    "params": {
+      "name": "directories/get-plants",
+      "arguments": { "limit": 5, "offset": 0 }
     }
-  }
-});
+  }'
 ```
 
-### Error Handling
+## Authorization
 
-```typescript
-try {
-  const result = await client.request({
-    method: 'tools/call',
-    params: { name: 'gardens/plant-field', arguments: {} }
-  });
-} catch (error) {
-  if (error.code === 400) {
-    console.log('Validation error:', error.details);
-  } else if (error.code === 401) {
-    console.log('Authentication required');
-  } else if (error.code === 403) {
-    console.log('Insufficient permissions');
-  }
-}
+Directory lookups and published product-catalog reads are anonymous. Garden
+state, cart contents, and cart mutations require a standard Gredice API bearer
+token:
+
+```http
+Authorization: Bearer <access-token>
 ```
 
-## Development Environment
+The unified server validates the token with `GREDICE_JWT_SIGN_SECRET`, derives
+the user and selected account from authorization, verifies ownership, and then
+checks these MCP scopes:
 
-### Local Setup
+| Exposure | Scope |
+| --- | --- |
+| `public-read` | none |
+| `auth-read` | `mcp:read` |
+| `auth-mutation` | `mcp:write` |
+| `admin-internal` | `mcp:admin` |
 
-1. **Install Dependencies**:
+Protected-resource metadata is available at
+`/.well-known/oauth-protected-resource/api/mcp`. Official external publication
+additionally requires a complete OAuth 2.1 authorization-code and PKCE flow
+plus authorization-server discovery; see
+[`docs/plugin-marketplaces.md`](../../docs/plugin-marketplaces.md).
 
-   ```bash
-   cd /path/to/gredice
-   pnpm install
-   ```
+## Tool catalog
 
-2. **Environment Variables**:
+Tool annotations are included in `tools/list`. All read tools use
+`readOnlyHint: true`; cart mutations use `readOnlyHint: false`; all tools use
+`openWorldHint: false`; and `commerce/update-cart-item` is destructive because
+quantity zero removes an item.
 
-   ```bash
-   # .env
-   GREDICE_JWT_SIGN_SECRET=your_existing_api_jwt_secret
-   MCP_ALLOWED_ORIGINS=https://app.gredice.com,https://vrt.gredice.com
-   ```
+| Tool | Exposure | Purpose |
+| --- | --- | --- |
+| `directories/get-plants` | public read | List Croatian plants and calendar data. |
+| `directories/get-plant` | public read | Get one plant and optional sorts. |
+| `directories/get-plant-sorts` | public read | List plant sorts. |
+| `directories/search-entities` | public read | Search directory entities. |
+| `directories/get-operations` | public read | List gardening operations. |
+| `directories/get-seeds` | public read | List seed data. |
+| `gardens/list-gardens` | authenticated read | List gardens for the selected account. |
+| `gardens/list-raised-beds` | authenticated read | List raised beds in an owned garden. |
+| `gardens/get-raised-bed-fields` | authenticated read | Read field and plant lifecycle state. |
+| `gardens/list-operations` | authenticated read | List scheduled and completed operations. |
+| `gardens/get-lifecycle-context` | authenticated read | Summarize active plant lifecycle state. |
+| `gardens/get-raised-bed-ai-history` | authenticated read | Read saved AI suggestions for a bed. |
+| `commerce/get-products` | public read | List available plant-sort products. |
+| `commerce/search-products` | public read | Search available plant-sort products. |
+| `commerce/get-product` | public read | Get one published product. |
+| `commerce/get-cart` | authenticated read | Read the selected account cart. |
+| `commerce/add-to-cart` | authenticated mutation | Add a product to the cart. |
+| `commerce/update-cart-item` | authenticated mutation | Change quantity or remove a cart item. |
 
-3. **Start Development Server**:
+Cart tools derive ownership from the bearer token. Clients must not send or ask
+users for account or user IDs. The catalog exposes only identifiers needed to
+select products, gardens, beds, fields, or existing cart items.
 
-   ```bash
-   pnpm dev --filter @gredice/api
-   ```
+## Resources
 
-### Testing MCP Endpoints
+The server advertises public directory metadata at:
 
-```bash
-# Health check
-curl https://api.gredice.test/api/mcp/core/health
+- `gredice://directories/entity-types`
+- `gredice://directories/entity-types/{entityTypeName}`
 
-# Test authentication
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-     https://api.gredice.test/api/mcp/core/mcp
+The templates are discovery metadata; resource reads should not be treated as a
+stable public contract until `resources/read` is implemented.
+
+## Plugin package
+
+Installable Codex/ChatGPT and Claude source lives in
+[`plugins/gredice`](../../plugins/gredice). It contains aligned manifests, the
+canonical remote server configuration, skills, brand assets, and marketplace
+submission evals. Repository catalogs live at:
+
+- `.agents/plugins/marketplace.json`
+- `.claude-plugin/marketplace.json`
+
+Run `pnpm plugins:check` to verify package, marketplace, tool, skill, and eval
+alignment.
+
+## Validation
+
+From the repository root:
+
+```sh
+pnpm plugins:check
+pnpm mcp:smoke:public
+pnpm typecheck --filter api
+pnpm --filter api test:node
+pnpm --filter api test:run -- tests/mcp.spec.ts
 ```
 
-## Troubleshooting
+The Playwright authenticated account-isolation test requires
+`GREDICE_MCP_TEST_BEARER_TOKEN` and `GREDICE_MCP_TEST_ACCOUNT_ID`. Do not use
+production customer credentials for marketplace fixtures.
 
-### Common Issues
-
-1. **Authentication Errors**:
-   - Verify JWT token is valid and not expired
-   - Check that required scopes are present
-   - Ensure Authorization header format is correct
-
-2. **Connection Errors**:
-   - Verify MCP server is running
-   - Check CORS configuration for client domain
-   - Ensure firewall allows connections
-
-3. **Tool Validation Errors**:
-   - Check input schema matches tool requirements
-   - Verify all required parameters are provided
-   - Ensure data types match expected formats
-
-### Debug Logging
-
-Enable debug logging by setting environment variable:
-
-```bash
-MCP_DEBUG=true
-```
-
-Logs are sent to Axiom with correlation IDs for tracking requests across services.
-
-## Performance Considerations
-
-### Rate Limiting
-
-- **Per User**: 1000 requests/hour
-- **Per Account**: 10000 requests/hour
-- **Burst Limit**: 100 requests/minute
-
-### Caching
-
-- Plant/entity data cached for 1 hour
-- Garden state cached for 5 minutes
-- Shopping cart cached for 30 seconds
-
-### Optimization Tips
-
-1. Use batch operations when possible
-2. Implement client-side caching for static data
-3. Use WebSocket connections for real-time updates
-4. Minimize payload sizes by requesting only needed fields
-
-## Security
-
-### Best Practices
-
-1. **Token Management**:
-   - Use short-lived tokens (15 minutes)
-   - Implement token refresh mechanism
-   - Store tokens securely (not in localStorage)
-
-2. **Input Validation**:
-   - All inputs validated with Zod schemas
-   - SQL injection prevention via parameterized queries
-   - XSS prevention via output encoding
-
-3. **Access Control**:
-   - Principle of least privilege
-   - Resource-level authorization checks
-   - Audit logging for all mutations
-
-## Monitoring and Observability
-
-### Metrics
-
-- Request latency percentiles (p50, p90, p99)
-- Error rates by endpoint and error type
-- Authentication success/failure rates
-- Tool usage patterns
-
-### Alerting
-
-- High error rates (>5% over 5 minutes)
-- Slow response times (>1s p95 over 5 minutes)
-- Authentication failures (>100/hour per IP)
-
-### Dashboards
-
-Access monitoring dashboards at:
-
-- **Axiom**: Application logs and metrics
-- **Vercel**: Deployment and performance metrics
-
-
-## Endpoint decision
-
-Gredice now uses a single Streamable HTTP endpoint at `/api/mcp` with namespaced tool names (for example `directories/get-plants`). This keeps protocol negotiation, lifecycle handling, and capability listing in one server implementation while preserving domain boundaries in tool naming.
+The public smoke uses the official MCP SDK against
+`https://api.gredice.com/api/mcp` by default. Override `MCP_SMOKE_URL` to check
+another deployed environment. The scheduled `MCP public smoke` workflow runs
+the same credential-free contract check every six hours.

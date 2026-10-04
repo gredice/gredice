@@ -3,16 +3,10 @@
 import { formatPrice } from '@gredice/js/currency';
 import { Button } from '@gredice/ui/Button';
 import { Input } from '@gredice/ui/Input';
-import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useState, useTransition } from 'react';
 import { requestPayoutAction } from '../(actions)/payoutActions';
-
-function parseAmount(raw: string): number {
-    // Allow both comma and dot as decimal separator (Croatian input convention)
-    return parseFloat(raw.replace(',', '.'));
-}
 
 export function PayoutRequestForm({
     farmId,
@@ -23,27 +17,19 @@ export function PayoutRequestForm({
     availableBalance: number;
     currency: string;
 }) {
-    const [amount, setAmount] = useState(availableBalance.toFixed(2));
     const [note, setNote] = useState('');
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
 
-    const parsedAmount = parseAmount(amount);
-    const isValid =
-        !Number.isNaN(parsedAmount) &&
-        parsedAmount > 0 &&
-        parsedAmount <= availableBalance + 0.001;
-
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
-        if (!isValid) return;
         startTransition(async () => {
             try {
                 await requestPayoutAction(
                     farmId,
-                    parsedAmount,
+                    availableBalance,
                     currency,
                     note.trim() || undefined,
                 );
@@ -76,7 +62,6 @@ export function PayoutRequestForm({
                     size="sm"
                     onClick={() => {
                         setSuccess(false);
-                        setAmount(availableBalance.toFixed(2));
                         setNote('');
                     }}
                 >
@@ -93,22 +78,12 @@ export function PayoutRequestForm({
                     <Typography level="body2" semiBold>
                         Iznos isplate
                     </Typography>
-                    <Row spacing={2} className="items-center">
-                        <Input
-                            type="text"
-                            inputMode="decimal"
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                            className="w-36 tabular-nums"
-                            required
-                        />
-                        <Typography
-                            level="body3"
-                            className="text-muted-foreground"
-                        >
-                            maks. {formatPrice(availableBalance)}
-                        </Typography>
-                    </Row>
+                    <Typography level="h4" semiBold className="tabular-nums">
+                        {formatPrice(availableBalance)}
+                    </Typography>
+                    <Typography level="body3" className="text-muted-foreground">
+                        Isplata se šalje za cijeli raspoloživi iznos.
+                    </Typography>
                 </Stack>
                 <Stack spacing={2}>
                     <Typography level="body2" semiBold>
@@ -128,7 +103,7 @@ export function PayoutRequestForm({
                 )}
                 <Button
                     type="submit"
-                    disabled={!isValid || isPending}
+                    disabled={availableBalance <= 0 || isPending}
                     variant="solid"
                 >
                     {isPending ? 'Slanje...' : 'Zatraži isplatu'}

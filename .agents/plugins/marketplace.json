@@ -1,0 +1,20 @@
+{
+	"name": "personal",
+	"interface": {
+		"displayName": "Personal"
+	},
+	"plugins": [
+		{
+			"name": "gredice",
+			"source": {
+				"source": "local",
+				"path": "./plugins/gredice"
+			},
+			"policy": {
+				"installation": "AVAILABLE",
+				"authentication": "ON_INSTALL"
+			},
+			"category": "Productivity"
+		}
+	]
+}

@@ -2,7 +2,7 @@ import { Chip } from '@gredice/ui/Chip';
 import { Info } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
 
-const sowingCalendarHref = '/sjetva#kalendar-sjetve';
+const sowingCalendarHref = '/kalendar-sjetve';
 
 export function CalendarInfoChip({ className }: { className?: string }) {
     return (
@@ -10,7 +10,7 @@ export function CalendarInfoChip({ className }: { className?: string }) {
             color="neutral"
             size="sm"
             href={sowingCalendarHref}
-            className={cx('w-fit shrink-0 whitespace-nowrap', className)}
+            className={cx('shrink-0 whitespace-nowrap', className)}
             title="Saznaj više o kalendaru sijanja i rasta biljaka"
         >
             <Info className="size-4 shrink-0" />

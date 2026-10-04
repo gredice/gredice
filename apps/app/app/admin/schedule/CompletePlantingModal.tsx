@@ -4,17 +4,20 @@ import { Button } from '@gredice/ui/Button';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
+import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 
 interface CompletePlantingModalProps {
     label: string;
+    raisedBedPhysicalId?: string;
     onConfirm: () => Promise<void>;
 }
 
 export function CompletePlantingModal({
     label,
+    raisedBedPhysicalId,
     onConfirm,
 }: CompletePlantingModalProps) {
     const [open, setOpen] = useState(false);
@@ -51,7 +54,6 @@ export function CompletePlantingModal({
             onOpenChange={handleOpenChange}
             trigger={
                 <Checkbox
-                    className="size-5 mx-2"
                     checked={open}
                     onCheckedChange={(checked: boolean) =>
                         handleOpenChange(checked)
@@ -60,6 +62,12 @@ export function CompletePlantingModal({
             }
         >
             <Stack spacing={4}>
+                {raisedBedPhysicalId && (
+                    <RaisedBedLabel
+                        physicalId={raisedBedPhysicalId}
+                        size="compact"
+                    />
+                )}
                 <Typography>
                     Jeste li sigurni da želite označiti da je posijano:{' '}
                     <strong>{label}</strong>?

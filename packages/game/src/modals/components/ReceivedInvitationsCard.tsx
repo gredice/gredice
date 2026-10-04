@@ -1,5 +1,6 @@
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
+import { GameMailboxIcon } from '@gredice/ui/GameIcons';
 import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
@@ -29,8 +30,16 @@ export function ReceivedInvitationsCard() {
         <Card>
             <CardContent noHeader>
                 <Stack spacing={4}>
-                    <Typography level="body1" semiBold>
-                        📬 Pozivnice
+                    <Typography
+                        level="body1"
+                        semiBold
+                        className="flex items-center gap-2"
+                    >
+                        <GameMailboxIcon
+                            aria-hidden
+                            className="size-6 shrink-0"
+                        />
+                        Pozivnice
                     </Typography>
                     {pendingInvitations.data.map((invitation) => (
                         <Row

@@ -1,3 +1,4 @@
+export { AdminDesktopFrame } from './AdminDesktopFrame';
 export { AdminDirectoryBreadcrumbs } from './AdminDirectoryBreadcrumbs';
 export { AdminPageBreadcrumbs } from './AdminPageBreadcrumbs';
 export { AdminPageCardHeader } from './AdminPageCardHeader';

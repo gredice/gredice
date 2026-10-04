@@ -2,12 +2,46 @@ import type { EntityStandardized } from '@gredice/storage';
 import type { FarmScheduleDayData } from './scheduleData';
 
 type FarmRaisedBed = FarmScheduleDayData['raisedBeds'][number];
+type FarmOperation = FarmScheduleDayData['scheduledOperations'][number];
+type ScheduleTaskAgeIndicatorLevel = 'warning' | 'critical';
+
+export type FarmScheduleOperationsMode =
+    | 'all'
+    | 'harvest'
+    | 'watering'
+    | 'withoutGroupedOperations';
+
+export const FARM_SCHEDULE_TIME_ZONE = 'Europe/Zagreb';
 
 export type RaisedBedScheduleGroup = {
     key: string;
     physicalId: string | null;
     raisedBeds: FarmRaisedBed[];
 };
+
+export type ScheduleTaskAgeIndicator = {
+    level: ScheduleTaskAgeIndicatorLevel;
+    label: string;
+    title: string;
+};
+
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+const WARNING_TASK_AGE_DAYS = 2;
+const CRITICAL_TASK_AGE_DAYS = 3;
+
+export function getFarmScheduleDateKey(date: Date) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: FARM_SCHEDULE_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).formatToParts(date);
+    const values = Object.fromEntries(
+        parts.map((part) => [part.type, part.value]),
+    );
+
+    return `${values.year}-${values.month}-${values.day}`;
+}
 
 function comparePhysicalIds(left: string | null, right: string | null) {
     if (!left && !right) {
@@ -88,6 +122,61 @@ export function formatMinutes(minutes: number) {
     return `${Math.ceil(Math.max(0, minutes))} min`;
 }
 
+export function getScheduleDateFormat(
+    scheduledDate: Date | string | null | undefined,
+    referenceDate = new Date(),
+): Intl.DateTimeFormatOptions {
+    const parsedScheduledDate = parseScheduleDate(scheduledDate);
+    const scheduledYear = parsedScheduledDate
+        ? getFarmScheduleDateKey(parsedScheduledDate).slice(0, 4)
+        : null;
+    const referenceYear = getFarmScheduleDateKey(referenceDate).slice(0, 4);
+    const includeYear = !parsedScheduledDate || scheduledYear !== referenceYear;
+
+    return includeYear
+        ? {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              timeZone: FARM_SCHEDULE_TIME_ZONE,
+          }
+        : {
+              day: '2-digit',
+              month: '2-digit',
+              timeZone: FARM_SCHEDULE_TIME_ZONE,
+          };
+}
+
+export function isScheduleDatePast(
+    scheduledDate: Date | string | null | undefined,
+    referenceDate = new Date(),
+) {
+    const parsedScheduledDate = parseScheduleDate(scheduledDate);
+    if (!parsedScheduledDate) {
+        return false;
+    }
+
+    return (
+        getLocalDayNumber(parsedScheduledDate) <
+        getLocalDayNumber(referenceDate)
+    );
+}
+
+function getScheduleDateSortValue(date: Date | string | null | undefined) {
+    const parsedDate = parseScheduleDate(date);
+
+    return parsedDate
+        ? getLocalDayNumber(parsedDate)
+        : Number.POSITIVE_INFINITY;
+}
+
+export function compareScheduleDates(
+    left: Date | string | null | undefined,
+    right: Date | string | null | undefined,
+) {
+    return getScheduleDateSortValue(left) - getScheduleDateSortValue(right);
+}
+
 export function getOperationDurationMinutes(
     operationData: EntityStandardized | undefined,
 ) {
@@ -113,16 +202,121 @@ export function getOperationDurationMinutes(
     return 0;
 }
 
+export function isWateringOperationData(
+    operationData: EntityStandardized | undefined,
+) {
+    return operationData?.attributes?.visualReward === 'watering';
+}
+
+export function isHarvestOperationData(
+    operationData: EntityStandardized | undefined,
+) {
+    return operationData?.attributes?.visualReward === 'harvest';
+}
+
+export function isGroupedWateringScheduleOperation(
+    operation: Pick<FarmOperation, 'raisedBedId'>,
+    operationData: EntityStandardized | undefined,
+) {
+    return (
+        operation.raisedBedId !== null && isWateringOperationData(operationData)
+    );
+}
+
+export function isGroupedHarvestScheduleOperation(
+    operation: Pick<FarmOperation, 'raisedBedId'>,
+    operationData: EntityStandardized | undefined,
+) {
+    return (
+        operation.raisedBedId !== null && isHarvestOperationData(operationData)
+    );
+}
+
+export function shouldDisplayScheduleOperation(
+    operation: Pick<FarmOperation, 'raisedBedId'>,
+    operationData: EntityStandardized | undefined,
+    mode: FarmScheduleOperationsMode,
+) {
+    const isGroupedWatering = isGroupedWateringScheduleOperation(
+        operation,
+        operationData,
+    );
+    const isGroupedHarvest = isGroupedHarvestScheduleOperation(
+        operation,
+        operationData,
+    );
+
+    if (mode === 'harvest') {
+        return isGroupedHarvest;
+    }
+
+    if (mode === 'watering') {
+        return isGroupedWatering;
+    }
+
+    if (mode === 'withoutGroupedOperations') {
+        return !isGroupedHarvest && !isGroupedWatering;
+    }
+
+    return true;
+}
+
 export const PLANTING_TASK_DURATION_MINUTES = 5;
 
-export function isOperationCompleted(status?: string) {
-    return status === 'completed' || status === 'pendingVerification';
+export { getFieldPhysicalPositionIndex } from '@gredice/js/raisedBeds';
+
+function getLocalDayNumber(date: Date) {
+    const [year, month, day] = getFarmScheduleDateKey(date)
+        .split('-')
+        .map(Number);
+
+    return Date.UTC(year, month - 1, day) / MILLISECONDS_PER_DAY;
 }
 
-export function isFieldApproved(status?: string) {
-    return status === 'planned';
+function parseScheduleDate(date: Date | string | null | undefined) {
+    if (!date) {
+        return null;
+    }
+
+    const parsedDate = typeof date === 'string' ? new Date(date) : date;
+
+    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
 }
 
-export function isFieldCompleted(status?: string) {
-    return status === 'sowed' || status === 'pendingVerification';
+function formatTaskAgeDays(days: number) {
+    const dayLabel = days % 10 === 1 && days % 100 !== 11 ? 'dan' : 'dana';
+    return `${days} ${dayLabel}`;
+}
+
+export function getScheduleTaskAgeIndicator(
+    scheduledDate: Date | string | null | undefined,
+    referenceDate = new Date(),
+): ScheduleTaskAgeIndicator | null {
+    const parsedScheduledDate = parseScheduleDate(scheduledDate);
+    if (!parsedScheduledDate) {
+        return null;
+    }
+
+    const ageDays =
+        getLocalDayNumber(referenceDate) -
+        getLocalDayNumber(parsedScheduledDate);
+    const formattedAgeDays = formatTaskAgeDays(ageDays);
+
+    if (ageDays >= CRITICAL_TASK_AGE_DAYS) {
+        return {
+            level: 'critical',
+            label: `Kritično ${formattedAgeDays}`,
+            title: `Zadatak kasni ${formattedAgeDays} prema planiranom datumu.`,
+        };
+    }
+
+    if (ageDays >= WARNING_TASK_AGE_DAYS) {
+        return {
+            level: 'warning',
+            label: `Kasni ${formattedAgeDays}`,
+            title: `Zadatak kasni ${formattedAgeDays} prema planiranom datumu.`,
+        };
+    }
+
+    return null;
 }

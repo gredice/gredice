@@ -9,11 +9,14 @@
                 "CHECKLY_API_KEY",
                 "EDGE_CONFIG",
                 "ENABLE_EXPERIMENTAL_COREPACK",
+                "FLAGS",
                 "FLAGS_SECRET",
                 "GREDICE_API_HOST",
                 "GREDICE_GOOGLE_MAPS_API_KEY",
                 "GREDICE_GOOGLE_MAPS_URL_SIGNING_SECRET",
                 "GREDICE_JWT_SIGN_SECRET",
+                "GREDICE_SILO_KV_REST_API_TOKEN",
+                "GREDICE_SILO_KV_REST_API_URL",
                 "NEXT_PUBLIC_GREDICE_API_ORIGIN",
                 "NEXT_PUBLIC_GREDICE_APP_ORIGIN",
                 "NEXT_PUBLIC_GREDICE_FARM_ORIGIN",
@@ -39,6 +42,9 @@
                 "POSTHOG_SERVER_HOST",
                 "RESEND_API_KEY",
                 "STRIPE_SECRETKEY",
+                "VERCEL",
+                "VERCEL_ENV",
+                "VERCEL_GIT_COMMIT_SHA",
                 "VERCEL_OIDC_TOKEN"
             ]
         }

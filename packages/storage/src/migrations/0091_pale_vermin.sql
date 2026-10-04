@@ -1,0 +1,4 @@
+ALTER TABLE "operations" ADD COLUMN "planting_id" integer;--> statement-breakpoint
+ALTER TABLE "operations" ADD CONSTRAINT "operations_planting_id_raised_bed_plantings_id_fk" FOREIGN KEY ("planting_id") REFERENCES "public"."raised_bed_plantings"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "operations_planting_id_idx" ON "operations" USING btree ("planting_id");--> statement-breakpoint
+ALTER TABLE "operations" ADD CONSTRAINT "operations_exclusive_crop_target" CHECK ("operations"."planting_id" IS NULL OR ("operations"."raised_bed_field_id" IS NULL AND "operations"."raised_bed_id" IS NOT NULL));

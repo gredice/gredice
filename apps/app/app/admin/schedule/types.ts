@@ -1,6 +1,7 @@
 import type {
     OperationAssignedUser,
     RaisedBedFieldSowingLocation,
+    RaisedBedPlantingWithFields,
     SelectTimeSlot,
 } from '@gredice/storage';
 
@@ -10,12 +11,23 @@ export type RaisedBedField = {
     raisedBedId: number;
     positionIndex: number;
     plantStatus?: string;
+    plantStatusEventId?: number;
     plantScheduledDate?: Date;
     sowingLocation?: RaisedBedFieldSowingLocation;
     plantSortId?: number;
+    plantCycles?: Array<{
+        active: boolean;
+        plantPlaceEventId: number;
+        endedEventId: number;
+    }>;
     plantSowDate?: Date;
     plantGrowthDate?: Date;
     plantReadyDate?: Date;
+    blockedAt?: Date;
+    blockedBy?: string;
+    blockReasonLabel?: string;
+    blockNote?: string;
+    blockImageUrls?: string[];
     assignedUserId?: string | null;
     assignedUserIds?: string[];
     assignedBy?: string | null;
@@ -33,22 +45,39 @@ export type RaisedBed = {
     gardenId?: number | null;
     blockId?: string | null;
     fields: RaisedBedField[];
+    plantings?: RaisedBedPlantingWithFields[];
+    status?: string | null;
 };
+
+export type ScheduledSelectedPlanting<TPlanting = RaisedBedPlantingWithFields> =
+    {
+        planting: TPlanting;
+        raisedBedId: number;
+    };
 
 export type Operation = {
     id: number;
     farmId?: number | null;
     raisedBedId: number | null;
     raisedBedFieldId?: number | null;
+    plantingId?: number | null;
     entityId: number;
     entityTypeName: string;
+    taskVersionEventId: number;
     accountId?: string | null;
     gardenId?: number | null;
     status: string;
     scheduledDate?: Date;
     completedAt?: Date;
     completedBy?: string;
+    blockedAt?: Date;
+    blockedBy?: string;
+    blockReasonLabel?: string;
+    blockNote?: string;
+    blockImageUrls?: string[];
+    requestNote?: string;
     completionNotes?: string;
+    completionNotesEdited?: boolean;
     imageUrls?: string[];
     timestamp: Date;
     createdAt: Date;

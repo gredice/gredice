@@ -7,23 +7,27 @@
     ],
     "scripts": {
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
+        "test": "pnpm run test:node",
+        "test:node": "node --import tsx --test ./tests/**/*.node.spec.tsx",
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
         "dev": "email dev -p 4001"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.16",
+        "@biomejs/biome": "2.5.14",
         "@gredice/ui": "workspace:*",
-        "@react-email/ui": "6.5.0",
-        "@tailwindcss/postcss": "4.3.0",
-        "@types/node": "24.12.4",
-        "@types/react": "19.2.15",
-        "tailwindcss": "4.3.0",
-        "typescript": "6.0.3"
+        "@react-email/ui": "6.11.0",
+        "@tailwindcss/postcss": "4.3.3",
+        "@types/node": "24.19.0",
+        "@types/react": "19.2.18",
+        "tailwindcss": "4.3.3",
+        "tsx": "4.23.15",
+        "typescript": "7.0.2"
     },
     "dependencies": {
         "@gredice/js": "workspace:*",
-        "react": "19.2.6",
-        "react-email": "6.5.0"
+        "@gredice/notifications": "workspace:*",
+        "react": "19.2.8",
+        "react-email": "6.11.0"
     }
 }

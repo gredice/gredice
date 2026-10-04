@@ -1,0 +1,13 @@
+interface:
+  display_name: "Review my Gredice garden"
+  short_description: "Review beds, plants, and upcoming work"
+  default_prompt: "Use $review-garden to review my Gredice garden and suggest next steps."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "gredice"
+      description: "Authenticated Gredice garden tools"
+      transport: "streamable_http"
+      url: "https://api.gredice.com/api/mcp"
+policy:
+  allow_implicit_invocation: true

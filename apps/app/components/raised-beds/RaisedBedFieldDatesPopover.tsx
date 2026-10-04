@@ -4,6 +4,7 @@ import { Button } from '@gredice/ui/Button';
 import { Calendar } from '@gredice/ui/icons';
 import { Popper } from '@gredice/ui/Popper';
 import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { useEffect, useState } from 'react';
 
 export type RaisedBedFieldDateItem = {
@@ -15,6 +16,7 @@ export type RaisedBedFieldDateItem = {
 
 type RaisedBedFieldDatesPopoverProps = {
     items: RaisedBedFieldDateItem[];
+    className?: string;
 };
 
 function parseDate(value: string | null) {
@@ -47,6 +49,7 @@ function formatShortDate(value: string | null) {
 
 export function RaisedBedFieldDatesPopover({
     items,
+    className,
 }: RaisedBedFieldDatesPopoverProps) {
     const [mounted, setMounted] = useState(false);
     const currentItem = items.find((item) => item.current);
@@ -73,7 +76,10 @@ export function RaisedBedFieldDatesPopover({
                     startDecorator={<Calendar className="size-3.5" />}
                     title="Prikaži datume biljke"
                     variant="plain"
-                    className="h-10 shrink-0 px-2 text-muted-foreground hover:text-foreground"
+                    className={cx(
+                        'h-8 shrink-0 justify-start px-2 text-muted-foreground hover:text-foreground',
+                        className,
+                    )}
                 >
                     {triggerLabel}
                 </Button>

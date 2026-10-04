@@ -15,6 +15,7 @@ type CurrentUser = {
     id?: string;
     userName?: string | null;
     avatarUrl?: string | null;
+    achievementCount?: number;
     accounts?: Array<{ accountId?: string | null }>;
 };
 
@@ -99,6 +100,7 @@ export function ProfileNavItem({
                     className={triggerClassName}
                 >
                     <UserAvatar
+                        achievementCount={currentUser?.achievementCount}
                         displayName={userName}
                         avatarUrl={currentUser?.avatarUrl}
                         size="sm"

@@ -13,7 +13,8 @@ const STATUS_FILTER_OPTIONS: FilterOption = {
     label: 'Status zahtjeva',
     icon: <Check className="size-4" />,
     options: [
-        { value: '', label: 'Svi statusi' },
+        { value: 'active', label: 'Aktivni statusi' },
+        { value: 'all', label: 'Svi statusi' },
         { value: 'pending', label: 'Na čekanju' },
         { value: 'confirmed', label: 'Potvrđen' },
         { value: 'preparing', label: 'U pripremi' },
@@ -47,7 +48,7 @@ export function DeliveryRequestsFilters() {
             filters={filters}
             defaultValues={{
                 from: 'last-30-days',
-                status: '',
+                status: 'active',
                 mode: '',
             }}
             className="flex"

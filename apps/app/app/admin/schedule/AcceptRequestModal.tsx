@@ -5,9 +5,11 @@ import { IconButton } from '@gredice/ui/IconButton';
 import { Check } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
+import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
+import { getOperationScheduleActionFailureMessage } from './operationScheduleActionResult';
 
 interface AcceptRequestModalProps {
     label: string;
@@ -15,6 +17,7 @@ interface AcceptRequestModalProps {
     trigger?: React.ReactElement;
     title?: string;
     header?: string;
+    raisedBedPhysicalId?: string;
 }
 
 export function AcceptRequestModal({
@@ -23,14 +26,23 @@ export function AcceptRequestModal({
     trigger,
     title = 'Potvrda zadatka',
     header = 'Potvrda zadatka',
+    raisedBedPhysicalId,
 }: AcceptRequestModalProps) {
     const [open, setOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string>();
 
     const handleConfirm = async () => {
         try {
             setIsSubmitting(true);
-            await onConfirm();
+            setErrorMessage(undefined);
+            const result = await onConfirm();
+            const actionFailureMessage =
+                getOperationScheduleActionFailureMessage(result);
+            if (actionFailureMessage) {
+                setErrorMessage(actionFailureMessage);
+                return;
+            }
             setOpen(false);
         } catch (error) {
             console.error('Error confirming request:', error);
@@ -40,15 +52,23 @@ export function AcceptRequestModal({
         }
     };
 
+    function handleOpenChange(nextOpen: boolean) {
+        setOpen(nextOpen);
+        if (nextOpen) {
+            setErrorMessage(undefined);
+        }
+    }
+
     return (
         <Modal
             title={title}
             open={open}
-            onOpenChange={setOpen}
+            onOpenChange={handleOpenChange}
             trigger={
                 trigger ?? (
                     <IconButton
                         variant="plain"
+                        size="xs"
                         title="Potvrdi"
                         loading={isSubmitting}
                     >
@@ -59,10 +79,21 @@ export function AcceptRequestModal({
         >
             <Stack spacing={4}>
                 <Typography level="h5">{header}</Typography>
+                {raisedBedPhysicalId && (
+                    <RaisedBedLabel
+                        physicalId={raisedBedPhysicalId}
+                        size="compact"
+                    />
+                )}
                 <Typography>
                     Jeste li sigurni da želite potvrditi zadatak:{' '}
                     <strong>{label}</strong>?
                 </Typography>
+                {errorMessage ? (
+                    <Typography level="body2" className="text-red-600">
+                        {errorMessage}
+                    </Typography>
+                ) : null}
                 <Row spacing={2} justifyContent="end">
                     <Button
                         variant="outlined"

@@ -1,5 +1,5 @@
 import type { PlantData, PlantSortData } from '@gredice/client';
-import { Calendar, Sprout } from '@gredice/ui/icons';
+import { GameCalendarIcon, GameSeedlingIcon } from '@gredice/ui/GameIcons';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
@@ -28,12 +28,15 @@ export function PlantCalendarPicker({
                 {hasCalendarData ? (
                     <Tabs defaultValue="year">
                         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                            <TabsList className="grid w-full min-w-0 max-w-full grid-cols-2 overflow-hidden">
+                            <TabsList className="grid w-fit min-w-0 max-w-full grid-cols-2 overflow-hidden">
                                 <TabsTrigger
                                     value="year"
                                     className="flex min-w-0 gap-1 overflow-hidden px-2"
                                 >
-                                    <Calendar className="size-4 shrink-0" />
+                                    <GameCalendarIcon
+                                        aria-hidden
+                                        className="size-5 shrink-0"
+                                    />
                                     <span className="truncate">
                                         Kalendar sijanja
                                     </span>
@@ -42,7 +45,10 @@ export function PlantCalendarPicker({
                                     value="growth"
                                     className="flex min-w-0 gap-1 overflow-hidden px-2"
                                 >
-                                    <Sprout className="size-4 shrink-0" />
+                                    <GameSeedlingIcon
+                                        aria-hidden
+                                        className="size-5 shrink-0"
+                                    />
                                     <span className="truncate">
                                         Kalendar rasta
                                     </span>

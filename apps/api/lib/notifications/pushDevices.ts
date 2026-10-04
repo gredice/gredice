@@ -41,6 +41,42 @@ export const pushDeviceUpsertSchema = z.object({
 
 export type PushDeviceUpsert = z.infer<typeof pushDeviceUpsertSchema>;
 
+export type PushDevicePatch = {
+    deviceLabel?: string;
+    enabled?: boolean;
+    permissionState?: 'default' | 'granted' | 'denied';
+};
+
+type PushDeviceEnablementState = Pick<
+    typeof webPushSubscriptions.$inferSelect,
+    'permissionState' | 'revokedAt'
+>;
+
+export function normalizePushDevicePatch(
+    device: PushDeviceEnablementState,
+    patch: PushDevicePatch,
+): PushDevicePatch | null {
+    if (
+        patch.permissionState === 'granted' &&
+        device.permissionState !== 'granted'
+    ) {
+        return null;
+    }
+    if (
+        patch.enabled === true &&
+        (device.permissionState !== 'granted' || device.revokedAt)
+    ) {
+        return null;
+    }
+
+    return {
+        ...patch,
+        ...(patch.permissionState && patch.permissionState !== 'granted'
+            ? { enabled: false }
+            : {}),
+    };
+}
+
 type PushDeviceRecord = Pick<
     typeof webPushSubscriptions.$inferSelect,
     | 'browserName'

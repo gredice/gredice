@@ -33,13 +33,16 @@ export function AttributeCategoryDefinitionItem({
     );
 
     function handleAdd() {
-        void trackSave(() =>
-            handleValueSave(
+        void trackSave(async () => {
+            const result = await handleValueSave(
                 entity.entityTypeName,
                 entity.id,
                 attributeDefinition,
-            ),
-        ).catch((error) => {
+            );
+            if (!result.success) {
+                throw new Error(result.message);
+            }
+        }).catch((error) => {
             console.error(
                 'AttributeCategoryDefinitionItem handleAdd error',
                 error,
@@ -83,6 +86,16 @@ export function AttributeCategoryDefinitionItem({
                                 className="border-border/70 border-b p-4 first:rounded-t-lg last:rounded-b-lg last:border-b-0"
                             >
                                 <AttributeInput
+                                    blockedValues={attributeValues
+                                        .filter(
+                                            (value) =>
+                                                value.id !== attributeValue.id,
+                                        )
+                                        .map((value) => value.value)
+                                        .filter(
+                                            (value): value is string =>
+                                                typeof value === 'string',
+                                        )}
                                     entityType={entity.entityTypeName}
                                     entityId={entity.id}
                                     attributeDefinition={attributeDefinition}
