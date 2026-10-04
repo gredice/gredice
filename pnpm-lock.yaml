@@ -1394,8 +1394,8 @@ importers:
         specifier: 1.13.1
         version: 1.13.1(supports-color@8.1.1)
       undici:
-        specifier: 8.10.2
-        version: 8.10.2
+        specifier: 8.11.2
+        version: 8.11.2
       xml-crypto:
         specifier: 6.3.2
         version: 6.3.2(patch_hash=f18cfd914b70a4b6262319dcc65acb114e594f8449f44c484544ca941ca931a8)
@@ -1754,8 +1754,8 @@ importers:
         specifier: 7.0.2
         version: 7.0.2
       undici:
-        specifier: 8.10.2
-        version: 8.10.2
+        specifier: 8.11.2
+        version: 8.11.2
       uuid:
         specifier: 14.0.2
         version: 14.0.2
@@ -10338,8 +10338,8 @@ packages:
     resolution: {integrity: sha512-RYONW2MeafgYlkVOKYKkA/Ag7BmXqgIWCa8t1m0JcxrQg9pI9lEqRhAOruOBCbAohOa/gkCF+iPi9hrgvTzu6Q==}
     engines: {node: '>=20.18.1'}
 
-  undici@8.10.2:
-    resolution: {integrity: sha512-/y4/bH9YNU5hi9NIrpOuvGXFcxrj3CMrV+/AYpowAYTpHn8gX/XPFjNy766FPoYY0miQhdW977JFWKGNhBdwyQ==}
+  undici@8.11.2:
+    resolution: {integrity: sha512-u4UB2/IrKdU6lFxumHmmo1a3fCQO5tzQllRorfoRS63txhrB7xTpSn1PftwC4qEHkOaqP95fCWW4lJzwErwzhQ==}
     engines: {node: '>=22.19.0'}
 
   unhead@2.1.17:
@@ -20434,7 +20434,7 @@ snapshots:
 
   undici@7.29.1: {}
 
-  undici@8.10.2: {}
+  undici@8.11.2: {}
 
   unhead@2.1.17:
     dependencies:
