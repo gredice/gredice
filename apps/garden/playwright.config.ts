@@ -22,10 +22,13 @@ const reporter: PlaywrightTestConfig['reporter'] = [
     ['html', { open: 'never' }],
 ];
 const webglComponentTestPattern =
-    /(chestnut-steam|leaf-raking|autumn-photo-prompts|warm-props|localized-steam|hedgehog-lifecycle|autumn-prop-wind|cold-weather|rain-ripples|autumn-season|actor-speech-bubble|cursor-anchored-zoom|detailed-inspection-farmer|fauna-runtime|fauna-trajectory|garden-palette-packets|garden-preview-capture|hover-outline|instanced-mesh-material-swap|ladybug-suspense-visibility|precipitation-camera-follow|public-garden-switch|r3f-root-isolation|raised-bed-notification-bubble|scene-query-data|scene-root-isolation|solar-eclipse|spatial-interaction|stars-depth)\.spec\.tsx/;
+    /(pumpkin-trail|kestenijada|pack-layouts|distant-bird-flocks|chestnut-steam|leaf-raking|autumn-photo-prompts|warm-props|localized-steam|hedgehog-lifecycle|autumn-prop-wind|cold-weather|rain-ripples|autumn-season|actor-speech-bubble|cursor-anchored-zoom|detailed-inspection-farmer|fauna-runtime|fauna-trajectory|garden-palette-packets|garden-preview-capture|hover-outline|instanced-mesh-material-swap|ladybug-suspense-visibility|precipitation-camera-follow|public-garden-switch|r3f-root-isolation|raised-bed-notification-bubble|scene-query-data|scene-root-isolation|solar-eclipse|spatial-interaction|stars-depth)\.spec\.tsx/;
 const morningMistComponentTestPattern = /morning-mist\.spec\.tsx/;
 const leafStepsComponentTestPattern = /leaf-steps\.spec\.tsx/;
 const outletGardenRouteTestPattern = /outlet-garden-route\.spec\.ts/;
+// This route needs its own built server with explicit synthetic event config.
+const kestenijadaRouteTestPattern = /kestenijada-route\.spec\.ts/;
+const pumpkinTrailRouteTestPattern = /pumpkin-trail-route\.spec\.ts/;
 
 // Plugin to intercept next/font/google before Vite's resolver
 function nextFontMockPlugin() {
@@ -84,6 +87,8 @@ export const config: PlaywrightTestConfig = {
                 leafStepsComponentTestPattern,
                 morningMistComponentTestPattern,
                 outletGardenRouteTestPattern,
+                kestenijadaRouteTestPattern,
+                pumpkinTrailRouteTestPattern,
             ],
             use: { ...devices['Desktop Chrome'] },
         },

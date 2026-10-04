@@ -9,6 +9,7 @@ export function GameSceneWrapper({
     appBaseUrl,
     authenticatedGardenQueriesEnabled,
     gardenPacksEnabled,
+    autumnActivityEnabled,
     spriteBaseUrl,
     flags,
     freezeTime,
@@ -36,6 +37,7 @@ export function GameSceneWrapper({
                 authenticatedGardenQueriesEnabled
             }
             gardenPacksEnabled={gardenPacksEnabled}
+            autumnActivityEnabled={autumnActivityEnabled}
             dayNightCycleDisabled={dayNightCycleDisabled}
             flags={flags}
             freezeTime={freezeTime}

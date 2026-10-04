@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "scope": "autumn-publication-tooling-source",
+  "observedAt": "2026-10-04T01:18:46.229Z",
+  "sourceCommit": "7965e6f0127f4337890ba1955c4dd5b4052fd33a",
+  "sourceTree": "36d5f7cb53e624c2ba1374f6dfc1e1611db599be",
+  "parentCommit": "108ee1b2cdbfff39e324b92957dbb4094f08b5d4",
+  "workingTreeStatusAtCleanSourceChecks": "",
+  "sourceFiles": [
+    {
+      "path": "apps/api/lib/garden/autumnPublication.integration.ts",
+      "sha256": "ffa133c4eef12a79db1d36ad4eb345bf7d571db4fd3ab70c88c4f44d8c1eed66"
+    },
+    {
+      "path": "apps/api/lib/garden/autumnPublicationPlan.node.spec.ts",
+      "sha256": "0a0be7dd122e160884800209a443516a0ff24ee30f4f961905390d50132304d6"
+    },
+    {
+      "path": "docs/autumn-publication-plan.md",
+      "sha256": "20b7d99cb2b70b6d118a7ce9393f527221dcc21ad71a6a1c15ed3cc0ccfaa5c0"
+    },
+    {
+      "path": "package.json",
+      "sha256": "183e93ccc75f857caa58e1eb678a1738bdb0eac745e3a7e46868b41ea703311d"
+    },
+    {
+      "path": "packages/storage/src/helpers/autumnPublicationDeployment.ts",
+      "sha256": "351aaca2d8525d9114cb5013d0ddd36a03c937fb199638ff64e03d58259e7cdf"
+    },
+    {
+      "path": "packages/storage/src/helpers/autumnPublicationPlan.ts",
+      "sha256": "02a665d8c253237b0d011a2873c1c6c54b4a2b346ee5fe464e2d29688ee089ce"
+    },
+    {
+      "path": "packages/storage/src/repositories/autumnPublicationRepo.ts",
+      "sha256": "66c58cb8f03e2e8d322df981e7b457391dc894c030197d8d85ac8409e320fbdd"
+    },
+    {
+      "path": "scripts/autumn-publication-plan-core.ts",
+      "sha256": "0a156d618d688debbb99bd8d64e01fdb28a711e4b92385a8b02f7f73d836d65e"
+    },
+    {
+      "path": "scripts/autumn-publication-plan.fixtures.ts",
+      "sha256": "286ae64b5395528dc72e98f6db57aff247bbabec2b78aedd652fbddee05a0703"
+    },
+    {
+      "path": "scripts/autumn-publication-plan.node.spec.ts",
+      "sha256": "69bfc5684ddc5aae58085b1f29f44f76a6c7c9cf2a24fb9cf4baf6adbcab61e1"
+    },
+    {
+      "path": "scripts/autumn-publication-plan.ts",
+      "sha256": "2d4e9944ee191c164ffa7f71d2e7c8f687ec36abb0771c78a22962cb5a9a64b6"
+    }
+  ],
+  "validation": {
+    "node": "24.15.0",
+    "pnpm": "12.5.1",
+    "postgresql": "15.19",
+    "command": "pnpm --filter api exec node --import tsx --conditions=react-server --test ./lib/garden/autumnPublicationPlan.node.spec.ts",
+    "offlineCases": 9,
+    "pgliteTransactionCases": 8,
+    "postgresqlTransactionCases": 8,
+    "failures": 0,
+    "skipped": 0,
+    "postgresqlWitness": "Independent concurrent identical publisher transactions and an ordinary CMS attribute writer held open: publisher lock_timeout rejected all changes; stale original plan rejected after editor commit.",
+    "disposablePostgresStopped": true,
+    "apiTypecheck": "passed",
+    "scopedBiome": "passed",
+    "diffCheck": "passed"
+  },
+  "defaultOfflineReadback": {
+    "command": "pnpm plan:autumn-publication /tmp/gredice-autumn-publication-clean-7965e6f01",
+    "expectedExitCode": 1,
+    "report": {
+      "mode": "plan",
+      "status": "blocked",
+      "sourceFingerprint": "a106eaa5e7707984700fc8c927fe273a74894439699c129312daa5785496aa3f",
+      "unresolvedCount": 24,
+      "allUnresolvedIdsNull": true,
+      "releaseReady": false
+    },
+    "reportSha256": "a27746b67e8bbcd435fd98c1e3bba5869118db7d9166420692ce674b2685fc2f"
+  },
+  "logArtifacts": [
+    {
+      "path": "/tmp/gredice-publication-unit-final.log",
+      "sha256": "a4ff84d1cbdfd18c86414f943f07f465731cf929a8037246f748b45c7c7c4078",
+      "bytes": 1233
+    },
+    {
+      "path": "/tmp/gredice-publication-pglite-clean-source.log",
+      "sha256": "c8be06c85313e6429e99d0f1f2be97dd9d1b673988900d2910e88294de702c6e",
+      "bytes": 1520
+    },
+    {
+      "path": "/tmp/gredice-publication-pg-clean-source.log",
+      "sha256": "0cf481141e6e8c60724882d31d1236e21bce4f057a12360a3d3d726da7d3c9b6",
+      "bytes": 1528
+    },
+    {
+      "path": "/tmp/gredice-publication-pg-server-clean.log",
+      "sha256": "c8710fe82d45c8069da3e5e9ef4c8320486369a92b6ddbd3a304986da9695f1e",
+      "bytes": 2417
+    },
+    {
+      "path": "/tmp/gredice-publication-pg-stop-clean.log",
+      "sha256": "ca19178a35ab4153b75b494963b66ce8243e1b94c173107c87b44d09db23652d",
+      "bytes": 56
+    },
+    {
+      "path": "/tmp/gredice-publication-types-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "/tmp/gredice-publication-lint-final-check.log",
+      "sha256": "1cf33d718943580308eefa73207df066fb5939bac178047fd9701ddb6addd770",
+      "bytes": 43
+    }
+  ],
+  "limits": [
+    "Synthetic identities/prices occur only in test fixtures, not a live seed or configuration.",
+    "No live database, deployed asset URL, catalogue/configuration mutation, publication, sale enablement, wallet or live commerce action was invoked.",
+    "PGlite serializes calls; only the disposable local PostgreSQL run witnesses independent connections and table lock contention.",
+    "Asset byte verification implementation was exercised with reviewed local bytes via a test-only fetch dependency, not actual deployed requests.",
+    "Database commit, cache/search refresh, WWW/CDN readback, configuration installation, runtime deployment, CI and physical-device acceptance remain separate gates.",
+    "No runtime/model/image/capture evidence file changed; original capture provenance was preserved."
+  ],
+  "releaseReady": false
+}

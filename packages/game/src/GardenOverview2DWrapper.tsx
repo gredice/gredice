@@ -7,6 +7,8 @@ import { GardenOverview2DContent } from './GardenOverview2DContent';
 export type GardenOverview2DProps = Pick<
     GameSceneProps,
     | 'appBaseUrl'
+    | 'autumnActivityEnabled'
+    | 'gardenPacksEnabled'
     | 'className'
     | 'dayNightCycleDisabled'
     | 'debugHud'
@@ -26,6 +28,8 @@ export type GardenOverview2DProps = Pick<
 
 export function GardenOverview2DWrapper({
     appBaseUrl,
+    autumnActivityEnabled,
+    gardenPacksEnabled,
     dayNightCycleDisabled,
     flags,
     freezeTime,
@@ -41,6 +45,8 @@ export function GardenOverview2DWrapper({
     return (
         <GameRuntimeProvider
             appBaseUrl={appBaseUrl}
+            autumnActivityEnabled={autumnActivityEnabled}
+            gardenPacksEnabled={gardenPacksEnabled}
             dayNightCycleDisabled={dayNightCycleDisabled}
             flags={flags}
             freezeTime={freezeTime}
