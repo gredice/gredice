@@ -102,6 +102,42 @@ export function createMeshInstanceMatrix(
     return rootMatrix.multiply(localMatrix);
 }
 
+/** The callback borrows one scratch matrix; copy it if retaining it. */
+export function writeMeshInstanceMatrices(
+    instances: readonly ChunkedMeshInstance[],
+    localTransform: MeshInstanceLocalTransform,
+    scale: MeshInstanceScale,
+    write: (matrix: Matrix4, index: number) => void,
+) {
+    if (instances.length === 0) return;
+
+    const rootPosition = new Vector3();
+    const rootQuaternion = new Quaternion();
+    const rootAxis = new Vector3(0, 1, 0);
+    const rootScale = new Vector3(1, 1, 1);
+    const rootMatrix = new Matrix4();
+    const localScale = Array.isArray(scale)
+        ? new Vector3(...scale)
+        : new Vector3(scale ?? 1, scale ?? 1, scale ?? 1);
+    const localMatrix = new Matrix4().compose(
+        new Vector3(...localTransform.position),
+        new Quaternion().setFromEuler(new Euler(...localTransform.rotation)),
+        localScale,
+    );
+
+    for (let index = 0; index < instances.length; index++) {
+        const instance = instances[index];
+        rootPosition.set(...instance.position);
+        rootQuaternion.setFromAxisAngle(
+            rootAxis,
+            instance.rotation * (Math.PI / 2),
+        );
+        rootMatrix.compose(rootPosition, rootQuaternion, rootScale);
+        rootMatrix.multiply(localMatrix);
+        write(rootMatrix, index);
+    }
+}
+
 export function createMergedChunkGeometry<T extends ChunkedMeshInstance>({
     geometry,
     instances,
@@ -126,16 +162,18 @@ export function createMergedChunkGeometry<T extends ChunkedMeshInstance>({
 }
 
 export function createChunkMatrices(
-    instances: ChunkedMeshInstance[],
+    instances: readonly ChunkedMeshInstance[],
     localTransform: MeshInstanceLocalTransform,
     scale: MeshInstanceScale,
 ) {
     const matrices = new Float64Array(instances.length * 16);
-    instances.forEach((instance, index) => {
-        createMeshInstanceMatrix(instance, localTransform, scale).toArray(
-            matrices,
-            index * 16,
-        );
-    });
+    writeMeshInstanceMatrices(
+        instances,
+        localTransform,
+        scale,
+        (matrix, index) => {
+            matrix.toArray(matrices, index * 16);
+        },
+    );
     return matrices;
 }
