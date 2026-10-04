@@ -12,6 +12,7 @@ import { useMarkTutorialChecklistTaskReady } from './hooks/useTutorialChecklist'
 import { AccountHud } from './hud/AccountHud';
 import { AdventHud } from './hud/AdventHud';
 import { AudioHud } from './hud/AudioHud';
+import { AutumnActivityHud } from './hud/AutumnActivityHud';
 import { AutumnPhotoHud } from './hud/AutumnPhotoHud';
 import { CameraHud } from './hud/CameraHud';
 import { ControlsTooltipHud } from './hud/ControlsTooltipHud';
@@ -235,6 +236,14 @@ export function GameHud({
                         visible={showLoadedAccountEconomy}
                     >
                         <GardenPackStorefrontHud />
+                    </HudListItemPresence>
+                )}
+                {!isLocalSandbox && (
+                    <HudListItemPresence
+                        className={closeupHiddenHudClassName}
+                        visible={showLoadedAccountEconomy}
+                    >
+                        <AutumnActivityHud />
                     </HudListItemPresence>
                 )}
                 {!isLocalSandbox && (

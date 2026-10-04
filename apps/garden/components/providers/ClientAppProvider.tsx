@@ -2,6 +2,7 @@
 
 import { useThemeManager } from '@gredice/game/theme';
 import { isKestenijadaPublicSamplePath } from '@gredice/js/kestenijada';
+import { isPumpkinTrailPublicPath } from '@gredice/js/pumpkinTrail';
 import { AuthProvider } from '@gredice/ui/auth';
 import { NotificationsContainer } from '@gredice/ui/notifications';
 import { NuqsAdapter } from '@gredice/ui/nuqs';
@@ -68,7 +69,10 @@ const queryClient = new QueryClient();
 
 export function ClientAppProvider({ children }: PropsWithChildren) {
     const pathname = usePathname();
-    if (isKestenijadaPublicSamplePath(pathname)) {
+    if (
+        isKestenijadaPublicSamplePath(pathname) ||
+        isPumpkinTrailPublicPath(pathname)
+    ) {
         return (
             <ThemeProvider attribute="class" defaultTheme="light">
                 <NuqsAdapter>{children}</NuqsAdapter>

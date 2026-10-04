@@ -54,6 +54,13 @@ async function KestenijadaContent() {
                 <Link href="/" prefetch={false} className="underline">
                     Otvori vrt
                 </Link>
+                <Link
+                    href="/staza-bundeva"
+                    prefetch={false}
+                    className="ml-4 underline"
+                >
+                    Posjeti stazu bundeva
+                </Link>
             </nav>
         </>
     );

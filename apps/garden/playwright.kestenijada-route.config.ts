@@ -1,4 +1,7 @@
 import { defineConfig } from '@playwright/test';
+
+const baseURL =
+    process.env.GREDICE_KESTENIJADA_TEST_ORIGIN ?? 'http://127.0.0.1:5486';
 export default defineConfig({
     testDir: '.',
     testMatch: 'tests/kestenijada-route.spec.ts',
@@ -7,7 +10,7 @@ export default defineConfig({
     timeout: 60000,
     reporter: 'list',
     use: {
-        baseURL: 'http://localhost:5486',
+        baseURL,
         viewport: { width: 900, height: 1100 },
         launchOptions: {
             args: [
@@ -19,7 +22,8 @@ export default defineConfig({
     },
     webServer: {
         command: 'node --import tsx tests/fixtures/kestenijada-server.mjs',
-        url: 'http://localhost:5486/kestenijada',
+        url: `${baseURL}/kestenijada`,
+        env: { GREDICE_KESTENIJADA_TEST_ORIGIN: baseURL },
         reuseExistingServer: false,
         timeout: 60000,
     },

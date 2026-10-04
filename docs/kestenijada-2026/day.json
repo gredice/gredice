@@ -106,5 +106,10 @@
     "triangles": 10382
   },
   "width": 778,
-  "height": 598
+  "height": 598,
+  "source": {
+    "commit": "6d27794cc6f5c50a95e74916d6c9b5ff5959eff3",
+    "tree": "be3c21454a61edc2659fb1c6fae0882eb513d266",
+    "status": ""
+  }
 }

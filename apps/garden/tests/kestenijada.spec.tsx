@@ -1,10 +1,40 @@
+import { execFileSync } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { kestenijadaItems } from '@gredice/js/kestenijada';
 import { expect as baseExpect, test } from '@playwright/experimental-ct-react';
 import { getLocalSandboxBlockData } from '../../../packages/game/src/localSandboxBlockData';
 import { KestenijadaFixture } from '../../../packages/game/tests/KestenijadaFixture';
 
+// Capture recovery exercises several warmup/encoding cycles in software WebGL.
+// Keep the ordinary project aligned with the dedicated functional suite.
+test.setTimeout(120000);
 const expect = baseExpect.configure({ timeout: 60000 });
+const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
+function captureSource() {
+    const git = (...args: string[]) =>
+        execFileSync('git', args, {
+            cwd: repositoryRoot,
+            encoding: 'utf8',
+        }).trim();
+    const status = git(
+        'status',
+        '--porcelain',
+        '--untracked-files=all',
+        '--',
+        '.',
+        ':(exclude)docs/kestenijada-2026',
+        ':(exclude)docs/autumn-arrangements-2026',
+        ':(exclude)apps/garden/public/assets/arrangements',
+    );
+    expect(status, 'Commit capture inputs before generation.').toBe('');
+    return {
+        commit: git('rev-parse', 'HEAD'),
+        tree: git('rev-parse', 'HEAD^{tree}'),
+        status,
+    };
+}
+
 const offers = getLocalSandboxBlockData()
     .filter((row) =>
         kestenijadaItems.some((item) => item.name === row.information.name),
@@ -27,6 +57,7 @@ for (const phase of ['Dan', 'Sumrak', 'Noć'])
         mount,
         page,
     }, info) => {
+        const source = captureSource();
         const requests: string[] = [];
         page.on('request', (r) => requests.push(r.url()));
         const fixture = await mount(<KestenijadaFixture />);
@@ -70,10 +101,10 @@ for (const phase of ['Dan', 'Sumrak', 'Noć'])
         });
         await writeFile(
             info.outputPath(`kestenijada-${phase}.json`),
-            JSON.stringify(data, null, 2),
+            JSON.stringify({ ...data, source }, null, 2),
         );
         await info.attach(`kestenijada-${phase}.json`, {
-            body: JSON.stringify(data, null, 2),
+            body: JSON.stringify({ ...data, source }, null, 2),
             contentType: 'application/json',
         });
     });
@@ -81,6 +112,7 @@ test('mobile low/reduced-motion/weather-disabled view remains complete and direc
     mount,
     page,
 }, info) => {
+    const source = captureSource();
     await page.setViewportSize({ width: 390, height: 1000 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     let failed = true;
@@ -110,7 +142,7 @@ test('mobile low/reduced-motion/weather-disabled view remains complete and direc
     }
     await writeFile(
         info.outputPath('kestenijada-mobile-low.json'),
-        JSON.stringify(data, null, 2),
+        JSON.stringify({ ...data, source }, null, 2),
     );
     await info.attach('kestenijada-mobile-low.png', {
         body: await page.locator('[data-kestenijada-scene]').screenshot({

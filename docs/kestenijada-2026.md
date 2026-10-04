@@ -108,7 +108,9 @@ pnpm --filter garden typecheck
 pnpm --filter www typecheck
 ```
 
-The actual-route test starts only a local fixture API and built app on5486. Its
+The actual-route test starts only a local fixture API and built app on port 5486
+by default (`GREDICE_KESTENIJADA_TEST_ORIGIN` can select another local HTTP
+origin). Its
 sales-like rows/one-hour window are synthetic test data. It verifies direct
 navigation has no private reads, model requests use the app origin, a real Link
 to the ordinary root preserves login/bootstrap behavior, and the discovery Link
@@ -117,7 +119,7 @@ No fixture request reaches live auth/storage or modifies external data. Producti
 publication, deployed catalogue readiness and physical-device acceptance remain
 separate release work.
 
-## Integration provenance
+## Historical integration provenance
 
 The original checkpoint `d0fee5e13a2230d160c723a4ea65e52d1c285d83` and its
 nine capture/evidence files are archived without changing bytes in
@@ -137,3 +139,92 @@ in the UI parent rather than an event workaround. No waits or privacy assertions
 were relaxed. Final consumer typechecks and the selected-input readback verify
 the restacked event. The evidence JSON distinguishes capture commits, final
 integration parent and current byte bindings.
+
+## Actual-route CI registration
+
+The Garden CI matrix has a dedicated `kestenijada route` shard using
+`playwright.kestenijada-route.config.ts`. This config starts the built app with
+an explicit synthetic active event and an isolated local directory API. The
+ordinary Chromium project excludes this route test because its regular server
+has no event configuration. Component tests remain in the ordinary WebGL shard.
+The route test compares model origins with the actual page origin, rather than
+a developer machine's host and port. It retains direct navigation, same-document
+Link transitions, configured discovery and private-request fences.
+
+This CI-only correction changes test/fixture/registration bytes; the recorder
+pins those inputs separately while preserving the original capture commits,
+archived evidence and byte-identical visual/geometry proof. It does not provide
+a new renderer capture or alter any model.
+
+## Activity and trail stack recapture (2026-10-03)
+
+Four fresh day/dusk/night/mobile-low captures were produced from clean
+`6f7d5700a5426282d78b417908da9ce2ce6b0e00` (tree
+`b783e17be5439ee9ebe7dc10dccf87b7653a568d`), above activity/trail source
+`9d2e437c12aee7bf84422b2ead4aeec860181c3b`. Their JSON records now contain
+that actual source/tree and empty scoped capture-input status. All four PNGs
+are byte-identical to the previous and original authored captures; all other
+JSON fields are also unchanged. Existing visual approval is retained without
+claiming another image review.
+
+`pre-activity-stack/` preserves the previous current evidence and all four
+JSON/PNG pairs. Current `evidence.json` records the fresh capture separately
+from those historical capture/rebase commits, with a hash link to the archived
+record. `activity-stack-recapture.json` records comparisons, commands and local
+log hashes. Selected pins now include the changed shared night-light wrapper,
+its helper/provider and pumpkin override context. These are bounded source
+identity checks, not a complete renderer graph or performance proof.
+
+The six component cases pass, including the public private-request fence,
+mobile directory recovery and local-photo cancellation/retry. The built Garden
+app and dedicated actual-route/privacy case pass. Root navigation generated
+remote block-thumbnail 404 diagnostics, while the captured scene models/assets
+were local and all privacy assertions passed. No live data, campaign config,
+model/Blender/GLB sources or renderer behavior changed in this evidence work.
+Physical devices, deployed asset/catalogue verification and publication remain
+separate release gates.
+
+## Functional CI lifetime correction (2026-10-04)
+
+The ordinary WebGL project inherited a ten-second test lifetime, while the
+existing dedicated Kestenijada suite allowed 120 seconds. A local run on clean
+`22e48526d2b5f7e03386cb6540733386296c92db` reproduced the last photo regression
+failing after 10.6 seconds: the third fresh capture still showed “Pripremamo
+fotografiju…” when the test deadline aborted its wait for the PNG link. The
+injected encoding failure and held-encoder cancellation had already completed.
+The 60-second expectation timeout could not extend the shorter test lifetime.
+
+Clean source `6d27794cc6f5c50a95e74916d6c9b5ff5959eff3` (tree
+`be3c21454a61edc2659fb1c6fae0882eb513d266`) sets the spec's functional lifetime
+to the existing 120-second dedicated value. Every scene, privacy, photo and
+late-result assertion remains unchanged, as do snapshots and performance
+budgets. All six cases pass in the ordinary project in 29.2 seconds, with the
+last photo case taking 10.7 seconds. A separate dedicated run passes all six
+cases in 29.0 seconds and produces four fresh captures stamped with that actual
+clean source identity. Both runs use one worker and zero retries.
+
+All four fresh PNGs, world/screen bounds and viewports match the previously
+approved packet exactly. `pre-functional-ci-lifetime/` preserves its nine files
+byte-for-byte; the existing activity-stack report and older archives retain
+their original provenance. Current `evidence.json` links the archived packet
+and records the fresh functional-CI capture. The existing recorder regenerated
+all 68 selected pins; only the test and four capture JSON source stamps changed.
+[Before/after and parity record](kestenijada-2026/functional-ci-recapture.json)
+contains actual source identities, durations and local log checksums. No new
+visual review is claimed for unchanged images.
+
+The separate ignore correction declares Vercel 62.2.0's literal `.env*` pattern
+and preserves `.env.example`, preventing environment pulling from changing the
+tracked Garden ignore file before the strict capture-source check. The CI log
+recorded that rewrite followed by four immediate capture failures, but job
+cancellation prevented an exact error summary or Garden report artifact. The
+local before/after result above establishes the last photo deadline failure;
+it does not establish a fresh Ubuntu CI pass. This follow-up performs no new
+route, live, deployed-asset, purchase or physical-device acceptance.
+
+The strict existing repository reader independently verifies 68 unique current
+path/hash/size pins, four matching clean source records and the archived-proof
+hash link. Scoped Biome and diff checks pass. Garden’s normal incremental
+typecheck retained the parent’s stale typed-route diagnostic;
+`pnpm --filter garden exec tsc --noEmit --incremental false` passes without
+source changes. Both logs are retained in the before/after record.

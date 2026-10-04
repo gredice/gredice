@@ -1,0 +1,363 @@
+{
+  "capturedAtUtc": "2026-10-03T12:34:37.034219+00:00",
+  "sourceCommit": "644ee83ad83af9e8f08fb1cf975155c383385a18",
+  "sourceTree": "6ba5738076a51c9fe1afd61dd1d51c94822338c2",
+  "eventParent": "a2c0ffc71dd7c376159d1dc6e9176ee2a64a634a",
+  "node": "24.15.0",
+  "pnpm": "12.5.1",
+  "playwright": "1.62.1",
+  "renderer": "Chromium headless SwiftShader",
+  "workers": 1,
+  "port": 5487,
+  "result": "6 passed (3.9m)",
+  "warmupFrames": 60,
+  "sampleFrames": 120,
+  "maximumAdditionalCalls": 1.1,
+  "maximumAdditionalTriangles": 110,
+  "ephemeralConfig": {
+    "sha256": "86e767d888d2b2000cd454c9d91a672f6ec25e143e90d392e92ecc4685a26d57",
+    "source": "import { defineConfig } from '@playwright/experimental-ct-react';\nimport config from './playwright.steam.config';\nconst testMatch = ['tests/localized-steam.spec.tsx', 'tests/chestnut-steam.spec.tsx'];\nexport default defineConfig({\n    ...config,\n    testMatch,\n    use: { ...config.use, ctPort: 5487 },\n    projects: config.projects?.map((project) => ({ ...project, testMatch })),\n});\n"
+  },
+  "runnerLog": {
+    "path": "/tmp/gredice-steam-stacked-isolation.log",
+    "sha256": "a4f88962970da6de66e4fe8704f6b828555dcb8886ae4f81fc134f29c4130d46"
+  },
+  "sourceHashes": {
+    "packages/game/tests/SteamProfileFixture.tsx": "55b09e336909d9e84440d47e80976df02a83817ad17a7022070dc4dc94c78e32",
+    "packages/game/tests/SteamProfileProbe.tsx": "a6d723f8e5ceb126e09c717fdc156bf825398bea27d9f866297ef4324282b1b6",
+    "packages/game/src/scene/Environment.tsx": "c33fe3cfe2492025d4a712d9e26d53f90aea6c9e29f9065606ce3985cdf2966f",
+    "packages/game/src/scene/SceneTime.tsx": "078521dd159074f5ded5135140ccf571ae5ef8451ef89bf2ea010466c7b057bb",
+    "packages/game/src/scene/SteamEmitter.tsx": "89e796792b757e06192243929f51d94c9b8eba5901d4628bc0d8e7bb12ac0f05",
+    "packages/game/src/scene/LocalizedSteam.tsx": "cfecd8de0f495c89707e4f489017461fda1f205bf1ac8a6fbad155b2e26b53c1",
+    "packages/game/src/scene/SteamSources.tsx": "ffdcbd70b2078d97379856e335673fa0a65cec33315186afdc2ace4563483dfc",
+    "apps/garden/tests/localized-steam.spec.tsx": "8494e4e48fc54508c05f370cd88bda881b1181a8d6adeba9e665ee95d80682df",
+    "apps/garden/tests/chestnut-steam.spec.tsx": "b64c3cae745afadc6715fad6b95c2cb82948c4a2408343d4b37f818112205e72",
+    "packages/game/src/useGameState.ts": "d65a1175bacf1414654f7ffdab768fab2e7dd90800fa03d8d215ae9a37a6eff4"
+  },
+  "profiles": [
+    {
+      "scenario": "mixed-tea-cart",
+      "tier": "low",
+      "baseline": {
+        "enabled": false,
+        "frames": 120,
+        "calls": 201,
+        "triangles": 163942,
+        "p95FrameMs": 109.10000002384186,
+        "steam": 0,
+        "emitters": 0,
+        "warmProps": 2,
+        "warmSmoke": 0,
+        "sourceIds": [
+          "ChestnutRoastingCart:steam:profile-cart:-2",
+          "ChestnutRoastingCart:steam:profile-cart:2",
+          "GardenTeaTable:mug:left:profile-tea:-2:-2",
+          "GardenTeaTable:mug:left:profile-tea:-2:2",
+          "GardenTeaTable:mug:left:profile-tea:2:-2",
+          "GardenTeaTable:mug:left:profile-tea:2:2",
+          "GardenTeaTable:mug:right:profile-tea:-2:-2",
+          "GardenTeaTable:mug:right:profile-tea:-2:2",
+          "GardenTeaTable:mug:right:profile-tea:2:-2",
+          "GardenTeaTable:mug:right:profile-tea:2:2"
+        ],
+        "falling": 24,
+        "ground": 48,
+        "entity": 20
+      },
+      "candidate": {
+        "enabled": true,
+        "frames": 120,
+        "calls": 201,
+        "triangles": 163942,
+        "p95FrameMs": 89.5,
+        "steam": 0,
+        "emitters": 0,
+        "warmProps": 2,
+        "warmSmoke": 0,
+        "sourceIds": [
+          "ChestnutRoastingCart:steam:profile-cart:-2",
+          "ChestnutRoastingCart:steam:profile-cart:2",
+          "GardenTeaTable:mug:left:profile-tea:-2:-2",
+          "GardenTeaTable:mug:left:profile-tea:-2:2",
+          "GardenTeaTable:mug:left:profile-tea:2:-2",
+          "GardenTeaTable:mug:left:profile-tea:2:2",
+          "GardenTeaTable:mug:right:profile-tea:-2:-2",
+          "GardenTeaTable:mug:right:profile-tea:-2:2",
+          "GardenTeaTable:mug:right:profile-tea:2:-2",
+          "GardenTeaTable:mug:right:profile-tea:2:2"
+        ],
+        "falling": 24,
+        "ground": 48,
+        "entity": 20
+      }
+    },
+    {
+      "scenario": "mixed-tea-cart",
+      "tier": "medium",
+      "baseline": {
+        "enabled": false,
+        "frames": 120,
+        "calls": 219,
+        "triangles": 167224,
+        "p95FrameMs": 107.10000002384186,
+        "steam": 0,
+        "emitters": 0,
+        "warmProps": 2,
+        "warmSmoke": 0,
+        "sourceIds": [
+          "ChestnutRoastingCart:steam:profile-cart:-2",
+          "ChestnutRoastingCart:steam:profile-cart:2",
+          "GardenTeaTable:mug:left:profile-tea:-2:-2",
+          "GardenTeaTable:mug:left:profile-tea:-2:2",
+          "GardenTeaTable:mug:left:profile-tea:2:-2",
+          "GardenTeaTable:mug:left:profile-tea:2:2",
+          "GardenTeaTable:mug:right:profile-tea:-2:-2",
+          "GardenTeaTable:mug:right:profile-tea:-2:2",
+          "GardenTeaTable:mug:right:profile-tea:2:-2",
+          "GardenTeaTable:mug:right:profile-tea:2:2"
+        ],
+        "falling": 80,
+        "ground": 221,
+        "entity": 20
+      },
+      "candidate": {
+        "enabled": true,
+        "frames": 120,
+        "calls": 220,
+        "triangles": 167272,
+        "p95FrameMs": 107.90000009536743,
+        "steam": 24,
+        "emitters": 4,
+        "warmProps": 2,
+        "warmSmoke": 0,
+        "sourceIds": [
+          "ChestnutRoastingCart:steam:profile-cart:-2",
+          "ChestnutRoastingCart:steam:profile-cart:2",
+          "GardenTeaTable:mug:left:profile-tea:-2:-2",
+          "GardenTeaTable:mug:left:profile-tea:-2:2",
+          "GardenTeaTable:mug:left:profile-tea:2:-2",
+          "GardenTeaTable:mug:left:profile-tea:2:2",
+          "GardenTeaTable:mug:right:profile-tea:-2:-2",
+          "GardenTeaTable:mug:right:profile-tea:-2:2",
+          "GardenTeaTable:mug:right:profile-tea:2:-2",
+          "GardenTeaTable:mug:right:profile-tea:2:2"
+        ],
+        "falling": 80,
+        "ground": 221,
+        "entity": 20
+      }
+    },
+    {
+      "scenario": "mixed-tea-cart",
+      "tier": "high",
+      "baseline": {
+        "enabled": false,
+        "frames": 120,
+        "calls": 219,
+        "triangles": 168066,
+        "p95FrameMs": 112.5,
+        "steam": 0,
+        "emitters": 0,
+        "warmProps": 2,
+        "warmSmoke": 0,
+        "sourceIds": [
+          "ChestnutRoastingCart:steam:profile-cart:-2",
+          "ChestnutRoastingCart:steam:profile-cart:2",
+          "GardenTeaTable:mug:left:profile-tea:-2:-2",
+          "GardenTeaTable:mug:left:profile-tea:-2:2",
+          "GardenTeaTable:mug:left:profile-tea:2:-2",
+          "GardenTeaTable:mug:left:profile-tea:2:2",
+          "GardenTeaTable:mug:right:profile-tea:-2:-2",
+          "GardenTeaTable:mug:right:profile-tea:-2:2",
+          "GardenTeaTable:mug:right:profile-tea:2:-2",
+          "GardenTeaTable:mug:right:profile-tea:2:2"
+        ],
+        "falling": 160,
+        "ground": 221,
+        "entity": 20
+      },
+      "candidate": {
+        "enabled": true,
+        "frames": 120,
+        "calls": 220,
+        "triangles": 168162,
+        "p95FrameMs": 113.10000002384186,
+        "steam": 48,
+        "emitters": 8,
+        "warmProps": 2,
+        "warmSmoke": 0,
+        "sourceIds": [
+          "ChestnutRoastingCart:steam:profile-cart:-2",
+          "ChestnutRoastingCart:steam:profile-cart:2",
+          "GardenTeaTable:mug:left:profile-tea:-2:-2",
+          "GardenTeaTable:mug:left:profile-tea:-2:2",
+          "GardenTeaTable:mug:left:profile-tea:2:-2",
+          "GardenTeaTable:mug:left:profile-tea:2:2",
+          "GardenTeaTable:mug:right:profile-tea:-2:-2",
+          "GardenTeaTable:mug:right:profile-tea:-2:2",
+          "GardenTeaTable:mug:right:profile-tea:2:-2",
+          "GardenTeaTable:mug:right:profile-tea:2:2"
+        ],
+        "falling": 160,
+        "ground": 221,
+        "entity": 20
+      }
+    },
+    {
+      "scenario": "tea",
+      "tier": "low",
+      "baseline": {
+        "enabled": false,
+        "frames": 120,
+        "calls": 196,
+        "triangles": 159850,
+        "p95FrameMs": 89,
+        "steam": 0,
+        "emitters": 0,
+        "warmProps": 0,
+        "warmSmoke": 0,
+        "sourceIds": [
+          "GardenTeaTable:mug:left:profile-tea:-2:-2",
+          "GardenTeaTable:mug:left:profile-tea:-2:2",
+          "GardenTeaTable:mug:left:profile-tea:2:-2",
+          "GardenTeaTable:mug:left:profile-tea:2:2",
+          "GardenTeaTable:mug:right:profile-tea:-2:-2",
+          "GardenTeaTable:mug:right:profile-tea:-2:2",
+          "GardenTeaTable:mug:right:profile-tea:2:-2",
+          "GardenTeaTable:mug:right:profile-tea:2:2"
+        ],
+        "falling": 24,
+        "ground": 48,
+        "entity": 20
+      },
+      "candidate": {
+        "enabled": true,
+        "frames": 120,
+        "calls": 196,
+        "triangles": 159850,
+        "p95FrameMs": 97.10000002384186,
+        "steam": 0,
+        "emitters": 0,
+        "warmProps": 0,
+        "warmSmoke": 0,
+        "sourceIds": [
+          "GardenTeaTable:mug:left:profile-tea:-2:-2",
+          "GardenTeaTable:mug:left:profile-tea:-2:2",
+          "GardenTeaTable:mug:left:profile-tea:2:-2",
+          "GardenTeaTable:mug:left:profile-tea:2:2",
+          "GardenTeaTable:mug:right:profile-tea:-2:-2",
+          "GardenTeaTable:mug:right:profile-tea:-2:2",
+          "GardenTeaTable:mug:right:profile-tea:2:-2",
+          "GardenTeaTable:mug:right:profile-tea:2:2"
+        ],
+        "falling": 24,
+        "ground": 48,
+        "entity": 20
+      }
+    },
+    {
+      "scenario": "tea",
+      "tier": "medium",
+      "baseline": {
+        "enabled": false,
+        "frames": 120,
+        "calls": 214,
+        "triangles": 163132,
+        "p95FrameMs": 97.70000004768372,
+        "steam": 0,
+        "emitters": 0,
+        "warmProps": 0,
+        "warmSmoke": 0,
+        "sourceIds": [
+          "GardenTeaTable:mug:left:profile-tea:-2:-2",
+          "GardenTeaTable:mug:left:profile-tea:-2:2",
+          "GardenTeaTable:mug:left:profile-tea:2:-2",
+          "GardenTeaTable:mug:left:profile-tea:2:2",
+          "GardenTeaTable:mug:right:profile-tea:-2:-2",
+          "GardenTeaTable:mug:right:profile-tea:-2:2",
+          "GardenTeaTable:mug:right:profile-tea:2:-2",
+          "GardenTeaTable:mug:right:profile-tea:2:2"
+        ],
+        "falling": 80,
+        "ground": 221,
+        "entity": 20
+      },
+      "candidate": {
+        "enabled": true,
+        "frames": 120,
+        "calls": 215,
+        "triangles": 163180,
+        "p95FrameMs": 101.39999997615814,
+        "steam": 24,
+        "emitters": 4,
+        "warmProps": 0,
+        "warmSmoke": 0,
+        "sourceIds": [
+          "GardenTeaTable:mug:left:profile-tea:-2:-2",
+          "GardenTeaTable:mug:left:profile-tea:-2:2",
+          "GardenTeaTable:mug:left:profile-tea:2:-2",
+          "GardenTeaTable:mug:left:profile-tea:2:2",
+          "GardenTeaTable:mug:right:profile-tea:-2:-2",
+          "GardenTeaTable:mug:right:profile-tea:-2:2",
+          "GardenTeaTable:mug:right:profile-tea:2:-2",
+          "GardenTeaTable:mug:right:profile-tea:2:2"
+        ],
+        "falling": 80,
+        "ground": 221,
+        "entity": 20
+      }
+    },
+    {
+      "scenario": "tea",
+      "tier": "high",
+      "baseline": {
+        "enabled": false,
+        "frames": 120,
+        "calls": 214,
+        "triangles": 163974,
+        "p95FrameMs": 113.29999995231628,
+        "steam": 0,
+        "emitters": 0,
+        "warmProps": 0,
+        "warmSmoke": 0,
+        "sourceIds": [
+          "GardenTeaTable:mug:left:profile-tea:-2:-2",
+          "GardenTeaTable:mug:left:profile-tea:-2:2",
+          "GardenTeaTable:mug:left:profile-tea:2:-2",
+          "GardenTeaTable:mug:left:profile-tea:2:2",
+          "GardenTeaTable:mug:right:profile-tea:-2:-2",
+          "GardenTeaTable:mug:right:profile-tea:-2:2",
+          "GardenTeaTable:mug:right:profile-tea:2:-2",
+          "GardenTeaTable:mug:right:profile-tea:2:2"
+        ],
+        "falling": 160,
+        "ground": 221,
+        "entity": 20
+      },
+      "candidate": {
+        "enabled": true,
+        "frames": 120,
+        "calls": 215,
+        "triangles": 164070,
+        "p95FrameMs": 112.39999997615814,
+        "steam": 48,
+        "emitters": 8,
+        "warmProps": 0,
+        "warmSmoke": 0,
+        "sourceIds": [
+          "GardenTeaTable:mug:left:profile-tea:-2:-2",
+          "GardenTeaTable:mug:left:profile-tea:-2:2",
+          "GardenTeaTable:mug:left:profile-tea:2:-2",
+          "GardenTeaTable:mug:left:profile-tea:2:2",
+          "GardenTeaTable:mug:right:profile-tea:-2:-2",
+          "GardenTeaTable:mug:right:profile-tea:-2:2",
+          "GardenTeaTable:mug:right:profile-tea:2:-2",
+          "GardenTeaTable:mug:right:profile-tea:2:2"
+        ],
+        "falling": 160,
+        "ground": 221,
+        "entity": 20
+      }
+    }
+  ]
+}
